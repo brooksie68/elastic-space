@@ -160,10 +160,11 @@ const LETTERS = [
 /* ================= the room painter ================= */
 
 const BASE_W = 384; /* layout units; the canvas renders at DETAIL x this */
-const DETAIL = 2; /* 2 = "32-bit" pass: half-unit shading on the same composition */
+const DETAIL = 3; /* fidelity level: 1 = 16-bit, 2 = 32-bit, 3 = arcade-board pass */
 const roomCanvas = document.getElementById("room-canvas");
 const room = roomCanvas.getContext("2d");
 const basketCanvas = document.getElementById("basket-canvas");
+const deskCanvas = document.getElementById("desk-canvas");
 const postmasterCanvas = document.getElementById("postmaster");
 const punchClock = document.getElementById("punchclock");
 const bubbleEl = document.getElementById("bubble");
@@ -282,6 +283,12 @@ function paintRoom() {
     px(0, y, W, 1, "rgba(0,0,0,0.16)");
   }
   dither(cx - 52, floorY + 2, 104, Math.min(26, H - floorY - 4), "rgba(216,230,200,0.07)");
+  /* worn-concrete speckle */
+  for (let i = 0; i < 260; i += 1) {
+    const fx = rnd() * W;
+    const fy = floorY + 1 + rnd() * (H - floorY - 2);
+    px(fx, fy, 1 / DETAIL, 1 / DETAIL, rnd() < 0.45 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.28)");
+  }
 
   /* pipes along the ceiling */
   px(0, 2, W, 4, "#4d525a");
@@ -376,34 +383,34 @@ function paintRoom() {
   });
 
   /* metal door, center-left */
-  const doorW = 34;
-  const doorH = 62;
-  const doorX = 148;
+  const doorW = 44; /* sized up 30% so the postmaster plausibly fits through */
+  const doorH = 81;
+  const doorX = 146;
   const doorY = floorY - doorH;
-  px(doorX - 3, doorY - 3, doorW + 6, doorH + 3, "#31353b");
-  px(doorX - 2, doorY - 2, doorW + 4, 0.5, "#454b52");
+  px(doorX - 4, doorY - 4, doorW + 8, doorH + 4, "#31353b");
+  px(doorX - 3, doorY - 3, doorW + 6, 0.5, "#454b52");
   px(doorX, doorY, doorW, doorH, "#566058");
   px(doorX, doorY, doorW, 1, "#6b756c");
   px(doorX, doorY, 0.5, doorH, "#636e64");
   px(doorX + doorW - 0.5, doorY, 0.5, doorH, "#3f4842");
   /* recessed panel outlines */
-  px(doorX + 5, doorY + 26, doorW - 10, 0.5, "#49524b");
-  px(doorX + 5, doorY + 26.5, doorW - 10, 0.5, "#616c62");
-  px(doorX + 5, doorY + 44, doorW - 10, 0.5, "#49524b");
-  px(doorX + 5, doorY + 44.5, doorW - 10, 0.5, "#616c62");
+  px(doorX + 6, doorY + 34, doorW - 12, 0.5, "#49524b");
+  px(doorX + 6, doorY + 34.5, doorW - 12, 0.5, "#616c62");
+  px(doorX + 6, doorY + 57, doorW - 12, 0.5, "#49524b");
+  px(doorX + 6, doorY + 57.5, doorW - 12, 0.5, "#616c62");
   /* wire-glass window with frame */
-  px(doorX + 7, doorY + 7, 14, 16, "#3f4842");
-  px(doorX + 8, doorY + 8, 12, 14, "#20261f");
-  dither(doorX + 9, doorY + 9, 10, 12, "#7d8a70");
-  px(doorX + 9, doorY + 9, 10, 0.5, "#9aa88c");
+  px(doorX + 9, doorY + 9, 18, 21, "#3f4842");
+  px(doorX + 10, doorY + 10, 16, 19, "#20261f");
+  dither(doorX + 11, doorY + 11, 14, 17, "#7d8a70");
+  px(doorX + 11, doorY + 11, 14, 0.5, "#9aa88c");
   /* hinges and handle */
-  px(doorX + 0.5, doorY + 10, 2, 4, "#6b756c");
-  px(doorX + 0.5, doorY + 44, 2, 4, "#6b756c");
-  px(doorX + doorW - 7, doorY + 30, 4, 2, "#c8c3ae");
-  px(doorX + doorW - 7, doorY + 31.5, 4, 0.5, "#8f8b7a");
-  px(doorX, doorY + doorH - 9, doorW, 7, "#494f54");
-  px(doorX, doorY + doorH - 9, doorW, 0.5, "#5c636b");
-  dither(doorX + 4, doorY + doorH - 7, doorW - 8, 4, "rgba(0,0,0,0.25)");
+  px(doorX + 0.5, doorY + 13, 2.5, 5, "#6b756c");
+  px(doorX + 0.5, doorY + 57, 2.5, 5, "#6b756c");
+  px(doorX + doorW - 9, doorY + 39, 5, 2.5, "#c8c3ae");
+  px(doorX + doorW - 9, doorY + 41, 5, 0.5, "#8f8b7a");
+  px(doorX, doorY + doorH - 12, doorW, 9, "#494f54");
+  px(doorX, doorY + doorH - 12, doorW, 0.5, "#5c636b");
+  dither(doorX + 5, doorY + doorH - 9, doorW - 10, 5, "rgba(0,0,0,0.25)");
 
   /* pigeonhole unit, left */
   const unitX = 8;
@@ -447,30 +454,13 @@ function paintRoom() {
   px(206, floorY - 4, 16, 1, "#8a6f4a");
   px(208, floorY - 10, 14, 1, "#8a6f4a");
 
-  /* sorting desk, right */
+  /* the sorting desk lives on its own overlay canvas (in front of the
+     postmaster, so he can have legs); the room keeps only its shadow */
   const deskX = 236;
   const deskW = 104;
   const deskTop = floorY - 34;
-  px(deskX, deskTop, deskW, 5, "#6b5638");
-  px(deskX, deskTop, deskW, 1, "#7f6845");
-  px(deskX, deskTop + 4.5, deskW, 0.5, "#3d2f1d");
-  /* wood grain */
-  px(deskX + 8, deskTop + 2, 30, 0.5, "rgba(0,0,0,0.14)");
-  px(deskX + 52, deskTop + 3, 36, 0.5, "rgba(0,0,0,0.14)");
-  px(deskX + 20, deskTop + 3.5, 18, 0.5, "rgba(255,255,255,0.06)");
-  px(deskX + 3, deskTop + 5, 5, 29, "#4a3c28");
-  px(deskX + deskW - 8, deskTop + 5, 5, 29, "#4a3c28");
-  px(deskX + 6, deskTop + 5, deskW - 14, 10, "#54432c");
-  px(deskX + 10, deskTop + 8, 8, 4, "#2a2620");
-  /* paper stacks */
-  px(deskX + 30, deskTop - 6, 22, 6, "#cfc4a2");
-  px(deskX + 30, deskTop - 3, 22, 1, "#a89a76");
-  px(deskX + 56, deskTop - 4, 16, 4, "#c2b490");
-  /* gooseneck lamp, left end of the desk */
-  px(deskX + 14, deskTop - 16, 2, 16, "#20221f");
-  px(deskX + 6, deskTop - 20, 12, 5, "#2f6e50");
-  px(deskX + 6, deskTop - 15, 12, 1, "#ffe9b0");
-  dither(deskX + 2, deskTop - 12, 30, 12, "rgba(255,222,150,0.16)");
+  dither(deskX - 2, floorY - 1, deskW + 8, 5, "rgba(0,0,0,0.3)");
+  dither(deskX - 4, deskTop - 10, 34, 12, "rgba(255,222,150,0.08)");
 
   /* mail sacks, bottom right */
   room.fillStyle = "#6e6250";
@@ -531,15 +521,15 @@ function paintRoom() {
 
   paintBasketFront(bkX, bkW, bkRim, bkBase, scaleX, scaleY);
 
-  const pmW = 44;
-  const pmH = 46;
-  const pmX = deskX + deskW - pmW; /* right end of the desk */
+  const pmX = deskX + deskW - PM_W - 2; /* stands behind the right half of the desk */
   postmasterCanvas.style.left = `${pmX * scaleX}px`;
-  postmasterCanvas.style.top = `${(deskTop - pmH) * scaleY}px`;
-  postmasterCanvas.style.width = `${pmW * scaleX}px`;
-  postmasterCanvas.style.height = `${pmH * scaleY}px`;
-  SCENE.bubbleRightCss = window.innerWidth - (pmX + pmW - 6) * scaleX;
-  SCENE.bubbleBottomCss = window.innerHeight - (deskTop - pmH + 2) * scaleY;
+  postmasterCanvas.style.top = `${(floorY - PM_H) * scaleY}px`;
+  postmasterCanvas.style.width = `${PM_W * scaleX}px`;
+  postmasterCanvas.style.height = `${PM_H * scaleY}px`;
+  SCENE.bubbleRightCss = window.innerWidth - (pmX + PM_W - 6) * scaleX;
+  SCENE.bubbleBottomCss = window.innerHeight - (floorY - PM_H + 2) * scaleY;
+
+  paintDeskFront(deskX, deskW, deskTop, floorY, scaleX, scaleY);
 
   punchClock.style.left = `${198 * scaleX}px`;
   punchClock.style.top = `${(floorY - 58) * scaleY}px`;
@@ -614,11 +604,103 @@ function paintBasketFront(bkX, bkW, bkRim, bkBase, scaleX, scaleY) {
   ctx.fillText("UNSORTED", w / 2 - 14, 15);
 }
 
+function paintDeskFront(deskX, deskW, deskTop, floorY, scaleX, scaleY) {
+  const w = deskW + 14;
+  const h = floorY - (deskTop - 26) + 3;
+  deskCanvas.width = w * DETAIL;
+  deskCanvas.height = h * DETAIL;
+  deskCanvas.style.left = `${(deskX - 6) * scaleX}px`;
+  deskCanvas.style.top = `${(deskTop - 26) * scaleY}px`;
+  deskCanvas.style.width = `${w * scaleX}px`;
+  deskCanvas.style.height = `${h * scaleY}px`;
+  const ctx = deskCanvas.getContext("2d");
+  ctx.setTransform(DETAIL, 0, 0, DETAIL, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, w, h);
+  const f = (x, y, fw, fh, color) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(half(x), half(y), half(fw), half(fh));
+  };
+  const dl = 6; /* desk left edge, local */
+  const dt = 26; /* desk top surface, local */
+  const dw = deskW;
+  const fl = h - 3; /* floor line, local */
+
+  /* top slab: bevels, sheen, grain */
+  f(dl - 2, dt, dw + 4, 5, "#6b5638");
+  f(dl - 2, dt, dw + 4, 1, "#7f6845");
+  f(dl - 2, dt, dw + 4, 1 / DETAIL, "#93794f");
+  f(dl - 2, dt + 4, dw + 4, 1, "#3d2f1d");
+  f(dl - 2, dt + 4.66, dw + 4, 0.34, "#2a2013");
+  f(dl + 6, dt + 2, 34, 0.34, "rgba(0,0,0,0.16)");
+  f(dl + 48, dt + 3, 40, 0.34, "rgba(0,0,0,0.16)");
+  f(dl + 18, dt + 3.5, 22, 0.34, "rgba(255,255,255,0.07)");
+  /* apron */
+  f(dl, dt + 5, dw, 3, "#54432c");
+  f(dl, dt + 5, dw, 0.34, "#66522f");
+
+  /* drawer pedestal, left, with brass pulls and keyholes */
+  f(dl + 2, dt + 8, 38, fl - dt - 8, "#5d4a30");
+  f(dl + 2, dt + 8, 0.66, fl - dt - 8, "#6e5838");
+  f(dl + 39.34, dt + 8, 0.66, fl - dt - 8, "#3b2f1e");
+  for (let i = 0; i < 3; i += 1) {
+    const dy = dt + 10 + i * 8.5;
+    f(dl + 4, dy, 34, 7, "#66522f");
+    f(dl + 4, dy, 34, 0.66, "#7a6238");
+    f(dl + 4, dy + 6.34, 34, 0.66, "#463722");
+    f(dl + 16, dy + 3, 10, 1.34, "#d8a54a");
+    f(dl + 16, dy + 3, 10, 0.5, "#f2d693");
+    f(dl + 36, dy + 3, 1, 1.34, "#2a2218");
+  }
+
+  /* open knee bay: just a lower cross rail; the postmaster's legs show through */
+  f(dl + 44, fl - 8, dw - 52, 2, "#4a3c28");
+  f(dl + 44, fl - 8, dw - 52, 0.5, "#5c4a30");
+
+  /* right leg and foot */
+  f(dl + dw - 8, dt + 8, 5, fl - dt - 8, "#4a3c28");
+  f(dl + dw - 8, dt + 8, 1, fl - dt - 8, "#5c4a30");
+  f(dl + dw - 9, fl - 2, 7, 2, "#33291b");
+
+  /* floor contact shadow */
+  f(dl, fl, dw + 2, 2.5, "rgba(0,0,0,0.28)");
+
+  /* --- on the desk top --- */
+  /* banker's lamp */
+  f(dl - 1, dt - 7.5, 26, 7.5, "rgba(255,226,150,0.09)");
+  f(dl + 1, dt - 5, 21, 5, "rgba(255,226,150,0.1)");
+  f(dl + 4, dt - 2.5, 14, 2.5, "#8a6a2e");
+  f(dl + 4, dt - 2.5, 14, 0.66, "#d8a54a");
+  f(dl + 9.5, dt - 8, 2, 6, "#8a6a2e");
+  f(dl + 9.5, dt - 8, 0.66, 6, "#d8a54a");
+  f(dl + 2, dt - 13, 18, 5.5, "#2f6e50");
+  f(dl + 2, dt - 13, 18, 1, "#3f8a66");
+  f(dl + 2, dt - 8, 18, 0.66, "#ffe9b0");
+  /* blotter */
+  f(dl + 26, dt + 0.5, 30, 4, "#2c4a38");
+  f(dl + 26, dt + 0.5, 30, 0.66, "#3a5c46");
+  f(dl + 27, dt + 1.2, 28, 2.8, "#37543f");
+  /* nameplate */
+  f(dl + 60, dt - 3.5, 16, 3.5, "#4a3626");
+  f(dl + 61, dt - 2.8, 14, 2, "#d8a54a");
+  f(dl + 62.5, dt - 2, 11, 0.5, "#8a6a2e");
+  /* outgoing paper stacks */
+  f(dl + 80, dt - 4, 16, 4, "#cfc4a2");
+  f(dl + 80, dt - 4, 16, 0.5, "#e4dabb");
+  f(dl + 80, dt - 1.5, 16, 0.5, "#a89a76");
+  f(dl + 82, dt - 6.5, 12, 2.5, "#c2b490");
+  /* ink pad and the stamp at rest */
+  f(dl + 44, dt - 2, 8, 2, "#5a2622");
+  f(dl + 44, dt - 2, 8, 0.5, "#7a3a30");
+  f(dl + 46.5, dt - 5, 3, 3, "#7a2f26");
+  f(dl + 47.3, dt - 6.8, 1.4, 2, "#4a3b2c");
+}
+
 /* ================= the postmaster ================= */
 
 const pm = postmasterCanvas.getContext("2d");
 const PM_W = 44;
-const PM_H = 46;
+const PM_H = 80; /* full figure: his legs show through the desk's open knee bay */
 
 /* action: { name, length in ticks } — one tick is ~140ms */
 const PM_ACTIONS = [
@@ -656,44 +738,97 @@ function drawPostmaster() {
   const eyeDx = action === "glance" && frame >= 2 && frame <= 7 ? -2 : 0;
   const mustDx = action === "twitch" ? (frame % 2 === 0 ? 1 : -1) : 0;
 
-  /* cap */
+  /* cap: crown with highlight, band, brim with underside shadow, brass badge */
+  ppx(13.5, 5.5 + b - capLift, 17, 3, "#1c2f42");
   ppx(12, 6 + b - capLift, 20, 2, "#233a52");
+  ppx(12, 6 + b - capLift, 20, 0.5, "#33547a");
+  ppx(13, 7.6 + b - capLift, 18, 0.4, "#d8a54a");
   ppx(14, 1 + b - capLift, 16, 6, "#2e4a66");
-  ppx(21, 3 + b - capLift, 2, 2, "#d8a54a");
-  /* head */
+  ppx(14.5, 1 + b - capLift, 15, 0.5, "#436c94");
+  ppx(14, 5 + b - capLift, 16, 1, "#26405a");
+  ppx(20.5, 2.5 + b - capLift, 3, 3, "#d8a54a");
+  ppx(21, 3 + b - capLift, 1, 1, "#f2d693");
+  /* head with side shading and brim shadow */
   ppx(14, 8 + b, 16, 12, "#c8a284");
+  ppx(14, 8 + b, 1, 12, "#d7b394");
+  ppx(28.5, 8 + b, 1.5, 12, "#b08e6c");
+  ppx(14, 8 + b, 16, 1, "#a9855f");
   ppx(30, 12 + b, 2, 4, "#a9855f");
+  ppx(30, 12 + b, 2, 0.5, "#c8a284");
   /* brows */
   ppx(17, 10 + b, 4, 1, "#4a3b2c");
   ppx(25, 10 + b, 4, 1, "#4a3b2c");
-  /* eyes */
+  /* eyes, with a glint when open */
   if (eyesClosed) {
     ppx(17 + eyeDx, 13 + b, 3, 1, "#4a3b2c");
     ppx(25 + eyeDx, 13 + b, 3, 1, "#4a3b2c");
   } else {
     ppx(18 + eyeDx, 12 + b, 2, 2, "#241f18");
     ppx(26 + eyeDx, 12 + b, 2, 2, "#241f18");
+    ppx(18 + eyeDx, 12 + b, 0.5, 0.5, "#e8e4d8");
+    ppx(26 + eyeDx, 12 + b, 0.5, 0.5, "#e8e4d8");
   }
-  /* nose */
+  /* nose with shadow */
   ppx(22, 14 + b, 2, 3, "#a9855f");
+  ppx(23.5, 14 + b, 0.5, 3, "#8f6f4e");
   /* yawn mouth, under the mustache */
   if (action === "yawn" && frame >= 2 && frame <= 5) {
     ppx(20, 20 + b, 4, 3, "#241f18");
   }
-  /* mustache */
+  /* mustache with combed highlight */
   ppx(16 + mustDx, 17 + b, 12, 3, "#4a3b2c");
+  ppx(16 + mustDx, 17 + b, 12, 0.5, "#5d4b38");
   ppx(15 + mustDx, 19 + b, 3, 2, "#4a3b2c");
   ppx(26 + mustDx, 19 + b, 3, 2, "#4a3b2c");
-  /* torso: shirt, vest, suspenders, collar, buttons */
-  ppx(10, 20 + b, 24, PM_H - 20 - b, "#5a6a74");
-  ppx(10, 20 + b, 5, PM_H - 20 - b, "#3e4a52");
-  ppx(29, 20 + b, 5, PM_H - 20 - b, "#3e4a52");
-  ppx(15, 20 + b, 2, PM_H - 20 - b, "#333d44");
-  ppx(27, 20 + b, 2, PM_H - 20 - b, "#333d44");
+  ppx(15 + mustDx, 19 + b, 0.5, 2, "#5d4b38");
+  /* torso: shirt with volume shading, vest, suspenders, collar, buttons */
+  const torsoH = 24 - b; /* down to the belt at y44 */
+  ppx(10, 20 + b, 24, torsoH, "#5a6a74");
+  ppx(17, 20 + b, 1, torsoH, "#687984");
+  ppx(24, 22 + b, 0.5, torsoH - 2, "#4c5a63");
+  ppx(10, 20 + b, 5, torsoH, "#3e4a52");
+  ppx(29, 20 + b, 5, torsoH, "#3e4a52");
+  ppx(14.5, 20 + b, 0.5, torsoH, "#2c353b");
+  ppx(29, 20 + b, 0.5, torsoH, "#4d5a63");
+  ppx(15, 20 + b, 2, torsoH, "#333d44");
+  ppx(27, 20 + b, 2, torsoH, "#333d44");
+  ppx(15, 20 + b, 0.5, torsoH, "#414c54");
+  ppx(27, 20 + b, 0.5, torsoH, "#414c54");
   ppx(18, 20 + b, 8, 2, "#d8d5c8");
+  ppx(18, 21.5 + b, 8, 0.5, "#b3b0a2");
   ppx(21, 27 + b, 1, 1, "#c8c3ae");
   ppx(21, 33 + b, 1, 1, "#c8c3ae");
   ppx(21, 39 + b, 1, 1, "#c8c3ae");
+  /* brass name pin and a pocket pen */
+  ppx(29.5, 24 + b, 3.5, 2.5, "#c8c3ae");
+  ppx(30.2, 24.7 + b, 2.1, 0.5, "#233a52");
+  ppx(12, 23.5 + b, 1, 4.5, "#241f18");
+  ppx(12, 23.5 + b, 1, 0.7, "#c8c3ae");
+  /* belt with brass buckle */
+  ppx(10, 44 + b, 24, 3, "#2c2620");
+  ppx(10, 44 + b, 24, 0.5, "#3d352c");
+  ppx(20.5, 44.4 + b, 3.2, 2.2, "#d8a54a");
+  ppx(21.3, 45.1 + b, 1.5, 0.7, "#8a6a2e");
+  /* trousers: creases, knee shading, cuffs */
+  ppx(11, 47 + b, 10, 25 - b, "#3a4148");
+  ppx(23, 47 + b, 10, 25 - b, "#3a4148");
+  ppx(11, 47 + b, 1, 25 - b, "#4a525a");
+  ppx(23, 47 + b, 1, 25 - b, "#4a525a");
+  ppx(19.7, 47 + b, 0.6, 25 - b, "#2e343a");
+  ppx(31.7, 47 + b, 0.6, 25 - b, "#2e343a");
+  ppx(12, 58, 8, 0.5, "rgba(0,0,0,0.2)");
+  ppx(24, 58, 8, 0.5, "rgba(0,0,0,0.2)");
+  ppx(11, 71.5, 10, 1.5, "#31373d");
+  ppx(23, 71.5, 10, 1.5, "#31373d");
+  /* shoes, polished once, long ago */
+  ppx(9, 74, 13, 6, "#23262a");
+  ppx(22.5, 74, 13, 6, "#23262a");
+  ppx(9, 74, 13, 1, "#3a3f45");
+  ppx(22.5, 74, 13, 1, "#3a3f45");
+  ppx(10, 75.2, 3.5, 1, "#4d545c");
+  ppx(24, 75.2, 3.5, 1, "#4d545c");
+  ppx(9, 78.5, 13, 1.5, "#141619");
+  ppx(22.5, 78.5, 13, 1.5, "#141619");
 
   /* left arm: coffee, otherwise at his side */
   if (action === "coffee") {
@@ -714,7 +849,10 @@ function drawPostmaster() {
     }
   } else {
     ppx(6, 22 + b, 4, 16, "#5a6a74");
+    ppx(6, 22 + b, 0.5, 16, "#687984");
+    ppx(6, 36.5 + b, 4, 1, "#3e4a52");
     ppx(6, 38 + b, 4, 4, "#c8a284");
+    ppx(6, 41.5 + b, 4, 0.5, "#a9855f");
   }
 
   /* right arm: stamping, cap adjust, otherwise at his side */
@@ -738,7 +876,10 @@ function drawPostmaster() {
     ppx(31, 8 + b - capLift, 5, 4, "#c8a284");
   } else {
     ppx(34, 22 + b, 4, 16, "#5a6a74");
+    ppx(37.5, 22 + b, 0.5, 16, "#4c5a63");
+    ppx(34, 36.5 + b, 4, 1, "#3e4a52");
     ppx(34, 38 + b, 4, 4, "#c8a284");
+    ppx(34, 41.5 + b, 4, 0.5, "#a9855f");
   }
 }
 
@@ -948,7 +1089,7 @@ function createEnvelope(startInView, forcedIndex) {
     el,
     letterIndex,
     width,
-    baseX: 0.04 + Math.random() * 0.82,
+    baseX: 0.04 + Math.random() * 0.46, /* mail falls only through the left half of the room */
     y: startInView ? Math.random() * window.innerHeight * 0.5 : -width - 60,
     speed: (11 + Math.random() * 13) * (0.55 + depth * 0.45),
     swayAmp: 12 + Math.random() * 22,

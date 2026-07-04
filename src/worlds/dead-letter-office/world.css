@@ -89,6 +89,13 @@ body {
   z-index: 5;
 }
 
+#desk-canvas {
+  position: fixed;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 3;
+}
+
 #postmaster {
   position: fixed;
   image-rendering: pixelated;
@@ -160,10 +167,13 @@ body {
   width: var(--w, 150px);
   aspect-ratio: 1.6;
   padding: 0;
-  border: 2px solid var(--outline);
+  border: 1.5px solid var(--outline);
   border-radius: 0;
-  background: var(--paper);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #e4dabb 0%, var(--paper) 30%, #cdc29e 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 251, 235, 0.5),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.12),
+    3px 3px 0 rgba(0, 0, 0, 0.4);
   cursor: pointer;
   will-change: transform;
   text-align: left;
@@ -171,13 +181,13 @@ body {
 }
 
 .envelope::before {
-  /* flap: two hard diagonal creases meeting at center */
+  /* flap: two crisp diagonal creases with a soft shadow line beneath */
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(116deg, transparent calc(50% - 1px), var(--paper-dark) calc(50% - 1px), var(--paper-dark) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 51% 46% no-repeat,
-    linear-gradient(244deg, transparent calc(50% - 1px), var(--paper-dark) calc(50% - 1px), var(--paper-dark) calc(50% + 1px), transparent calc(50% + 1px)) 100% 0 / 51% 46% no-repeat;
+    linear-gradient(116deg, transparent calc(50% - 0.5px), var(--paper-dark) calc(50% - 0.5px), var(--paper-dark) calc(50% + 0.5px), rgba(0, 0, 0, 0.08) calc(50% + 0.5px), transparent calc(50% + 2px)) 0 0 / 51% 46% no-repeat,
+    linear-gradient(244deg, transparent calc(50% - 0.5px), var(--paper-dark) calc(50% - 0.5px), var(--paper-dark) calc(50% + 0.5px), rgba(0, 0, 0, 0.08) calc(50% + 0.5px), transparent calc(50% + 2px)) 100% 0 / 51% 46% no-repeat;
   pointer-events: none;
 }
 
