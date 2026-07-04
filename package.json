@@ -1,0 +1,17 @@
+{
+  "name": "elastic-space",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "registry": "node scripts/generate-world-registry.mjs",
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "local:start": "node scripts/local-server.mjs start",
+    "local:stop": "node scripts/local-server.mjs stop",
+    "local:restart": "node scripts/local-server.mjs restart",
+    "local:status": "node scripts/local-server.mjs status"
+  },
+  "dependencies": {
+    "pixi.js": "^8.19.0"
+  }
+}

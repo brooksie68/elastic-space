@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>elastic-space map room</title>
+    <link rel="stylesheet" href="/styles/admin.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <header class="masthead panel">
+        <div>
+          <p class="eyebrow">control</p>
+          <h1>Map room</h1>
+          <p class="lede">
+            Full folder-tree visibility, direct file editing, and publish control
+            for every world.
+          </p>
+        </div>
+        <div class="masthead-actions">
+          <a class="button ghost" href="/">back to home</a>
+          <button id="refresh-button" class="button ghost" type="button">
+            refresh
+          </button>
+          <button id="new-world-button" class="button" type="button">
+            new page
+          </button>
+        </div>
+      </header>
+
+      <section id="summary-strip" class="summary-strip"></section>
+
+      <section class="workspace">
+        <aside class="panel tree-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">directory</p>
+              <h2>Folder tree</h2>
+            </div>
+            <p class="small">`src/worlds` plus each world’s working files</p>
+          </div>
+
+          <div class="filters">
+            <label class="field">
+              <span>search</span>
+              <input id="search-input" type="search" placeholder="title, slug, tag, mood" />
+            </label>
+            <label class="field">
+              <span>status</span>
+              <select id="status-filter">
+                <option value="all">all</option>
+                <option value="live">live</option>
+                <option value="draft">draft</option>
+                <option value="hidden">hidden</option>
+                <option value="retired">retired</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="tree-root" class="tree-root"></div>
+        </aside>
+
+        <section class="panel editor-panel">
+          <form id="world-form" class="world-form">
+            <div class="editor-head">
+              <div>
+                <p class="eyebrow">world editor</p>
+                <h2 id="editor-title">Select a page</h2>
+                <p id="editor-path" class="path-text">Choose a world in the tree to inspect or edit it.</p>
+              </div>
+              <div class="editor-actions">
+                <a id="preview-link" class="button ghost disabled" href="/" target="_blank" rel="noreferrer">
+                  open page
+                </a>
+                <button id="save-button" class="button" type="submit">save changes</button>
+                <button id="delete-button" class="button danger" type="button">delete page</button>
+              </div>
+            </div>
+
+            <div class="meta-grid">
+              <label class="field">
+                <span>title</span>
+                <input name="title" type="text" required />
+              </label>
+              <label class="field">
+                <span>slug</span>
+                <input name="slug" type="text" required />
+              </label>
+              <label class="field">
+                <span>status</span>
+                <select name="status">
+                  <option value="draft">draft</option>
+                  <option value="live">live</option>
+                  <option value="hidden">hidden</option>
+                  <option value="retired">retired</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>content type</span>
+                <select name="contentType">
+                  <option value="hybrid">hybrid</option>
+                  <option value="html">html</option>
+                  <option value="canvas">canvas</option>
+                  <option value="audio">audio</option>
+                  <option value="video">video</option>
+                  <option value="react">react</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>creators</span>
+                <input name="creators" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field">
+                <span>owner</span>
+                <input name="owner" type="text" />
+              </label>
+              <label class="field wide">
+                <span>summary</span>
+                <textarea name="summary" rows="3"></textarea>
+              </label>
+              <label class="field">
+                <span>tags</span>
+                <input name="tags" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field">
+                <span>moods</span>
+                <input name="moods" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field">
+                <span>entry points</span>
+                <input name="entryPoints" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field">
+                <span>weight</span>
+                <input name="weight" type="number" min="0" step="1" />
+              </label>
+              <label class="field">
+                <span>rarity</span>
+                <select name="rarity">
+                  <option value="common">common</option>
+                  <option value="uncommon">uncommon</option>
+                  <option value="rare">rare</option>
+                  <option value="mythic">mythic</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>era</span>
+                <input name="era" type="text" />
+              </label>
+              <label class="field">
+                <span>warnings</span>
+                <input name="warnings" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field">
+                <span>soundtrack</span>
+                <input name="soundtrack" type="text" placeholder="comma separated" />
+              </label>
+              <label class="field checkbox">
+                <input name="featured" type="checkbox" />
+                <span>featured</span>
+              </label>
+              <label class="field checkbox">
+                <input name="editable" type="checkbox" />
+                <span>editable</span>
+              </label>
+              <label class="field checkbox">
+                <input name="driftEnabled" type="checkbox" />
+                <span>drift enabled</span>
+              </label>
+              <label class="field checkbox">
+                <input name="hiddenFromDirectory" type="checkbox" />
+                <span>hide from home directory</span>
+              </label>
+              <label class="field wide">
+                <span>route rules JSON</span>
+                <textarea name="exits" rows="8"></textarea>
+              </label>
+              <label class="field wide">
+                <span>notes</span>
+                <textarea name="notes" rows="4"></textarea>
+              </label>
+            </div>
+
+            <section class="relationships">
+              <article class="relation-card">
+                <p class="eyebrow">outbound routes</p>
+                <div id="outbound-list" class="relation-list"></div>
+              </article>
+              <article class="relation-card">
+                <p class="eyebrow">inbound routes</p>
+                <div id="inbound-list" class="relation-list"></div>
+              </article>
+            </section>
+
+            <section class="files">
+              <article class="file-card">
+                <div class="file-head">
+                  <h3>index.html</h3>
+                  <p>public page markup</p>
+                </div>
+                <textarea id="editor-index" name="fileIndex" class="code-editor" data-file="index.html" spellcheck="false"></textarea>
+              </article>
+              <article class="file-card">
+                <div class="file-head">
+                  <h3>world.css</h3>
+                  <p>visual system</p>
+                </div>
+                <textarea id="editor-css" name="fileCss" class="code-editor" data-file="world.css" spellcheck="false"></textarea>
+              </article>
+              <article class="file-card">
+                <div class="file-head">
+                  <h3>world.js</h3>
+                  <p>motion, sound, interaction</p>
+                </div>
+                <textarea id="editor-js" name="fileJs" class="code-editor" data-file="world.js" spellcheck="false"></textarea>
+              </article>
+            </section>
+
+            <p id="form-status" class="form-status"></p>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="/scripts/admin.js" defer></script>
+  </body>
+</html>

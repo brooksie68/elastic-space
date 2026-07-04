@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dead Letter Office</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <div class="room" aria-hidden="true">
+      <canvas id="room-canvas"></canvas>
+      <div class="flicker"></div>
+    </div>
+
+    <main id="mail" aria-label="Undelivered mail drifting through the room"></main>
+
+    <canvas id="basket-canvas" aria-hidden="true"></canvas>
+    <canvas id="postmaster" role="button" tabindex="0" aria-label="The postmaster"></canvas>
+    <div id="punchclock" aria-hidden="true">0:00</div>
+    <div id="bubble" role="status" aria-live="polite" hidden></div>
+
+    <div id="overlay" class="overlay" hidden>
+      <article
+        id="letter"
+        class="letter"
+        role="dialog"
+        aria-modal="true"
+        aria-label="An opened letter"
+        tabindex="-1"
+      >
+        <button id="refold" class="refold" aria-label="Refold the letter">&times;</button>
+        <header class="letter-head">
+          <div id="return-slot" class="return-slot"></div>
+          <div id="postmark" class="postmark" aria-hidden="true"></div>
+        </header>
+        <div id="cancel-stamp" class="cancel-stamp" aria-hidden="true"></div>
+        <div id="letter-to" class="letter-to"></div>
+        <div id="letter-body" class="letter-body"></div>
+        <div id="letter-sign" class="letter-sign"></div>
+      </article>
+    </div>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="./world.js" defer></script>
+  </body>
+</html>

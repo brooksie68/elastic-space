@@ -1,0 +1,55 @@
+{
+  "slug": "wildflowers-at-dusk",
+  "title": "Wildflowers at Dusk",
+  "creators": [
+    "elastic space"
+  ],
+  "status": "live",
+  "summary": "A rainstorm runs in reverse through a dusk field while Whitman rises through the weather.",
+  "tags": [
+    "poetry",
+    "rain",
+    "field",
+    "voice"
+  ],
+  "moods": [
+    "tender",
+    "luminous",
+    "dreamlike"
+  ],
+  "contentType": "hybrid",
+  "entryPoints": [
+    "home",
+    "direct"
+  ],
+  "exits": [],
+  "weight": 8,
+  "rarity": "rare",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "reverse rain",
+    "speech synthesis",
+    "glass bells"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "admin": {
+    "owner": "brook",
+    "notes": "Whitman recitation begins after the visitor opens the audio gate.",
+    "featured": true,
+    "directoryOrder": 1,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/wildflowers-at-dusk",
+    "assetPaths": [
+      "src/worlds/wildflowers-at-dusk"
+    ]
+  }
+}

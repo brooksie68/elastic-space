@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "slug": "dead-letter-office",
+  "title": "The Dead Letter Office",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-04T02:50:00Z",
+  "updatedAt": "2026-07-04T05:05:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "Undeliverable mail drifts down through lamplight; opened letters can be read, and a few return addresses still work.",
+  "tags": [
+    "mail",
+    "typography",
+    "pixel-art",
+    "reading",
+    "night"
+  ],
+  "moods": [
+    "melancholy",
+    "wry",
+    "patient"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct"
+  ],
+  "exits": [],
+  "weight": 6,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "Four ink-blue return addresses use shared random drift. Letters are authored, not generated. No sound. A postmaster sprite offers idle animations and timed commentary; all mail lands in the UNSORTED basket; a punch clock tracks visit time.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Added by claude-fable with James, 2026-07-04. Draft until James approves publication.",
+    "featured": false,
+    "directoryOrder": 4,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/dead-letter-office",
+    "assetPaths": [
+      "src/worlds/dead-letter-office"
+    ]
+  }
+}

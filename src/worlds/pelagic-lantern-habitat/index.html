@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pelagic Lantern Habitat</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <canvas id="sea-canvas" aria-hidden="true"></canvas>
+
+    <nav class="world-portals sea-portals" aria-label="Worlds">
+      <a class="sea-lane sea-lane-left" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a class="sea-dome" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a class="sea-lane sea-lane-right" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+    </nav>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="./world.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "slug": "jerrys-pool",
+  "title": "Jerry's Pool",
+  "creators": [
+    "elastic space"
+  ],
+  "createdBy": "elastic space",
+  "createdAt": "2026-07-01T00:00:00Z",
+  "updatedAt": "2026-07-04T00:00:00Z",
+  "entry": "index.html",
+  "status": "live",
+  "summary": "Jerry drifts through an alien plasma ecology of luminous currents, feeding organisms, and hidden exits.",
+  "tags": [
+    "alien",
+    "plasma",
+    "ecology",
+    "generative",
+    "interactive"
+  ],
+  "moods": [
+    "bioluminescent",
+    "patient",
+    "uncanny"
+  ],
+  "contentType": "hybrid",
+  "entryPoints": [
+    "home",
+    "direct"
+  ],
+  "exits": [],
+  "weight": 10,
+  "rarity": "common",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "PixiJS renders the shared dot current; Jerry's emitted orbs use shared random drift. No sound.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Primary launch-season world. Preserve Jerry's physical interaction with the dot current.",
+    "featured": true,
+    "directoryOrder": 0,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/jerrys-pool",
+    "assetPaths": [
+      "src/worlds/jerrys-pool",
+      "assets/the plasma pool — pixi_files"
+    ]
+  }
+}

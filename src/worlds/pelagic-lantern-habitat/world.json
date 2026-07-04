@@ -1,0 +1,54 @@
+{
+  "slug": "pelagic-lantern-habitat",
+  "title": "Pelagic Lantern Habitat",
+  "creators": [
+    "elastic space"
+  ],
+  "status": "live",
+  "summary": "Deep under an alien sea, a glowing habitat hums while friendly creatures circle the dome.",
+  "tags": [
+    "undersea",
+    "alien",
+    "habitat"
+  ],
+  "moods": [
+    "calm",
+    "bioluminescent",
+    "curious"
+  ],
+  "contentType": "hybrid",
+  "entryPoints": [
+    "home",
+    "direct"
+  ],
+  "exits": [],
+  "weight": 9,
+  "rarity": "rare",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "low thrumming",
+    "bubble clicks",
+    "subsea drift"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "admin": {
+    "owner": "brook",
+    "notes": "Friendly atmosphere; keep the creatures welcoming rather than eerie.",
+    "featured": true,
+    "directoryOrder": 3,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/pelagic-lantern-habitat",
+    "assetPaths": [
+      "src/worlds/pelagic-lantern-habitat"
+    ]
+  }
+}

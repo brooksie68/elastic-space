@@ -1,0 +1,56 @@
+{
+  "slug": "monochrome-rift",
+  "title": "The Monochrome Rift",
+  "creators": [
+    "elastic space"
+  ],
+  "status": "live",
+  "summary": "A stark chamber of shifting black and white with flashes, grinding resonance, air rush, and distant chimes.",
+  "tags": [
+    "glitch",
+    "monochrome",
+    "noise"
+  ],
+  "moods": [
+    "severe",
+    "tense",
+    "ritual"
+  ],
+  "contentType": "hybrid",
+  "entryPoints": [
+    "home",
+    "direct"
+  ],
+  "exits": [],
+  "weight": 7,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [
+    "flashing visuals"
+  ],
+  "soundtrack": [
+    "grinding drone",
+    "wind noise",
+    "distant chimes"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "admin": {
+    "owner": "brook",
+    "notes": "Keep the page severe and spare.",
+    "featured": false,
+    "directoryOrder": 2,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/monochrome-rift",
+    "assetPaths": [
+      "src/worlds/monochrome-rift"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+node_modules/
+.npm-cache/
+.codex/
+.codex-manual-cache/
+.agents/
+.claude/
+
+*.log
+.DS_Store
+Thumbs.db
+
+# Obsolete browser-saved page; retain locally, do not publish.
+assets/the plasma pool — pixi.html
