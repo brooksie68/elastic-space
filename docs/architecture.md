@@ -30,6 +30,20 @@ Each world should own:
 - a link policy
 - admin metadata
 
+World-local generated artwork should remain inside that world's folder. When an asset is generated on a removable chroma background, keep the source only when it is useful for iteration and give the alpha-ready runtime file an unambiguous name. Runtime pages must reference the processed asset, not the chroma source.
+
+### Layered painted environments
+
+Worlds may combine painted raster plates with DOM, Canvas, SVG, or WebGL animation. Use separate visual planes when depth matters:
+
+- opaque terrain and architecture belong on solid painted or rendered layers
+- atmospheric distance comes from blur, scale, contrast, saturation, and value
+- element transparency is appropriate for clouds, mist, water, membranes, and light, but not for solid geology
+- DOM stacking and CSS filters are preferable when each plate needs independent depth treatment
+- Canvas should own motion and interactions that benefit from a shared frame loop, not illustration that requires painterly detail
+
+`wildflowers-at-dusk` is the current reference for this hybrid approach: DOM-stacked mountain and hill plates sit beneath a Canvas containing rain, cloud sprites, cedar framing, and foreground plants.
+
 ### Drift
 
 `drift` is the dynamic navigation layer. By default, every drift portal chooses a random published world when clicked. Worlds expose the portal but do not choose or name its destination.
@@ -64,6 +78,26 @@ It should give you:
 - the ability to override drift when needed
 
 This is important because the public site should feel disorienting by design, while the authoring system should feel brutally clear.
+
+### Sound
+
+Browsers block audible autoplay until a visitor interacts with the page (or grants the site a
+persistent sound permission), so every world with sound shares one control:
+`src/core/sound-control.js`.
+
+- A world loads the script and calls `ElasticSoundControl.attach({ media })` with an audio
+  element, or `attach({ start, stop, setVolume })` to wrap Web Audio synthesis.
+- The control renders a small speaker button fixed top right. It pulses twice on load to announce
+  that the world has sound, carries a tooltip ("Turn on this world's sound"), and has distinct
+  on/off icon states.
+- Clicking toggles sound. While sound is on, hovering the control reveals a simple volume slider.
+- On attach it makes one autoplay attempt: visitors who have allowed sound for the site (browser
+  site settings, or earned media-engagement) get sound immediately; everyone else gets it on first
+  click of the button.
+- The root directory page tells visitors how to grant the persistent browser sound permission.
+
+Worlds must not implement their own audio toggles or autoplay workarounds — extend the shared
+control instead so behavior stays identical across the space.
 
 ## World Schema
 

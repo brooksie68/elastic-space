@@ -5,7 +5,7 @@
     "elastic space"
   ],
   "status": "live",
-  "summary": "A stark chamber of shifting black and white with flashes, grinding resonance, air rush, and distant chimes.",
+  "summary": "A stark chamber of shifting black and white with grinding resonance, air rush, and distant chimes.",
   "tags": [
     "glitch",
     "monochrome",
@@ -25,16 +25,12 @@
   "weight": 7,
   "rarity": "uncommon",
   "era": "launch-season",
-  "warnings": [
-    "flashing visuals"
-  ],
+  "warnings": [],
   "soundtrack": [
-    "grinding drone",
-    "wind noise",
-    "distant chimes"
+    "meditative raga drone (rift-drone.mp3, looped)"
   ],
   "behavior": {
-    "autoplayAudio": false,
+    "autoplayAudio": true,
     "hideChrome": true,
     "injectDriftLinks": false,
     "allowComments": false,

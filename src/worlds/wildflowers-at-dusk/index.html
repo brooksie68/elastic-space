@@ -7,7 +7,15 @@
     <link rel="stylesheet" href="./world.css" />
   </head>
   <body>
+    <canvas id="cloud-field" aria-hidden="true"></canvas>
     <canvas id="sky-field" aria-hidden="true"></canvas>
+
+    <div class="landscape-layers" aria-hidden="true">
+      <img class="landscape-layer landscape-mountains" src="./assets/landscape/mountains.png" alt="" />
+      <img class="landscape-layer landscape-far" src="./assets/landscape/far-hills.png" alt="" />
+      <img class="landscape-layer landscape-middle" src="./assets/landscape/middle-hills.png" alt="" />
+      <img class="landscape-layer landscape-near" src="./assets/landscape/near-ridge.png" alt="" />
+    </div>
 
     <nav class="world-portals flower-portals" aria-label="Worlds">
       <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>

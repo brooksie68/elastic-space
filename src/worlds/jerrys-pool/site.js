@@ -795,6 +795,10 @@ function amoebaConsumeJelly(amoeba, jelly) {
       amoeba.dataset.satiated = "true";
       amoeba.dataset.departureAt = String(performance.now() + 1400);
       amoeba.classList.remove("energized");
+      amoeba.style.filter = amoeba.style.filter.replace(
+        /saturate\(([\d.]+)\)/,
+        (match, value) => `saturate(${Math.min(2.6, Number(value) * 2).toFixed(2)})`,
+      );
       releaseFeedingAmoeba(frozenAnimations);
     }
   });
@@ -861,6 +865,10 @@ function amoebaConsumeAmoeba(hunter, prey) {
       hunter.dataset.satiated = "true";
       hunter.dataset.departureAt = String(performance.now() + 1400);
       hunter.classList.remove("energized");
+      hunter.style.filter = hunter.style.filter.replace(
+        /saturate\(([\d.]+)\)/,
+        (match, value) => `saturate(${Math.min(2.6, Number(value) * 2).toFixed(2)})`,
+      );
       releaseFeedingAmoeba(frozenAnimations);
     }
   });
@@ -1166,6 +1174,77 @@ function spawnCrossingDenizen(type) {
     aimAmoebaNucleus(element, movement);
     steerAmoebaFromJerry(element, movement);
   }
+}
+
+function spawnVake() {
+  if (!denizenField || document.querySelector(".pool-vake")) return;
+  const vake = document.createElement("i");
+  vake.className = "denizen pool-vake";
+  const depth = Math.random();
+  const width = 42 + depth * 46;
+  vake.style.width = `${width.toFixed(0)}px`;
+  vake.style.height = `${(width * 0.32).toFixed(0)}px`;
+  vake.style.filter = `blur(${(2.5 + (1 - depth) * 1.5).toFixed(1)}px) brightness(${(0.35 + depth * 0.15).toFixed(2)}) saturate(0.65)`;
+  let startX;
+  let startY;
+  let endX;
+  let endY;
+  if (Math.random() < 0.55) {
+    const fromLeft = Math.random() > 0.5;
+    startX = fromLeft ? -220 : window.innerWidth + 220;
+    endX = fromLeft ? window.innerWidth + 220 : -220;
+    startY = 60 + Math.random() * Math.max(80, window.innerHeight - 220);
+    endY = Math.max(40, Math.min(
+      window.innerHeight - 80,
+      startY + (Math.random() - 0.5) * window.innerHeight * 0.9,
+    ));
+  } else {
+    const fromTop = Math.random() > 0.5;
+    startY = fromTop ? -220 : window.innerHeight + 220;
+    endY = fromTop ? window.innerHeight + 220 : -220;
+    startX = 60 + Math.random() * Math.max(80, window.innerWidth - 220);
+    endX = Math.max(40, Math.min(
+      window.innerWidth - 80,
+      startX + (Math.random() - 0.5) * window.innerWidth * 0.9,
+    ));
+  }
+  const travelX = endX - startX;
+  const travelY = endY - startY;
+  const travelLength = Math.hypot(travelX, travelY) || 1;
+  const perpX = -travelY / travelLength;
+  const perpY = travelX / travelLength;
+  const swoopCycles = 2;
+  const amplitude = 100 + Math.random() * 60;
+  const opacity = 0.32 + depth * 0.12;
+  const steps = 28;
+  const points = [];
+  for (let index = 0; index <= steps; index += 1) {
+    const progress = index / steps;
+    const swing = Math.sin(progress * Math.PI * 2 * swoopCycles) * amplitude;
+    points.push({
+      x: startX + travelX * progress + perpX * swing,
+      y: startY + travelY * progress + perpY * swing,
+    });
+  }
+  let previousAngle = null;
+  const keyframes = points.map((point, index) => {
+    const ahead = points[Math.min(index + 1, steps)];
+    const behind = points[Math.max(index - 1, 0)];
+    let angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * (180 / Math.PI);
+    if (previousAngle !== null) {
+      while (angle - previousAngle > 180) angle -= 360;
+      while (previousAngle - angle > 180) angle += 360;
+    }
+    previousAngle = angle;
+    const progress = index / steps;
+    return {
+      offset: progress,
+      easing: "linear",
+      opacity: progress < 0.06 || progress > 0.94 ? 0 : opacity,
+      transform: `translate3d(${point.x.toFixed(0)}px,${point.y.toFixed(0)}px,0) rotate(${angle.toFixed(1)}deg)`,
+    };
+  });
+  animateDenizen(vake, keyframes, 3000 + Math.random() * 2000);
 }
 
 function spawnPulseUrchin(force = false) {
@@ -1722,6 +1801,13 @@ function schedulePulseUrchin(delay = 18000 + Math.random() * 12000) {
   }, delay);
 }
 
+function scheduleVake(delay = 30000 + Math.random() * 30000) {
+  window.setTimeout(() => {
+    spawnVake();
+    scheduleVake();
+  }, delay);
+}
+
 function emitOpeningDenizens() {
   window.setTimeout(() => spawnCrossingDenizen("pool-amoeba"), 450);
   window.setTimeout(() => spawnDotSchool(), 850);
@@ -1730,6 +1816,7 @@ function emitOpeningDenizens() {
   window.setTimeout(() => spawnJelly(), 3150);
   window.setTimeout(() => spawnCrossingDenizen("pool-ray"), 4100);
   window.setTimeout(() => spawnPulseUrchin(true), 4600);
+  window.setTimeout(() => spawnVake(), 1800);
 }
 
 function initializeAlienFishSchool() {
@@ -2527,6 +2614,329 @@ function colorForNode(bias, alpha, dark = false) {
   return `rgba(255, 211, 132, ${alpha})`;
 }
 
+// --- Plankton: 10 diatom/plankton species replace 50 of the 330 current dots (5 each). ---
+// They ride the same orbit + Jerry-influence physics as dots; only rendering differs.
+const PLANKTON_GLOW_RADIUS = 190;
+const PLANKTON_GLOW_HOLD = 2800;
+const PLANKTON_GLOW_RISE = 320;
+const PLANKTON_GLOW_FALL = 1100;
+
+// Textures are drawn in white; each individual gets a random tint at spawn.
+const PLANKTON_SPECIES = [
+  { name: "coscinodiscus", worldSize: 11 },
+  { name: "navicula", worldSize: 14 },
+  { name: "triceratium", worldSize: 11 },
+  { name: "fragilaria", worldSize: 15 },
+  { name: "copepod", worldSize: 14 },
+  { name: "radiolarian", worldSize: 12 },
+  { name: "ceratium", worldSize: 14 },
+  { name: "volvox", worldSize: 12 },
+  { name: "asterionella", worldSize: 13 },
+  { name: "foraminifera", worldSize: 11 },
+];
+
+// Any hue, kept bright enough to read against the dark pool.
+function randomPlanktonTint() {
+  const h = Math.random() * 360;
+  const s = 0.4 + Math.random() * 0.6;
+  const l = 0.55 + Math.random() * 0.3;
+  const channel = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255);
+  };
+  return (channel(0) << 16) | (channel(8) << 8) | channel(4);
+}
+
+// Ten blocks of 33 nodes; the first 5 of each block are plankton, so every
+// species gets exactly 5 members with a mix of depth tiers and dark/bright.
+function planktonSpeciesFor(index) {
+  const position = index % 33;
+  if (position >= 5) return -1;
+  return Math.floor(index / 33) < 5 ? position * 2 : position * 2 + 1;
+}
+
+function planktonRgba(hex, alpha) {
+  const value = parseInt(hex.slice(1), 16);
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${alpha})`;
+}
+
+const PLANKTON_CELL = 64;
+
+function drawPlanktonSpecies(speciesIndex) {
+  const sprite = document.createElement("canvas");
+  sprite.width = PLANKTON_CELL;
+  sprite.height = PLANKTON_CELL;
+  const c = sprite.getContext("2d");
+  const mid = PLANKTON_CELL / 2;
+  const hex = "#ffffff";
+  const line = planktonRgba(hex, 0.95);
+  const dim = planktonRgba(hex, 0.5);
+  const fill = planktonRgba(hex, 0.16);
+  c.translate(mid, mid);
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  c.shadowBlur = 5;
+  c.shadowColor = planktonRgba(hex, 0.55);
+  c.strokeStyle = line;
+  c.fillStyle = fill;
+  c.lineWidth = 3;
+
+  if (speciesIndex === 0) {
+    // Coscinodiscus: round pillbox diatom, rim + radial spokes + pore ring.
+    c.beginPath();
+    c.arc(0, 0, 24, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.lineWidth = 2;
+    c.strokeStyle = dim;
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI * 2;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 9, Math.sin(a) * 9);
+      c.lineTo(Math.cos(a) * 22, Math.sin(a) * 22);
+      c.stroke();
+    }
+    c.beginPath();
+    c.arc(0, 0, 7, 0, Math.PI * 2);
+    c.strokeStyle = line;
+    c.stroke();
+  } else if (speciesIndex === 1) {
+    // Navicula: boat-shaped pennate diatom with raphe and cross ribs.
+    c.rotate(-0.5);
+    c.beginPath();
+    c.moveTo(-26, 0);
+    c.quadraticCurveTo(0, -13, 26, 0);
+    c.quadraticCurveTo(0, 13, -26, 0);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(-22, 0);
+    c.lineTo(22, 0);
+    c.stroke();
+    c.strokeStyle = dim;
+    for (let i = -2; i <= 2; i += 1) {
+      const x = i * 8;
+      const h = 9 - Math.abs(i) * 1.6;
+      c.beginPath();
+      c.moveTo(x, -h);
+      c.lineTo(x, h);
+      c.stroke();
+    }
+  } else if (speciesIndex === 2) {
+    // Triceratium: rounded triangular diatom with corner pores.
+    const corners = [];
+    for (let i = 0; i < 3; i += 1) {
+      const a = -Math.PI / 2 + (i / 3) * Math.PI * 2;
+      corners.push([Math.cos(a) * 23, Math.sin(a) * 23]);
+    }
+    c.beginPath();
+    c.moveTo((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2);
+    for (let i = 0; i < 3; i += 1) {
+      const next = corners[(i + 1) % 3];
+      const after = corners[(i + 2) % 3];
+      c.quadraticCurveTo(next[0], next[1], (next[0] + after[0]) / 2, (next[1] + after[1]) / 2);
+    }
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.fillStyle = dim;
+    corners.forEach(([x, y]) => {
+      c.beginPath();
+      c.arc(x * 0.68, y * 0.68, 3.4, 0, Math.PI * 2);
+      c.fill();
+    });
+  } else if (speciesIndex === 3) {
+    // Fragilaria: ribbon chain of five linked cells.
+    c.rotate(0.35);
+    for (let i = -2; i <= 2; i += 1) {
+      const x = i * 10.4;
+      c.beginPath();
+      c.rect(x - 4.4, -12, 8.8, 24);
+      c.fill();
+      c.stroke();
+      c.lineWidth = 2;
+      c.strokeStyle = dim;
+      c.beginPath();
+      c.moveTo(x, -7);
+      c.lineTo(x, 7);
+      c.stroke();
+      c.lineWidth = 3;
+      c.strokeStyle = line;
+    }
+  } else if (speciesIndex === 4) {
+    // Copepod: teardrop body, long antennae, forked tail, eye spot.
+    c.rotate(0.8);
+    c.beginPath();
+    c.moveTo(0, -18);
+    c.quadraticCurveTo(13, -6, 8, 10);
+    c.quadraticCurveTo(0, 18, -8, 10);
+    c.quadraticCurveTo(-13, -6, 0, -18);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.lineWidth = 2.4;
+    c.beginPath();
+    c.moveTo(-4, -14);
+    c.quadraticCurveTo(-22, -18, -27, -6);
+    c.moveTo(4, -14);
+    c.quadraticCurveTo(22, -18, 27, -6);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(-3, 16);
+    c.lineTo(-7, 26);
+    c.moveTo(3, 16);
+    c.lineTo(7, 26);
+    c.stroke();
+    c.fillStyle = line;
+    c.beginPath();
+    c.arc(0, -10, 2.6, 0, Math.PI * 2);
+    c.fill();
+  } else if (speciesIndex === 5) {
+    // Radiolarian: silica sphere with radiating spines.
+    c.lineWidth = 2.4;
+    for (let i = 0; i < 10; i += 1) {
+      const a = (i / 10) * Math.PI * 2 + 0.3;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 10, Math.sin(a) * 10);
+      c.lineTo(Math.cos(a) * 27, Math.sin(a) * 27);
+      c.stroke();
+    }
+    c.lineWidth = 3;
+    c.beginPath();
+    c.arc(0, 0, 11, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.lineWidth = 2;
+    c.strokeStyle = dim;
+    c.beginPath();
+    c.arc(0, 0, 18, 0, Math.PI * 2);
+    c.stroke();
+  } else if (speciesIndex === 6) {
+    // Ceratium: dinoflagellate with one long horn and two curved horns.
+    c.beginPath();
+    c.arc(0, 2, 11, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.lineWidth = 2.6;
+    c.beginPath();
+    c.moveTo(0, -8);
+    c.quadraticCurveTo(2, -20, -2, -29);
+    c.moveTo(-9, 9);
+    c.quadraticCurveTo(-18, 18, -14, 27);
+    c.moveTo(9, 9);
+    c.quadraticCurveTo(18, 18, 14, 27);
+    c.stroke();
+  } else if (speciesIndex === 7) {
+    // Volvox: colony sphere holding daughter colonies.
+    c.beginPath();
+    c.arc(0, 0, 24, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.fillStyle = dim;
+    for (let i = 0; i < 7; i += 1) {
+      const a = (i / 7) * Math.PI * 2 + 0.9;
+      c.beginPath();
+      c.arc(Math.cos(a) * 14, Math.sin(a) * 14, 3.6, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.fillStyle = line;
+    c.beginPath();
+    c.arc(2, -2, 4.4, 0, Math.PI * 2);
+    c.fill();
+  } else if (speciesIndex === 8) {
+    // Asterionella: star colony of thin rods with tipped ends.
+    c.lineWidth = 2.6;
+    for (let i = 0; i < 7; i += 1) {
+      const a = (i / 7) * Math.PI * 2;
+      const tipX = Math.cos(a) * 25;
+      const tipY = Math.sin(a) * 25;
+      c.beginPath();
+      c.moveTo(Math.cos(a) * 4, Math.sin(a) * 4);
+      c.lineTo(tipX, tipY);
+      c.stroke();
+      c.fillStyle = line;
+      c.beginPath();
+      c.arc(tipX, tipY, 2.8, 0, Math.PI * 2);
+      c.fill();
+    }
+    c.beginPath();
+    c.arc(0, 0, 4.6, 0, Math.PI * 2);
+    c.fillStyle = dim;
+    c.fill();
+    c.stroke();
+  } else {
+    // Foraminifera: spiral of growing chambers.
+    c.rotate(-0.4);
+    let radius = 3.2;
+    let a = 0;
+    let px = 6;
+    let py = 0;
+    for (let i = 0; i < 6; i += 1) {
+      c.beginPath();
+      c.arc(px, py, radius, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      a += 1.9 - i * 0.12;
+      radius *= 1.32;
+      const reach = 6 + i * 3.4;
+      px = Math.cos(a) * reach;
+      py = Math.sin(a) * reach;
+    }
+  }
+  return sprite;
+}
+
+const planktonCanvases = PLANKTON_SPECIES.map((_, index) => drawPlanktonSpecies(index));
+const planktonHaloCanvasCache = new Map();
+
+function planktonHaloCanvas(hex = "#ffffff") {
+  if (planktonHaloCanvasCache.has(hex)) return planktonHaloCanvasCache.get(hex);
+  const halo = document.createElement("canvas");
+  halo.width = 96;
+  halo.height = 96;
+  const haloContext = halo.getContext("2d");
+  const gradient = haloContext.createRadialGradient(48, 48, 2, 48, 48, 46);
+  gradient.addColorStop(0, planktonRgba(hex, 0.85));
+  gradient.addColorStop(0.4, planktonRgba(hex, 0.32));
+  gradient.addColorStop(1, planktonRgba(hex, 0));
+  haloContext.fillStyle = gradient;
+  haloContext.fillRect(0, 0, 96, 96);
+  planktonHaloCanvasCache.set(hex, halo);
+  return halo;
+}
+
+// Canvas-fallback only: white species art multiplied by the node's tint.
+const planktonTintCache = new Map();
+
+function planktonTintedCanvas(node) {
+  const key = `${node.species}:${node.tintHex}`;
+  if (planktonTintCache.has(key)) return planktonTintCache.get(key);
+  const tinted = document.createElement("canvas");
+  tinted.width = PLANKTON_CELL;
+  tinted.height = PLANKTON_CELL;
+  const tintContext = tinted.getContext("2d");
+  tintContext.drawImage(planktonCanvases[node.species], 0, 0);
+  tintContext.globalCompositeOperation = "multiply";
+  tintContext.fillStyle = node.tintHex;
+  tintContext.fillRect(0, 0, PLANKTON_CELL, PLANKTON_CELL);
+  tintContext.globalCompositeOperation = "destination-in";
+  tintContext.drawImage(planktonCanvases[node.species], 0, 0);
+  planktonTintCache.set(key, tinted);
+  return tinted;
+}
+
+function planktonGlowLevel(node, time) {
+  const rise = Math.min(1, (time - node.glowStart) / PLANKTON_GLOW_RISE);
+  if (rise <= 0) return 0;
+  const fall = time <= node.glowUntil
+    ? 1
+    : Math.max(0, 1 - (time - node.glowUntil) / PLANKTON_GLOW_FALL);
+  return rise * fall;
+}
+
 const dotSpriteCache = new Map();
 
 function dotSpriteFor(node) {
@@ -2551,8 +2961,23 @@ function dotSpriteFor(node) {
   return sprite;
 }
 
-nodes.forEach((node) => {
-  node.sprite = dotSpriteFor(node);
+const PLANKTON_DRAW_EXTENT = 54;
+
+nodes.forEach((node, index) => {
+  node.species = planktonSpeciesFor(index);
+  if (node.species >= 0) {
+    node.worldSize = PLANKTON_SPECIES[node.species].worldSize * (0.85 + Math.random() * 0.3);
+    node.tintColor = randomPlanktonTint();
+    node.tintHex = `#${node.tintColor.toString(16).padStart(6, "0")}`;
+    node.spinAngle = Math.random() * Math.PI * 2;
+    node.glowStart = -1e9;
+    node.glowUntil = -1e9;
+    node.baseAlpha = node.dark ? 0.62 : 0.8;
+    node.planktonScale = node.worldSize / PLANKTON_DRAW_EXTENT;
+    node.sprite = planktonCanvases[node.species];
+  } else {
+    node.sprite = dotSpriteFor(node);
+  }
   node.physicsStep = node.depth === "far" ? 1000 / 15 : node.depth === "middle" ? 1000 / 30 : 1000 / 60;
   node.lastPhysicsTime = 0;
   node.lastPhysicsStep = node.physicsStep;
@@ -2595,11 +3020,35 @@ async function initializePixiDots() {
     });
     const brightTexture = createPixiDotTexture(9);
     const darkTexture = createPixiDotTexture(4);
+    const planktonTextures = planktonCanvases.map((planktonCanvas) => PIXI.Texture.from(planktonCanvas));
+    const haloTexture = PIXI.Texture.from(planktonHaloCanvas());
     const darkDots = new PIXI.Container();
     const brightDots = new PIXI.Container();
-    app.stage.addChild(darkDots, brightDots);
+    const planktonHalos = new PIXI.Container();
+    const planktonLayer = new PIXI.Container();
+    app.stage.addChild(darkDots, brightDots, planktonHalos, planktonLayer);
 
     nodes.forEach((node) => {
+      if (node.species >= 0) {
+        const creature = new PIXI.Sprite(planktonTextures[node.species]);
+        creature.anchor.set(0.5);
+        creature.scale.set(node.planktonScale);
+        creature.rotation = node.spinAngle;
+        creature.alpha = node.baseAlpha;
+        creature.tint = node.tintColor;
+        const halo = new PIXI.Sprite(haloTexture);
+        halo.anchor.set(0.5);
+        halo.tint = node.tintColor;
+        halo.scale.set((node.worldSize * 3.2) / 96);
+        halo.alpha = 0;
+        halo.blendMode = "add";
+        node.pixiParticle = creature;
+        node.pixiHalo = halo;
+        node.pixiAlpha = node.baseAlpha;
+        planktonHalos.addChild(halo);
+        planktonLayer.addChild(creature);
+        return;
+      }
       const texture = node.dark ? darkTexture : brightTexture;
       const particle = new PIXI.Sprite(texture);
       particle.anchor.set(0.5);
@@ -2751,6 +3200,10 @@ function updateNetworkPhysics(time) {
     const priorDistance = Number.isFinite(node.x)
       ? Math.hypot(node.x - cellMotion.position.x, node.y - cellMotion.position.y)
       : Infinity;
+    if (node.species >= 0 && priorDistance < PLANKTON_GLOW_RADIUS) {
+      node.glowStart = time - planktonGlowLevel(node, time) * PLANKTON_GLOW_RISE;
+      node.glowUntil = time + PLANKTON_GLOW_HOLD;
+    }
     const activeStep = priorDistance < influenceRadius + 100 ? 1000 / 60 : node.physicsStep;
     if (node.lastPhysicsTime && time - node.lastPhysicsTime < activeStep) return;
     const deltaSeconds = node.lastPhysicsTime
@@ -2820,7 +3273,34 @@ function drawNetwork(time) {
       const visible = x > -margin && x < window.innerWidth + margin && y > -margin && y < window.innerHeight + margin;
       node.pixiParticle.x = x;
       node.pixiParticle.y = y;
+      if (node.species >= 0) {
+        const glow = visible ? planktonGlowLevel(node, time) : 0;
+        node.pixiParticle.alpha = visible ? node.baseAlpha + (1 - node.baseAlpha) * glow : 0;
+        node.pixiParticle.scale.set(node.planktonScale * (1 + 0.28 * glow));
+        node.pixiHalo.x = x;
+        node.pixiHalo.y = y;
+        node.pixiHalo.alpha = glow * 0.9;
+        return;
+      }
       node.pixiParticle.alpha = visible ? node.pixiAlpha : 0;
+      return;
+    }
+    if (node.species >= 0) {
+      const size = node.worldSize * (PLANKTON_CELL / PLANKTON_DRAW_EXTENT);
+      const glow = planktonGlowLevel(node, time);
+      if (glow > 0) {
+        const haloSize = node.worldSize * 3.2;
+        context.globalAlpha = glow * 0.9;
+        context.drawImage(
+          planktonHaloCanvas(node.tintHex),
+          x - haloSize * 0.5,
+          y - haloSize * 0.5,
+          haloSize,
+          haloSize,
+        );
+        context.globalAlpha = 1;
+      }
+      context.drawImage(planktonTintedCanvas(node), x - size * 0.5, y - size * 0.5, size, size);
       return;
     }
     context.drawImage(
@@ -2923,6 +3403,11 @@ cellMotion.pulseTarget = {
 cellMotion.curiosity = { x: window.innerWidth * 0.45, y: window.innerHeight * 0.5 };
 cellMotion.steerStart = -9999;
 cellMotion.pulseStart = -9999;
+const poolAmbience = new Audio("./assets/audio/jerry's-pool-sound-1.mp3");
+poolAmbience.loop = true;
+poolAmbience.volume = 0.7;
+window.ElasticSoundControl.attach({ media: poolAmbience });
+
 requestAnimationFrame(animate);
 emitOpeningTriad();
 scheduleEnergyBall();
@@ -2933,6 +3418,7 @@ scheduleDotSchool();
 scheduleJelly();
 scheduleRay();
 schedulePulseUrchin();
+scheduleVake();
 initializeAlienFishSchool();
 emitOpeningDenizens();
 window.setTimeout(() => spawnAbyssalPredator(), 120000 + Math.random() * 120000);

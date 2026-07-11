@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "slug": "singing-plate",
+  "title": "The Singing Plate",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-10T22:30:00Z",
+  "updatedAt": "2026-07-11T05:20:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "In an acoustician's parlor after midnight, a bowed brass plate sings luminous sand into resonance figures.",
+  "tags": [
+    "sound",
+    "cymatics",
+    "physics",
+    "instrument",
+    "night"
+  ],
+  "moods": [
+    "resonant",
+    "arcane",
+    "patient"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct"
+  ],
+  "exits": [],
+  "weight": 7,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "bowed brass",
+    "sand hiss",
+    "gong strike"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "Chladni standing-wave physics; sand gathers on real nodal lines. Three diegetic drift exits (night window, door seam, jar of luminous sand) plus a hidden fourth planned at the worn notch. Audio synthesized in Web Audio, gated behind first interaction; ElevenLabs one-shots may sweeten the gong.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Idea #7 from Claude's Ideas.md, selected by James 2026-07-10. Draft until James approves publication.",
+    "featured": false,
+    "directoryOrder": 5,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/singing-plate",
+    "assetPaths": [
+      "src/worlds/singing-plate"
+    ]
+  }
+}

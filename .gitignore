@@ -9,5 +9,13 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Secrets — never commit
+.env
+.env.*
+11labs api elastic-space.txt
+
+# Local scratch
+tmp/
+
 # Obsolete browser-saved page; retain locally, do not publish.
 assets/the plasma pool — pixi.html

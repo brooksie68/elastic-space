@@ -30,6 +30,8 @@ Chaos without curation is just debris. The system should protect creative freedo
 
 The path between pages matters as much as the pages themselves. Navigation is not just utility. It is composition.
 
+Exits invite rather than thwart. A world usually offers at least three ways onward, woven into the scene — none of them a literal button, none of them a hard puzzle. Hidden doors are a bonus on top of that, never the only way out.
+
 ### 5. The internet should feel alive
 
 Pages can change over time. Links can rotate. Seasonal takeovers, hidden routes, resurfaced relics, and temporary collisions should make the site feel inhabited rather than archived.

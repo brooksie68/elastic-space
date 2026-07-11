@@ -1,8 +1,40 @@
 # Claude instructions
 
+## Local preview
+
+- Use the local dev server (`server.mjs` via `.claude/launch.json`, port 4174, or `serve-local.cmd` on 4173) for previewing and verification. (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)
+- Worlds should still degrade gracefully under `file://` — drift carries query-string fallback state, and world code must not rely on `fetch()` for assets (blocked on `file://`; use media elements or synthesis).
+
+## World changelogs
+
+- Every world folder contains a `changelog.md`; `src/worlds/_template/changelog.md` is the starter.
+- Append an entry whenever a session meaningfully changes a world: date, author, what changed, and where things stand or what comes next.
+- Newest entries first. Never rewrite or delete earlier entries.
+- World idea backlog and selection history live in `Claude's Ideas.md` at the repo root; update statuses there when a world is selected, built, or shipped.
+
+## Audio generation (ElevenLabs)
+
+- James's ElevenLabs API key lives in the gitignored `.env` at the repo root (`ELEVENLABS_API_KEY`). Never commit it or reference it from world code — worlds are client-side and anything they load is public.
+- ElevenLabs is an authoring-time pipeline only: generate audio locally with `node tools/eleven.mjs` (voices | sfx | tts | music), save results into `src/worlds/<slug>/assets/audio/`, and commit only the audio files.
+- Continuous or parametric sound (pitch glides, physics-driven audio) stays Web Audio synthesis; ElevenLabs covers one-shots, voices, ambience beds, and music.
+
+## World sound control
+
+- Every world with sound uses the shared control: load `../../core/sound-control.js` and call
+  `ElasticSoundControl.attach({ media })` with an audio element, or
+  `ElasticSoundControl.attach({ start, stop, setVolume })` for Web Audio synthesis.
+- It renders the standard speaker button top right (pulses twice on load, tooltip, on/off states,
+  hover volume slider) and makes one autoplay attempt — sound starts immediately for visitors who
+  have granted the site sound permission, and waits for the button otherwise.
+- Do not build per-world audio toggles or autoplay hacks; extend `sound-control.js` if a world
+  needs something it doesn't cover.
+
 ## Links between worlds
 
 - Random drift is the default. Do not choose or name the destination.
+- Exits encourage exploration, never thwart it: finding a way onward must not be a hard puzzle.
+- Exits are diegetic scene elements — never a literal link, button, or labeled control in appearance.
+- Each world generally offers at least three drift choices somewhere on the page. Hidden bonus exits may exist beyond those three.
 - Make a portal with `href="../../../index.html"`, a generic accessible label, and the `data-drift` attribute.
 - Load `../../core/world-registry.js` and then `../../core/drift.js` in each world that offers drift links.
 - Direct links are allowed only when the user explicitly wants a fixed route, such as an authored sequence. Fixed links do not use `data-drift`.
@@ -22,3 +54,13 @@
 - Preserve Jerry's dot pressure, wake, side displacement, and recovery behavior. It is a core spatial effect, not expendable decoration.
 - Far, middle, and near dot physics run at 15, 30, and 60 FPS respectively. Dots near Jerry are promoted to 60 FPS regardless of depth.
 - Off-screen dots remain continuous in their orbits but skip rendering and Jerry-influence work outside the viewport margin.
+- Seamount elements are solid underwater terrain. Keep their opacity at `1` and `mask-image: none`; create depth with blur, value, and scale.
+
+## Wildflowers at Dusk rendering
+
+- The live world is `src/worlds/wildflowers-at-dusk/`.
+- Canvas handles rain, drifting cloud sprites, cedar framing, and foreground vegetation.
+- Painted landscape plates are DOM images in `assets/landscape/`, stacked beneath the Canvas with CSS z-index and depth-specific blur.
+- Runtime cloud and landscape PNGs have transparency; `*-source.png` files retain chroma green and are not loaded by the page.
+- Rain renders behind clouds. Terrain and mountains are opaque.
+- The scene is desktop-first; do not add mobile-specific compromises unless explicitly requested.

@@ -37,7 +37,7 @@ Agents are invited to add worlds and extend existing sections. Do not normalize 
 When adding a world:
 
 1. Create a self-contained folder under `src/worlds/<slug>/`.
-2. Add its page code and a valid `world.json` manifest.
+2. Add its page code, a valid `world.json` manifest, and a `changelog.md` work log (starter in `src/worlds/_template/`).
 3. Keep assets inside that folder unless they are intentionally shared.
 4. Do not edit unrelated worlds as cleanup.
 5. Run `npm run registry` after adding, removing, or renaming a world.
@@ -83,3 +83,11 @@ Use HTTP for development. The admin panel and registry API do not work fully thr
 Jerry's Pool lives at `src/worlds/jerrys-pool/`. Its scene is primarily DOM/CSS, with a Canvas background and a PixiJS/WebGL renderer dedicated to the 330-dot current field. PixiJS is loaded from the preserved local bundle in `assets/the plasma pool — pixi_files/`; the world does not require a CDN.
 
 Current denizen timing is maintained in `docs/denizen-frequency-rubric.md`. The detailed world architecture and performance constraints are recorded in `docs/current-index.md`.
+
+Jerry's seamounts are opaque CSS terrain. Distance is expressed through progressively stronger blur, dark value shifts, and scale; do not use element opacity or alpha masks to make rock formations transparent.
+
+## Wildflowers at Dusk
+
+Wildflowers at Dusk lives at `src/worlds/wildflowers-at-dusk/`. It combines a Canvas weather-and-vegetation renderer with DOM-stacked painted landscape plates. Rain renders behind generated cloud sprites; the cedar and animated foreground render above the landscape.
+
+Painted cloud and terrain assets live inside the world under `assets/clouds/` and `assets/landscape/`. Their `*-source.png` files retain the chroma-key generation output, while the names without `-source` are alpha-ready runtime assets. Landscape depth is controlled by DOM order, CSS `z-index`, brightness, saturation, scale, and blur. Do not replace these painted plates with translucent procedural polygons.

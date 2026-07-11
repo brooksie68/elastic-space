@@ -18,9 +18,8 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 200, 138, 0.18), transparent 24%),
-    radial-gradient(circle at 70% 30%, rgba(144, 112, 255, 0.22), transparent 28%),
-    linear-gradient(180deg, var(--sky-top), var(--sky-mid) 48%, var(--sky-low) 78%, #201825);
+    radial-gradient(circle at 52% 38%, rgba(231, 109, 143, 0.2), transparent 30%),
+    linear-gradient(180deg, #0b1744 0%, #3f2b70 34%, #9e3d70 68%, #d56855 90%, #e99462 100%);
   color: var(--text);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
 }
@@ -51,6 +50,64 @@ body {
   position: fixed;
   width: 100%;
   height: 100%;
+  z-index: 1;
+}
+
+#cloud-field {
+  inset: 0;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.landscape-layers {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
+}
+
+.landscape-layer {
+  bottom: -1px;
+  height: auto;
+  left: 50%;
+  max-width: none;
+  position: absolute;
+  transform: translateX(-50%);
+  transform-origin: center bottom;
+  user-select: none;
+}
+
+.landscape-mountains {
+  bottom: 9vh;
+  filter: blur(4.6px) saturate(72%) brightness(72%);
+  opacity: 0.94;
+  width: 126%;
+  z-index: 1;
+}
+
+.landscape-far {
+  bottom: 3vh;
+  filter: blur(3.4px) saturate(74%) brightness(68%);
+  opacity: 0.98;
+  width: 116%;
+  z-index: 2;
+}
+
+.landscape-middle {
+  bottom: -5vh;
+  filter: blur(1.8px) saturate(76%) brightness(64%);
+  width: 108%;
+  z-index: 3;
+}
+
+.landscape-near {
+  bottom: -10vh;
+  filter: blur(0.7px) saturate(80%) brightness(58%);
+  width: 100%;
+  z-index: 4;
 }
 
 .world-shell {

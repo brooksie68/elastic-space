@@ -4,5 +4,6 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "jerrys-pool/index.html",
   "monochrome-rift/index.html",
   "pelagic-lantern-habitat/index.html",
+  "singing-plate/index.html",
   "wildflowers-at-dusk/index.html"
 ];

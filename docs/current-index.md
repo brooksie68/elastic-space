@@ -25,6 +25,14 @@ Jerry's passage changes the current through four preserved behaviors:
 
 This interaction is essential to making Jerry feel physically embedded in the pool. Do not simplify it away during performance work.
 
+### Plankton
+
+50 of the 330 current members render as tiny static sealife instead of dots: 10 diatom/plankton species
+(5 each), pre-rendered once to small white canvas textures and tinted a random per-individual color
+(any hue, bright enough for the dark pool), ~9–17 px, fixed random orientation. They use the identical orbit and Jerry-influence physics as dots. When one drifts within
+190 px of Jerry it glows brightly (additive halo, full alpha, slight scale-up), holds ~2.8 s after he
+leaves, then fades over ~1.1 s. Species selection is deterministic by node index (`planktonSpeciesFor`).
+
 ### Renderer
 
 Dots render on `#dot-field` through PixiJS/WebGL shared-texture sprite batching. Bright and dark dots use two shared textures, producing two GPU-oriented batches instead of 330 Canvas draw calls per frame. PixiJS is loaded from the local bundle at `assets/the plasma pool — pixi_files/pixi.min.js`; no CDN is required.
@@ -43,7 +51,7 @@ Dots render on `#dot-field` through PixiJS/WebGL shared-texture sprite batching.
 
 The scene combines:
 
-- static blurred CSS seamount silhouettes
+- static, fully opaque blurred CSS seamount silhouettes
 - slowly changing palette washes and atmospheric events
 - a one-pixel-resolution Canvas backdrop
 - the Pixi dot field
@@ -51,7 +59,7 @@ The scene combines:
 - Jerry and his orbital rings
 - a currently disabled filament Canvas retained in the code
 
-The dot field changes z-depth with Jerry so particles can pass behind or in front of him. Seamount blur is intentionally restored; it is static and not the primary ongoing processor cost.
+The dot field changes z-depth with Jerry so particles can pass behind or in front of him. Seamount blur is intentionally strong; it is static and not the primary ongoing processor cost. Seamounts must remain opaque. Underwater depth comes from blur, darkness, overlapping scale, and lighting—not translucent rock or alpha masks.
 
 ## Denizens
 
@@ -103,7 +111,7 @@ There is currently no sound. Earlier audio experiments were removed and should n
 After renderer or physics changes:
 
 1. Run `node --check src/worlds/jerrys-pool/site.js`.
-2. Load `http://127.0.0.1:4173/src/worlds/jerrys-pool/index.html`.
+2. Open the world via the local dev server (`http://127.0.0.1:4174/src/worlds/jerrys-pool/index.html`); direct `file://` loading also works and should stay working.
 3. Confirm dots are visible, orbit smoothly, and visibly divide around Jerry.
 4. Confirm the browser reports no errors or warnings.
 

@@ -15,6 +15,7 @@ Every denizen type except the leviathan appears within five seconds of page load
 | Box jellyfish | 3.15 seconds |
 | Ray | 4.10 seconds |
 | Pulse urchin | 4.60 seconds |
+| Vake | 1.80 seconds |
 | Three-diamond fish | 0.90–2.70 seconds |
 | Three-tentacled ball fish | 2.60–4.40 seconds |
 
@@ -31,6 +32,7 @@ Permanent seafloor denizens are present immediately.
 | Dot schools | Every 8–12 seconds | 8–30 fish per school; maximum 3 schools; skipped when 8 general denizens are active |
 | Three-diamond fish | Relaunches after each 25–46 second visit plus a 4–9 second pause | 34% chance to appear as a group of 2–5; otherwise solitary |
 | Three-tentacled ball fish | Relaunches after each 30–52 second visit plus a 1–4 second pause | 34% chance to appear as a group of 2–5; otherwise solitary |
+| Vake | Opening appearance at 1.8 seconds, then every 30–60 seconds | Dart lasts 3–5 seconds; only one at a time; no concurrency skip |
 | Abyssal predator / leviathan | First appearance after 2–4 minutes; subsequent appearance 2–4 minutes after departure | Each passage lasts 60 seconds; only one at a time |
 
 Spawn attempts blocked by a concurrency limit are skipped, not queued.

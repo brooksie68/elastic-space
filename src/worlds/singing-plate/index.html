@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Singing Plate</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <img class="parlor" src="./parlor.svg" alt="" aria-hidden="true" />
+    <div class="room" aria-hidden="true"></div>
+
+    <a class="portal portal-window" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+    <a class="portal portal-door" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+    <a class="portal portal-jar" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+
+    <div class="stand">
+      <div class="plate">
+        <svg class="engraving" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
+        <canvas id="sand" aria-hidden="true"></canvas>
+      </div>
+      <div class="plaque" aria-hidden="true">
+        <span class="plaque-title">TAFEL &#183; VII</span>
+        <span class="plaque-freq" id="freq">&#8212;</span>
+      </div>
+      <div class="console">
+        <label class="ctl">
+          <span class="ctl-name">Reverb</span>
+          <input type="range" id="ctl-reverb" min="0" max="100" value="30" aria-label="Reverb amount" />
+        </label>
+        <label class="ctl">
+          <span class="ctl-name">Delay</span>
+          <input type="range" id="ctl-delay" min="0" max="100" value="12" aria-label="Delay amount" />
+        </label>
+        <label class="ctl">
+          <span class="ctl-name">Strike</span>
+          <input type="range" id="ctl-strike" min="0" max="100" value="60" aria-label="Strike power" />
+        </label>
+        <div class="ctl ctl-voicing" role="radiogroup" aria-label="Voicing">
+          <span class="ctl-name">Voicing</span>
+          <div class="stamps">
+            <button type="button" class="stamp on" data-chord="free" role="radio" aria-checked="true">Free</button>
+            <button type="button" class="stamp" data-chord="triad" role="radio" aria-checked="false">Triad</button>
+            <button type="button" class="stamp" data-chord="penta" role="radio" aria-checked="false">Penta</button>
+            <button type="button" class="stamp" data-chord="overtone" role="radio" aria-checked="false">Overtones</button>
+            <button type="button" class="stamp" data-chord="lydb7" role="radio" aria-checked="false">Lyd&#9837;7</button>
+            <button type="button" class="stamp" data-chord="harmmin" role="radio" aria-checked="false">Harm&#183;Min</button>
+            <button type="button" class="stamp" data-chord="hijaz" role="radio" aria-checked="false">Hijaz</button>
+            <button type="button" class="stamp" data-chord="rast" role="radio" aria-checked="false">Rast</button>
+          </div>
+        </div>
+        <button type="button" class="reset" id="ctl-reset">Level the Sand</button>
+        <span class="bend-hint" aria-hidden="true">1&#8211;= &#183; q&#9837; &#183; &#9839;e</span>
+      </div>
+    </div>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>
