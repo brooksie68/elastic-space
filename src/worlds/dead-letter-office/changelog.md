@@ -3,6 +3,35 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable
+
+- Started the realistic 3D Postmaster to replace the primitive one (target: the GPT pixel-art
+  reference — warm sturdy old fellow, walrus mustache, round specs, cap with badge). Built with
+  MPFB2 (installed from extensions.blender.org; CC0 output): aged macro body, 13 face targets
+  (eye bags, jowls, broad nose), MPFB v2 skin shader with bundled textures, placed eyeballs.
+- Lost mid-portrait: another Claude session opened its own .blend in the shared live Blender
+  instance, closing the unsaved scene. Nothing on disk was harmed.
+- Full rebuild is scripted: `assets/room/build-postmaster-mpfb.py` (run inside an open
+  dlo-room.blend, live or headless; never opens/saves files itself). Header documents where the
+  build left off and what comes next.
+- Replay succeeded once the live instance freed up (one Blender crash mid-render along the way;
+  the save-after-every-call habit meant zero loss). Character now fully built and dressed in
+  `tmp/dead-letter-office/dlo-room.blend`, standing at (20, 0, 0) outside the room:
+  - Head: cap/badge/specs/brows/mustache/beard cloned from the primitive postmaster (`npm_*`
+    objects) and refit at 0.48 scale. Mustache placement only worked after querying the `lips`
+    vertex-group bounds — his lips protrude to y -0.149, further than any eyeballed guess.
+  - Body: James rejected the solid vest slab ("umpire's breastplate") and box hips ("fupa like
+    a cinder block"). Redesign: white shirt block is the chest, vest is two front strips + side
+    + back panels (open-vest look per the GPT reference), untucked shirt hem, slim trousers.
+    Body itself reshaped via targets: stomach zeroed, hips/glutes/thighs slimmed.
+  - James's verdict: "still very blocky... but acceptable. He looks appropriate for the room."
+- Blend saved and re-copied to `assets/room/dlo-room.blend` (3.4 MB). Portrait rig
+  (`PM_PortraitCam`, `PM_Key/Fill/Rim` lights) still in the file for next session's pose work.
+- Where things stand: **dressed, unposed.** Next: move to desk, hide old `pm_*` figure, desk
+  pose (forearms on desk), white sleeves + cuffs on the posed arms, eyes parented to head bone
+  (watch the bone-tail offset gotcha), delete portrait rig, restore render res to 1920x1080
+  (currently 640x800), plate render, re-measure hotspot NDC bbox for world.js.
+
 ## 2026-07-11 — claude-fable
 
 - Sped up the mail at James's request ("its painful"): envelope fall speed ~2.5x (base 11–24 → 28–60 px/s
