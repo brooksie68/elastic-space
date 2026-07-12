@@ -52,18 +52,10 @@ function sendText(response, status, text) {
   response.end(text);
 }
 
-function cacheControlFor(filePath) {
-  const extension = extname(filePath).toLowerCase();
-
-  if (extension === ".html" || extension === ".json") {
-    return "no-store";
-  }
-
-  if (extension === ".css" || extension === ".js" || extension === ".svg") {
-    return "public, max-age=300";
-  }
-
-  return "public, max-age=60";
+function cacheControlFor() {
+  // Local dev server: never let the browser hold a stale file. Every request
+  // revalidates, so edits show up on a plain refresh.
+  return "no-store";
 }
 
 function toArray(value) {

@@ -8,6 +8,19 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-12
+
+- Pelagic Lantern Habitat: complete rebuild around a Blender-rendered plate — 2350-era
+  three-tier disk station (lit rim bands, porthole rows, halo ring, beacon, pod module,
+  seafloor entry dome) over fluorescent flora; canvas overlay adds bubbles, plankton,
+  light shafts, beacon pulse, friendly jellies; diegetic drift hotspots + shared sound control
+- All Blender work ran headless (`blender.exe --background`) after a live-instance collision
+  destroyed another session's in-progress DLO portrait work; new "Blender usage" rules in
+  CLAUDE.md (live instance is shared/ask-first, headless default, .blend per world in tmp/)
+- Blender sources committed: `pelagic-lantern-habitat/assets/blender/` (.blend + build scripts)
+- server.mjs: removed the 5-minute CSS/JS cache — everything is `no-store` now (James's call,
+  after it masked a bubble-growth fix during debugging)
+
 ## 2026-07-11 (late session)
 
 - Dead Letter Office: letter fall speed ~2.5x + faster spawn cadence (was painfully slow)

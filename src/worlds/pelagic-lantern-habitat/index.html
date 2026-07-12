@@ -7,16 +7,19 @@
     <link rel="stylesheet" href="./world.css" />
   </head>
   <body>
+    <img id="plate" src="./assets/habitat-plate.jpg" alt="" aria-hidden="true" />
     <canvas id="sea-canvas" aria-hidden="true"></canvas>
 
-    <nav class="world-portals sea-portals" aria-label="Worlds">
-      <a class="sea-lane sea-lane-left" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
-      <a class="sea-dome" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
-      <a class="sea-lane sea-lane-right" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+    <nav class="world-portals" aria-label="Worlds">
+      <a class="hotspot" data-spot="door" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a class="hotspot" data-spot="beacon" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a class="hotspot" data-spot="pod" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a class="hotspot hotspot--quiet" data-spot="flora" href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
     </nav>
 
     <script src="../../core/world-registry.js"></script>
     <script src="../../core/drift.js"></script>
+    <script src="../../core/sound-control.js"></script>
     <script src="./world.js" defer></script>
   </body>
 </html>

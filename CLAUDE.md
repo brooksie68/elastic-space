@@ -18,6 +18,13 @@
 - ElevenLabs is an authoring-time pipeline only: generate audio locally with `node tools/eleven.mjs` (voices | sfx | tts | music), save results into `src/worlds/<slug>/assets/audio/`, and commit only the audio files.
 - Continuous or parametric sound (pitch glides, physics-driven audio) stays Web Audio synthesis; ElevenLabs covers one-shots, voices, ambience beds, and music.
 
+## Blender usage
+
+- The live Blender instance (MCP add-on) is shared across all agent sessions. Never open, switch, or create files in it without James's explicit go-ahead — `is_dirty` is not a reliable guard against destroying another session's in-memory work.
+- Default to headless Blender for scripted scene work: `& "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe" --background <file.blend> --python <script.py>`. Each run is a private process that never touches the live window.
+- Each world keeps its own .blend (plus build scripts and renders) under `tmp/<world-slug>/`.
+- Reserve the live instance for work that needs the UI: viewport captures, MPFB2 workflows, interactive tweaks.
+
 ## World sound control
 
 - Every world with sound uses the shared control: load `../../core/sound-control.js` and call
