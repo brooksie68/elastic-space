@@ -3,6 +3,39 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable (giant scale + crest + thrum fade)
+
+- **Giant plate 20% larger**: `.landscape-giant` width 90vw → 108vw (world.css).
+- **Lower crest**: final resting `shownY` 24% → 44% of the (now taller) plate, which lands the
+  head ~100px lower than the old crest at 1920×1080 — it now settles just shy of the top of
+  frame instead of drifting past it.
+- **Thrum fade retimed**: the fade-out now runs over the final 5s of the rise and hits silence
+  exactly when the giant stops, instead of starting at the stop and trailing 5s past it.
+  `updateThrum` gain is now `min(fadeIn, fadeOut)` clamped to [0,1].
+- Next: James to eyeball the new size/crest height in his own browser; `shownY` in world.js is
+  the single knob if the resting height needs a nudge.
+
+## 2026-07-12 — claude-fable (background rain sheets)
+
+- **Two occluded rain sheets** behind the foreground rain, same lift/fade/blur trick as the back
+  flower rows. The far sheet draws on the cloud canvas (between sky and cloud sprites) so every
+  landscape plate hides it — it only shows against the open sky. The mid sheet draws on a new
+  `#rain-mid` canvas slotted into `.landscape-layers` at z-index 2 (after the giant), so the middle
+  and near ridges cut it off. Both are slower (0.22× / 0.38× foreground speed), shorter, fainter,
+  and carry a sub-pixel blur (0.6px / 0.4px) — deliberately light so the specks stay visible.
+- Each sheet is 150 streaks batched into a single stroked path, so the blur costs one filtered
+  composite per sheet per frame, not one per drop.
+- The new canvas is in the resize handler (DPR-aware) and inherits the end-of-arc blur via the
+  existing `.landscape-layers` target. Foreground rain untouched.
+- Next: James to eyeball density/alpha of the two sheets in his own browser; both are tuned
+  conservatively and easy to push brighter via `farRainSheet`/`midRainSheet` in world.js.
+- **Accent pass (James review: "too hard to see, accentuate even if less realistic")**: counts
+  150 → 180 per sheet, alpha 0.20/0.27 → 0.38/0.50, lineWidth 0.8/0.9 → 1.2/1.4, length scale
+  0.34/0.52 → 0.42/0.62. Speeds and blur unchanged so the parallax and softness still read.
+- **Speed pass (James review: back sheets "look like they're levitating")**: speed scales
+  0.22/0.38 → 0.45/0.65 of foreground. Still slower than the front rain so depth ordering holds,
+  but fast enough to read as rain rising, not drifting.
+
 ## 2026-07-11 — claude-fable (dissolution + depth session)
 
 - **The dissolution**: field elements now depart upward with the rising rain. First departure ~26s

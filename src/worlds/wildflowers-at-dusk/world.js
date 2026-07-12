@@ -1,8 +1,10 @@
 const canvas = document.getElementById("sky-field");
 const cloudCanvas = document.getElementById("cloud-field");
+const rainMidCanvas = document.getElementById("rain-mid");
 let context = canvas.getContext("2d");
 const screenContext = context;
 const cloudScreenContext = cloudCanvas.getContext("2d");
+const rainMidContext = rainMidCanvas.getContext("2d");
 const audioToggle = document.getElementById("audio-toggle");
 let lastCloudTime = 0;
 const cloudSprites = Array.from({ length: 6 }, (_, index) => {
@@ -31,6 +33,34 @@ const rain = [];
     });
   }
 });
+
+// Two distant rain sheets sit inside the landscape stack: "far" draws on the
+// cloud canvas behind every terrain plate (visible only against the sky), and
+// "mid" draws on its own canvas between the far hills and the middle ridge,
+// so the nearer silhouettes occlude it. Slower, shorter, fainter than the
+// foreground rain — the occlusion plus parallax is what sells the depth.
+function createRainSheet(count, speedScale, lengthScale, slant) {
+  return Array.from({ length: count }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    speed: (0.82 + Math.random() * 0.5) * speedScale,
+    length: (8 + Math.random() * 18) * lengthScale,
+    slant,
+  }));
+}
+
+const farRainSheet = {
+  drops: createRainSheet(180, 0.45, 0.42, 0.8),
+  color: "rgba(208, 224, 244, 0.38)",
+  lineWidth: 1.2,
+  blur: 0.6,
+};
+const midRainSheet = {
+  drops: createRainSheet(180, 0.65, 0.62, 1.2),
+  color: "rgba(218, 232, 250, 0.5)",
+  lineWidth: 1.4,
+  blur: 0.4,
+};
 
 const streamers = Array.from({ length: 14 }, () => ({
   x: Math.random(),
@@ -225,7 +255,7 @@ const poem =
   "This is thy hour O Soul, thy free flight into the wordless, away from books, away from art, the day erased, the lesson done.";
 
 function resize() {
-  [canvas, cloudCanvas].forEach((target) => {
+  [canvas, cloudCanvas, rainMidCanvas].forEach((target) => {
     target.width = window.innerWidth * window.devicePixelRatio;
     target.height = window.innerHeight * window.devicePixelRatio;
     target.style.width = `${window.innerWidth}px`;
@@ -233,6 +263,7 @@ function resize() {
   });
   screenContext.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
   cloudScreenContext.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  rainMidContext.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
   ridgeProfile = sampleRidgeProfile();
   renderBackFlowerRows();
   renderTreeLayer();
@@ -668,6 +699,25 @@ function drawDistantFauna() {
     context.stroke();
   });
   context.restore();
+}
+
+// One path + one stroke per sheet keeps the whole layer at a single filtered
+// composite, so the sub-pixel blur costs one pass instead of one per drop.
+function drawRainSheet(targetContext, sheet, time) {
+  targetContext.save();
+  targetContext.strokeStyle = sheet.color;
+  targetContext.lineWidth = sheet.lineWidth;
+  targetContext.filter = `blur(${sheet.blur}px)`;
+  targetContext.beginPath();
+  sheet.drops.forEach((drop) => {
+    const x = drop.x * window.innerWidth;
+    const baseY = (drop.y * window.innerHeight + time * drop.speed) % (window.innerHeight + 40);
+    const y = window.innerHeight - baseY;
+    targetContext.moveTo(x, y);
+    targetContext.lineTo(x + drop.slant, y - drop.length);
+  });
+  targetContext.stroke();
+  targetContext.restore();
 }
 
 function drawRain(time) {
@@ -1176,7 +1226,9 @@ const giantState = {
   riseStart: 0,
   riseEnd: 0,
   hiddenY: 99,
-  shownY: 24,
+  // 44% of the 108vw plate rests the head ~24px below the top of a 1920x1080
+  // frame — about 100px lower than the pre-enlargement crest.
+  shownY: 44,
   done: false,
 };
 
@@ -1195,7 +1247,7 @@ function scheduleGiantRise(totalCount) {
   }
   // Last risers take ~9s to clear, then the 5s beat before the blur.
   const blurEta = simTime + 14000;
-  // He keeps climbing ~10s into the blur, head drifting just past the top of frame.
+  // He keeps climbing ~10s into the blur, head settling just shy of the top of frame.
   giantState.riseEnd = blurEta + 10000;
   giantState.riseStart = blurEta - 55000;
 }
@@ -1216,25 +1268,23 @@ function fastForwardDissolution(target) {
 }
 
 // The thrum lives only for the rise: fades in over the first 10s, holds, then
-// fades out over 5s once he crests. Master control rules.
+// fades out over the final 5s so it reaches silence the moment he stops.
+// Master control rules.
 function updateThrum(time) {
   if (!giantThrum || soundState.thrumEnded || !giantState.riseStart) return;
   const audioStart = giantState.riseStart;
   if (time < audioStart) return;
-  let gain;
-  if (time <= giantState.riseEnd) {
-    gain = Math.min(1, (time - audioStart) / 10000);
-  } else {
-    gain = 1 - (time - giantState.riseEnd) / 5000;
-  }
-  if (gain <= 0 && time > giantState.riseEnd) {
+  if (time >= giantState.riseEnd) {
     soundState.thrumEnded = true;
     soundState.thrumGain = 0;
     giantThrum.pause();
+    applySound();
     return;
   }
+  const fadeIn = (time - audioStart) / 10000;
+  const fadeOut = (giantState.riseEnd - time) / 5000;
   soundState.thrumDue = true;
-  soundState.thrumGain = Math.max(0, Math.min(1, gain));
+  soundState.thrumGain = Math.max(0, Math.min(1, fadeIn, fadeOut));
   applySound();
 }
 
@@ -1356,7 +1406,11 @@ function animate(time) {
   context = cloudScreenContext;
   context.clearRect(0, 0, window.innerWidth, window.innerHeight);
   drawSky(time);
+  drawRainSheet(cloudScreenContext, farRainSheet, time);
   drawClouds(time);
+
+  rainMidContext.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  drawRainSheet(rainMidContext, midRainSheet, time);
 
   context = screenContext;
   context.clearRect(0, 0, window.innerWidth, window.innerHeight);
