@@ -13,6 +13,7 @@
     <div class="landscape-layers" aria-hidden="true">
       <img class="landscape-layer landscape-mountains" src="./assets/landscape/mountains.png" alt="" />
       <img class="landscape-layer landscape-far" src="./assets/landscape/far-hills.png" alt="" />
+      <img class="landscape-layer landscape-giant" src="./assets/giant/giant.png" alt="" />
       <img class="landscape-layer landscape-middle" src="./assets/landscape/middle-hills.png" alt="" />
       <img class="landscape-layer landscape-near" src="./assets/landscape/near-ridge.png" alt="" />
     </div>
@@ -23,8 +24,12 @@
       <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
     </nav>
 
+    <audio id="dusk-soundtrack" src="./assets/audio/gentlerain.mp3" loop preload="auto"></audio>
+    <audio id="giant-thrum" src="./assets/audio/power-thrum.mp3" loop preload="auto"></audio>
+
     <script src="../../core/world-registry.js"></script>
     <script src="../../core/drift.js"></script>
+    <script src="../../core/sound-control.js"></script>
     <script src="./world.js" defer></script>
   </body>
 </html>

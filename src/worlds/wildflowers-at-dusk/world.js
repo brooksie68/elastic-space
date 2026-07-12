@@ -12,15 +12,25 @@ const cloudSprites = Array.from({ length: 6 }, (_, index) => {
 });
 const cloudLayers = Array.from({ length: 7 }, (_, index) => createCloudLayer(index, true));
 
-const rain = Array.from({ length: 230 }, (_, index) => ({
-  x: Math.random(),
-  y: Math.random(),
-  speed: 0.82 + Math.random() * 0.5,
-  length: 8 + Math.random() * 18,
-  glow: 0.28 + Math.random() * 0.27,
-  shape: index % 5 === 0 ? "drop" : index % 7 === 0 ? "bead" : "streak",
-  size: 1.2 + Math.random() * 1.8,
-}));
+const rain = [];
+[
+  { count: 140, depth: 0.42 },
+  { count: 120, depth: 0.66 },
+  { count: 230, depth: 1 },
+].forEach(({ count, depth }) => {
+  for (let index = 0; index < count; index += 1) {
+    rain.push({
+      x: Math.random(),
+      y: Math.random(),
+      depth,
+      speed: (0.82 + Math.random() * 0.5) * (0.3 + depth * 0.7),
+      length: (8 + Math.random() * 18) * depth,
+      glow: (0.28 + Math.random() * 0.27) * (0.38 + depth * 0.62),
+      shape: depth < 1 ? "streak" : index % 5 === 0 ? "drop" : index % 7 === 0 ? "bead" : "streak",
+      size: (1.2 + Math.random() * 1.8) * depth,
+    });
+  }
+});
 
 const streamers = Array.from({ length: 14 }, () => ({
   x: Math.random(),
@@ -108,15 +118,17 @@ const vines = Array.from({ length: 12 }, (_, index) => ({
 }));
 
 const backFlowerRows = [
-  { offset: 16, scale: 0.68, blur: 0.6, brightness: 78, count: 26 },
-  { offset: 36, scale: 0.52, blur: 1.2, brightness: 64, count: 22 },
-  { offset: 56, scale: 0.4, blur: 1.9, brightness: 50, count: 18 },
+  { offset: 40, scale: 0.92, blur: 0.4, brightness: 98, saturation: 96, count: 72, grassCount: 150, shrubCount: 8, follow: 0 },
+  { offset: 80, scale: 0.82, blur: 0.8, brightness: 93, saturation: 91, count: 66, grassCount: 140, shrubCount: 7, follow: 0.1 },
+  { offset: 120, scale: 0.72, blur: 1.2, brightness: 87, saturation: 86, count: 60, grassCount: 130, shrubCount: 6, follow: 0.22 },
+  { offset: 160, scale: 0.62, blur: 1.6, brightness: 80, saturation: 80, count: 54, grassCount: 120, shrubCount: 5, follow: 0.35 },
+  { offset: 200, scale: 0.52, blur: 2, brightness: 72, saturation: 74, count: 48, grassCount: 110, shrubCount: 4, follow: 0.48 },
 ].map((row, rowIndex) => ({
   ...row,
   flowers: Array.from({ length: row.count }, (_, index) => ({
     x: (index + Math.random() * 0.85) / row.count,
-    height: (30 + Math.random() * 80) * row.scale,
-    bloom: (5 + Math.random() * 11) * row.scale,
+    height: (42 + Math.random() * 150) * row.scale,
+    bloom: (5 + Math.random() * 13) * row.scale,
     lean: -0.2 + Math.random() * 0.4,
     variety: flowerVarieties[(index * 5 + rowIndex) % flowerVarieties.length],
     depth: 0.5 + Math.random() * 0.25,
@@ -124,7 +136,84 @@ const backFlowerRows = [
     cluster: 1,
     colorOverride: pickAccent(),
   })),
+  grasses: Array.from({ length: row.grassCount }, (_, index) => ({
+    x: (index + Math.random()) / row.grassCount,
+    height: (18 + Math.random() * 72) * row.scale,
+    spread: (4 + Math.random() * 14) * row.scale,
+    blades: 3 + Math.floor(Math.random() * 4),
+    seedHead: false,
+    color: pickGround(),
+  })),
+  shrubs: Array.from({ length: row.shrubCount }, (_, index) => ({
+    x: (index + 0.3 + Math.random() * 0.55) / row.shrubCount,
+    width: (36 + Math.random() * 54) * row.scale,
+    height: (32 + Math.random() * 50) * row.scale,
+    berries: false,
+    color: pickGround(),
+  })),
 }));
+
+const dissolution = {
+  queue: null,
+  interval: 26000,
+  nextEventAt: 26000,
+  eventIndex: 0,
+};
+const motes = [];
+
+// Top silhouette of the near-ridge landscape plate, sampled once per resize so
+// the deeper ranks can plant along the terrain edge instead of a flat row.
+let ridgeProfile = null;
+
+function sampleRidgeProfile() {
+  const img = document.querySelector(".landscape-near");
+  if (!img || !img.complete || !img.naturalWidth) return null;
+  try {
+    const width = Math.max(1, window.innerWidth);
+    const height = Math.max(1, window.innerHeight);
+    const probe = document.createElement("canvas");
+    probe.width = width;
+    probe.height = height;
+    const probeContext = probe.getContext("2d", { willReadFrequently: true });
+    const rect = img.getBoundingClientRect();
+    probeContext.drawImage(img, rect.left, rect.top, rect.width, rect.height);
+    const data = probeContext.getImageData(0, 0, width, height).data;
+    const step = 6;
+    const profile = new Float32Array(Math.ceil(width / step));
+    for (let i = 0; i < profile.length; i += 1) {
+      const x = Math.min(width - 1, i * step);
+      let top = height;
+      for (let y = 0; y < height; y += 2) {
+        if (data[(y * width + x) * 4 + 3] > 40) {
+          top = y;
+          break;
+        }
+      }
+      profile[i] = top;
+    }
+    return { profile, step };
+  } catch (error) {
+    return null; // canvas tainted (file://) — ranks stay on flat rows
+  }
+}
+
+function ridgeTopAt(x) {
+  if (!ridgeProfile) return null;
+  const { profile, step } = ridgeProfile;
+  const pos = Math.max(0, Math.min(profile.length - 1.001, x / step));
+  const index = Math.floor(pos);
+  const frac = pos - index;
+  return profile[index] * (1 - frac) + profile[Math.min(profile.length - 1, index + 1)] * frac;
+}
+
+function rankLift(row, xScreen) {
+  if (!row.follow || !ridgeProfile) return 0;
+  const ridgeY = ridgeTopAt(xScreen);
+  if (ridgeY == null) return 0;
+  const flatBase = window.innerHeight - 20 - row.offset;
+  const delta = Math.max(-200, Math.min(20, ridgeY - flatBase));
+  return delta * row.follow;
+}
 
 const audioState = {
   context: null,
@@ -144,8 +233,14 @@ function resize() {
   });
   screenContext.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
   cloudScreenContext.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  ridgeProfile = sampleRidgeProfile();
   renderBackFlowerRows();
   renderTreeLayer();
+}
+
+const nearRidgeImage = document.querySelector(".landscape-near");
+if (nearRidgeImage && !nearRidgeImage.complete) {
+  nearRidgeImage.addEventListener("load", () => resize(), { once: true });
 }
 
 function drawSky(time) {
@@ -595,7 +690,7 @@ function drawRain(time) {
       context.fill();
     } else {
       context.strokeStyle = rainColor;
-      context.lineWidth = 0.9 + (index % 2) * 0.4;
+      context.lineWidth = (0.9 + (index % 2) * 0.4) * drop.depth;
       context.beginPath();
       context.moveTo(x, y);
       context.lineTo(x + 2, y - drop.length);
@@ -605,30 +700,42 @@ function drawRain(time) {
 }
 
 function drawField(time) {
-  const groundY = window.innerHeight * 0.91;
+  const groundY = window.innerHeight - 20;
 
-  context.fillStyle = "rgba(8, 23, 24, 0.9)";
-  context.beginPath();
-  context.moveTo(0, window.innerHeight);
-  context.lineTo(0, groundY + 28);
-  for (let x = 0; x <= window.innerWidth; x += 30) {
-    const y = groundY + Math.sin(x * 0.009) * 8 + Math.sin(x * 0.021 + 1.7) * 4;
-    context.lineTo(x, y);
+  // The ground strip thins out as the field empties, so the last risers
+  // leave behind bare landscape all the way to the bottom of the viewport.
+  const departedFraction = dissolution.queue && dissolution.totalCount
+    ? 1 - dissolution.queue.length / dissolution.totalCount
+    : 0;
+  const fadeT = Math.min(1, Math.max(0, (departedFraction - 0.55) / 0.45));
+  const groundAlpha = 0.9 * (1 - fadeT * fadeT);
+
+  if (groundAlpha > 0.004) {
+    context.fillStyle = `rgba(8, 23, 24, ${groundAlpha.toFixed(3)})`;
+    context.beginPath();
+    context.moveTo(0, window.innerHeight);
+    context.lineTo(0, groundY + 28);
+    for (let x = 0; x <= window.innerWidth; x += 30) {
+      const y = groundY + Math.sin(x * 0.009) * 8 + Math.sin(x * 0.021 + 1.7) * 4;
+      context.lineTo(x, y);
+    }
+    context.lineTo(
+      window.innerWidth,
+      groundY + Math.sin(window.innerWidth * 0.009) * 8 + Math.sin(window.innerWidth * 0.021 + 1.7) * 4,
+    );
+    context.lineTo(window.innerWidth, window.innerHeight);
+    context.closePath();
+    context.fill();
   }
-  context.lineTo(
-    window.innerWidth,
-    groundY + Math.sin(window.innerWidth * 0.009) * 8 + Math.sin(window.innerWidth * 0.021 + 1.7) * 4,
-  );
-  context.lineTo(window.innerWidth, window.innerHeight);
-  context.closePath();
-  context.fill();
 
   drawShrubs(groundY, time);
   drawBackFlowers(groundY, time);
+  drawMotes(time);
   drawFerns(groundY, time);
   drawGrasses(groundY, time, false);
 
   flowersByDepth.forEach((flower, index) => {
+    if (flower.gone) return;
     const x = flower.x * window.innerWidth;
     const sway = Math.sin(time * 0.0016 + index * 0.7) * flower.lean;
     const topY = groundY - flower.height;
@@ -641,20 +748,43 @@ function drawField(time) {
 }
 
 function renderBackFlowerRows() {
-  backFlowerRows.forEach((row, rowIndex) => {
-    const rowCanvas = document.createElement("canvas");
-    rowCanvas.width = Math.max(1, window.innerWidth);
-    rowCanvas.height = 170;
-    const baseY = rowCanvas.height - 24;
-    context = rowCanvas.getContext("2d");
-    row.flowers.forEach((flower, index) => {
-      const x = flower.x * rowCanvas.width;
-      drawFlowerStem(x, baseY, baseY - flower.height, flower.lean * 0.4, flower, 0, index + rowIndex * 31);
-    });
-    context = screenContext;
-    row.canvas = rowCanvas;
-    row.baseY = baseY;
+  backFlowerRows.forEach((row) => rebakeBackRow(row));
+}
+
+function rebakeBackRow(row) {
+  const raw = document.createElement("canvas");
+  raw.width = Math.max(1, window.innerWidth);
+  raw.height = 440;
+  const baseY = raw.height - 24;
+  context = raw.getContext("2d");
+  row.shrubs.forEach((shrub, index) => {
+    if (shrub.gone) return;
+    const x = shrub.x * raw.width;
+    shrub.lift = rankLift(row, x);
+    drawShrubShape(x, baseY + shrub.lift, shrub, index);
   });
+  row.grasses.forEach((grass, index) => {
+    if (grass.gone) return;
+    const x = grass.x * raw.width;
+    grass.lift = rankLift(row, x);
+    drawGrassTuft(x, baseY + grass.lift, grass, 0, 0.72, 0.9);
+  });
+  row.flowers.forEach((flower, index) => {
+    if (flower.gone) return;
+    const x = flower.x * raw.width;
+    flower.lift = rankLift(row, x);
+    drawFlowerStem(x, baseY + flower.lift, baseY + flower.lift - flower.height, flower.lean * 0.4, flower, 0, index + row.offset);
+  });
+  context = screenContext;
+  const baked = document.createElement("canvas");
+  baked.width = raw.width;
+  baked.height = raw.height;
+  const bakeContext = baked.getContext("2d");
+  bakeContext.filter = `blur(${row.blur}px) brightness(${row.brightness}%) saturate(${row.saturation}%)`;
+  bakeContext.drawImage(raw, 0, 0);
+  row.canvas = baked;
+  row.baseY = baseY;
+  row.dirty = false;
 }
 
 function drawBackFlowers(groundY, time) {
@@ -662,15 +792,17 @@ function drawBackFlowers(groundY, time) {
     const row = backFlowerRows[rowIndex];
     if (!row.canvas) continue;
     const swayX = Math.sin(time * 0.0004 + rowIndex * 1.7) * 2.5;
-    context.save();
-    context.filter = `blur(${row.blur}px) brightness(${row.brightness}%) saturate(76%)`;
     context.drawImage(row.canvas, swayX, groundY - row.offset - row.baseY);
-    context.restore();
   }
 }
 
 function drawVines(groundY, time) {
   vines.forEach((vine, index) => {
+    const lift = departTransform(vine, time);
+    if (!lift) return;
+    context.save();
+    context.globalAlpha = lift.alpha;
+    context.translate(lift.drift, -lift.rise);
     const x = vine.x * window.innerWidth;
     const sway = Math.sin(time * 0.00025 + index) * 2;
     context.strokeStyle = `rgba(${vine.color}, 0.85)`;
@@ -698,82 +830,129 @@ function drawVines(groundY, time) {
         context.fill();
       }
     }
+    context.restore();
   });
 }
 
 function drawFlowerStem(x, groundY, topY, sway, flower, time, index) {
-  const tipX = x + sway * 32;
-  context.strokeStyle = `rgba(24, 60, 50, ${0.58 + flower.depth * 0.26})`;
-  context.lineWidth = (flower.stem === "branching" ? 1.7 : 1.15) * flower.depth;
-  context.beginPath();
-  context.moveTo(x, groundY + 18);
-  context.quadraticCurveTo(x + sway * 75, groundY - flower.height * 0.46, tipX, topY);
-  context.stroke();
-
-  if (flower.stem === "leafy" || flower.stem === "arching") {
-    for (let leaf = 0; leaf < 3; leaf += 1) {
-      const t = 0.28 + leaf * 0.18;
-      const ly = groundY - flower.height * t;
-      const side = leaf % 2 ? 1 : -1;
-      context.save();
-      context.translate(x + sway * 30 * t, ly);
-      context.rotate(side * (0.55 + flower.lean));
-      context.fillStyle = "rgba(33, 72, 58, 0.78)";
-      context.beginPath();
-      context.ellipse(side * 7, 0, 10 * flower.depth, 3.2 * flower.depth, 0, 0, Math.PI * 2);
-      context.fill();
-      context.restore();
+  let stemAlpha = 1;
+  let rise = 0;
+  let drift = 0;
+  let fade = 1;
+  let spin = 0;
+  if (flower.depart) {
+    const t = Math.min(1, (time - flower.depart.start) / flower.depart.duration);
+    if (t >= 1) {
+      flower.gone = true;
+      return;
     }
+    stemAlpha = Math.max(0, 1 - t * 2.4);
+    rise = flower.depart.distance * t * t;
+    drift = Math.sin(time * 0.0017 + flower.depart.seed) * 18 * t + flower.depart.drift * t;
+    fade = t > 0.72 ? Math.max(0, 1 - (t - 0.72) / 0.28) : 1;
+    spin = flower.depart.spin * t;
   }
 
-  if (flower.stem === "branching") {
-    [-1, 1].forEach((side, branch) => {
-      const by = topY + flower.height * (0.16 + branch * 0.11);
-      const bx = tipX + side * (13 + flower.bloom * 0.7);
+  const tipX = x + sway * 32;
+  const branches = flower.stem === "branching"
+    ? [-1, 1].map((side, branch) => ({
+        side,
+        by: topY + flower.height * (0.16 + branch * 0.11),
+        bx: tipX + side * (13 + flower.bloom * 0.7),
+      }))
+    : [];
+
+  if (stemAlpha > 0.01) {
+    context.save();
+    context.globalAlpha = stemAlpha;
+    context.strokeStyle = `rgba(24, 60, 50, ${0.58 + flower.depth * 0.26})`;
+    context.lineWidth = (flower.stem === "branching" ? 1.7 : 1.15) * flower.depth;
+    context.beginPath();
+    context.moveTo(x, groundY + 18);
+    context.quadraticCurveTo(x + sway * 75, groundY - flower.height * 0.46, tipX, topY);
+    context.stroke();
+
+    if (flower.stem === "leafy" || flower.stem === "arching") {
+      for (let leaf = 0; leaf < 3; leaf += 1) {
+        const t = 0.28 + leaf * 0.18;
+        const ly = groundY - flower.height * t;
+        const side = leaf % 2 ? 1 : -1;
+        context.save();
+        context.translate(x + sway * 30 * t, ly);
+        context.rotate(side * (0.55 + flower.lean));
+        context.fillStyle = "rgba(33, 72, 58, 0.78)";
+        context.beginPath();
+        context.ellipse(side * 7, 0, 10 * flower.depth, 3.2 * flower.depth, 0, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+      }
+    }
+
+    branches.forEach(({ side, by, bx }) => {
       context.beginPath();
       context.moveTo(tipX + sway * 6, by + 15);
       context.quadraticCurveTo(tipX + side * 8, by + 4, bx, by);
       context.stroke();
-      const sideFlower = { ...flower, bloom: flower.bloom * 0.58, depth: flower.depth * 0.92 };
-      drawBloom(bx, by, sideFlower, time, index + branch * 17);
     });
+    context.restore();
   }
+
+  branches.forEach(({ by, bx }, branch) => {
+    const sideFlower = { ...flower, bloom: flower.bloom * 0.58, depth: flower.depth * 0.92, fade, spin };
+    drawBloom(bx + drift, by - rise, sideFlower, time, index + branch * 17);
+  });
 
   for (let bloomIndex = 0; bloomIndex < flower.cluster; bloomIndex += 1) {
     const angle = (bloomIndex / flower.cluster) * Math.PI * 2;
     const radius = bloomIndex === 0 ? 0 : flower.bloom * 0.75;
-    const clustered = { ...flower, bloom: bloomIndex === 0 ? flower.bloom : flower.bloom * 0.62 };
-    drawBloom(tipX + Math.cos(angle) * radius, topY + Math.sin(angle) * radius * 0.5, clustered, time, index + bloomIndex);
+    const clustered = { ...flower, bloom: bloomIndex === 0 ? flower.bloom : flower.bloom * 0.62, fade, spin };
+    drawBloom(tipX + drift + Math.cos(angle) * radius, topY - rise + Math.sin(angle) * radius * 0.5, clustered, time, index + bloomIndex);
+  }
+}
+
+function drawGrassTuft(x, groundY, grass, sway, alpha, lineWidth) {
+  context.strokeStyle = `rgba(${grass.color}, ${alpha})`;
+  context.lineWidth = lineWidth;
+  for (let blade = 0; blade < grass.blades; blade += 1) {
+    const offset = (blade - grass.blades / 2) * 2.2;
+    const lean = ((blade / Math.max(1, grass.blades - 1)) - 0.5) * grass.spread + sway;
+    context.beginPath();
+    context.moveTo(x + offset, groundY + 16);
+    context.quadraticCurveTo(x + lean * 0.4, groundY - grass.height * 0.48, x + lean, groundY - grass.height * (0.72 + blade % 3 * 0.12));
+    context.stroke();
+  }
+  if (grass.seedHead) {
+    context.fillStyle = "rgba(154, 130, 73, 0.72)";
+    for (let seed = 0; seed < 5; seed += 1) {
+      context.beginPath();
+      context.ellipse(x + sway + (seed % 2 ? 2 : -2), groundY - grass.height + seed * 4, 2.8, 1.2, seed % 2 ? 0.6 : -0.6, 0, Math.PI * 2);
+      context.fill();
+    }
   }
 }
 
 function drawGrasses(groundY, time, foreground) {
-  grasses.filter((grass) => (foreground ? grass.depth >= 0.92 : grass.depth < 0.92)).forEach((grass, index) => {
+  grasses.forEach((grass, index) => {
+    if (foreground ? grass.depth < 0.92 : grass.depth >= 0.92) return;
+    const lift = departTransform(grass, time);
+    if (!lift) return;
     const x = grass.x * window.innerWidth;
     const sway = Math.sin(time * 0.00045 + index) * grass.spread * 0.15;
-    context.strokeStyle = `rgba(${grass.color}, ${foreground ? 0.9 : 0.58})`;
-    context.lineWidth = foreground ? 1.35 : 0.85;
-    for (let blade = 0; blade < grass.blades; blade += 1) {
-      const offset = (blade - grass.blades / 2) * 2.2;
-      const lean = ((blade / Math.max(1, grass.blades - 1)) - 0.5) * grass.spread + sway;
-      context.beginPath();
-      context.moveTo(x + offset, groundY + 16);
-      context.quadraticCurveTo(x + lean * 0.4, groundY - grass.height * 0.48, x + lean, groundY - grass.height * (0.72 + blade % 3 * 0.12));
-      context.stroke();
-    }
-    if (grass.seedHead) {
-      context.fillStyle = "rgba(154, 130, 73, 0.72)";
-      for (let seed = 0; seed < 5; seed += 1) {
-        context.beginPath();
-        context.ellipse(x + sway + (seed % 2 ? 2 : -2), groundY - grass.height + seed * 4, 2.8, 1.2, seed % 2 ? 0.6 : -0.6, 0, Math.PI * 2);
-        context.fill();
-      }
-    }
+    context.save();
+    context.globalAlpha = lift.alpha;
+    context.translate(lift.drift, -lift.rise);
+    drawGrassTuft(x, groundY, grass, sway, foreground ? 0.9 : 0.58, foreground ? 1.35 : 0.85);
+    context.restore();
   });
 }
 
 function drawFerns(groundY, time) {
   ferns.forEach((fern, index) => {
+    const lift = departTransform(fern, time);
+    if (!lift) return;
+    context.save();
+    context.globalAlpha = lift.alpha;
+    context.translate(lift.drift, -lift.rise);
     const x = fern.x * window.innerWidth;
     const lean = fern.lean * fern.spread + Math.sin(time * 0.0003 + index) * 2;
     context.strokeStyle = `rgba(${fern.color}, 0.82)`;
@@ -794,11 +973,17 @@ function drawFerns(groundY, time) {
         context.fill();
       });
     }
+    context.restore();
   });
 }
 
 function drawMounds(groundY, time) {
   mounds.forEach((mound, index) => {
+    const lift = departTransform(mound, time);
+    if (!lift) return;
+    context.save();
+    context.globalAlpha = lift.alpha;
+    context.translate(lift.drift, -lift.rise);
     const x = mound.x * window.innerWidth;
     const sway = Math.sin(time * 0.00035 + index) * 2;
     context.fillStyle = `rgba(${mound.color}, 0.9)`;
@@ -835,29 +1020,39 @@ function drawMounds(groundY, time) {
         context.fill();
       }
     }
+    context.restore();
   });
+}
+
+function drawShrubShape(x, groundY, shrub, index) {
+  context.fillStyle = `rgba(${shrub.color}, 0.75)`;
+  for (let lobe = 0; lobe < 7; lobe += 1) {
+    const angle = (lobe / 7) * Math.PI;
+    const lx = x + Math.cos(angle) * shrub.width * 0.45;
+    const ly = groundY - Math.sin(angle) * shrub.height * 0.78;
+    context.beginPath();
+    context.ellipse(lx, ly, shrub.width * 0.28, shrub.height * 0.32, Math.sin(index + lobe) * 0.3, 0, Math.PI * 2);
+    context.fill();
+  }
+  if (shrub.berries) {
+    context.fillStyle = "rgba(217, 87, 116, 0.82)";
+    for (let berry = 0; berry < 6; berry += 1) {
+      context.beginPath();
+      context.arc(x - shrub.width * 0.32 + berry * shrub.width * 0.13, groundY - shrub.height * (0.28 + (berry % 3) * 0.18), 2.2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
 }
 
 function drawShrubs(groundY, time) {
   shrubs.forEach((shrub, index) => {
-    const x = shrub.x * window.innerWidth;
-    context.fillStyle = `rgba(${shrub.color}, 0.75)`;
-    for (let lobe = 0; lobe < 7; lobe += 1) {
-      const angle = (lobe / 7) * Math.PI;
-      const lx = x + Math.cos(angle) * shrub.width * 0.45;
-      const ly = groundY - Math.sin(angle) * shrub.height * 0.78;
-      context.beginPath();
-      context.ellipse(lx, ly, shrub.width * 0.28, shrub.height * 0.32, Math.sin(index + lobe) * 0.3, 0, Math.PI * 2);
-      context.fill();
-    }
-    if (shrub.berries) {
-      context.fillStyle = "rgba(217, 87, 116, 0.82)";
-      for (let berry = 0; berry < 6; berry += 1) {
-        context.beginPath();
-        context.arc(x - shrub.width * 0.32 + berry * shrub.width * 0.13, groundY - shrub.height * (0.28 + (berry % 3) * 0.18), 2.2, 0, Math.PI * 2);
-        context.fill();
-      }
-    }
+    const lift = departTransform(shrub, time);
+    if (!lift) return;
+    context.save();
+    context.globalAlpha = lift.alpha;
+    context.translate(lift.drift, -lift.rise);
+    drawShrubShape(shrub.x * window.innerWidth, groundY, shrub, index);
+    context.restore();
   });
 }
 
@@ -865,12 +1060,15 @@ function drawBloom(x, y, flower, time, index) {
   const { variety } = flower;
   const petalColor = flower.colorOverride || variety.color;
   const bloom = flower.bloom * flower.depth;
+  const fade = flower.fade == null ? 1 : flower.fade;
+  if (fade <= 0.01) return;
   context.save();
   context.translate(x, y);
-  context.rotate(Math.sin(time * 0.0007 + index) * 0.04);
+  context.rotate(Math.sin(time * 0.0007 + index) * 0.04 + (flower.spin || 0));
 
   if (variety.shape === "spire" || variety.shape === "bells") {
     const count = variety.petals;
+    context.globalAlpha = fade;
     for (let petal = 0; petal < count; petal += 1) {
       const py = (petal - count / 2) * bloom * 0.42;
       const side = petal % 2 ? 1 : -1;
@@ -892,7 +1090,7 @@ function drawBloom(x, y, flower, time, index) {
   for (let layer = layers - 1; layer >= 0; layer -= 1) {
     const count = variety.petals - layer * 3;
     context.fillStyle = petalColor;
-    context.globalAlpha = 0.78 + layer * 0.16;
+    context.globalAlpha = (0.78 + layer * 0.16) * fade;
     for (let petal = 0; petal < count; petal += 1) {
       const angle = (Math.PI * 2 * petal) / count + layer * 0.18;
       const slender = variety.shape === "slender" || variety.shape === "point";
@@ -911,7 +1109,7 @@ function drawBloom(x, y, flower, time, index) {
       context.fill();
     }
   }
-  context.globalAlpha = 1;
+  context.globalAlpha = fade;
   context.fillStyle = variety.center;
   context.beginPath();
   context.arc(0, 0, bloom * (variety.shape === "tiny" ? 0.18 : 0.24), 0, Math.PI * 2);
@@ -919,7 +1117,242 @@ function drawBloom(x, y, flower, time, index) {
   context.restore();
 }
 
+function departTransform(item, time) {
+  if (item.gone) return null;
+  if (!item.depart) return { alpha: 1, rise: 0, drift: 0 };
+  const t = Math.min(1, (time - item.depart.start) / item.depart.duration);
+  if (t >= 1) {
+    item.gone = true;
+    return null;
+  }
+  return {
+    alpha: t > 0.7 ? Math.max(0, 1 - (t - 0.7) / 0.3) : 1,
+    rise: item.depart.distance * t * t,
+    drift: Math.sin(time * 0.0017 + item.depart.seed) * 18 * t + item.depart.drift * t,
+  };
+}
+
+function buildDissolutionQueue() {
+  const pool = [];
+  flowers.forEach((item) => pool.push({ item, row: null, kind: "flower" }));
+  grasses.forEach((item) => pool.push({ item, row: null, kind: "grass" }));
+  ferns.forEach((item) => pool.push({ item, row: null, kind: "fern" }));
+  mounds.forEach((item) => pool.push({ item, row: null, kind: "mound" }));
+  shrubs.forEach((item) => pool.push({ item, row: null, kind: "shrub" }));
+  vines.forEach((item) => pool.push({ item, row: null, kind: "vine" }));
+  backFlowerRows.forEach((row) => {
+    row.flowers.forEach((item) => pool.push({ item, row, kind: "flower" }));
+    row.grasses.forEach((item) => pool.push({ item, row, kind: "grass" }));
+    row.shrubs.forEach((item) => pool.push({ item, row, kind: "shrub" }));
+  });
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  // the first few departures are always lone foreground blooms
+  const openers = [];
+  for (let i = 0; i < pool.length && openers.length < 6; i += 1) {
+    if (!pool[i].row && pool[i].kind === "flower") {
+      openers.push(pool.splice(i, 1)[0]);
+      i -= 1;
+    }
+  }
+  dissolution.queue = openers.concat(pool);
+  dissolution.totalCount = dissolution.queue.length;
+  scheduleGiantRise(dissolution.totalCount);
+  if (REVIEW_SKIP_TO_GIANT) fastForwardDissolution(giantState.riseStart - 3000);
+}
+
+// The giant rises out of the hidden valley over the last 30s of the dissolution,
+// cresting (neck and shoulder tops visible) right as the end blur begins.
+// REVIEW: when true, each page load fast-forwards to ~3s before the giant begins
+// rising — departed flora is already gone, the final torrent is underway. Set to
+// false to restore the full ride from the beginning.
+const REVIEW_SKIP_TO_GIANT = false;
+let timeSkip = 0;
+
+const giantState = {
+  el: document.querySelector(".landscape-giant"),
+  riseStart: 0,
+  riseEnd: 0,
+  hiddenY: 99,
+  shownY: 24,
+  done: false,
+};
+
+function scheduleGiantRise(totalCount) {
+  // Replay the departure scheduler's exact math to find when the queue empties.
+  let simTime = dissolution.nextEventAt;
+  let simInterval = dissolution.interval;
+  let remaining = totalCount;
+  let eventIndex = 0;
+  while (remaining > 0) {
+    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, eventIndex))));
+    remaining -= batch;
+    eventIndex += 1;
+    simInterval = Math.max(220, simInterval * 0.88);
+    simTime += simInterval;
+  }
+  // Last risers take ~9s to clear, then the 5s beat before the blur.
+  const blurEta = simTime + 14000;
+  // He keeps climbing ~10s into the blur, head drifting just past the top of frame.
+  giantState.riseEnd = blurEta + 10000;
+  giantState.riseStart = blurEta - 55000;
+}
+
+function fastForwardDissolution(target) {
+  timeSkip = Math.max(0, target);
+  while (dissolution.queue.length && dissolution.nextEventAt <= target) {
+    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, dissolution.eventIndex))));
+    for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
+      const entry = dissolution.queue.shift();
+      entry.item.gone = true;
+      if (entry.row) entry.row.dirty = true;
+    }
+    dissolution.eventIndex += 1;
+    dissolution.interval = Math.max(220, dissolution.interval * 0.88);
+    dissolution.nextEventAt += dissolution.interval;
+  }
+}
+
+// The thrum lives only for the rise: fades in over the first 10s, holds, then
+// fades out over 5s once he crests. Master control rules.
+function updateThrum(time) {
+  if (!giantThrum || soundState.thrumEnded || !giantState.riseStart) return;
+  const audioStart = giantState.riseStart;
+  if (time < audioStart) return;
+  let gain;
+  if (time <= giantState.riseEnd) {
+    gain = Math.min(1, (time - audioStart) / 10000);
+  } else {
+    gain = 1 - (time - giantState.riseEnd) / 5000;
+  }
+  if (gain <= 0 && time > giantState.riseEnd) {
+    soundState.thrumEnded = true;
+    soundState.thrumGain = 0;
+    giantThrum.pause();
+    return;
+  }
+  soundState.thrumDue = true;
+  soundState.thrumGain = Math.max(0, Math.min(1, gain));
+  applySound();
+}
+
+function updateGiant(time) {
+  if (!giantState.el || giantState.done || !giantState.riseStart || time < giantState.riseStart) return;
+  const t = Math.min(1, (time - giantState.riseStart) / (giantState.riseEnd - giantState.riseStart));
+  const eased = t * t * (3 - 2 * t);
+  const y = giantState.hiddenY - (giantState.hiddenY - giantState.shownY) * eased;
+  giantState.el.style.transform = `translateX(-50%) translateY(${y.toFixed(2)}%)`;
+  if (t >= 1) giantState.done = true;
+}
+
+function departEntry(entry, time) {
+  const { item, row } = entry;
+  if (item.gone || item.depart) return;
+  if (row) {
+    item.gone = true;
+    row.dirty = true;
+    const groundY = window.innerHeight - 20;
+    const isFlower = entry.kind === "flower";
+    motes.push({
+      x: item.x * window.innerWidth,
+      y: groundY - row.offset + (item.lift || 0) - (item.height || 10),
+      start: time,
+      duration: 5200 + Math.random() * 3200,
+      distance: (groundY - row.offset) * (0.75 + Math.random() * 0.3),
+      drift: (Math.random() - 0.5) * 50,
+      seed: Math.random() * 10,
+      size: isFlower ? Math.max(1.6, (item.bloom || 3) * 0.7) : 2.2,
+      color: isFlower ? (item.colorOverride || item.variety.color) : `rgb(${item.color})`,
+      alpha: Math.min(0.85, row.brightness / 100 + 0.1),
+    });
+    return;
+  }
+  item.depart = {
+    start: time,
+    duration: 7000 + Math.random() * 4000,
+    distance: window.innerHeight * (0.95 + Math.random() * 0.35),
+    drift: (Math.random() - 0.5) * 70,
+    seed: Math.random() * 10,
+    spin: (Math.random() - 0.5) * 1.6,
+  };
+}
+
+function updateDissolution(time) {
+  if (!dissolution.queue) buildDissolutionQueue();
+  while (dissolution.queue.length && time >= dissolution.nextEventAt) {
+    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, dissolution.eventIndex))));
+    for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
+      departEntry(dissolution.queue.shift(), time);
+    }
+    dissolution.eventIndex += 1;
+    dissolution.interval = Math.max(220, dissolution.interval * 0.88);
+    dissolution.nextEventAt = time + dissolution.interval;
+  }
+  const dirtyRow = backFlowerRows.find((row) => row.dirty);
+  if (dirtyRow) rebakeBackRow(dirtyRow);
+  updateGiant(time);
+  updateThrum(time);
+  updateEndBlur(time);
+}
+
+const endBlur = {
+  emptyAt: 0,
+  done: false,
+  delay: 5000,
+  duration: 20000,
+  maxBlur: 110,
+  targets: null,
+};
+
+function updateEndBlur(time) {
+  if (endBlur.done) return;
+  if (!endBlur.emptyAt) {
+    if (!dissolution.queue || dissolution.queue.length || motes.length) return;
+    const allGone = [flowers, grasses, ferns, mounds, shrubs, vines].every((pool) =>
+      pool.every((item) => item.gone),
+    );
+    if (!allGone) return;
+    endBlur.emptyAt = time;
+    return;
+  }
+  const t = (time - endBlur.emptyAt - endBlur.delay) / endBlur.duration;
+  if (t <= 0) return;
+  const clamped = Math.min(1, t);
+  const filter = `blur(${(clamped * clamped * endBlur.maxBlur).toFixed(1)}px)`;
+  if (!endBlur.targets) {
+    endBlur.targets = [canvas, cloudCanvas, document.querySelector(".landscape-layers")].filter(Boolean);
+  }
+  endBlur.targets.forEach((el) => {
+    el.style.filter = filter;
+  });
+  if (clamped >= 1) endBlur.done = true;
+}
+
+function drawMotes(time) {
+  for (let i = motes.length - 1; i >= 0; i -= 1) {
+    const mote = motes[i];
+    const t = (time - mote.start) / mote.duration;
+    if (t >= 1) {
+      motes.splice(i, 1);
+      continue;
+    }
+    const y = mote.y - mote.distance * t * t;
+    const x = mote.x + Math.sin(time * 0.0016 + mote.seed) * 10 * t + mote.drift * t;
+    const alpha = (t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1) * mote.alpha;
+    context.save();
+    context.globalAlpha = Math.max(0, alpha);
+    context.fillStyle = mote.color;
+    context.beginPath();
+    context.ellipse(x, y, mote.size, mote.size * 0.6, t * 2, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+}
+
 function animate(time) {
+  time += timeSkip;
   context = cloudScreenContext;
   context.clearRect(0, 0, window.innerWidth, window.innerHeight);
   drawSky(time);
@@ -927,6 +1360,7 @@ function animate(time) {
 
   context = screenContext;
   context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  updateDissolution(time);
   drawRain(time);
   drawTreeLayer(time);
   drawField(time);
@@ -1025,7 +1459,44 @@ function startAudio() {
   window.setInterval(() => playBell(audioContext, master), 6200);
 }
 
-audioToggle?.addEventListener("click", startAudio);
+// One master control for every sound on the page: the rain bed always, plus the
+// giant's thrum once his rise begins. Mute kills all; the slider scales all.
+const soundtrack = document.getElementById("dusk-soundtrack");
+const giantThrum = document.getElementById("giant-thrum");
+const soundState = { on: false, volume: 1, thrumDue: false, thrumGain: 0, thrumEnded: false };
+
+function applySound() {
+  if (!soundtrack) return;
+  soundtrack.volume = soundState.volume;
+  if (giantThrum) giantThrum.volume = soundState.volume * soundState.thrumGain;
+  if (soundState.on) {
+    if (soundtrack.paused) soundtrack.play().catch(() => {});
+    if (giantThrum && soundState.thrumDue && !soundState.thrumEnded && giantThrum.paused) {
+      giantThrum.play().catch(() => {});
+    }
+  } else {
+    soundtrack.pause();
+    if (giantThrum) giantThrum.pause();
+  }
+}
+
+if (window.ElasticSoundControl && soundtrack) {
+  ElasticSoundControl.attach({
+    start: () =>
+      soundtrack.play().then(() => {
+        soundState.on = true;
+        applySound();
+      }),
+    stop: () => {
+      soundState.on = false;
+      applySound();
+    },
+    setVolume: (v) => {
+      soundState.volume = v;
+      applySound();
+    },
+  });
+}
 
 window.addEventListener("visibilitychange", () => {
   if (document.hidden && "speechSynthesis" in window) {

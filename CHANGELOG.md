@@ -8,6 +8,20 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-12 (late session)
+
+- Wildflowers at Dusk: full dissolution arc — flora ascends piece by piece on an accelerating
+  schedule (~3.5 min: lone petals → torrent), ground strip fades, 20s end blur washes the scene
+- Field rebuilt: baseline lowered to 20px above viewport bottom; five graduated ranks behind the
+  foreground (offsets 40–200px, brightness 98–72%) planted along the near-ridge plate's
+  pixel-sampled top silhouette; all ranks baked offscreen (flat frame cost)
+- The Giant: chroma-keyed marble bust (James's asset) rises from the hidden valley over 65s at the
+  finale, cresting past the top of frame as the blur takes hold; power-thrum track fades in/out
+  with his rise; one master sound control now rules all page audio (rain + thrum)
+- Soundtrack: gentlerain.mp3 looping via shared ElasticSoundControl
+- Session lesson: "invisible" back layers were a brightness/scale problem, not caching — the
+  mid-sky duplicate A/B trick (render the field against plain sky) diagnosed it
+
 ## 2026-07-12
 
 - Pelagic Lantern Habitat: complete rebuild around a Blender-rendered plate — 2350-era

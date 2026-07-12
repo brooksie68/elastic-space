@@ -96,6 +96,15 @@ body {
   z-index: 2;
 }
 
+.landscape-giant {
+  bottom: 26vh;
+  filter: blur(7px) saturate(55%) brightness(58%);
+  left: 50%;
+  transform: translateX(-50%) translateY(112%);
+  width: 90vw;
+  z-index: 2;
+}
+
 .landscape-middle {
   bottom: -5vh;
   filter: blur(1.8px) saturate(76%) brightness(64%);
