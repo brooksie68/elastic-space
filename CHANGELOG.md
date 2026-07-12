@@ -8,6 +8,15 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-11 (late session)
+
+- Dead Letter Office: letter fall speed ~2.5x + faster spawn cadence (was painfully slow)
+- Dead Letter Office: Blender-rendered room backdrop (scripted via Blender MCP, GPT reference
+  as target); clean 1920×1080 plate, `USE_ROOM_RENDER` flag, painted room intact underneath
+- Dead Letter Office: 3D low-poly Postmaster baked into the plate; transparent click hotspot,
+  speech bubble, punch clock top-left; arms slimmed on request; pose rig + props staged
+- New assets: `dead-letter-office/assets/room/` (render plate + editable .blend)
+
 ## 2026-07-11
 
 - Assets: Wildflowers at Dusk runtime cloud sprites

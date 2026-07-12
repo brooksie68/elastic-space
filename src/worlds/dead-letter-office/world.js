@@ -170,6 +170,19 @@ const punchClock = document.getElementById("punchclock");
 const bubbleEl = document.getElementById("bubble");
 let pixelScale = 1; // displayed CSS px per canvas px, for snapping sprites
 
+/* Blender-rendered backdrop (assets/room/room-render.png). Set to false to
+   return to the painted room; all painted code stays intact underneath. */
+const USE_ROOM_RENDER = true;
+const roomRender = new Image();
+let roomRenderReady = false;
+roomRender.addEventListener("load", () => {
+  roomRenderReady = true;
+  paintRoom();
+});
+if (USE_ROOM_RENDER) {
+  roomRender.src = "./assets/room/room-render.png";
+}
+
 /* geometry shared between the painter, the mail physics, and the postmaster */
 const SCENE = {
   scaleX: 1,
@@ -537,6 +550,61 @@ function paintRoom() {
   punchClock.style.fontSize = `${Math.max(10, 5.5 * scaleY)}px`;
   punchClock.style.lineHeight = `${Math.max(16, 9 * scaleY)}px`;
 
+  /* rendered-backdrop mode: draw the clean Blender plate (1920x1080) over the
+     painted room, cover-fit so odd viewports crop instead of distort, and
+     retarget the mail physics at the rendered basket (measured image fractions).
+     The pixel-art postmaster stays hidden until his 3D replacement exists. */
+  if (USE_ROOM_RENDER && roomRenderReady) {
+    roomCanvas.width = window.innerWidth;
+    roomCanvas.height = window.innerHeight;
+    roomCanvas.style.imageRendering = "auto";
+    room.setTransform(1, 0, 0, 1, 0, 0);
+    room.imageSmoothingEnabled = true;
+    const iw = roomRender.naturalWidth;
+    const ih = roomRender.naturalHeight;
+    const cover = Math.max(roomCanvas.width / iw, roomCanvas.height / ih);
+    const dw = iw * cover;
+    const dh = ih * cover;
+    const dx = (roomCanvas.width - dw) / 2;
+    const dy = (roomCanvas.height - dh) / 2;
+    room.drawImage(roomRender, dx, dy, dw, dh);
+    basketCanvas.style.display = "none";
+    deskCanvas.style.display = "none";
+    /* canvas px === CSS px here, so image fractions map straight through */
+    SCENE.basketCxCss = dx + 0.19 * dw;
+    SCENE.basketSpreadCss = 0.045 * dw;
+    SCENE.basketRimCss = dy + 0.64 * dh;
+
+    /* the postmaster is baked into the plate; his canvas becomes a transparent
+       click hotspot over his rendered self (bbox measured in Blender NDC) */
+    const pmL = dx + 0.630 * dw;
+    const pmT = dy + 0.410 * dh;
+    const pmW = 0.107 * dw;
+    const pmH = 0.225 * dh;
+    postmasterCanvas.style.display = "";
+    postmasterCanvas.style.left = `${pmL}px`;
+    postmasterCanvas.style.top = `${pmT}px`;
+    postmasterCanvas.style.width = `${pmW}px`;
+    postmasterCanvas.style.height = `${pmH}px`;
+    SCENE.bubbleRightCss = window.innerWidth - (pmL + pmW * 0.9);
+    SCENE.bubbleBottomCss = window.innerHeight - pmT + 10;
+
+    /* punch clock lives top-left in the rendered office, like a wall counter */
+    punchClock.style.left = `${dx + 0.012 * dw}px`;
+    punchClock.style.top = `${dy + 0.025 * dh}px`;
+    punchClock.style.width = "auto";
+    punchClock.style.padding = "3px 12px";
+    punchClock.style.fontSize = `${Math.max(12, Math.round(0.017 * dh))}px`;
+    punchClock.style.lineHeight = "1.7";
+  } else {
+    roomCanvas.style.imageRendering = "";
+    basketCanvas.style.display = "";
+    deskCanvas.style.display = "";
+    postmasterCanvas.style.display = "";
+    punchClock.style.padding = "";
+    punchClock.style.lineHeight = "";
+  }
+
   drawPostmaster();
 }
 
@@ -723,6 +791,12 @@ function ppx(x, y, w, h, color) {
 }
 
 function drawPostmaster() {
+  if (USE_ROOM_RENDER) {
+    /* he is baked into the rendered plate; keep his canvas as an empty hotspot */
+    postmasterCanvas.width = 1;
+    postmasterCanvas.height = 1;
+    return;
+  }
   postmasterCanvas.width = PM_W * DETAIL;
   postmasterCanvas.height = PM_H * DETAIL;
   pm.setTransform(DETAIL, 0, 0, DETAIL, 0, 0);
@@ -1091,7 +1165,7 @@ function createEnvelope(startInView, forcedIndex) {
     width,
     baseX: 0.04 + Math.random() * 0.46, /* mail falls only through the left half of the room */
     y: startInView ? Math.random() * window.innerHeight * 0.5 : -width - 60,
-    speed: (11 + Math.random() * 13) * (0.55 + depth * 0.45),
+    speed: (28 + Math.random() * 32) * (0.55 + depth * 0.45),
     swayAmp: 12 + Math.random() * 22,
     swayFreq: 0.25 + Math.random() * 0.4,
     phase: Math.random() * Math.PI * 2,
@@ -1157,7 +1231,7 @@ function animate(now) {
       const sinkEnd = SCENE.basketRimCss + envH * 0.45;
 
       if (envelope.y >= sinkStart) {
-        envelope.speed = Math.max(envelope.speed, 55);
+        envelope.speed = Math.max(envelope.speed, 90);
         envelope.sinkP = Math.min(1, (envelope.y - sinkStart) / (sinkEnd - sinkStart));
       }
       envelope.y += envelope.speed * dt;
@@ -1171,7 +1245,7 @@ function animate(now) {
 
     if (envelopes.length < MAX_ENVELOPES && now >= nextSpawnAt) {
       createEnvelope(false);
-      nextSpawnAt = now + 3500 + Math.random() * 5500;
+      nextSpawnAt = now + 1800 + Math.random() * 2800;
     }
   }
 
