@@ -369,6 +369,48 @@ body {
   will-change: transform, opacity;
 }
 
+.vent-walker,
+.pool-gulper,
+.pool-fan-dancer,
+.pool-barrel-drifter {
+  pointer-events: none;
+}
+
+.vent-walker .walker-layer,
+.vent-walker .walker-puff,
+.pool-gulper .rig-layer,
+.pool-fan-dancer .rig-layer,
+.pool-barrel-drifter .rig-layer,
+.rig-puff {
+  position: absolute;
+}
+
+/* compositor promotion only for layers a rAF loop actually animates —
+   static layers (body, shell, disc) stay unpromoted to save GPU memory */
+.rig-anim,
+.walker-puff,
+.rig-puff {
+  will-change: transform, opacity;
+}
+
+.lantern-colony {
+  pointer-events: none;
+}
+
+.lantern-colony .lantern-tether {
+  height: 100%;
+  left: 0;
+  overflow: visible;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.lantern-colony .lantern-bulb {
+  position: absolute;
+  will-change: transform, opacity;
+}
+
 .abyssal-predator {
   filter: blur(5px) brightness(0.45) contrast(1.15) saturate(0.65);
   height: auto;

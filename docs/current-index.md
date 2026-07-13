@@ -63,7 +63,7 @@ The dot field changes z-depth with Jerry so particles can pass behind or in fron
 
 ## Denizens
 
-The pool includes amoebas, three jellyfish forms, rays, dot schools, pulse urchins, three-diamond fish, three-tentacled ball fish, alien shrimp, polyps, seafloor plants, brain coral, and the rare leviathan.
+The pool includes amoebas, three jellyfish forms, rays, dot schools, pulse urchins, three-diamond fish, three-tentacled ball fish, sulfur lantern colonies, vent walkers, alien shrimp, polyps, seafloor plants, brain coral, and the rare leviathan. The lantern colony and vent walker are pre-rendered Blender sprites (`lantern-colony.png`, `vent-walker.png`; sources in repo-root `tmp/jerrys-pool-denizens/`).
 
 One of every non-leviathan type appears within five seconds of load. Exact spawn intervals, opening times, passage durations, and concurrency limits are maintained only in `docs/denizen-frequency-rubric.md`; update that rubric whenever those values change.
 
