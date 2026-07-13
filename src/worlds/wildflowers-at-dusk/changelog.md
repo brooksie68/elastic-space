@@ -3,6 +3,76 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable (with James)
+
+- Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
+  link back to the map room, which now lives at the repo-root index.html. Visibility is controlled
+  site-wide by the map room's "show dashboard icons" toggle; when visible, the shared sound
+  control sits directly below it.
+
+## 2026-07-12 — claude-fable (30% of the torrent back)
+
+- Quick preset retuned per James — the fully even exodus lost too much end-drama, so this
+  leans ~30% back toward the original torrent: `firstGapMs` 1000 → 900, `batchGrowth`
+  1.25 → 1.3, `maxBatch` 30 → 38.
+- Simulated result: field quartiles depart at giant 27/38/51/63% risen (was 12/29/46/63
+  fully-steady; the old back-loaded torrent was 57/59/61/63). Field empties at 70.5s, giant
+  rises 29.5–94.5s, full blur ~1:45.
+- Next: James to ride it and judge the rush/steadiness balance by eye.
+
+## 2026-07-12 — claude-fable (3s rain freeze, even flora exodus)
+
+- **Rain phases split into three knobs** (`rainSlowMs` / `rainFreezeMs` / `rainReverseMs`).
+  Quick preset: 8s decelerate, only 3s frozen, 13s climbing to full reverse — first petals
+  still at 30s.
+- **"Too much all at the end" root-caused**: simulation showed James's suggested `firstGapMs`
+  nudge (from the previous entry's Next note) provably can't change the flora/giant alignment —
+  the giant's start is derived from queue-empty, so gap changes just rescale everything. The
+  real culprit was the batch curve: >50% of the field departed in the final ~3 seconds.
+- Fix: `batchGrowth` and `maxBatch` are now preset knobs (original: 1.28/60, unchanged).
+  Quick preset uses steady 1s event cadence (`firstGapMs` 1000, `gapDecay` 1.0) with gentler
+  batches (1.25/30): flora now leaves evenly — 50% gone with the giant only ~29% risen, 75% at
+  ~46% — instead of dumping during his climb. Giant rises 44–109s; full blur ~1:59.
+- All numbers verified by replaying the scheduler math against the flora count (1,319).
+- Next: James to feel out the 3s freeze and the steady exodus. If the exodus should keep a bit
+  more end-torrent drama, raise `batchGrowth`/`maxBatch` a notch and shrink `firstGapMs`.
+
+## 2026-07-12 — claude-fable (timeline presets, ~2 min quick arc)
+
+- **All arc pacing is now configurable** via `TIMELINE_PRESETS` at the very top of world.js.
+  Five knobs per preset: `introMs`, `rainPhaseMs` (per rain phase), `firstGapMs`, `gapDecay`,
+  `minGapMs`. First departure is derived (`introMs + 3 × rainPhaseMs`); the departure scheduler,
+  giant-rise simulation, and fast-forward all read the same values, so a preset swap retimes
+  everything consistently.
+- Two presets: `original` (the exact pre-existing pacing — first petals 86s, full blur ~5:09)
+  and `quick` (~2 min: rain sequence 6–30s, first petals 30s, giant rises 43.5–108.5s, full blur
+  ~1:59). **Currently shipping `quick`.** Flip back by changing one line:
+  `const TIMELINE = TIMELINE_PRESETS.original;`
+- Per James: the cut comes almost entirely from the front (dead intro + sparse early departures).
+  The giant's 65s rise length, his 55s lead before the blur, and the end-blur timing are
+  deliberately not in the presets — compression moves the giant earlier, never faster.
+- Timings above verified by replaying the scheduler math against the real flora count (1,319).
+- Next: James to ride the quick arc; if 30s to first petals still feels slow (or the ~55s
+  dissolution feels rushed), tune `quick`'s numbers or add a third preset.
+
+## 2026-07-12 — claude-fable (rain time-reversal prelude)
+
+- **The rain reverses before the world does** (James's shower idea): one minute before the first
+  petals depart, all three rain layers (foreground + both background sheets) ease to a stop over
+  20s, hang frozen mid-air for 20s, then run backward for 20s — so when the first flowers rise,
+  the rain is already falling upward with them, and stays reversed for the rest of the arc.
+- Implemented as a shared `rainClock` in world.js that integrates a flow rate (+1 → 0 → -1,
+  linear 20s ramps) each frame; all rain position math now reads `rainClock.value` instead of the
+  frame time, with a sign-safe modulo so the reversed clock wraps correctly.
+- **First departure moved 26s → 86s** (`FIRST_DEPARTURE_AT`) to make room for the minute — the
+  original 26s of untouched intro is preserved, then the rain sequence runs 26s–86s. The giant's
+  rise and end blur are derived from `dissolution.nextEventAt`, so they shifted automatically.
+- Rain audio bed is untouched — it keeps hissing while the drops hang frozen, which reads as
+  intended dream-logic rather than a bug.
+- Next: James to ride the new timeline in his own browser. Knobs: `FIRST_DEPARTURE_AT` and the
+  three 20s phase lengths in `rainFlowRate`. If the reversed phase reads backwards from what his
+  eye expects, flipping the sign convention in `rainFlowRate` is the one-line fix.
+
 ## 2026-07-12 — claude-fable (giant scale + crest + thrum fade)
 
 - **Giant plate 20% larger**: `.landscape-giant` width 90vw → 108vw (world.css).

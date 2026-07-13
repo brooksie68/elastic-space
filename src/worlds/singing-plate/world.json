@@ -47,7 +47,7 @@
   "notes": "Chladni standing-wave physics; sand gathers on real nodal lines. Three diegetic drift exits (night window, door seam, jar of luminous sand) plus a hidden fourth planned at the worn notch. Audio synthesized in Web Audio, gated behind first interaction; ElevenLabs one-shots may sweeten the gong.",
   "admin": {
     "owner": "brook",
-    "notes": "Idea #7 from Claude's Ideas.md, selected by James 2026-07-10. Draft until James approves publication.",
+    "notes": "Idea #7 from World Ideas.md, selected by James 2026-07-10. Draft until James approves publication.",
     "featured": false,
     "directoryOrder": 5,
     "editable": true,

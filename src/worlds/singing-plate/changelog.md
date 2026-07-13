@@ -3,6 +3,141 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable (with James)
+
+- Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
+  link back to the map room, which now lives at the repo-root index.html. Visibility is controlled
+  site-wide by the map room's "show dashboard icons" toggle; when visible, the shared sound
+  control sits directly below it.
+
+## 2026-07-11 — claude-fable (note tables: one octave higher)
+
+- All scale tables now build over 5 octaves instead of 4 (top of the triad: sol ~659 Hz → adds
+  do·mi·sol above, topping out ~1319 Hz). The overtone series extends from 8 to 16 partials
+  (440 → 880 Hz). Mallet strikes (`bowlNote`) index across the full table, so the rim now reaches
+  the new high voices; bowed pitch is unaffected (the modes only reach ~282 Hz).
+
+## 2026-07-11 — claude-fable (USE BOW sign: bigger, lower, pulsing)
+
+- "USE BOW" text 11 → 18 px and moved down (baseline rest.y + 34 → + 46); arrow lengthened and
+  thickened to match.
+- While the bow rests in its rack the sign pulses a soft brass glow (~1.8 s cycle: alpha
+  0.62–0.96 plus a 4–16 px canvas shadowBlur) to remind visitors the plate is played with the
+  bow. Picking the bow up stops the pulse (steady 0.78 alpha, no glow); racking it resumes.
+
+## 2026-07-11 — claude-fable (voicing lineup reordered)
+
+- Voicing stamps reordered to Triad · Lyd♭7 · Penta · Overtones · Hijaz · Rast, with Triad the
+  default selection (`state.chord = "triad"`). Free and Harm·Min removed — the plate is now always
+  quantized; the harmmin note table deleted with it. `quantize()`'s no-table fallback stays as a
+  safety net.
+
+## 2026-07-11 — claude-fable (soundscape −20%)
+
+- James: too loud even at 50% volume — the first bowl strike winced. Master base gain 0.9 → 0.72
+  (both in `initAudio` and `applyVolume`), and the room-tone bed 0.05 → 0.04 to match, since it
+  bypasses the Web Audio master. Per-voice balances untouched.
+
+## 2026-07-11 — claude-fable (mallet: bigger, strike bop)
+
+- Mallet scale 1.5 → 1.85.
+- Strike animation: on a bowl strike the mallet head dips onto the plate and springs back over
+  240 ms (`sin` curve, `malletHitAt` timestamp set in the pointerup strike path). The shadow stays
+  on the plate and tightens/darkens as the head descends; the head translates toward its shadow.
+  Holding the pointer down rests the head at a small constant dip.
+
+## 2026-07-11 — claude-fable (USE BOW sign; bowing vibrato)
+
+- Small brass sign under the rack: "USE BOW" in letterspaced Georgia small-caps with a drawn
+  up-arrow pointing at the stick. Rendered on the room canvas as part of `drawRack()`.
+- Bowing vibrato: while the held bow's hair is in contact with the rim, the hair ribbon alone
+  gets a perpendicular offset (~2–4 px, scaling with `state.intensity`) that flips sign every
+  50 ms — the wooden stick stays rigid in the hand (James's refinement of the two-frame shudder
+  idea). Draw-only; physics and hit-testing use the unshifted position.
+
+## 2026-07-11 — claude-fable (room-canvas sizing bug; thumb)
+
+- Fixed the "bow flies down-right on load and can't be grabbed" bug: `#room` had `inset: 0` but no
+  width/height — a canvas is a replaced element, so it displayed at its intrinsic size (viewport ×
+  devicePixelRatio) instead of stretching. At Windows 125/150% scaling everything drawn appeared
+  shifted down-right by the dpr factor, while grab hit-testing used the correct logical position —
+  the visible bow and the grabbable bow were in two different places. `width/height: 100%` fixes it.
+- Open-hand pose: added a thumb on the left side (bulge off the heel plus a web crease line).
+
+## 2026-07-11 — claude-fable (bow rack under the console; hand redraw)
+
+- James: the side holder was effectively invisible ("way off to the side… can't even see it") and
+  the hand looked strange. Both redone:
+  - Bow now hangs horizontally in a rack directly below the console: two brass clips hang from the
+    console's underside, each ending in an upward-open cradle. `restPose()` derives from the
+    console rect; the bow drifts home into the clips on release.
+  - Grab safety: window pointerdown ignores presses on `button/input/a/.console/.es-sound` so
+    reaching for Level the Sand (right above the rack) can't snatch the bow.
+  - Hand SVGs re-authored: classic pointing-hand silhouette drawn upright (index up, three knuckle
+    bumps, cuff) rotated -32° via CSS with transform-origin at the fingertip; cleaner fist for the
+    grip pose.
+
+## 2026-07-11 — claude-fable (the hand, the bow as an object, layout air)
+
+- James's redlines: prop-layer margin fought the console controls; native hand cursor over UI broke
+  the fiction; bow "stuck to the edges" felt wrong. Rebuilt the interaction model:
+  - **Persistent hand cursor.** Native cursor hidden everywhere (`cursor: none !important`);
+    `#hand` is a fixed DOM SVG — engraving-style brass hand, open pose with fingertip at the
+    pointer, closed grip pose while pressing/holding. z-above everything, pointer-events none.
+  - **Bow is a room object.** New full-viewport `#room` canvas (CSS-px space, z 40). The bow
+    rests on a walnut-and-brass holder to the right of the plate (clears the door portal);
+    grab it by clicking within 30 px of the stick, drag it anywhere. Release → it drifts home.
+  - **Free bowing.** While held, if the hair can reach the nearest rim point (grip within
+    0.95 bow lengths, bow length 0.3 plate widths) the bow bridges hand→rim and the plate sings —
+    contact rim point drives station/pitch, closeness drives pressure (`state.carryDepth`).
+    Away from the plate (cat included) it does nothing. Bare-finger rim presses no longer bow.
+  - Pointer handlers moved back from the oversized `#props` layer to `.plate` (margin conflict
+    with the console gone); `#props` is draw-only now (mallet). Console dropped 3.5vmin for air.
+- Watch for: hand SVG art is first-pass and may want James's redline; bow grabbing is a manual
+  hit-test on window pointerdown — links/controls under a carried bow release are unaffected.
+
+- James: mallet hits only made the figure fuzzier — grains re-settled immediately. Root cause:
+  strikes raised `state.intensity`, and the field pull scales with intensity, so a hit actually
+  reinforced the figure.
+- New `blastGrains(u, v, power)`: radial impulse away from the hit point (R 0.7, quadratic
+  falloff plus a floor so the whole plate feels it) with a chaotic tumble. Repeat hits scatter
+  harder (`1 + disorder * 0.7`).
+- New `state.disorder` (0..1): each strike adds 0.35 + 0.3·strike; the field pull is scaled by
+  `(1 - disorder)`, so a blasted plate stays blasted — grains freeze wherever they land.
+- Recovery: sustained bowing decays disorder at 0.22/s (~3–4.5 s back to full order, figure
+  re-forms as the pull returns); Level the Sand zeroes it instantly.
+
+- James: the bow illusion was broken — clipped inside the plate canvas, rotation pinned tangent to
+  a circle around the plate center, whole bow floating on the plate surface. Rebuilt:
+  - New oversized `#props` canvas (144% of plate, `PROP_MARGIN 0.22`, matching CSS inset) inside
+    `.plate` so it inherits the 3D tilt; bow and mallet moved off the sand canvas onto it.
+  - Bow now rides the perimeter: snaps to the nearest edge, drawn perpendicular to it — hair
+    contacting the rim, stick/frog/hand hanging outside the plate. Rotation eases (shortest-arc,
+    ~0.2 s) so it swings around corners instead of flipping 90°. Leans into the stroke; rosin
+    glow at the contact point while bowing.
+  - Pointer handlers moved from `.plate` to `#props`, so you can grab and bow from just outside
+    the rim (signed edge distance makes the bow zone extend outward naturally). Strikes still
+    require a tap inside the plate. Captured drags that wander off keep the bow alive.
+  - Mallet 50% larger (canvas-scale 1.5).
+- Watch for: portal hit areas vs. the enlarged prop layer (overlay is pointer-events auto over
+  its 22% margin); plaque sits under the bottom margin but is decorative only.
+
+## 2026-07-11 — claude-fable (master volume slider + shared sound control)
+
+- Added a visible **Volume** slider to the console (first control, before Reverb), defaulting to
+  50% on load — James's call: the page is loud, but the fix is user control over the ceiling, not
+  backing off the synth gains. All per-effect levels are untouched.
+- Wired the standard `ElasticSoundControl` (speaker button top right) as mute toggle; the world
+  previously had no user-facing master at all.
+- `world.js`: `sound` state + `applyVolume()` scale the Web Audio `master` gain (0.9 base) and the
+  room-tone `<audio>` element (0.05 base, fade preserved) together. `setMasterVolume()` is the
+  single entry point; the console slider and the control's hover slider stay in sync through it.
+- `core/sound-control.js`: `attach()` now also returns `setVolume(v)` so a world with its own
+  volume UI can drive the shared control's slider (backwards-compatible; other worlds unaffected).
+- `index.html`: loads `../../core/sound-control.js` before `world.js`.
+- Note: the plate only sounds when played, so the speaker control reads "on" at load (armed) —
+  the honest state for an instrument world. Interaction-driven `initAudio()` is unchanged.
+
 ## 2026-07-11 — claude-fable (session close, pre-wrapitup)
 
 - End-of-session capture for the session that created this world (all build rounds logged below).

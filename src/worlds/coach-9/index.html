@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Coach 9</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <canvas id="landscape" aria-hidden="true"></canvas>
+
+    <svg
+      id="interior"
+      viewBox="0 0 1920 1080"
+      preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="false"
+      role="img"
+      aria-label="A window seat on a quiet train; a woman reads while a child watches the landscape go by"
+    >
+      <defs>
+        <linearGradient id="wall-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f7e9d8" />
+          <stop offset="0.55" stop-color="#f3e2cd" />
+          <stop offset="1" stop-color="#e9d2b6" />
+        </linearGradient>
+        <linearGradient id="glass-streak" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0" />
+          <stop offset="0.42" stop-color="#ffffff" stop-opacity="0.10" />
+          <stop offset="0.46" stop-color="#ffffff" stop-opacity="0.02" />
+          <stop offset="0.62" stop-color="#ffffff" stop-opacity="0.09" />
+          <stop offset="0.66" stop-color="#ffffff" stop-opacity="0" />
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+        </linearGradient>
+        <linearGradient id="table-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#dfae78" />
+          <stop offset="1" stop-color="#c08c55" />
+        </linearGradient>
+        <linearGradient id="bench-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8db3ab" />
+          <stop offset="1" stop-color="#6f9992" />
+        </linearGradient>
+        <radialGradient id="reflect-warm" cx="0.5" cy="0.75" r="0.8">
+          <stop offset="0" stop-color="#ffd9ac" stop-opacity="0.35" />
+          <stop offset="1" stop-color="#3a2f3f" stop-opacity="0.55" />
+        </radialGradient>
+        <clipPath id="window-clip">
+          <rect x="150" y="110" width="1620" height="630" rx="46" />
+        </clipPath>
+      </defs>
+
+      <g id="coach">
+        <!-- glass: streaks + tunnel reflection, over the canvas, under the wall -->
+        <g clip-path="url(#window-clip)">
+          <rect x="150" y="110" width="1620" height="630" fill="url(#glass-streak)" />
+          <g id="reflection" opacity="0">
+            <rect x="150" y="110" width="1620" height="630" fill="url(#reflect-warm)" />
+            <ellipse cx="700" cy="620" rx="180" ry="170" fill="#f6d9b8" opacity="0.20" />
+            <ellipse cx="1230" cy="640" rx="130" ry="130" fill="#f6d9b8" opacity="0.16" />
+            <rect x="150" y="560" width="1620" height="180" fill="#7ea9a1" opacity="0.18" />
+          </g>
+        </g>
+
+        <!-- wall with the window cut out -->
+        <path
+          d="M0 0 H1920 V1080 H0 Z
+             M196 110
+             H1724 a46 46 0 0 1 46 46
+             V694 a46 46 0 0 1 -46 46
+             H196 a46 46 0 0 1 -46 -46
+             V156 a46 46 0 0 1 46 -46 Z"
+          fill="url(#wall-grad)" fill-rule="evenodd" />
+
+        <!-- window frame -->
+        <path
+          d="M182 96 H1738 a60 60 0 0 1 60 60 V694 a60 60 0 0 1 -60 60 H182 a60 60 0 0 1 -60 -60 V156 a60 60 0 0 1 60 -60 Z
+             M196 110 H1724 a46 46 0 0 1 46 46 V694 a46 46 0 0 1 -46 46 H196 a46 46 0 0 1 -46 -46 V156 a46 46 0 0 1 46 -46 Z"
+          fill="#e6c49c" fill-rule="evenodd" />
+        <path
+          d="M182 96 H1738 a60 60 0 0 1 60 60 V160 H122 v-4 a60 60 0 0 1 60 -60 Z"
+          fill="#d8b088" opacity="0.5" />
+        <!-- sill -->
+        <rect x="108" y="748" width="1704" height="26" rx="12" fill="#f0d6b4" />
+        <rect x="108" y="768" width="1704" height="8" rx="4" fill="#cfa87e" opacity="0.6" />
+
+        <!-- luggage rack hint above the window -->
+        <rect x="240" y="34" width="1440" height="8" rx="4" fill="#c39b6f" opacity="0.55" />
+        <path d="M420 42 v22 M760 42 v22 M1100 42 v22 M1460 42 v22" stroke="#c39b6f" stroke-width="7" stroke-linecap="round" opacity="0.45" />
+
+        <!-- curtains -->
+        <g id="curtain-left">
+          <path d="M150 108 q 66 20 58 150 q -10 170 26 330 q 14 90 -30 152 l -76 0 q -12 -330 0 -632 Z" fill="#f2bda9" />
+          <path d="M164 130 q 40 180 18 420" stroke="#e0a28c" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7" />
+          <path d="M118 470 q 60 -28 96 6 q -40 34 -96 20 Z" fill="#e59f86" />
+        </g>
+        <g id="curtain-right">
+          <path d="M1770 108 q -66 20 -58 150 q 10 170 -26 330 q -14 90 30 152 l 76 0 q 12 -330 0 -632 Z" fill="#f2bda9" />
+          <path d="M1756 130 q -40 180 -18 420" stroke="#e0a28c" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7" />
+          <path d="M1802 470 q -60 -28 -96 6 q 40 34 96 20 Z" fill="#e59f86" />
+        </g>
+
+        <!-- bench backrest under the window (they sit facing us) -->
+        <rect x="150" y="774" width="1620" height="150" rx="30" fill="url(#bench-grad)" />
+        <path d="M150 806 H1770" stroke="#5d8680" stroke-width="6" opacity="0.5" />
+        <circle cx="480" cy="860" r="7" fill="#5d8680" opacity="0.6" />
+        <circle cx="900" cy="860" r="7" fill="#5d8680" opacity="0.6" />
+        <circle cx="1320" cy="860" r="7" fill="#5d8680" opacity="0.6" />
+
+        <!-- the child, kneeling, facing the window (seen from behind) -->
+        <g id="child">
+          <path d="M1076 830 q -6 -120 34 -152 q 34 -22 68 -2 q 40 30 36 154 Z" fill="#e8b95f" />
+          <path d="M1092 728 q 22 -18 50 -14" stroke="#d6a447" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.8" />
+          <!-- left arm resting on the sill -->
+          <path d="M1096 720 q -20 -14 -26 -46 q -2 -14 12 -16 q 12 0 16 14 q 6 24 18 32 Z" fill="#e8b95f" />
+          <circle cx="1080" cy="658" r="13" fill="#ffe3cd" />
+          <!-- pointing arm: rotates up at the shoulder when something goes by -->
+          <g id="child-arm">
+            <path d="M1180 716 q 24 -10 32 -40 q 4 -14 -10 -18 q -12 -2 -17 12 q -8 22 -21 30 Z" fill="#e8b95f" />
+            <circle cx="1203" cy="660" r="13" fill="#ffe3cd" />
+          </g>
+          <!-- head from behind -->
+          <circle cx="1146" cy="640" r="44" fill="#54402f" />
+          <path d="M1112 618 q 34 -26 70 -2 q 4 22 -4 34 q -36 -18 -62 -4 q -8 -12 -4 -28 Z" fill="#5e4836" />
+          <path d="M1146 596 q -4 -16 8 -22 M1156 598 q 6 -14 18 -12" stroke="#54402f" stroke-width="6" fill="none" stroke-linecap="round" />
+          <ellipse cx="1104" cy="646" rx="7" ry="10" fill="#ffe3cd" />
+        </g>
+
+        <!-- the woman, reading -->
+        <g id="woman">
+          <!-- torso / cardigan -->
+          <path d="M520 872 q -6 -150 46 -196 q 30 -24 108 -24 q 52 46 46 220 Z" fill="#a9c4a2" />
+          <path d="M598 664 q 22 30 44 0 l 6 40 q -28 18 -56 0 Z" fill="#f6efe2" />
+          <path d="M560 700 q -18 60 -12 172 M680 700 q 18 60 12 172" stroke="#93b18b" stroke-width="7" fill="none" opacity="0.8" />
+          <!-- arms to the book -->
+          <path d="M548 720 q -18 60 20 96 q 20 16 44 12 l -8 -34 q -30 -4 -30 -44 q 0 -24 4 -34 Z" fill="#a9c4a2" />
+          <path d="M694 720 q 18 60 -20 96 q -20 16 -44 12 l 8 -34 q 30 -4 30 -44 q 0 -24 -4 -34 Z" fill="#a9c4a2" />
+          <circle cx="600" cy="826" r="13" fill="#ffe9d9" />
+          <circle cx="644" cy="826" r="13" fill="#ffe9d9" />
+          <!-- book -->
+          <g id="book">
+            <path d="M540 848 q 42 -26 82 -6 q 40 -20 82 6 l -10 34 q -34 -18 -72 -2 q -38 -16 -72 2 Z" fill="#c98d90" />
+            <path d="M552 842 q 36 -22 70 -4 q 34 -18 70 4 l -6 26 q -30 -16 -64 -2 q -34 -14 -64 2 Z" fill="#fbf3e4" />
+            <path id="page" d="M622 838 q 30 -16 62 2 l -4 22 q -28 -12 -58 0 Z" fill="#fff9ec" />
+          </g>
+          <!-- head -->
+          <g id="woman-head">
+            <ellipse cx="620" cy="580" rx="48" ry="53" fill="#ffe9d9" />
+            <!-- bob haircut -->
+            <path d="M566 592 q -12 -78 54 -86 q 66 8 54 86 q -6 -18 -14 -24 q 4 34 -6 46 q -2 -30 -12 -40 q -34 14 -66 -4 q -8 12 -10 44 q -10 -14 -6 -46 q -8 6 -14 24 Z" fill="#7d5648" />
+            <path d="M566 592 q -8 26 4 40 q 8 10 14 10 q -8 -26 -6 -50 Z" fill="#7d5648" />
+            <path d="M674 592 q 8 26 -4 40 q -8 10 -14 10 q 8 -26 6 -50 Z" fill="#7d5648" />
+            <!-- reading: lowered lids -->
+            <g id="eyes-down">
+              <path d="M588 598 q 10 9 22 1" stroke="#5c4238" stroke-width="5" fill="none" stroke-linecap="round" />
+              <path d="M632 599 q 10 8 22 0" stroke="#5c4238" stroke-width="5" fill="none" stroke-linecap="round" />
+            </g>
+            <!-- glancing at the window -->
+            <g id="eyes-up" style="display:none">
+              <ellipse cx="602" cy="596" rx="5.5" ry="7" fill="#5c4238" />
+              <ellipse cx="646" cy="596" rx="5.5" ry="7" fill="#5c4238" />
+              <path d="M586 586 q 12 -8 26 -3 M630 583 q 12 -5 26 3" stroke="#5c4238" stroke-width="4" fill="none" stroke-linecap="round" />
+            </g>
+            <circle cx="584" cy="616" r="8" fill="#f6b8a4" opacity="0.55" />
+            <circle cx="656" cy="616" r="8" fill="#f6b8a4" opacity="0.55" />
+            <path d="M612 626 q 8 6 16 0" stroke="#c9836f" stroke-width="4.5" fill="none" stroke-linecap="round" />
+          </g>
+        </g>
+
+        <!-- table -->
+        <g id="table">
+          <path d="M400 878 L1440 878 L1490 1010 Q 960 1044 350 1010 Z" fill="url(#table-grad)" />
+          <path d="M400 878 L1440 878 L1448 900 Q 920 918 392 900 Z" fill="#eec089" opacity="0.85" />
+          <path d="M470 940 q 460 26 940 -4" stroke="#b07f4b" stroke-width="4" fill="none" opacity="0.5" />
+        </g>
+
+        <!-- teacup -->
+        <g id="teacup">
+          <path id="steam" d="M918 858 q -8 -18 4 -30 q 10 -12 2 -26" stroke="#ffffff" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.6" />
+          <ellipse cx="912" cy="918" rx="40" ry="10" fill="#b07f4b" opacity="0.5" />
+          <path d="M882 880 q 0 32 30 32 q 30 0 30 -32 Z" fill="#fdf6ea" />
+          <path d="M942 884 q 20 2 16 18 q -4 12 -18 8" stroke="#fdf6ea" stroke-width="7" fill="none" />
+          <ellipse cx="912" cy="882" rx="29" ry="7" fill="#caa06a" />
+        </g>
+
+        <!-- cassette player: toggles the music -->
+        <g id="cassette" role="button" tabindex="0" aria-label="Toggle the music" style="cursor:pointer">
+          <ellipse cx="620" cy="972" rx="90" ry="14" fill="#a4713f" opacity="0.45" />
+          <rect x="530" y="906" width="180" height="64" rx="14" fill="#92aec7" />
+          <rect x="544" y="918" width="152" height="30" rx="10" fill="#dee9f2" />
+          <g id="spool-left">
+            <circle cx="586" cy="933" r="11" fill="#6d8aa6" />
+            <path d="M586 924 v18 M577 933 h18" stroke="#dee9f2" stroke-width="3" />
+          </g>
+          <g id="spool-right">
+            <circle cx="654" cy="933" r="11" fill="#6d8aa6" />
+            <path d="M654 924 v18 M645 933 h18" stroke="#dee9f2" stroke-width="3" />
+          </g>
+          <rect x="560" y="952" width="26" height="10" rx="4" fill="#6d8aa6" />
+          <rect x="596" y="952" width="26" height="10" rx="4" fill="#f0c987" />
+          <rect x="632" y="952" width="26" height="10" rx="4" fill="#6d8aa6" />
+        </g>
+
+        <!-- ticket stub on the table: a drift portal -->
+        <a data-drift href="../../../index.html" aria-label="Drift somewhere else">
+          <g transform="rotate(-7 1190 940)" style="cursor:pointer">
+            <rect x="1120" y="916" width="150" height="52" rx="8" fill="#f7e9b6" stroke="#dcc27c" stroke-width="3" />
+            <path d="M1152 922 v40" stroke="#dcc27c" stroke-width="3" stroke-dasharray="5 6" />
+            <text x="1168" y="940" font-family="Georgia, serif" font-size="17" fill="#8a6f33">VAL&#183;MIRA</text>
+            <text x="1168" y="960" font-family="Georgia, serif" font-size="14" fill="#b39a55">K &#183; 9</text>
+          </g>
+        </a>
+
+        <!-- route map above the window: a drift portal -->
+        <a data-drift href="../../../index.html" aria-label="Drift somewhere else">
+          <g style="cursor:pointer">
+            <rect x="700" y="18" width="420" height="58" rx="10" fill="#fbf1de" stroke="#c39b6f" stroke-width="5" />
+            <path d="M726 52 q 80 -22 168 0 q 88 22 172 -6" stroke="#8fb3c9" stroke-width="5" fill="none" stroke-linecap="round" />
+            <circle cx="748" cy="47" r="6" fill="#e08d7c" />
+            <circle cx="884" cy="42" r="6" fill="#e08d7c" />
+            <circle cx="1016" cy="52" r="6" fill="#e08d7c" />
+            <circle cx="1086" cy="43" r="6" fill="#f0c987" />
+          </g>
+        </a>
+
+        <!-- vestibule door at the end of the coach: a drift portal -->
+        <a data-drift href="../../../index.html" aria-label="Drift somewhere else">
+          <g style="cursor:pointer">
+            <rect x="1812" y="0" width="108" height="1080" fill="#d9b691" />
+            <rect x="1812" y="0" width="14" height="1080" fill="#b28d61" />
+            <rect x="1846" y="150" width="58" height="210" rx="16" fill="#fbe9c4" stroke="#b28d61" stroke-width="6" />
+            <rect x="1836" y="520" width="20" height="90" rx="9" fill="#8f6d45" />
+          </g>
+        </a>
+      </g>
+    </svg>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>

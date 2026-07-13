@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "slug": "toot-suite",
+  "title": "The Toot Suite",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-12T04:00:00Z",
+  "updatedAt": "2026-07-12T04:00:00Z",
+  "entry": "index.html",
+  "status": "live",
+  "summary": "A big puffy candy-colored fart soundboard: 36 bespoke toots, a mystery button, and puff-cloud particles.",
+  "tags": [
+    "sound",
+    "soundboard",
+    "comedy",
+    "interactive"
+  ],
+  "moods": [
+    "silly",
+    "joyful"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct"
+  ],
+  "exits": [],
+  "weight": 5,
+  "rarity": "common",
+  "era": "first-wave",
+  "warnings": [],
+  "soundtrack": [],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": false
+  },
+  "admin": {
+    "owner": "claude-fable",
+    "notes": "Built 2026-07-12 to make James's daughter laugh. Audio via ElevenLabs SFX API.",
+    "featured": false,
+    "directoryOrder": 0,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/toot-suite",
+    "assetPaths": [
+      "src/worlds/toot-suite"
+    ]
+  }
+}

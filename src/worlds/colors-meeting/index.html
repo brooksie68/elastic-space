@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Colors, Meeting</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <canvas id="painting" aria-hidden="true"></canvas>
+    <canvas id="grain" aria-hidden="true"></canvas>
+
+    <a class="portal portal-door" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+    <a class="portal portal-window" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+    <a class="portal portal-seam" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+
+    <div class="wall-label">
+      <button type="button" class="label-card" id="label-card" aria-expanded="false" aria-controls="panel">
+        <span class="label-title">Colors, Meeting</span>
+        <span class="label-medium">pigment on light, dimensions variable</span>
+      </button>
+      <a class="label-next" data-drift href="../../../index.html" aria-label="Drift somewhere else">Next Gallery</a>
+    </div>
+
+    <aside class="panel" id="panel" hidden aria-label="Conservator's panel">
+      <h2 class="panel-title">Conservator&rsquo;s Notes</h2>
+
+      <div class="row">
+        <span class="row-name">Fields</span>
+        <div class="steps" id="ctl-fields" role="radiogroup" aria-label="Number of fields">
+          <button type="button" data-n="2" role="radio" aria-checked="true" class="on">2</button>
+          <button type="button" data-n="3" role="radio" aria-checked="false">3</button>
+          <button type="button" data-n="4" role="radio" aria-checked="false">4</button>
+          <button type="button" data-n="5" role="radio" aria-checked="false">5</button>
+        </div>
+      </div>
+
+      <div class="row row-colors">
+        <span class="row-name">Pigments</span>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="row">
+        <span class="row-name">Palette</span>
+        <select id="ctl-preset" aria-label="Palette preset">
+          <option value="" selected>as hung</option>
+          <option value="dusk">Dusk</option>
+          <option value="no61">No. 61</option>
+          <option value="saffron">Saffron</option>
+          <option value="maroon">Black on Maroon</option>
+          <option value="center">White Center</option>
+          <option value="green">Green on Blue</option>
+        </select>
+        <label class="wander"><input type="checkbox" id="ctl-wander" /> let them wander</label>
+      </div>
+
+      <div class="row">
+        <span class="row-name">Tempo</span>
+        <div class="steps" id="ctl-speed" role="radiogroup" aria-label="Tempo">
+          <button type="button" data-v="glacial" role="radio" aria-checked="false">glacial</button>
+          <button type="button" data-v="slow" role="radio" aria-checked="true" class="on">slow</button>
+          <button type="button" data-v="restless" role="radio" aria-checked="false">restless</button>
+        </div>
+      </div>
+
+      <label class="row">
+        <span class="row-name">Seam</span>
+        <input type="range" id="ctl-softness" min="0" max="100" value="35" aria-label="Seam softness" />
+        <span class="row-ends">edge&thinsp;&middot;&thinsp;fog</span>
+      </label>
+
+      <label class="row">
+        <span class="row-name">Grain</span>
+        <input type="range" id="ctl-grain" min="0" max="100" value="25" aria-label="Grain amount" />
+        <span class="row-ends">smooth&thinsp;&middot;&thinsp;tooth</span>
+      </label>
+
+      <label class="row">
+        <span class="row-name">Drift</span>
+        <input type="range" id="ctl-drift" min="0" max="100" value="25" aria-label="Seam drift range" />
+        <span class="row-ends">a hair&thinsp;&middot;&thinsp;the whole canvas</span>
+      </label>
+
+      <button type="button" class="reset" id="ctl-reset">Restore original hanging</button>
+    </aside>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>

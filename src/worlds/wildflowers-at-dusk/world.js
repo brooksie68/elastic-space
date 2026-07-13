@@ -1,3 +1,59 @@
+// ---- Timeline presets ------------------------------------------------------
+// Every duration that shapes the arc, in one place. Switch the TIMELINE line
+// to retime the whole ride, or add a new preset to experiment. The giant's
+// rise speed and the end blur are deliberately NOT in here — they stay the
+// same regardless of pacing; compressing the timeline only moves them earlier.
+//   introMs       — quiet field before the rain starts to slow
+//   rainSlowMs    — rain decelerating to a standstill
+//   rainFreezeMs  — rain hanging frozen mid-air
+//   rainReverseMs — rain ramping up to full reverse speed; first petals depart
+//                   at introMs + rainSlowMs + rainFreezeMs + rainReverseMs
+//   firstGapMs    — gap between the earliest lone departures
+//   gapDecay      — each departure gap shrinks by this factor (accelerando)
+//   minGapMs      — gap floor during the final torrent
+//   batchGrowth   — departures per event grow by this factor per event
+//   maxBatch      — departures-per-event ceiling. Together with the gap knobs
+//                   this sets WHEN the flora leaves: fast growth + big cap
+//                   back-loads everything into a final torrent; slow growth +
+//                   small cap spreads the exodus evenly across the arc.
+const TIMELINE_PRESETS = {
+  // The original pacing, exactly: first petals at 86s, full blur ~5¼ min,
+  // most of the field departing in the final torrent.
+  original: {
+    introMs: 26000,
+    rainSlowMs: 20000,
+    rainFreezeMs: 20000,
+    rainReverseMs: 20000,
+    firstGapMs: 26000,
+    gapDecay: 0.88,
+    minGapMs: 220,
+    batchGrowth: 1.28,
+    maxBatch: 60,
+  },
+  // ~1:45 load → full blur: rain sequence 6–30s (brief 3s freeze, long climb
+  // to full reverse), first petals at 30s, then a mostly-even exodus with a
+  // moderate end-rush — 50% of the field gone when the giant is ~38% risen,
+  // 75% at ~51% — a 30% lean back toward the original torrent from the fully
+  // steady version. Giant rise length unchanged (65s, starting at ~29.5s).
+  quick: {
+    introMs: 6000,
+    rainSlowMs: 8000,
+    rainFreezeMs: 3000,
+    rainReverseMs: 13000,
+    firstGapMs: 900,
+    gapDecay: 1.0,
+    minGapMs: 220,
+    batchGrowth: 1.3,
+    maxBatch: 38,
+  },
+};
+const TIMELINE = TIMELINE_PRESETS.quick;
+
+const RAIN_REVERSAL_START = TIMELINE.introMs;
+const FIRST_DEPARTURE_AT =
+  TIMELINE.introMs + TIMELINE.rainSlowMs + TIMELINE.rainFreezeMs + TIMELINE.rainReverseMs;
+// ----------------------------------------------------------------------------
+
 const canvas = document.getElementById("sky-field");
 const cloudCanvas = document.getElementById("cloud-field");
 const rainMidCanvas = document.getElementById("rain-mid");
@@ -61,6 +117,34 @@ const midRainSheet = {
   lineWidth: 1.4,
   blur: 0.4,
 };
+
+// Rain time-reversal. Three equal phases before the first petals depart:
+// every rain layer eases to a stop, hangs frozen mid-air, then runs backward —
+// so by the moment the first flowers rise, the rain is already falling upward
+// with them, and stays that way. All rain draws from rainClock.value instead
+// of the frame time; the clock integrates the current flow rate (+1 normal …
+// 0 frozen … -1 reversed) each frame. Phase lengths live in TIMELINE.
+const rainClock = { value: 0, lastTime: 0 };
+
+function rainFlowRate(time) {
+  const t = time - RAIN_REVERSAL_START;
+  const { rainSlowMs, rainFreezeMs, rainReverseMs } = TIMELINE;
+  if (t <= 0) return 1;
+  if (t < rainSlowMs) return 1 - t / rainSlowMs;
+  if (t < rainSlowMs + rainFreezeMs) return 0;
+  if (t < rainSlowMs + rainFreezeMs + rainReverseMs) {
+    return -((t - rainSlowMs - rainFreezeMs) / rainReverseMs);
+  }
+  return -1;
+}
+
+function updateRainClock(time) {
+  const dt = rainClock.lastTime ? time - rainClock.lastTime : 0;
+  rainClock.lastTime = time;
+  // Negative: the draw math maps a growing clock to upward screen motion,
+  // so flow rate +1 must shrink it for the rain to read as falling.
+  rainClock.value -= dt * rainFlowRate(time);
+}
 
 const streamers = Array.from({ length: 14 }, () => ({
   x: Math.random(),
@@ -185,8 +269,8 @@ const backFlowerRows = [
 
 const dissolution = {
   queue: null,
-  interval: 26000,
-  nextEventAt: 26000,
+  interval: TIMELINE.firstGapMs,
+  nextEventAt: FIRST_DEPARTURE_AT,
   eventIndex: 0,
 };
 const motes = [];
@@ -709,9 +793,10 @@ function drawRainSheet(targetContext, sheet, time) {
   targetContext.lineWidth = sheet.lineWidth;
   targetContext.filter = `blur(${sheet.blur}px)`;
   targetContext.beginPath();
+  const cycle = window.innerHeight + 40;
   sheet.drops.forEach((drop) => {
     const x = drop.x * window.innerWidth;
-    const baseY = (drop.y * window.innerHeight + time * drop.speed) % (window.innerHeight + 40);
+    const baseY = (((drop.y * window.innerHeight + rainClock.value * drop.speed) % cycle) + cycle) % cycle;
     const y = window.innerHeight - baseY;
     targetContext.moveTo(x, y);
     targetContext.lineTo(x + drop.slant, y - drop.length);
@@ -721,9 +806,10 @@ function drawRainSheet(targetContext, sheet, time) {
 }
 
 function drawRain(time) {
+  const cycle = window.innerHeight + 80;
   rain.forEach((drop, index) => {
     const x = drop.x * window.innerWidth;
-    const baseY = (drop.y * window.innerHeight + time * drop.speed) % (window.innerHeight + 80);
+    const baseY = (((drop.y * window.innerHeight + rainClock.value * drop.speed) % cycle) + cycle) % cycle;
     const y = window.innerHeight - baseY;
     const rainColor = `rgba(225, 239, 255, ${drop.glow})`;
     if (drop.shape === "drop") {
@@ -1239,10 +1325,10 @@ function scheduleGiantRise(totalCount) {
   let remaining = totalCount;
   let eventIndex = 0;
   while (remaining > 0) {
-    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, eventIndex))));
     remaining -= batch;
     eventIndex += 1;
-    simInterval = Math.max(220, simInterval * 0.88);
+    simInterval = Math.max(TIMELINE.minGapMs, simInterval * TIMELINE.gapDecay);
     simTime += simInterval;
   }
   // Last risers take ~9s to clear, then the 5s beat before the blur.
@@ -1255,14 +1341,14 @@ function scheduleGiantRise(totalCount) {
 function fastForwardDissolution(target) {
   timeSkip = Math.max(0, target);
   while (dissolution.queue.length && dissolution.nextEventAt <= target) {
-    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, dissolution.eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
     for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
       const entry = dissolution.queue.shift();
       entry.item.gone = true;
       if (entry.row) entry.row.dirty = true;
     }
     dissolution.eventIndex += 1;
-    dissolution.interval = Math.max(220, dissolution.interval * 0.88);
+    dissolution.interval = Math.max(TIMELINE.minGapMs, dissolution.interval * TIMELINE.gapDecay);
     dissolution.nextEventAt += dissolution.interval;
   }
 }
@@ -1332,12 +1418,12 @@ function departEntry(entry, time) {
 function updateDissolution(time) {
   if (!dissolution.queue) buildDissolutionQueue();
   while (dissolution.queue.length && time >= dissolution.nextEventAt) {
-    const batch = Math.min(60, Math.max(1, Math.round(Math.pow(1.28, dissolution.eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
     for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
       departEntry(dissolution.queue.shift(), time);
     }
     dissolution.eventIndex += 1;
-    dissolution.interval = Math.max(220, dissolution.interval * 0.88);
+    dissolution.interval = Math.max(TIMELINE.minGapMs, dissolution.interval * TIMELINE.gapDecay);
     dissolution.nextEventAt = time + dissolution.interval;
   }
   const dirtyRow = backFlowerRows.find((row) => row.dirty);
@@ -1403,6 +1489,7 @@ function drawMotes(time) {
 
 function animate(time) {
   time += timeSkip;
+  updateRainClock(time);
   context = cloudScreenContext;
   context.clearRect(0, 0, window.innerWidth, window.innerHeight);
   drawSky(time);

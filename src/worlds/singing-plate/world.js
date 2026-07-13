@@ -242,7 +242,27 @@
     }
   }
 
+  // A mallet blast: grains fly radially away from the hit with a chaotic
+  // tumble, hardest near the impact but nobody is spared. Repeat hits land
+  // on an already-disordered plate and scatter even harder.
+  function blastGrains(u, v, power) {
+    const R = 0.7;
+    const base =
+      (reducedMotion ? 0.6 : 1) *
+      (0.028 + 0.06 * power) *
+      (1 + state.disorder * 0.7);
+    for (let i = 0; i < GRAIN_COUNT; i++) {
+      const dx = gX[i] - u, dy = gY[i] - v;
+      const r = Math.sqrt(dx * dx + dy * dy) || 1e-4;
+      const fall = Math.max(0, 1 - r / R);
+      const imp = base * (0.12 + fall * fall * 1.4);
+      gVX[i] += (dx / r) * imp + (Math.random() - 0.5) * imp;
+      gVY[i] += (dy / r) * imp + (Math.random() - 0.5) * imp;
+    }
+  }
+
   function levelSand() {
+    state.disorder = 0;
     for (let i = 0; i < GRAIN_COUNT; i++) {
       gX[i] = 0.02 + Math.random() * 0.96;
       gY[i] = 0.02 + Math.random() * 0.96;
@@ -270,7 +290,7 @@
     moveDX: 0, moveDY: 0,
     cursorSpeed: 0,
     avgGrainSpeed: 0,
-    chord: "free",
+    chord: "triad",
     reverb: 0.3,
     delay: 0.12,
     strike: 0.6,
@@ -279,6 +299,8 @@
     keyStation: null,  // station held via the number-key manual
     bowLevel: 0,       // sustained bow pressure, 0..1
     bowingActive: false,
+    disorder: 0,       // mallet chaos, 0..1 — kills the field pull until bowed back
+    carryDepth: null,  // bow pressure while the carried bow works the rim
   };
 
   // ------------------------------------------------------------------- audio
@@ -291,11 +313,34 @@
     ready: false,
   };
 
+  // Master level, owned by the shared sound control. The plate only sounds
+  // when played, so "on" means armed rather than audible.
+  const sound = { on: true, volume: 0.5, room: null, roomLevel: 0, control: null };
+
+  function applyVolume() {
+    const v = sound.on ? sound.volume : 0;
+    if (audio.master) {
+      audio.master.gain.setTargetAtTime(0.72 * v, audio.ctx.currentTime, 0.05);
+    }
+    if (sound.room) sound.room.volume = sound.roomLevel * v;
+  }
+
+  // Single entry point for master volume — the console slider and the shared
+  // control's hover slider both land here, and each keeps the other's UI honest.
+  function setMasterVolume(v) {
+    sound.volume = Math.min(1, Math.max(0, v));
+    applyVolume();
+    const el = document.getElementById("ctl-volume");
+    if (el && Number(el.value) !== Math.round(sound.volume * 100)) {
+      el.value = Math.round(sound.volume * 100);
+    }
+  }
+
   // chord tables for the quantized voicings, built over A = 55 Hz
   const NOTE_TABLES = (() => {
     const build = (semis) => {
       const notes = [];
-      for (let oct = 0; oct < 4; oct++) {
+      for (let oct = 0; oct < 5; oct++) {
         for (const s of semis) notes.push(55 * Math.pow(2, oct + s / 12));
       }
       return notes.sort((a, b) => a - b);
@@ -303,9 +348,8 @@
     return {
       triad: build([0, 3, 7]),
       penta: build([0, 3, 5, 7, 10]),
-      overtone: [55, 110, 165, 220, 275, 330, 385, 440].map((f) => f * 1),
+      overtone: Array.from({ length: 16 }, (_, i) => 55 * (i + 1)),
       lydb7: build([0, 2, 4, 6, 7, 9, 10]),      // lydian dominant
-      harmmin: build([0, 2, 3, 5, 7, 8, 11]),    // harmonic minor
       hijaz: build([0, 1, 4, 5, 7, 8, 10]),      // maqam hijaz — that augmented second
       rast: build([0, 2, 3.5, 5, 7, 9, 10.5]),   // maqam rast — true quarter tones
     };
@@ -345,7 +389,7 @@
     try { await ctx.resume(); } catch {}
 
     const master = ctx.createGain();
-    master.gain.value = 0.9;
+    master.gain.value = 0.72 * (sound.on ? sound.volume : 0);
     master.connect(ctx.destination);
     audio.master = master;
 
@@ -475,12 +519,14 @@
     const room = new Audio("./assets/audio/room-tone.mp3");
     room.loop = true;
     room.volume = 0;
+    sound.room = room;
     room
       .play()
       .then(() => {
         const fade = setInterval(() => {
-          room.volume = Math.min(0.05, room.volume + 0.003);
-          if (room.volume >= 0.05) clearInterval(fade);
+          sound.roomLevel = Math.min(0.04, sound.roomLevel + 0.003);
+          applyVolume();
+          if (sound.roomLevel >= 0.04) clearInterval(fade);
         }, 120);
       })
       .catch(() => {});
@@ -590,12 +636,171 @@
   const freqEl = document.getElementById("freq");
   let plaqueSinging = false;
 
+  // The prop layer extends past the plate on every side so the bow can hang
+  // over the rim. Must match the #props inset in world.css.
+  const PROP_MARGIN = 0.22;
+  const props = document.getElementById("props");
+  const pctx = props.getContext("2d");
+
   function fit() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const size = plate.clientWidth;
     canvas.width = Math.round(size * dpr);
     canvas.height = Math.round(size * dpr);
+    props.width = Math.round(size * (1 + PROP_MARGIN * 2) * dpr);
+    props.height = props.width;
+    fitRoom();
   }
+
+  // ------------------------------------------------------- the hand, the bow
+
+  // Room-space layer: full-viewport canvas in CSS pixels for the bow, its
+  // rest, and the rosin glow. The hand itself is a DOM element (#hand).
+  const roomCanvas = document.getElementById("room");
+  const rctx = roomCanvas.getContext("2d");
+  const handEl = document.getElementById("hand");
+
+  function fitRoom() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    roomCanvas.width = Math.round(window.innerWidth * dpr);
+    roomCanvas.height = Math.round(window.innerHeight * dpr);
+    rctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  const hand = { x: -200, y: -200, down: false };
+
+  // The bow lives in the room now: it rests on a holder beside the plate,
+  // and only sounds while its hair is reaching the rim. x/y is the frog —
+  // the grip point, which is the pointer while held.
+  const bowObj = {
+    held: false,
+    x: -200, y: -200,
+    angle: -1.25,
+    len: 200,
+    inContact: false,
+    contactX: 0, contactY: 0,
+  };
+  const CARRY_ANGLE = -0.9; // relaxed diagonal while carried away from the plate
+  const consoleEl = document.querySelector(".console");
+
+  // The bow hangs horizontally in two clips just below the console.
+  function restPose() {
+    const c = consoleEl.getBoundingClientRect();
+    const len = plate.getBoundingClientRect().width * 0.3;
+    return {
+      x: c.left + (c.width - len) / 2, // frog end
+      y: c.bottom + 26,
+      angle: 0,
+      len,
+      rackBottom: c.bottom,
+    };
+  }
+
+  function distToBow(x, y) {
+    // distance to the stick segment frog→tip
+    const tx = bowObj.x + Math.cos(bowObj.angle) * bowObj.len;
+    const ty = bowObj.y + Math.sin(bowObj.angle) * bowObj.len;
+    const dx = tx - bowObj.x, dy = ty - bowObj.y;
+    const t = Math.min(1, Math.max(0,
+      ((x - bowObj.x) * dx + (y - bowObj.y) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - (bowObj.x + dx * t), y - (bowObj.y + dy * t));
+  }
+
+  function stopBowing() {
+    state.bowing = false;
+    state.pointerDown = false;
+    state.carryDepth = null;
+    bowObj.inContact = false;
+  }
+
+  // Carried-bow physics: find the nearest rim point; if the hair can reach
+  // it, the bow bridges hand→rim and the plate sings from that contact.
+  function updateCarried(dt) {
+    const r = plate.getBoundingClientRect();
+    bowObj.x = hand.x;
+    bowObj.y = hand.y;
+    bowObj.len = r.width * 0.3;
+
+    const u = (hand.x - r.left) / r.width;
+    const v = (hand.y - r.top) / r.height;
+    let nu = Math.min(1, Math.max(0, u));
+    let nv = Math.min(1, Math.max(0, v));
+    if (u > 0 && u < 1 && v > 0 && v < 1) {
+      // grip is over the plate: project to the nearest edge
+      const d = [v, 1 - u, 1 - v, u]; // top right bottom left
+      let e = 0;
+      for (let i = 1; i < 4; i++) if (d[i] < d[e]) e = i;
+      if (e === 0) nv = 0;
+      else if (e === 1) nu = 1;
+      else if (e === 2) nv = 1;
+      else nu = 0;
+    }
+    const cx = r.left + nu * r.width;
+    const cy = r.top + nv * r.height;
+    const dist = Math.hypot(cx - hand.x, cy - hand.y);
+    const reach = bowObj.len * 0.95;
+    const inContact = dist < reach;
+
+    let targetAngle = inContact && dist > 4
+      ? Math.atan2(cy - hand.y, cx - hand.x)
+      : (inContact ? bowObj.angle : CARRY_ANGLE);
+    let dA = targetAngle - bowObj.angle;
+    while (dA > Math.PI) dA -= Math.PI * 2;
+    while (dA < -Math.PI) dA += Math.PI * 2;
+    bowObj.angle += dA * Math.min(1, dt * 12);
+
+    if (inContact) {
+      state.moveDX += nu - state.u;
+      state.moveDY += nv - state.v;
+      state.u = nu;
+      state.v = nv;
+      state.carryDepth = Math.min(1, Math.max(0, 1 - dist / reach));
+      state.bowing = true;
+      state.pointerDown = true;
+      state.pointerOver = false; // no plough or mallet under a carried bow
+      bowObj.contactX = cx;
+      bowObj.contactY = cy;
+      bowObj.inContact = true;
+    } else if (bowObj.inContact) {
+      stopBowing();
+    }
+  }
+
+  function grabBow(e) {
+    bowObj.held = true;
+    initAudio();
+    e.preventDefault();
+  }
+
+  function releaseBow() {
+    bowObj.held = false;
+    stopBowing();
+  }
+
+  window.addEventListener("pointermove", (e) => {
+    hand.x = e.clientX;
+    hand.y = e.clientY;
+  });
+  window.addEventListener("pointerdown", (e) => {
+    hand.x = e.clientX;
+    hand.y = e.clientY;
+    hand.down = true;
+    handEl.classList.add("grab");
+    // never steal presses meant for real controls (console sits right above the rack)
+    const onControl = e.target.closest &&
+      e.target.closest("button, input, a, .console, .es-sound");
+    if (!bowObj.held && !onControl && distToBow(e.clientX, e.clientY) < 30) grabBow(e);
+  });
+  window.addEventListener("pointerup", () => {
+    hand.down = false;
+    handEl.classList.remove("grab");
+    if (bowObj.held) releaseBow();
+  });
+  window.addEventListener("pointercancel", () => {
+    hand.down = false;
+    handEl.classList.remove("grab");
+    if (bowObj.held) releaseBow();
+  });
 
   function bucketColors() {
     const t = state.modeFloat / (MODES.length - 1);
@@ -609,99 +814,203 @@
     return colors;
   }
 
-  function drawBow(px, py, tangent, pressed, w) {
-    const L = 0.115 * w;
-    ctx2d.save();
-    ctx2d.translate(px, py);
-    ctx2d.rotate(tangent);
-    ctx2d.globalAlpha = pressed ? 1 : 0.6;
+  // The bow, drawn in room space: frog at (x, y) — the grip — with the stick
+  // running along `angle` to the tip.
+  function drawBow(x, y, angle, alpha, hairVib) {
+    const L = bowObj.len / 2;
+    rctx.save();
+    rctx.translate(x, y);
+    rctx.rotate(angle);
+    rctx.translate(L, 0); // art spans -L (frog) to +L (tip)
+    rctx.globalAlpha = alpha;
 
-    // shadow on the plate
-    ctx2d.fillStyle = "rgba(0,0,0,0.3)";
-    ctx2d.beginPath();
-    ctx2d.ellipse(0, 10, L * 0.92, 4.5, 0, 0, Math.PI * 2);
-    ctx2d.fill();
-
-    // hair ribbon
-    ctx2d.fillStyle = "rgba(233,225,198,0.55)";
-    ctx2d.fillRect(-L, 1.5, L * 2, 3);
+    // hair ribbon — the only part that vibrates; the stick stays in the hand
+    rctx.fillStyle = "rgba(233,225,198,0.55)";
+    rctx.fillRect(-L, 1.5 + (hairVib || 0), L * 2, 3);
 
     // arched stick, lit from the lamp
-    const grad = ctx2d.createLinearGradient(-L, 0, L, 0);
+    const grad = rctx.createLinearGradient(-L, 0, L, 0);
     grad.addColorStop(0, "#7a5426");
     grad.addColorStop(0.5, "#8a6230");
     grad.addColorStop(1, "#4a3212");
-    ctx2d.strokeStyle = grad;
-    ctx2d.lineWidth = 4.5;
-    ctx2d.lineCap = "round";
-    ctx2d.beginPath();
-    ctx2d.moveTo(-L, -2);
-    ctx2d.quadraticCurveTo(0, -11, L, -3);
-    ctx2d.stroke();
-    ctx2d.strokeStyle = "rgba(255,214,150,0.5)";
-    ctx2d.lineWidth = 1.4;
-    ctx2d.beginPath();
-    ctx2d.moveTo(-L, -3.5);
-    ctx2d.quadraticCurveTo(0, -12.5, L, -4.5);
-    ctx2d.stroke();
+    rctx.strokeStyle = grad;
+    rctx.lineWidth = 4.5;
+    rctx.lineCap = "round";
+    rctx.beginPath();
+    rctx.moveTo(-L, -2);
+    rctx.quadraticCurveTo(0, -11, L, -3);
+    rctx.stroke();
+    rctx.strokeStyle = "rgba(255,214,150,0.5)";
+    rctx.lineWidth = 1.4;
+    rctx.beginPath();
+    rctx.moveTo(-L, -3.5);
+    rctx.quadraticCurveTo(0, -12.5, L, -4.5);
+    rctx.stroke();
 
-    // frog and winding at the near end
-    ctx2d.fillStyle = "#1c1208";
-    ctx2d.fillRect(-L - 9, -7, 12, 12);
-    ctx2d.fillStyle = "#c9a55a";
-    ctx2d.beginPath();
-    ctx2d.arc(-L - 3, -1, 1.8, 0, Math.PI * 2);
-    ctx2d.fill();
+    // frog and winding at the grip
+    rctx.fillStyle = "#1c1208";
+    rctx.fillRect(-L - 9, -7, 12, 12);
+    rctx.fillStyle = "#c9a55a";
+    rctx.beginPath();
+    rctx.arc(-L - 3, -1, 1.8, 0, Math.PI * 2);
+    rctx.fill();
     // tip taper
-    ctx2d.fillStyle = "#3a2812";
-    ctx2d.beginPath();
-    ctx2d.moveTo(L, -6);
-    ctx2d.lineTo(L + 7, -1);
-    ctx2d.lineTo(L, 3);
-    ctx2d.closePath();
-    ctx2d.fill();
+    rctx.fillStyle = "#3a2812";
+    rctx.beginPath();
+    rctx.moveTo(L, -6);
+    rctx.lineTo(L + 7, -1);
+    rctx.lineTo(L, 3);
+    rctx.closePath();
+    rctx.fill();
 
-    ctx2d.globalAlpha = 1;
-    ctx2d.restore();
+    rctx.globalAlpha = 1;
+    rctx.restore();
   }
 
-  function drawMallet(px, py, pressed) {
-    ctx2d.save();
-    ctx2d.translate(px, py);
-    ctx2d.globalAlpha = pressed ? 1 : 0.75;
+  // The rack: two brass clips hanging from the underside of the console,
+  // each ending in an upward-open cradle the stick lies in.
+  function drawRack(rest) {
+    rctx.save();
+    rctx.lineCap = "round";
+    for (const t of [0.24, 0.76]) {
+      const x = rest.x + rest.len * t;
+      // strap down from the console
+      rctx.strokeStyle = "#8a6f3c";
+      rctx.lineWidth = 3;
+      rctx.beginPath();
+      rctx.moveTo(x, rest.rackBottom - 2);
+      rctx.lineTo(x, rest.y - 5);
+      rctx.stroke();
+      // cradle
+      rctx.strokeStyle = "#c9a55a";
+      rctx.lineWidth = 2.4;
+      rctx.beginPath();
+      rctx.arc(x, rest.y - 4, 7, Math.PI * 0.08, Math.PI * 0.92);
+      rctx.stroke();
+    }
 
-    ctx2d.fillStyle = "rgba(0,0,0,0.3)";
-    ctx2d.beginPath();
-    ctx2d.ellipse(3, 12, 14, 5, 0, 0, Math.PI * 2);
-    ctx2d.fill();
+    // the sign: USE BOW, with an arrow up at the bow. While the bow rests it
+    // pulses a soft brass glow to catch the eye; picking the bow up stops it.
+    const cx = rest.x + rest.len / 2;
+    let alpha = 0.78;
+    if (!bowObj.held) {
+      const pulse = (Math.sin(performance.now() / 900 * Math.PI) + 1) / 2; // ~1.8 s cycle
+      alpha = 0.62 + pulse * 0.34;
+      rctx.shadowColor = "rgba(255, 214, 140, 0.85)";
+      rctx.shadowBlur = 4 + pulse * 12;
+    }
+    rctx.fillStyle = `rgba(201, 165, 90, ${alpha})`;
+    rctx.strokeStyle = `rgba(201, 165, 90, ${alpha})`;
+    rctx.font = "600 18px Georgia, 'Times New Roman', serif";
+    rctx.textAlign = "center";
+    rctx.textBaseline = "alphabetic";
+    const label = "U S E   B O W";
+    rctx.fillText(label, cx + 12, rest.y + 46);
+    // arrow, left of the label, pointing up at the stick
+    const ax = cx - rctx.measureText(label).width / 2 - 2;
+    rctx.lineWidth = 2;
+    rctx.lineCap = "round";
+    rctx.beginPath();
+    rctx.moveTo(ax, rest.y + 46);
+    rctx.lineTo(ax, rest.y + 14);
+    rctx.moveTo(ax - 5, rest.y + 20);
+    rctx.lineTo(ax, rest.y + 14);
+    rctx.lineTo(ax + 5, rest.y + 20);
+    rctx.stroke();
+    rctx.restore();
+  }
+
+  function renderRoom(dt) {
+    rctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    const rest = restPose();
+    drawRack(rest);
+
+    if (!bowObj.held) {
+      // the bow drifts home to its rack
+      const k = Math.min(1, dt * 7);
+      bowObj.x += (rest.x - bowObj.x) * k;
+      bowObj.y += (rest.y - bowObj.y) * k;
+      let dA = rest.angle - bowObj.angle;
+      while (dA > Math.PI) dA -= Math.PI * 2;
+      while (dA < -Math.PI) dA += Math.PI * 2;
+      bowObj.angle += dA * k;
+      bowObj.len = rest.len;
+    }
+
+    // vibrato: while the hair works the rim it flutters against the rigid
+    // stick, flipping sign every 50 ms
+    let hairVib = 0;
+    if (bowObj.held && bowObj.inContact) {
+      hairVib = (1.8 + state.intensity * 2.4) *
+        ((Math.floor(performance.now() / 50) & 1) * 2 - 1);
+    }
+    drawBow(bowObj.x, bowObj.y, bowObj.angle, bowObj.held ? 1 : 0.92, hairVib);
+
+    // rosin dust where the hair works the rim
+    if (bowObj.held && bowObj.inContact) {
+      const glow = rctx.createRadialGradient(
+        bowObj.contactX, bowObj.contactY, 0,
+        bowObj.contactX, bowObj.contactY, 16);
+      glow.addColorStop(0, "rgba(255,230,170,0.55)");
+      glow.addColorStop(1, "rgba(255,230,170,0)");
+      rctx.fillStyle = glow;
+      rctx.beginPath();
+      rctx.arc(bowObj.contactX, bowObj.contactY, 16, 0, Math.PI * 2);
+      rctx.fill();
+    }
+
+    handEl.style.transform = `translate3d(${hand.x}px, ${hand.y}px, 0)`;
+  }
+
+  let malletHitAt = -1e9;
+
+  function drawMallet(px, py, pressed) {
+    pctx.save();
+    pctx.translate(px, py);
+    pctx.scale(1.85, 1.85);
+    pctx.globalAlpha = pressed ? 1 : 0.75;
+
+    // strike bop: down onto the plate and back up over 240 ms
+    const t = (performance.now() - malletHitAt) / 240;
+    const dip = t >= 0 && t < 1 ? Math.sin(t * Math.PI) * 9 : (pressed ? 3 : 0);
+
+    // shadow stays on the plate; it tightens as the head comes down
+    pctx.fillStyle = `rgba(0,0,0,${0.3 + dip * 0.02})`;
+    pctx.beginPath();
+    pctx.ellipse(3, 12, 14 - dip * 0.5, 5 - dip * 0.15, 0, 0, Math.PI * 2);
+    pctx.fill();
+
+    // the mallet itself descends toward its shadow
+    pctx.translate(dip * 0.3, dip);
 
     // shaft running away to the lower right
-    const grad = ctx2d.createLinearGradient(8, 8, 52, 52);
+    const grad = pctx.createLinearGradient(8, 8, 52, 52);
     grad.addColorStop(0, "#6a4622");
     grad.addColorStop(1, "#2c1a0a");
-    ctx2d.strokeStyle = grad;
-    ctx2d.lineWidth = 5;
-    ctx2d.lineCap = "round";
-    ctx2d.beginPath();
-    ctx2d.moveTo(7, 7);
-    ctx2d.lineTo(50, 50);
-    ctx2d.stroke();
+    pctx.strokeStyle = grad;
+    pctx.lineWidth = 5;
+    pctx.lineCap = "round";
+    pctx.beginPath();
+    pctx.moveTo(7, 7);
+    pctx.lineTo(50, 50);
+    pctx.stroke();
 
     // felt head
-    const head = ctx2d.createRadialGradient(-3, -4, 2, 0, 0, 12);
+    const head = pctx.createRadialGradient(-3, -4, 2, 0, 0, 12);
     head.addColorStop(0, "#e9dcc2");
     head.addColorStop(0.7, "#a8977a");
     head.addColorStop(1, "#6a5c48");
-    ctx2d.fillStyle = head;
-    ctx2d.beginPath();
-    ctx2d.arc(0, 0, 11.5, 0, Math.PI * 2);
-    ctx2d.fill();
-    ctx2d.strokeStyle = "rgba(0,0,0,0.35)";
-    ctx2d.lineWidth = 1;
-    ctx2d.stroke();
+    pctx.fillStyle = head;
+    pctx.beginPath();
+    pctx.arc(0, 0, 11.5, 0, Math.PI * 2);
+    pctx.fill();
+    pctx.strokeStyle = "rgba(0,0,0,0.35)";
+    pctx.lineWidth = 1;
+    pctx.stroke();
 
-    ctx2d.globalAlpha = 1;
-    ctx2d.restore();
+    pctx.globalAlpha = 1;
+    pctx.restore();
   }
 
   function render() {
@@ -725,20 +1034,20 @@
       }
     }
 
-    if (state.pointerOver) {
-      const px = state.u * w;
-      const py = state.v * h;
-      const edge = Math.min(state.u, 1 - state.u, state.v, 1 - state.v);
-      ctx2d.globalCompositeOperation = "source-over";
-      if (edge < BOW_ZONE) {
-        const tangent = Math.atan2(state.v - 0.5, state.u - 0.5) + Math.PI / 2;
-        drawBow(px, py, tangent, state.pointerDown, w);
-      } else {
-        drawMallet(px, py, state.pointerDown);
-      }
-      ctx2d.globalCompositeOperation = "lighter";
-    }
     ctx2d.globalCompositeOperation = "source-over";
+  }
+
+  function renderProps() {
+    const pw = props.width;
+    pctx.clearRect(0, 0, pw, pw);
+    if (!state.pointerOver || bowObj.held) return;
+    const s = canvas.width; // plate size in device px
+    const off = (pw - s) / 2;
+    const edge = Math.min(state.u, 1 - state.u, state.v, 1 - state.v);
+    if (edge >= BOW_ZONE &&
+        state.u >= 0 && state.u <= 1 && state.v >= 0 && state.v <= 1) {
+      drawMallet(off + state.u * s, off + state.v * s, state.pointerDown);
+    }
   }
 
   // --------------------------------------------------------------- simulate
@@ -747,7 +1056,9 @@
     const I = state.intensity;
     const shake = (reducedMotion ? 0.5 : 1) * 0.0058 * I;
     const boil = (reducedMotion ? 0.5 : 1) * 0.0017 * I;
-    const pull = 0.019 * Math.max(I, 0.06);
+    // disorder unhooks the grains from the figure — a blasted plate stays
+    // blasted until the bow (or Level the Sand) brings the field back
+    const pull = 0.019 * Math.max(I, 0.06) * (1 - state.disorder);
     const FRICTION = 0.18 - 0.08 * I; // hard bowing re-mobilizes settled grains
     const damp = Math.pow(0.0025, dt);
 
@@ -820,7 +1131,9 @@
     while (raw < state.station - 0.6 && state.station > 0) state.station--;
 
     const edge = Math.min(state.u, 1 - state.u, state.v, 1 - state.v);
-    const depth = Math.min(1, Math.max(0, edge / BOW_ZONE));
+    const depth = state.carryDepth !== null
+      ? state.carryDepth
+      : Math.min(1, Math.max(0, edge / BOW_ZONE));
     const speed = Math.hypot(state.moveDX, state.moveDY) / Math.max(dt, 0.008);
     state.moveDX = 0;
     state.moveDY = 0;
@@ -829,6 +1142,7 @@
   }
 
   plate.addEventListener("pointerdown", (e) => {
+    if (bowObj.held) return;
     initAudio();
     plate.setPointerCapture(e.pointerId);
     const [u, v] = plateUV(e);
@@ -840,11 +1154,11 @@
     state.v = v;
     state.moveDX = 0;
     state.moveDY = 0;
-    const edge = Math.min(u, 1 - u, v, 1 - v);
-    if (edge < BOW_ZONE) state.bowing = true;
+    // bowing needs the bow in hand now — bare fingers only plough and strike
   });
 
   plate.addEventListener("pointermove", (e) => {
+    if (bowObj.held) return;
     const [u, v] = plateUV(e);
     state.pointerOver = u >= 0 && u <= 1 && v >= 0 && v <= 1;
     const du = u - state.u, dv = v - state.v;
@@ -853,10 +1167,6 @@
     state.u = u;
     state.v = v;
     state.cursorSpeed = state.cursorSpeed * 0.8 + Math.sqrt(du * du + dv * dv) * 0.2;
-    if (state.pointerDown) {
-      const edge = Math.min(u, 1 - u, v, 1 - v);
-      state.bowing = edge < BOW_ZONE;
-    }
   });
 
   // q bends down a half step, e bends up; the number row is a twelve-key
@@ -893,13 +1203,17 @@
     state.bend = (bendKeys.up ? 1 : 0) - (bendKeys.down ? 1 : 0);
   });
 
-  plate.addEventListener("pointerenter", () => (state.pointerOver = true));
+  plate.addEventListener("pointerenter", () => {
+    if (!bowObj.held) state.pointerOver = true;
+  });
   plate.addEventListener("pointerleave", () => {
+    if (bowObj.held) return;
     state.pointerOver = false;
     state.cursorSpeed = 0;
   });
 
   plate.addEventListener("pointerup", (e) => {
+    if (bowObj.held) return;
     const [u, v] = plateUV(e);
     const held = performance.now() - state.downAt;
     const moved = Math.hypot(u - state.downU, v - state.downV);
@@ -907,11 +1221,9 @@
     if (held < 280 && moved < 0.02 && edge >= BOW_ZONE) {
       // wait out the audio gate so the very first tap already rings
       initAudio().then(() => strikeBowl(bowlNote(u, v)));
-      const kick = (reducedMotion ? 0.5 : 1) * (0.004 + 0.013 * state.strike);
-      for (let i = 0; i < GRAIN_COUNT; i++) {
-        gVX[i] += (Math.random() - 0.5) * kick;
-        gVY[i] += (Math.random() - 0.5) * kick;
-      }
+      malletHitAt = performance.now();
+      blastGrains(u, v, state.strike);
+      state.disorder = Math.min(1, state.disorder + 0.35 + 0.3 * state.strike);
       state.intensity = Math.max(state.intensity, 0.3 + state.strike * 0.3);
     }
     state.pointerDown = false;
@@ -925,6 +1237,12 @@
     const reverb = document.getElementById("ctl-reverb");
     const delay = document.getElementById("ctl-delay");
     const strike = document.getElementById("ctl-strike");
+    const volume = document.getElementById("ctl-volume");
+    volume.addEventListener("input", () => {
+      const v = volume.value / 100;
+      if (sound.control) sound.control.setVolume(v);
+      else setMasterVolume(v);
+    });
     reverb.addEventListener("input", () => {
       state.reverb = reverb.value / 100;
       if (audio.revGain) audio.revGain.gain.setTargetAtTime(state.reverb * 2.2, audio.ctx.currentTime, 0.1);
@@ -1006,6 +1324,7 @@
     const dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
 
+    if (bowObj.held) updateCarried(dt);
     const pointerBowing = state.bowing && state.pointerDown;
     if (pointerBowing) {
       updateBow(dt);
@@ -1030,6 +1349,8 @@
     if (state.bowingActive) {
       const target = Math.min(1, state.bowLevel);
       state.intensity += (target - state.intensity) * Math.min(1, dt * 4);
+      // sustained bowing coaxes the sand back into order over a few seconds
+      state.disorder = Math.max(0, state.disorder - dt * 0.22);
     } else {
       state.intensity *= Math.pow(0.35, dt);
       state.bowSpeed *= Math.pow(0.1, dt);
@@ -1043,6 +1364,8 @@
 
     if (busy) simulate(dt);
     render();
+    renderProps();
+    renderRoom(dt);
     audioFrame();
     plaqueFrame();
     requestAnimationFrame(frame);
@@ -1057,6 +1380,23 @@
   layoutPortals();
   bindConsole();
   requestAnimationFrame(frame);
+
+  if (window.ElasticSoundControl) {
+    sound.control = ElasticSoundControl.attach({
+      start: () => {
+        sound.on = true;
+        if (audio.ctx) audio.ctx.resume().catch(() => {});
+        if (sound.room && sound.room.paused) sound.room.play().catch(() => {});
+        applyVolume();
+      },
+      stop: () => {
+        sound.on = false;
+        applyVolume();
+      },
+      setVolume: setMasterVolume,
+    });
+    sound.control.setVolume(sound.volume);
+  }
 
   window.addEventListener("resize", () => {
     fit();

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Toot Suite</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <div class="sky" aria-hidden="true"></div>
+
+    <!-- drifting stink-puffs: the smell escapes, and so can you -->
+    <a class="drift-puff drift-puff-a" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+      <span class="puff-lobe l1"></span><span class="puff-lobe l2"></span><span class="puff-lobe l3"></span>
+      <span class="puff-wiggle w1"></span><span class="puff-wiggle w2"></span><span class="puff-wiggle w3"></span>
+    </a>
+    <a class="drift-puff drift-puff-b" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+      <span class="puff-lobe l1"></span><span class="puff-lobe l2"></span><span class="puff-lobe l3"></span>
+      <span class="puff-wiggle w1"></span><span class="puff-wiggle w2"></span><span class="puff-wiggle w3"></span>
+    </a>
+    <a class="drift-puff drift-puff-c" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+      <span class="puff-lobe l1"></span><span class="puff-lobe l2"></span><span class="puff-lobe l3"></span>
+      <span class="puff-wiggle w1"></span><span class="puff-wiggle w2"></span><span class="puff-wiggle w3"></span>
+    </a>
+
+    <header class="marquee">
+      <h1 class="title"><span>THE</span> TOOT SUITE</h1>
+      <p class="tagline">thirty-six artisanal farts &middot; press responsibly</p>
+    </header>
+
+    <main class="board" id="board" aria-label="Fart soundboard"></main>
+
+    <div class="mystery-row">
+      <button type="button" class="mystery" id="mystery">
+        <span class="mystery-mark">?</span> MYSTERY FART
+      </button>
+    </div>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>

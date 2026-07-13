@@ -18,12 +18,17 @@
       <div class="plate">
         <svg class="engraving" viewBox="0 0 1000 1000" aria-hidden="true"></svg>
         <canvas id="sand" aria-hidden="true"></canvas>
+        <canvas id="props" aria-hidden="true"></canvas>
       </div>
       <div class="plaque" aria-hidden="true">
         <span class="plaque-title">TAFEL &#183; VII</span>
         <span class="plaque-freq" id="freq">&#8212;</span>
       </div>
       <div class="console">
+        <label class="ctl">
+          <span class="ctl-name">Volume</span>
+          <input type="range" id="ctl-volume" min="0" max="100" value="50" aria-label="Master volume" />
+        </label>
         <label class="ctl">
           <span class="ctl-name">Reverb</span>
           <input type="range" id="ctl-reverb" min="0" max="100" value="30" aria-label="Reverb amount" />
@@ -39,12 +44,10 @@
         <div class="ctl ctl-voicing" role="radiogroup" aria-label="Voicing">
           <span class="ctl-name">Voicing</span>
           <div class="stamps">
-            <button type="button" class="stamp on" data-chord="free" role="radio" aria-checked="true">Free</button>
-            <button type="button" class="stamp" data-chord="triad" role="radio" aria-checked="false">Triad</button>
+            <button type="button" class="stamp on" data-chord="triad" role="radio" aria-checked="true">Triad</button>
+            <button type="button" class="stamp" data-chord="lydb7" role="radio" aria-checked="false">Lyd&#9837;7</button>
             <button type="button" class="stamp" data-chord="penta" role="radio" aria-checked="false">Penta</button>
             <button type="button" class="stamp" data-chord="overtone" role="radio" aria-checked="false">Overtones</button>
-            <button type="button" class="stamp" data-chord="lydb7" role="radio" aria-checked="false">Lyd&#9837;7</button>
-            <button type="button" class="stamp" data-chord="harmmin" role="radio" aria-checked="false">Harm&#183;Min</button>
             <button type="button" class="stamp" data-chord="hijaz" role="radio" aria-checked="false">Hijaz</button>
             <button type="button" class="stamp" data-chord="rast" role="radio" aria-checked="false">Rast</button>
           </div>
@@ -54,8 +57,44 @@
       </div>
     </div>
 
+    <canvas id="room" aria-hidden="true"></canvas>
+    <div id="hand" aria-hidden="true">
+      <!-- pointing hand, authored upright; CSS rotates it to point up-left -->
+      <svg class="hand-open" viewBox="0 0 80 84" xmlns="http://www.w3.org/2000/svg">
+        <path class="hand-fill"
+          d="M24 10 C24 3 36 3 36 10 L36 31
+             C38 28 43 28 44 31
+             C46 28 51 28 52 31
+             C54 29 58 29 59 32
+             C62 33 63 36 63 40
+             C63 46 62 52 60 56
+             C57 63 50 67 42 67
+             C34 67 27 63 23 56
+             C15 53 11 46 15 40
+             C17 36 21 35 24 37
+             C23 30 23 20 24 10 Z" />
+        <path class="hand-line" d="M44 31 L44 39" />
+        <path class="hand-line" d="M52 31 L52 39" />
+        <path class="hand-line" d="M59 33 L59 40" />
+        <path class="hand-line" d="M24 38 C20 42 18 47 19 52" />
+        <path class="hand-cuff" d="M25 66 C25 64 58 64 58 66 L58 76 C46 81 35 81 25 76 Z" />
+      </svg>
+      <svg class="hand-grab" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <path class="hand-fill"
+          d="M20 34 C20 22 30 16 40 16 C52 16 61 24 61 35
+             C61 47 53 57 40 57 C28 57 20 47 20 34 Z" />
+        <path class="hand-line" d="M27 22 C29 18 34 18 35 22" />
+        <path class="hand-line" d="M37 20 C39 16 44 16 45 20" />
+        <path class="hand-line" d="M47 20 C49 17 53 18 54 22" />
+        <path class="hand-line" d="M25 43 C32 50 46 51 54 44" />
+        <path class="hand-cuff" d="M26 58 C30 64 50 64 54 58 L54 70 C44 76 36 76 26 70 Z" />
+      </svg>
+    </div>
+
     <script src="../../core/world-registry.js"></script>
     <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
     <script src="./world.js"></script>
   </body>
 </html>

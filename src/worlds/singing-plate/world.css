@@ -107,6 +107,11 @@ body {
   pointer-events: auto;
 }
 
+/* breathing room between the instrument and its console */
+.console {
+  margin-top: 3.5vmin;
+}
+
 .plate {
   background:
     radial-gradient(circle at 33% 26%, rgba(255, 215, 150, 0.09), transparent 42%),
@@ -139,6 +144,85 @@ body {
 }
 
 .engraving { opacity: 0.85; }
+
+/* Prop layer: oversized drawing surface for the mallet. Pointer events go to
+   the plate itself; the bow is a room-level object (see #room). */
+#props {
+  height: 144%;
+  left: -22%;
+  pointer-events: none;
+  position: absolute;
+  top: -22%;
+  width: 144%;
+}
+
+/* ---- The hand and the bow ---- */
+
+/* The visitor's hand is on screen at all times — the native cursor never is. */
+*,
+*::before,
+*::after {
+  cursor: none !important;
+}
+
+/* Room-space layer: the bow, its rest, the rosin glow. Above the scene and
+   console, below the hand. */
+#room {
+  height: 100%;
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  width: 100%; /* canvas is a replaced element: inset alone won't stretch it */
+  z-index: 40;
+}
+
+#hand {
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+  left: 0;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  will-change: transform;
+  z-index: 2147483200;
+}
+
+#hand svg {
+  display: block;
+  height: 64px;
+  width: 64px;
+}
+
+#hand .hand-fill {
+  fill: #c8a869;
+  stroke: #241708;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+#hand .hand-line {
+  fill: none;
+  stroke: #241708;
+  stroke-linecap: round;
+  stroke-width: 2;
+  opacity: 0.55;
+}
+
+#hand .hand-cuff {
+  fill: #2e2010;
+  stroke: #120b04;
+  stroke-width: 1.5;
+}
+
+/* open hand: fingertip at the pointer (rotation pivots on the tip);
+   grip: palm at the pointer */
+#hand .hand-open {
+  margin: -3px 0 0 -24px;
+  transform: rotate(-32deg);
+  transform-origin: 24px 3px;
+}
+#hand .hand-grab { display: none; margin: -30px 0 0 -32px; }
+#hand.grab .hand-open { display: none; }
+#hand.grab .hand-grab { display: block; }
 
 /* ---- The plaque ---- */
 

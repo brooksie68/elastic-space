@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "slug": "coach-9",
+  "title": "Coach 9",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-13T00:00:00Z",
+  "updatedAt": "2026-07-13T00:00:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "A window seat on a train that never arrives. Pastel landscape loops past in parallax; a woman reads, a child points at things that shouldn't be out there.",
+  "tags": [
+    "train",
+    "landscape",
+    "parallax",
+    "cozy",
+    "ambient"
+  ],
+  "moods": [
+    "calm",
+    "nostalgic",
+    "gentle"
+  ],
+  "contentType": "ambient",
+  "entryPoints": [
+    "direct"
+  ],
+  "exits": [],
+  "weight": 7,
+  "rarity": "common",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "rail rhythm",
+    "soft music",
+    "tunnel hush"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "Procedural parallax loop (~3 min + station stop) with scripted set pieces: pastel cows, pond rowboat, the Wildflowers giant far off, a tunnel that mirrors the interior, a station stop with a sim-language name. Interior is one inline SVG; landscape is canvas clipped to the window and aligned to the SVG slice transform. Three diegetic drift exits: vestibule door, route map, ticket stub. Web Audio rail rhythm; music via cassette player on the table.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Idea #37 from World Ideas.md, selected by James 2026-07-13. Style-first pass; art direction under review.",
+    "featured": false,
+    "directoryOrder": 11,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/coach-9",
+    "assetPaths": [
+      "src/worlds/coach-9"
+    ]
+  }
+}

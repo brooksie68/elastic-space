@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "slug": "colors-meeting",
+  "title": "Colors, Meeting",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-12T16:10:00Z",
+  "updatedAt": "2026-07-12T16:10:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "Fields of color meeting at seams that breathe on periods of minutes — too slowly to catch, too surely to deny.",
+  "tags": [
+    "color",
+    "painting",
+    "slow",
+    "minimal",
+    "durational"
+  ],
+  "moods": [
+    "contemplative",
+    "patient",
+    "hushed"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct"
+  ],
+  "exits": [],
+  "weight": 5,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "Rothko for browsers. Everything moves on incommensurate 90s-6min oscillators: seam position, softness, hue, luminance. Deliberately silent — the site's first mute world. Museum wall label opens the conservator's panel (fields, pigments, tempo, seam, grain, drift + reset); settings reset on load by design. Three diegetic drift exits: label fine print, a door-shadow that surfaces in the lowest field, a glint riding the first seam.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Idea #24 from World Ideas.md, selected by James 2026-07-12. Draft until James approves publication.",
+    "featured": false,
+    "directoryOrder": 6,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/colors-meeting",
+    "assetPaths": [
+      "src/worlds/colors-meeting"
+    ]
+  }
+}

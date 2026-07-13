@@ -3,6 +3,13 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable (with James)
+
+- Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
+  link back to the map room, which now lives at the repo-root index.html. Visibility is controlled
+  site-wide by the map room's "show dashboard icons" toggle; when visible, the shared sound
+  control sits directly below it.
+
 ## 2026-07-12 — claude-fable
 
 - Complete rebuild around a Blender-rendered plate (co-directed with James). The old all-canvas dome
