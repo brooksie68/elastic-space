@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-13 (Coach 9 session)
+
+- NEW WORLD: Coach 9 (idea #37) — window seat on a train that never arrives; style-first pass.
+  Inline-SVG interior (woman reading, child who points at set pieces), canvas parallax loop
+  (~3 min: meadow → tunnel → highland → station stop → dusk), pastel palette keyframes
+- Set pieces: pastel cows, pond rowboat, Wildflowers giant on the far ridge; tunnel mirrors
+  the interior and muffles audio; station stops under a generated sim-language name
+- Web Audio rail rhythm via shared sound control; one ElevenLabs music track behind a
+  cassette-player toggle (music prompts can't name studios/artists — ToS reject)
+- Verdict: James lukewarm ("very meh") — on the fence whether the world continues; if it does,
+  the art pipeline changes (Blender toon plates or supplied artwork), not more canvas tuning
+
 ## 2026-07-13 (Arachno-Wars session)
 
 - NEW WORLD: Arachno-Wars 2000 (idea #52) — James's original one-session artillery game
