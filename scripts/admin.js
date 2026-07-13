@@ -592,6 +592,10 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-refresh().catch((error) => {
-  setStatus(error.message, "error");
-});
+// The map room also opens via file:// (before the server is started); the
+// editor only self-loads when the page is actually served.
+if (location.protocol === "http:" || location.protocol === "https:") {
+  refresh().catch((error) => {
+    setStatus(error.message, "error");
+  });
+}

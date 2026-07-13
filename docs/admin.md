@@ -1,5 +1,10 @@
 # admin
 
+> **2026-07-12:** the map room moved from `/admin/` to the repo-root `index.html`, with a
+> server status light, one-click launcher (`map-room.cmd`), page directory, and the site-wide
+> dashboard-icons toggle above the editor panels. `/admin/` now redirects to `/`. The
+> requirements below still describe the editor itself.
+
 ## Purpose
 
 The public site is a maze.

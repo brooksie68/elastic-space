@@ -40,6 +40,9 @@ function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
+    // The map room polls /healthz from file:// before switching to the served
+    // copy; a cross-origin allow is required for that first probe to succeed.
+    "Access-Control-Allow-Origin": "*",
   });
   response.end(JSON.stringify(payload, null, 2));
 }
@@ -48,6 +51,7 @@ function sendText(response, status, text) {
   response.writeHead(status, {
     "Content-Type": "text/plain; charset=utf-8",
     "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
   });
   response.end(text);
 }
@@ -541,10 +545,6 @@ function resolveStaticPath(pathname) {
     return "/index.html";
   }
 
-  if (pathname === "/admin/" || pathname === "/admin") {
-    return "/admin/index.html";
-  }
-
   const worldMatch = pathname.match(/^\/worlds\/([a-z0-9-]+)(\/.*)?$/i);
   if (worldMatch) {
     const [, slug, remainder] = worldMatch;
@@ -687,8 +687,9 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  if (pathname === "/admin") {
-    response.writeHead(302, { Location: "/admin/" });
+  // The map room now lives at the root; the old /admin/ page is retired.
+  if (pathname === "/admin" || pathname === "/admin/" || pathname === "/admin/index.html") {
+    response.writeHead(302, { Location: "/" });
     response.end();
     return;
   }

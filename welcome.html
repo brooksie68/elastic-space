@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Elastic Space</title>
+    <style>
+      html,
+      body {
+        background: #0a1733;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      .jerry {
+        cursor: pointer;
+        display: block;
+        left: 0;
+        position: fixed;
+        top: 0;
+        width: min(36vmin, 320px);
+        will-change: transform;
+      }
+
+      .jerry svg {
+        display: block;
+        width: 100%;
+      }
+
+      .jerry path,
+      .jerry circle,
+      .jerry ellipse,
+      .jerry polygon {
+        fill: none;
+        stroke: rgba(205, 228, 255, 0.85);
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+        transition: stroke 300ms ease;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .jerry .dot {
+        fill: rgba(205, 228, 255, 0.85);
+        stroke: none;
+        transition: fill 300ms ease;
+      }
+
+      .jerry .faint {
+        stroke: rgba(205, 228, 255, 0.35);
+      }
+
+      .jerry .ring {
+        stroke: rgba(205, 228, 255, 0.25);
+        stroke-width: 1.5;
+      }
+
+      .jerry:hover path,
+      .jerry:hover circle,
+      .jerry:hover ellipse,
+      .jerry:hover polygon,
+      .jerry:focus-visible path,
+      .jerry:focus-visible circle,
+      .jerry:focus-visible ellipse,
+      .jerry:focus-visible polygon {
+        stroke: #ffffff;
+      }
+
+      .jerry:hover .dot,
+      .jerry:focus-visible .dot {
+        fill: #ffffff;
+      }
+
+      .jerry:hover .faint,
+      .jerry:focus-visible .faint {
+        stroke: rgba(255, 255, 255, 0.55);
+      }
+
+      .jerry:hover .ring,
+      .jerry:focus-visible .ring {
+        stroke: rgba(255, 255, 255, 0.4);
+      }
+
+      .jerry:focus-visible {
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <a id="jerry" class="jerry" href="./src/worlds/jerrys-pool/index.html" aria-label="Jerry's Pool">
+      <svg viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- orbital rings -->
+        <ellipse class="ring" cx="130" cy="114" rx="112" ry="34" transform="rotate(-16 130 114)"></ellipse>
+        <ellipse class="ring" cx="130" cy="114" rx="124" ry="48" transform="rotate(9 130 114)"></ellipse>
+
+        <!-- membrane: hand-drawn double wall -->
+        <path d="M130 36
+                 C176 36 208 70 208 114
+                 C208 158 174 192 130 192
+                 C86 192 52 160 52 114
+                 C52 68 84 36 130 36 Z"></path>
+        <path class="faint" d="M130 44
+                 C171 44 200 74 200 114
+                 C200 154 170 184 130 184
+                 C90 184 60 154 60 114
+                 C60 72 89 44 130 44 Z"></path>
+
+        <!-- nucleus + nucleolus -->
+        <circle cx="112" cy="96" r="24"></circle>
+        <circle class="faint" cx="118" cy="102" r="8"></circle>
+
+        <!-- mitochondria (beans with inner folds) -->
+        <path d="M154 138
+                 C160 130 176 130 181 138
+                 C186 146 178 156 166 156
+                 C154 156 149 146 154 138 Z"></path>
+        <path class="faint" d="M159 141 C163 137 172 137 176 141"></path>
+        <path class="faint" d="M161 148 C165 152 172 152 175 148"></path>
+
+        <path d="M86 140
+                 C90 134 101 134 105 140
+                 C109 146 103 153 95 153
+                 C87 153 82 146 86 140 Z"></path>
+        <path class="faint" d="M89 143 C93 140 99 140 102 143"></path>
+
+        <!-- vesicles -->
+        <circle cx="156" cy="82" r="7"></circle>
+        <circle class="faint" cx="143" cy="66" r="4"></circle>
+
+        <!-- alien crystal -->
+        <polygon points="176,104 184,112 176,120 168,112"></polygon>
+
+        <!-- ribosome cloud -->
+        <circle class="dot" cx="98" cy="164" r="1.6"></circle>
+        <circle class="dot" cx="107" cy="169" r="1.6"></circle>
+        <circle class="dot" cx="116" cy="164" r="1.6"></circle>
+        <circle class="dot" cx="104" cy="158" r="1.6"></circle>
+        <circle class="dot" cx="124" cy="169" r="1.6"></circle>
+
+        <!-- filament -->
+        <path class="faint" d="M76 108 C92 122 118 130 148 122"></path>
+      </svg>
+    </a>
+
+    <script src="./src/core/dashboard-control.js" data-home="./index.html"></script>
+    <script>
+      (function () {
+        const jerry = document.getElementById("jerry");
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+        // Incommensurate sine pairs: Jerry wanders the whole viewport and
+        // never quite repeats himself.
+        function place(t) {
+          const w = window.innerWidth - jerry.offsetWidth;
+          const h = window.innerHeight - jerry.offsetHeight;
+          const x =
+            w * (0.5 + 0.33 * Math.sin(t * 0.000041 + 1.7) + 0.13 * Math.sin(t * 0.000103 + 0.4));
+          const y =
+            h * (0.5 + 0.3 * Math.sin(t * 0.000059 + 4.1) + 0.12 * Math.sin(t * 0.000131 + 2.2));
+          const tilt = 7 * Math.sin(t * 0.000073 + 0.9);
+          const breathe = 1 + 0.025 * Math.sin(t * 0.00047);
+          jerry.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg) scale(${breathe})`;
+        }
+
+        function frame(t) {
+          place(t);
+          if (!reduceMotion.matches) {
+            requestAnimationFrame(frame);
+          }
+        }
+
+        if (reduceMotion.matches) {
+          place(0);
+          window.addEventListener("resize", () => place(0));
+        } else {
+          requestAnimationFrame(frame);
+        }
+      })();
+    </script>
+  </body>
+</html>
