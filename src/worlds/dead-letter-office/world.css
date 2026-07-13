@@ -37,49 +37,6 @@ body {
   image-rendering: pixelated;
 }
 
-.flicker {
-  position: fixed;
-  inset: 0;
-  background: #000;
-  opacity: 0;
-  pointer-events: none;
-  z-index: 6;
-  animation: tube-flicker 9s steps(1, end) infinite;
-}
-
-@keyframes tube-flicker {
-  0%,
-  70.9% {
-    opacity: 0;
-  }
-  71% {
-    opacity: 0.16;
-  }
-  71.6% {
-    opacity: 0;
-  }
-  72.1% {
-    opacity: 0.1;
-  }
-  72.5%,
-  90.9% {
-    opacity: 0;
-  }
-  91% {
-    opacity: 0.2;
-  }
-  91.4% {
-    opacity: 0;
-  }
-  91.8% {
-    opacity: 0.12;
-  }
-  92.2%,
-  100% {
-    opacity: 0;
-  }
-}
-
 /* ---------- basket, postmaster, punch clock, speech ---------- */
 
 #basket-canvas {
@@ -161,33 +118,33 @@ body {
 }
 
 .envelope {
+  /* soft-rendered paper to sit in the Blender-lit room, not the pixel office */
   position: absolute;
   top: 0;
   left: 0;
   width: var(--w, 150px);
   aspect-ratio: 1.6;
   padding: 0;
-  border: 1.5px solid var(--outline);
-  border-radius: 0;
-  background: linear-gradient(180deg, #e4dabb 0%, var(--paper) 30%, #cdc29e 100%);
+  border: 1px solid rgba(30, 26, 18, 0.55);
+  border-radius: 1.5px;
+  background: linear-gradient(168deg, #ded4b4 0%, #cfc5a4 55%, #b4aa8a 100%);
   box-shadow:
-    inset 1px 1px 0 rgba(255, 251, 235, 0.5),
-    inset -1px -1px 0 rgba(0, 0, 0, 0.12),
-    3px 3px 0 rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 rgba(255, 251, 235, 0.35),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.1),
+    0 5px 9px rgba(0, 0, 0, 0.42);
   cursor: pointer;
   will-change: transform;
   text-align: left;
-  image-rendering: pixelated;
 }
 
 .envelope::before {
-  /* flap: two crisp diagonal creases with a soft shadow line beneath */
+  /* flap: two soft diagonal creases with a shadow line beneath */
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(116deg, transparent calc(50% - 0.5px), var(--paper-dark) calc(50% - 0.5px), var(--paper-dark) calc(50% + 0.5px), rgba(0, 0, 0, 0.08) calc(50% + 0.5px), transparent calc(50% + 2px)) 0 0 / 51% 46% no-repeat,
-    linear-gradient(244deg, transparent calc(50% - 0.5px), var(--paper-dark) calc(50% - 0.5px), var(--paper-dark) calc(50% + 0.5px), rgba(0, 0, 0, 0.08) calc(50% + 0.5px), transparent calc(50% + 2px)) 100% 0 / 51% 46% no-repeat;
+    linear-gradient(116deg, transparent calc(50% - 1px), rgba(0, 0, 0, 0.16) 50%, rgba(255, 251, 235, 0.18) calc(50% + 1px), transparent calc(50% + 3px)) 0 0 / 51% 46% no-repeat,
+    linear-gradient(244deg, transparent calc(50% - 1px), rgba(0, 0, 0, 0.16) 50%, rgba(255, 251, 235, 0.18) calc(50% + 1px), transparent calc(50% + 3px)) 100% 0 / 51% 46% no-repeat;
   pointer-events: none;
 }
 
@@ -212,10 +169,11 @@ body {
   top: 7%;
   width: 16%;
   aspect-ratio: 0.84;
-  border: 2px solid var(--outline);
+  border: 1px solid rgba(30, 26, 18, 0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(244, 240, 226, 0.55);
   background:
-    linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.22) 55%),
-    #7fa08c;
+    linear-gradient(180deg, transparent 55%, rgba(0, 0, 0, 0.18) 55%),
+    #75987f;
 }
 
 .env-cancel {
@@ -249,11 +207,11 @@ body {
 }
 
 .envelope.far {
-  filter: brightness(0.72);
+  filter: brightness(0.72) blur(0.6px);
 }
 
 .envelope.mid {
-  filter: brightness(0.86);
+  filter: brightness(0.86) blur(0.25px);
 }
 
 .envelope:focus-visible {
@@ -430,10 +388,6 @@ a.return-portal:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flicker {
-    animation: none;
-  }
-
   .letter {
     animation: none;
   }

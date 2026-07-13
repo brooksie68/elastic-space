@@ -183,6 +183,101 @@ if (USE_ROOM_RENDER) {
   roomRender.src = "./assets/room/room-render.png";
 }
 
+/* postmaster pose plates: Blender re-renders of one pixel-aligned crop of the
+   1920x1080 plate (border region measured at render time). Poses are drawn
+   straight onto the room canvas with the same drawImage scaling as the plate —
+   a separate <img> layer gets resampled by the compositor instead, and its
+   boundary ghosts into view at any viewport that isn't exactly 1:1. */
+const PM_POSE_RECT = { x: 1209 / 1920, y: 454 / 1080, w: 206 / 1920, h: 279 / 1080 };
+const PM_POSE_NAMES = ["idle", "sort", "stamp-up", "stamp-down", "sigh"];
+const pmPoseImgs = {};
+let pmPose = "idle";
+if (USE_ROOM_RENDER) {
+  for (const name of PM_POSE_NAMES) {
+    const img = new Image();
+    img.addEventListener("load", () => {
+      if (name === pmPose) drawPmPose();
+    });
+    img.src = `./assets/room/pm-pose-${name}.png`;
+    pmPoseImgs[name] = img;
+  }
+}
+
+function drawPmPose() {
+  if (!USE_ROOM_RENDER || !roomRenderReady || !SCENE.plateW) return;
+  let img = pmPoseImgs[pmPose];
+  if (!img || !img.complete || !img.naturalWidth) img = pmPoseImgs.idle;
+  if (!img || !img.complete || !img.naturalWidth) return;
+  room.drawImage(
+    img,
+    SCENE.plateX + PM_POSE_RECT.x * SCENE.plateW,
+    SCENE.plateY + PM_POSE_RECT.y * SCENE.plateH,
+    PM_POSE_RECT.w * SCENE.plateW,
+    PM_POSE_RECT.h * SCENE.plateH
+  );
+}
+
+function setPmPose(name) {
+  if (!USE_ROOM_RENDER) return;
+  pmPose = name;
+  drawPmPose();
+}
+
+/* basket front wall: rendered separately with a transparent film so the mail
+   can sink behind it. The plate itself has no front wires — this img is them. */
+const BASKET_FRONT_RECT = { x: 81 / 1920, y: 720 / 1080, w: 485 / 1920, h: 354 / 1080 };
+let basketFrontImg = null;
+if (USE_ROOM_RENDER) {
+  basketFrontImg = document.createElement("img");
+  basketFrontImg.src = "./assets/room/basket-front.png";
+  basketFrontImg.alt = "";
+  basketFrontImg.setAttribute("aria-hidden", "true");
+  basketFrontImg.style.position = "fixed";
+  basketFrontImg.style.zIndex = "5";
+  basketFrontImg.style.pointerEvents = "none";
+  document.body.appendChild(basketFrontImg);
+}
+
+/* ---------- sound: one-shot foley through the shared control ---------- */
+
+const stampThunk = new Audio("./assets/audio/stamp-thunk.mp3");
+stampThunk.preload = "auto";
+let soundOn = false;
+let soundVol = 0.8;
+
+if (window.ElasticSoundControl) {
+  ElasticSoundControl.attach({
+    start: () => {
+      /* zero-volume probe: rejects when autoplay is blocked, so the control
+         only shows "on" when the thunks will actually be heard */
+      soundOn = true;
+      stampThunk.volume = 0;
+      return stampThunk.play().then(() => {
+        stampThunk.pause();
+        stampThunk.currentTime = 0;
+        stampThunk.volume = soundVol;
+      }).catch((err) => {
+        soundOn = false;
+        throw err;
+      });
+    },
+    stop: () => {
+      soundOn = false;
+      stampThunk.pause();
+    },
+    setVolume: (v) => {
+      soundVol = v;
+    },
+  });
+}
+
+function playThunk() {
+  if (!soundOn) return;
+  stampThunk.volume = soundVol;
+  stampThunk.currentTime = 0;
+  stampThunk.play().catch(() => {});
+}
+
 /* geometry shared between the painter, the mail physics, and the postmaster */
 const SCENE = {
   scaleX: 1,
@@ -192,6 +287,10 @@ const SCENE = {
   basketRimCss: Infinity,
   bubbleRightCss: 40,
   bubbleBottomCss: 200,
+  plateX: 0,
+  plateY: 0,
+  plateW: 0, /* 0 until the rendered plate has been laid out */
+  plateH: 0,
 };
 
 let seed = 7;
@@ -575,12 +674,25 @@ function paintRoom() {
     SCENE.basketSpreadCss = 0.045 * dw;
     SCENE.basketRimCss = dy + 0.64 * dh;
 
+    /* remember the plate rect, then draw the current pose crop over it */
+    SCENE.plateX = dx;
+    SCENE.plateY = dy;
+    SCENE.plateW = dw;
+    SCENE.plateH = dh;
+    drawPmPose();
+
+    /* basket front wall rides the plate; envelopes sink behind it (z 5) */
+    basketFrontImg.style.left = `${dx + BASKET_FRONT_RECT.x * dw}px`;
+    basketFrontImg.style.top = `${dy + BASKET_FRONT_RECT.y * dh}px`;
+    basketFrontImg.style.width = `${BASKET_FRONT_RECT.w * dw}px`;
+    basketFrontImg.style.height = `${BASKET_FRONT_RECT.h * dh}px`;
+
     /* the postmaster is baked into the plate; his canvas becomes a transparent
        click hotspot over his rendered self (bbox measured in Blender NDC) */
-    const pmL = dx + 0.630 * dw;
-    const pmT = dy + 0.410 * dh;
-    const pmW = 0.107 * dw;
-    const pmH = 0.225 * dh;
+    const pmL = dx + 0.6439 * dw;
+    const pmT = dy + 0.4449 * dh;
+    const pmW = 0.0792 * dw;
+    const pmH = 0.208 * dh;
     postmasterCanvas.style.display = "";
     postmasterCanvas.style.left = `${pmL}px`;
     postmasterCanvas.style.top = `${pmT}px`;
@@ -589,9 +701,10 @@ function paintRoom() {
     SCENE.bubbleRightCss = window.innerWidth - (pmL + pmW * 0.9);
     SCENE.bubbleBottomCss = window.innerHeight - pmT + 10;
 
-    /* punch clock lives top-left in the rendered office, like a wall counter */
-    punchClock.style.left = `${dx + 0.012 * dw}px`;
-    punchClock.style.top = `${dy + 0.025 * dh}px`;
+    /* punch clock lives top-left in the rendered office, like a wall counter;
+       cover-fit can push the plate's corners off-screen, so clamp to the viewport */
+    punchClock.style.left = `${Math.max(12, dx + 0.012 * dw)}px`;
+    punchClock.style.top = `${Math.max(12, dy + 0.025 * dh)}px`;
     punchClock.style.width = "auto";
     punchClock.style.padding = "3px 12px";
     punchClock.style.fontSize = `${Math.max(12, Math.round(0.017 * dh))}px`;
@@ -785,6 +898,55 @@ let pmAction = null;
 let pmTick = 0;
 let pmNextActionAt = performance.now() + 3000;
 
+/* rendered-mode actions: sequences of [pose plate, hold ms] */
+const PM_POSE_ACTIONS = [
+  { name: "sort", frames: [["sort", 2400]], weight: 2 },
+  { name: "stamp", frames: [["stamp-up", 520], ["stamp-down", 300], ["stamp-up", 260]], weight: 2 },
+  { name: "sigh", frames: [["sigh", 2100]], weight: 1.2 },
+];
+
+let pmSeq = null;
+let pmSeqIdx = 0;
+let pmSeqUntil = 0;
+
+function startPoseSeq(frames, now) {
+  pmSeq = frames;
+  pmSeqIdx = 0;
+  setPmPose(frames[0][0]);
+  pmSeqUntil = now + frames[0][1];
+}
+
+function pmPoseStep(now) {
+  if (pmSeq) {
+    if (now < pmSeqUntil) return;
+    pmSeqIdx += 1;
+    if (pmSeqIdx >= pmSeq.length) {
+      pmSeq = null;
+      setPmPose("idle");
+      pmNextActionAt = now + 7000 + Math.random() * 9000;
+    } else {
+      setPmPose(pmSeq[pmSeqIdx][0]);
+      pmSeqUntil = now + pmSeq[pmSeqIdx][1];
+      if (pmSeq[pmSeqIdx][0] === "stamp-down") {
+        playThunk();
+      }
+    }
+  } else if (now >= pmNextActionAt && !reducedMotion) {
+    const total = PM_POSE_ACTIONS.reduce((sum, a) => sum + a.weight, 0);
+    let roll = Math.random() * total;
+    let action = PM_POSE_ACTIONS[0];
+    for (const a of PM_POSE_ACTIONS) {
+      roll -= a.weight;
+      if (roll <= 0) {
+        action = a;
+        break;
+      }
+    }
+    startPoseSeq(action.frames, now);
+    pmSeqUntil += Math.random() * 700;
+  }
+}
+
 function ppx(x, y, w, h, color) {
   pm.fillStyle = color;
   pm.fillRect(Math.round(x * DETAIL) / DETAIL, Math.round(y * DETAIL) / DETAIL, Math.round(w * DETAIL) / DETAIL, Math.round(h * DETAIL) / DETAIL);
@@ -969,6 +1131,10 @@ function pickPmAction() {
 
 function pmStep() {
   const now = performance.now();
+  if (USE_ROOM_RENDER) {
+    pmPoseStep(now);
+    return;
+  }
   if (pmAction) {
     pmTick += 1;
     if (pmTick >= pmAction.length) {
@@ -1000,7 +1166,21 @@ const PM_AMBIENT = [
   "The pipes only drip when you listen.",
   "Mail for the sea gets heavy. We double-bag it.",
   "Somebody upstairs keeps writing to the weather.",
+  "The plant died in '78. We kept it on. Seniority.",
+  "Requisitioned a new bulb in the spring. Some spring.",
+  "The radiator speaks a little Morse. Mostly complaints.",
+  "Every one of these was somebody's best try.",
+  "The ink bottle is for signatures. Nobody signs.",
+  "Dust is just mail that gave up.",
 ];
+
+/* saying one of these earns him the slump */
+const PM_SIGH_LINES = new Set([
+  "Some of these are for buildings that burned down before I was born.",
+  "Every one of these was somebody's best try.",
+  "Dust is just mail that gave up.",
+  "Somebody upstairs keeps writing to the weather.",
+]);
 
 const PM_CLICKED = [
   "Yes?",
@@ -1011,6 +1191,10 @@ const PM_CLICKED = [
   "If it's about a package: no.",
   "You want the blue ink. Everyone wants the blue ink.",
   "I sort. I don't deliver. Delivery is a rumor.",
+  "Poking the postmaster. Bold.",
+  "This one's addressed to a lake. See my problem?",
+  "Forms are in the drawer. The drawer is a lie.",
+  "I'd offer you coffee, but the mug is load-bearing.",
 ];
 
 const PM_SHIFT_LINES = [
@@ -1019,6 +1203,9 @@ const PM_SHIFT_LINES = [
   { at: 300, line: "Five minutes. Most people have followed the blue ink out by now." },
   { at: 600, line: "Ten minutes. I could find you a chair. We had chairs once." },
   { at: 1200, line: "Twenty minutes. You work here now. That's how it happened to me." },
+  { at: 1800, line: "Half an hour. I'll put you down for the pension. It's a drawer of stamps." },
+  { at: 2700, line: "Forty-five minutes. The clock and I have stopped keeping score." },
+  { at: 3600, line: "An hour. The office is yours at midnight. Don't feed the basket." },
 ];
 
 const shiftStart = Date.now();
@@ -1055,7 +1242,11 @@ function ambientTick(now) {
     nextAmbientAt = now + 8000;
     return;
   }
-  speak(drawLine(ambientPool, PM_AMBIENT));
+  const line = drawLine(ambientPool, PM_AMBIENT);
+  speak(line);
+  if (PM_SIGH_LINES.has(line) && USE_ROOM_RENDER && !pmSeq && !reducedMotion) {
+    startPoseSeq([["sigh", 2600]], now);
+  }
   nextAmbientAt = now + 24000 + Math.random() * 22000;
 }
 
@@ -1076,6 +1267,13 @@ function shiftTick() {
 function postmasterClicked() {
   speak(drawLine(clickPool, PM_CLICKED));
   nextAmbientAt = performance.now() + 26000;
+  if (USE_ROOM_RENDER) {
+    /* he picks a letter up and considers it while he talks at you */
+    if (!pmSeq && !reducedMotion) {
+      startPoseSeq([["sort", 2600]], performance.now());
+    }
+    return;
+  }
   if (!pmAction && !reducedMotion) {
     pmAction = PM_ACTIONS.find((a) => a.name === "glance");
     pmTick = 0;
@@ -1205,7 +1403,8 @@ function placeEnvelope(envelope, timeSeconds) {
   const x = Math.round(rawX / snap) * snap;
   const y = Math.round(envelope.y / snap) * snap;
   envelope.el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-  envelope.el.style.opacity = String(1 - envelope.sinkP * 0.4);
+  /* behind the real wire cage the mail only dims into the basket's shadow */
+  envelope.el.style.opacity = String(1 - envelope.sinkP * (USE_ROOM_RENDER ? 0.22 : 0.4));
 }
 
 function removeEnvelope(envelope) {
@@ -1228,7 +1427,10 @@ function animate(now) {
       const envelope = envelopes[i];
       const envH = envelope.width / 1.6;
       const sinkStart = SCENE.basketRimCss - envH * 0.55;
-      const sinkEnd = SCENE.basketRimCss + envH * 0.45;
+      /* with the rendered basket-front occluder the mail can sink visibly
+         deep behind the wires before it goes */
+      const sinkDepth = USE_ROOM_RENDER ? 1.35 : 0.45;
+      const sinkEnd = SCENE.basketRimCss + envH * sinkDepth;
 
       if (envelope.y >= sinkStart) {
         envelope.speed = Math.max(envelope.speed, 90);

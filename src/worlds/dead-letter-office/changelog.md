@@ -3,6 +3,82 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-12 — claude-fable (with James)
+
+- Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
+  link back to the map room, which now lives at the repo-root index.html. Visibility is controlled
+  site-wide by the map room's "show dashboard icons" toggle; when visible, the shared sound
+  control sits directly below it.
+
+## 2026-07-12 — claude-fable (later session, "do everything" batch)
+
+- Asset-library check: only the default (empty, nonexistent) user library is configured —
+  clutter stays scripted primitives in the house style.
+- Dingy pass (all headless): noise-driven grime mixes injected into dlo_wall/wall_l/floor/
+  ceil/wood/rug materials (world-position noise, height-faded on walls), bulb dimmed and
+  ambered, plant killed (drooped sickly leaves), poster yellowed and tilted 3°. Clutter:
+  twine-tied letter bundles on two shelves, ink bottle + lid on the desk, leaning carton
+  stack right of frame, four more stray floor papers, two crumpled balls (`npm3_*`).
+- Basket-front occluder: cage + rim bisected at y=2.7 via bmesh bisect_plane into back
+  halves (stay in the plate) and `*_front` duplicates (hidden from the plate). Front set +
+  DEAD LETTERS placard rendered film_transparent → `assets/room/basket-front.png`
+  (crop px 81, 720, 485x354). world.js overlays it as a fixed img at z-index 5 — above the
+  mail layer (z 3) — so envelopes visibly sink into the cage. Plate has no front wires,
+  so no doubling and no compositor-seam risk. Sink deepened (0.45 → 1.35 envelope
+  heights past the rim) and sink fade eased (0.4 → 0.22) to use the new depth.
+- Base plate + all five pose crops re-rendered under the new light (same crop rect, so
+  world.js constants held).
+- Envelope restyle: pixel-art hard border/offset-shadow/pixelated swapped for soft
+  1px border, warm graded paper, blurred drop shadow, soft creases; far/mid depth
+  rows now also get a touch of blur.
+- First sound in this world: `assets/audio/stamp-thunk.mp3` (ElevenLabs sfx, authoring
+  pipeline). Plays on the stamp-down pose frame, routed through the shared
+  ElasticSoundControl (zero-volume probe in start() so the control only reads "on"
+  when audio will actually be heard).
+- Postmaster material: +6 ambient lines, +4 click lines, shift lines extended to 30/45/60
+  minutes; four melancholy ambient lines now trigger the sigh pose when spoken.
+- Where things stand: **full batch awaiting James's eyeball** (dinge level, occluder
+  alignment, envelope look, thunk volume are the judgement calls).
+
+## 2026-07-12 — claude-fable (later session)
+
+- MPFB Postmaster moved to the desk, posed, and animated. All work headless
+  (`blender --background` on `tmp/dead-letter-office/dlo-room.blend`); the live instance
+  was never touched.
+- Rig work: head props (`NPM_head_anchor`) and both eyeballs bone-parented to `head`,
+  clothing anchor to `spine01` (keep-world-matrix parenting — no tail-offset surprises).
+  Old primitive `pm_*` figure hidden from render everywhere (kept in the file).
+- Placement: rig at (-1.7, 1.58, 0), rotated 180° (MPFB rest faces -Y), scaled 1.26 —
+  the room is theatrical scale (desk top at 1.22 m) and at human 1.68 m he read as a doll.
+- Pose: forearms-on-desk idle. Guessed euler angles failed (jazz hands); the fix was
+  world-axis aiming helpers that measure a bone segment's current direction and rotate
+  by the delta. White shirt sleeves + cuffs added as cylinders along the posed arm
+  bones, bone-parented so they follow every pose.
+- Portrait rig (PM_PortraitCam, PM_Key/Fill/Rim) deleted; render restored to 1920x1080.
+  New base plate rendered → `assets/room/room-render.png`; blend re-copied to assets.
+- Animation: five pose plates rendered from one pixel-aligned border crop
+  (px 1209, 454, 206x279 of the plate): idle, sort (letter to face — letter and stamp
+  props live in the blend, parented to the wrists), stamp-up, stamp-down, sigh.
+  Since EEVEE is deterministic, the crops match the plate exactly outside the figure.
+- world.js: pose plates load as fixed-position imgs glued to the plate's cover-fit rect
+  (idle always shown, action plates paint over it); the existing 140 ms `pmStep` tick now
+  drives a weighted pose scheduler in render mode (sort/stamp-thump/sigh every 7–16 s,
+  respects reduced motion); clicking him triggers the sort pose alongside his line.
+  Click hotspot re-measured: x 0.6439, y 0.4449, w 0.0792, h 0.208.
+- Verification: `node --check` clean; browser QA blocked — the dev server died
+  mid-session (blank tab), so the pose swap has not been watched live yet.
+- James's live QA, two fixes: (1) fluorescent tube-flicker overlay removed outright
+  (".flicker" div + CSS animation, from the original build — "makes me feel like I'm
+  gonna have a seizure"); (2) flickering rectangle around the postmaster — the pose
+  crops were separate <img> layers scaled by the compositor while the plate under them
+  is scaled by canvas drawImage, so the crop boundary ghosted at any viewport ≠ 1:1.
+  Poses now draw straight onto the room canvas with the same scaler (consecutive crops
+  share one opaque rect, so each draw fully covers the last; layout re-draws via
+  SCENE.plate* + drawPmPose()). No more overlay DOM at all.
+- Where things stand: **posed and animated, pending James's eyeball.** Possible next:
+  stamp thunk one-shot (ElevenLabs), basket-front occluder plate, envelope CSS restyle
+  to match the render.
+
 ## 2026-07-12 — claude-fable
 
 - Started the realistic 3D Postmaster to replace the primitive one (target: the GPT pixel-art
