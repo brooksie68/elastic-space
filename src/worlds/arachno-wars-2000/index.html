@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arachno-Wars 2000</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a0a2e'/%3E%3Cellipse cx='16' cy='16' rx='7' ry='5' fill='%23c84800'/%3E%3Ccircle cx='16' cy='12' r='4' fill='%23ff8c00'/%3E%3Cline x1='6' y1='12' x2='1' y2='8' stroke='%238c3200' stroke-width='2'/%3E%3Cline x1='6' y1='15' x2='1' y2='15' stroke='%238c3200' stroke-width='2'/%3E%3Cline x1='6' y1='18' x2='1' y2='22' stroke='%238c3200' stroke-width='2'/%3E%3Cline x1='26' y1='12' x2='31' y2='8' stroke='%238c3200' stroke-width='2'/%3E%3Cline x1='26' y1='15' x2='31' y2='15' stroke='%238c3200' stroke-width='2'/%3E%3Cline x1='26' y1='18' x2='31' y2='22' stroke='%238c3200' stroke-width='2'/%3E%3C/svg%3E" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: monospace;
+    }
+    #gameCanvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Hidden drift portal: the in-game exits (blimp, OUT targets, the EJECT
+       card) click this anchor so drift.js picks the destination. Also serves
+       as the keyboard/screen-reader way onward. */
+    #drift-exit {
+      background: transparent;
+      border: 0;
+      height: 1px;
+      left: 0;
+      opacity: 0.01;
+      overflow: hidden;
+      position: fixed;
+      top: 0;
+      width: 1px;
+    }
+    #drift-exit:focus-visible {
+      background: rgba(0, 0, 0, 0.8);
+      color: #f0e0c0;
+      font: 12px monospace;
+      height: auto;
+      opacity: 1;
+      padding: 0.4rem 0.6rem;
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <a id="drift-exit" data-drift href="../../../index.html" aria-label="Drift somewhere else">Drift somewhere else</a>
+
+  <script src="../../core/world-registry.js"></script>
+  <script src="../../core/drift.js"></script>
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

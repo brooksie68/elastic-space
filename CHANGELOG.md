@@ -8,6 +8,39 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-13 (Arachno-Wars session)
+
+- NEW WORLD: Arachno-Wars 2000 (idea #52) — James's original one-session artillery game
+  unarchived from `_archive/arachno-wars` and shipped as a world, then overhauled: bomblet
+  split-direction bug fixed; six weapons (added Beam that lases through limited rock, Egg Sac
+  that hatches homing spiderlings, Silk Bridge that builds walkable terrain)
+- All audio replaced with 23 ElevenLabs assets incl. a chiptune battle-theme loop; shared
+  sound-control gained backward-compatible `channels:` support (separate music volume slider)
+- Terrain retextured to warm canyon strata matching the painted bg; childlike flora replaced
+  with junipers/ocotillo/agave/spires/webs; tanks rebuilt to James's reference art — Blender
+  striped-lozenge bodies (teal/amber) on 8 long procedural harvestman legs
+- Three game-mechanic drift exits: clickable blimp, OUT bullseye targets behind each tank
+  (hit with any weapon), and an EJECT card that blows the canopy and drifts
+
+## 2026-07-13 (overnight session)
+
+- NEW WORLD: The Fifteen Sisters (idea #6) — pendulum wave in a salon at dusk; 15 rainbow glass
+  pendulums on a shared wave clock (sister i swings 22+i times per cycle; unison returns exactly
+  once per cycle at any tempo), drifting through snakes/braids/chaos back to unison
+- Blender-rendered salon plate with TRANSPARENT windows (film_transparent + RGBA): James's
+  GPT city painting composites raw behind the plate — pixel-exact, no tonemap/haze/filter ever
+- Furnished salon: patterned rugs, zellij pier bands, chair, palm, bottle table, fruit, incense,
+  gilt paintings — all procedural in the committed build script; plate render is the shipped asset
+- Three vantages (Front / 45° / 90° buttons) off one physics core, eased camera swings between
+- Keeper's cabinet: glass palette, form, evening light, tempo, momentum/friction, chime toggle,
+  tuning (penta/major/chromatic/dom7/harmonic-major), voices (glass/bowls/blend), release
+  patterns (together/cascade/mirror/by-hand) + gather/release; "drop the sisters" opening ritual
+- Audio: Web Audio chimes w/ equal-loudness lift, ElevenLabs crickets + distant bell + Tibetan
+  bowl (pitch-shifted via audio-element playbackRate into a full tuned scale), James's
+  citysounds bed at 0.7x; all through the shared sound control
+- Three diegetic drift exits (door ajar, exit star over the city, wandering moth); registered in
+  drift + map room Pages list; World Ideas.md #6 marked built
+
 ## 2026-07-12 (late session)
 
 - Wildflowers at Dusk: full dissolution arc — flora ascends piece by piece on an accelerating

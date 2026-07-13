@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "slug": "the-fifteen-sisters",
+  "title": "The Fifteen Sisters",
+  "creators": [
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-13T02:30:00Z",
+  "updatedAt": "2026-07-13T02:30:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "In a salon at dusk, fifteen rainbow glass pendulums — each a hair shorter than the last — drift out of phase into snakes, braids and chaos, then snap back into unison once a minute.",
+  "tags": [
+    "physics",
+    "pendulum",
+    "hypnotic",
+    "evening",
+    "glass"
+  ],
+  "moods": [
+    "hypnotic",
+    "serene",
+    "patient"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct",
+    "drift"
+  ],
+  "exits": [],
+  "weight": 7,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "glass chimes",
+    "evening crickets",
+    "a distant bell"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "Pendulum-wave physics on a shared wave clock: sister i swings 22+i times per grand cycle, so unison recurs exactly once per cycle at any tempo. Blender-rendered salon plate (EEVEE, AgX) with NDC hotspots for the three diegetic exits (door ajar, distant star, moth by the candle). Chimes are Web Audio pentatonic sines; crickets and the hour bell are ElevenLabs one-shots. The keeper's cabinet (bottom-right pull) hides palette, form, evening light, tempo and release-pattern controls.",
+  "admin": {
+    "owner": "brook",
+    "notes": "Idea #6 from World Ideas.md, selected by James 2026-07-12. Draft until James approves publication.",
+    "featured": false,
+    "directoryOrder": 10,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/the-fifteen-sisters",
+    "assetPaths": [
+      "src/worlds/the-fifteen-sisters"
+    ]
+  }
+}

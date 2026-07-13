@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Fifteen Sisters</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <!-- the city, composited raw behind the plate's transparent windows — never filtered -->
+    <img class="city" src="./assets/city/fifteen-sisters-city-sunset.png" alt="" aria-hidden="true" />
+    <img class="salon" src="./assets/room/salon.png" alt="" aria-hidden="true" />
+    <div class="evening-tint" aria-hidden="true"></div>
+
+    <canvas id="scene" aria-hidden="true"></canvas>
+
+    <button type="button" class="drop-call">drop the sisters</button>
+
+    <!-- diegetic drift exits -->
+    <a class="exit exit-door" data-drift href="../../../index.html" aria-label="Slip through the door left ajar"></a>
+    <a class="exit exit-star" data-drift href="../../../index.html" aria-label="Follow a distant star">
+      <span class="star-twinkle" aria-hidden="true"></span>
+    </a>
+    <a class="exit exit-moth" data-drift href="../../../index.html" aria-label="Follow the moth">
+      <svg viewBox="0 0 40 30" aria-hidden="true">
+        <g class="moth-wing moth-wing-l">
+          <path d="M19 15 C10 4 2 6 3 13 C4 19 12 21 19 17 Z" />
+          <path d="M19 17 C11 22 5 24 6 19" opacity="0.6" />
+        </g>
+        <g class="moth-wing moth-wing-r">
+          <path d="M21 15 C30 4 38 6 37 13 C36 19 28 21 21 17 Z" />
+          <path d="M21 17 C29 22 35 24 34 19" opacity="0.6" />
+        </g>
+        <ellipse cx="20" cy="16" rx="2.1" ry="5.2" />
+        <path d="M18.8 11 C17 8 15 7 14 7 M21.2 11 C23 8 25 7 26 7" fill="none" stroke-width="1" />
+      </svg>
+    </a>
+
+    <!-- vantage: front / 45 / 90 -->
+    <div class="vantage-bar" role="group" aria-label="Vantage">
+      <button type="button" class="on" data-view="0" aria-pressed="true">Front</button>
+      <button type="button" data-view="1" aria-pressed="false">45&deg;</button>
+      <button type="button" data-view="2" aria-pressed="false">90&deg;</button>
+    </div>
+
+    <!-- the keeper's cabinet -->
+    <button type="button" class="cabinet-pull" aria-expanded="false" aria-controls="cabinet"
+            title="The keeper's cabinet">
+      <span class="pull-label" aria-hidden="true">The Keeper&rsquo;s Cabinet</span>
+      <svg viewBox="0 0 44 44" aria-hidden="true">
+        <circle cx="22" cy="22" r="19" class="pull-plate" />
+        <circle cx="22" cy="15" r="3.2" class="pull-pin" />
+        <path d="M22 18 C14 18 12 30 22 33 C32 30 30 18 22 18 Z" class="pull-ring" fill="none" />
+      </svg>
+      <span class="visually-hidden">Open the keeper's cabinet</span>
+    </button>
+
+    <section id="cabinet" class="cabinet" aria-label="The keeper's cabinet" hidden>
+      <h2 class="cabinet-title">The Keeper&rsquo;s Cabinet</h2>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Glass">
+        <span class="ctl-label">Glass</span>
+        <div class="ctl-row" data-setting="palette">
+          <button type="button" class="chip on" data-value="rainbow" role="radio" aria-checked="true">Rainbow</button>
+          <button type="button" class="chip" data-value="moonlight" role="radio" aria-checked="false">Moonlight</button>
+          <button type="button" class="chip" data-value="ember" role="radio" aria-checked="false">Ember</button>
+          <button type="button" class="chip" data-value="seaglass" role="radio" aria-checked="false">Sea-glass</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Form">
+        <span class="ctl-label">Form</span>
+        <div class="ctl-row" data-setting="form">
+          <button type="button" class="chip on" data-value="orb" role="radio" aria-checked="true">Orb</button>
+          <button type="button" class="chip" data-value="drop" role="radio" aria-checked="false">Drop</button>
+          <button type="button" class="chip" data-value="lantern" role="radio" aria-checked="false">Lantern</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Evening">
+        <span class="ctl-label">Evening</span>
+        <div class="ctl-row" data-setting="evening">
+          <button type="button" class="chip on" data-value="dusk" role="radio" aria-checked="true">Dusk</button>
+          <button type="button" class="chip" data-value="midnight" role="radio" aria-checked="false">Midnight</button>
+          <button type="button" class="chip" data-value="candlelight" role="radio" aria-checked="false">Candlelight</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="The hour">
+        <span class="ctl-label">The Hour</span>
+        <div class="ctl-row" data-setting="cycle">
+          <button type="button" class="chip" data-value="36" role="radio" aria-checked="false">Swift</button>
+          <button type="button" class="chip on" data-value="60" role="radio" aria-checked="true">Even</button>
+          <button type="button" class="chip" data-value="90" role="radio" aria-checked="false">Languid</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Momentum">
+        <span class="ctl-label">Momentum</span>
+        <div class="ctl-row" data-setting="friction">
+          <button type="button" class="chip on" data-value="endless" role="radio" aria-checked="true">Endless</button>
+          <button type="button" class="chip" data-value="fading" role="radio" aria-checked="false">Fading</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Chimes">
+        <span class="ctl-label">Chimes</span>
+        <div class="ctl-row" data-setting="chimes">
+          <button type="button" class="chip on" data-value="singing" role="radio" aria-checked="true">Singing</button>
+          <button type="button" class="chip" data-value="silent" role="radio" aria-checked="false">Silent</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Tuning">
+        <span class="ctl-label">Tuning</span>
+        <div class="ctl-row" data-setting="scale">
+          <button type="button" class="chip on" data-value="penta" role="radio" aria-checked="true">Pentatonic</button>
+          <button type="button" class="chip" data-value="major" role="radio" aria-checked="false">Major</button>
+          <button type="button" class="chip" data-value="chromatic" role="radio" aria-checked="false">Chromatic</button>
+          <button type="button" class="chip" data-value="dom7" role="radio" aria-checked="false">Seventh</button>
+          <button type="button" class="chip" data-value="harmonic" role="radio" aria-checked="false">Harmonic</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Voices">
+        <span class="ctl-label">Voices</span>
+        <div class="ctl-row" data-setting="voices">
+          <button type="button" class="chip" data-value="glass" role="radio" aria-checked="false">Glass</button>
+          <button type="button" class="chip" data-value="bowls" role="radio" aria-checked="false">Bowls</button>
+          <button type="button" class="chip on" data-value="blend" role="radio" aria-checked="true">Blend</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="The release">
+        <span class="ctl-label">The Release</span>
+        <div class="ctl-row" data-setting="pattern">
+          <button type="button" class="chip on" data-value="together" role="radio" aria-checked="true">Together</button>
+          <button type="button" class="chip" data-value="cascade" role="radio" aria-checked="false">Cascade</button>
+          <button type="button" class="chip" data-value="mirror" role="radio" aria-checked="false">Mirror</button>
+          <button type="button" class="chip" data-value="byhand" role="radio" aria-checked="false">By hand</button>
+        </div>
+      </div>
+
+      <div class="ctl-actions">
+        <button type="button" class="brass-btn" id="btn-gather">Gather</button>
+        <button type="button" class="brass-btn brass-btn-primary" id="btn-release">Release</button>
+      </div>
+      <p class="cabinet-note" id="cabinet-note">Gather the sisters, then let them go.</p>
+    </section>
+
+    <audio id="ambience" src="./assets/audio/evening-crickets.mp3" loop preload="auto"></audio>
+    <audio id="citybed" src="./assets/audio/citysounds.mp3" loop preload="auto"></audio>
+    <audio id="bell" src="./assets/audio/distant-bell.mp3" preload="auto"></audio>
+    <audio id="bowl" src="./assets/audio/tibetan-bowl.mp3" preload="auto"></audio>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>

@@ -1,9 +1,12 @@
-# Claude's Ideas
+# World Ideas
 
-Fifty world pitches for Elastic Space, generated 2026-07-10 by claude-fable in session with James.
-This file is the permanent record of that session: the ideas, the method, the B-sides that got cut,
-and the build notes for the first selections. Future sessions should update statuses here rather
-than re-pitching from scratch.
+The shared idea backlog for Elastic Space, with a section per contributor — Claude's ideas and
+James's ideas. Numbering is global across sections so any world can be cited as "idea #N".
+Future sessions should update statuses here rather than re-pitching from scratch.
+
+Began life as `Claude's Ideas.md`: fifty world pitches generated 2026-07-10 by claude-fable in
+session with James, plus the method, the B-sides that got cut, and build notes for the first
+selections. Renamed and restructured 2026-07-12.
 
 ## The method
 
@@ -20,7 +23,7 @@ collisions. Constraints honored:
 
 **Statuses:** `idea` → `selected` → `building` → `live` → (`retired` if it happens).
 
-## The fifty
+## Claude's ideas — the fifty (1–50)
 
 ### 1. The Screen Door — *a Jerry* — `idea`
 A summer porch at night. One bare bulb, moths orbiting it with real attraction physics, wind chimes on verlet strings, cicadas in synthesized chorus. Pull the light cord: darkness, the moths disperse, the crickets get brave, and something else becomes visible in the yard.
@@ -37,7 +40,7 @@ A pond at dawn reflecting a painted scene in perfect mirror. Touch the water and
 ### 5. Spring Tide — *a weekend* — `idea`
 A moonlit beach where the tide height follows the actual current phase of the moon — visit at new moon and the water is hungry. You can pile up sand. The ocean's opinion of your architecture is the whole piece.
 
-### 6. The Fifteen Sisters — *an evening* — `idea`
+### 6. The Fifteen Sisters — *an evening* — `built 2026-07-12` → `src/worlds/the-fifteen-sisters/`
 Fifteen pendulums, each a hair shorter than the last, released together. They drift out of phase into snakes, braids, chaos, then — impossibly — snap back into unison. Each one hums a soft tone as it passes center. Hypnosis with a period of sixty seconds.
 
 ### 7. The Singing Plate — *a weekend* — `building since 2026-07-10` → `src/worlds/singing-plate/`
@@ -91,7 +94,7 @@ An incense stick that burns for twenty real minutes. Curl-noise smoke rises off 
 ### 23. The Patience Tree — *a weekend* — `idea`
 A bonsai grown by L-system, but on real time: it puts out new growth over actual days, whether you visit or not. Your shears work instantly; regrowth answers over the week. A collaboration where the tree always gets the last word.
 
-### 24. Two Colours, Meeting — *an evening* — `idea`
+### 24. Two Colours, Meeting — *an evening* — `building since 2026-07-12` → `src/worlds/colors-meeting/` (shipped title: **Colors, Meeting** — James dropped the u; grew a conservator's control panel, so closer to *a weekend* in practice)
 The simplest world: two enormous fields of color and the seam where they touch. They breathe, over minutes, so slowly you can't catch them moving — only realize they've moved. Rothko for browsers. Thirty lines of code, if the thirty are right.
 
 ### 25. The Ascent — *an evening* — `idea`
@@ -130,7 +133,7 @@ One cabinet in a dark room, CRT glow. The game is a tiny score-chaser where the 
 ### 36. The Turf Club — *a weekend* — `idea`
 A wood-paneled betting parlor for snail racing. One race per real day, deterministically seeded by the date — everyone on Earth sees the same race, same odds, same photo finish. Study the form guide. Tear up your ticket. The track remembers nothing.
 
-### 37. Coach 9 — *a Jerry* — `idea`
+### 37. Coach 9 — *a Jerry* — `building` (selected by James 2026-07-13; first pass built same night, James lukewarm — on the fence whether to continue)
 A window seat on a train that never arrives. Procedural landscape scrolls past in parallax — fields, pylons, tunnels that go dark and change the sound, stations with names from a grammar that's almost English. Rain on the glass when the weather turns. Infinite, and infinitely calm.
 
 ### 38. Otis — *a weekend to start, then infinite* — `idea`
@@ -171,6 +174,33 @@ A gilt-framed mirror that asks permission to see you, then shows your webcam fee
 
 ### 50. The Grand Kaleidoscope Concession — *a Jerry* — `idea`
 One kaleidoscope — but it's a coin-operated pier telescope, and what it fractures into n-fold symmetry is live footage of the other worlds' particle systems: Jerry's dots, wildflower rain, moth orbits, folded into rose windows. A machine that looks at Elastic Space through a compound eye. Insert coin; the coin return leads to drift.
+
+## James's ideas (51–)
+
+Numbering continues from Claude's fifty. Added 2026-07-12:
+
+### 51. The Hunting Grounds — *a weekend* — `idea`
+An emergence sandbox: populate a space with simple agents running hunting rules — predators, prey, maybe grazers and scavengers — and see what complexity falls out. No script, no goal; the whole world is watching rule sets collide into ecosystems, arms races, and population booms and crashes. Sibling to Murmur (11) and The Underground Post (10), but the point here is the experiment itself: tune the rules, watch what emerges.
+
+### 52. Arachno Wars — *a weekend* — `live 2026-07-12` → `src/worlds/arachno-wars-2000/`
+James's Phaser artillery game, embedded as a world. For fun. A place in Elastic Space where you stop drifting and play something — the framing (arcade cabinet? a web strung between two trees?) is open. Drift exits still apply; the game is the room.
+
+Shipped 2026-07-12 by unarchiving **Arachno-Wars 2000**, the original vanilla-Canvas v1 from
+`_archive/arachno-wars` (the Phaser rewrite lives on separately in `arachno-wars-two`). Game
+untouched; audio routed through the shared sound control; drift exits are faint cobwebs in three
+page corners. Fancier framing (arcade cabinet, web between trees) still open if wanted.
+
+### 53. The Picture House — *an evening to start* — `idea`
+Somewhere a video is playing — a movie screen in an empty theater, a TV glowing in a furnished room. You can sit and watch it. Then you can leave. Or you can leave whenever you want; nothing holds you. The world is just the permission to watch, and the door. What's playing is a separate question, and can change.
+
+### 54. The Wormhole — *a weekend* — `idea`
+A flying experience through a wormhole: continuous forward motion down a tunnel, you steering. Things drift toward you in the stream, and you can fly into them — some are just things, and some are exits that link to other pages. Drift portals as debris in the flow; navigation by collision. (Added 2026-07-12.)
+
+## Built on commission — 2026-07-12
+
+**The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
+colorful fart soundboard to make his daughter laugh. 36 ElevenLabs-generated farts plus a mystery
+button. Status: `built`.
 
 ## Selected for build — 2026-07-10
 
@@ -245,3 +275,21 @@ Ideas cut for space or overlap, preserved because several are one redirect away 
 3. Conventions every new world honors: own folder under `src/worlds/<slug>/`, `world.json`, `changelog.md` (convention added this session), drift exits via `data-drift` + `world-registry.js` + `drift.js`, `npm run registry` after add/remove/rename, audio always behind an interaction gate (site-wide precedent — `autoplayAudio: false` everywhere).
 4. Practical: the local server caches CSS/JS for ~5 minutes — hard refresh after changes.
 5. Registers deliberately covered across the fifty: nature/physics emergence, durational/conceptual time pieces, typography and prose, games and places, sound instruments, and browser-as-haunted-house. If a build stalls, swap registers rather than pushing — the list is wide on purpose.
+
+## Denizen backlog — Jerry's Pool — 2026-07-12
+
+Ten new-denizen concepts pitched in-session (James asked for ten with animation plans, three
+built same-session by claude-fable). All use the Blender layered-sprite pipeline proven on the
+lantern colony / vent walker: parametric build in `tmp/jerrys-pool-denizens/`, per-part layer
+renders with holdout occlusion, rAF-driven part animation over a WAAPI crossing.
+
+1. **Lure gulper** — `live 2026-07-12` — anglerfish; jaw snap, tail beat, pectoral scull, bobbing lure + pulsing halo.
+2. **Fan dancer** — `live 2026-07-12` — feather-star; 10 arm layers running a metachronal wave while the body slowly rotates.
+3. **Barrel drifter** — `live 2026-07-12` — jet salp; contraction squash, pulsed velocity crossing, exhaust puff per contraction.
+4. **Chain siphonophore** — `idea` — bell-train with a contraction wave running down the chain; colony-style layers with scale pulses.
+5. **Comb jelly** — `idea` — glassy ovoid; comb-row layers shimmer in sequence under slow hue-cycling filters.
+6. **Whip eel** — `idea` — 14 overlapping segment layers following a moving sine spine; true serpentine locomotion (seam risk, prototype first).
+7. **Spore floater** — `idea` — rotating dandelion sphere that sheds 2–3 sinking glow-spores at a time (cap + TTL).
+8. **Glass skitterer** — `idea` — translucent shrimp hopping along the seafloor, leg layers scissoring per hop.
+9. **Mirror mola** — `idea` — huge slow disc fish; dorsal/anal fin layers flap alternately, faint light-catching shimmer.
+10. **Burrow lurker** — `idea` — stationary bottom ambusher; glowing tongue extends, sways, retracts. Not a crosser — needs a spawn-in-place pattern.

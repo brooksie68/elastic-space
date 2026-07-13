@@ -11,6 +11,11 @@
 //       stop: () => { ... },           // silence it
 //       setVolume: (v) => { ... },     // v in [0, 1]
 //     });
+//   Optional extra volume channels (e.g. a separate music level) render as
+//   labelled sliders below the main one on hover:
+//     ElasticSoundControl.attach({ ..., channels: [
+//       { label: "Music", value: 0.5, setVolume: (v) => { ... } },
+//     ]});
 //
 // attach() also tries autoplay once. If the browser allows it (site sound
 // permission granted, or enough media engagement), sound starts immediately
@@ -19,14 +24,47 @@
 (function () {
   const STYLE = `
     .es-sound {
+      align-items: flex-end;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      position: fixed;
+      right: 1rem;
+      top: 1rem;
+      transition: top 200ms ease;
+      z-index: 2147483000;
+    }
+
+    .es-sound__row {
       align-items: center;
       display: flex;
       flex-direction: row-reverse;
       gap: 0.5rem;
-      position: fixed;
-      right: 1rem;
-      top: 1rem;
-      z-index: 2147483000;
+    }
+
+    .es-sound__channel {
+      opacity: 0;
+      padding-right: 3rem;
+      pointer-events: none;
+      transition: opacity 200ms ease;
+    }
+
+    .es-sound--on:hover .es-sound__channel,
+    .es-sound--on:focus-within .es-sound__channel {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .es-sound__chlabel {
+      color: rgba(255, 255, 255, 0.85);
+      font: 0.7rem/1 system-ui, sans-serif;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    }
+
+    /* When the dashboard icon (dashboard-control.js) is visible it owns the
+       top-right corner; the speaker sits directly below it. */
+    html[data-es-dash] .es-sound {
+      top: 4.25rem;
     }
 
     .es-sound__btn {
@@ -116,11 +154,27 @@
     const root = document.createElement("div");
     root.className = "es-sound es-sound--off es-sound--pulse";
     root.innerHTML = `
-      <button type="button" class="es-sound__btn" aria-pressed="false"
-              title="Turn on this world's sound" aria-label="Turn on this world's sound">${ICON}</button>
-      <input type="range" class="es-sound__slider" min="0" max="1" step="0.01"
-             value="${media ? media.volume : 1}" aria-label="Volume" />
+      <div class="es-sound__row">
+        <button type="button" class="es-sound__btn" aria-pressed="false"
+                title="Turn on this world's sound" aria-label="Turn on this world's sound">${ICON}</button>
+        <input type="range" class="es-sound__slider" min="0" max="1" step="0.01"
+               value="${media ? media.volume : 1}" aria-label="Volume" />
+      </div>
     `;
+    (options.channels || []).forEach((channel, i) => {
+      const row = document.createElement("div");
+      row.className = "es-sound__row es-sound__channel";
+      row.innerHTML = `
+        <input type="range" class="es-sound__slider" min="0" max="1" step="0.01"
+               value="${channel.value != null ? channel.value : 1}"
+               aria-label="${channel.label} volume" data-es-channel="${i}" />
+        <span class="es-sound__chlabel">${channel.label}</span>
+      `;
+      row.querySelector("input").addEventListener("input", (event) => {
+        channel.setVolume(Number(event.target.value));
+      });
+      root.appendChild(row);
+    });
     document.body.appendChild(root);
 
     const button = root.querySelector(".es-sound__btn");
@@ -165,7 +219,15 @@
     // sound permission (or earned it); otherwise the button is the way in.
     Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {});
 
-    return { setOn };
+    // setVolume lets a world with its own volume UI drive this control too,
+    // keeping the hover slider honest.
+    return {
+      setOn,
+      setVolume: (v) => {
+        slider.value = v;
+        control.setVolume(v);
+      },
+    };
   }
 
   window.ElasticSoundControl = { attach };

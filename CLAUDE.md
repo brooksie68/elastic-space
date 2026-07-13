@@ -5,12 +5,34 @@
 - Use the local dev server (`server.mjs` via `.claude/launch.json`, port 4174, or `serve-local.cmd` on 4173) for previewing and verification. (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)
 - Worlds should still degrade gracefully under `file://` — drift carries query-string fallback state, and world code must not rely on `fetch()` for assets (blocked on `file://`; use media elements or synthesis).
 
+## Map room (root index.html)
+
+- The repo-root `index.html` is the map room: server status light, the page directory, the
+  dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
+  to `/`). It is James's primary starting point while the project is in active development.
+- `map-room.cmd` at the repo root is the one-click starter: double-click → the server starts in
+  its own CMD window on port 4174 → the browser opens the map room. Never make James start the
+  server from a command line.
+- The map room page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
+  (the server sends `Access-Control-Allow-Origin: *`) and switches itself to the served copy when
+  the server comes up; editor panels stay dormant until then.
+- Every page loads `../../core/dashboard-control.js`, which renders the top-right dashboard icon
+  linking back to the map room; the shared sound control sits directly below it. The map room's
+  "show dashboard icons" toggle (localStorage key `elastic-dashboard-icons`) shows/hides these
+  icons site-wide; sound icons are unaffected. Every new page must include dashboard-control.js.
+- New worlds still get a direct link in the map room's Pages list as part of shipping.
+- `welcome.html` at the repo root is the visitor-facing front door (line-drawing Jerry on dark
+  blue; clicking him enters Jerry's Pool — an intentional fixed route, no `data-drift`). At
+  publish time it becomes the public site's `index.html` in place of the map room. Root-level
+  pages load dashboard-control with `data-home="./index.html"` since the default home path
+  assumes world folder depth.
+
 ## World changelogs
 
 - Every world folder contains a `changelog.md`; `src/worlds/_template/changelog.md` is the starter.
 - Append an entry whenever a session meaningfully changes a world: date, author, what changed, and where things stand or what comes next.
 - Newest entries first. Never rewrite or delete earlier entries.
-- World idea backlog and selection history live in `Claude's Ideas.md` at the repo root; update statuses there when a world is selected, built, or shipped.
+- World idea backlog and selection history live in `World Ideas.md` at the repo root (sections per contributor, global idea numbering; formerly `Claude's Ideas.md`); update statuses there when a world is selected, built, or shipped.
 
 ## Audio generation (ElevenLabs)
 
@@ -33,6 +55,9 @@
 - It renders the standard speaker button top right (pulses twice on load, tooltip, on/off states,
   hover volume slider) and makes one autoplay attempt — sound starts immediately for visitors who
   have granted the site sound permission, and waits for the button otherwise.
+- Worlds needing a second volume channel (e.g. music separate from SFX) pass
+  `channels: [{ label, value, setVolume }]` to `attach()` — each renders as a labelled slider
+  below the main one on hover (added 2026-07-13 for Arachno-Wars 2000's music).
 - Do not build per-world audio toggles or autoplay hacks; extend `sound-control.js` if a world
   needs something it doesn't cover.
 
