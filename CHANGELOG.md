@@ -8,6 +8,14 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-13 (launcher cleanup)
+
+- ONE launcher: `start-elastic-space.cmd` (renamed from `map-room.cmd`) — idempotent,
+  reuses a running server, opens the map room. Deleted `serve-local.cmd` and
+  `start-local.cmd`. Port locked to **4174** everywhere (server default changed from
+  4173; all docs updated; 4173 retired). Launchable from the ai-projects ops dashboard's
+  new per-project Launch button.
+
 ## 2026-07-13 (Coach 9 session)
 
 - NEW WORLD: Coach 9 (idea #37) — window seat on a train that never arrives; style-first pass.

@@ -2,7 +2,7 @@
 
 ## Local preview
 
-- Use the local dev server (`server.mjs` via `.claude/launch.json`, port 4174, or `serve-local.cmd` on 4173) for previewing and verification. (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)
+- Use the local dev server (`server.mjs` via `.claude/launch.json`) for previewing and verification. **Port is 4174, always** — the server defaults to it, the launcher uses it, nothing uses 4173 anymore (retired 2026-07-13). (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)
 - Worlds should still degrade gracefully under `file://` — drift carries query-string fallback state, and world code must not rely on `fetch()` for assets (blocked on `file://`; use media elements or synthesis).
 
 ## Map room (root index.html)
@@ -10,9 +10,11 @@
 - The repo-root `index.html` is the map room: server status light, the page directory, the
   dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
   to `/`). It is James's primary starting point while the project is in active development.
-- `map-room.cmd` at the repo root is the one-click starter: double-click → the server starts in
-  its own CMD window on port 4174 → the browser opens the map room. Never make James start the
-  server from a command line.
+- `start-elastic-space.cmd` at the repo root is the ONE launcher (renamed from `map-room.cmd`
+  2026-07-13; `serve-local.cmd` and `start-local.cmd` were deleted the same day — do not
+  recreate them). Double-click: reuses a running server or starts it in its own CMD window on
+  port 4174, then opens the map room. It can also be launched from the ai-projects ops
+  dashboard's Launch button. Never make James start the server from a command line.
 - The map room page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
   (the server sends `Access-Control-Allow-Origin: *`) and switches itself to the served copy when
   the server comes up; editor panels stay dormant until then.

@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const worldsDir = join(rootDir, "src", "worlds");
 const host = process.env.ELASTIC_SPACE_HOST || "127.0.0.1";
-const port = Number(process.env.ELASTIC_SPACE_PORT || "4173");
+const port = Number(process.env.ELASTIC_SPACE_PORT || "4174");
 
 const types = {
   ".css": "text/css; charset=utf-8",

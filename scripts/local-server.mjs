@@ -11,7 +11,7 @@ const pidPath = join(runtimeDir, "local-server.pid");
 const outPath = join(runtimeDir, "local-server.out.log");
 const errPath = join(runtimeDir, "local-server.err.log");
 const host = process.env.ELASTIC_SPACE_HOST || "127.0.0.1";
-const port = Number(process.env.ELASTIC_SPACE_PORT || "4173");
+const port = Number(process.env.ELASTIC_SPACE_PORT || "4174");
 const healthUrl = `http://${host}:${port}/healthz`;
 
 function sleep(ms) {

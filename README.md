@@ -68,10 +68,10 @@ Related documents:
 
 ## Run locally
 
-Run `serve-local.cmd`, then open `http://127.0.0.1:4173/`.
+Run `start-elastic-space.cmd` (or double-click it) — it starts the server if needed and opens `http://127.0.0.1:4174/`.
 
-- Admin: `http://127.0.0.1:4173/admin/`
-- Health check: `http://127.0.0.1:4173/healthz`
+- Admin: `http://127.0.0.1:4174/admin/`
+- Health check: `http://127.0.0.1:4174/healthz`
 - Server status: `npm run local:status`
 - Restart: `npm run local:restart`
 - Stop: `npm run local:stop`

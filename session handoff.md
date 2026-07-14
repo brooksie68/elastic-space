@@ -16,16 +16,16 @@ Elastic Space is a collection of self-contained worlds under `src/worlds/`.
 
 ## Run Locally
 
-1. Run `serve-local.cmd` or `npm run local:start`.
-2. Open `http://127.0.0.1:4173/`.
+1. Run `start-elastic-space.cmd` or `npm run local:start`.
+2. Open `http://127.0.0.1:4174/`.
 
 Useful locations:
 
-- Jerry's Pool: `http://127.0.0.1:4173/src/worlds/jerrys-pool/index.html`
-- Wildflowers at Dusk: `http://127.0.0.1:4173/src/worlds/wildflowers-at-dusk/`
-- Admin: `http://127.0.0.1:4173/admin/`
-- Registry: `http://127.0.0.1:4173/api/worlds`
-- Health: `http://127.0.0.1:4173/healthz`
+- Jerry's Pool: `http://127.0.0.1:4174/src/worlds/jerrys-pool/index.html`
+- Wildflowers at Dusk: `http://127.0.0.1:4174/src/worlds/wildflowers-at-dusk/`
+- Admin: `http://127.0.0.1:4174/admin/`
+- Registry: `http://127.0.0.1:4174/api/worlds`
+- Health: `http://127.0.0.1:4174/healthz`
 
 Use HTTP for development. Direct `file://` loading remains useful for simple worlds and uses URL-carried drift session state, but the registry API and admin require HTTP.
 
