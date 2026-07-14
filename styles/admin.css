@@ -89,7 +89,17 @@ h1 {
 }
 
 .site-title {
-  color: var(--accent);
+  color: var(--text);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.back-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
 }
 
 h2 {
