@@ -1,5 +1,15 @@
 # Coach 9 — changelog
 
+## 2026-07-13 — claude-fable — retired to archive
+
+- James retired the world the same day it was built: the first pass missed the
+  anime-pastel mark badly enough that fixing it wasn't worth the tokens.
+- Moved from `src/worlds/coach-9/` to `archive/coach-9/`; removed from the map
+  room Pages list and the drift registry. Idea #37 marked retired in World Ideas.md.
+- Takeaway carried forward: the project needs better art options before attempting
+  worlds with a strong illustrated style (Blender toon plates, sourced/generated
+  artwork) — procedural canvas alone doesn't reach that bar.
+
 ## 2026-07-13 — claude-fable — first pass: the window, the loop, the passengers
 
 - New world from idea #37, riffed with James: cozy anime-pastel train window, 2.5D

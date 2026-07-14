@@ -133,7 +133,7 @@ One cabinet in a dark room, CRT glow. The game is a tiny score-chaser where the 
 ### 36. The Turf Club — *a weekend* — `idea`
 A wood-paneled betting parlor for snail racing. One race per real day, deterministically seeded by the date — everyone on Earth sees the same race, same odds, same photo finish. Study the form guide. Tear up your ticket. The track remembers nothing.
 
-### 37. Coach 9 — *a Jerry* — `building` (selected by James 2026-07-13; first pass built same night, James lukewarm — on the fence whether to continue)
+### 37. Coach 9 — *a Jerry* — `retired` (selected by James 2026-07-13; first pass built same night, retired to `archive/coach-9/` 2026-07-13 — procedural canvas couldn't reach the anime-pastel bar; revisit only with better art options)
 A window seat on a train that never arrives. Procedural landscape scrolls past in parallax — fields, pylons, tunnels that go dark and change the sound, stations with names from a grammar that's almost English. Rain on the glass when the weather turns. Infinite, and infinitely calm.
 
 ### 38. Otis — *a weekend to start, then infinite* — `idea`
