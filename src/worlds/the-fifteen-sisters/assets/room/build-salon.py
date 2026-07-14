@@ -107,7 +107,89 @@ def cut(target, cutter):
     bpy.data.objects.remove(cutter, do_unlink=True)
 
 # ------------------------------------------------------------------ materials
-M_PLASTER = mat("plaster", (0.060, 0.064, 0.088), rough=0.92)
+def plaster_material():
+    # lived-in plaster: fine grain bump, large damp mottling, scuffs and scum
+    # rising from the floor, faint vertical streaks. World-space coords so every
+    # wall segment shares one continuous surface.
+    m = mat("plaster", (0.060, 0.064, 0.088), rough=0.92)
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+
+    # fine grain in the surface itself
+    grain = nt.nodes.new("ShaderNodeTexNoise")
+    grain.inputs["Scale"].default_value = 30.0
+    grain.inputs["Detail"].default_value = 10.0
+    grain.inputs["Roughness"].default_value = 0.68
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.10
+    nt.links.new(geo.outputs["Position"], grain.inputs["Vector"])
+    nt.links.new(grain.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    def maprange(vmin, vmax, tmin, tmax):
+        n = nt.nodes.new("ShaderNodeMapRange")
+        n.clamp = True
+        n.inputs["From Min"].default_value = vmin
+        n.inputs["From Max"].default_value = vmax
+        n.inputs["To Min"].default_value = tmin
+        n.inputs["To Max"].default_value = tmax
+        return n
+
+    # large mottled patches (old damp)
+    mott = nt.nodes.new("ShaderNodeTexNoise")
+    mott.inputs["Scale"].default_value = 0.5
+    mott.inputs["Detail"].default_value = 4.0
+    nt.links.new(geo.outputs["Position"], mott.inputs["Vector"])
+    mott_f = maprange(0.46, 0.75, 0.0, 0.30)
+    nt.links.new(mott.outputs["Fac"], mott_f.inputs["Value"])
+
+    # scuffs and scum climbing from the floor, broken up by the streak noise
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(geo.outputs["Position"], sep.inputs[0])
+    low = maprange(1.35, 0.0, 0.0, 0.42)
+    nt.links.new(sep.outputs["Z"], low.inputs["Value"])
+
+    # faint vertical streaks (water has run down these walls)
+    smap = nt.nodes.new("ShaderNodeMapping")
+    smap.inputs["Scale"].default_value = (6.0, 6.0, 0.45)
+    streak = nt.nodes.new("ShaderNodeTexNoise")
+    streak.inputs["Scale"].default_value = 1.0
+    streak.inputs["Detail"].default_value = 5.0
+    nt.links.new(geo.outputs["Position"], smap.inputs["Vector"])
+    nt.links.new(smap.outputs["Vector"], streak.inputs["Vector"])
+    streak_f = maprange(0.52, 0.78, 0.0, 0.22)
+    nt.links.new(streak.outputs["Fac"], streak_f.inputs["Value"])
+
+    # low grime modulated by the streaks so it isn't a clean gradient
+    lowmod = nt.nodes.new("ShaderNodeMath")
+    lowmod.operation = "MULTIPLY_ADD"
+    nt.links.new(low.outputs["Result"], lowmod.inputs[0])
+    nt.links.new(streak.outputs["Fac"], lowmod.inputs[1])
+    lowmod.inputs[2].default_value = 0.0
+
+    add1 = nt.nodes.new("ShaderNodeMath")
+    add1.operation = "ADD"
+    nt.links.new(mott_f.outputs["Result"], add1.inputs[0])
+    nt.links.new(streak_f.outputs["Result"], add1.inputs[1])
+    add2 = nt.nodes.new("ShaderNodeMath")
+    add2.operation = "ADD"
+    add2.use_clamp = True
+    nt.links.new(add1.outputs[0], add2.inputs[0])
+    nt.links.new(lowmod.outputs[0], add2.inputs[1])
+    cap = nt.nodes.new("ShaderNodeMath")
+    cap.operation = "MINIMUM"
+    cap.inputs[1].default_value = 0.55
+    nt.links.new(add2.outputs[0], cap.inputs[0])
+
+    mixn, mfac, ma, mb, mout = mix_rgb(nt)
+    ma.default_value = (0.060, 0.064, 0.088, 1)
+    mb.default_value = (0.030, 0.028, 0.024, 1)  # brownish grime
+    nt.links.new(cap.outputs[0], mfac)
+    nt.links.new(mout, bsdf.inputs["Base Color"])
+    return m
+
+M_PLASTER = plaster_material()
 M_FLOOR = mat("floor", (0.036, 0.032, 0.029), rough=0.38)
 M_STONE = mat("stone-sill", (0.095, 0.092, 0.09), rough=0.85)
 M_BRONZE = mat("bronze", (0.045, 0.035, 0.025), rough=0.42, metallic=0.85)
@@ -135,6 +217,41 @@ mapn.inputs["Scale"].default_value = (0.62, 0.62, 0.62)
 ft.links.new(tc.outputs["Object"], mapn.inputs["Vector"])
 ft.links.new(mapn.outputs["Vector"], brick.inputs["Vector"])
 ft.links.new(brick.outputs["Color"], ft.nodes["Principled BSDF"].inputs["Base Color"])
+
+# stone wears unevenly: roughness wanders tile to tile so reflections break up
+fgeo = ft.nodes.new("ShaderNodeNewGeometry")
+fwear = ft.nodes.new("ShaderNodeTexNoise")
+fwear.inputs["Scale"].default_value = 1.1
+fwear.inputs["Detail"].default_value = 5.0
+fwr = ft.nodes.new("ShaderNodeMapRange")
+fwr.clamp = True
+fwr.inputs["From Min"].default_value = 0.3
+fwr.inputs["From Max"].default_value = 0.7
+fwr.inputs["To Min"].default_value = 0.30
+fwr.inputs["To Max"].default_value = 0.62
+ft.links.new(fgeo.outputs["Position"], fwear.inputs["Vector"])
+ft.links.new(fwear.outputs["Fac"], fwr.inputs["Value"])
+ft.links.new(fwr.outputs["Result"], ft.nodes["Principled BSDF"].inputs["Roughness"])
+
+# wood grain on every wooden thing (door, bench, chair, tables)
+wt = M_WOOD.node_tree
+wgeo = wt.nodes.new("ShaderNodeNewGeometry")
+wmap = wt.nodes.new("ShaderNodeMapping")
+wmap.inputs["Scale"].default_value = (2.2, 2.2, 14.0)  # stretched grain
+wnoise = wt.nodes.new("ShaderNodeTexNoise")
+wnoise.inputs["Scale"].default_value = 3.0
+wnoise.inputs["Detail"].default_value = 7.0
+wnoise.inputs["Distortion"].default_value = 0.5
+wramp = wt.nodes.new("ShaderNodeValToRGB")
+wels = wramp.color_ramp.elements
+wels[0].position = 0.32
+wels[0].color = (0.062, 0.041, 0.027, 1)
+wels[1].position = 0.72
+wels[1].color = (0.036, 0.022, 0.014, 1)
+wt.links.new(wgeo.outputs["Position"], wmap.inputs["Vector"])
+wt.links.new(wmap.outputs["Vector"], wnoise.inputs["Vector"])
+wt.links.new(wnoise.outputs["Fac"], wramp.inputs["Fac"])
+wt.links.new(wramp.outputs["Color"], wt.nodes["Principled BSDF"].inputs["Base Color"])
 
 # --------------------------------------------------------------------- world
 world = bpy.data.worlds.new("dusk")
@@ -532,23 +649,25 @@ for col, count in FRUITS:
                                 0.62 + random.uniform(0, 0.04)), mf)
     fi += 1
 
-# incense on the bench — brass dish, a stick, an ember, a wisp of smoke
-cyl("incense-dish", 0.06, 0.025, (0.75, 5.42, 0.51), M_BRONZE)
-cyl("incense-stick", 0.004, 0.24, (0.73, 5.42, 0.62), M_WOOD, rot=(0, math.radians(12), 0))
+# incense table at the far left, by the door — brass dish, a stick, an ember.
+# The smoke is live: the page animates a wisp from the exported "incense"
+# hotspot, so no baked smoke here.
+ITBL = Vector((-5.35, 4.75, 0))
+cyl("itable-top", 0.30, 0.04, (ITBL.x, ITBL.y, 0.72), M_WOOD)
+cyl("itable-col", 0.04, 0.68, (ITBL.x, ITBL.y, 0.36), M_WOOD)
+cyl("itable-base", 0.17, 0.035, (ITBL.x, ITBL.y, 0.0175), M_WOOD)
+cyl("incense-dish", 0.06, 0.025, (ITBL.x, ITBL.y, 0.7525), M_BRONZE)
+cyl("incense-stick", 0.004, 0.24, (ITBL.x - 0.025, ITBL.y, 0.865), M_WOOD, rot=(0, math.radians(12), 0))
 M_EMBER = mat("ember", (1, 1, 1), emit=(1.0, 0.35, 0.08), emit_strength=10.0)
-sphere("incense-ember", 0.008, (0.755, 5.42, 0.735), M_EMBER)
-M_SMOKE = mat("smoke", (0.7, 0.7, 0.75), rough=1.0)
-try:
-    M_SMOKE.surface_render_method = "BLENDED"
-except Exception:
-    try:
-        M_SMOKE.blend_method = "BLEND"
-    except Exception:
-        pass
-sm_bsdf = M_SMOKE.node_tree.nodes["Principled BSDF"]
-sm_bsdf.inputs["Alpha"].default_value = 0.13
-for wz, wr, wx in ((0.85, 0.02, 0.76), (1.0, 0.03, 0.74), (1.16, 0.042, 0.77)):
-    sphere("smoke-wisp", wr, (wx, 5.42, wz), M_SMOKE, squash=(0.4, 0.4, 1.9))
+INCENSE_TIP = Vector((ITBL.x, ITBL.y, 0.982))
+sphere("incense-ember", 0.008, INCENSE_TIP, M_EMBER)
+il = bpy.data.lights.new("incense-light", "POINT")
+il.color = (1.0, 0.45, 0.15)
+il.energy = 3.0
+il.shadow_soft_size = 0.08
+ob = bpy.data.objects.new("incense-light", il)
+ob.location = (ITBL.x, ITBL.y - 0.1, 1.1)
+scene.collection.objects.link(ob)
 
 # ------------------------------------------------------------ window skylight
 for cx, w, sill, spring in ARCHES:
@@ -637,6 +756,7 @@ hotspots = {
     "doorBottom": ndc((DOOR_CX, WALL_Y, 0.0)),
     "flame": ndc(FLAME),
     "flame2": ndc((CAND2.x, CAND2.y, 1.215)),
+    "incense": ndc(INCENSE_TIP),
     "star": ndc(STAR_X),
     "archLeft": {"a": ndc((-3.6 - 0.85, WALL_Y, 0.55)), "b": ndc((-3.6 + 0.85, WALL_Y, 3.85))},
     "archCenter": {"a": ndc((-1.5, WALL_Y, 0.55)), "b": ndc((1.5, WALL_Y, 4.9))},

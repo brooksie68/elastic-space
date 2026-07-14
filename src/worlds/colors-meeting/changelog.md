@@ -3,6 +3,16 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-13 — claude-fable (with James)
+
+- Changed the default (dusk) palette's first two pigments to #eb6145 (top) and #20346b (bottom) —
+  a pairing James landed on and liked. Remaining three dusk colors unchanged.
+- Fixed a color-math bug James caught by eye: the blue coefficient in hexToOklab's first LMS row
+  was 0.1051457216 instead of OKLab's 0.0514459929, so blue-heavy pigments rendered purple (pure
+  blue came back as rgb(129,0,255)). Round trip hex → OKLab → RGB is now exact. Note: all presets
+  now render truer to their hex values than before, so every palette looks slightly different —
+  blues most of all.
+
 ## 2026-07-12 — claude-fable (with James)
 
 - Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right

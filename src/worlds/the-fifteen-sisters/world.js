@@ -17,6 +17,7 @@
     doorBottom: { x: 0.1228, y: 0.7914 },
     doorHalfW: 0.036,
     flame: { x: 0.8758, y: 0.5733 },
+    incense: { x: 0.0507, y: 0.6759 },
     star: { x: 0.7736, y: 0.3004 },
     // window wall bbox is x 0.1677..0.8297, y 0.1445..0.7181; the city image
     // spans it with a hair of padding so no edge ever peeks into a window
@@ -55,8 +56,8 @@
 
   let cycleT = 60;             // grand cycle, seconds
   let waveU = 0;               // grand-cycle fraction; the one true clock
-  let vantage = 0;             // 0 = front, 1 = 45° quarter, 2 = 90° down the rail
-  let viewPos = 0;             // continuous camera position, eases toward vantage
+  let vantage = 1;             // 0 = front, 1 = 45° quarter, 2 = 90° down the rail
+  let viewPos = 1;             // continuous camera position, eases toward vantage
   let friction = false;        // Fading momentum: swings decay to stillness
   let chimesOn = true;         // whether the sisters speak at all
   let voices = "blend";        // glass (synth) | bowls (pitched bowl scale) | blend
@@ -160,6 +161,7 @@
   const dropCall = document.querySelector(".drop-call");
 
   function hideDropCall() {
+    document.querySelector(".action-bar").classList.add("shown");
     if (dropCall.classList.contains("gone")) return;
     dropCall.classList.add("gone");
     setTimeout(() => { dropCall.hidden = true; }, 1000);
@@ -170,6 +172,9 @@
   let W = 0;
   let H = 0;
   let dpr = 1;
+  const birdCanvas = document.getElementById("birds");
+  const bctx = birdCanvas.getContext("2d");
+  let cityRect = { w: 0, h: 0 };
 
   function layoutHotspots() {
     const top = plateXY(MAP.doorTop);
@@ -185,15 +190,33 @@
     starExit.style.left = `${star.x}px`;
     starExit.style.top = `${star.y}px`;
 
+    // the invitation sits centred in the bench's rectangle — under the fruit,
+    // above the rug — and scales with the plate. 34 plate-px fits the bench.
+    const call = plateXY({ x: 0.5, y: 0.7765 }); // 0.795 - 20 plate-px
+    dropCall.style.left = `${call.x}px`;
+    dropCall.style.top = `${call.y}px`;
+    dropCall.style.fontSize = `${34 * t.s}px`;
+
     // the city image rides the same cover transform as the plate (16:9 both,
     // so height fraction equals width fraction)
     const cityImg = document.querySelector(".city");
     const c0 = plateXY({ x: MAP.city.x, y: MAP.city.y });
     const cw = MAP.city.w * PLATE.w * t.s;
+    const ch = (cw * 9) / 16;
     cityImg.style.left = `${c0.x}px`;
     cityImg.style.top = `${c0.y}px`;
     cityImg.style.width = `${cw}px`;
-    cityImg.style.height = `${(cw * 9) / 16}px`;
+    cityImg.style.height = `${ch}px`;
+
+    // the bird canvas rides the same rect
+    birdCanvas.style.left = `${c0.x}px`;
+    birdCanvas.style.top = `${c0.y}px`;
+    birdCanvas.style.width = `${cw}px`;
+    birdCanvas.style.height = `${ch}px`;
+    cityRect = { w: cw, h: ch };
+    birdCanvas.width = Math.round(cw * dpr);
+    birdCanvas.height = Math.round(ch * dpr);
+    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function resize() {
@@ -216,15 +239,14 @@
   };
   let palette = "rainbow";
   let form = "orb";
-  let evening = "dusk";
+  let evening = "midnight";
 
-  // One city painting per evening. All three point at the sunset plate until
-  // James brings back Midnight / Candlelight variants from GPT — drop them in
-  // assets/city/ (1920x1080, same framing) and update these two paths.
+  // One city painting per evening. Midnight and Candlelight share the night
+  // plate — the interiors differ, the city outside doesn't.
   const CITY_SRCS = {
     dusk: "./assets/city/fifteen-sisters-city-sunset.png",
-    midnight: "./assets/city/fifteen-sisters-city-sunset.png",
-    candlelight: "./assets/city/fifteen-sisters-city-sunset.png",
+    midnight: "./assets/city/fifteen-sisters-city-midnight.png",
+    candlelight: "./assets/city/fifteen-sisters-city-midnight.png",
   };
 
   function applyCitySrc() {
@@ -369,13 +391,14 @@
     harmonic: [0, 2, 4, 5, 7, 8, 11],             // harmonic major
   };
   let scaleName = "penta";
+  let register = 0; // semitones; Deep drops every tuning a full octave (-12)
   function semisFor(i) {
     // longest sister (i = 0) = lowest note, rising up the chosen scale
     const s = SCALES[scaleName];
     return s[i % s.length] + 12 * Math.floor(i / s.length);
   }
   function freqFor(i) {
-    return 130.81 * Math.pow(2, semisFor(i) / 12);
+    return 130.81 * Math.pow(2, (semisFor(i) + register) / 12);
   }
 
   function ensureAudio() {
@@ -444,13 +467,13 @@
     if (!soundOn) return;
     try {
       const strike = bowl.cloneNode();
-      if (semis > 0) {
-        // pitch the one bowl sample up the same pentatonic the sines use
+      if (semis !== 0) {
+        // pitch the one bowl sample along the scale (down too, for Deep register)
         strike.preservesPitch = false;
         strike.webkitPreservesPitch = false;
         strike.playbackRate = Math.pow(2, semis / 12);
       }
-      const shrill = 1 / (1 + semis / 24); // upper strikes come in softer
+      const shrill = 1 / (1 + Math.max(0, semis) / 24); // upper strikes come in softer
       strike.volume = Math.min(1, 0.4 * masterVol * (0.5 + 0.5 * vel) * shrill);
       strike.play().catch(() => {});
     } catch (e) { /* the bowl rests */ }
@@ -540,6 +563,7 @@
       if (setting === "chimes") chimesOn = value === "singing";
       if (setting === "voices") voices = value;
       if (setting === "scale") scaleName = value;
+      if (setting === "register") register = value === "deep" ? -12 : 0;
       if (setting === "pattern") {
         pattern = value;
         document.body.dataset.byhand = value === "byhand" ? "1" : "";
@@ -563,11 +587,17 @@
     }
   });
 
+  // bottom-centre clones defer to the cabinet pair
+  document.getElementById("btn-gather-2").addEventListener("click", () =>
+    document.getElementById("btn-gather").click());
+  document.getElementById("btn-release-2").addEventListener("click", () =>
+    document.getElementById("btn-release").click());
+
   // by-hand touch: release the sister under the pointer
   canvas.style.pointerEvents = "none"; // exits/cabinet live above; we listen on window
   addEventListener("pointerdown", (ev) => {
     if (pattern !== "byhand") return;
-    if (ev.target.closest(".cabinet, .cabinet-pull, .exit, .es-sound")) return;
+    if (ev.target.closest(".cabinet, .cabinet-pull, .exit, .es-sound, .action-bar, .vantage-bar")) return;
     const hit = sisterAt(ev.clientX, ev.clientY);
     if (hit >= 0 && sisters[hit].mode === "held") releaseSister(hit);
   });
@@ -608,6 +638,44 @@
     return -1;
   }
 
+  // a rope from the (off-screen) ceiling down to the rail — just hanging there
+  function drawRope(x, yBot, w, alpha) {
+    if (alpha <= 0.01 || w < 0.8) return;
+    ctx2d.globalAlpha = alpha;
+    const grad = ctx2d.createLinearGradient(x - w, 0, x + w, 0);
+    grad.addColorStop(0, "#231a0e");
+    grad.addColorStop(0.45, "#5c4726");
+    grad.addColorStop(1, "#1a120a");
+    ctx2d.strokeStyle = grad;
+    ctx2d.lineWidth = w;
+    ctx2d.lineCap = "round";
+    ctx2d.beginPath();
+    ctx2d.moveTo(x, -4);
+    // a hair of slack so it hangs rather than stands
+    ctx2d.quadraticCurveTo(x + w * 0.5, yBot * 0.5, x, yBot);
+    ctx2d.stroke();
+    // twist shading up the strand
+    ctx2d.strokeStyle = "rgba(0, 0, 0, 0.32)";
+    ctx2d.lineWidth = Math.max(0.6, w * 0.18);
+    for (let y = 6; y < yBot - 4; y += w * 1.7) {
+      const sag = Math.sin((y / yBot) * Math.PI) * w * 0.5;
+      ctx2d.beginPath();
+      ctx2d.moveTo(x + sag - w * 0.4, y);
+      ctx2d.lineTo(x + sag + w * 0.4, y + w * 0.8);
+      ctx2d.stroke();
+    }
+    // lashing where the rope takes the rail
+    ctx2d.strokeStyle = "#3a2c15";
+    ctx2d.lineWidth = Math.max(1, w * 0.5);
+    for (let k = 0; k < 3; k++) {
+      ctx2d.beginPath();
+      ctx2d.moveTo(x - w * 0.9, yBot - w * (1.1 + k * 0.75));
+      ctx2d.lineTo(x + w * 0.9, yBot - w * (0.8 + k * 0.75));
+      ctx2d.stroke();
+    }
+    ctx2d.globalAlpha = 1;
+  }
+
   function drawBeamFront(m, alpha) {
     if (alpha <= 0.01) return;
     ctx2d.globalAlpha = alpha;
@@ -615,6 +683,10 @@
     const y = m.beamY - h / 2;
     const x0 = W * 0.055;
     const x1 = W * 0.945;
+    // ropes first, so the rail sits over their lashings
+    for (const f of [0.035, 0.5, 0.965]) {
+      drawRope(lerp(x0, x1, f), y + h * 0.55, Math.max(3, h * 0.32), alpha);
+    }
     const grad = ctx2d.createLinearGradient(0, y, 0, y + h);
     grad.addColorStop(0, "#2a2013");
     grad.addColorStop(0.28, "#6b5327");
@@ -641,6 +713,11 @@
     const ny = lerp(nearPt.y, farPt.y, -0.06);
     const fx = lerp(nearPt.x, farPt.x, 1.05);
     const fy = lerp(nearPt.y, farPt.y, 1.05);
+    // ropes recede with the rail
+    for (const u of [0.03, 0.5, 0.97]) {
+      const hU = lerp(hN, hF, u);
+      drawRope(lerp(nx, fx, u), lerp(ny, fy, u) + hU * 0.55, Math.max(1.2, hU * 0.32), alpha);
+    }
     const grad = ctx2d.createLinearGradient(nx, ny, nx, ny + hN);
     grad.addColorStop(0, "#2a2013");
     grad.addColorStop(0.28, "#6b5327");
@@ -768,6 +845,104 @@
     }
   }
 
+  // ---------------------------------------------------------- incense smoke
+  // A slow wisp climbing from the incense table by the door. Puffs ride a
+  // sinuous path that widens and thins as they rise.
+  let smoke = [];
+  let smokeAcc = 0;
+
+  function updateSmoke(nowS, dt) {
+    const t = coverTransform();
+    const tip = plateXY(MAP.incense);
+    smokeAcc += dt;
+    while (smokeAcc > 0.4) {
+      smokeAcc -= 0.4;
+      smoke.push({
+        born: nowS,
+        life: 6 + Math.random() * 2.5,
+        seed: Math.random() * Math.PI * 2,
+        drift: (Math.random() - 0.5) * 14,
+      });
+    }
+    if (smoke.length > 40) smoke = smoke.slice(-40);
+    const rise = 46 * t.s; // px/s, scaled with the plate
+    let alive = false;
+    for (const p of smoke) {
+      const age = nowS - p.born;
+      const k = age / p.life;
+      if (k >= 1) continue;
+      alive = true;
+      const sway = Math.sin(age * 1.1 + p.seed) * (4 + age * 5) * t.s;
+      const x = tip.x + sway + p.drift * k * t.s;
+      const y = tip.y - age * rise;
+      const r = (2.2 + age * 2.6) * t.s;
+      const a = 0.085 * (k < 0.18 ? k / 0.18 : 1 - (k - 0.18) / 0.82);
+      const g = ctx2d.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(205, 205, 220, ${a})`);
+      g.addColorStop(1, "rgba(205, 205, 220, 0)");
+      ctx2d.fillStyle = g;
+      ctx2d.beginPath();
+      ctx2d.arc(x, y, r, 0, Math.PI * 2);
+      ctx2d.fill();
+    }
+    if (!alive) smoke = [];
+  }
+
+  // ---------------------------------------------------------- distant birds
+  // Little black V's opening and closing, drifting past far over the city.
+  // Positions are in city-canvas space (fractions of cityRect), so a resize
+  // never scatters a flock.
+  let flock = [];
+  let nextFlockIn = 6 + Math.random() * 14;
+
+  function spawnFlock() {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const count = 3 + Math.floor(Math.random() * 5);
+    const baseY = 0.28 + Math.random() * 0.24; // upper city — sky and spire tops
+    const speed = (0.016 + Math.random() * 0.012) * dir; // city-widths per second
+    for (let k = 0; k < count; k++) {
+      flock.push({
+        x: (dir > 0 ? -0.03 : 1.03) - dir * k * (0.012 + Math.random() * 0.02),
+        y: baseY + (Math.random() - 0.5) * 0.08,
+        vx: speed * (0.92 + Math.random() * 0.16),
+        size: 0.0035 + Math.random() * 0.004, // wingspan as a fraction of city width
+        flap: Math.random() * Math.PI * 2,
+        flapRate: 4.5 + Math.random() * 3,
+        bob: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function updateBirds(nowS, dt) {
+    const { w: cw, h: ch } = cityRect;
+    if (!cw) return;
+    nextFlockIn -= dt;
+    if (nextFlockIn <= 0 && flock.length === 0) {
+      spawnFlock();
+      nextFlockIn = 24 + Math.random() * 36;
+    }
+    bctx.clearRect(0, 0, cw, ch);
+    if (!flock.length) return;
+    bctx.strokeStyle = "rgba(12, 10, 18, 0.62)"; // distance haze, not pure black
+    bctx.lineCap = "round";
+    for (const b of flock) {
+      b.x += b.vx * dt;
+      b.flap += b.flapRate * dt;
+      const x = b.x * cw;
+      const y = (b.y + Math.sin(nowS * 0.5 + b.bob) * 0.006) * ch;
+      const span = Math.max(2.5, b.size * cw);
+      // the V opens and closes: wingtips ride the flap
+      const lift = Math.sin(b.flap) * span * 0.75;
+      bctx.lineWidth = Math.max(0.7, span * 0.16);
+      bctx.beginPath();
+      bctx.moveTo(x - span, y - lift);
+      bctx.quadraticCurveTo(x - span * 0.3, y + span * 0.18, x, y);
+      bctx.quadraticCurveTo(x + span * 0.3, y + span * 0.18, x + span, y - lift);
+      bctx.stroke();
+    }
+    flock = flock.filter((b) => b.x > -0.08 && b.x < 1.08);
+  }
+
   // ------------------------------------------------------------- the moth
   let mothSeed = Math.random() * 100;
   let mothResting = false;
@@ -849,19 +1024,22 @@
           const vel = Math.min(1, Math.abs(s.theta - s.prevTheta) /
             (AMP * 2 * Math.PI * s.n * (dt / cycleT) + 1e-9));
           if (vel > 0.3) {
-            if (voices === "bowls") playBowl(vel, semisFor(i));
-            else if (voices === "blend" && i === 0) playBowl(vel);
+            if (voices === "bowls") playBowl(vel, semisFor(i) + register);
+            else if (voices === "blend" && i === 0) playBowl(vel, register);
             else playChime(i, vel);
           }
         }
       }
     }
 
+    updateSmoke(nowS, dt);
+    updateBirds(nowS, dt);
     updateMoth(nowS, dt);
     requestAnimationFrame(frame);
   }
 
-  document.body.dataset.evening = "dusk";
+  document.body.dataset.evening = evening;
+  applyCitySrc();
   resize();
   bakeSprites();
   requestAnimationFrame(frame);

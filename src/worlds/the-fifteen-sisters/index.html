@@ -8,7 +8,9 @@
   </head>
   <body>
     <!-- the city, composited raw behind the plate's transparent windows — never filtered -->
-    <img class="city" src="./assets/city/fifteen-sisters-city-sunset.png" alt="" aria-hidden="true" />
+    <img class="city" src="./assets/city/fifteen-sisters-city-midnight.png" alt="" aria-hidden="true" />
+    <!-- distant birds, drawn over the city but cropped by the salon's window piers -->
+    <canvas id="birds" aria-hidden="true"></canvas>
     <img class="salon" src="./assets/room/salon.png" alt="" aria-hidden="true" />
     <div class="evening-tint" aria-hidden="true"></div>
 
@@ -36,27 +38,33 @@
       </svg>
     </a>
 
+    <!-- gather / release, always at hand (clones of the cabinet pair) -->
+    <div class="action-bar" role="group" aria-label="Gather and release">
+      <button type="button" class="brass-btn" id="btn-gather-2">Gather</button>
+      <button type="button" class="brass-btn brass-btn-primary" id="btn-release-2">Release</button>
+    </div>
+
     <!-- vantage: front / 45 / 90 -->
     <div class="vantage-bar" role="group" aria-label="Vantage">
-      <button type="button" class="on" data-view="0" aria-pressed="true">Front</button>
-      <button type="button" data-view="1" aria-pressed="false">45&deg;</button>
+      <button type="button" data-view="0" aria-pressed="false">Front</button>
+      <button type="button" class="on" data-view="1" aria-pressed="true">45&deg;</button>
       <button type="button" data-view="2" aria-pressed="false">90&deg;</button>
     </div>
 
     <!-- the keeper's cabinet -->
     <button type="button" class="cabinet-pull" aria-expanded="false" aria-controls="cabinet"
-            title="The keeper's cabinet">
-      <span class="pull-label" aria-hidden="true">The Keeper&rsquo;s Cabinet</span>
+            title="Configure the sisters">
+      <span class="pull-label" aria-hidden="true">Configure the Sisters</span>
       <svg viewBox="0 0 44 44" aria-hidden="true">
         <circle cx="22" cy="22" r="19" class="pull-plate" />
         <circle cx="22" cy="15" r="3.2" class="pull-pin" />
         <path d="M22 18 C14 18 12 30 22 33 C32 30 30 18 22 18 Z" class="pull-ring" fill="none" />
       </svg>
-      <span class="visually-hidden">Open the keeper's cabinet</span>
+      <span class="visually-hidden">Configure the sisters</span>
     </button>
 
-    <section id="cabinet" class="cabinet" aria-label="The keeper's cabinet" hidden>
-      <h2 class="cabinet-title">The Keeper&rsquo;s Cabinet</h2>
+    <section id="cabinet" class="cabinet" aria-label="Configure the sisters" hidden>
+      <h2 class="cabinet-title">Configure the Sisters</h2>
 
       <div class="ctl-group" role="radiogroup" aria-label="Glass">
         <span class="ctl-label">Glass</span>
@@ -80,8 +88,8 @@
       <div class="ctl-group" role="radiogroup" aria-label="Evening">
         <span class="ctl-label">Evening</span>
         <div class="ctl-row" data-setting="evening">
-          <button type="button" class="chip on" data-value="dusk" role="radio" aria-checked="true">Dusk</button>
-          <button type="button" class="chip" data-value="midnight" role="radio" aria-checked="false">Midnight</button>
+          <button type="button" class="chip" data-value="dusk" role="radio" aria-checked="false">Dusk</button>
+          <button type="button" class="chip on" data-value="midnight" role="radio" aria-checked="true">Midnight</button>
           <button type="button" class="chip" data-value="candlelight" role="radio" aria-checked="false">Candlelight</button>
         </div>
       </div>
@@ -119,6 +127,14 @@
           <button type="button" class="chip" data-value="chromatic" role="radio" aria-checked="false">Chromatic</button>
           <button type="button" class="chip" data-value="dom7" role="radio" aria-checked="false">Seventh</button>
           <button type="button" class="chip" data-value="harmonic" role="radio" aria-checked="false">Harmonic</button>
+        </div>
+      </div>
+
+      <div class="ctl-group" role="radiogroup" aria-label="Register">
+        <span class="ctl-label">Register</span>
+        <div class="ctl-row" data-setting="register">
+          <button type="button" class="chip on" data-value="bright" role="radio" aria-checked="true">Bright</button>
+          <button type="button" class="chip" data-value="deep" role="radio" aria-checked="false">Deep</button>
         </div>
       </div>
 

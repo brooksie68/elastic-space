@@ -1,5 +1,27 @@
 # The Fifteen Sisters — changelog
 
+## 2026-07-13 — claude-fable (lived-in salon, birds, ropes, deep register)
+
+- James's midnight city painting landed (`assets/city/fifteen-sisters-city-midnight.png`);
+  Midnight and Candlelight evenings now show it (Dusk keeps sunset). The GPT generation's
+  content sits a few px higher than sunset's — James called it close enough, no correction.
+- The invitation ("drop the sisters") moved up 12px, doubled in size, went warm golden, and
+  its breathe now pulses actual brightness.
+- "The Keeper's Cabinet" renamed to "Configure the Sisters"; pull label + brass icon doubled.
+  Front / 45° / 90° buttons doubled. Cabinet panel raised to clear the taller pull.
+- New Register group in the cabinet: Bright / Deep — Deep drops every tuning a full octave
+  (sines and bowls both; bowl sample now pitches down as well as up).
+- Three ropes now hold the sisters' rail from the ceiling in all three vantages — slight
+  slack, twist shading, lashings under the rail. Nothing crazy; it just hangs there.
+- Distant birds: little black V's opening and closing drift past over the city every half
+  minute or so, on a new canvas between the city painting and the salon plate so the piers
+  crop them naturally.
+- Salon plate re-rendered lived-in: plaster got fine grain bump, damp mottling, scum and
+  scuffs climbing from the floor, faint water streaks; floor roughness now wanders tile to
+  tile; all the woodwork got grain. Incense moved off the bench onto a new small table at
+  the far left by the door (bench keeps the fruit); its tip exports as the "incense" hotspot
+  and the page now animates a live smoke wisp rising from it (baked smoke blobs deleted).
+
 ## 2026-07-13 — claude-fable (major scale, chromatic loudness, plate rescue)
 
 - Tuning gained a plain Major chip (Pentatonic stays the default; Harmonic is harmonic major).
