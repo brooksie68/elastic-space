@@ -15,6 +15,9 @@ this file tracks project-level activity.
   `start-local.cmd`. Port locked to **4174** everywhere (server default changed from
   4173; all docs updated; 4173 retired). Launchable from the ai-projects ops dashboard's
   new per-project Launch button.
+- Map room header reworked: worlds open in new tabs; final header is white
+  "Elastic Space Admin" (smaller) with an orange "← all projects" eyebrow link to the
+  ops dashboard (localhost:4400) — now a standing rule for every panel we build.
 
 ## 2026-07-13 (Coach 9 session)
 
