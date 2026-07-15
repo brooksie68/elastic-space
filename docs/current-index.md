@@ -54,10 +54,21 @@ The scene combines:
 - static, fully opaque blurred CSS seamount silhouettes
 - slowly changing palette washes and atmospheric events
 - a one-pixel-resolution Canvas backdrop
+- rising bubble chains on the backdrop canvas (see below)
 - the Pixi dot field
 - DOM/CSS denizens and seafloor flora
 - Jerry and his orbital rings
 - a currently disabled filament Canvas retained in the code
+
+### Bubble chains
+
+Six seafloor vents emit short trains of tiny bubbles (adapted from the pelagic lantern
+habitat), drawn on the `#field` canvas immediately after the backdrop gradient. Bubbles rise
+on buoyancy but are deflected sideways by the same clockwise orbital current the dots ride —
+the deflection samples the elliptical tangent at the bubble's position and scales with
+distance from the swirl center — and Jerry's passage pushes them aside with a damped radial
+flow like the dot current's. They are decorative and self-limiting (capped population, timed
+lifetimes); they do not interact with denizens and are not part of the denizen rubric.
 
 The dot field changes z-depth with Jerry so particles can pass behind or in front of him. Seamount blur is intentionally strong; it is static and not the primary ongoing processor cost. Seamounts must remain opaque. Underwater depth comes from blur, darkness, overlapping scale, and lighting—not translucent rock or alpha masks.
 

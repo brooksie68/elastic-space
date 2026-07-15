@@ -64,9 +64,11 @@ function initializeSeafloorFlora() {
     foregroundPolypField.prepend(coral);
   }
   const plantTypes = ["kelp", "seaweed", "seaweed", "fern-frond", "fan-frond", "lace-frond", "signal-stalk"];
-  for (let index = 0; index < 21; index += 1) {
+  // 23 plants: the 21-cycle yields 3 signal stalks, the 2 extras bring the
+  // stalk count to 5 (they feed the barrel drifters, so keep them plentiful)
+  for (let index = 0; index < 23; index += 1) {
     const plant = document.createElement("i");
-    const plantType = plantTypes[index % plantTypes.length];
+    const plantType = index >= 21 ? "signal-stalk" : plantTypes[index % plantTypes.length];
     plant.className = `seafloor-plant ${plantType}`;
     plant.style.left = `${2 + Math.random() * 96}%`;
     const plantHeight = plantType === "signal-stalk"
@@ -234,8 +236,8 @@ function triggerFeedingResponse() {
     const baseFilter = existingFilter === "none" ? "" : `${existingFilter} `;
     organelle.animate(
       [
-        { filter: `${baseFilter}brightness(2.4) saturate(1.65) drop-shadow(0 0 7px rgba(183,255,242,.98)) drop-shadow(0 0 16px rgba(71,205,255,.78))` },
-        { offset: 0.5, filter: `${baseFilter}brightness(2.4) saturate(1.65) drop-shadow(0 0 7px rgba(183,255,242,.98)) drop-shadow(0 0 16px rgba(71,205,255,.78))` },
+        { filter: `${baseFilter}brightness(1.6) saturate(1.35) drop-shadow(0 0 6px rgba(183,255,242,.7)) drop-shadow(0 0 13px rgba(71,205,255,.5))` },
+        { offset: 0.5, filter: `${baseFilter}brightness(1.6) saturate(1.35) drop-shadow(0 0 6px rgba(183,255,242,.7)) drop-shadow(0 0 13px rgba(71,205,255,.5))` },
         { filter: existingFilter },
       ],
       { duration: 4000, easing: "linear" },
@@ -243,7 +245,7 @@ function triggerFeedingResponse() {
   });
 }
 
-function scheduleEnergyBall(delay = 3750 + Math.random() * 5830) {
+function scheduleEnergyBall(delay = 3300 + Math.random() * 5200) {
   window.setTimeout(() => {
     spawnEnergyBall();
     scheduleEnergyBall();
@@ -282,7 +284,7 @@ function spawnEnergyBall(angleOverride = null) {
   const bendX = -90 + Math.random() * 180;
   const bendY = 15 + Math.random() * 45;
   const size = 24 + Math.random() * 30;
-  const speed = 34 + Math.random() * 24;
+  const speed = 38 + Math.random() * 27;
   const duration = Math.max(9000, (travelDistance / speed) * 1000);
   const orbOpacity = 0.72 + Math.random() * 0.24;
   const approachingViewer = Math.random() < 0.5;
@@ -1178,14 +1180,15 @@ function spawnCrossingDenizen(type) {
 }
 
 function spawnVake() {
-  if (!denizenField || document.querySelector(".pool-vake")) return;
+  if (!denizenField || document.querySelectorAll(".pool-vake").length >= 2) return;
   const vake = document.createElement("i");
   vake.className = "denizen pool-vake";
   const depth = Math.random();
   const width = 42 + depth * 46;
+  const blurPart = `blur(${(2.5 + (1 - depth) * 1.5).toFixed(1)}px)`;
   vake.style.width = `${width.toFixed(0)}px`;
   vake.style.height = `${(width * 0.32).toFixed(0)}px`;
-  vake.style.filter = `blur(${(2.5 + (1 - depth) * 1.5).toFixed(1)}px) brightness(${(0.35 + depth * 0.15).toFixed(2)}) saturate(0.65)`;
+  vake.style.filter = `${blurPart} brightness(${(0.35 + depth * 0.15).toFixed(2)}) saturate(0.65)`;
   let startX;
   let startY;
   let endX;
@@ -1212,51 +1215,329 @@ function spawnVake() {
   const travelX = endX - startX;
   const travelY = endY - startY;
   const travelLength = Math.hypot(travelX, travelY) || 1;
-  const perpX = -travelY / travelLength;
-  const perpY = travelX / travelLength;
-  const swoopCycles = 2;
-  const amplitude = 100 + Math.random() * 60;
   const opacity = 0.32 + depth * 0.12;
-  const steps = 28;
-  const points = [];
-  for (let index = 0; index <= steps; index += 1) {
-    const progress = index / steps;
-    const swing = Math.sin(progress * Math.PI * 2 * swoopCycles) * amplitude;
-    points.push({
-      x: startX + travelX * progress + perpX * swing,
-      y: startY + travelY * progress + perpY * swing,
-    });
-  }
-  let previousAngle = null;
-  const keyframes = points.map((point, index) => {
-    const ahead = points[Math.min(index + 1, steps)];
-    const behind = points[Math.max(index - 1, 0)];
-    let angle = Math.atan2(ahead.y - behind.y, ahead.x - behind.x) * (180 / Math.PI);
-    if (previousAngle !== null) {
-      while (angle - previousAngle > 180) angle -= 360;
-      while (previousAngle - angle > 180) angle += 360;
-    }
-    previousAngle = angle;
-    const progress = index / steps;
-    return {
-      offset: progress,
-      easing: "linear",
-      opacity: progress < 0.06 || progress > 0.94 ? 0 : opacity,
-      transform: `translate3d(${point.x.toFixed(0)}px,${point.y.toFixed(0)}px,0) rotate(${angle.toFixed(1)}deg)`,
-    };
+  // same pace as the old baked dart: whole crossing in 3-5 s, hunts included
+  const speed = travelLength / (3000 + Math.random() * 2000);
+  // exit target pushed well past the old endpoint so the offscreen check
+  // fires before the steering loop can reach (and start orbiting) it
+  const exitX = endX + (travelX / travelLength) * 600;
+  const exitY = endY + (travelY / travelLength) * 600;
+  vake.style.transform = `translate3d(${startX.toFixed(1)}px,${startY.toFixed(1)}px,0)`;
+  const maxLifetime = 22000;
+  animateDenizen(
+    vake,
+    [
+      { opacity: 0 },
+      { opacity, offset: 0.02 },
+      { opacity, offset: 0.97 },
+      { opacity: 0 },
+    ],
+    maxLifetime,
+  );
+  guideVake(vake, {
+    startX,
+    startY,
+    exitX,
+    exitY,
+    speed,
+    width,
+    // same values as the spawn filter: the body stays black when fed, the
+    // glow comes from drop-shadows appended at pop time
+    fedFilter: `${blurPart} brightness(${(0.35 + depth * 0.15).toFixed(2)}) saturate(0.65)`,
+    // post-zap look: desaturated and lifted to a medium-light gray
+    stunFilter: `${blurPart} saturate(0) brightness(2.35)`,
   });
-  animateDenizen(vake, keyframes, 3000 + Math.random() * 2000);
 }
+
+function spawnJerryZap(fromX, fromY, toX, toY) {
+  if (!denizenField) return;
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("class", "jerry-zap");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const length = Math.hypot(dx, dy) || 1;
+  const perpX = -dy / length;
+  const perpY = dx / length;
+  const segments = 7;
+  let points = `${fromX.toFixed(1)},${fromY.toFixed(1)}`;
+  for (let i = 1; i < segments; i += 1) {
+    const t = i / segments;
+    // jitter biggest mid-bolt, pinched at both ends
+    const jitter = (Math.random() - 0.5) * 34 * Math.sin(t * Math.PI);
+    points += ` ${(fromX + dx * t + perpX * jitter).toFixed(1)},${(fromY + dy * t + perpY * jitter).toFixed(1)}`;
+  }
+  points += ` ${toX.toFixed(1)},${toY.toFixed(1)}`;
+  [
+    { stroke: "rgba(118, 220, 255, 0.55)", width: "4.5" },
+    { stroke: "rgba(238, 251, 255, 0.95)", width: "1.6" },
+  ].forEach(({ stroke, width: strokeWidth }) => {
+    const line = document.createElementNS(svgNS, "polyline");
+    line.setAttribute("points", points);
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke", stroke);
+    line.setAttribute("stroke-width", strokeWidth);
+    line.setAttribute("stroke-linejoin", "round");
+    svg.append(line);
+  });
+  denizenField.append(svg);
+  svg.animate(
+    [
+      { opacity: 1 },
+      { opacity: 0.35, offset: 0.4 },
+      { opacity: 0.9, offset: 0.55 },
+      { opacity: 0 },
+    ],
+    { duration: 340, easing: "ease-out", fill: "forwards" },
+  );
+  window.setTimeout(() => svg.remove(), 400);
+}
+
+const VAKE_SIGHT_FRACTION = 0.75;
+const VAKE_FED_AVOID_RANGE = 430; // px from Jerry's edge; fed vakes lean away inside this
+
+function popOrbForVake(ball, vake, fedFilter) {
+  if (ball.dataset.claimed === "true" || ball.dataset.finished === "true") return null;
+  ball.dataset.claimed = "true";
+  const color = ball.style.getPropertyValue("--energy-color").trim();
+  if (color) {
+    vake.style.setProperty("--vake-rgb", color);
+    vake.classList.add("orb-fed");
+    // amoeba-style rim glow — as drop-shadows because box-shadow/border would
+    // be clipped away by the vake's clip-path; shadow color is unaffected by
+    // the darkening filters before it in the chain
+    vake.style.filter = `${fedFilter} drop-shadow(0 0 6px rgb(${color} / 0.9)) drop-shadow(0 0 16px rgb(${color} / 0.5))`;
+  }
+  // the *pop*: re-anchor left/top to where the flight animation has carried
+  // the ball, then burst via full transform strings — the standalone `scale`
+  // property multiplies the translation too, sliding things toward the origin
+  const rect = ball.getBoundingClientRect();
+  ball.style.setProperty("--energy-x", `${(rect.left + rect.width * 0.5).toFixed(1)}px`);
+  ball.style.setProperty("--energy-y", `${(rect.top + rect.height * 0.5).toFixed(1)}px`);
+  ball.animate(
+    [
+      { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+      { transform: "translate(-50%, -50%) scale(1.7)", opacity: 0.85, offset: 0.4 },
+      { transform: "translate(-50%, -50%) scale(2.4)", opacity: 0 },
+    ],
+    { duration: 240, easing: "ease-out", fill: "forwards" },
+  );
+  // removal on a plain timeout — animation.finished never resolves in a hidden pane
+  window.setTimeout(() => ball.energyCleanup?.(), 260);
+  return color || null;
+}
+
+function spawnVakeTrail(x, y, heading, width, color) {
+  const puff = document.createElement("i");
+  puff.className = "vake-trail";
+  const size = width * (0.3 + Math.random() * 0.25);
+  puff.style.width = `${size.toFixed(1)}px`;
+  puff.style.height = `${size.toFixed(1)}px`;
+  puff.style.setProperty("--trail-rgb", color);
+  // drop the puff at the tail: the vake rotates about its center, so the tail
+  // sits a half-length back along the heading
+  const centerX = x + width * 0.5;
+  const centerY = y + width * 0.16;
+  const puffX = centerX - Math.cos(heading) * width * 0.45 + (Math.random() - 0.5) * 5 - size * 0.5;
+  const puffY = centerY - Math.sin(heading) * width * 0.45 + (Math.random() - 0.5) * 5 - size * 0.5;
+  const base = `translate3d(${puffX.toFixed(1)}px,${puffY.toFixed(1)}px,0)`;
+  puff.style.transform = base;
+  denizenField.append(puff);
+  // full transform strings: animating the bare `scale` property would scale
+  // the translation with it and slide the puff toward the viewport origin
+  puff.animate(
+    [
+      { opacity: 0.85, transform: `${base} scale(1)` },
+      { opacity: 0, transform: `${base} scale(0.5)` },
+    ],
+    { duration: 650, easing: "ease-out", fill: "forwards" },
+  );
+  // plain-timeout removal — frozen-pane safe
+  window.setTimeout(() => puff.remove(), 700);
+}
+
+function guideVake(vake, route) {
+  let x = route.startX;
+  let y = route.startY;
+  let heading = Math.atan2(route.exitY - route.startY, route.exitX - route.startX);
+  const swingPhase = Math.random() * Math.PI * 2;
+  const swingRate = 0.0022 + Math.random() * 0.0008;
+  const maxTurn = 0.004; // rad/ms — banks hard, never speeds up
+  const maxTurnFed = 0.006; // fed: tighter turning radius, sells the caution
+  let target = null;
+  let lastScanAt = 0;
+  let hasEnteredView = false;
+  let previousFrameAt = performance.now();
+  let trailColor = null; // set once it feeds; one orb per visit
+  let lastTrailAt = 0;
+  let zapped = false;
+  let zappedRotation = 0;
+  let riseVelocity = 0;
+  let lastJerryCheckAt = 0;
+  let jerryDx = 0;
+  let jerryDy = 0;
+  let jerryGap = Infinity;
+
+  const update = () => {
+    if (!vake.isConnected) return;
+    const now = performance.now();
+    const dt = Math.min(64, now - previousFrameAt);
+    previousFrameAt = now;
+
+    // Jerry doesn't like the vake — it eats the orbs meant for his worms.
+    // Inside 260 px of his edge he zaps it.
+    if (!zapped && now - lastJerryCheckAt > 150 && cellMotion?.position) {
+      lastJerryCheckAt = now;
+      const jerryRadius = (orb?.getBoundingClientRect().width || 180) / 2;
+      const vakeCenterX = x + route.width * 0.5;
+      const vakeCenterY = y + route.width * 0.16;
+      const dx = vakeCenterX - cellMotion.position.x;
+      const dy = vakeCenterY - cellMotion.position.y;
+      const gap = Math.hypot(dx, dy) - jerryRadius;
+      jerryDx = dx;
+      jerryDy = dy;
+      jerryGap = gap;
+      if (gap < 260) {
+        zapped = true;
+        target = null;
+        trailColor = null;
+        // bolt starts at Jerry's rim, not his center
+        const edgeScale = jerryRadius / Math.max(1, Math.hypot(dx, dy));
+        spawnJerryZap(
+          cellMotion.position.x + dx * edgeScale,
+          cellMotion.position.y + dy * edgeScale,
+          vakeCenterX,
+          vakeCenterY,
+        );
+        let normalized = ((heading * 180) / Math.PI) % 360;
+        if (normalized > 180) normalized -= 360;
+        if (normalized < -180) normalized += 360;
+        zappedRotation = normalized;
+        vake.classList.remove("orb-fed");
+        vake.style.transition = "filter 700ms ease";
+        vake.style.filter = `${route.stunFilter} brightness(2.6)`; // strike flash
+        window.setTimeout(() => {
+          if (vake.isConnected) vake.style.filter = route.stunFilter;
+        }, 140);
+      }
+    }
+
+    if (zapped) {
+      // stunned: no more swimming — it levels off and rises with the flow
+      riseVelocity = lerp(riseVelocity, -0.055, 1 - Math.pow(0.94, dt / 16));
+      x += Math.sin(now * 0.0012 + swingPhase) * 0.014 * dt;
+      y += riseVelocity * dt;
+      zappedRotation = lerp(zappedRotation, 0, 1 - Math.pow(0.995, dt));
+      const wobble = Math.sin(now * 0.002 + swingPhase) * 7;
+      if (y < -route.width - 160) {
+        vake.denizenCleanup?.();
+        return;
+      }
+      vake.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${(zappedRotation + wobble).toFixed(1)}deg)`;
+      requestAnimationFrame(update);
+      return;
+    }
+
+    if (target && (!target.isConnected || target.dataset.claimed === "true" || target.dataset.finished === "true")) {
+      target = null;
+    }
+    if (!target && trailColor === null && now - lastScanAt > 120) {
+      lastScanAt = now;
+      const sight = VAKE_SIGHT_FRACTION * Math.max(window.innerWidth, window.innerHeight);
+      let nearest = Infinity;
+      for (const ball of activeEnergyElements) {
+        if (ball.dataset.claimed === "true" || ball.dataset.finished === "true") continue;
+        const rect = ball.getBoundingClientRect();
+        const distance = Math.hypot(rect.left + rect.width * 0.5 - x, rect.top + rect.height * 0.5 - y);
+        if (distance < sight && distance < nearest) {
+          nearest = distance;
+          target = ball;
+        }
+      }
+    }
+
+    let desired;
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      const targetX = rect.left + rect.width * 0.5;
+      const targetY = rect.top + rect.height * 0.5;
+      desired = Math.atan2(targetY - y, targetX - x);
+      const reach = Math.max(18, rect.width * 0.5 + route.width * 0.3);
+      if (Math.hypot(targetX - x, targetY - y) < reach) {
+        trailColor = popOrbForVake(target, vake, route.fedFilter);
+        target = null;
+        desired = heading;
+      }
+    } else {
+      // cruising: head for the exit with the old swooping wobble
+      desired = Math.atan2(route.exitY - y, route.exitX - x) + Math.sin(now * swingRate + swingPhase) * 0.5;
+      // once fed it prefers to keep clear of Jerry on the way out: a
+      // proximity-weighted lean away (at most ~2/3 of the way toward pure
+      // flight), so it curves wide around him — the turn-rate clamp and the
+      // exit pull keep it from ever reading as a hairpin
+      if (trailColor !== null && jerryGap < VAKE_FED_AVOID_RANGE) {
+        const away = Math.atan2(jerryDy, jerryDx);
+        const w = (1 - Math.max(0, jerryGap) / VAKE_FED_AVOID_RANGE) * 0.65;
+        let bend = away - desired;
+        while (bend > Math.PI) bend -= Math.PI * 2;
+        while (bend < -Math.PI) bend += Math.PI * 2;
+        desired += bend * w;
+      }
+    }
+
+    let delta = desired - heading;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    const turn = (trailColor !== null ? maxTurnFed : maxTurn) * dt;
+    heading += Math.max(-turn, Math.min(turn, delta));
+
+    x += Math.cos(heading) * route.speed * dt;
+    y += Math.sin(heading) * route.speed * dt;
+
+    if (x > -40 && x < window.innerWidth + 40 && y > -40 && y < window.innerHeight + 40) {
+      hasEnteredView = true;
+    }
+    const margin = 240;
+    if (
+      hasEnteredView &&
+      (x < -margin || x > window.innerWidth + margin || y < -margin || y > window.innerHeight + margin)
+    ) {
+      vake.denizenCleanup?.();
+      return;
+    }
+
+    vake.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${((heading * 180) / Math.PI).toFixed(1)}deg)`;
+
+    if (trailColor !== null && hasEnteredView && now - lastTrailAt > 30) {
+      lastTrailAt = now;
+      spawnVakeTrail(x, y, heading, route.width, trailColor);
+    }
+    requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+const URCHIN_PALETTE = [
+  "0, 140, 107",
+  "62, 178, 142",
+  "0, 172, 168",
+  "32, 154, 184",
+  "52, 122, 196",
+  "14, 104, 148",
+];
 
 function spawnPulseUrchin(force = false) {
   if (
     !denizenField ||
-    document.querySelector(".pool-urchin") ||
+    document.querySelectorAll(".pool-urchin").length >= 3 ||
     (!force && activeDenizens >= 6)
   ) return;
 
   const urchin = document.createElement("i");
   urchin.className = "denizen pool-urchin";
+  urchin.style.setProperty("--urchin-rgb", URCHIN_PALETTE[Math.floor(Math.random() * URCHIN_PALETTE.length)]);
   const size = 54 + Math.random() * 38;
   urchin.style.width = `${size.toFixed(0)}px`;
   urchin.style.height = `${size.toFixed(0)}px`;
@@ -1291,10 +1572,13 @@ function guidePulseUrchin(urchin, duration, size) {
   const phaseY = Math.random() * Math.PI * 2;
   let flowOffsetX = 0;
   let flowOffsetY = 0;
+  let previousFrameAt = startedAt;
 
   const update = () => {
     if (!urchin.isConnected) return;
     const now = performance.now();
+    const frameDelta = now - previousFrameAt;
+    previousFrameAt = now;
     const progress = Math.min(1, (now - startedAt) / duration);
     const angle = startAngle + direction * progress * Math.PI * 2 * rotations;
     const exitProgress = Math.max(0, (progress - 0.82) / 0.18);
@@ -1325,11 +1609,13 @@ function guidePulseUrchin(urchin, duration, size) {
       flowX /= flowWeight;
       flowY /= flowWeight;
     }
-    flowOffsetX = lerp(flowOffsetX, Math.max(-20, Math.min(20, flowX * 0.1)), 0.08);
-    flowOffsetY = lerp(flowOffsetY, Math.max(-20, Math.min(20, flowY * 0.1)), 0.08);
+    // 0.08 per 100ms step, scaled to actual frame time so drift feel matches the old cadence
+    const flowEase = 1 - Math.pow(0.92, frameDelta / 100);
+    flowOffsetX = lerp(flowOffsetX, Math.max(-20, Math.min(20, flowX * 0.1)), flowEase);
+    flowOffsetY = lerp(flowOffsetY, Math.max(-20, Math.min(20, flowY * 0.1)), flowEase);
     const rotation = direction * progress * 540;
     urchin.style.transform = `translate3d(${(x - size * 0.5 + flowOffsetX).toFixed(2)}px,${(y - size * 0.5 + flowOffsetY).toFixed(2)}px,0) rotate(${rotation.toFixed(1)}deg)`;
-    window.setTimeout(update, 100);
+    requestAnimationFrame(update);
   };
   update();
 }
@@ -1795,7 +2081,7 @@ const LANTERN_TETHER_ENDS = {
 };
 
 function spawnLanternColony(force = false) {
-  if (!denizenField || document.querySelector(".lantern-colony")) return;
+  if (!denizenField || document.querySelectorAll(".lantern-colony").length >= 2) return;
   if (!force && activeDenizens >= 6) return;
   const colony = document.createElement("div");
   colony.className = "denizen lantern-colony";
@@ -2416,9 +2702,22 @@ const BARREL_PUFFS = [
   { src: "puff-1", w: 0.156, h: 0.2229 },
 ];
 
+let barrelSpawnCount = 0;
+
+function pickSignalStalk() {
+  const candidates = signalStalks.filter(
+    (stalk) => stalk.isConnected && stalk.dataset.grazed !== "true",
+  );
+  if (!candidates.length) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 function spawnBarrelDrifter(force = false) {
   if (!denizenField || document.querySelector(".pool-barrel-drifter")) return;
   if (!force && activeDenizens >= 6) return;
+  barrelSpawnCount += 1;
+  // every other drifter detours down to graze a signal stalk
+  const feedStalk = barrelSpawnCount % 2 === 0 ? pickSignalStalk() : null;
   const salp = document.createElement("div");
   salp.className = "denizen pool-barrel-drifter";
   const depth = Math.random();
@@ -2426,7 +2725,7 @@ function spawnBarrelDrifter(force = false) {
   const height = width * (700 / 1000);
   salp.style.width = `${width.toFixed(1)}px`;
   salp.style.height = `${height.toFixed(1)}px`;
-  salp.style.filter = `blur(${((1 - depth) * 2.4).toFixed(1)}px) brightness(${(0.55 + depth * 0.4).toFixed(2)})`;
+  salp.style.filter = `blur(${((1 - depth) * 2.4).toFixed(1)}px) brightness(${(0.42 + depth * 0.28).toFixed(2)})`;
 
   const { rig, addLayer } = buildLayerRig(salp);
   const nucleus = addLayer("barrel-drifter", "nucleus", BARREL_LAYERS.nucleus);
@@ -2436,42 +2735,191 @@ function spawnBarrelDrifter(force = false) {
   const fromLeft = Math.random() > 0.5;
   const startX = fromLeft ? -width - 60 : window.innerWidth + 60;
   const endX = fromLeft ? window.innerWidth + 60 : -width - 60;
-  const y = window.innerHeight * (0.3 + Math.random() * 0.38);
+  // diagonal crossings: always at least a lean, sometimes a real dive or
+  // climb, with a gentle meander baked along the line
+  const startY = window.innerHeight * (0.18 + Math.random() * 0.54);
+  const endY = Math.min(
+    window.innerHeight * 0.85,
+    Math.max(
+      window.innerHeight * 0.12,
+      startY +
+        window.innerHeight * (0.08 + Math.random() * 0.34) * (Math.random() < 0.5 ? -1 : 1),
+    ),
+  );
+  const meanderAmp = window.innerHeight * (0.015 + Math.random() * 0.035);
+  const meanderCycles = 1.5 + Math.random() * 2;
+  const meanderPhase = Math.random() * Math.PI * 2;
   const flip = fromLeft ? -1 : 1; // sprite faces -x; exhaust (+x) must trail the travel
-  const opacity = 0.55 + depth * 0.35;
-  const duration = 32000 + Math.random() * 16000;
+  const opacity = 0.38 + depth * 0.26;
+  // grazers get a longer clock: it's a herbivore ambling to a plant, not a
+  // predator pouncing on one
+  const duration = feedStalk ? 46000 + Math.random() * 14000 : 28000 + Math.random() * 26000;
   const pulsePeriod = 2200 + Math.random() * 500;
 
   // jet locomotion: velocity surges with each contraction, so the crossing is
-  // baked as many keyframes of the integrated pulsed speed, not a linear glide.
+  // baked as many keyframes of the integrated pulsed speed, not a linear
+  // glide. Pulses are uneven (some contractions strong, some feeble) and ride
+  // a slow cruise/laze envelope, so it stalls and scoots instead of
+  // metronoming across.
   const contraction = (ms) => Math.max(0, Math.sin((ms / pulsePeriod) * Math.PI * 2)) ** 3;
-  const samples = 96;
+  const pulseStrengths = Array.from(
+    { length: Math.ceil(duration / pulsePeriod) + 2 },
+    () => 0.45 + Math.random() * 1.1,
+  );
+  const pulseStrength = (ms) =>
+    pulseStrengths[
+      Math.min(pulseStrengths.length - 1, Math.max(0, Math.floor(ms / pulsePeriod)))
+    ];
+  const cruiseCycles = 1 + Math.random() * 1.5;
+  const cruisePhase = Math.random() * Math.PI * 2;
+  const cruise = (ms) =>
+    1 + 0.45 * Math.sin((ms / duration) * Math.PI * 2 * cruiseCycles + cruisePhase);
+  const samples = 128;
   const speeds = [];
+  const cums = [];
   let total = 0;
   for (let k = 0; k <= samples; k += 1) {
-    const v = 0.32 + 1.55 * contraction((k / samples) * duration);
+    const ms = (k / samples) * duration;
+    const v = (0.26 + 1.55 * pulseStrength(ms) * contraction(ms)) * cruise(ms);
     speeds.push(v);
+    cums.push(total);
     total += v;
   }
+  const yAt = (frac) =>
+    startY +
+    (endY - startY) * frac +
+    Math.sin(frac * Math.PI * 2 * meanderCycles + meanderPhase) *
+      meanderAmp *
+      Math.sin(frac * Math.PI);
+
+  // grazing route: swoop down to the stalk tips, hover through the feed
+  // window, then climb out the top of the screen. Time-based phase bounds so
+  // the ball-transfer timeouts line up with arrival; jet-pulse surging still
+  // drives progress inside each leg.
+  const FEED_START = 0.52;
+  const FEED_END = 0.68;
+  let grazePoint = null;
+  if (feedStalk) {
+    const stalkCenterX = feedStalk.offsetLeft + feedStalk.offsetWidth * 0.5;
+    // body low enough that the ball tips sit inside the lower membrane —
+    // it absorbs them through the body wall, no mouth involved
+    const feed = {
+      x: stalkCenterX - width * 0.5,
+      y: window.innerHeight - feedStalk.offsetHeight - height * 0.5,
+    };
+    const entry = { x: startX, y: startY };
+    const direction = fromLeft ? 1 : -1;
+    // near-straight diagonal glide down to the plant; the bend point varies
+    // per visit so no two dives repeat the same angle
+    const approachControl = {
+      x: feed.x - direction * window.innerWidth * (0.28 + Math.random() * 0.16),
+      y: startY + (feed.y - startY) * (0.25 + Math.random() * 0.3),
+    };
+    // after feeding: rise a little, flatten out, sometimes settle back down,
+    // and cruise off the side like a normal crossing — no more top exit
+    const rise = window.innerHeight * (0.1 + Math.random() * 0.15);
+    const dip = window.innerHeight * (-0.04 + Math.random() * 0.16);
+    const level = {
+      x: feed.x + direction * window.innerWidth * 0.28,
+      y: Math.max(window.innerHeight * 0.14, feed.y - rise),
+    };
+    const levelControl = { x: feed.x + direction * window.innerWidth * 0.07, y: feed.y - rise * 0.95 };
+    const sideExit = {
+      x: fromLeft ? window.innerWidth + width + 60 : -width - 60,
+      y: Math.min(window.innerHeight * 0.86, Math.max(window.innerHeight * 0.12, level.y + dip)),
+    };
+    const sideExitControl = { x: (level.x + sideExit.x) * 0.5, y: level.y + dip * 1.1 };
+    const quad = (p0, control, p1, u) => ({
+      x: (1 - u) * (1 - u) * p0.x + 2 * (1 - u) * u * control.x + u * u * p1.x,
+      y: (1 - u) * (1 - u) * p0.y + 2 * (1 - u) * u * control.y + u * u * p1.y,
+    });
+    const cumAt = (frac) => cums[Math.min(samples, Math.round(frac * samples))];
+    grazePoint = (frac, k) => {
+      if (frac < FEED_START) {
+        const u = Math.min(1, cums[k] / Math.max(1, cumAt(FEED_START)));
+        return quad(entry, approachControl, feed, u);
+      }
+      if (frac < FEED_END) {
+        return { x: feed.x, y: feed.y + Math.sin(frac * Math.PI * 24) * 2.5 };
+      }
+      const u = Math.min(1, (cums[k] - cumAt(FEED_END)) / Math.max(1, total - cumAt(FEED_END)));
+      if (u < 0.42) return quad(feed, levelControl, level, u / 0.42);
+      return quad(level, sideExitControl, sideExit, (u - 0.42) / 0.58);
+    };
+  }
+
   const frames = [];
   let cum = 0;
+  let previousX = startX;
+  let previousY = yAt(0);
+  let pitch = 0;
   for (let k = 0; k <= samples; k += 1) {
     const frac = k / samples;
-    const x = startX + (endX - startX) * (cum / total);
+    const point = grazePoint ? grazePoint(frac, k) : null;
+    const x = point ? point.x : startX + (endX - startX) * (cum / total);
+    const y = point ? point.y : yAt(frac);
     cum += speeds[k];
+    // nose follows the travel slope (smoothed, clamped so stalls don't read
+    // as dives); flip mirrors the rotation direction like the gulper
+    const rawPitch =
+      k === 0
+        ? 0
+        : Math.max(
+            -16,
+            Math.min(16, (Math.atan2(y - previousY, Math.abs(x - previousX)) * 180) / Math.PI),
+          );
+    pitch = pitch * 0.65 + rawPitch * 0.35;
+    previousX = x;
+    previousY = y;
+    const rot = -flip * pitch;
     let alpha = opacity;
     if (frac < 0.05) alpha = opacity * (frac / 0.05);
     if (frac > 0.95) alpha = opacity * ((1 - frac) / 0.05);
-    frames.push({ offset: frac, opacity: alpha, transform: `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) scaleX(${flip})` });
+    frames.push({
+      offset: frac,
+      opacity: alpha,
+      transform: `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${rot.toFixed(2)}deg) scaleX(${flip})`,
+    });
   }
   animateDenizen(salp, frames, duration);
+
+  if (feedStalk) {
+    // claim now so an overlapping feeder can't pick the same plant
+    feedStalk.dataset.grazed = "true";
+    const baseFilter = salp.style.filter;
+    const feedStartMs = duration * FEED_START;
+    window.setTimeout(() => {
+      if (feedStalk.isConnected) feedStalk.classList.add("stalk-grazed");
+      if (!salp.isConnected) return;
+      // a little more glow: modest brightness bump plus a red halo
+      salp.style.filter = `${baseFilter} brightness(1.18) drop-shadow(0 0 9px rgba(219, 30, 50, 0.5))`;
+      // the three swallowed balls settle into the translucent body one by one
+      [[38, 44], [50, 53], [61, 45]].forEach(([ballX, ballY], index) => {
+        window.setTimeout(() => {
+          if (!salp.isConnected) return;
+          const swallowed = document.createElement("i");
+          swallowed.className = "barrel-ball";
+          swallowed.style.left = `${ballX}%`;
+          swallowed.style.top = `${ballY}%`;
+          rig.append(swallowed);
+        }, 500 + index * 650);
+      });
+    }, feedStartMs);
+    // the plant grows its three balls back ~15 s after they were eaten
+    window.setTimeout(() => {
+      feedStalk.classList.remove("stalk-grazed");
+      delete feedStalk.dataset.grazed;
+    }, feedStartMs + 15000);
+  }
 
   const t0 = performance.now();
   const draw = (now) => {
     if (!salp.isConnected) return;
-    const e = contraction(now - t0);
+    const ms = now - t0;
+    // squash tracks each pulse's strength so weak pulses barely stir the body
+    const e = contraction(ms) * Math.min(1.25, pulseStrength(ms));
     rig.style.transform = `scale(${(1 - 0.09 * e).toFixed(3)},${(1 + 0.06 * e).toFixed(3)})`;
-    nucleus.style.opacity = (0.7 + 0.3 * e).toFixed(3);
+    nucleus.style.opacity = Math.min(1, 0.7 + 0.3 * e).toFixed(3);
     window.requestAnimationFrame(draw);
   };
   window.requestAnimationFrame(draw);
@@ -2505,6 +2953,301 @@ function spawnBarrelDrifter(force = false) {
   window.setTimeout(spawnExhaust, pulsePeriod * 0.55);
 }
 
+// ---------------------------------------------------------------------------
+// Wave-3 layered denizens: comb jelly + spore floater. Sprites live in
+// ./comb-jelly/ and ./spore-floater/ (Blender layer renders from
+// tmp/jerrys-pool-denizens/denizens3.blend). Manifests inlined as usual.
+
+// ----------------------------------------------------------- comb jelly
+const COMB_LAYERS = {
+  body: { x: 0.08, y: 0.2177, w: 0.427, h: 0.529 },
+  rows: [
+    { x: 0.084, y: 0.5419, w: 0.419, h: 0.1935 },
+    { x: 0.084, y: 0.5081, w: 0.418, h: 0.1339 },
+    { x: 0.084, y: 0.4548, w: 0.418, h: 0.0548 },
+    { x: 0.085, y: 0.3242, w: 0.417, h: 0.1339 },
+    { x: 0.085, y: 0.2306, w: 0.417, h: 0.1919 },
+  ],
+  tent0: { x: 0.486, y: 0.4339, w: 0.463, h: 0.2226 },
+  tent1: { x: 0.475, y: 0.5274, w: 0.4, h: 0.25 },
+};
+const COMB_ANCHORS = {
+  tent0Root: { x: 0.463, y: 0.4895 },
+  tent1Root: { x: 0.4543, y: 0.5245 },
+};
+
+function spawnCombJelly(force = false) {
+  if (!denizenField || document.querySelector(".pool-comb-jelly")) return;
+  if (!force && activeDenizens >= 6) return;
+  const cteno = document.createElement("div");
+  cteno.className = "denizen pool-comb-jelly";
+  const depth = Math.random();
+  const width = 210 + depth * 150;
+  const height = width * (620 / 1000);
+  cteno.style.width = `${width.toFixed(1)}px`;
+  cteno.style.height = `${height.toFixed(1)}px`;
+  cteno.style.filter = `blur(${((1 - depth) * 2.6).toFixed(1)}px) brightness(${(0.5 + depth * 0.42).toFixed(2)}) saturate(${(0.8 + depth * 0.3).toFixed(2)})`;
+
+  const { rig, addLayer } = buildLayerRig(cteno);
+  const tent0 = addLayer("comb-jelly", "tent-0", COMB_LAYERS.tent0);
+  setRigPivot(tent0, COMB_LAYERS.tent0, COMB_ANCHORS.tent0Root);
+  const tent1 = addLayer("comb-jelly", "tent-1", COMB_LAYERS.tent1);
+  setRigPivot(tent1, COMB_LAYERS.tent1, COMB_ANCHORS.tent1Root);
+  addLayer("comb-jelly", "body", COMB_LAYERS.body);
+  const rows = COMB_LAYERS.rows.map((layer, i) => addLayer("comb-jelly", `row-${i}`, layer));
+  [tent0, tent1, ...rows].forEach((img) => img.classList.add("rig-anim"));
+
+  const fromLeft = Math.random() > 0.5;
+  const startX = fromLeft ? -width - 60 : window.innerWidth + 60;
+  const endX = fromLeft ? window.innerWidth + 60 : -width - 60;
+  const flip = fromLeft ? -1 : 1; // sprite faces -x; tentacles must trail the travel
+  const startY = window.innerHeight * (0.14 + Math.random() * 0.36);
+  const endY = Math.min(
+    window.innerHeight * 0.8,
+    Math.max(window.innerHeight * 0.1, startY + window.innerHeight * (Math.random() * 0.44 - 0.22)),
+  );
+  const opacity = 0.52 + depth * 0.4;
+  const duration = 55000 + Math.random() * 25000;
+  animateDenizen(cteno, [
+    { offset: 0, opacity: 0, transform: `translate3d(${startX.toFixed(1)}px,${startY.toFixed(1)}px,0) scaleX(${flip})` },
+    { offset: 0.05, opacity, transform: `translate3d(${(startX + (endX - startX) * 0.05).toFixed(1)}px,${(startY + (endY - startY) * 0.05).toFixed(1)}px,0) scaleX(${flip})` },
+    { offset: 0.95, opacity, transform: `translate3d(${(startX + (endX - startX) * 0.95).toFixed(1)}px,${(startY + (endY - startY) * 0.95).toFixed(1)}px,0) scaleX(${flip})` },
+    { offset: 1, opacity: 0, transform: `translate3d(${endX.toFixed(1)}px,${endY.toFixed(1)}px,0) scaleX(${flip})` },
+  ], duration);
+
+  // comb-row shimmer: a brightness pulse travels across the five rows
+  // (metachronal, like the fan dancer's arms but in opacity), the whole set
+  // slowly cycling hue; tentacles undulate, the body rolls gently. Hue writes
+  // are quantized to 3-degree steps so near-static frames skip the raster.
+  const t0 = performance.now();
+  const wavePeriod = 2600 + Math.random() * 700;
+  const huePeriod = (13 + Math.random() * 6) * 1000 * (Math.random() > 0.5 ? 1 : -1);
+  const hue0 = Math.random() * 360;
+  let lastHue = null;
+  let combSkip = false;
+  const draw = (now) => {
+    if (!cteno.isConnected) return;
+    combSkip = !combSkip; // 30 fps is plenty for a slow shimmer
+    if (combSkip) {
+      window.requestAnimationFrame(draw);
+      return;
+    }
+    const t = (now - t0) / 1000;
+    const ph = ((now - t0) / wavePeriod) * Math.PI * 2;
+    for (let i = 0; i < rows.length; i += 1) {
+      const pulse = Math.max(0, Math.sin(ph - i * 0.85)) ** 1.5;
+      rows[i].style.opacity = (0.5 + 0.5 * pulse).toFixed(3);
+    }
+    const hue = Math.round(((hue0 + ((now - t0) / Math.abs(huePeriod)) * 360 * Math.sign(huePeriod)) % 360) / 3) * 3;
+    if (hue !== lastHue) {
+      lastHue = hue;
+      for (const row of rows) row.style.filter = `hue-rotate(${hue}deg)`;
+    }
+    tent0.style.transform = `rotate(${(Math.sin(t * (Math.PI * 2) / 4.6) * 5.5).toFixed(2)}deg)`;
+    tent1.style.transform = `rotate(${(Math.sin(t * (Math.PI * 2) / 5.3 + 1.7) * 6.5).toFixed(2)}deg)`;
+    rig.style.transform = `rotate(${(Math.sin(t * (Math.PI * 2) / 6.8) * 3).toFixed(2)}deg) translate3d(0,${(Math.sin(t * (Math.PI * 2) / 5.1) * height * 0.03).toFixed(2)}px,0)`;
+    window.requestAnimationFrame(draw);
+  };
+  window.requestAnimationFrame(draw);
+}
+
+// ----------------------------------------------------------- spore floater
+const FLOATER_LAYERS = {
+  core: { x: 0.3789, y: 0.3789, w: 0.2422, h: 0.2422 },
+  shellNear: { x: 0.1922, y: 0.2011, w: 0.6311, h: 0.5544 },
+  shellMid: { x: 0.1744, y: 0.2033, w: 0.6433, h: 0.6467 },
+  shellFar: { x: 0.2378, y: 0.2133, w: 0.62, h: 0.5822 },
+};
+const FLOATER_CENTER = { x: 0.5, y: 0.5 };
+const FLOATER_SPORES = [
+  { src: "spore-0", w: 0.0533, h: 0.0656 },
+  { src: "spore-1", w: 0.0767, h: 0.0878 },
+];
+
+function spawnSporeFloater(force = false) {
+  if (!denizenField || document.querySelector(".pool-spore-floater")) return;
+  if (!force && activeDenizens >= 6) return;
+  const seedhead = document.createElement("div");
+  seedhead.className = "denizen pool-spore-floater";
+  const depth = Math.random();
+  const size = 120 + depth * 95;
+  seedhead.style.width = `${size.toFixed(1)}px`;
+  seedhead.style.height = `${size.toFixed(1)}px`;
+  seedhead.style.filter = `blur(${((1 - depth) * 2.4).toFixed(1)}px) brightness(${(0.52 + depth * 0.4).toFixed(2)}) saturate(${(0.78 + depth * 0.28).toFixed(2)})`;
+
+  const { rig, addLayer } = buildLayerRig(seedhead);
+  const shellFar = addLayer("spore-floater", "shell-far", FLOATER_LAYERS.shellFar);
+  setRigPivot(shellFar, FLOATER_LAYERS.shellFar, FLOATER_CENTER);
+  addLayer("spore-floater", "core", FLOATER_LAYERS.core);
+  const shellMid = addLayer("spore-floater", "shell-mid", FLOATER_LAYERS.shellMid);
+  setRigPivot(shellMid, FLOATER_LAYERS.shellMid, FLOATER_CENTER);
+  const shellNear = addLayer("spore-floater", "shell-near", FLOATER_LAYERS.shellNear);
+  setRigPivot(shellNear, FLOATER_LAYERS.shellNear, FLOATER_CENTER);
+  [shellFar, shellMid, shellNear].forEach((img) => img.classList.add("rig-anim"));
+
+  const opacity = 0.52 + depth * 0.38;
+  const duration = 62000 + Math.random() * 28000;
+  animateDenizen(seedhead, [
+    { opacity: 0 },
+    { opacity, offset: 0.07 },
+    { opacity, offset: 0.88 },
+    { opacity: 0 },
+  ], duration);
+  guideSporeFloater(seedhead, duration, size);
+
+  // volumetric spin: the three filament shells counter-rotate at close-but-
+  // different rates, so the ball reads as turning in space rather than as a
+  // flat sticker. The rig itself only bobs (spores must sink straight down).
+  const t0 = performance.now();
+  const spinNear = (44 + Math.random() * 14) * 1000;
+  const spinMid = -(58 + Math.random() * 16) * 1000;
+  const spinFar = (78 + Math.random() * 20) * 1000;
+  let floaterSkip = false;
+  const draw = (now) => {
+    if (!seedhead.isConnected) return;
+    floaterSkip = !floaterSkip; // 30 fps for a sub-1-rpm spin
+    if (floaterSkip) {
+      window.requestAnimationFrame(draw);
+      return;
+    }
+    const dt = now - t0;
+    shellNear.style.transform = `rotate(${((dt / spinNear) * 360).toFixed(2)}deg)`;
+    shellMid.style.transform = `rotate(${((dt / spinMid) * 360).toFixed(2)}deg)`;
+    shellFar.style.transform = `rotate(${((dt / spinFar) * 360).toFixed(2)}deg)`;
+    rig.style.transform = `translate3d(0,${(Math.sin(dt / 1000 * (Math.PI * 2) / 6.1) * size * 0.025).toFixed(2)}px,0)`;
+    window.requestAnimationFrame(draw);
+  };
+  window.requestAnimationFrame(draw);
+
+  // spore shedding: every so often 2-3 glow-spores detach from the rim and
+  // sink, swaying like falling seeds — capped, with a TTL fallback so hidden
+  // tabs can't accumulate them.
+  const shedCluster = () => {
+    if (!seedhead.isConnected) return;
+    const count = 2 + (Math.random() < 0.5 ? 1 : 0);
+    for (let s = 0; s < count; s += 1) {
+      window.setTimeout(() => {
+        if (!seedhead.isConnected) return;
+        if (rig.querySelectorAll(".rig-spore").length > 5) return;
+        const variant = FLOATER_SPORES[Math.random() < 0.6 ? 0 : 1];
+        const angle = Math.random() * Math.PI * 2;
+        const rim = 0.29 + Math.random() * 0.05;
+        const spore = document.createElement("img");
+        spore.className = "rig-spore";
+        spore.src = `./spore-floater/${variant.src}.png`;
+        spore.alt = "";
+        spore.style.width = `${(variant.w * 100).toFixed(2)}%`;
+        spore.style.left = `${((0.5 + Math.cos(angle) * rim - variant.w / 2) * 100).toFixed(2)}%`;
+        spore.style.top = `${((0.5 + Math.sin(angle) * rim - variant.h / 2) * 100).toFixed(2)}%`;
+        rig.append(spore);
+        const sink = size * (0.55 + Math.random() * 0.5);
+        const sway = size * (0.1 + Math.random() * 0.12) * (Math.random() < 0.5 ? -1 : 1);
+        const life = 5500 + Math.random() * 3000;
+        const sporeAnim = spore.animate([
+          { transform: "translate3d(0,0,0) scale(0.85)", opacity: 0 },
+          { opacity: 0.85, offset: 0.12 },
+          { transform: `translate3d(${(sway * 0.7).toFixed(1)}px,${(sink * 0.38).toFixed(1)}px,0) scale(1)`, opacity: 0.65, offset: 0.45 },
+          { transform: `translate3d(${(-sway * 0.35).toFixed(1)}px,${(sink * 0.74).toFixed(1)}px,0) scale(1.05)`, opacity: 0.4, offset: 0.75 },
+          { transform: `translate3d(${(sway * 0.15).toFixed(1)}px,${sink.toFixed(1)}px,0) scale(1.1)`, opacity: 0 },
+        ], { duration: life, easing: "ease-in-out" });
+        const sporeTtl = window.setTimeout(() => spore.remove(), life + 600);
+        sporeAnim.finished.finally(() => {
+          window.clearTimeout(sporeTtl);
+          spore.remove();
+        });
+      }, s * (180 + Math.random() * 260));
+    }
+    window.setTimeout(shedCluster, 5500 + Math.random() * 4000);
+  };
+  window.setTimeout(shedCluster, 2500 + Math.random() * 2000);
+}
+
+// Urchin-style guided passage for the spore floater: a loose ellipse around
+// the pool that stalls and reverses once or twice, breathes its speed (dips
+// toward ~40% of the ceiling, never above it), wanders its radius, and rides
+// the dot current exactly the way the pulse urchin does. Root transform stays
+// translation-only — shed spores must keep sinking straight down.
+function guideSporeFloater(seedhead, duration, size) {
+  const startedAt = performance.now();
+  const direction = Math.random() > 0.5 ? 1 : -1;
+  const startAngle = Math.random() * Math.PI * 2;
+  const rotations = 0.5 + Math.random() * 0.2; // net laps stay dreamier than the urchin's
+  const baseOmega = (Math.PI * 2 * rotations) / duration; // rad/ms — the speed ceiling
+  // one or two stall-and-reverse moments, smoothstepped through zero so each
+  // turn reads as a slow stall, never a snap
+  const flipCount = 1 + (Math.random() < 0.45 ? 1 : 0);
+  const flips = [];
+  for (let i = 0; i < flipCount; i += 1) {
+    flips.push(0.18 + (i + Math.random() * 0.7) * (0.64 / flipCount));
+  }
+  const FLIP_SPAN = 0.07;
+  const envCycles = 1.5 + Math.random() * 2;
+  const envPhase = Math.random() * Math.PI * 2;
+  const radiusXBase = window.innerWidth * (0.3 + Math.random() * 0.1);
+  const radiusYBase = window.innerHeight * (0.24 + Math.random() * 0.08);
+  const radiusCycles = 1 + Math.random() * 1.5;
+  const radiusPhase = Math.random() * Math.PI * 2;
+  const phaseX = Math.random() * Math.PI * 2;
+  const phaseY = Math.random() * Math.PI * 2;
+  let angle = startAngle;
+  let flowOffsetX = 0;
+  let flowOffsetY = 0;
+  let previousFrameAt = startedAt;
+
+  const update = () => {
+    if (!seedhead.isConnected) return;
+    const now = performance.now();
+    const frameDelta = Math.min(64, now - previousFrameAt);
+    previousFrameAt = now;
+    const progress = Math.min(1, (now - startedAt) / duration);
+    let dir = direction;
+    for (const flip of flips) {
+      if (progress >= flip + FLIP_SPAN) {
+        dir = -dir;
+      } else if (progress > flip) {
+        const s = (progress - flip) / FLIP_SPAN;
+        dir *= 1 - 2 * (s * s * (3 - 2 * s));
+      }
+    }
+    const env = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(progress * Math.PI * 2 * envCycles + envPhase));
+    angle += baseOmega * dir * env * frameDelta;
+    const exitProgress = Math.max(0, (progress - 0.84) / 0.16);
+    const radiusScale = (1 + 0.1 * Math.sin(progress * Math.PI * 2 * radiusCycles + radiusPhase))
+      * (1 + exitProgress * exitProgress * 1.5);
+    const centerX = window.innerWidth * 0.5;
+    const centerY = window.innerHeight * 0.5;
+    const wanderX = Math.sin(progress * Math.PI * 5 + phaseX) * 26;
+    const wanderY = Math.sin(progress * Math.PI * 7 + phaseY) * 20;
+    const x = centerX + Math.cos(angle) * radiusXBase * radiusScale + wanderX;
+    const y = centerY + Math.sin(angle) * radiusYBase * radiusScale + wanderY;
+    let flowX = 0;
+    let flowY = 0;
+    let flowWeight = 0;
+
+    nodes.forEach((node) => {
+      if (!Number.isFinite(node.previousX) || !Number.isFinite(node.previousY)) return;
+      const distance = Math.hypot(node.x - x, node.y - y);
+      if (distance > 210) return;
+      const weight = Math.pow(1 - distance / 210, 2);
+      flowX += ((node.x - node.previousX) / (NETWORK_PHYSICS_STEP / 1000)) * weight;
+      flowY += ((node.y - node.previousY) / (NETWORK_PHYSICS_STEP / 1000)) * weight;
+      flowWeight += weight;
+    });
+
+    if (flowWeight > 0) {
+      flowX /= flowWeight;
+      flowY /= flowWeight;
+    }
+    // same drift feel as the urchin: 0.08 per 100ms step, frame-time scaled
+    const flowEase = 1 - Math.pow(0.92, frameDelta / 100);
+    flowOffsetX = lerp(flowOffsetX, Math.max(-20, Math.min(20, flowX * 0.1)), flowEase);
+    flowOffsetY = lerp(flowOffsetY, Math.max(-20, Math.min(20, flowY * 0.1)), flowEase);
+    seedhead.style.transform = `translate3d(${(x - size * 0.5 + flowOffsetX).toFixed(2)}px,${(y - size * 0.5 + flowOffsetY).toFixed(2)}px,0)`;
+    requestAnimationFrame(update);
+  };
+  update();
+}
+
 function scheduleDenizen(delay = 10000 + Math.random() * 6000) {
   window.setTimeout(() => {
     spawnCrossingDenizen("pool-amoeba");
@@ -2533,14 +3276,14 @@ function scheduleRay(delay = 6000 + Math.random() * 6000) {
   }, delay);
 }
 
-function schedulePulseUrchin(delay = 18000 + Math.random() * 12000) {
+function schedulePulseUrchin(delay = 9000 + Math.random() * 6000) {
   window.setTimeout(() => {
     spawnPulseUrchin();
     schedulePulseUrchin();
   }, delay);
 }
 
-function scheduleVake(delay = 15000 + Math.random() * 15000) {
+function scheduleVake(delay = 8000 + Math.random() * 8000) {
   window.setTimeout(() => {
     spawnVake();
     scheduleVake();
@@ -2565,6 +3308,20 @@ function scheduleBarrelDrifter(delay = 18000 + Math.random() * 14000) {
   window.setTimeout(() => {
     spawnBarrelDrifter();
     scheduleBarrelDrifter();
+  }, delay);
+}
+
+function scheduleCombJelly(delay = 24000 + Math.random() * 14000) {
+  window.setTimeout(() => {
+    spawnCombJelly();
+    scheduleCombJelly();
+  }, delay);
+}
+
+function scheduleSporeFloater(delay = 26000 + Math.random() * 16000) {
+  window.setTimeout(() => {
+    spawnSporeFloater();
+    scheduleSporeFloater();
   }, delay);
 }
 
@@ -3281,10 +4038,10 @@ function updateCell(time) {
   const depthBlur = Math.max(0, (0.34 - depth) / 0.34) * 3.2;
   const feedingBoost = Math.max(0, Math.min(1, (feedingGlowUntil - time) / 6000));
   const polypGlowBoost = cellMotion.polypWarmth;
-  const depthBrightness = 0.24 + depth * 0.86 + feedingBoost * 0.38 + polypGlowBoost * 0.2;
+  const depthBrightness = 0.24 + depth * 0.86 + feedingBoost * 0.12 + polypGlowBoost * 0.2;
   const glowColorA = "101 212 255";
   const glowColorB = "143 255 225";
-  orb.style.cssText = `transform:scale(${cellMotion.pulse.scale.toFixed(4)}) rotate(${cellMotion.pulse.tilt.toFixed(2)}deg);filter:blur(${depthBlur.toFixed(2)}px) brightness(${depthBrightness.toFixed(3)}) saturate(${(1 + feedingBoost * 0.3).toFixed(3)}) contrast(${(1 + feedingBoost * 0.16).toFixed(3)});--cell-glow-color-a:${glowColorA};--cell-glow-color-b:${glowColorB};--cell-glow-a:${(cellMotion.pulse.glowA + feedingBoost * 0.42 + polypGlowBoost * 0.28).toFixed(3)};--cell-glow-b:${(cellMotion.pulse.glowB + feedingBoost * 0.5 + polypGlowBoost * 0.34).toFixed(3)};--cell-membrane-scale:${cellMotion.pulse.membrane.toFixed(4)};--cell-membrane-alpha:${cellMotion.pulse.membraneAlpha.toFixed(3)};--cell-cytoplasm-rotate:${cellMotion.pulse.cytoplasmRotate.toFixed(2)}deg;--cell-cytoplasm-scale:${cellMotion.pulse.cytoplasmScale.toFixed(4)};--cell-nucleus-scale:${cellMotion.pulse.nucleusScale.toFixed(4)};--cell-nucleus-x:${nucleusX.toFixed(2)}px;--cell-nucleus-y:${nucleusY.toFixed(2)}px;--organelle-follow-x:${(nucleusX * 0.07).toFixed(2)}px;--organelle-follow-y:${(nucleusY * 0.05).toFixed(2)}px;--organelle-counter-x:${(nucleusX * -0.055).toFixed(2)}px;--organelle-counter-y:${(nucleusY * -0.045).toFixed(2)}px;--organelle-soft-x:${(nucleusX * 0.025).toFixed(2)}px;--organelle-soft-y:${(nucleusY * 0.025).toFixed(2)}px;--organelle-cross-x:${(nucleusX * 0.04).toFixed(2)}px;--organelle-cross-y:${(nucleusY * -0.06).toFixed(2)}px;--cell-filament-rotate:${cellMotion.pulse.filamentRotate.toFixed(2)}deg;--cell-vesicle-shift:${cellMotion.pulse.vesicleShift.toFixed(2)}px`;
+  orb.style.cssText = `transform:scale(${cellMotion.pulse.scale.toFixed(4)}) rotate(${cellMotion.pulse.tilt.toFixed(2)}deg);filter:blur(${depthBlur.toFixed(2)}px) brightness(${depthBrightness.toFixed(3)}) saturate(${(1 + feedingBoost * 0.15).toFixed(3)}) contrast(${(1 + feedingBoost * 0.06).toFixed(3)});--cell-glow-color-a:${glowColorA};--cell-glow-color-b:${glowColorB};--cell-glow-a:${(cellMotion.pulse.glowA + feedingBoost * 0.22 + polypGlowBoost * 0.28).toFixed(3)};--cell-glow-b:${(cellMotion.pulse.glowB + feedingBoost * 0.26 + polypGlowBoost * 0.34).toFixed(3)};--cell-membrane-scale:${cellMotion.pulse.membrane.toFixed(4)};--cell-membrane-alpha:${cellMotion.pulse.membraneAlpha.toFixed(3)};--cell-cytoplasm-rotate:${cellMotion.pulse.cytoplasmRotate.toFixed(2)}deg;--cell-cytoplasm-scale:${cellMotion.pulse.cytoplasmScale.toFixed(4)};--cell-nucleus-scale:${cellMotion.pulse.nucleusScale.toFixed(4)};--cell-nucleus-x:${nucleusX.toFixed(2)}px;--cell-nucleus-y:${nucleusY.toFixed(2)}px;--organelle-follow-x:${(nucleusX * 0.07).toFixed(2)}px;--organelle-follow-y:${(nucleusY * 0.05).toFixed(2)}px;--organelle-counter-x:${(nucleusX * -0.055).toFixed(2)}px;--organelle-counter-y:${(nucleusY * -0.045).toFixed(2)}px;--organelle-soft-x:${(nucleusX * 0.025).toFixed(2)}px;--organelle-soft-y:${(nucleusY * 0.025).toFixed(2)}px;--organelle-cross-x:${(nucleusX * 0.04).toFixed(2)}px;--organelle-cross-y:${(nucleusY * -0.06).toFixed(2)}px;--cell-filament-rotate:${cellMotion.pulse.filamentRotate.toFixed(2)}deg;--cell-vesicle-shift:${cellMotion.pulse.vesicleShift.toFixed(2)}px`;
 }
 
 function resize() {
@@ -3852,6 +4609,122 @@ function drawBackdrop(time) {
   context.fillRect(0, 0, window.innerWidth, window.innerHeight);
 }
 
+// ---- rising bubble chains (adapted from the pelagic lantern habitat) ----
+// Seafloor vents release short trains of tiny bubbles. Buoyancy carries them
+// up, but the same clockwise orbital current the dots ride carries them
+// sideways as they climb — a gentle lean near the center of the pool, a real
+// shove out at the rim — and Jerry shoulders through any chain he crosses.
+const bubbleEmitters = [
+  { u: 0.13, size: 0.8, nextAt: 1400, trainLeft: 7 },
+  { u: 0.31, size: 1.0, nextAt: 6000, trainLeft: 0 },
+  { u: 0.46, size: 0.7, nextAt: 11000, trainLeft: 0 },
+  { u: 0.6, size: 1.15, nextAt: 2600, trainLeft: 9 },
+  { u: 0.78, size: 0.9, nextAt: 9000, trainLeft: 0 },
+  { u: 0.91, size: 0.75, nextAt: 16000, trainLeft: 0 },
+];
+const poolBubbles = [];
+let lastBubbleTime = 0;
+
+function spawnPoolBubble(emitter, time) {
+  if (poolBubbles.length > 110) return;
+  const r = (0.8 + Math.random() * 2.1) * emitter.size;
+  poolBubbles.push({
+    x: window.innerWidth * emitter.u + (Math.random() - 0.5) * 9,
+    y: window.innerHeight + 4,
+    r,
+    rMax: r * 1.7,
+    rise: 24 + Math.random() * 22,
+    sway: 3 + Math.random() * 5,
+    phase: Math.random() * Math.PI * 2,
+    swirlBias: 0.55 + Math.random() * 0.5,
+    flowVX: 0,
+    flowVY: 0,
+    born: time,
+    life: 12000 + Math.random() * 9000,
+  });
+}
+
+function drawPoolBubbles(time) {
+  const dt = lastBubbleTime ? Math.min(64, time - lastBubbleTime) : 16;
+  lastBubbleTime = time;
+  const ds = dt * 0.001;
+
+  for (let i = 0; i < bubbleEmitters.length; i += 1) {
+    const emitter = bubbleEmitters[i];
+    if (time < emitter.nextAt) continue;
+    if (emitter.trainLeft <= 0) emitter.trainLeft = 5 + Math.floor(Math.random() * 9);
+    spawnPoolBubble(emitter, time);
+    emitter.trainLeft -= 1;
+    emitter.nextAt = emitter.trainLeft > 0
+      ? time + 150 + Math.random() * 300
+      : time + 6000 + Math.random() * 18000;
+  }
+
+  // reference ellipse matching the midrange dot orbit (rx 0.46W, ry 0.375H)
+  const swirlCenterX = window.innerWidth * 0.54;
+  const swirlCenterY = window.innerHeight * 0.52;
+  const swirlRX = Math.max(1, window.innerWidth * 0.46);
+  const swirlRY = Math.max(1, window.innerHeight * 0.375);
+  const jerryX = cellMotion.position.x + cellMotion.drift.x;
+  const jerryY = cellMotion.position.y + cellMotion.drift.y;
+  const influenceRadius = 115 + cellMotion.pulse.scale * 70;
+  const flowDamping = Math.exp(-1.6 * ds);
+
+  for (let i = poolBubbles.length - 1; i >= 0; i -= 1) {
+    const b = poolBubbles[i];
+    const age = time - b.born;
+    if (age > b.life || b.y < -20) {
+      poolBubbles.splice(i, 1);
+      continue;
+    }
+
+    b.y -= b.rise * ds;
+    b.r = Math.min(b.rMax, b.r + dt * 0.0003);
+
+    // clockwise tangent of the orbit ellipse passing through the bubble;
+    // deflection scales with normalized distance from the swirl center
+    const normX = (b.x - swirlCenterX) / swirlRX;
+    const normY = (b.y - swirlCenterY) / swirlRY;
+    const phi = Math.atan2(normY, normX);
+    const tangentX = -Math.sin(phi) * swirlRX;
+    const tangentY = Math.cos(phi) * swirlRY;
+    const tangentLength = Math.hypot(tangentX, tangentY) || 1;
+    const swirlSpeed =
+      20 * Math.min(1.4, Math.hypot(normX, normY)) * b.swirlBias;
+    b.x += (tangentX / tangentLength) * swirlSpeed * ds;
+    b.y += (tangentY / tangentLength) * swirlSpeed * 0.45 * ds;
+
+    // Jerry's passage: damped radial push, little sibling of the dot flow
+    const relX = b.x - jerryX;
+    const relY = b.y - jerryY;
+    const dist = Math.max(1, Math.hypot(relX, relY));
+    if (dist < influenceRadius) {
+      const proximity = 1 - dist / influenceRadius;
+      const push = 130 * proximity * proximity * ds;
+      b.flowVX += (relX / dist) * push;
+      b.flowVY += (relY / dist) * push;
+    }
+    b.flowVX *= flowDamping;
+    b.flowVY *= flowDamping;
+    b.x += b.flowVX * ds;
+    b.y += b.flowVY * ds;
+
+    const drawX = b.x + Math.sin(time * 0.001 + b.phase) * b.sway;
+    const fade = Math.min(1, age / 800) * Math.max(0, 1 - age / b.life);
+    context.strokeStyle = `rgba(160, 225, 255, ${(0.32 * fade).toFixed(3)})`;
+    context.fillStyle = `rgba(160, 225, 255, ${(0.06 * fade).toFixed(3)})`;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.arc(drawX, b.y, b.r, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.strokeStyle = `rgba(224, 248, 255, ${(0.38 * fade).toFixed(3)})`;
+    context.beginPath();
+    context.arc(drawX - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.35, Math.PI * 0.9, Math.PI * 1.6);
+    context.stroke();
+  }
+}
+
 function drawFilaments(time, drawContext) {
   drawContext.save();
   drawContext.lineCap = "round";
@@ -4118,6 +4991,7 @@ function animate(time) {
   }
   updatePolypOrbFeeding(time);
   drawBackdrop(time);
+  drawPoolBubbles(time);
   drawNetwork(time);
   drawFilamentsThisFrame = !drawFilamentsThisFrame;
   if (filamentsEnabled && drawFilamentsThisFrame) {
@@ -4192,12 +5066,14 @@ introduce(() => spawnCrossingDenizen("pool-amoeba"), scheduleDenizen, 16000);
 introduce(() => spawnDotSchool(), scheduleDotSchool, 12000);
 introduce(() => spawnJelly(), scheduleJelly, 16000);
 introduce(() => spawnCrossingDenizen("pool-ray"), scheduleRay, 12000);
-introduce(() => spawnPulseUrchin(true), schedulePulseUrchin, 26000);
+introduce(() => spawnPulseUrchin(true), schedulePulseUrchin, 15000);
 introduce(() => spawnVake(), scheduleVake, 26000);
 introduce(() => spawnLanternColony(true), scheduleLanternColony, 26000);
 introduce(() => spawnVentWalker(true), scheduleVentWalker, 26000);
 introduce(() => spawnGulper(true), scheduleGulper, 26000);
 introduce(() => spawnFanDancer(true), scheduleFanDancer, 26000);
 introduce(() => spawnBarrelDrifter(true), scheduleBarrelDrifter, 26000);
+introduce(() => spawnCombJelly(true), scheduleCombJelly, 26000);
+introduce(() => spawnSporeFloater(true), scheduleSporeFloater, 26000);
 initializeAlienFishSchool();
 window.setTimeout(() => spawnAbyssalPredator(), 120000 + Math.random() * 120000);

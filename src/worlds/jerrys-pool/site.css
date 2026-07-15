@@ -381,7 +381,10 @@ body {
 .pool-gulper .rig-layer,
 .pool-fan-dancer .rig-layer,
 .pool-barrel-drifter .rig-layer,
-.rig-puff {
+.pool-comb-jelly .rig-layer,
+.pool-spore-floater .rig-layer,
+.rig-puff,
+.rig-spore {
   position: absolute;
 }
 
@@ -389,7 +392,8 @@ body {
    static layers (body, shell, disc) stay unpromoted to save GPU memory */
 .rig-anim,
 .walker-puff,
-.rig-puff {
+.rig-puff,
+.rig-spore {
   will-change: transform, opacity;
 }
 
@@ -527,11 +531,39 @@ body {
 }
 
 .pool-vake {
+  --vake-rgb: 26 42 56;
   background:
     radial-gradient(circle at 30% 38%, rgba(96, 138, 158, 0.24), transparent 36%),
     linear-gradient(155deg, rgba(26, 42, 56, 0.96), rgba(5, 11, 20, 0.98));
   clip-path: polygon(100% 50%, 30% 12%, 0 4%, 16% 50%, 0 96%, 30% 88%);
   z-index: 2;
+}
+
+.pool-vake.orb-fed::after {
+  background: linear-gradient(90deg, transparent, rgb(var(--vake-rgb) / 0.35));
+}
+
+.jerry-zap {
+  filter: drop-shadow(0 0 6px rgba(96, 210, 255, 0.8));
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 7;
+}
+
+.vake-trail {
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, rgb(var(--trail-rgb) / 0.5), rgb(255 255 255 / 0.5) 35%),
+    color-mix(in oklab, rgb(var(--trail-rgb) / 0.16), rgb(255 255 255 / 0.16) 35%) 55%,
+    transparent 72%
+  );
+  border-radius: 50%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  z-index: 1;
 }
 
 .pool-vake::before {
@@ -556,20 +588,21 @@ body {
 }
 
 .pool-urchin {
+  --urchin-rgb: 0, 140, 107;
   animation: urchin-pulse 4s ease-in-out infinite;
   background:
-    radial-gradient(circle at 36% 32%, rgba(0, 140, 107, 0.2), transparent 17%),
-    radial-gradient(circle, rgba(0, 140, 107, 0.2), rgba(0, 140, 107, 0.12) 62%, rgba(0, 140, 107, 0.06));
-  border: 1px solid rgba(0, 140, 107, 0.2);
+    radial-gradient(circle at 36% 32%, rgba(var(--urchin-rgb), 0.2), transparent 17%),
+    radial-gradient(circle, rgba(var(--urchin-rgb), 0.2), rgba(var(--urchin-rgb), 0.12) 62%, rgba(var(--urchin-rgb), 0.06));
+  border: 1px solid rgba(var(--urchin-rgb), 0.2);
   border-radius: 50%;
   box-shadow:
-    inset 0 0 16px rgba(0, 140, 107, 0.12),
-    0 0 12px rgba(0, 140, 107, 0.25);
+    inset 0 0 16px rgba(var(--urchin-rgb), 0.12),
+    0 0 12px rgba(var(--urchin-rgb), 0.25);
   transform-origin: center;
 }
 
 .pool-urchin::after {
-  background: radial-gradient(circle, rgba(0, 140, 107, 0.7), rgba(0, 140, 107, 0.38) 42%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--urchin-rgb), 0.7), rgba(var(--urchin-rgb), 0.38) 42%, transparent 70%);
   border-radius: 50%;
   content: "";
   inset: 31%;
@@ -577,7 +610,7 @@ body {
 }
 
 .pool-urchin b {
-  background: linear-gradient(to top, rgba(0, 140, 107, 0.72), rgba(0, 140, 107, 0.12));
+  background: linear-gradient(to top, rgba(var(--urchin-rgb), 0.72), rgba(var(--urchin-rgb), 0.12));
   border-radius: 999px;
   height: var(--spine-length);
   left: 50%;
@@ -596,8 +629,8 @@ body {
 }
 
 .pool-urchin.jerry-near {
-  border-color: rgba(0, 140, 107, 0.86);
-  box-shadow: inset 0 0 20px rgba(0, 140, 107, 0.34), 0 0 20px rgba(0, 140, 107, 0.44);
+  border-color: rgba(var(--urchin-rgb), 0.86);
+  box-shadow: inset 0 0 20px rgba(var(--urchin-rgb), 0.34), 0 0 20px rgba(var(--urchin-rgb), 0.44);
 }
 
 @keyframes urchin-pulse {
@@ -1075,8 +1108,41 @@ body {
   position: absolute;
   top: -5px;
   transform: translateX(-50%);
-  transition: background 650ms ease, border-color 650ms ease, box-shadow 650ms ease;
+  transition: background 650ms ease, border-color 650ms ease, box-shadow 650ms ease,
+    opacity 1400ms ease, scale 1400ms ease;
   width: 6px;
+}
+
+/* grazed by a barrel drifter: balls vanish one by one, regrow together */
+.signal-stalk.stalk-grazed b::after {
+  opacity: 0;
+  scale: 0.2;
+}
+
+.signal-stalk.stalk-grazed b:nth-child(2)::after { transition-delay: 0.45s; }
+.signal-stalk.stalk-grazed b:nth-child(3)::after { transition-delay: 0.9s; }
+
+.barrel-ball {
+  animation: barrel-ball-pop 600ms ease-out both;
+  aspect-ratio: 1;
+  background: #c32635;
+  border: 1px solid rgba(255, 116, 104, 0.5);
+  border-radius: 50%;
+  box-shadow: 0 0 7px rgba(219, 30, 50, 0.82), 0 0 14px rgba(121, 7, 28, 0.4);
+  position: absolute;
+  width: 6%;
+}
+
+@keyframes barrel-ball-pop {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 .signal-stalk.jerry-near b::after,

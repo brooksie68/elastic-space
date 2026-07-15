@@ -3,7 +3,183 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
-## 2026-07-12 — claude-fable (with James)
+## 2026-07-15 — claude-fable (tuning pass, per James)
+
+- Jerry's orb economy nudged: drop cadence 3.75–9.58 s → 3.3–8.5 s, orb travel speed away from
+  him 34–58 → 38–65 px/s.
+- Vake zap radius trimmed: Jerry now shocks it inside 260 px of his edge (was 300).
+- Fed vakes now prefer to avoid Jerry on the way out (James: "prefer... don't make it a hairpin"):
+  inside 430 px of his edge the cruise heading leans away, proximity-weighted up to ~2/3 toward
+  pure flight — the turn clamp and the exit pull keep it a wide curve. Hunting approach is
+  unaffected (it only avoids after it has the orb). Fed vakes also bank tighter: turn clamp
+  0.004 → 0.006 rad/ms post-feed (hunting turn unchanged).
+- Spore floater travel rebuilt per James ("like the anemone" = pulse urchin): straight WAAPI
+  crossing replaced with `guideSporeFloater` — a loose guided ellipse (0.3–0.4 W × 0.24–0.32 H,
+  0.5–0.7 net laps), 1–2 smoothstepped stall-and-reverse moments per visit, speed envelope
+  breathing 40–100% of a ceiling matched to the old crossing pace (never faster), radius
+  wander, urchin-verbatim dot-current sampling (210 px, ±20 px eased offset). Root transform
+  stays translation-only so shed spores keep sinking straight. Fade now opacity-only keyframes;
+  exit spirals out via radius inflation over the last 16%. Rubric updated. Cache tag
+  `?v=wave3-5`.
+
+## 2026-07-15 — claude-fable (solo, James's go: "build me some denizens")
+
+- Denizen wave 3 from the backlog: **comb jelly** (#5) and **spore floater** (#7), both via the
+  layered-sprite pipeline. New scene `tmp/jerrys-pool-denizens/denizens3.blend` (build_denizens3.py,
+  seed 17, creatures at x=120/140) + render_layers3.py; 15 layers (~1 MB) in `comb-jelly/` and
+  `spore-floater/` under the world root.
+- Comb jelly: glassy rim-lit ovoid, pink pharynx glow, 5 beaded comb rows (14 rainbow plates each,
+  proud on the camera hemisphere — no holdouts needed) and 2 trailing tentacles with tentilla
+  fringes (holdout: body). Animation: brightness pulse travels across the rows (metachronal, in
+  opacity), slow hue-rotate cycle on the row imgs (3° quantized writes), tentacle sway, gentle
+  body roll + bob. Crossing 55–80 s, mid-water, max one.
+- Spore floater: dandelion seed-head — amber core + three 30-filament shells (near/mid/far
+  brightness tiers per the depth-legibility rule) that counter-rotate at close-but-different
+  rates for a volumetric spin; rig itself only bobs so shed spores sink straight. Sheds 2–3
+  glow-spores every 5.5–9.5 s from the rim (2 rendered variants, parked inside camera bounds this
+  time — no separate render script needed); WAAPI sink with seed-sway, cap 6 + TTL fallback.
+  Crossing 62–90 s, upper water, max one.
+- Both join the 30-second opening guarantee (force spawns, 0–26 s window) and the standard
+  schedulers: comb jelly every 24–38 s, spore floater every 26–42 s; both skipped at 6 active
+  denizens. Rubric updated. Cache tags `?v=wave3-1`.
+- Pane check: both assemble on force-spawn, all 15 imgs load (12 layers + 3 shed spores),
+  no console errors; tentacles trail the travel direction correctly. Motion pending James's
+  demo (frozen-timeline rule).
+- Backlog now 5 unbuilt concepts (chain siphonophore, whip eel, glass skitterer, mirror mola,
+  burrow lurker) in `World Ideas.md`.
+
+## 2026-07-14 — claude-fable (with James)
+
+- Rising bubble chains, adapted from the pelagic lantern habitat's bubbles: six seafloor vents
+  release short trains (5–13 bubbles, 150–450 ms apart, then 6–24 s quiet) of tiny stroked
+  bubbles with the pelagic highlight arc, drawn on the `#field` canvas right after the backdrop.
+- The chains ride the pool's maelstrom: each bubble samples the clockwise orbital tangent at its
+  position (same ellipse family as the dot current, centered 0.54 W / 0.52 H) and gets carried
+  sideways as it rises — stronger toward the rim, gentle near the center, ~45 % of the tangent's
+  vertical component so the swirl bends but never stops the climb. Left-side chains curve
+  up-left then up-right in a soft S.
+- Jerry shoulders through chains he crosses: a damped radial push (little sibling of the dot
+  flow physics, same influence radius) scatters bubbles around his body.
+- Population is self-limiting (cap 110, 12–21 s lifetimes, fade in/out); no per-frame
+  allocation beyond the style strings the pelagic original also used.
+- (A tilted/varied urchin orbit was added and reverted within this session — James meant a
+  different creature; the urchin's original screen-aligned oval stands.)
+- Barrel drifter path + velocity variety per James (the creature he actually meant): crossings
+  are now diagonal — entry band widened to 0.18–0.72 H, exit offset a guaranteed ±0.08–0.42 H
+  (clamped 0.12–0.85 H) with a gentle baked meander (1.5–3.5 cycles, amplitude enveloped to
+  zero at the ends) — and the nose pitches along the travel slope (smoothed, ±16° clamp,
+  mirror-aware sign, gulper pattern). Jet pulses are now uneven: per-pulse strength 0.45–1.55
+  feeding both the baked speed integration and the live body squash (weak pulses barely stir
+  the body), all riding a slow 1–2.5-cycle cruise/laze envelope so it stalls and scoots.
+  Keyframe samples 96 → 128 for the curvier path. Crossing now 28–54 s (was 32–48; rubric
+  updated). Exhaust puffs inherit the rotation for free (children of the rig).
+- Vake frequency doubled per James (he's enjoying the orb-hunt/zap outcomes): spawn attempts
+  every 8–16 s (was 15–30). Opening appearance, two-at-once cap, and hunt behavior unchanged;
+  rubric updated.
+
+## 2026-07-14 — claude-fable (with James)
+
+- Pulse urchin no longer stutters: its guidance loop was a `setTimeout(update, 100)` (10 Hz
+  repositioning against everything else's 60 FPS); now runs on `requestAnimationFrame`. The
+  dot-flow drift lerp (0.08 per 100 ms step) is scaled by actual frame time so the drift feel
+  is unchanged at 60 FPS.
+- Urchin now spawns in one of six shades of aqua/jade/blue, picked at random per spawn via a
+  `--urchin-rgb` CSS variable (site.css defaults to the original jade; site.js sets the palette
+  entry inline). All urchin gradients, borders, glows, and spines follow the chosen color.
+- Doubled its frequency: spawn attempts every 9–15 s (was 18–30 s), opening appearance window
+  tightened to 0–15 s (was 0–26 s). Rubric updated in docs/denizen-frequency-rubric.md.
+- Raised the urchin cap from one to three concurrent, so the color variety shows simultaneously.
+  Still counts toward (and is skipped by) the 6-general-denizen limit.
+- Vake and sulfur lantern colony caps raised from one to two concurrent each (schedules
+  unchanged; vake darts are short enough that overlaps will stay occasional, colonies will
+  pair up often given their 46–68 s passages).
+- Barrel drifter dimmed per James — it stood out awkwardly. Depth-scaled brightness now
+  0.42–0.70 (was 0.55–0.95) and crossing opacity 0.38–0.64 (was 0.55–0.90); blur and the
+  nucleus pulse untouched.
+- Vake hunts Jerry's energy orbs (James's idea). The baked WAAPI dart was replaced with a
+  rAF steering loop (urchin pattern: `animateDenizen` keeps opacity/lifecycle, transform is
+  per-frame): constant speed derived from the old 3–5 s crossing — explicitly no burst when
+  hunting — turn-rate-limited banking (0.004 rad/ms), sight radius 75% of the larger window
+  dimension, orb scan throttled to 120 ms. On contact the orb *pops* (scale-property burst,
+  so its in-flight transform is untouched; removal on a timeout, not `animation.finished`,
+  per the frozen-pane rule) and the vake wears the orb's `--energy-color` until it exits:
+  new `--vake-rgb` variable + `.orb-fed` class recolor body/highlight/wake, inline filter
+  brightens to 0.8–0.95 so the stolen color reads. Respects/sets `dataset.claimed`, so
+  vake and polyps never eat the same orb. Chains hunts if more orbs are visible; cruising
+  keeps a sine-wobble heading toward a projected exit point (600 px past the old endpoint,
+  so the steering can't orbit it); 22 s TTL backstop.
+- Vake hunt refined per James: one orb per visit (scanning stops after the kill), the fed
+  vake now glows bright (brightness 1.05–1.25, saturate 1.25, plus a drop-shadow in the
+  orb's color), and it leaves a rapidly fading trail — tail-anchored `.vake-trail` puffs
+  every 30 ms in the stolen color, 650 ms scale/opacity fade, plain-timeout removal so
+  hidden panes can't leak them.
+- Trail bug fix (James spotted puffs streaming to the upper-left corner): the puff fade
+  animated the standalone `scale` property, which composes OUTSIDE the `transform` property
+  (final = translate·rotate·scale·transform), so it scaled the puff's `translate3d` position
+  toward the viewport origin as it shrank. Puffs now animate full transform strings
+  (`translate3d(...) scale(...)`). Same latent bug fixed in the orb pop: the ball is
+  re-anchored via `--energy-x/--energy-y` to its current center, then bursts with
+  `translate(-50%,-50%) scale(...)` transform strings. Lesson for this codebase: never
+  WAAPI-animate bare `scale`/`translate`/`rotate` properties on elements positioned by an
+  inline or animated `transform`.
+- Fed-vake look revised per James: body stays black (the `.orb-fed` body/highlight recolor
+  and the brightness boost are gone; base gradient back to literal navy-black). The stolen
+  color now shows as an amoeba-style rim glow — two stacked `drop-shadow`s (6 px at 0.9,
+  16 px at 0.5 alpha) appended after the unchanged dark spawn filter, since border/box-shadow
+  would be clipped away by the vake's clip-path and drop-shadow color ignores the darkening
+  filters before it. Colored wake (`::after`) and trail stay; trail puffs are lightened by
+  mixing 35% white into the orb color via `color-mix(in oklab, ...)`, with slightly softer
+  edge alpha (0.16, was 0.2).
+- Barrel drifter grazes the signal stalks (James's idea): every third spawn picks a random
+  ungrazed stalk and swaps the straight crossing for a three-leg route baked into the same
+  pulsed-speed keyframes — quadratic-bezier swoop from its entry side down to the stalk tips
+  (arrive at 42% of the run), a hover-and-bob feed window (42–60%), then a bezier climb out
+  the top of the screen. During the feed the stalk's three red balls fade out one by one
+  (staggered `transition-delay` under a new `.stalk-grazed` class) while three `.barrel-ball`
+  elements pop into the rig one by one — riding the body squash, visible through the
+  translucent shell — and the drifter picks up brightness(1.18) plus a red drop-shadow halo.
+  It exits with the balls still aboard. The stalk regrows all three balls 15 s after the
+  feed starts (1.4 s opacity/scale transition; `dataset.grazed` claim keeps two feeders off
+  one plant). Phase bounds are time-based so the ball timeouts line up with arrival; the
+  jet-pulse surging still drives progress within each leg. Rubric updated.
+- Jerry's feeding glow backed off 25% per James: the `feedingBoost` coefficient in his
+  body-brightness formula is now 0.285 (was 0.38). The 9 s window and 6 s decay are
+  unchanged, as are the localized organelle flashes and swallow ripples.
+- Second pass — still blowing out (the nucleus went near-white). The 25% brightness trim
+  was real but feeding drives FIVE stacked channels; all now cut to subtle: brightness
+  coefficient 0.285 → 0.12, saturate boost 0.3 → 0.15, contrast boost 0.16 → 0.06 (the
+  multiplicative brightness×contrast stack was the nucleus killer), outer halo alphas
+  +0.42/+0.5 → +0.22/+0.26, and the 4 s organelle flash brightness(2.4) saturate(1.65) →
+  brightness(1.6) saturate(1.35) with drop-shadow alphas 0.98/0.78 → 0.7/0.5. Net feed
+  read: a modest power-up glow, halo still clearly swelling.
+- More grazing per James: signal stalks up from 3 to 5 (two extra stalk plants appended
+  after the 21-plant type cycle, so the other flora counts are untouched — 23 plants
+  total), and every other barrel drifter is now a feeder (was every third). Worst case
+  two stalks are regrowing at once, so a feeder always has an intact plant to pick.
+- Grazer pass 3 per James: TEMP forced-feeder review hook reverted (normal introduce()
+  opening restored; counter parity means every second drifter still feeds). Grazing runs
+  slowed again — 46–60 s total (was 38–50), so the dive reads unhurried. Approach is now a
+  near-straight diagonal whose bend point randomizes per visit (control at 25–55% of the
+  descent, 0.28–0.44 W back). Exit rebuilt: instead of climbing out the top, it rises
+  10–25% of the viewport, flattens through a level waypoint, optionally dips back down
+  (−4% to +12%, clamped to the 12–86% band), and cruises off the entry-direction side like
+  a normal crossing.
+- Jerry zaps vakes (James's idea — they eat the orbs meant for his worms): a throttled
+  150 ms check in the vake guidance loop measures vake-center to Jerry's-edge distance;
+  inside 300 px, once per vake: a jagged two-stroke SVG bolt (glow + white core, jitter
+  pinched at the ends, 340 ms flicker, timeout removal) fires from Jerry's rim to the vake.
+  The vake flash-whites then settles to `saturate(0) brightness(2.35)` gray (700 ms filter
+  transition, keeps its depth blur, drops `.orb-fed` and the trail), stops all hunting and
+  steering, and drifts upward — rise velocity eased to ~55 px/s, gentle sway, rotation
+  leveling to horizontal with a ±7° wobble — until it clears the top and cleans up.
+  `.jerry-zap` SVG layer sits at z-index 7 with a cyan drop-shadow.
+- Graze tuned per James (herbivore, not predator): feeder runs get their own longer clock
+  (38–50 s vs the normal 28–54 s) with the approach stretched to 52% of it (~20–26 s of
+  leisurely descent; feed window now 52–68%), the approach control point moved a third of
+  the way down the descent so it's one long diagonal glide instead of a level run that
+  corners into a dive, and the hover height dropped from shell-bottom-at-ball-tips to
+  body-center-at-ball-tips — the red balls now sit inside the lower membrane while it
+  absorbs them.
 
 - Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
   link back to the map room, which now lives at the repo-root index.html. Visibility is controlled
