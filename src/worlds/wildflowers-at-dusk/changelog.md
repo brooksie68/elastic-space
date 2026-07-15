@@ -3,6 +3,53 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-14 — claude-fable (rain density knob)
+
+- Added `RAIN_DENSITY` (world.js, just under the timeline constants) — one multiplier scaling
+  every rain layer's drop count: the three foreground bands and both distance sheets. `1` is the
+  original density; first guess shipped at `2.5` (foreground 490 → 1225 drops, sheets 180 → 450
+  each). Draw path unchanged — still comfortably cheap on Canvas 2D.
+- James approved 2.5 by eye — the distance sheets now read as rain filling the whole scene, not
+  one foreground curtain. Density stays at 2.5.
+- Freeze shortened per James: quick preset `rainFreezeMs` 3000 → 2000. Rain sequence now 6–29s.
+- **Exodus reshaped per James** (start sooner, crescendo later): new `departLeadMs` knob (first
+  petal departs this far before the rain hits full reverse speed; quick preset 5000 → first lone
+  petals at 24s, mid-ramp). Quick preset retuned: `firstGapMs` 900 → 2600, `gapDecay` 1.0 → 0.96,
+  `batchGrowth` 1.3 → 1.26, `maxBatch` 38 → 60. Simulated quartiles: 25% gone at ~58s, 50% at
+  ~63s, 75% at ~68s, empty ~71s — last quarter rushes out in the final ~3s (real crescendo,
+  well short of the original torrent). Giant math self-adjusts via scheduleGiantRise.
+- **Near-field edge risers** (James's idea): once the exodus passes 55% departed, petal motes
+  spawn from below the bottom edge — the flowers "closer than the camera" joining the updraft.
+  Bigger/faster than mid-field motes, real variety colors, rate ramps quadratically to
+  36/s at peak, hard cap 240 per ride (`edgeRisers` knobs in world.js). Spawning stops when the
+  queue empties so giant/end-blur timing assumptions hold.
+- **Middle stretch filled in per James** ("too sparse before the end"): new `minBatch` knob —
+  a departures-per-event floor applied in all three scheduler copies (live, giant sim,
+  fast-forward). Quick preset: `minBatch` 4, `firstGapMs` 2400, `gapDecay` 0.962. Simulated:
+  ~24 gone by 35s, ~57 by 45s, ~314 by 55s (was 9/45/191); 50% at ~61s, empty ~69s — crescendo
+  shape intact.
+- **Giant rises ~30px higher**: `shownY` 44 → 41.8 (1% ≈ 13.8px at 1920×1080; head now kisses —
+  and may just crop past — the top of a 1080p frame).
+- **Thrum boosted** (James: louder): the element was already at its volume-1.0 ceiling, so the
+  thrum now routes through a Web Audio gain stage — `THRUM_BOOST` 1.6 with a compressor as
+  safety limiter. Falls back to unboosted element playback if routing fails (file://).
+- **Seismic shake during the rise** (James's ask): whole scene (both canvases +
+  landscape stack, giant included) rumbles while he rises. Envelope mirrors the thrum's
+  fade-in/hold/fade-out and grows with rise progress; two stacked sine frequencies per axis,
+  vertical-biased, max 3.5px (`shake.maxAmplitude`), plus a 0.8% zoom sliver so edges never show.
+- Thrum tail lengthened per James: previously faded out over the last 5s of the rise, silent
+  the moment he stopped. Now holds at full rumble through the entire rise (+5s vs before), then
+  fades over 10s (`THRUM_FADE_MS`), starting 5s before he stops (`THRUM_FADE_LEAD_MS`) — he
+  settles mid-fade and the last rumble outlives his motion by 5s. The visual shake fades in
+  lockstep with the sound.
+- Shake build reshaped per James: starts as a barely-there tremor (12%) while he's buried,
+  builds quadratically to full strength at `shake.fullShakeAt`, flat from there until the
+  fade-out. First shipped at 0.3 of the rise; James called it still too soon → 0.377
+  (~24.5s into the 65s rise, +5s).
+- Next: James rides the arc — knobs to tune: `minBatch`/`firstGapMs` (mid-field fullness),
+  `shownY` (head height), `THRUM_BOOST` (rumble volume), `shake.maxAmplitude` (quake strength),
+  `shake.fullShakeAt` (where the rumble peaks), edge-riser `maxPerSecond`/`total`.
+
 ## 2026-07-12 — claude-fable (with James)
 
 - Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right

@@ -6,8 +6,9 @@
 //   introMs       — quiet field before the rain starts to slow
 //   rainSlowMs    — rain decelerating to a standstill
 //   rainFreezeMs  — rain hanging frozen mid-air
-//   rainReverseMs — rain ramping up to full reverse speed; first petals depart
-//                   at introMs + rainSlowMs + rainFreezeMs + rainReverseMs
+//   rainReverseMs — rain ramping up to full reverse speed
+//   departLeadMs  — how far BEFORE the rain reaches full reverse speed the
+//                   first petal departs; 0 = first petal exactly at full speed
 //   firstGapMs    — gap between the earliest lone departures
 //   gapDecay      — each departure gap shrinks by this factor (accelerando)
 //   minGapMs      — gap floor during the final torrent
@@ -16,6 +17,8 @@
 //                   this sets WHEN the flora leaves: fast growth + big cap
 //                   back-loads everything into a final torrent; slow growth +
 //                   small cap spreads the exodus evenly across the arc.
+//   minBatch      — departures-per-event floor. Raises the early/middle trickle
+//                   without touching the crescendo's shape or timing.
 const TIMELINE_PRESETS = {
   // The original pacing, exactly: first petals at 86s, full blur ~5¼ min,
   // most of the field departing in the final torrent.
@@ -24,34 +27,43 @@ const TIMELINE_PRESETS = {
     rainSlowMs: 20000,
     rainFreezeMs: 20000,
     rainReverseMs: 20000,
+    departLeadMs: 0,
     firstGapMs: 26000,
     gapDecay: 0.88,
     minGapMs: 220,
     batchGrowth: 1.28,
     maxBatch: 60,
+    minBatch: 1,
   },
-  // ~1:45 load → full blur: rain sequence 6–30s (brief 3s freeze, long climb
-  // to full reverse), first petals at 30s, then a mostly-even exodus with a
-  // moderate end-rush — 50% of the field gone when the giant is ~38% risen,
-  // 75% at ~51% — a 30% lean back toward the original torrent from the fully
-  // steady version. Giant rise length unchanged (65s, starting at ~29.5s).
+  // Rain sequence 6–29s (2s freeze, 13s climb to full reverse). First petals
+  // at 24s, while the rain is still gaining upward speed; a steady 4-at-a-time
+  // trickle keeps the middle stretch alive (~57 gone by 45s, ~314 by 55s),
+  // then the crescendo — 50% gone at ~61s, field empty at ~69s, with the last
+  // quarter rushing out in the final few seconds.
   quick: {
     introMs: 6000,
     rainSlowMs: 8000,
-    rainFreezeMs: 3000,
+    rainFreezeMs: 2000,
     rainReverseMs: 13000,
-    firstGapMs: 900,
-    gapDecay: 1.0,
+    departLeadMs: 5000,
+    firstGapMs: 2400,
+    gapDecay: 0.962,
     minGapMs: 220,
-    batchGrowth: 1.3,
-    maxBatch: 38,
+    batchGrowth: 1.26,
+    maxBatch: 60,
+    minBatch: 4,
   },
 };
 const TIMELINE = TIMELINE_PRESETS.quick;
 
 const RAIN_REVERSAL_START = TIMELINE.introMs;
 const FIRST_DEPARTURE_AT =
-  TIMELINE.introMs + TIMELINE.rainSlowMs + TIMELINE.rainFreezeMs + TIMELINE.rainReverseMs;
+  TIMELINE.introMs + TIMELINE.rainSlowMs + TIMELINE.rainFreezeMs + TIMELINE.rainReverseMs -
+  (TIMELINE.departLeadMs || 0);
+
+// Scales every rain layer's drop count (foreground + both distance sheets).
+// 1 = the original density.
+const RAIN_DENSITY = 2.5;
 // ----------------------------------------------------------------------------
 
 const canvas = document.getElementById("sky-field");
@@ -76,7 +88,7 @@ const rain = [];
   { count: 120, depth: 0.66 },
   { count: 230, depth: 1 },
 ].forEach(({ count, depth }) => {
-  for (let index = 0; index < count; index += 1) {
+  for (let index = 0; index < Math.round(count * RAIN_DENSITY); index += 1) {
     rain.push({
       x: Math.random(),
       y: Math.random(),
@@ -96,7 +108,7 @@ const rain = [];
 // so the nearer silhouettes occlude it. Slower, shorter, fainter than the
 // foreground rain — the occlusion plus parallax is what sells the depth.
 function createRainSheet(count, speedScale, lengthScale, slant) {
-  return Array.from({ length: count }, () => ({
+  return Array.from({ length: Math.round(count * RAIN_DENSITY) }, () => ({
     x: Math.random(),
     y: Math.random(),
     speed: (0.82 + Math.random() * 0.5) * speedScale,
@@ -1312,9 +1324,10 @@ const giantState = {
   riseStart: 0,
   riseEnd: 0,
   hiddenY: 99,
-  // 44% of the 108vw plate rests the head ~24px below the top of a 1920x1080
-  // frame — about 100px lower than the pre-enlargement crest.
-  shownY: 44,
+  // The 108vw plate (1536x1024 source) stands ~1382px tall in a 1920x1080
+  // frame, so 1% of translateY ≈ 13.8px there. 44% rested the head ~24px below
+  // the top of frame; 41.8% lifts him ~30px higher, head just kissing the top.
+  shownY: 41.8,
   done: false,
 };
 
@@ -1325,7 +1338,7 @@ function scheduleGiantRise(totalCount) {
   let remaining = totalCount;
   let eventIndex = 0;
   while (remaining > 0) {
-    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(TIMELINE.minBatch || 1, Math.round(Math.pow(TIMELINE.batchGrowth, eventIndex))));
     remaining -= batch;
     eventIndex += 1;
     simInterval = Math.max(TIMELINE.minGapMs, simInterval * TIMELINE.gapDecay);
@@ -1341,7 +1354,7 @@ function scheduleGiantRise(totalCount) {
 function fastForwardDissolution(target) {
   timeSkip = Math.max(0, target);
   while (dissolution.queue.length && dissolution.nextEventAt <= target) {
-    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(TIMELINE.minBatch || 1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
     for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
       const entry = dissolution.queue.shift();
       entry.item.gone = true;
@@ -1353,14 +1366,20 @@ function fastForwardDissolution(target) {
   }
 }
 
-// The thrum lives only for the rise: fades in over the first 10s, holds, then
-// fades out over the final 5s so it reaches silence the moment he stops.
+// The thrum fades in over the first 10s of the rise, holds at full rumble,
+// then dies away over a long tail — the mountain settling. The fade begins
+// THRUM_FADE_LEAD_MS before he stops and runs THRUM_FADE_MS total, so he
+// settles mid-fade and the last of the rumble outlives his motion.
 // Master control rules.
+const THRUM_FADE_MS = 10000;
+const THRUM_FADE_LEAD_MS = 5000;
+
 function updateThrum(time) {
   if (!giantThrum || soundState.thrumEnded || !giantState.riseStart) return;
   const audioStart = giantState.riseStart;
+  const fadeEnd = giantState.riseEnd - THRUM_FADE_LEAD_MS + THRUM_FADE_MS;
   if (time < audioStart) return;
-  if (time >= giantState.riseEnd) {
+  if (time >= fadeEnd) {
     soundState.thrumEnded = true;
     soundState.thrumGain = 0;
     giantThrum.pause();
@@ -1368,10 +1387,55 @@ function updateThrum(time) {
     return;
   }
   const fadeIn = (time - audioStart) / 10000;
-  const fadeOut = (giantState.riseEnd - time) / 5000;
+  const fadeOut = (fadeEnd - time) / THRUM_FADE_MS;
   soundState.thrumDue = true;
   soundState.thrumGain = Math.max(0, Math.min(1, fadeIn, fadeOut));
   applySound();
+}
+
+// Seismic shake while the giant rises. The envelope mirrors the thrum's
+// (10s fade-in, hold, 5s fade-out) so what you hear and what you feel are the
+// same event; amplitude also grows with his rise progress. Two stacked sine
+// frequencies per axis give an irregular rumble instead of a metronome wobble;
+// vertical amplitude leads so it reads as ground-thump, not screen wobble. A
+// matching sliver of zoom keeps the shake from exposing the viewport edges.
+const shake = {
+  maxAmplitude: 3.5, // px at full rumble
+  fullShakeAt: 0.377, // rise progress where the rumble hits full strength —
+                      // ~24.5s into the 65s rise, a beat after the forehead clears
+  targets: null,
+  active: false,
+};
+
+function updateShake(time) {
+  if (!giantState.riseStart) return;
+  if (!shake.targets) {
+    shake.targets = [canvas, cloudCanvas, document.querySelector(".landscape-layers")].filter(Boolean);
+  }
+  // The shake fades in lockstep with the thrum's tail.
+  const shakeEnd = giantState.riseEnd - THRUM_FADE_LEAD_MS + THRUM_FADE_MS;
+  if (time < giantState.riseStart || time >= shakeEnd) {
+    if (shake.active) {
+      shake.targets.forEach((el) => { el.style.transform = ""; });
+      shake.active = false;
+    }
+    return;
+  }
+  const fadeIn = (time - giantState.riseStart) / 10000;
+  const fadeOut = (shakeEnd - time) / THRUM_FADE_MS;
+  const progress = (time - giantState.riseStart) / (giantState.riseEnd - giantState.riseStart);
+  // Barely-there tremor while he's still buried, building quadratically to
+  // full strength once the forehead is clear, flat from there to the fade-out.
+  const rampT = Math.min(1, progress / shake.fullShakeAt);
+  const build = 0.12 + 0.88 * rampT * rampT;
+  const envelope = Math.max(0, Math.min(1, fadeIn, fadeOut)) * build;
+  const amp = shake.maxAmplitude * envelope;
+  const x = (Math.sin(time * 0.011) + Math.sin(time * 0.027) * 0.6) * amp * 0.7;
+  const y = (Math.sin(time * 0.016) + Math.sin(time * 0.033) * 0.6) * amp;
+  const zoom = 1 + 0.008 * envelope;
+  const transform = `translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,0) scale(${zoom.toFixed(4)})`;
+  shake.targets.forEach((el) => { el.style.transform = transform; });
+  shake.active = true;
 }
 
 function updateGiant(time) {
@@ -1415,10 +1479,47 @@ function departEntry(entry, time) {
   };
 }
 
+// Near-field risers: as the exodus crescendos, petals stream up from below
+// the bottom edge — the flowers standing closer than the camera, joining the
+// updraft. They're ordinary motes spawned off-screen rather than planted:
+// larger and faster than the mid-field ones so they read as nearest.
+const edgeRisers = {
+  startFraction: 0.55, // exodus fraction where the first ones appear
+  maxPerSecond: 36,    // spawn rate once the crescendo peaks
+  total: 240,          // hard cap — this is a swell, not confetti
+  spawned: 0,
+  lastSpawn: 0,
+};
+
+function spawnEdgeRisers(time) {
+  if (edgeRisers.spawned >= edgeRisers.total) return;
+  if (!dissolution.queue || !dissolution.queue.length || !dissolution.totalCount) return;
+  const fraction = 1 - dissolution.queue.length / dissolution.totalCount;
+  if (fraction < edgeRisers.startFraction) return;
+  const ramp = (fraction - edgeRisers.startFraction) / (1 - edgeRisers.startFraction);
+  const gap = 1000 / (edgeRisers.maxPerSecond * ramp * ramp);
+  if (time - edgeRisers.lastSpawn < gap) return;
+  edgeRisers.lastSpawn = time;
+  edgeRisers.spawned += 1;
+  const variety = flowerVarieties[Math.floor(Math.random() * flowerVarieties.length)];
+  motes.push({
+    x: Math.random() * window.innerWidth,
+    y: window.innerHeight + 30 + Math.random() * 130,
+    start: time,
+    duration: 4200 + Math.random() * 2600,
+    distance: window.innerHeight * (1.25 + Math.random() * 0.45),
+    drift: (Math.random() - 0.5) * 90,
+    seed: Math.random() * 10,
+    size: 3.2 + Math.random() * 3.6,
+    color: variety.color,
+    alpha: 0.55 + Math.random() * 0.3,
+  });
+}
+
 function updateDissolution(time) {
   if (!dissolution.queue) buildDissolutionQueue();
   while (dissolution.queue.length && time >= dissolution.nextEventAt) {
-    const batch = Math.min(TIMELINE.maxBatch, Math.max(1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
+    const batch = Math.min(TIMELINE.maxBatch, Math.max(TIMELINE.minBatch || 1, Math.round(Math.pow(TIMELINE.batchGrowth, dissolution.eventIndex))));
     for (let n = 0; n < batch && dissolution.queue.length; n += 1) {
       departEntry(dissolution.queue.shift(), time);
     }
@@ -1428,8 +1529,10 @@ function updateDissolution(time) {
   }
   const dirtyRow = backFlowerRows.find((row) => row.dirty);
   if (dirtyRow) rebakeBackRow(dirtyRow);
+  spawnEdgeRisers(time);
   updateGiant(time);
   updateThrum(time);
+  updateShake(time);
   updateEndBlur(time);
 }
 
@@ -1606,6 +1709,33 @@ const soundtrack = document.getElementById("dusk-soundtrack");
 const giantThrum = document.getElementById("giant-thrum");
 const soundState = { on: false, volume: 1, thrumDue: false, thrumGain: 0, thrumEnded: false };
 
+// The thrum element maxes out at volume 1.0, which wasn't loud enough — this
+// routes it through a Web Audio gain stage to amplify past that ceiling, with
+// a compressor as a safety limiter so the boost can't clip. If the routing
+// fails (e.g. file://), the element keeps playing unboosted.
+const THRUM_BOOST = 1.6;
+let thrumBoost = null;
+
+function ensureThrumBoost() {
+  if (thrumBoost !== null || !giantThrum) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContextClass();
+    const source = ctx.createMediaElementSource(giantThrum);
+    const gain = ctx.createGain();
+    const limiter = ctx.createDynamicsCompressor();
+    gain.gain.value = THRUM_BOOST;
+    limiter.threshold.value = -6;
+    limiter.ratio.value = 6;
+    source.connect(gain);
+    gain.connect(limiter);
+    limiter.connect(ctx.destination);
+    thrumBoost = { ctx };
+  } catch (err) {
+    thrumBoost = { ctx: null };
+  }
+}
+
 function applySound() {
   if (!soundtrack) return;
   soundtrack.volume = soundState.volume;
@@ -1613,6 +1743,10 @@ function applySound() {
   if (soundState.on) {
     if (soundtrack.paused) soundtrack.play().catch(() => {});
     if (giantThrum && soundState.thrumDue && !soundState.thrumEnded && giantThrum.paused) {
+      ensureThrumBoost();
+      if (thrumBoost && thrumBoost.ctx && thrumBoost.ctx.state === "suspended") {
+        thrumBoost.ctx.resume().catch(() => {});
+      }
       giantThrum.play().catch(() => {});
     }
   } else {
