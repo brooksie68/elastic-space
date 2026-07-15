@@ -91,55 +91,70 @@
     <a id="jerry" class="jerry" href="./src/worlds/jerrys-pool/index.html" aria-label="Jerry's Pool">
       <svg viewBox="0 0 260 230" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <!-- orbital rings -->
-        <ellipse class="ring" cx="130" cy="114" rx="112" ry="34" transform="rotate(-16 130 114)"></ellipse>
-        <ellipse class="ring" cx="130" cy="114" rx="124" ry="48" transform="rotate(9 130 114)"></ellipse>
+        <ellipse id="ring1" class="ring" cx="130" cy="114" rx="112" ry="34" transform="rotate(-16 130 114)"></ellipse>
+        <ellipse id="ring2" class="ring" cx="130" cy="114" rx="124" ry="48" transform="rotate(9 130 114)"></ellipse>
 
         <!-- membrane: hand-drawn double wall -->
-        <path d="M130 36
-                 C176 36 208 70 208 114
-                 C208 158 174 192 130 192
-                 C86 192 52 160 52 114
-                 C52 68 84 36 130 36 Z"></path>
-        <path class="faint" d="M130 44
-                 C171 44 200 74 200 114
-                 C200 154 170 184 130 184
-                 C90 184 60 154 60 114
-                 C60 72 89 44 130 44 Z"></path>
+        <g id="membrane">
+          <path d="M130 36
+                   C176 36 208 70 208 114
+                   C208 158 174 192 130 192
+                   C86 192 52 160 52 114
+                   C52 68 84 36 130 36 Z"></path>
+          <path class="faint" d="M130 44
+                   C171 44 200 74 200 114
+                   C200 154 170 184 130 184
+                   C90 184 60 154 60 114
+                   C60 72 89 44 130 44 Z"></path>
+        </g>
 
-        <!-- nucleus + nucleolus -->
-        <circle cx="112" cy="96" r="24"></circle>
-        <circle class="faint" cx="118" cy="102" r="8"></circle>
+        <!-- cytoplasm: everything inside the membrane swirls together -->
+        <g id="cyto">
+          <!-- nucleus + nucleolus -->
+          <g id="nucleus">
+            <circle cx="112" cy="96" r="24"></circle>
+            <circle class="faint" cx="118" cy="102" r="8"></circle>
+          </g>
 
-        <!-- mitochondria (beans with inner folds) -->
-        <path d="M154 138
-                 C160 130 176 130 181 138
-                 C186 146 178 156 166 156
-                 C154 156 149 146 154 138 Z"></path>
-        <path class="faint" d="M159 141 C163 137 172 137 176 141"></path>
-        <path class="faint" d="M161 148 C165 152 172 152 175 148"></path>
+          <!-- mitochondria (beans with inner folds) -->
+          <g id="mito1">
+            <path d="M154 138
+                     C160 130 176 130 181 138
+                     C186 146 178 156 166 156
+                     C154 156 149 146 154 138 Z"></path>
+            <path class="faint" d="M159 141 C163 137 172 137 176 141"></path>
+            <path class="faint" d="M161 148 C165 152 172 152 175 148"></path>
+          </g>
 
-        <path d="M86 140
-                 C90 134 101 134 105 140
-                 C109 146 103 153 95 153
-                 C87 153 82 146 86 140 Z"></path>
-        <path class="faint" d="M89 143 C93 140 99 140 102 143"></path>
+          <g id="mito2">
+            <path d="M86 140
+                     C90 134 101 134 105 140
+                     C109 146 103 153 95 153
+                     C87 153 82 146 86 140 Z"></path>
+            <path class="faint" d="M89 143 C93 140 99 140 102 143"></path>
+          </g>
 
-        <!-- vesicles -->
-        <circle cx="156" cy="82" r="7"></circle>
-        <circle class="faint" cx="143" cy="66" r="4"></circle>
+          <!-- vesicles -->
+          <g id="vesicles">
+            <circle cx="156" cy="82" r="7"></circle>
+            <circle class="faint" cx="143" cy="66" r="4"></circle>
+          </g>
 
-        <!-- alien crystal -->
-        <polygon points="176,104 184,112 176,120 168,112"></polygon>
+          <!-- alien crystal -->
+          <polygon id="crystal" points="176,104 184,112 176,120 168,112"></polygon>
 
-        <!-- ribosome cloud -->
-        <circle class="dot" cx="98" cy="164" r="1.6"></circle>
-        <circle class="dot" cx="107" cy="169" r="1.6"></circle>
-        <circle class="dot" cx="116" cy="164" r="1.6"></circle>
-        <circle class="dot" cx="104" cy="158" r="1.6"></circle>
-        <circle class="dot" cx="124" cy="169" r="1.6"></circle>
+          <!-- ribosome cloud -->
+          <g id="ribo">
+            <circle class="dot" cx="98" cy="164" r="1.6"></circle>
+            <circle class="dot" cx="107" cy="169" r="1.6"></circle>
+            <circle class="dot" cx="116" cy="164" r="1.6"></circle>
+            <circle class="dot" cx="104" cy="158" r="1.6"></circle>
+            <circle class="dot" cx="124" cy="169" r="1.6"></circle>
+          </g>
 
-        <!-- filament -->
-        <path class="faint" d="M76 108 C92 122 118 130 148 122"></path>
+          <!-- filament -->
+          <path id="filament" class="faint" d="M76 108 C92 122 118 130 148 122"></path>
+        </g>
       </svg>
     </a>
 
@@ -148,9 +163,68 @@
       (function () {
         const jerry = document.getElementById("jerry");
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const part = (id) => document.getElementById(id);
+        const ring1 = part("ring1");
+        const ring2 = part("ring2");
+        const membrane = part("membrane");
+        const cyto = part("cyto");
+        const nucleus = part("nucleus");
+        const mito1 = part("mito1");
+        const mito2 = part("mito2");
+        const vesicles = part("vesicles");
+        const crystal = part("crystal");
+        const ribo = part("ribo");
+        const riboDots = [...ribo.querySelectorAll("circle")];
+        const filament = part("filament");
+
+        // Eased drift toward a fresh random target every few seconds — the
+        // same unhurried retargeting pool-Jerry uses, so nothing reads as a
+        // repeating loop. `accumulate` channels keep winding onward (the
+        // cytoplasm swirl) instead of oscillating around zero.
+        function wander(range, minDur, maxDur, accumulate) {
+          const s = { v: 0, from: 0, to: 0, start: -1, dur: 1 };
+          return function (t) {
+            if (s.start < 0 || t - s.start >= s.dur) {
+              s.from = s.v;
+              s.to = accumulate
+                ? s.v + range * (Math.random() < 0.75 ? 1 : -1) * (0.4 + Math.random() * 0.6)
+                : -range + Math.random() * range * 2;
+              s.start = t;
+              s.dur = minDur + Math.random() * (maxDur - minDur);
+            }
+            const p = Math.min(1, (t - s.start) / s.dur);
+            const e = p * p * (3 - 2 * p);
+            s.v = s.from + (s.to - s.from) * e;
+            return s.v;
+          };
+        }
+
+        const bodyTilt = wander(9, 6000, 14000);
+        const cytoSwirl = wander(48, 9000, 18000, true);
+        const nucX = wander(5, 7000, 15000);
+        const nucY = wander(4, 8000, 16000);
+        const m1x = wander(2.5, 5000, 11000);
+        const m1y = wander(2.5, 6000, 12000);
+        const m1r = wander(8, 7000, 13000);
+        const m2x = wander(2.5, 6000, 12000);
+        const m2y = wander(3, 5000, 10000);
+        const m2r = wander(11, 6000, 12000);
+        const vesX = wander(3, 6000, 13000);
+        const vesY = wander(4, 5000, 11000);
+        const cryR = wander(26, 8000, 16000);
+        const cryY = wander(2.5, 7000, 14000);
+        const riboSway = wander(4, 5000, 10000);
+        const filR = wander(11, 6000, 12000);
+        const ring1R = wander(6, 9000, 18000);
+        const ring2R = wander(5, 10000, 20000);
+
+        let prevX = null;
+        let prevT = null;
+        let bank = 0;
 
         // Incommensurate sine pairs: Jerry wanders the whole viewport and
-        // never quite repeats himself.
+        // never quite repeats himself. He banks gently into his direction of
+        // travel and breathes with a soft squash-stretch along his own axis.
         function place(t) {
           const w = window.innerWidth - jerry.offsetWidth;
           const h = window.innerHeight - jerry.offsetHeight;
@@ -158,13 +232,46 @@
             w * (0.5 + 0.33 * Math.sin(t * 0.000041 + 1.7) + 0.13 * Math.sin(t * 0.000103 + 0.4));
           const y =
             h * (0.5 + 0.3 * Math.sin(t * 0.000059 + 4.1) + 0.12 * Math.sin(t * 0.000131 + 2.2));
-          const tilt = 7 * Math.sin(t * 0.000073 + 0.9);
-          const breathe = 1 + 0.025 * Math.sin(t * 0.00047);
-          jerry.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg) scale(${breathe})`;
+
+          if (prevX !== null && t > prevT) {
+            const vx = (x - prevX) / (t - prevT);
+            bank += (Math.max(-5, Math.min(5, vx * 110)) - bank) * 0.03;
+          }
+          prevX = x;
+          prevT = t;
+
+          const tilt = bodyTilt(t) + bank;
+          const sx = 1 + 0.022 * Math.sin(t * 0.00047);
+          const sy = 1 - 0.02 * Math.sin(t * 0.00047 + 0.7);
+          jerry.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${tilt.toFixed(2)}deg) scale(${sx.toFixed(4)}, ${sy.toFixed(4)})`;
+        }
+
+        function drawInnards(t) {
+          ring1.setAttribute("transform", `rotate(${(-16 + ring1R(t)).toFixed(2)} 130 114)`);
+          ring2.setAttribute("transform", `rotate(${(9 + ring2R(t)).toFixed(2)} 130 114)`);
+
+          // membrane breathes a touch out of phase with the body
+          const mb = 1 + 0.006 * Math.sin(t * 0.00031 + 1.2);
+          membrane.setAttribute("transform", `translate(${(130 * (1 - mb)).toFixed(3)} ${(114 * (1 - mb)).toFixed(3)}) scale(${mb.toFixed(4)})`);
+
+          cyto.setAttribute("transform", `rotate(${cytoSwirl(t).toFixed(2)} 130 114)`);
+          nucleus.setAttribute("transform", `translate(${nucX(t).toFixed(2)} ${nucY(t).toFixed(2)})`);
+          mito1.setAttribute("transform", `translate(${m1x(t).toFixed(2)} ${m1y(t).toFixed(2)}) rotate(${m1r(t).toFixed(2)} 167 143)`);
+          mito2.setAttribute("transform", `translate(${m2x(t).toFixed(2)} ${m2y(t).toFixed(2)}) rotate(${m2r(t).toFixed(2)} 95.5 143.5)`);
+          vesicles.setAttribute("transform", `translate(${vesX(t).toFixed(2)} ${vesY(t).toFixed(2)})`);
+          crystal.setAttribute("transform", `translate(0 ${cryY(t).toFixed(2)}) rotate(${cryR(t).toFixed(2)} 176 112)`);
+          ribo.setAttribute("transform", `rotate(${riboSway(t).toFixed(2)} 111 164)`);
+          for (let i = 0; i < riboDots.length; i++) {
+            const dx = 0.8 * Math.sin(t * (0.0005 + i * 0.00013) + i * 2.1);
+            const dy = 0.8 * Math.cos(t * (0.00043 + i * 0.00011) + i * 1.3);
+            riboDots[i].setAttribute("transform", `translate(${dx.toFixed(2)} ${dy.toFixed(2)})`);
+          }
+          filament.setAttribute("transform", `rotate(${filR(t).toFixed(2)} 112 120)`);
         }
 
         function frame(t) {
           place(t);
+          drawInnards(t);
           if (!reduceMotion.matches) {
             requestAnimationFrame(frame);
           }
