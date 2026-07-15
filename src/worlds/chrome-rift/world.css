@@ -1,0 +1,515 @@
+:root {
+  --bg: #090909;
+  --text: #f5f5f5;
+  --muted: rgba(245, 245, 245, 0.76);
+  --line: rgba(255, 255, 255, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #050505;
+  color: var(--text);
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+.world-portals a {
+  bottom: 0;
+  position: fixed;
+  top: 0;
+  width: 34%;
+  z-index: 2;
+}
+
+.world-portals a:nth-child(1) { left: 0; }
+.world-portals a:nth-child(2) { left: 33%; }
+.world-portals a:nth-child(3) { right: 0; }
+
+.world-portals a:focus-visible {
+  outline: 2px solid white;
+  outline-offset: -8px;
+}
+
+#rift-canvas {
+  inset: 0;
+  position: fixed;
+}
+
+/* Temporary testing shortcut back to the index; sits under the sound control. */
+.home-link {
+  align-items: center;
+  background: rgba(20, 20, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  height: 2.5rem;
+  justify-content: center;
+  position: fixed;
+  right: 1rem;
+  top: 4.1rem;
+  transition: background 200ms ease, color 200ms ease;
+  width: 2.5rem;
+  z-index: 2147483000;
+}
+
+.home-link:hover,
+.home-link:focus-visible {
+  background: rgba(20, 20, 20, 0.7);
+  color: #fff;
+}
+
+.home-link svg {
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+/* Tuner — speed and gradient controls. Sits above the drift portals. */
+.rift-tuner-toggle {
+  align-items: center;
+  appearance: none;
+  background: rgba(20, 20, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  bottom: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  display: flex;
+  height: 2.5rem;
+  justify-content: center;
+  padding: 0;
+  position: fixed;
+  right: 1rem;
+  transition: background 200ms ease, color 200ms ease;
+  width: 2.5rem;
+  z-index: 11;
+}
+
+.rift-tuner-toggle:hover,
+.rift-tuner-toggle:focus-visible {
+  background: rgba(20, 20, 20, 0.7);
+  color: #fff;
+}
+
+.rift-tuner-toggle svg {
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+.rift-tuner {
+  backdrop-filter: blur(10px);
+  background: rgba(8, 8, 8, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  left: 50%;
+  padding: 1rem 1.3rem;
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(80rem, calc(100vw - 8rem));
+  z-index: 10;
+}
+
+.rift-tuner[hidden] {
+  display: none;
+}
+
+.tuner-speed {
+  align-items: center;
+  display: flex;
+  gap: 0.85rem;
+}
+
+.tuner-speed label,
+.tuner-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.rift-tuner input[type="range"] {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  flex: 1;
+  height: 1.4rem;
+  margin: 0;
+}
+
+.rift-tuner input[type="range"]::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
+  border-radius: 999px;
+  height: 4px;
+}
+
+.rift-tuner input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  height: 1rem;
+  margin-top: -6px;
+  width: 1rem;
+}
+
+.rift-tuner input[type="range"]::-moz-range-track {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
+  border-radius: 999px;
+  height: 4px;
+}
+
+.rift-tuner input[type="range"]::-moz-range-thumb {
+  background: #f5f5f5;
+  border: none;
+  border-radius: 50%;
+  height: 1rem;
+  width: 1rem;
+}
+
+.rift-tuner output {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5ch;
+  text-align: right;
+}
+
+.tuner-minis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1.4rem;
+}
+
+.tuner-mini {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 0.6rem;
+  min-width: 13rem;
+}
+
+.tuner-mini label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tuner-mini output {
+  min-width: 3.5ch;
+}
+
+.tuner-colors {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.tuner-colors input[type="color"] {
+  appearance: none;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  height: 1.9rem;
+  padding: 2px;
+  width: 2.6rem;
+}
+
+.tuner-colors input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.tuner-colors input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.tuner-colors input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.tuner-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.tuner-chip {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  height: 1.7rem;
+  padding: 0;
+  transition: transform 120ms ease, border-color 120ms ease;
+  width: 1.7rem;
+}
+
+.tuner-chip:hover,
+.tuner-chip:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.12);
+}
+
+.tuner-chip.is-active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.tuner-reset {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  padding: 0.35rem 0.85rem 0.35rem 1.05rem;
+  text-transform: uppercase;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.tuner-reset:hover,
+.tuner-reset:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+.tuner-info {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  font-family: "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  height: 1.9rem;
+  justify-content: center;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease;
+  width: 1.9rem;
+}
+
+.tuner-info:hover,
+.tuner-info:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+/* Control guide — a non-modal overlay: the scene and tuner stay fully live
+   beneath it. Docked directly above the tuner panel at the panel's exact
+   width; world.js measures the panel and keeps the 10px gap. */
+.rift-guide {
+  backdrop-filter: blur(8px);
+  background: rgba(8, 8, 8, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 1rem;
+  bottom: 1.6rem; /* fallback; world.js overrides against the live panel */
+  color: var(--text);
+  left: 50%;
+  margin: 0;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  padding: 0;
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(80rem, calc(100vw - 8rem));
+  z-index: 12;
+}
+
+.guide-inner {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.6rem 1.9rem;
+}
+
+.guide-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.guide-head h2 {
+  font-family: "Palatino Linotype", "Book Antiqua", serif;
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.guide-close {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 1rem;
+  height: 1.9rem;
+  line-height: 1;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease;
+  width: 1.9rem;
+}
+
+.guide-close:hover,
+.guide-close:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+.guide-list {
+  column-gap: 2.4rem;
+  columns: 2;
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.guide-list li {
+  break-inside: avoid;
+  color: var(--muted);
+  margin-bottom: 0.7rem;
+}
+
+@media (max-width: 900px) {
+  .guide-list {
+    columns: 1;
+  }
+}
+
+.guide-list strong {
+  color: var(--text);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.world-shell {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  min-height: 100vh;
+  padding: 1.2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.copy {
+  align-self: start;
+  backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line);
+  border-radius: 1.4rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.eyebrow {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.76rem;
+  letter-spacing: 0.22em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-family: "Palatino Linotype", "Book Antiqua", serif;
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 400;
+  line-height: 0.94;
+  margin: 0;
+}
+
+.lede {
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.control {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  justify-self: start;
+  padding: 0.82rem 1rem;
+}
+
+.fault-grid {
+  align-content: center;
+  display: grid;
+  gap: 1rem;
+  justify-items: end;
+}
+
+.fault-door {
+  backdrop-filter: blur(10px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.52)),
+    rgba(8, 8, 8, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  color: var(--text);
+  display: grid;
+  gap: 0.28rem;
+  max-width: 20rem;
+  min-height: 7rem;
+  padding: 1rem;
+  text-decoration: none;
+  width: 100%;
+}
+
+.fault-door strong {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fault-door span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .world-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .fault-grid {
+    justify-items: stretch;
+  }
+
+  .fault-door {
+    max-width: none;
+  }
+}

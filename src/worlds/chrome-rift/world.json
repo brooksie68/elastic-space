@@ -1,15 +1,16 @@
 {
-  "slug": "monochrome-rift",
-  "title": "The Monochrome Rift",
+  "slug": "chrome-rift",
+  "title": "The Chrome Rift",
   "creators": [
     "elastic space"
   ],
   "status": "live",
-  "summary": "A stark chamber of shifting black and white with grinding resonance, air rush, and distant chimes.",
+  "summary": "A stark chamber of shifting bands — monochrome until you tune it. A hidden panel bends its speed, colors, band count, wander, breath, glow, and edge clarity.",
   "tags": [
     "glitch",
-    "monochrome",
-    "noise"
+    "chrome",
+    "noise",
+    "tunable"
   ],
   "moods": [
     "severe",
@@ -44,9 +45,9 @@
     "editable": true,
     "driftEnabled": true,
     "hiddenFromDirectory": false,
-    "contentPath": "src/worlds/monochrome-rift",
+    "contentPath": "src/worlds/chrome-rift",
     "assetPaths": [
-      "src/worlds/monochrome-rift"
+      "src/worlds/chrome-rift"
     ]
   }
 }

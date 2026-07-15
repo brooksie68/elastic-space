@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Chrome Rift</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <canvas id="rift-canvas" aria-hidden="true"></canvas>
+
+    <a class="home-link" href="../../../index.html" title="Back to the index" aria-label="Back to the index">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5"></path>
+        <path d="M5 9.5V21h14V9.5"></path>
+        <path d="M10 21v-6h4v6"></path>
+      </svg>
+    </a>
+
+    <nav class="world-portals rift-portals" aria-label="Worlds">
+      <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+      <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
+    </nav>
+
+    <button id="rift-tuner-toggle" class="rift-tuner-toggle" type="button"
+            aria-expanded="false" aria-controls="rift-tuner"
+            title="Tune the rift" aria-label="Tune the rift">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <line x1="3" y1="6" x2="21" y2="6"></line>
+        <circle cx="9" cy="6" r="2.4" fill="currentColor" stroke="none"></circle>
+        <line x1="3" y1="12" x2="21" y2="12"></line>
+        <circle cx="15" cy="12" r="2.4" fill="currentColor" stroke="none"></circle>
+        <line x1="3" y1="18" x2="21" y2="18"></line>
+        <circle cx="6" cy="18" r="2.4" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </button>
+
+    <section id="rift-tuner" class="rift-tuner" role="group" aria-label="Rift tuning" hidden>
+      <div class="tuner-speed">
+        <label for="rift-speed">speed</label>
+        <input id="rift-speed" type="range" min="0" max="1000" step="1" value="188"
+               title="Drag to tune — double-click to reset to ×1" />
+        <output id="rift-speed-readout" for="rift-speed">×1.00</output>
+      </div>
+      <div class="tuner-minis">
+        <div class="tuner-mini">
+          <label for="rift-bands">bands</label>
+          <input id="rift-bands" type="range" min="3" max="60" step="1" value="18"
+                 title="How many bands split the rift — double-click resets" />
+          <output id="rift-bands-readout" for="rift-bands">18</output>
+        </div>
+        <div class="tuner-mini">
+          <label for="rift-wander">wander</label>
+          <input id="rift-wander" type="range" min="0" max="1000" step="1" value="245"
+                 title="How far the bands roam from home — double-click resets" />
+          <output id="rift-wander-readout" for="rift-wander">6%</output>
+        </div>
+        <div class="tuner-mini">
+          <label for="rift-breathe">breathe</label>
+          <input id="rift-breathe" type="range" min="0" max="1000" step="1" value="500"
+                 title="The rift breathes with the drone — sound must be on — double-click resets" />
+          <output id="rift-breathe-readout" for="rift-breathe">50%</output>
+        </div>
+        <div class="tuner-mini">
+          <label for="rift-pull">pull</label>
+          <input id="rift-pull" type="range" min="0" max="1000" step="1" value="500"
+                 title="How strongly the glow follows your cursor — double-click resets" />
+          <output id="rift-pull-readout" for="rift-pull">50%</output>
+        </div>
+        <div class="tuner-mini">
+          <label for="rift-edges">edges</label>
+          <input id="rift-edges" type="range" min="0" max="1000" step="1" value="500"
+                 title="Edge clarity — fog on the left, razor slabs on the right — double-click resets" />
+          <output id="rift-edges-readout" for="rift-edges">50%</output>
+        </div>
+      </div>
+      <div class="tuner-colors">
+        <span class="tuner-label" id="rift-gradient-label">gradient</span>
+        <input id="rift-color-start" type="color" value="#ffffff"
+               aria-label="Gradient start color" title="Gradient start" />
+        <input id="rift-color-end" type="color" value="#000000"
+               aria-label="Gradient end color" title="Gradient end" />
+        <div id="rift-presets" class="tuner-presets" role="group" aria-label="Color presets"></div>
+        <button id="rift-reset" class="tuner-reset" type="button"
+                title="Reset every control to its default">reset</button>
+        <button id="rift-info" class="tuner-info" type="button" aria-haspopup="dialog"
+                title="About these controls" aria-label="About these controls">i</button>
+      </div>
+    </section>
+
+    <dialog id="rift-guide" class="rift-guide" aria-labelledby="rift-guide-title">
+      <div class="guide-inner">
+        <div class="guide-head">
+          <h2 id="rift-guide-title">The Chrome Rift tuner</h2>
+          <button id="rift-guide-close" class="guide-close" type="button" aria-label="Close">&times;</button>
+        </div>
+        <ol class="guide-list">
+          <li><strong>speed</strong> — the full-width slider (about half your screen). Runs from a
+            dead stop on the left to ×800 on the right, where the bands smear into a gray blur.
+            The scale is position⁴, so the left half of the track covers roughly ×0–×30 for fine
+            adjustment and the violence lives at the far right. The readout shows the current
+            multiplier ("stopped" at zero). High speeds render as true motion blur — sub-frame
+            instants averaged together — never strobing.</li>
+          <li><strong>bands</strong> — how many bands split the rift, 3 to 60 (default 18). Bands
+            come from a fixed pool of 60 personalities, so sliding down and back up returns the
+            same bands you had. Width scales with count: three colossal slabs at the low end,
+            dense slivers at the high end.</li>
+          <li><strong>wander</strong> — how far each band roams from its home position, 0–100%
+            (default 6%). Squared mapping keeps the left half subtle; at 100% bands sweep the
+            entire screen width and cross each other. At 0% they stand at attention and only
+            shimmer in place.</li>
+          <li><strong>breathe</strong> — how hard the rift breathes with the drone, 0–100%
+            (default 50%). An analyser listens to the audio and auto-ranges its level, so even
+            the steady raga produces a usable breath. Band speed swells up to ~×1.9 and the
+            center glow grows and brightens on the inhales. Needs sound on; does nothing at 0%
+            or when muted.</li>
+          <li><strong>pull</strong> — how strongly the center glow follows your cursor, 0–100%
+            (default 50%). The glow eases toward the pointer over about a second; the percentage
+            blends its target between its home spot (62% across, centered vertically) and your
+            cursor. It drifts home when the cursor leaves the window.</li>
+          <li><strong>edges</strong> — clarity of the band edges, 0–100% (default 50% = the
+            original look). Left of center applies an increasing fog blur over the whole band
+            field; right of center sharpens the gradient transitions until 100% is hard-edged
+            solid slabs.</li>
+          <li><strong>gradient</strong> — two color pickers for the start and end colors of the
+            band gradient (default white → black). Everything derives from the palette: bands,
+            scanlines, glow tint, and the backdrop (built from the deepest color).</li>
+          <li><strong>presets</strong> — 13 chips next to the pickers, each showing its own
+            mini-gradient.</li>
+          <li><strong>reset</strong> — the pill at the end of the colors row. One click returns
+            all seven parameters and the palette to defaults. Individually, double-clicking any
+            slider resets just that one.</li>
+        </ol>
+      </div>
+    </dialog>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js" defer></script>
+  </body>
+</html>

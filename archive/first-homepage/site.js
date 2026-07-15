@@ -62,9 +62,9 @@ const routeFallbacks = [
     href: "./src/worlds/wildflowers-at-dusk/index.html",
   },
   {
-    title: "the monochrome rift",
+    title: "the chrome rift",
     meta: "shifting black and white, flashes, grinding air, distant chimes",
-    href: "./src/worlds/monochrome-rift/index.html",
+    href: "./src/worlds/chrome-rift/index.html",
   },
   {
     title: "pelagic lantern habitat",
