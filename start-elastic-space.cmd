@@ -4,13 +4,17 @@ cd /d "%~dp0"
 
 rem Elastic Space launcher — the ONE way to start this project.
 rem Double-click: reuses the server if it is already running on port 4174,
-rem otherwise starts it in its own CMD window, waits for it to answer,
-rem then opens the map room. Close the server window (or Ctrl+C) to stop.
+rem otherwise starts it in its own minimized CMD window, waits for it to
+rem answer, then opens the map room. The server window sits minimized in
+rem the taskbar — close it to stop the server.
+
+rem Minimize this launcher window (PowerShell shares the console).
+powershell -window minimized -command ""
 
 curl.exe -s -o NUL --max-time 2 "http://127.0.0.1:4174/healthz"
 if not errorlevel 1 goto open
 
-start "elastic-space server (port 4174)" cmd /k "node server.mjs"
+start /min "elastic-space server (port 4174)" cmd /k "node server.mjs"
 
 set tries=0
 :wait
