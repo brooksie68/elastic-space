@@ -40,7 +40,8 @@
   const N = 15;
   const OSC_BASE = 22;         // swings per grand cycle for the longest sister
   const AMP = 0.42;            // angular amplitude, radians
-  const TILT = 0.30;           // how much toward-viewer swing reads as screen drop
+  const FRONT_CAM = 1.9;       // front-view camera distance, in units of Lmax
+  const ARC_LIFT = 1.35;       // exaggerates the arc's climb so the swing reads
   const CASCADE_GAP = 0.45;    // seconds between cascade releases
 
   // rotated vantages: sisters recede along the rail; perspective with focal f = 1.
@@ -207,6 +208,14 @@
     cityImg.style.top = `${c0.y}px`;
     cityImg.style.width = `${cw}px`;
     cityImg.style.height = `${ch}px`;
+
+    // the inscription rides the full plate rect (its viewBox is plate-sized,
+    // so its plate coordinates stay pixel-true over the wall)
+    const titleArc = document.querySelector(".title-arc");
+    titleArc.style.left = `${t.ox}px`;
+    titleArc.style.top = `${t.oy}px`;
+    titleArc.style.width = `${PLATE.w * t.s}px`;
+    titleArc.style.height = `${PLATE.h * t.s}px`;
 
     // the bird canvas rides the same rect
     birdCanvas.style.left = `${c0.x}px`;
@@ -763,12 +772,17 @@
       s.theta = th;
       const L = m.Lmax * Math.pow(OSC_BASE / s.n, 2);
 
-      // front projection: row across the screen, swing toward the viewer
+      // front projection: row across the screen, swing toward the viewer.
+      // The camera eye sits level with each sister's rest point, FRONT_CAM
+      // rail-lengths back: she climbs her arc at both ends of the swing (a
+      // touch higher when she's near) while perspective breathes her size —
+      // swelling as she comes to you, shrinking as she leaves.
       const axF = m.left + ((m.right - m.left) * i) / (N - 1);
       const zF = L * Math.sin(th);
+      const pF = 1 / (1 - zF / (FRONT_CAM * m.Lmax));
       const xF = axF;
-      const yF = m.beamY + L * Math.cos(th) + zF * TILT;
-      const rF = m.r * (1 + zF / (2.4 * H));
+      const yF = m.beamY + L - L * (1 - Math.cos(th)) * pF * ARC_LIFT;
+      const rF = m.r * pF;
 
       // 45° quarter view: rail recedes toward the centre arch
       const psA = perspOf(i, DEPTH_GAP);

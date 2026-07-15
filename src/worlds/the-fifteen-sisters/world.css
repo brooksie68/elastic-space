@@ -33,6 +33,35 @@ body {
   pointer-events: none;
 }
 
+/* the world's name over the centre arch. Aref Ruqaa (OFL) — latin glyphs
+   drawn in ruqaa calligraphic style; bundled locally so file:// still works */
+@font-face {
+  font-family: "Aref Ruqaa";
+  src: url("./assets/fonts/aref-ruqaa-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* positioned over the full plate rect by JS; sits under the evening tint so
+   the inscription darkens with the wall it is painted on */
+.title-arc {
+  position: fixed;
+  pointer-events: none;
+  user-select: none;
+}
+.title-text {
+  font-family: "Aref Ruqaa", Georgia, serif;
+  font-size: 44px; /* plate px — the viewBox scales it with the wall */
+  letter-spacing: 0.06em;
+  text-anchor: middle;
+  /* aged gold sunk into the plaster — visible, never bright */
+  fill: rgba(214, 178, 122, 0.58);
+  paint-order: stroke;
+  stroke: rgba(18, 11, 4, 0.32);
+  stroke-width: 1.6;
+}
+
 /* evening moods re-grade the plate */
 .evening-tint {
   position: fixed;

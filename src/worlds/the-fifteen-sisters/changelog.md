@@ -1,5 +1,24 @@
 # The Fifteen Sisters — changelog
 
+## 2026-07-15 — claude-fable (front view swings for real, the name on the wall)
+
+- Front-view projection rebuilt. The old drop+scale tilt cancelled the pendulum arc's
+  rise and only breathed size ±7%, so the sisters read as bobbing on strings (James's
+  call). Now the camera eye sits level with each sister's rest point, FRONT_CAM = 1.9
+  rail-lengths back: she climbs her arc at both ends of the swing — a touch higher when
+  near — and perspective swells her toward you (+27%) and shrinks her away (−18%) for
+  the longest sister; shorter sisters travel less depth, so they breathe less, which is
+  physical. ARC_LIFT = 1.35 exaggerates the climb slightly for legibility. The 45° and
+  90° projections (which James called fantastic) are untouched.
+- The world's name — "the fifteen sisters" — now arcs over the centre arch like an old
+  inscription painted on the plaster: an SVG textPath in plate coordinates riding the
+  cover transform, aged gold at low alpha with a hair of dark understroke, sitting
+  beneath the evening tint so it grades with the wall. The face is Aref Ruqaa (OFL),
+  whose latin glyphs are drawn in ruqaa calligraphic style; the latin woff2 (14.6 KB)
+  is bundled at assets/fonts/ so file:// keeps working. Note: the sisters' rail and
+  the middle rope hang in front of the inscription at the flanks — physically correct,
+  easy to retune if it reads cluttered.
+
 ## 2026-07-13 — claude-fable (lived-in salon, birds, ropes, deep register)
 
 - James's midnight city painting landed (`assets/city/fifteen-sisters-city-midnight.png`);

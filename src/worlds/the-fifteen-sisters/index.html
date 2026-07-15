@@ -12,6 +12,16 @@
     <!-- distant birds, drawn over the city but cropped by the salon's window piers -->
     <canvas id="birds" aria-hidden="true"></canvas>
     <img class="salon" src="./assets/room/salon.png" alt="" aria-hidden="true" />
+    <!-- the world's name, an old inscription arcing over the centre arch;
+         plate coordinates — positioned over the full plate rect by JS -->
+    <svg class="title-arc" viewBox="0 0 1920 1080" aria-hidden="true">
+      <defs>
+        <path id="title-curve" d="M 729 252 A 281 281 0 0 1 1189 252" fill="none" />
+      </defs>
+      <text class="title-text">
+        <textPath href="#title-curve" startOffset="50%">the fifteen sisters</textPath>
+      </text>
+    </svg>
     <div class="evening-tint" aria-hidden="true"></div>
 
     <canvas id="scene" aria-hidden="true"></canvas>
