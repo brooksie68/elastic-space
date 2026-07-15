@@ -1,5 +1,17 @@
 # Claude instructions
 
+## Todo
+
+1. **Set up SSH remotes for GitHub pushes** (added 2026-07-15, do as a guided walkthrough —
+   James is not an IT guy, talk him through each step). Context: HTTPS pushes >~10MB fail
+   with TLS corruption on BOTH schannel and OpenSSL backends (the 07-15 `sslBackend openssl`
+   switch did NOT fix it — see memory `chunk-large-git-pushes`). SSH bypasses that code path
+   entirely. Steps: generate an ed25519 key (`ssh-keygen`), add the public key to James's
+   GitHub account (his part, in the browser), test with `ssh -T git@github.com`, then switch
+   each repo's remote URL (elastic-space, _workspace, buzzsaw, blipblops, JBB-UX-Portfolio,
+   arachno-wars-two, wifilolz, jam-terminal). Verify with a >10MB test push, then update the
+   memory + BOOTSTRAP.md so restore.sh instructions stay true.
+
 ## Local preview
 
 - Use the local dev server (`server.mjs` via `.claude/launch.json`) for previewing and verification. **Port is 4174, always** — the server defaults to it, the launcher uses it, nothing uses 4173 anymore (retired 2026-07-13). (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)

@@ -270,7 +270,7 @@ Ideas cut for space or overlap, preserved because several are one redirect away 
 
 ## Session notes — 2026-07-10
 
-1. Worlds live at time of writing: Jerry's Pool, Wildflowers at Dusk (landscape-plate work in progress, uncommitted), The Dead Letter Office (draft), The Monochrome Rift, Pelagic Lantern Habitat.
+1. Worlds live at time of writing: Jerry's Pool, Wildflowers at Dusk (landscape-plate work in progress, uncommitted), The Dead Letter Office (draft), The Monochrome Rift (renamed The Chrome Rift 2026-07-15), Pelagic Lantern Habitat.
 2. Process agreed: co-build, one world at a time, checkpoint between steps — concept sketch → set dressing → core mechanism → senses and exits → registry/ship. No unilateral building.
 3. Conventions every new world honors: own folder under `src/worlds/<slug>/`, `world.json`, `changelog.md` (convention added this session), drift exits via `data-drift` + `world-registry.js` + `drift.js`, `npm run registry` after add/remove/rename, audio always behind an interaction gate (site-wide precedent — `autoplayAudio: false` everywhere).
 4. Practical: the local server caches CSS/JS for ~5 minutes — hard refresh after changes.
@@ -287,9 +287,9 @@ renders with holdout occlusion, rAF-driven part animation over a WAAPI crossing.
 2. **Fan dancer** — `live 2026-07-12` — feather-star; 10 arm layers running a metachronal wave while the body slowly rotates.
 3. **Barrel drifter** — `live 2026-07-12` — jet salp; contraction squash, pulsed velocity crossing, exhaust puff per contraction.
 4. **Chain siphonophore** — `idea` — bell-train with a contraction wave running down the chain; colony-style layers with scale pulses.
-5. **Comb jelly** — `idea` — glassy ovoid; comb-row layers shimmer in sequence under slow hue-cycling filters.
+5. **Comb jelly** — `live 2026-07-15` — glassy ovoid; comb-row layers shimmer in sequence under slow hue-cycling filters.
 6. **Whip eel** — `idea` — 14 overlapping segment layers following a moving sine spine; true serpentine locomotion (seam risk, prototype first).
-7. **Spore floater** — `idea` — rotating dandelion sphere that sheds 2–3 sinking glow-spores at a time (cap + TTL).
+7. **Spore floater** — `live 2026-07-15` — rotating dandelion sphere that sheds 2–3 sinking glow-spores at a time (cap + TTL).
 8. **Glass skitterer** — `idea` — translucent shrimp hopping along the seafloor, leg layers scissoring per hop.
 9. **Mirror mola** — `idea` — huge slow disc fish; dorsal/anal fin layers flap alternately, faint light-catching shimmer.
 10. **Burrow lurker** — `idea` — stationary bottom ambusher; glowing tongue extends, sways, retracts. Not a crosser — needs a spawn-in-place pattern.
