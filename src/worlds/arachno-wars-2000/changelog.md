@@ -3,6 +3,116 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-15 — Claude (with James)
+
+Biome arenas: James delivered GPT-generated layer sets for three new biomes; every match now
+rolls a random arena. Later the same session: new music in, menu simplified to one button.
+
+- **Vision recorded**: James's north star — intelligent carbon-metal spiders, whip-leg
+  motion, side-scroller missions — written up in `spider-vision.md` from his words + his
+  three Procreate drawings (`assets/reference/Spider_Tank_1/2/3.png`). New roadmap #19
+  (whip-leg motion language) is the nearest stepping stone; #10/#16/#18 updated to serve it.
+- **Turret rework** (James's reference screenshot + 2500-series brief): the barrel now
+  articulates out of a round ball mounted on TOP of the mid-hull — in-game and on the menu —
+  instead of floating at hull-centre among the legs. `Tank.getMountPoint()` is the single
+  source of truth (draw, fire, beam, AI solver, aim HUD all measure from it). Barrel
+  slimmed with a slight muzzle bulge. Player aim is clamped so the barrel never sweeps
+  more than ~8° below the hull plane (blocks only downward motion, so body tilt can't trap
+  it). Menu tanks: wider/taller leg arches, hull sits lower, turret stable (no sway).
+  Full 2500 design brief + the climbing-arenas vision (overhangs, C-shaped croppings,
+  height-advantage beam duels) recorded in `overhaul-roadmap.md` (#10, new #18).
+- **Music restored**: James's ElevenLabs track "Angular Ritual"
+  (`assets/music/Angular-Ritual.mp3`) wired in exactly where the vetoed chiptune sat —
+  looping media element, its own "Music" slider on the shared sound control
+  (default 0.5 after a quick listen), autoplay gated by the control's start promise.
+- **Menu simplified to one big START button** (James: 2-player is pointless for now, not
+  within Elastic Space anyway): pulsing gold button centred under the title, clickable with
+  hover cursor; Space/Enter/T also start. Always training mode vs the computer — `mode` now
+  defaults to `'training'` and the V binding is gone, but all the pvp plumbing (turn logic,
+  P2 strings) stays for whenever 2-player returns.
+
+- **Four biomes live**: Twilight Canyon, Snowy Pass, Volcanic Wastes, The Bog. `BIOMES` in
+  game.js holds each arena's parallax folder plus the full palette the procedural ground is
+  rendered with — terrain gradient, strata bands (volcanic gets two glowing ember seams),
+  per-column noise, surface edge/rim, pebbles, boulder/spire rock colours, and a per-biome
+  flora list (bog is web-heavy, volcanic is charred ocotillo and spires, snowy leans pines).
+- **Random arena per match**, never the same twice in a row; the arena name rides the coin
+  toss ("SNOWY PASS … TOSSING"). Layer images are cached per biome and only fetched on first
+  use; missing layers fall back to a solid biome colour (twilight falls back to the old
+  bg.png plate).
+- **Chroma pipeline hardened**: `tmp/arachno-wars-2000/chroma-key.py` now auto-detects biome
+  folders (drop a folder → rerun → done) and writes PNGs with its own encoder — bpy's
+  `Image.save()` silently dropped the alpha channel on one input (bog came out 24-bit RGB),
+  so the script no longer trusts it. All eight far/mid layers verified: transparent sky
+  (A=0), opaque terrain, straight alpha.
+- Verified numerically in the browser (screenshot capture was hanging): per-biome canvas
+  pixel samples confirm painted skies and matching ground palettes render for all four; zero
+  console errors. James still to eyeball the palettes in play — the four terrain palettes are
+  my numbers, not his eye, and he has final say.
+- Where things stand: bog flora could use bespoke swamp plants (cattails, glowing fungi) and
+  snowy could take falling-snow particles — both fold into roadmap #5 (aftermath/atmosphere
+  particles). Night-sky variants per biome (#4) remain open.
+
+## 2026-07-14 — Claude (with James)
+
+Round 1 of the contemporary overhaul (full plan in `overhaul-roadmap.md`, numbering fixed there):
+
+- **Parallax background (#17)**: James GPT-generated a twilight-canyon biome set
+  (`assets/worlds/twillight/` — sky, far, mid). Far/mid arrived on chroma green; keyed to
+  transparency via headless Blender (`tmp/arachno-wars-2000/chroma-key.py`, Non-Color
+  colorspace so the palette survives untouched; `*-source.png` keep the chroma, Wildflowers
+  convention). Three-plane parallax with per-layer pan/zoom factors replaced the single
+  `bg.png` (kept as fallback). Prompts for snowy/volcanic/alien-bog biomes are written and
+  in the 2026-07-14 chat.
+- **Dynamic camera (#1)**: eased pan/zoom rig — pushes toward the active tank while aiming
+  (1.14×), follows the shell in flight (1.26×), punches in on impact, clamps to world bounds.
+  Mouse picking converts through the camera (blimp stays clickable).
+- **Impact juice (#2)**: screen shake scaled to blast radius, white flash on big blasts,
+  killing blow gets 0.3× slow-mo + 1.65× zoom via a step accumulator in the main loop
+  (camera and draw stay 60fps).
+- **Explosion/muzzle lighting (#3)**: additive radial lights on every blast, muzzle flash,
+  and beam terminus; subtle vignette overlay.
+- **Diegetic HUD (#6/#7)**: the 100px monospace bar is gone. Power = charging ring at the
+  hub; aim = ghost arc of the first ~26 physics steps (beam gets a dashed guide); angle
+  readout floats at the barrel tip; move budget is a track under the tank; jump pips;
+  HP = 8 chitin-plate segments arched over each hull that flake off as shards; floating
+  damage ticks. Weapons + EJECT live in a slim translucent strip bottom-centre (click or
+  keys 1-6). AI "thinking" is dots above its tank now, not a centre overlay.
+- **Typography (#8)**: Bahnschrift-condensed system stack for display type (kinetic sliding
+  turn banners, menu title, game-over), Bahnschrift/Segoe for UI numbers. James has final
+  say on the face. Removed `image-rendering: pixelated` from the canvas.
+- Verified: `node --check` clean; served run shows zero console errors; forced-frame pixel
+  sampling confirms all three plates render, camera follows a full AI turn, splash damage
+  ticks, plates crack (8→2 spawns 18 shards). The preview pane's frozen-rAF quirk means it
+  was stepped manually — James should give it a real play in Chrome.
+- **Controls rebound** (same day, James's request): movement is now all W/A/D (A/D walk,
+  W jump) and the arrows are all gun — ←/→ aim, ↑/↓ power. Aim arrows work in screen
+  direction for both players (← always swings the barrel tip leftward; the barrelAngle
+  delta is mirrored for P2). Legacy -/+ and bracket power keys still work. On-screen hints
+  in the HUD strip and menu updated to match.
+- **AI difficulty warm-up curve** (same day, James: "at first it needs to be easy so its fun
+  to play"): the computer now ramps from sloppy to sharp across ~8 firing turns. Early turns
+  it deliberately solves for a near-miss beside the player (~51% chance turn 1, 60–180px
+  offset, decaying to 20%) and its intended hits carry hand-wobble (±0.09 rad angle /
+  ±16 power turn 1, fading to ±0.02 / ±4). Solver, arc-safety rules, and panic-shot
+  behaviour untouched. Tunables: `skill = min(1, aiTurnCount / 8)` in `aiAct()`.
+- **Camera toned way down** (same day, after James's play-test — the round-1 camera was
+  literally motion-sickness-inducing): aiming now frames BOTH tanks (midpoint, 20% bias
+  toward the active tank, zoom capped 1.0–1.08 and only above 1.0 when the tanks are close),
+  flight-follow is the projectile centroid at 1.06× instead of chasing the last bomblet at
+  1.26×, impact punch 1.16×/1.06× (was 1.55/1.34), kill slow-mo zoom 1.22× (was 1.65),
+  easing roughly halved (`CAM_EASE_XY` 0.045, `CAM_EASE_Z` 0.035), shake halved and smoothed
+  toward its random target so it rumbles instead of vibrating. Rule going forward: the
+  player must always be able to see the enemy tank while aiming.
+- **Battle music removed** (same day, James's call — the 07-13 chiptune loop was unbearable):
+  `music-battle.mp3` deleted, `musicEl`/music-channel code stripped, sound control back to a
+  plain SFX attach with no second slider and nothing to autoplay. James will generate a
+  replacement track via ElevenLabs later; when it lands, restore the media element + the
+  `channels:` music slider (the sound-control support is still there, see 07-13 entry).
+- Where things stand: rounds 2+ live in `overhaul-roadmap.md` (wind, supply drops, AI
+  personalities, sudden death, night arc, tank re-renders, more biomes). The 22 SFX are
+  unchanged and still awaiting James's curation pass from the 07-13 session.
+
 ## 2026-07-13 — Claude (with James)
 
 Big cleanup pass on James's direction: make v1 actually fun.

@@ -10,9 +10,97 @@ const W = 1280, H = 720;
 canvas.width  = W;
 canvas.height = H;
 
-// --- Background image ---
+// --- Background: parallax biome arenas (sky / far / mid painted plates) ---
+// One biome is picked at random per match. Each entry also carries the palette
+// the procedural terrain, rocks, and flora are rendered with, so the diggable
+// ground matches its painted backdrop. Layer PNGs live in assets/worlds/<key>/
+// (GPT-generated, chroma-keyed by tmp/arachno-wars-2000/chroma-key.py).
+const BIOMES = {
+  twillight: {
+    label: 'TWILIGHT CANYON',
+    fallback: '#050112',
+    grad: ['#a86336','#8a4f28','#6b3a1c','#4a2712','#2e180a'],
+    strata: ['rgba(196,117,46,0.30)','rgba(84,36,16,0.45)','rgba(156,82,40,0.28)',
+             'rgba(66,26,10,0.50)','rgba(122,59,30,0.32)','rgba(50,20,8,0.45)'],
+    noiseLite: '196,117,46', noiseDark: '46,20,8',
+    edge: '#2e1608', rim: 'rgba(216,133,59,0.7)',
+    pebbleA: 'rgba(58,26,10,0.7)', pebbleB: 'rgba(140,74,34,0.55)',
+    rockBase: ['#5a3018','#4a2712','#6b3a1e'], rockLite: ['#a06030','#8a5228','#b06a38'],
+    flora: ['juniper','juniper','ocotillo','agave','scrub','scrub','drygrass','drygrass','web','spire'],
+  },
+  snowy: {
+    label: 'SNOWY PASS',
+    fallback: '#9fb0c2',
+    grad: ['#e6edf4','#c2cedc','#8494aa','#4e5c72','#242e3e'],
+    strata: ['rgba(240,246,252,0.35)','rgba(56,70,92,0.45)','rgba(180,196,214,0.30)',
+             'rgba(44,56,76,0.50)','rgba(130,148,170,0.30)','rgba(36,46,64,0.45)'],
+    noiseLite: '238,246,254', noiseDark: '38,50,70',
+    edge: '#26303f', rim: 'rgba(255,255,255,0.85)',
+    pebbleA: 'rgba(44,56,76,0.6)', pebbleB: 'rgba(215,228,240,0.6)',
+    rockBase: ['#48566a','#3c4a5c','#546478'], rockLite: ['#ccd8e6','#bcc8d8','#dce8f2'],
+    flora: ['juniper','juniper','juniper','drygrass','drygrass','spire','web','scrub'],
+  },
+  volcanic: {
+    label: 'VOLCANIC WASTES',
+    fallback: '#241a16',
+    grad: ['#57443c','#3e302b','#2a2020','#1a1213','#0c0708'],
+    strata: ['rgba(120,96,86,0.30)','rgba(255,102,32,0.30)','rgba(90,72,64,0.28)',
+             'rgba(16,10,8,0.55)','rgba(230,84,26,0.22)','rgba(12,8,6,0.50)'],
+    noiseLite: '150,110,90', noiseDark: '6,3,3',
+    edge: '#0c0707', rim: 'rgba(255,120,48,0.5)',
+    pebbleA: 'rgba(255,110,40,0.45)', pebbleB: 'rgba(70,54,48,0.65)',
+    rockBase: ['#282022','#201a1b','#322829'], rockLite: ['#8a4a34','#7a3f2c','#9a563c'],
+    flora: ['ocotillo','ocotillo','spire','spire','drygrass','web','boulder'],
+  },
+  bog: {
+    label: 'THE BOG',
+    fallback: '#0d1a16',
+    grad: ['#7a7c44','#5c6034','#434a28','#2c331e','#161c12'],
+    strata: ['rgba(150,152,86,0.28)','rgba(30,40,26,0.50)','rgba(96,116,80,0.30)',
+             'rgba(22,30,20,0.50)','rgba(70,90,88,0.28)','rgba(14,20,14,0.45)'],
+    noiseLite: '160,164,92', noiseDark: '18,26,16',
+    edge: '#141c12', rim: 'rgba(190,200,120,0.55)',
+    pebbleA: 'rgba(24,32,20,0.7)', pebbleB: 'rgba(150,158,90,0.5)',
+    rockBase: ['#3c4426','#333a20','#464e2c'], rockLite: ['#96a054','#86904a','#a6b060'],
+    flora: ['web','web','web','scrub','scrub','agave','drygrass','juniper'],
+  },
+};
+let biomeKey = 'twillight';
+let biome = BIOMES[biomeKey];
+
+// Legacy single-plate fallback (the original twilight painting)
 const bgImage = new Image();
 bgImage.src = 'bg.png';
+
+// Per-biome layer images, created on first use so we don't fetch four
+// biomes' plates just to show the menu.
+const biomeImgCache = {};
+function biomeImgs(key) {
+  if (!biomeImgCache[key]) {
+    const set = { sky: new Image(), far: new Image(), mid: new Image() };
+    for (const l of ['sky', 'far', 'mid']) set[l].src = `assets/worlds/${key}/${l}.png`;
+    biomeImgCache[key] = set;
+  }
+  return biomeImgCache[key];
+}
+biomeImgs(biomeKey);   // warm the default so the menu has art immediately
+
+function pickBiome() {
+  const keys = Object.keys(BIOMES);
+  let k = keys[Math.floor(Math.random() * keys.length)];
+  if (k === biomeKey && keys.length > 1) {
+    // Never the same arena twice in a row
+    const others = keys.filter(x => x !== biomeKey);
+    k = others[Math.floor(Math.random() * others.length)];
+  }
+  biomeKey = k;
+  biome = BIOMES[k];
+  biomeImgs(k);
+}
+
+// --- Typography (system stack; James picks the final face) ---
+const FONT_D = '"Bahnschrift SemiBold Condensed","Bahnschrift Condensed",Impact,"Arial Narrow",sans-serif';
+const FONT_U = 'Bahnschrift,"Segoe UI",Arial,sans-serif';
 
 function resizeCanvas() {
   const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
@@ -46,7 +134,8 @@ const PAL = {
 // Elastic Space shared sound control gates all game audio through this state.
 // Standalone (no sound-control.js) the game keeps sound on by default.
 // musicVolume rides on the second slider of the shared control.
-const esSound = { on: !window.ElasticSoundControl, volume: 1, musicVolume: 0.55 };
+// (Music: James's "Angular Ritual", replacing the 07-13 chiptune he vetoed.)
+const esSound = { on: !window.ElasticSoundControl, volume: 1, musicVolume: 0.5 };
 
 // All sounds are ElevenLabs-generated assets (authoring-time pipeline);
 // media elements so everything still works from file://.
@@ -107,9 +196,9 @@ function startWhistle() {
 }
 function stopWhistle() { try { whistleEl.pause(); } catch (e) {} }
 
-// Looping battle music on its own volume channel so players can mute the
-// music and still hear the tanks.
-const musicEl = new Audio(AUDIO_DIR + 'music-battle.mp3');
+// Looping battle music — James's "Angular Ritual" — on its own volume channel
+// so players can duck the music and still hear the tanks.
+const musicEl = new Audio('assets/music/Angular-Ritual.mp3');
 musicEl.preload = 'auto';
 musicEl.loop = true;
 function applyMusicVolume() {
@@ -253,9 +342,8 @@ function spawnDecorations() {
     decorationList.push({ type: 'boulder', x, baseTerrainH: terrain[Math.floor(x)], size: 8 + rng()*20, variant: Math.floor(rng()*3) });
   }
 
-  // Place varied canyon flora — junipers, ocotillo, agave, scrub, dry grass,
-  // rock spires, and the occasional strung web
-  const floraTypes = ['juniper','juniper','ocotillo','agave','scrub','scrub','drygrass','drygrass','web','spire'];
+  // Place varied flora from the current biome's list (weighted by repetition)
+  const floraTypes = biome.flora;
   const numFlora = 28 + Math.floor(rng() * 16);
   for (let i = 0; i < numFlora; i++) {
     const x = 40 + rng() * (TERRAIN_W - 80);
@@ -275,15 +363,12 @@ function renderTerrainCanvas() {
   off.width = W; off.height = H;
   const oc = off.getContext('2d');
 
-  // ---- Terrain body: warm canyon rock matching the painted background ----
-  // Gradient anchored around the typical surface line so tops read sunlit
+  // ---- Terrain body in the current biome's rock palette ----
+  // Gradient anchored around the typical surface line so tops read lit
   // and depth falls off into dark bedrock.
   const grad = oc.createLinearGradient(0, H * 0.5, 0, H);
-  grad.addColorStop(0,    '#a86336');  // sunlit surface rock
-  grad.addColorStop(0.22, '#8a4f28');
-  grad.addColorStop(0.5,  '#6b3a1c');
-  grad.addColorStop(0.78, '#4a2712');
-  grad.addColorStop(1,    '#2e180a');  // deep bedrock
+  const stops = [0, 0.22, 0.5, 0.78, 1];
+  stops.forEach((p, i) => grad.addColorStop(p, biome.grad[i]));
   oc.fillStyle = grad;
   oc.beginPath();
   oc.moveTo(0, H);
@@ -300,14 +385,11 @@ function renderTerrainCanvas() {
   oc.lineTo(TERRAIN_W, H);
   oc.closePath();
   oc.clip();
-  const strata = [
-    { y: H * 0.60, h: 8,  col: 'rgba(196,117,46,0.30)' },
-    { y: H * 0.66, h: 4,  col: 'rgba(84,36,16,0.45)'   },
-    { y: H * 0.73, h: 11, col: 'rgba(156,82,40,0.28)'  },
-    { y: H * 0.80, h: 5,  col: 'rgba(66,26,10,0.50)'   },
-    { y: H * 0.87, h: 9,  col: 'rgba(122,59,30,0.32)'  },
-    { y: H * 0.94, h: 5,  col: 'rgba(50,20,8,0.45)'    },
+  const strataGeom = [
+    { y: H * 0.60, h: 8 }, { y: H * 0.66, h: 4 }, { y: H * 0.73, h: 11 },
+    { y: H * 0.80, h: 5 }, { y: H * 0.87, h: 9 }, { y: H * 0.94, h: 5 },
   ];
+  const strata = strataGeom.map((s, i) => ({ ...s, col: biome.strata[i] }));
   strata.forEach((s, si) => {
     oc.fillStyle = s.col;
     oc.beginPath();
@@ -324,22 +406,22 @@ function renderTerrainCanvas() {
     oc.fill();
   });
 
-  // Per-column colour noise — warm variation for organic rock
+  // Per-column colour noise — tonal variation for organic rock
   for (let x = 0; x < TERRAIN_W; x++) {
     const n1 = seededRandG(x * 0.09  + 3.7);
     const n2 = seededRandG(x * 0.031 + 11.2);
     const alpha = n1 * 0.14 + n2 * 0.08;
     const col = n1 > 0.52
-      ? `rgba(196,117,46,${alpha})`   // sunlit ochre
-      : `rgba(46,20,8,${alpha})`;     // shadowed umber
+      ? `rgba(${biome.noiseLite},${alpha})`   // lit
+      : `rgba(${biome.noiseDark},${alpha})`;  // shadowed
     oc.fillStyle = col;
     const sy = H - terrain[x];
     oc.fillRect(x, sy, 1, H - sy);
   }
   oc.restore();
 
-  // Surface edge — dark base line with a sunlit rim above it
-  oc.strokeStyle = '#2e1608';
+  // Surface edge — dark base line with a lit rim above it
+  oc.strokeStyle = biome.edge;
   oc.lineWidth = 2.5;
   oc.beginPath();
   for (let x = 0; x < TERRAIN_W; x++) {
@@ -347,7 +429,7 @@ function renderTerrainCanvas() {
     else         oc.lineTo(x, H - terrain[x]);
   }
   oc.stroke();
-  oc.strokeStyle = 'rgba(216,133,59,0.7)';
+  oc.strokeStyle = biome.rim;
   oc.lineWidth = 1;
   oc.beginPath();
   for (let x = 0; x < TERRAIN_W; x++) {
@@ -356,11 +438,11 @@ function renderTerrainCanvas() {
   }
   oc.stroke();
 
-  // Surface pebble/crack texture — warm dashes just below the rim
+  // Surface pebble/crack texture — dashes just below the rim
   for (let x = 2; x < TERRAIN_W - 2; x += 4 + Math.floor(seededRandG(x * 0.3) * 6)) {
     const ty = H - terrain[x] + 2;
     const len = 2 + seededRandG(x * 0.7) * 5;
-    oc.fillStyle = seededRandG(x*1.3) > 0.5 ? 'rgba(58,26,10,0.7)' : 'rgba(140,74,34,0.55)';
+    oc.fillStyle = seededRandG(x*1.3) > 0.5 ? biome.pebbleA : biome.pebbleB;
     oc.fillRect(x, ty, len, 1);
   }
 
@@ -394,9 +476,9 @@ function drawDecoration(oc, d, sy) {
 }
 
 function drawBoulder(oc, x, y, r, variant) {
-  // Main mass — canyon rock, sunlit on the upper-left facet
-  const col  = ['#5a3018','#4a2712','#6b3a1e'][variant];
-  const lite = ['#a06030','#8a5228','#b06a38'][variant];
+  // Main mass — biome rock, lit on the upper-left facet
+  const col  = biome.rockBase[variant];
+  const lite = biome.rockLite[variant];
   oc.fillStyle = col;
   oc.beginPath(); oc.ellipse(x, y - r*0.45, r, r*0.60, 0.1*variant, 0, Math.PI*2); oc.fill();
   oc.fillStyle = lite;
@@ -411,8 +493,8 @@ function drawBoulder(oc, x, y, r, variant) {
 
 function drawSpire(oc, x, y, h, variant) {
   // Stacked hoodoo — eroded rock slabs narrowing toward the top
-  const base = ['#6b3a1c','#5c3016','#7a4322'][variant];
-  const lite = ['#a06030','#8f5228','#b06a38'][variant];
+  const base = biome.rockBase[variant];
+  const lite = biome.rockLite[variant];
   const segs = 4 + variant;
   let w = h * 0.22, py = y;
   for (let s = 0; s < segs; s++) {
@@ -597,21 +679,148 @@ function deformTerrain(cx, cy, radius, skipRender) {
 }
 
 // ============================================================
-//  PARALLAX BACKGROUND  —  32-bit quality sky & mountains
+//  CAMERA  —  dynamic zoom/pan, shake, flash, kill slow-mo
 // ============================================================
-function drawBackground() {
-  // ---- Background image (fills full canvas, terrain draws on top) ----
-  if (bgImage.complete && bgImage.naturalWidth > 0) {
-    ctx.drawImage(bgImage, 0, 0, W, H);
-  } else {
-    // Fallback solid colour while image loads
-    ctx.fillStyle = '#050112';
-    ctx.fillRect(0, 0, W, H);
-    return;
+const cam = { x: W/2, y: H/2, z: 1, sx: 0, sy: 0, shakeMag: 0, flash: 0 };
+let slowmoT = 0;                              // real frames of kill slow-mo left
+let impactFocus = { x: 0, y: 0, t: 0, big: false };
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+// Tuning — toned way down 2026-07-14 after James's motion-sickness feedback:
+// stay wide, always frame BOTH tanks while aiming, ease gently.
+const CAM_EASE_XY = 0.045;
+const CAM_EASE_Z  = 0.035;
+
+function camUpdate() {
+  let tx = W/2, ty = H/2, tz = 1;
+
+  if (state === STATES.PLAYER_TURN || state === STATES.AI_TURN) {
+    // Centre on the midpoint of both tanks, biased slightly toward the
+    // active one; zoom only as far as keeps both comfortably in frame.
+    const a = tanks[activePlayer], b = tanks[1 - activePlayer];
+    if (a && b) {
+      const mid = (a.x + b.x) / 2;
+      tx = mid + (a.x - mid) * 0.2;
+      ty = H/2 + (Math.min(a.y, b.y) - H/2) * 0.15;
+      const need = Math.abs(a.x - b.x) + 420;   // margin for barrels + strip
+      tz = clamp(W / need, 1.0, 1.08);
+    }
+  } else if (state === STATES.FIRING) {
+    // Follow the flight loosely: centroid of everything in the air
+    const fl = projectiles.length ? projectiles : crawlers;
+    if (fl.length) {
+      let sx = 0, sy = 0;
+      for (const f of fl) { sx += f.x; sy += f.y; }
+      tx = sx / fl.length; ty = sy / fl.length; tz = 1.06;
+    }
+  } else if (state === STATES.EJECTING && ejectFx) {
+    tx = ejectFx.pilot.x; ty = ejectFx.pilot.y; tz = 1.06;
+  } else if (state === STATES.GAME_OVER) {
+    const winner = tanks.find(t => t.alive);
+    if (winner) { tx = winner.x; ty = winner.y; tz = 1.1; }
   }
 
+  if (impactFocus.t > 0) {
+    tx = impactFocus.x; ty = impactFocus.y;
+    tz = impactFocus.big ? 1.16 : 1.06;
+  }
+  if (slowmoT > 0) tz = Math.max(tz, 1.22);
+
+  cam.z += (tz - cam.z) * CAM_EASE_Z;
+  cam.x += (tx - cam.x) * CAM_EASE_XY;
+  cam.y += (ty - cam.y) * CAM_EASE_XY;
+
+  // Never show past the world rect
+  const hw = W / (2 * cam.z), hh = H / (2 * cam.z);
+  cam.x = clamp(cam.x, hw, W - hw);
+  cam.y = clamp(cam.y, hh, H - hh);
+
+  // Shake + flash decay (real-time so slow-mo doesn't freeze them).
+  // Shake offset is smoothed toward each new random target instead of
+  // jumping every frame — reads as a rumble, not a vibration.
+  cam.shakeMag *= 0.88; if (cam.shakeMag < 0.1) cam.shakeMag = 0;
+  cam.sx += ((Math.random() * 2 - 1) * cam.shakeMag - cam.sx) * 0.5;
+  cam.sy += ((Math.random() * 2 - 1) * cam.shakeMag - cam.sy) * 0.5;
+  cam.flash *= 0.85; if (cam.flash < 0.02) cam.flash = 0;
+  if (slowmoT > 0) slowmoT--;
+  if (impactFocus.t > 0) impactFocus.t--;
 }
 
+function applyCamera() {
+  ctx.translate(W/2, H/2);
+  ctx.scale(cam.z, cam.z);
+  ctx.translate(-cam.x + cam.sx / cam.z, -cam.y + cam.sy / cam.z);
+}
+
+function screenToWorld(p) {
+  return { x: cam.x + (p.x - W/2) / cam.z, y: cam.y + (p.y - H/2) / cam.z };
+}
+
+function addShake(mag)  { cam.shakeMag = Math.min(7, Math.max(cam.shakeMag, mag)); }
+
+// ============================================================
+//  LIGHTS  —  explosions and muzzle flashes light the scene
+// ============================================================
+let lights = [];   // {x, y, r, intensity, age, maxAge, col}
+
+function addLight(x, y, r, intensity, maxAge, col = '255,190,110') {
+  lights.push({ x, y, r, intensity, age: 0, maxAge, col });
+}
+
+function drawLights() {
+  if (!lights.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const L of lights) {
+    const k = 1 - L.age / L.maxAge;
+    const g = ctx.createRadialGradient(L.x, L.y, 0, L.x, L.y, L.r);
+    g.addColorStop(0, `rgba(${L.col},${(L.intensity * k).toFixed(3)})`);
+    g.addColorStop(1, `rgba(${L.col},0)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(L.x - L.r, L.y - L.r, L.r * 2, L.r * 2);
+  }
+  ctx.restore();
+}
+
+// ============================================================
+//  PARALLAX BACKGROUND  —  painted biome plates behind the terrain
+// ============================================================
+// f = horizontal parallax factor, fy = vertical, zk = how much of the
+// camera zoom the layer inherits (distance = less zoom).
+const BG_LAYERS = [
+  { key: 'sky', f: 0.05, fy: 0.02, zk: 0.10, anchor: 'center' },
+  { key: 'far', f: 0.16, fy: 0.07, zk: 0.35, anchor: 'bottom', yOff: 6 },
+  { key: 'mid', f: 0.38, fy: 0.15, zk: 0.75, anchor: 'bottom', yOff: 30 },
+];
+
+function drawParallax() {
+  const panX = cam.x - W/2, panY = cam.y - H/2;
+  const imgs = biomeImgs(biomeKey);
+  let drewSky = false;
+  for (const l of BG_LAYERS) {
+    const img = imgs[l.key];
+    if (!img.complete || img.naturalWidth === 0) continue;
+    const zl = 1 + (cam.z - 1) * l.zk;
+    const base = Math.max((W + 220) / img.naturalWidth, (H + 120) / img.naturalHeight);
+    const s = base * zl;
+    const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    const dx = W/2 - dw/2 - panX * l.f * cam.z + cam.sx * l.f;
+    const dy = (l.anchor === 'bottom' ? H + (l.yOff || 0) * zl - dh : H/2 - dh/2)
+               - panY * l.fy * cam.z + cam.sy * l.fy;
+    ctx.drawImage(img, dx, dy, dw, dh);
+    if (l.key === 'sky') drewSky = true;
+  }
+  if (!drewSky) {
+    // Fallback: the old single plate only matches twilight; otherwise a
+    // solid in the biome's key colour until the layers finish loading.
+    if (biomeKey === 'twillight' && bgImage.complete && bgImage.naturalWidth > 0) {
+      ctx.drawImage(bgImage, 0, 0, W, H);
+    } else {
+      ctx.fillStyle = biome.fallback; ctx.fillRect(0, 0, W, H);
+    }
+  }
+}
 
 function seededRandG(n) { let x=Math.sin(n*127.1+311.7)*43758.5453; return x-Math.floor(x); }
 
@@ -873,32 +1082,50 @@ class Tank {
     return localAngle + this.angle;
   }
 
+  // World-space position of the turret ball — mounted on TOP of the mid-hull
+  // (never under the body). Single source of truth for draw, fire, and the
+  // aim HUD.
+  getMountPoint() {
+    const h = TANK_H * 0.75;
+    return {
+      x: this.x + Math.sin(this.angle) * h,
+      y: this.y - Math.cos(this.angle) * h,
+    };
+  }
+
   _drawBarrel() {
     ctx.save();
-    // Undo the ctx.rotate(this.angle) and ctx.scale(flip,1) that wrap this call,
-    // then rotate to the true world barrel angle so draw matches fire exactly.
+    // Move to the top-of-hull mount in body space (rotates with body tilt),
+    // then undo the wrapping transforms and rotate to the true world barrel
+    // angle so draw matches fire exactly.
     const worldAngle = this.getBarrelWorldAngle();
     const flip = this.playerIdx === 0 ? 1 : -1;
+    ctx.translate(0, -TANK_H * 0.75);   // up to the mount (before un-tilting)
     ctx.scale(flip, 1);          // undo the scale applied by draw()
     ctx.rotate(-this.angle);     // undo the body tilt
+    // Turret ball — the barrel articulates out of this
+    ctx.fillStyle = '#141a20';
+    ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = this.accentCol; ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.arc(-0.8, -0.9, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
     ctx.rotate(worldAngle);      // apply the true world angle
     const bLen = BARREL_LEN;
-    // Long tapered leg-cannon — reads as one more limb, pointed at you
+    // Long, thin, with a slight bulge at the muzzle end (2500-series brief)
     ctx.strokeStyle = '#141a20';
     ctx.lineCap = 'round';
-    ctx.lineWidth = 3.4;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bLen * 0.35, -1); ctx.stroke();
-    ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(bLen * 0.35, -1); ctx.lineTo(bLen - 6, 0); ctx.stroke();
-    // Muzzle collar
-    ctx.strokeStyle = '#2c3640'; ctx.lineWidth = 3.4;
-    ctx.beginPath(); ctx.moveTo(bLen - 8, 0); ctx.lineTo(bLen - 3, 0); ctx.stroke();
-    // Muzzle tip
+    ctx.lineWidth = 2.8;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bLen * 0.35, -0.5); ctx.stroke();
+    ctx.lineWidth = 1.9;
+    ctx.beginPath(); ctx.moveTo(bLen * 0.35, -0.5); ctx.lineTo(bLen - 5, 0); ctx.stroke();
+    // Muzzle bulge
+    ctx.fillStyle = '#141a20';
+    ctx.beginPath(); ctx.ellipse(bLen - 4, 0, 2.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#0a0d10';
-    ctx.beginPath(); ctx.arc(bLen - 2, 0, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(bLen - 1.5, 0, 1.0, 0, Math.PI * 2); ctx.fill();
     // Top highlight
     ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(2, -1.6); ctx.lineTo(bLen * 0.6, -2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2, -1.4); ctx.lineTo(bLen * 0.6, -1.8); ctx.stroke();
     ctx.restore();
   }
   _drawLegs() {
@@ -1067,7 +1294,10 @@ const STATES={MENU:'menu',COINFLIP:'coinflip',PLAYER_TURN:'player_turn',
   AI_TURN:'ai_turn',FIRING:'firing',EXPLODING:'exploding',
   TURN_TRANSITION:'turn_transition',GAME_OVER:'game_over',EJECTING:'ejecting'};
 
-let state='menu', mode='pvp', tanks=[], activePlayer=0;
+// mode is always 'training' for now — 2-player shelved (menu shows one START).
+// The pvp plumbing stays for whenever it comes back.
+let state='menu', mode='training', tanks=[], activePlayer=0;
+let menuStartRect = null;   // START button hitbox, set by drawMenu
 let projectiles=[], explosions=[];
 let coinFlipTimer=0, coinResult='', transitionTimer=0;
 let gameOverMsg='', movePixelsLeft=0, aiThinkTimer=0;
@@ -1095,19 +1325,18 @@ function handleKeyDown(code) {
   if (code==='KeyR' && state !== STATES.MENU) { startGame(); return; }
 
   if (state===STATES.MENU) {
-    if (code==='KeyV') { mode='pvp';      startGame(); }
-    if (code==='KeyT') { mode='training'; startGame(); }
+    if (code==='Space'||code==='Enter'||code==='KeyT') { mode='training'; startGame(); }
     return;
   }
   if (state===STATES.GAME_OVER) { if (code==='Space'||code==='Enter') returnToMenu(); return; }
   if (state!==STATES.PLAYER_TURN) return;
   const tank=tanks[activePlayer];
-  if (code==='Digit1') { tank.weapon=0; SFX.select(); }
-  if (code==='Digit2') { tank.weapon=1; SFX.select(); }
-  if (code==='Digit3') { tank.weapon=2; SFX.select(); }
-  if (code==='Digit4') { tank.weapon=3; SFX.select(); }
-  if (code==='Digit5') { tank.weapon=4; SFX.select(); }
-  if (code==='Digit6') { tank.weapon=5; SFX.select(); }
+  if (code==='Digit1') { tank.weapon=0; weaponLabelT=120; SFX.select(); }
+  if (code==='Digit2') { tank.weapon=1; weaponLabelT=120; SFX.select(); }
+  if (code==='Digit3') { tank.weapon=2; weaponLabelT=120; SFX.select(); }
+  if (code==='Digit4') { tank.weapon=3; weaponLabelT=120; SFX.select(); }
+  if (code==='Digit5') { tank.weapon=4; weaponLabelT=120; SFX.select(); }
+  if (code==='Digit6') { tank.weapon=5; weaponLabelT=120; SFX.select(); }
   if (code==='KeyW'||code==='Space') {
     if (code==='KeyW') { tank.jump(); return; }
     fireTank(tank);
@@ -1117,29 +1346,50 @@ function handleKeyDown(code) {
 function handleHeldKeys() {
   if (state!==STATES.PLAYER_TURN) return;
   const tank=tanks[activePlayer], spd=1.8;
-  if ((keys['KeyA']||keys['ArrowLeft'])  &&movePixelsLeft>0) { tank.move(-1,spd); movePixelsLeft-=spd; SFX.move(); }
-  if ((keys['KeyD']||keys['ArrowRight']) &&movePixelsLeft>0) { tank.move( 1,spd); movePixelsLeft-=spd; SFX.move(); }
-  // Full 360° barrel rotation — ArrowUp = barrel up (toward sky), ArrowDown = barrel down
-  if (keys['ArrowUp'])   tank.barrelAngle += 0.012;
-  if (keys['ArrowDown']) tank.barrelAngle -= 0.012;
+  // Movement lives on W/A/D (A/D walk, W jump) — the arrows are all gun.
+  if (keys['KeyA'] && movePixelsLeft>0) { tank.move(-1,spd); movePixelsLeft-=spd; SFX.move(); }
+  if (keys['KeyD'] && movePixelsLeft>0) { tank.move( 1,spd); movePixelsLeft-=spd; SFX.move(); }
+  // Aim on ←/→ in screen direction: ← swings the barrel tip leftward for
+  // either player, → rightward (barrelAngle is mirrored for P2, hence aimDir).
+  // The 2500-series ball mount has a wide range of motion but sits on TOP of
+  // the hull — the barrel never sweeps below the hull plane (James's brief).
+  const aimDir = tank.playerIdx === 0 ? 1 : -1;
+  const prevBarrel = tank.barrelAngle;
+  const prevSin = Math.sin(tank.getBarrelWorldAngle());
+  if (keys['ArrowLeft'])  tank.barrelAngle += 0.012 * aimDir;
+  if (keys['ArrowRight']) tank.barrelAngle -= 0.012 * aimDir;
+  const newSin = Math.sin(tank.getBarrelWorldAngle());
+  // Block only motion that goes further below the plane (sin > 0.14 ≈ 8°
+  // under horizontal), never motion escaping it — tilt can't trap the barrel.
+  if (newSin > 0.14 && newSin > prevSin) tank.barrelAngle = prevBarrel;
   // Keep angle in 0..2π range for display purposes only
   tank.barrelAngle = ((tank.barrelAngle % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
-  if (keys['Minus']||keys['BracketLeft'])  tank.power=Math.max(5,  tank.power-0.35);
-  if (keys['Equal']||keys['BracketRight']) tank.power=Math.min(100,tank.power+0.35);
+  // Power on ↑/↓ (the old -/+ and bracket keys still work)
+  if (keys['ArrowDown']||keys['Minus']||keys['BracketLeft'])  tank.power=Math.max(5,  tank.power-0.35);
+  if (keys['ArrowUp']||keys['Equal']||keys['BracketRight'])   tank.power=Math.min(100,tank.power+0.35);
 }
 
 // ============================================================
 //  GAME FLOW
 // ============================================================
+function resetPresentation() {
+  lights=[]; dmgTexts=[]; plateShards=[];
+  slowmoT=0; stepAcc=0; impactFocus={x:0,y:0,t:0,big:false};
+  cam.x=W/2; cam.y=H/2; cam.z=1; cam.shakeMag=0; cam.flash=0;
+  weaponLabelT=0;
+}
 function startGame() {
+  pickBiome();   // before generateTerrain — the terrain renders in biome colours
   generateTerrain(); projectiles=[]; explosions=[]; crawlers=[]; beams=[];
   ejectFx=null; exitTriggered=false; exitCountdown=0;
-  aiLastHp = 500; aiWasHitLastTurn = false;
+  aiLastHp = 500; aiWasHitLastTurn = false; aiTurnCount = 0;
+  resetPresentation();
   state=STATES.COINFLIP; coinFlipTimer=90; SFX.coinflip();
 }
 function returnToMenu() {
   state=STATES.MENU; tanks=[]; projectiles=[]; explosions=[]; crawlers=[]; beams=[];
   ejectFx=null; decorationList=[]; terrainPixels=null;
+  resetPresentation();
 }
 function doCoinFlip() {
   activePlayer=Math.random()<0.5?0:1;
@@ -1148,6 +1398,7 @@ function doCoinFlip() {
 function beginTurn() {
   movePixelsLeft=MAX_MOVE; tanks[activePlayer].legPhase=0;
   tanks[activePlayer].jumpsLeft = MAX_JUMPS;
+  weaponLabelT = 120;
   if (mode==='training'&&activePlayer===1) { state=STATES.AI_TURN; aiThinkTimer=60+Math.floor(Math.random()*60); }
   else state=STATES.PLAYER_TURN;
 }
@@ -1188,14 +1439,18 @@ function fireTank(tank) {
 
   // Get the single source-of-truth world angle (same as draw uses)
   const worldAngle = tank.getBarrelWorldAngle();
-  // Barrel tip in world space
-  const wx = tank.x + Math.cos(worldAngle) * bLen;
-  const wy = tank.y + Math.sin(worldAngle) * bLen;
+  // Barrel tip in world space, measured from the top-of-hull turret mount
+  const mount = tank.getMountPoint();
+  const wx = mount.x + Math.cos(worldAngle) * bLen;
+  const wy = mount.y + Math.sin(worldAngle) * bLen;
   // Velocity exactly along the barrel direction
   const speed = 4 + tank.power * 0.14;
   const vx = Math.cos(worldAngle) * speed;
   const vy = Math.sin(worldAngle) * speed;
   SFX.shoot(tank.weapon);
+  // Muzzle flash lights the legs; a small kick sells the recoil
+  addLight(wx, wy, 70, 0.5, 12);
+  addShake(1.0);
   if (tank.weapon===3) { fireBeam(tank, wx, wy, worldAngle); state=STATES.FIRING; return; }
   const p = new Projectile(wx, wy, vx, vy, tank.weapon, tank.playerIdx);
   if (tank.weapon===1) { p.isBomblet=true; p.splitTimer=80; }
@@ -1216,6 +1471,10 @@ function spawnBomblets(x,y,vx,vy,fromPlayer) {
   }
 }
 
+// Floating damage ticks + armor plate shards (visual, world-space)
+let dmgTexts = [];      // {x, y, val, life}
+let plateShards = [];   // {x, y, vx, vy, rot, vr, life, col}
+
 // Shared blast application — crater, splash damage, explosion, target check.
 // Splash zones: direct (< blastR+18) full, inner (×2.2) 50%, outer (×3.5) 20%.
 function applyBlast(x, y, blastR, dmg) {
@@ -1230,13 +1489,25 @@ function applyBlast(x, y, blastR, dmg) {
     else if (dist < (blastR + 18) * 2.2)  dmgFraction = 0.50;
     else if (dist < (blastR + 18) * 3.5)  dmgFraction = 0.20;
     if (dmgFraction > 0) {
-      t.hp -= Math.round(dmg * dmgFraction); t.hitFlash = 20; anyHit = true;
-      if (t.hp <= 0) { t.hp = 0; t.alive = false; }
+      const dealt = Math.round(dmg * dmgFraction);
+      t.hp -= dealt; t.hitFlash = 20; anyHit = true;
+      dmgTexts.push({ x: t.x + (Math.random()*16-8), y: t.y - 44, val: dealt, life: 55 });
+      if (t.hp <= 0) {
+        t.hp = 0; t.alive = false;
+        // The killing blow gets its moment: slow-mo + tight focus
+        slowmoT = 85;
+        impactFocus = { x: t.x, y: t.y, t: 85, big: true };
+      }
     }
   });
   if (anyHit) SFX.tankHit();
   SFX.explode(anyHit);
   explosions.push(new Explosion(x, y, blastR * 1.2));
+  // Impact presentation: shake by blast size, light the scene, flash on big ones
+  addShake(blastR * 0.12);
+  addLight(x, y, blastR * 4.2, 0.55, 34);
+  if (blastR >= 40) cam.flash = Math.max(cam.flash, 0.35);
+  if (slowmoT === 0) impactFocus = { x, y, t: 16, big: blastR >= 40 };
   checkTargetHit(x, y, blastR + 14);
   return anyHit;
 }
@@ -1273,6 +1544,7 @@ function fireBeam(tank, sx, sy, angle) {
   }
   if (burned) { SFX.beamBurn(); renderTerrainCanvas(); }
   if (burn <= 0) explosions.push(new Explosion(x, y, 18));
+  addLight(x, y, 120, 0.4, 22, '255,238,150');
   beams.push({ x1: sx, y1: sy, x2: x, y2: y, life: 26, maxLife: 26 });
 }
 
@@ -1475,7 +1747,6 @@ function drawBlimp() {
 //  EJECT — blow the canopy, launch the little guy, drift away
 // ============================================================
 let ejectFx = null;
-let ejectCardRect = null;
 
 function startEject(tank) {
   if (state !== STATES.PLAYER_TURN) return;
@@ -1540,21 +1811,43 @@ function toGameCoords(e) {
   return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
 }
 
-function overEjectCard(p) {
-  return state === STATES.PLAYER_TURN && ejectCardRect &&
-    p.x >= ejectCardRect.x && p.x <= ejectCardRect.x + ejectCardRect.w &&
-    p.y >= ejectCardRect.y && p.y <= ejectCardRect.y + ejectCardRect.h;
+// Screen-space HUD strip hit-testing (weapon chips + EJECT chip)
+function stripHit(p) {
+  if (state !== STATES.PLAYER_TURN) return null;
+  for (const r of stripRects) {
+    if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) return r;
+  }
+  return null;
+}
+
+function overStartButton(p) {
+  return state === STATES.MENU && menuStartRect &&
+    p.x >= menuStartRect.x && p.x <= menuStartRect.x + menuStartRect.w &&
+    p.y >= menuStartRect.y && p.y <= menuStartRect.y + menuStartRect.h;
 }
 
 canvas.addEventListener('click', (e) => {
   const p = toGameCoords(e);
-  if (overEjectCard(p)) { startEject(tanks[activePlayer]); return; }
-  if (state !== STATES.MENU && blimpHit(p.x, p.y)) triggerDriftExit();
+  if (state === STATES.MENU) {
+    if (overStartButton(p)) { mode = 'training'; startGame(); }
+    return;
+  }
+  const r = stripHit(p);
+  if (r) {
+    if (r.eject) startEject(tanks[activePlayer]);
+    else { tanks[activePlayer].weapon = r.wpn; weaponLabelT = 120; SFX.select(); }
+    return;
+  }
+  // The blimp lives in world space — convert through the camera
+  const wp = screenToWorld(p);
+  if (state !== STATES.MENU && blimpHit(wp.x, wp.y)) triggerDriftExit();
 });
 
 canvas.addEventListener('mousemove', (e) => {
   const p = toGameCoords(e);
-  const hot = overEjectCard(p) || (state !== STATES.MENU && blimpHit(p.x, p.y));
+  const wp = screenToWorld(p);
+  const hot = overStartButton(p) ||
+    (state !== STATES.MENU && (!!stripHit(p) || blimpHit(wp.x, wp.y)));
   canvas.style.cursor = hot ? 'pointer' : 'default';
 });
 
@@ -1563,6 +1856,7 @@ canvas.addEventListener('mousemove', (e) => {
 // ============================================================
 let aiWasHitLastTurn = false;   // set in handleImpact when AI takes damage
 let aiLastHp = 500;             // tracked to detect hits
+let aiTurnCount = 0;            // firing turns taken — drives the warm-up difficulty curve
 
 // Simulate a projectile trajectory and return true if it hits near the target
 // without hitting terrain first.
@@ -1615,8 +1909,9 @@ function aiSolveShot(ai, target) {
     // sin(worldAngle) must be strictly negative (upward in canvas coords).
     if (Math.sin(worldAngle) >= 0) continue;
     if (Math.cos(worldAngle) > 0.0) continue;
-    const startX = ai.x + Math.cos(worldAngle) * bLen;
-    const startY = ai.y + Math.sin(worldAngle) * bLen;
+    const aiMount = ai.getMountPoint();
+    const startX = aiMount.x + Math.cos(worldAngle) * bLen;
+    const startY = aiMount.y + Math.sin(worldAngle) * bLen;
     for (const pwr of powers) {
       const speed = 4 + pwr * 0.14;
       const vx = Math.cos(worldAngle) * speed;
@@ -1682,16 +1977,36 @@ function aiAct() {
   // Ballistic solver — simulate trajectory to find a shot that clears terrain
   // (no beam — the solver is ballistic; no silk — the AI doesn't build)
   ai.weapon = [0,1,2,4][Math.floor(Math.random() * 4)];
-  const { angle: solvedAngle, power: solvedPower } = aiSolveShot(ai, target);
-  ai.barrelAngle = solvedAngle;
-  ai.power = solvedPower;
+
+  // Difficulty: the computer warms up over the match. Early turns it's
+  // sloppy (fun to play against); by ~turn 8 it shoots like it used to.
+  aiTurnCount++;
+  const skill = Math.min(1, aiTurnCount / 8);
+
+  if (Math.random() < 0.55 - 0.35 * skill) {
+    // Deliberate near-miss: solve for a spot beside the player, not on them.
+    // Craters land close enough to feel dangerous without connecting.
+    const off = (60 + Math.random() * 120) * (Math.random() < 0.5 ? -1 : 1);
+    const fake = { x: clamp(target.x + off, 40, TERRAIN_W - 40), y: target.y };
+    const alt = aiSolveShot(ai, fake);
+    ai.barrelAngle = alt.angle;
+    ai.power = alt.power;
+  } else {
+    // Intended hit, but with hand-wobble that fades as it warms up
+    const { angle: solvedAngle, power: solvedPower } = aiSolveShot(ai, target);
+    const wob = 0.02 + (1 - skill) * 0.08;
+    ai.barrelAngle = clamp(solvedAngle + (Math.random() * 2 - 1) * wob,
+                           Math.PI * 0.08, Math.PI * 0.55);
+    ai.power = solvedPower + (Math.random() * 2 - 1) * (4 + (1 - skill) * 14);
+  }
   fireTank(ai);
 }
 
 // ============================================================
-//  HUD  —  32-bit clarity: bordered stat boxes, weapon icons, rich layout
+//  HUD  —  diegetic: the world carries the interface
 // ============================================================
-const HUD_H = 100;
+let stripRects = [];    // screen-space weapon strip + eject chip hit rects
+let weaponLabelT = 0;   // frames the weapon name stays visible after a switch
 
 // Weapon icons drawn as tiny pictograms (7×7 canvas space each)
 const WPN_ICONS = [
@@ -1738,238 +2053,275 @@ const WPN_ICONS = [
   },
 ];
 
-function drawStatBox(x, y, w, h, label, value, col, active) {
-  // Box background
-  ctx.fillStyle = active ? 'rgba(255,204,0,0.08)' : 'rgba(255,255,255,0.04)';
-  ctx.fillRect(x, y, w, h);
-  // Box border
-  ctx.strokeStyle = active ? 'rgba(255,204,0,0.5)' : 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x+0.5, y+0.5, w-1, h-1);
-  // Label
-  ctx.fillStyle = '#888';
-  ctx.font = '14px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(label, x + w/2, y + 15);
-  // Value
-  ctx.fillStyle = col || PAL.white;
-  ctx.font = `bold 22px monospace`;
-  ctx.fillText(value, x + w/2, y + 38);
-}
+// ---- World-space HUD: drawn inside the camera, lives on the battlefield ----
+function drawWorldHUD() {
+  tanks.forEach(t => drawTankArmor(t));
+  drawPlateShards();
+  drawDmgTexts();
 
-function drawHUD() {
-  const pad = 12;
+  const t = tanks[activePlayer];
+  if (!t || !t.alive) return;
 
-  // ---- HUD background with gradient depth ----
-  const hudGrad = ctx.createLinearGradient(0, 0, 0, HUD_H);
-  hudGrad.addColorStop(0, 'rgba(10,6,22,0.96)');
-  hudGrad.addColorStop(1, 'rgba(4,2,10,0.98)');
-  ctx.fillStyle = hudGrad;
-  ctx.fillRect(0, 0, W, HUD_H);
-
-  // Bottom border — gold line with inner shadow
-  ctx.strokeStyle = PAL.hudBorder;
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, HUD_H); ctx.lineTo(W, HUD_H); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,204,0,0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, HUD_H-2); ctx.lineTo(W, HUD_H-2); ctx.stroke();
-
-  // Vertical centre separator
-  ctx.strokeStyle = 'rgba(255,204,0,0.20)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(W/2, 4); ctx.lineTo(W/2, HUD_H-4); ctx.stroke();
-
-  // ---- LEFT: P1 block ----
-  drawPlayerBlock(pad, 0, HUD_H, tanks[0], 'P1', activePlayer===0 && state===STATES.PLAYER_TURN);
-
-  // ---- RIGHT: P2/CPU block ----
-  const p2Label = mode==='training' ? 'CPU' : 'P2';
-  drawPlayerBlock(W - pad - 268, 0, HUD_H, tanks[1], p2Label, activePlayer===1 && state===STATES.PLAYER_TURN, true);
-
-  // ---- CENTER: stat boxes or title ----
-  drawHUDCenter();
-
-  // ---- Bottom-right: version/controls hint ----
-  ctx.fillStyle = '#383838';
-  ctx.font = '14px monospace';
-  ctx.textAlign = 'right';
-  ctx.fillText('ESC:Menu  R:Restart  v2', W - pad, HUD_H - 8);
-}
-
-function drawPlayerBlock(x, y, h, tank, label, isActive, rightAlign=false) {
-  const barW = 190, barH = 10, blockW = 268;
-  const bx = x;
-
-  // Active player glow background
-  if (isActive) {
-    const glowGrad = ctx.createLinearGradient(
-      rightAlign ? bx+blockW : bx, 0,
-      rightAlign ? bx : bx+blockW, 0
-    );
-    glowGrad.addColorStop(0, 'rgba(255,204,0,0.10)');
-    glowGrad.addColorStop(1, 'rgba(255,204,0,0)');
-    ctx.fillStyle = glowGrad;
-    ctx.fillRect(bx, y, blockW, h);
-    // Gold border frame
-    ctx.strokeStyle = 'rgba(255,204,0,0.60)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(bx+0.75, y+0.75, blockW-1.5, h-1.5);
-  }
-
-  const labelX = rightAlign ? bx + blockW - 10 : bx + 10;
-  const align   = rightAlign ? 'right' : 'left';
-  const nameCol = tank.playerIdx===0 ? PAL.p1cockpit : PAL.p2cockpit;
-
-  // ---- Player label ----
-  ctx.textAlign = align;
-  ctx.fillStyle = isActive ? nameCol : '#666';
-  ctx.font = `bold 26px monospace`;
-  const arrow = isActive ? (rightAlign ? '◀ ' : '▶ ') : '';
-  const arrowR = isActive ? (rightAlign ? '' : ' ▶') : '';
-  ctx.fillText((rightAlign ? arrow : '') + label + (rightAlign ? '' : (isActive?' ▶':'')), labelX, y + 28);
-
-  // Active indicator dot
-  if (isActive) {
-    ctx.fillStyle = nameCol;
-    const dotX = rightAlign ? bx+blockW-10-ctx.measureText(label+(isActive?' ▶':'')).width-8 : bx+10;
-    // Pulsing dot
-    const pulse = 0.6 + 0.4*Math.sin(Date.now()*0.006);
-    ctx.globalAlpha = pulse;
-    ctx.beginPath(); ctx.arc(rightAlign ? bx+blockW-5 : bx+5, y+22, 4, 0, Math.PI*2); ctx.fill();
+  // Active-tank marker: bobbing chevron in the player's colour
+  if (state === STATES.PLAYER_TURN || state === STATES.AI_TURN) {
+    const bob = Math.sin(Date.now() * 0.006) * 3;
+    ctx.fillStyle = t.cockpitCol;
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(t.x - 7, t.y - 66 + bob);
+    ctx.lineTo(t.x + 7, t.y - 66 + bob);
+    ctx.lineTo(t.x, t.y - 57 + bob);
+    ctx.closePath(); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
-  // ---- HP bar ----
-  const barX = rightAlign ? bx + blockW - 10 - barW : bx + 10;
-  const barY = y + 36;
-  const pct = Math.max(0, tank.hp / tank.maxHp);
-  const barCol = pct > 0.5 ? '#28e850' : pct > 0.25 ? '#f08020' : '#e82020';
+  if (state === STATES.AI_TURN) {
+    // Thinking dots above the AI tank (replaces the old centre overlay)
+    const n = 1 + Math.floor(Date.now() / 350) % 3;
+    ctx.fillStyle = t.cockpitCol; ctx.font = `bold 20px ${FONT_U}`; ctx.textAlign = 'left';
+    ctx.fillText('.'.repeat(n), t.x + 14, t.y - 62);
+    return;
+  }
+  if (state !== STATES.PLAYER_TURN) return;
 
-  // Bar track (recessed look)
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(barX-1, barY-1, barW+2, barH+2);
-  ctx.fillStyle = '#181818';
-  ctx.fillRect(barX, barY, barW, barH);
+  const worldAngle = t.getBarrelWorldAngle();
+  const mount = t.getMountPoint();
+  const tipX = mount.x + Math.cos(worldAngle) * BARREL_LEN;
+  const tipY = mount.y + Math.sin(worldAngle) * BARREL_LEN;
 
-  // HP fill with segment ticks
-  if (pct > 0) {
-    // Glow under fill
-    ctx.fillStyle = barCol.replace(')', ',0.3)').replace('rgb','rgba');
-    ctx.fillRect(barX, barY, barW*pct, barH);
-    // Main fill
-    ctx.fillStyle = barCol;
-    ctx.fillRect(barX, barY, barW*pct, barH);
-    // Shine
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.fillRect(barX, barY, barW*pct, Math.ceil(barH*0.38));
-    // Segment ticks every 10% of max HP
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    for (let seg=1; seg<10; seg++) {
-      const tx = barX + barW*(seg/10);
-      if (tx < barX + barW*pct) ctx.fillRect(tx, barY, 1, barH);
+  // Power: charging ring around the hub
+  const R = 30, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 3.5;
+  ctx.beginPath(); ctx.arc(t.x, t.y - 4, R, a0, a0 + sweep); ctx.stroke();
+  ctx.strokeStyle = t.accentCol; ctx.globalAlpha = 0.85;
+  ctx.beginPath(); ctx.arc(t.x, t.y - 4, R, a0, a0 + sweep * (t.power / 100)); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT_U}`; ctx.textAlign = 'center';
+  ctx.fillText(Math.round(t.power), t.x, t.y + R + 8);
+
+  // Aim: ghost arc — the first stretch of the trajectory, then you're on your own
+  const speed = 4 + t.power * 0.14;
+  if (t.weapon === 3) {
+    // Beam is hitscan: a short fading guide instead
+    ctx.strokeStyle = 'rgba(255,238,150,0.35)'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 7]);
+    ctx.beginPath(); ctx.moveTo(tipX, tipY);
+    ctx.lineTo(tipX + Math.cos(worldAngle) * 130, tipY + Math.sin(worldAngle) * 130);
+    ctx.stroke(); ctx.setLineDash([]);
+  } else {
+    let gx = tipX, gy = tipY;
+    let gvx = Math.cos(worldAngle) * speed, gvy = Math.sin(worldAngle) * speed;
+    for (let i = 0; i < 26; i++) {
+      gvy += GRAVITY; gx += gvx; gy += gvy;
+      if (i % 2) continue;
+      ctx.globalAlpha = 0.45 * (1 - i / 26);
+      ctx.fillStyle = WEAPONS[t.weapon].trail;
+      ctx.beginPath(); ctx.arc(gx, gy, 1.7, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
 
-  // Bar border
-  ctx.strokeStyle = isActive ? 'rgba(255,204,0,0.7)' : 'rgba(100,100,100,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(barX, barY, barW, barH);
+  // Angle readout floats off the barrel tip
+  const displayAngle = -Math.round(worldAngle * 180 / Math.PI);
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = `11px ${FONT_U}`; ctx.textAlign = 'center';
+  ctx.fillText(`${displayAngle}°`, tipX + Math.cos(worldAngle) * 16, tipY + Math.sin(worldAngle) * 16 + 4);
 
-  // HP numeric text — below the bar
-  ctx.fillStyle = pct > 0.2 ? PAL.white : '#ff8888';
-  ctx.font = 'bold 16px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${tank.hp} / ${tank.maxHp}`, barX + barW/2, barY + barH + 16);
+  // Move budget: thin track on the ground under the tank
+  const mv = movePixelsLeft / MAX_MOVE;
+  if (mv > 0.01) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x + 23, t.y + 24); ctx.stroke();
+    ctx.strokeStyle = '#88ff99'; ctx.globalAlpha = 0.8;
+    ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x - 23 + 46 * mv, t.y + 24); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
 
-  // ---- Weapon icon + name ----
-  ctx.textAlign = align;
-  ctx.fillStyle = '#777';
-  ctx.font = '8px monospace';
-  const wpnY = y + h - 10;
-  const iconX = rightAlign ? barX + barW - 9 : barX;
-  // Draw weapon pictogram
-  ctx.save();
-  WPN_ICONS[tank.weapon](iconX, wpnY - 6);
-  ctx.restore();
-  const wpnNameX = rightAlign ? iconX - 2 : iconX + 11;
-  ctx.textAlign = rightAlign ? 'right' : 'left';
-  ctx.fillStyle = '#999';
-  ctx.font = '16px monospace';
-  ctx.fillText(WEAPONS[tank.weapon].name.toUpperCase(), wpnNameX, wpnY);
+  // Jump pips
+  ctx.fillStyle = '#ff88cc'; ctx.globalAlpha = 0.85;
+  for (let j = 0; j < t.jumpsLeft; j++) {
+    const px2 = t.x - 32 - j * 9, py2 = t.y - 24;
+    ctx.beginPath();
+    ctx.moveTo(px2, py2 - 3.5); ctx.lineTo(px2 + 3.5, py2);
+    ctx.lineTo(px2, py2 + 3.5); ctx.lineTo(px2 - 3.5, py2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Weapon name fades in above the tank after a switch or at turn start
+  if (weaponLabelT > 0) {
+    ctx.globalAlpha = Math.min(1, weaponLabelT / 30) * 0.9;
+    ctx.fillStyle = '#fff'; ctx.font = `bold 13px ${FONT_D}`; ctx.textAlign = 'center';
+    ctx.fillText(WEAPONS[t.weapon].name.toUpperCase(), t.x, t.y - 74);
+    ctx.globalAlpha = 1;
+  }
 }
 
-function drawHUDCenter() {
-  ctx.textAlign = 'center';
-  const cx = W / 2;
-
-  if (state === STATES.PLAYER_TURN || state === STATES.FIRING) {
-    const at = tanks[activePlayer];
-    const worldAngle = at.getBarrelWorldAngle();
-    const displayAngle = -Math.round(worldAngle * 180 / Math.PI);
-    const nameCol = activePlayer===0 ? PAL.p1cockpit : PAL.p2cockpit;
-
-    // Turn label
-    ctx.fillStyle = nameCol;
-    ctx.font = 'bold 22px monospace';
-    const turnLabel = activePlayer===0 ? 'PLAYER 1' : (mode==='training'?'COMPUTER':'PLAYER 2');
-    ctx.fillText(turnLabel + ' TURN', cx, 20);
-
-    // Five stat boxes: AIM | PWR | MOVE | JUMP | EJECT
-    const boxW = 72, boxH = 48, boxGap = 6;
-    const totalW = boxW*5 + boxGap*4;
-    let bx = cx - totalW/2;
-    const by = 26;
-    const isP = state === STATES.PLAYER_TURN;
-
-    drawStatBox(bx,                    by, boxW, boxH, 'AIM',   `${displayAngle}°`,                         '#aaddff', isP);
-    drawStatBox(bx+boxW+boxGap,        by, boxW, boxH, 'POWER', `${Math.round(at.power)}%`,                 '#ffdd88', isP);
-    drawStatBox(bx+(boxW+boxGap)*2,    by, boxW, boxH, 'MOVE',  `${Math.round(movePixelsLeft/MAX_MOVE*100)}%`, '#88ff99', isP);
-    drawStatBox(bx+(boxW+boxGap)*3,    by, boxW, boxH, 'JUMP',  `×${at.jumpsLeft}`,                         '#ff88cc', isP);
-    // The fifth card. Click it and leave the war behind.
-    const ejX = bx+(boxW+boxGap)*4;
-    drawStatBox(ejX,                   by, boxW, boxH, 'EJECT', '▲',                                        '#ff5555', isP);
-    ejectCardRect = isP ? { x: ejX, y: by, w: boxW, h: boxH } : null;
-
-    // Controls hint
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '14px monospace';
-    ctx.fillText('A/D Move  ↑↓ Aim  -/+ Power  W Jump  1-6 Wpn  SPACE Fire', cx, HUD_H - 8);
-
-  } else {
-    // Title treatment when idle
-    ctx.fillStyle = PAL.yellow;
-    ctx.font = 'bold 28px monospace';
-    ctx.fillText('ARACHNO-WARS 2000', cx, 30);
-    ctx.fillStyle = '#4a3a60';
-    ctx.font = '16px monospace';
-    ctx.fillText('MECHANICAL INSECT ARTILLERY COMBAT', cx, 54);
-    ctx.fillStyle = '#555';
-    ctx.font = '14px monospace';
-    ctx.fillText('V: 2-Player   T: vs Computer', cx, 80);
+// HP as armour: 8 chitin plate segments arched over each hull.
+// Losing a segment flakes visible shards off the tank.
+function drawTankArmor(t) {
+  if (!t.alive) return;
+  const segs = 8;
+  const whole = Math.max(0, Math.ceil((t.hp / t.maxHp) * segs));
+  if (t._plates === undefined) t._plates = whole;
+  if (whole < t._plates) {
+    for (let s = 0; s < (t._plates - whole) * 3; s++) {
+      plateShards.push({
+        x: t.x + (Math.random() * 30 - 15), y: t.y - 18,
+        vx: Math.random() * 3 - 1.5, vy: -2 - Math.random() * 2.5,
+        rot: Math.random() * 6.28, vr: Math.random() * 0.4 - 0.2,
+        life: 45, col: t.accentCol,
+      });
+    }
+    t._plates = whole;
   }
+  const R = 25;
+  const a0 = -Math.PI * 0.86, a1 = -Math.PI * 0.14;
+  const span = (a1 - a0) / segs, gap = 0.035;
+  ctx.lineCap = 'butt'; ctx.lineWidth = 4;
+  for (let s = 0; s < segs; s++) {
+    const filled = s < whole;
+    ctx.strokeStyle = filled ? t.accentCol : 'rgba(0,0,0,0.35)';
+    ctx.globalAlpha = filled ? (t.hitFlash > 0 ? 0.55 + 0.45 * Math.sin(t.hitFlash) : 0.8) : 0.35;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y - 2, R, a0 + s * span + gap, a0 + (s + 1) * span - gap);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawDmgTexts() {
+  for (const d of dmgTexts) {
+    ctx.globalAlpha = Math.min(1, d.life / 20);
+    ctx.fillStyle = '#ff5540';
+    ctx.font = `bold 17px ${FONT_D}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`-${d.val}`, d.x, d.y - (55 - d.life) * 0.6);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPlateShards() {
+  for (const s of plateShards) {
+    ctx.save();
+    ctx.translate(s.x, s.y); ctx.rotate(s.rot);
+    ctx.globalAlpha = Math.min(1, s.life / 18);
+    ctx.fillStyle = s.col;
+    ctx.fillRect(-2.5, -1.5, 5, 3);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Screen-space HUD: slim weapon strip + eject chip, bottom centre ----
+function drawScreenHUD() {
+  stripRects = [];
+  if (state !== STATES.PLAYER_TURN) return;
+  const t = tanks[activePlayer];
+  if (!t) return;
+
+  const slotW = 40, slotH = 34, gapX = 6, ejW = 56;
+  const n = WEAPONS.length;
+  const totalW = n * slotW + (n - 1) * gapX + 18 + ejW;
+  let x = W / 2 - totalW / 2;
+  const y = H - 46;
+
+  for (let wIdx = 0; wIdx < n; wIdx++) {
+    const sel = t.weapon === wIdx;
+    ctx.fillStyle = sel ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x, y, slotW, slotH);
+    ctx.strokeStyle = sel ? t.accentCol : 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = sel ? 1.5 : 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, slotW - 1, slotH - 1);
+    WPN_ICONS[wIdx](x + slotW / 2 - 5, y + 8);
+    ctx.fillStyle = sel ? '#fff' : 'rgba(255,255,255,0.45)';
+    ctx.font = `10px ${FONT_U}`; ctx.textAlign = 'center';
+    ctx.fillText(String(wIdx + 1), x + slotW / 2, y + slotH - 5);
+    stripRects.push({ x, y, w: slotW, h: slotH, wpn: wIdx });
+    x += slotW + gapX;
+  }
+
+  // Divider, then the fifth card's heir: EJECT
+  x += 3;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + 4); ctx.lineTo(x, y + slotH - 4); ctx.stroke();
+  x += 15;
+  ctx.fillStyle = 'rgba(120,20,20,0.4)';
+  ctx.fillRect(x, y, ejW, slotH);
+  ctx.strokeStyle = 'rgba(255,85,85,0.7)';
+  ctx.strokeRect(x + 0.5, y + 0.5, ejW - 1, slotH - 1);
+  ctx.fillStyle = '#ff7766'; ctx.font = `bold 13px ${FONT_D}`; ctx.textAlign = 'center';
+  ctx.fillText('EJECT', x + ejW / 2, y + 22);
+  stripRects.push({ x, y, w: ejW, h: slotH, eject: true });
+
+  // Corner hints, quiet
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = `11px ${FONT_U}`; ctx.textAlign = 'left';
+  ctx.fillText('A/D move   W jump   ←/→ aim   ↑/↓ power   SPACE fire', 14, H - 14);
+  ctx.textAlign = 'right';
+  ctx.fillText('ESC menu   R restart', W - 14, H - 14);
+}
+
+// Vignette overlay, built once
+let vignetteCv = null;
+function drawVignette() {
+  if (!vignetteCv) {
+    vignetteCv = document.createElement('canvas');
+    vignetteCv.width = W; vignetteCv.height = H;
+    const vc = vignetteCv.getContext('2d');
+    const g = vc.createRadialGradient(W/2, H/2, H * 0.42, W/2, H/2, H * 0.85);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(5,2,12,0.42)');
+    vc.fillStyle = g; vc.fillRect(0, 0, W, H);
+  }
+  ctx.drawImage(vignetteCv, 0, 0);
 }
 
 // ============================================================
 //  MENU
 // ============================================================
 function drawMenu() {
-  drawBackground();
-  ctx.fillStyle='rgba(0,0,0,0.72)'; ctx.fillRect(W/2-320,H/2-160,640,320);
-  ctx.strokeStyle=PAL.hudBorder; ctx.lineWidth=3; ctx.strokeRect(W/2-320,H/2-160,640,320);
-  ctx.textAlign='center';
-  ctx.fillStyle=PAL.red; ctx.font='bold 52px monospace'; ctx.fillText('ARACHNO-WARS',W/2+2,H/2-88);
-  ctx.fillStyle=PAL.yellow; ctx.fillText('ARACHNO-WARS',W/2,H/2-90);
-  ctx.fillStyle=PAL.orange; ctx.font='bold 28px monospace'; ctx.fillText('2 0 0 0',W/2,H/2-52);
-  ctx.fillStyle='#aaa'; ctx.font='13px monospace'; ctx.fillText('MECHANICAL INSECT ARTILLERY COMBAT',W/2,H/2-22);
-  ctx.fillStyle=PAL.p1cockpit; ctx.font='bold 20px monospace'; ctx.fillText('[ V ]  2-PLAYER LOCAL',W/2,H/2+28);
-  ctx.fillStyle=PAL.p2cockpit; ctx.fillText('[ T ]  TRAINING vs COMPUTER',W/2,H/2+64);
-  ctx.fillStyle='#777'; ctx.font='10px monospace';
-  ctx.fillText('A/D Move  ↑↓ Aim  -/+ Power  W Jump  SPACE Fire  1-6 Weapon',W/2,H/2+100);
-  ctx.fillStyle='#555'; ctx.font='9px monospace';
-  ctx.fillText('ESC: Quit to Menu   R: Restart', W/2, H/2+124);
-  const t=Date.now()/1000;
-  drawMenuTank(W/2-190,H/2+168,0,t); drawMenuTank(W/2+190,H/2+168,1,t+Math.PI);
+  // Parallax plates are already down; just a scrim for type legibility
+  ctx.fillStyle = 'rgba(5,2,12,0.38)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+
+  // Title: heavy condensed display, offset red shadow
+  ctx.fillStyle = 'rgba(200,30,30,0.85)';
+  ctx.font = `bold 110px ${FONT_D}`;
+  ctx.fillText('ARACHNO-WARS', W/2 + 4, H*0.34 + 4);
+  ctx.fillStyle = PAL.yellow;
+  ctx.fillText('ARACHNO-WARS', W/2, H*0.34);
+  ctx.fillStyle = PAL.orange;
+  ctx.font = `bold 34px ${FONT_D}`;
+  ctx.fillText('2  0  0  0', W/2, H*0.34 + 48);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = `15px ${FONT_U}`;
+  ctx.fillText('MECHANICAL INSECT ARTILLERY COMBAT', W/2, H*0.34 + 82);
+
+  // Big START button — the only way in (2-player shelved for now, James 2026-07-15)
+  const bw = 280, bh = 78, bx = W/2 - bw/2, by = H*0.55;
+  const pulse = 0.75 + 0.25 * Math.sin(Date.now() * 0.003);
+  ctx.save();
+  ctx.shadowColor = `rgba(255,204,0,${(0.55 * pulse).toFixed(3)})`;
+  ctx.shadowBlur = 30 * pulse;
+  ctx.fillStyle = PAL.hudBorder;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(120,70,0,0.8)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 10); ctx.stroke();
+  ctx.fillStyle = '#1a1005';
+  ctx.font = `bold 44px ${FONT_D}`;
+  ctx.fillText('START', W/2, by + bh/2 + 15);
+  menuStartRect = { x: bx, y: by, w: bw, h: bh };
+
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = `12px ${FONT_U}`;
+  ctx.fillText('A/D move   W jump   ←/→ aim   ↑/↓ power   1-6 weapon   SPACE fire   ESC menu   R restart', W/2, by + bh + 36);
+
+  const t = Date.now()/1000;
+  drawMenuTank(W/2 - 230, H*0.87, 0, t);
+  drawMenuTank(W/2 + 230, H*0.87, 1, t + Math.PI);
 }
 
 function drawMenuTank(x, y, idx, phase) {
@@ -1980,13 +2332,13 @@ function drawMenuTank(x, y, idx, phase) {
   const accentCol = [PAL.p1accent, PAL.p2accent][idx];
   const legCol    = [PAL.p1leg,    PAL.p2leg   ][idx];
 
-  // Legs — long arcs with an idle sway
+  // Legs — tall wide arches, tarantula stance; hull hangs low between them
   for (let i = 0; i < 8; i++) {
     const side = i < 4 ? 1 : -1, li = i % 4;
     const ax = [-9.5, -3.2, 3.2, 9.5][li];
     const sway = Math.sin(phase * 0.8 + li * 1.3) * 1.2;
-    const kx = ax + side * (10 + sway), ky = -16 - li * 0.5;
-    const fx = ax + side * (21 + sway), fy = 14;
+    const kx = ax + side * (12 + sway), ky = -19 - li * 0.5;
+    const fx = ax + side * (26 + sway), fy = 14;
     ctx.strokeStyle = legCol; ctx.lineCap = 'round';
     ctx.lineWidth = 2.4;
     ctx.beginPath(); ctx.moveTo(ax, -2); ctx.lineTo(kx, ky); ctx.stroke();
@@ -1999,28 +2351,48 @@ function drawMenuTank(x, y, idx, phase) {
     ctx.globalAlpha = 1;
   }
 
-  // Barrel — slow aiming sway
-  ctx.save();
-  ctx.rotate(Math.sin(phase*0.5)*0.2 - 0.55);
-  ctx.strokeStyle = '#141a20'; ctx.lineCap='round'; ctx.lineWidth=2.6;
-  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(26,0); ctx.stroke();
-  ctx.fillStyle = '#0a0d10';
-  ctx.beginPath(); ctx.arc(27,0,1.6,0,Math.PI*2); ctx.fill();
-  ctx.restore();
-
-  // Body — sprite when loaded, painted lozenge otherwise
+  // Body — low-slung and wide between the leg arches (per James's reference:
+  // tarantula stance, hull never above the knees). Sprite when loaded,
+  // painted lozenge otherwise. Drawn BEFORE the turret so the barrel reads
+  // as mounted on top of the hull, not floating among the legs.
   const spr = TANK_SPRITES[idx];
+  let crownY;   // top-centre of the hull, where the turret ball sits
   if (spr.complete && spr.naturalWidth > 0) {
-    const dw = 30, dh = dw * spr.naturalHeight / spr.naturalWidth;
-    ctx.drawImage(spr, -dw/2, -5.5 - dh*0.66, dw, dh);
+    const dw = 34, dh = dw * spr.naturalHeight / spr.naturalWidth;
+    ctx.drawImage(spr, -dw/2, -4.5 - dh*0.66, dw, dh);
+    crownY = -4.5 - dh*0.66 + 1.5;   // slightly sunk into the sprite's crown
   } else {
     ctx.fillStyle = [PAL.p1body, PAL.p2body][idx];
-    ctx.beginPath(); ctx.ellipse(0, -3, 10, 4.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -2, 12, 4, 0, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle = accentCol;
-    ctx.fillRect(-9, -5.5, 18, 1.6);
+    ctx.fillRect(-10, -4.2, 20, 1.5);
     ctx.fillStyle = '#10161c';
-    ctx.beginPath(); ctx.arc(0, -7, 3, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -5.8, 3, Math.PI, 0); ctx.fill();
+    crownY = -8;
   }
+
+  // Turret — round ball mount on top of the mid-hull; the barrel comes out
+  // of the ball, held steady, angled up. Long and thin with a slight bulge
+  // at the muzzle end.
+  ctx.fillStyle = '#141a20';
+  ctx.beginPath(); ctx.arc(0, crownY, 3.2, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = accentCol; ctx.globalAlpha = 0.5;
+  ctx.beginPath(); ctx.arc(-1, crownY - 1, 1, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.save();
+  ctx.translate(0, crownY);
+  ctx.rotate(-0.5);
+  ctx.strokeStyle = '#141a20'; ctx.lineCap = 'round';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(18, 0); ctx.stroke();
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(30, 0); ctx.stroke();
+  // Muzzle bulge
+  ctx.fillStyle = '#141a20';
+  ctx.beginPath(); ctx.ellipse(30.5, 0, 2.4, 1.7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0a0d10';
+  ctx.beginPath(); ctx.arc(32.2, 0, 0.9, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
 
   ctx.restore();
 }
@@ -2029,39 +2401,61 @@ function drawMenuTank(x, y, idx, phase) {
 //  OVERLAYS
 // ============================================================
 function drawCoinFlip() {
-  if (1-coinFlipTimer/90>0.4) {
-    ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(W/2-260,H/2-60,520,120);
-    ctx.strokeStyle=PAL.hudBorder; ctx.lineWidth=2; ctx.strokeRect(W/2-260,H/2-60,520,120);
-    ctx.fillStyle=PAL.yellow; ctx.font='bold 14px monospace'; ctx.textAlign='center'; ctx.fillText('COIN FLIP!',W/2,H/2-22);
-    ctx.fillStyle=PAL.white; ctx.font='bold 22px monospace'; ctx.fillText(coinResult,W/2,H/2+16);
-    ctx.fillStyle='#aaa'; ctx.font='12px monospace'; ctx.fillText('Get ready...',W/2,H/2+48);
+  ctx.fillStyle = 'rgba(5,2,12,0.5)';
+  ctx.fillRect(0, H*0.38, W, H*0.2);
+  ctx.textAlign = 'center';
+  if (1 - coinFlipTimer/90 > 0.4) {
+    ctx.fillStyle = PAL.yellow; ctx.font = `bold 15px ${FONT_U}`;
+    ctx.fillText('COIN FLIP', W/2, H*0.44);
+    ctx.fillStyle = '#fff'; ctx.font = `bold 44px ${FONT_D}`;
+    ctx.fillText(coinResult, W/2, H*0.52 + 8);
   } else {
-    ctx.fillStyle=PAL.yellow; ctx.font='bold 28px monospace'; ctx.textAlign='center'; ctx.fillText('TOSSING...',W/2,H/2);
+    // Arena announcement rides the toss
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = `bold 22px ${FONT_D}`;
+    ctx.fillText(biome.label, W/2, H*0.42);
+    ctx.fillStyle = PAL.yellow; ctx.font = `bold 34px ${FONT_D}`;
+    ctx.fillText('TOSSING' + '.'.repeat(1 + Math.floor(Date.now()/300) % 3), W/2, H*0.5);
   }
 }
 
 function drawTurnTransition() {
-  if (transitionTimer<=0) return;
-  ctx.globalAlpha=Math.min(1,transitionTimer/20);
-  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(W/2-200,H/2-36,400,72);
-  ctx.strokeStyle=PAL.hudBorder; ctx.lineWidth=2; ctx.strokeRect(W/2-200,H/2-36,400,72);
-  ctx.fillStyle=activePlayer===0?PAL.p1cockpit:PAL.p2cockpit;
-  ctx.font='bold 20px monospace'; ctx.textAlign='center';
-  ctx.fillText(activePlayer===0?'PLAYER 1 TURN':(mode==='training'?'COMPUTER TURN':'PLAYER 2 TURN'),W/2,H/2+8);
-  ctx.globalAlpha=1;
+  if (transitionTimer <= 0) return;
+  const T = 50, t = 1 - transitionTimer / T;   // 0 → 1 across the transition
+  const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+  let xoff = 0, bandA = 1;
+  if (t < 0.3)       xoff = (1 - easeOut(t / 0.3)) * -W * 0.55;
+  else if (t > 0.85) { xoff = easeOut((t - 0.85) / 0.15) * W * 0.55; bandA = 1 - (t - 0.85) / 0.15; }
+
+  // Full-width scrim band stays put; the type slides through it
+  ctx.fillStyle = `rgba(5,2,12,${(0.55 * bandA).toFixed(3)})`;
+  ctx.fillRect(0, H*0.42 - 46, W, 86);
+
+  const label = activePlayer === 0 ? 'PLAYER 1' : (mode === 'training' ? 'COMPUTER' : 'PLAYER 2');
+  const sub   = activePlayer === 1 && mode === 'training' ? 'TAKES AIM' : 'YOUR TURN';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = activePlayer === 0 ? PAL.p1cockpit : PAL.p2cockpit;
+  ctx.font = `bold 64px ${FONT_D}`;
+  ctx.fillText(label, W/2 + xoff, H*0.42 + 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.font = `16px ${FONT_U}`;
+  ctx.fillText(sub, W/2 + xoff * 1.3, H*0.42 + 38);
 }
 
 function drawGameOver() {
-  ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(W/2-300,H/2-110,600,220);
-  ctx.strokeStyle=PAL.hudBorder; ctx.lineWidth=3; ctx.strokeRect(W/2-300,H/2-110,600,220);
-  ctx.textAlign='center';
-  ctx.fillStyle=PAL.red;    ctx.font='bold 38px monospace'; ctx.fillText('GAME OVER', W/2+2, H/2-48);
-  ctx.fillStyle=PAL.yellow; ctx.font='bold 38px monospace'; ctx.fillText('GAME OVER', W/2,   H/2-50);
-  ctx.fillStyle=PAL.white;  ctx.font='bold 24px monospace'; ctx.fillText(gameOverMsg, W/2, H/2+8);
-  ctx.fillStyle='#aaa';     ctx.font='13px monospace';
-  ctx.fillText('SPACE / ENTER  →  Main Menu', W/2, H/2+56);
-  ctx.fillStyle='#555';     ctx.font='10px monospace';
-  ctx.fillText('R  →  Quick Restart', W/2, H/2+80);
+  const g = ctx.createLinearGradient(0, H*0.28, 0, H*0.75);
+  g.addColorStop(0, 'rgba(5,2,12,0)');
+  g.addColorStop(0.4, 'rgba(5,2,12,0.75)');
+  g.addColorStop(1, 'rgba(5,2,12,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, H*0.28, W, H*0.47);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(200,30,30,0.85)';
+  ctx.font = `bold 84px ${FONT_D}`;
+  ctx.fillText(gameOverMsg.replace('!', ''), W/2 + 3, H*0.5 + 3);
+  ctx.fillStyle = PAL.yellow;
+  ctx.fillText(gameOverMsg.replace('!', ''), W/2, H*0.5);
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = `16px ${FONT_U}`;
+  ctx.fillText('SPACE — menu      R — rematch', W/2, H*0.5 + 46);
 }
 
 // ============================================================
@@ -2070,6 +2464,13 @@ function drawGameOver() {
 function update() {
   handleHeldKeys();
   updateBlimp();
+
+  // Visual bookkeeping — ages with game time, so kill slow-mo stretches it
+  lights.forEach(L => L.age++); lights = lights.filter(L => L.age < L.maxAge);
+  dmgTexts.forEach(d => d.life--); dmgTexts = dmgTexts.filter(d => d.life > 0);
+  plateShards.forEach(s => { s.x += s.vx; s.y += s.vy; s.vy += 0.22; s.rot += s.vr; s.life--; });
+  plateShards = plateShards.filter(s => s.life > 0);
+  if (weaponLabelT > 0) weaponLabelT--;
 
   // An exit has fired (OUT target hit) — hold the frame, let the fireworks
   // play, then drift.
@@ -2135,29 +2536,46 @@ function update() {
 
 function draw() {
   ctx.clearRect(0,0,W,H);
+  drawParallax();
   if (state===STATES.MENU) { drawMenu(); return; }
-  drawBackground();
+
+  // ---- World, seen through the camera ----
+  ctx.save();
+  applyCamera();
   drawBlimp();
   if (terrainPixels) ctx.drawImage(terrainPixels,0,0);
   drawTargets();
-  if (state===STATES.COINFLIP) { drawCoinFlip(); return; }
   tanks.forEach(t=>{ if(t.alive) t.draw(); });
   crawlers.forEach(c=>c.draw());
   projectiles.forEach(p=>p.draw());
   beams.forEach(b=>drawBeam(b));
   explosions.forEach(e=>e.draw());
+  drawLights();
   if (state===STATES.EJECTING) drawEject();
-  drawHUD();
+  if (state!==STATES.COINFLIP) drawWorldHUD();
+  ctx.restore();
+
+  // ---- Screen space ----
+  drawVignette();
+  if (cam.flash > 0) {
+    ctx.fillStyle = `rgba(255,240,220,${cam.flash.toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (state===STATES.COINFLIP) { drawCoinFlip(); return; }
+  drawScreenHUD();
   if (state===STATES.TURN_TRANSITION) drawTurnTransition();
   if (state===STATES.GAME_OVER) drawGameOver();
-  if (state===STATES.AI_TURN) {
-    ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(W/2-170,H/2-30,340,60);
-    ctx.fillStyle=PAL.p2cockpit; ctx.font='bold 16px monospace'; ctx.textAlign='center';
-    ctx.fillText('COMPUTER THINKING'+'.'.repeat(1+Math.floor(Date.now()/400)%3),W/2,H/2+6);
-  }
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+// Kill slow-mo runs the world at 0.3× while the camera and draw stay 60fps.
+let stepAcc = 0;
+function loop() {
+  camUpdate();
+  stepAcc += (slowmoT > 0 ? 0.3 : 1);
+  while (stepAcc >= 1) { update(); stepAcc -= 1; }
+  draw();
+  requestAnimationFrame(loop);
+}
 requestAnimationFrame(loop);
 
 // Elastic Space shared sound control (speaker button, top right) with a
