@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sanna — Mandala Shop</title>
+  <style>
+    :root {
+      --ink: #e8d9bf;
+      --gold: #c9a24b;
+      --bg: #17100a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Palatino Linotype", Palatino, Georgia, serif;
+      overflow: hidden;
+    }
+    #stage {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #poster {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      overflow-y: auto;
+    }
+    h1 {
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      letter-spacing: 0.35em;
+      margin-left: 0.35em; /* optically recenter the tracked-out title */
+      color: var(--gold);
+      font-weight: 400;
+    }
+    .sub {
+      font-style: italic;
+      opacity: 0.75;
+      max-width: 34em;
+      line-height: 1.6;
+    }
+    .previews {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      max-width: 1400px;
+    }
+    .previews a {
+      display: block;
+      flex: 1 1 340px;
+      max-width: 460px;
+      border: 1px solid #3a2c1a;
+      border-radius: 4px;
+      overflow: hidden;
+      transition: transform 0.4s ease, border-color 0.4s ease;
+    }
+    .previews a:hover {
+      transform: scale(1.02);
+      border-color: var(--gold);
+    }
+    .previews img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .note {
+      font-size: 0.85rem;
+      opacity: 0.5;
+      letter-spacing: 0.08em;
+    }
+    #stamp {
+      position: fixed;
+      left: 0.7rem;
+      bottom: 0.55rem;
+      z-index: 30;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      opacity: 0.32;
+      pointer-events: none;
+    }
+    #help {
+      position: fixed;
+      bottom: 0.55rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      opacity: 0.45;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="stage" aria-label="The Sanna mandala shop, a walkable room"></canvas>
+
+  <div id="poster">
+    <h1>SANNA</h1>
+    <p class="sub">A shop of mandalas at the edge of the desert. The tent is raised, the frames
+      are hung, the lanterns are lit. If the door doesn't open, the pictures below are windows
+      &mdash; lean too close and you may find yourself somewhere else entirely.</p>
+    <div class="previews">
+      <a data-drift href="../../../index.html" aria-label="Lean into the picture and drift on">
+        <img src="assets/preview/camhero.png" alt="The shop's back wall: a large blue peacock mandala in a walnut frame" />
+      </a>
+      <a data-drift href="../../../index.html" aria-label="Slip through the gallery wall">
+        <img src="assets/preview/camnorth.png" alt="The north wall: a three-panel mandala triptych beside a large red piece" />
+      </a>
+      <a data-drift href="../../../index.html" aria-label="Step back out the open door">
+        <img src="assets/preview/camdoor.png" alt="The shop door standing open to the desert light" />
+      </a>
+    </div>
+    <p class="note" id="poster-note">raising the tent&hellip;</p>
+  </div>
+
+  <p id="help">drag to look &middot; arrows / WASD to walk &middot; click a piece to step up close &middot; Esc steps back</p>
+  <p id="stamp">SANNA &middot; r2 &middot; 2026-07-16</p>
+
+  <!-- diegetic drift exits, fired by the 3D scene -->
+  <a data-drift id="drift-door" href="../../../index.html" hidden aria-hidden="true">out the shop door</a>
+  <a data-drift id="drift-bowl" href="../../../index.html" hidden aria-hidden="true">into the brass bowl</a>
+  <a data-drift id="drift-blank" href="../../../index.html" hidden aria-hidden="true">through the unpainted mandala</a>
+
+  <script src="assets/layout.js"></script>
+  <script src="../../core/world-registry.js"></script>
+  <script src="../../core/drift.js"></script>
+  <script src="../../core/dashboard-control.js"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module" src="world.js"></script>
+</body>
+</html>
