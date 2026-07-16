@@ -573,6 +573,43 @@ h2 {
   padding-left: 1rem;
 }
 
+/* Rows that pair a world link with utility links (e.g. curate mode) */
+.pages-list .page-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+}
+
+.pages-list .page-row:last-child {
+  border-bottom: 0;
+}
+
+.pages-list .page-row a {
+  border-bottom: 0;
+}
+
+.pages-list .page-row a:first-child {
+  flex: 1;
+}
+
+.pages-list a.curate-link {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin-right: 0.6rem;
+  padding: 0.25rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.pages-list a.curate-link:hover,
+.pages-list a.curate-link:focus-visible {
+  background: var(--accent-soft);
+  color: var(--text);
+  padding-left: 0.7rem;
+}
+
 .controls-panel {
   align-items: center;
   display: flex;

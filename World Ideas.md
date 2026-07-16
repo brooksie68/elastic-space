@@ -203,7 +203,9 @@ An endless black volume — not monitor-black, cave-black: ten miles across, two
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
 colorful fart soundboard to make his daughter laugh. 36 ElevenLabs-generated farts plus a mystery
-button. Status: `built`.
+button. Status: `built`. 2026-07-15: reimagined as **DROPZILLA** (`src/worlds/dropzilla/`), a
+shock-jock sample deck styled like pad-controller hardware — bank tabs (10 slots), FX knobs,
+censor bleep, looper. The 36 farts live on as its TOOTS bank; ~9 more banks to come.
 
 ## Selected for build — 2026-07-10
 

@@ -4,11 +4,12 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "chrome-rift/index.html",
   "colors-meeting/index.html",
   "dead-letter-office/index.html",
+  "dropzilla/index.html",
   "jerrys-pool/index.html",
+  "mandala-shop/index.html",
   "orb-dimension/index.html",
   "pelagic-lantern-habitat/index.html",
   "singing-plate/index.html",
   "the-fifteen-sisters/index.html",
-  "toot-suite/index.html",
   "wildflowers-at-dusk/index.html"
 ];

@@ -12,6 +12,7 @@
     "local:status": "node scripts/local-server.mjs status"
   },
   "dependencies": {
-    "pixi.js": "^8.19.0"
+    "pixi.js": "^8.19.0",
+    "three": "^0.185.1"
   }
 }

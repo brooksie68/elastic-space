@@ -32,6 +32,12 @@ const types = {
   ".svg": "image/svg+xml",
   ".ts": "text/plain; charset=utf-8",
   ".txt": "text/plain; charset=utf-8",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
 };
 
 const reservedWorldDirs = new Set(["_template"]);
@@ -561,7 +567,7 @@ function isSafeFilePath(targetPath) {
   return relativePath && !relativePath.startsWith("..") && !normalize(relativePath).startsWith("..");
 }
 
-async function serveStatic(pathname, response) {
+async function serveStatic(request, pathname, response) {
   const requestedPath = resolveStaticPath(pathname);
   const decodedPath = decodeURIComponent(requestedPath.split("?")[0]);
   const safePath = normalize(decodedPath).replace(/^(\.\.[/\\])+/, "");
@@ -573,16 +579,41 @@ async function serveStatic(pathname, response) {
   }
 
   try {
-    const fileStat = await stat(filePath);
+    let fileStat = await stat(filePath);
     if (fileStat.isDirectory()) {
       filePath = join(filePath, "index.html");
+      fileStat = await stat(filePath);
     }
 
-    await access(filePath);
-    response.writeHead(200, {
+    const headers = {
       "Content-Type": types[extname(filePath).toLowerCase()] ?? "application/octet-stream",
       "Cache-Control": cacheControlFor(filePath),
-    });
+      "Accept-Ranges": "bytes",
+    };
+
+    // Byte-range support: media seeking needs 206 partial responses — without
+    // them (and with no-store caching) Chrome cannot seek outside buffered
+    // audio and restarts the stream from byte zero instead.
+    const rangeMatch = /^bytes=(\d*)-(\d*)$/.exec(request.headers.range ?? "");
+    if (rangeMatch && (rangeMatch[1] || rangeMatch[2])) {
+      const size = fileStat.size;
+      const start = rangeMatch[1] ? Number(rangeMatch[1]) : Math.max(0, size - Number(rangeMatch[2]));
+      const end = rangeMatch[1] && rangeMatch[2] ? Math.min(Number(rangeMatch[2]), size - 1) : size - 1;
+      if (start > end || start >= size) {
+        response.writeHead(416, { "Content-Range": `bytes */${size}` });
+        response.end();
+        return;
+      }
+      response.writeHead(206, {
+        ...headers,
+        "Content-Range": `bytes ${start}-${end}/${size}`,
+        "Content-Length": end - start + 1,
+      });
+      createReadStream(filePath, { start, end }).pipe(response);
+      return;
+    }
+
+    response.writeHead(200, { ...headers, "Content-Length": fileStat.size });
     createReadStream(filePath).pipe(response);
   } catch {
     sendText(response, 404, "not found");
@@ -706,7 +737,7 @@ const server = createServer(async (request, response) => {
       : false;
 
     if (!handledApi) {
-      await serveStatic(pathname, response);
+      await serveStatic(request, pathname, response);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error.";

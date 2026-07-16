@@ -17,27 +17,32 @@
 - Use the local dev server (`server.mjs` via `.claude/launch.json`) for previewing and verification. **Port is 4174, always** — the server defaults to it, the launcher uses it, nothing uses 4173 anymore (retired 2026-07-13). (A brief "no dev server" rule existed on 2026-07-11; James reversed it the same day.)
 - Worlds should still degrade gracefully under `file://` — drift carries query-string fallback state, and world code must not rely on `fetch()` for assets (blocked on `file://`; use media elements or synthesis).
 
-## Map room (root index.html)
+## Admin panel (root index.html)
 
-- The repo-root `index.html` is the map room: server status light, the page directory, the
+- **Naming: James calls this the "Elastic Space admin panel" / "admin page" — never "map
+  room" (deprecated 2026-07-16).**
+- The repo-root `index.html` is the admin panel: server status light, the page directory, the
   dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
   to `/`). It is James's primary starting point while the project is in active development.
 - `start-elastic-space.cmd` at the repo root is the ONE launcher (renamed from `map-room.cmd`
   2026-07-13; `serve-local.cmd` and `start-local.cmd` were deleted the same day — do not
   recreate them). Double-click: reuses a running server or starts it in its own CMD window on
-  port 4174, then opens the map room. It can also be launched from the ai-projects ops
+  port 4174, then opens the admin panel. It can also be launched from the ai-projects ops
   dashboard's Launch button. Never make James start the server from a command line.
-- The map room page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
+- The admin panel page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
   (the server sends `Access-Control-Allow-Origin: *`) and switches itself to the served copy when
   the server comes up; editor panels stay dormant until then.
 - Every page loads `../../core/dashboard-control.js`, which renders the top-right dashboard icon
-  linking back to the map room; the shared sound control sits directly below it. The map room's
-  "show dashboard icons" toggle (localStorage key `elastic-dashboard-icons`) shows/hides these
-  icons site-wide; sound icons are unaffected. Every new page must include dashboard-control.js.
-- New worlds still get a direct link in the map room's Pages list as part of shipping.
+  linking back to the admin panel; the shared sound control sits directly below it. The admin
+  panel's "show dashboard icons" toggle (localStorage key `elastic-dashboard-icons`) shows/hides
+  these icons site-wide; sound icons are unaffected. Every new page must include
+  dashboard-control.js.
+- New worlds still get a direct link in the admin panel's Pages list as part of shipping.
+  Gallery worlds also get a "curate" pill in their row (`.page-row` / `.curate-link`) linking
+  to the world with `?curate=1`.
 - `welcome.html` at the repo root is the visitor-facing front door (line-drawing Jerry on dark
   blue; clicking him enters Jerry's Pool — an intentional fixed route, no `data-drift`). At
-  publish time it becomes the public site's `index.html` in place of the map room. Root-level
+  publish time it becomes the public site's `index.html` in place of the admin panel. Root-level
   pages load dashboard-control with `data-home="./index.html"` since the default home path
   assumes world folder depth.
 
