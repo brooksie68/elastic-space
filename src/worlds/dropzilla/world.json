@@ -1,25 +1,26 @@
 {
   "schemaVersion": 1,
-  "slug": "toot-suite",
-  "title": "The Toot Suite",
+  "slug": "dropzilla",
+  "title": "DROPZILLA",
   "creators": [
     "claude-fable"
   ],
   "createdBy": "claude-fable",
   "createdAt": "2026-07-12T04:00:00Z",
-  "updatedAt": "2026-07-12T04:00:00Z",
+  "updatedAt": "2026-07-15T04:00:00Z",
   "entry": "index.html",
   "status": "live",
-  "summary": "A big puffy candy-colored fart soundboard: 36 bespoke toots, a mystery button, and puff-cloud particles.",
+  "summary": "A shock jock's sample deck: banked sound pads on a hardware-style device with FX knobs, a censor bleep, and a performance looper. The 36 farts live on as bank one.",
   "tags": [
     "sound",
     "soundboard",
     "comedy",
-    "interactive"
+    "interactive",
+    "device"
   ],
   "moods": [
     "silly",
-    "joyful"
+    "unhinged"
   ],
   "contentType": "interactive",
   "entryPoints": [
@@ -29,7 +30,9 @@
   "weight": 5,
   "rarity": "common",
   "era": "first-wave",
-  "warnings": [],
+  "warnings": [
+    "crude humor"
+  ],
   "soundtrack": [],
   "behavior": {
     "autoplayAudio": false,
@@ -40,15 +43,15 @@
   },
   "admin": {
     "owner": "claude-fable",
-    "notes": "Built 2026-07-12 to make James's daughter laugh. Audio via ElevenLabs SFX API.",
+    "notes": "Born 2026-07-12 as The Toot Suite; reimagined 2026-07-15 as DROPZILLA, a shock-jock sampler device. Future banks will add R-rated language — update warnings when they land. Audio via ElevenLabs SFX API.",
     "featured": false,
     "directoryOrder": 0,
     "editable": true,
     "driftEnabled": true,
     "hiddenFromDirectory": false,
-    "contentPath": "src/worlds/toot-suite",
+    "contentPath": "src/worlds/dropzilla",
     "assetPaths": [
-      "src/worlds/toot-suite"
+      "src/worlds/dropzilla"
     ]
   }
 }

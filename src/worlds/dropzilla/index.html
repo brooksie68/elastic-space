@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DROPZILLA</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <div class="room" aria-hidden="true"></div>
+
+    <main class="device" id="device" aria-label="DROPZILLA soundboard">
+      <header class="top">
+        <div class="brand">
+          <h1 class="logo">DROPZILLA</h1>
+          <p class="brand-sub">professional show ruiner</p>
+        </div>
+        <nav class="banks" id="banks" aria-label="Sound banks"></nav>
+        <span class="screw screw-tl" aria-hidden="true"></span>
+        <span class="screw screw-tr" aria-hidden="true"></span>
+      </header>
+
+      <div class="lcd-bezel">
+        <div class="lcd" id="lcd" aria-hidden="true">BOOTING&hellip;</div>
+      </div>
+
+      <div class="main">
+        <section class="pads" id="pads" aria-label="Sound pads"></section>
+
+        <aside class="panel">
+          <div class="section">
+            <h2 class="silk">FX</h2>
+            <div class="knobs" id="knobs"></div>
+          </div>
+
+          <div class="section">
+            <h2 class="silk">LOOPER</h2>
+            <div class="transport" id="transport">
+              <button type="button" class="tbtn" id="loop-rec" aria-label="Loop record">
+                <span class="led" aria-hidden="true"></span><span class="tmark">&#9679;</span><span class="tname">REC</span>
+              </button>
+              <button type="button" class="tbtn" id="loop-play" aria-label="Loop play">
+                <span class="led" aria-hidden="true"></span><span class="tmark">&#9654;</span><span class="tname">PLAY</span>
+              </button>
+              <button type="button" class="tbtn" id="loop-stop" aria-label="Loop stop">
+                <span class="led" aria-hidden="true"></span><span class="tmark">&#9632;</span><span class="tname">STOP</span>
+              </button>
+              <button type="button" class="tbtn" id="loop-clear" aria-label="Loop clear">
+                <span class="led" aria-hidden="true"></span><span class="tmark">&#10005;</span><span class="tname">CLR</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="section bigs">
+            <button type="button" class="big big-random" id="random">
+              <span class="big-icon" aria-hidden="true">&#9760;</span> RANDOM
+            </button>
+            <button type="button" class="big big-bleep" id="bleep">
+              <span class="big-icon" aria-hidden="true">&#9646;&#9646;</span> BLEEP
+              <span class="big-hint">hold</span>
+            </button>
+          </div>
+        </aside>
+      </div>
+
+      <span class="screw screw-bl" aria-hidden="true"></span>
+      <span class="screw screw-br" aria-hidden="true"></span>
+
+      <!-- drift exits: junk stuck to and plugged into the machine -->
+      <a class="exit exit-sticker" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+        <span class="sticker-face" aria-hidden="true">&#128128;</span>
+        <span class="sticker-peel" aria-hidden="true"></span>
+      </a>
+      <a class="exit exit-note" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+        <span class="note-scrawl" aria-hidden="true">back in 5<br />&mdash; or never</span>
+        <span class="note-stain" aria-hidden="true"></span>
+      </a>
+      <a class="exit exit-cable" data-drift href="../../../index.html" aria-label="Drift somewhere else">
+        <svg viewBox="0 0 140 240" aria-hidden="true">
+          <circle cx="70" cy="26" r="16" class="jack-ring" />
+          <circle cx="70" cy="26" r="9" class="jack-hole" />
+          <path d="M70 32 C 70 90, 118 110, 112 168 C 108 205, 84 226, 70 240" class="cable-core" />
+          <path d="M70 32 C 70 90, 118 110, 112 168 C 108 205, 84 226, 70 240" class="cable-shine" />
+        </svg>
+      </a>
+    </main>
+
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>
