@@ -44,7 +44,9 @@ so James can say "do 12 next." Status: `shipped` / `in progress` / `backlog`.
     mounted in a round ball on top of the mid-hull — wide range of motion, never below the
     hull plane. Small on screen but detail-dense: "very deadly machines seen from a distance
     back, but you still have good detail." Reference: his in-game beam screenshot,
-    2026-07-15 chat. — `backlog`
+    2026-07-15 chat. — `shipped 2026-07-15 (build-tank-2500.py: black carbon hull+ball /
+    barrel layers, 3 damage states, per-team accent glow; recoil flinch, idle breathing,
+    world-space leg IK — awaiting James's art pass on the renders)`
 11. **Real spiderling sprites** — rendered scuttle-cycle sheets replacing the stick-figure
     draw. — `backlog`
 
@@ -95,7 +97,9 @@ so James can say "do 12 next." Status: `shipped` / `in progress` / `backlog`.
     slowly through its reach arc, then the tip WHIPS out and stabs in; needle-pointed
     tips; slight anticipation curl before the whip. Applies to walk gait, landing after
     jumps, and idle micro-motion (occasional single-leg re-grips). Spiderlings inherit a
-    cheap version. — `backlog`
+    cheap version. — `shipped 2026-07-15 (world-space 2-bone IK legs, terrain-planted
+    feet, whipCurve reach→snap on walk/landing/idle/crater re-grips; menu tanks and
+    spiderlings included — tuning values await James's play-test)`
 
 ## Explicitly out of scope
 

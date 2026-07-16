@@ -39,6 +39,9 @@ Ordered by how directly they serve the north star:
 2. **Per-part black carbon re-render** (roadmap #10) — the look.
 3. **Rocket boost** — as a mobility card in this game (turn-limited hop with that
    red-orange exhaust). Folds into roadmap #16's "new weapons/options" territory.
+   — `shipped 2026-07-15`: SHIFT = fuel-metered rocket thrust with the Spider_Tank_2
+   exhaust plume, plus auto retro-burst + leg-catch on hard landings. W is pure jump
+   (double-tap = one bigger boost).
 4. **Climbing arenas** (roadmap #18) — polygon terrain + surface-normal walking is the
    side-scroller's traversal core, prototyped here.
 5. **Beam-duel emphasis** — beams as the positional weapon (already in; keep leaning in).

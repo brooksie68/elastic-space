@@ -119,8 +119,8 @@ const PAL = {
   ground: '#7a3b1e', groundMid: '#9c5228', groundLight: '#c4752e',
   rock:   '#5c3d1a', rockLight: '#8c6040',
   pine:   '#1a4a1a', pineDark: '#0d2a0d',
-  p1body: '#0f8070', p1accent: '#3fe0be', p1cockpit: '#5ff0d0', p1leg: '#1c2530',
-  p2body: '#a05a10', p2accent: '#ffb028', p2cockpit: '#ffd060', p2leg: '#2a2018',
+  p1body: '#0f8070', p1accent: '#3fe0be', p1cockpit: '#5ff0d0', p1leg: '#10151c',
+  p2body: '#a05a10', p2accent: '#ffb028', p2cockpit: '#ffd060', p2leg: '#171310',
   barrel: '#505050', barrelLight: '#b0b0b0',
   hud:    'rgba(0,0,0,0.85)', hudBorder: '#ffcc00',
   white:  '#ffffff', yellow: '#ffff00', red: '#ff2222', green: '#22ff44',
@@ -279,21 +279,24 @@ function generateTerrain() {
     h += noise(x / TERRAIN_W, 8,  0.18);
     h += noise(x / TERRAIN_W, 16, 0.10);
     h += noise(x / TERRAIN_W, 32, 0.07);
+    if (mode === 'practice') h *= 0.35;   // practice range: gentle rolling ground
     h = (h + 1) / 2;
     heights[x] = minH + h * (maxH - minH);
   }
 
-  // Central mountain obstacle — taller and more dramatic
-  const centerStart = Math.floor(TERRAIN_W * 0.28);
-  const centerEnd   = Math.floor(TERRAIN_W * 0.72);
-  const peakX       = centerStart + Math.floor(Math.random() * (centerEnd - centerStart));
-  const peakH       = maxH * 0.85 + Math.random() * maxH * 0.25;
-  const peakWidth   = 100 + Math.random() * 160;
-  for (let x = 0; x < TERRAIN_W; x++) {
-    const d = Math.abs(x - peakX);
-    if (d < peakWidth) {
-      const bump = peakH * (1 - d / peakWidth) * (1 - d / peakWidth);
-      if (bump > heights[x]) heights[x] = bump;
+  // Central mountain obstacle — taller and more dramatic (none on the range)
+  if (mode !== 'practice') {
+    const centerStart = Math.floor(TERRAIN_W * 0.28);
+    const centerEnd   = Math.floor(TERRAIN_W * 0.72);
+    const peakX       = centerStart + Math.floor(Math.random() * (centerEnd - centerStart));
+    const peakH       = maxH * 0.85 + Math.random() * maxH * 0.25;
+    const peakWidth   = 100 + Math.random() * 160;
+    for (let x = 0; x < TERRAIN_W; x++) {
+      const d = Math.abs(x - peakX);
+      if (d < peakWidth) {
+        const bump = peakH * (1 - d / peakWidth) * (1 - d / peakWidth);
+        if (bump > heights[x]) heights[x] = bump;
+      }
     }
   }
 
@@ -830,15 +833,120 @@ function seededRandG(n) { let x=Math.sin(n*127.1+311.7)*43758.5453; return x-Mat
 const TANK_W = 30, TANK_H = 11, MAX_MOVE = TANK_W * 4.2;
 const BARREL_LEN = 54;
 
-// Blender-rendered body sprites (teal P1, amber P2). Legs stay procedural so
-// they can track terrain and gait; falls back to a painted hull if missing.
-const TANK_SPRITES = [new Image(), new Image()];
-TANK_SPRITES[0].src = 'assets/tanks/tank-body-teal.png';
-TANK_SPRITES[1].src = 'assets/tanks/tank-body-amber.png';
+// Blender-rendered 2500-series part layers (tmp/arachno-wars-2000/build-tank-2500.py):
+// black carbon hull with the turret ball baked in (3 damage states) plus the
+// articulating barrel, per team. Legs stay procedural so they can grip terrain
+// and whip. Falls back to the painted hull/barrel if any layer is missing.
+//
+// Alignment contract with the build script: the hull image's CENTER is the
+// turret-ball center, i.e. getMountPoint(); the image spans 5.2 scene units
+// across. The barrel image's root sits at BARREL_ROOT_FRAC of its width and
+// the muzzle tip at BARREL_TIP_FRAC — scaled so root→tip = BARREL_LEN.
+const HULL_DRAW_W = 70;
+const BARREL_ROOT_FRAC = 0.0741, BARREL_TIP_FRAC = 0.9259;
+const TANK_PARTS = ['teal', 'amber'].map(team => {
+  const load = n => { const i = new Image(); i.src = `assets/tanks/${n}.png`; return i; };
+  return { hull: [0, 1, 2].map(s => load(`hull-${team}-${s}`)), barrel: load(`barrel-${team}`) };
+});
 
-const JUMP_POWER    = -9.5;   // initial upward velocity
+// W is JUMP only: tap = a little hop, quick double-tap = ONE bigger boost
+// (an upgrade to the same launch, never two stacked hops). Flight is a
+// different verb and lives on SHIFT: short-term rocket thrust burning a fuel
+// meter — when the meter dies, so does the lift. Fast landings fire an
+// automatic retro-burst and the legs catch the machine (spider-vision.md's
+// rocket boost, both directions).
+const JUMP_POWER    = -9.5;   // single-tap hop velocity
+const JUMP_BOOST    = -14.2;  // double-tap upgraded launch velocity
+const JUMP_BOOST_MS = 280;    // double-tap window
 const JUMP_GRAVITY  = 0.42;
-const MAX_JUMPS     = 2;       // double-jump allowed
+const FUEL_MAX        = 100;
+const FUEL_BURN       = 0.9;   // per thrusting frame (~1.9s of lift)
+const FUEL_REGEN      = 1.4;   // per grounded frame
+const THRUST_ACC      = 0.75;  // beats gravity by ~0.33/frame
+const THRUST_MAX_RISE = 5.5;   // upward speed cap while thrusting
+
+// ============================================================
+//  WHIP-LEG MOTION LANGUAGE  (roadmap #19, spider-vision.md)
+// ============================================================
+// Each leg is a 2-bone IK chain from a low hull hip to a needle-tipped foot
+// planted in WORLD space, so feet grip real terrain on any slope and the hull
+// can breathe/flinch above them. Walking runs a distance-driven alternating-
+// tetrapod cycle whose swing is the signature move: a slow deliberate reach
+// (with a small anticipation pull), then the tip WHIPS the rest of the way
+// and stabs in. Idle re-grips, landings, and crater scrambles reuse the same
+// curve at creepier speeds.
+const LEG_COUNT   = 8;
+const LEG_HIP_X   = [-7.0, -1.8, 3.4, 8.6];   // body-space hip x per slot — legs fan across the hull
+const LEG_HIP_Y   = 3.0;                       // hips sit low on the hull flank
+const LEG_STANCE  = [13, 20.6, 28.2, 35.8];    // stance foot |x| per slot (wide tarantula spread)
+const LEG_FEMUR   = [15, 15.8, 16.6, 17.4];
+const LEG_TIBIA   = [26, 29.2, 32.4, 35.6];
+const GAIT_CYCLE_PX    = 30;    // body travel per full gait cycle
+const GAIT_STANCE_FRAC = 0.55;  // fraction of the cycle a foot stays planted
+
+function groundYAt(x) {
+  const xi = Math.max(0, Math.min(TERRAIN_W - 1, Math.floor(x)));
+  return H - terrain[xi];
+}
+
+// u 0..1 → {d: fraction of start→target covered, lift: 0..1}. Slow reach with
+// an early anticipation dip, then the whip: accelerate hard into the plant
+// with a tiny overshoot so the tip reads as stabbing in.
+function whipCurve(u, whipAt) {
+  if (u <= whipAt) {
+    const r = u / whipAt;
+    const ease = r * r * (3 - 2 * r);
+    return { d: ease * 0.40 - 0.05 * Math.sin(Math.min(1, r * 3) * Math.PI),
+             lift: Math.sin(Math.min(1, r * 1.3) * Math.PI / 2) };
+  }
+  const w = (u - whipAt) / (1 - whipAt);
+  const snap = w * w * (2.2 - 1.2 * w);
+  const over = 0.06 * Math.sin(Math.max(0, (w - 0.55) / 0.45) * Math.PI);
+  return { d: 0.40 + 0.60 * snap + over, lift: Math.max(0, 1 - w * 1.15) };
+}
+
+// 2-bone IK: knee position for a hip→foot chain, always taking the solution
+// that arches the knee HIGH (the harvestman kink above the hull line).
+function legIK(hx, hy, fx, fy, L1, L2) {
+  let dx = fx - hx, dy = fy - hy;
+  let d = Math.hypot(dx, dy);
+  const maxD = (L1 + L2) * 0.985, minD = Math.abs(L1 - L2) + 0.01;
+  if (d > maxD) { dx *= maxD / d; dy *= maxD / d; d = maxD; }
+  if (d < minD) { const f = minD / (d || 0.01); dx *= f; dy *= f; d = minD; }
+  const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+  const mx = hx + (a / d) * dx, my = hy + (a / d) * dy;
+  const px = -dy * (h / d), py = dx * (h / d);
+  return py <= 0 ? { x: mx + px, y: my + py } : { x: mx - px, y: my - py };
+}
+
+// One carbon leg: femur arches to the high knee, tibia drops through a slight
+// outward kink, then tapers to a needle point (Spider_Tank_2's silhouette).
+function drawWhipLeg(hx, hy, fx, fy, k, col, accentCol) {
+  const L1 = LEG_FEMUR[k], L2 = LEG_TIBIA[k];
+  // keep the visual foot inside reach so the needle never detaches
+  const dx = fx - hx, dy = fy - hy, d = Math.hypot(dx, dy), maxD = (L1 + L2) * 0.985;
+  if (d > maxD) { fx = hx + dx * maxD / d; fy = hy + dy * maxD / d; }
+  const knee = legIK(hx, hy, fx, fy, L1, L2);
+  const mx = knee.x + (fx - knee.x) * 0.42 + (fx >= hx ? 1.6 : -1.6);
+  const my = knee.y + (fy - knee.y) * 0.42 - 1.2;
+  ctx.strokeStyle = col; ctx.lineCap = 'round';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(knee.x, knee.y); ctx.stroke();
+  ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(knee.x, knee.y); ctx.lineTo(mx, my); ctx.stroke();
+  const nx = fx + (mx - fx) * 0.3, ny = fy + (my - fy) * 0.3;
+  ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(nx, ny); ctx.stroke();
+  ctx.lineWidth = 0.5;
+  ctx.beginPath(); ctx.moveTo(nx, ny); ctx.lineTo(fx, fy); ctx.stroke();
+  // joint node with the accent glint
+  ctx.fillStyle = '#0c1014';
+  ctx.beginPath(); ctx.arc(knee.x, knee.y, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = accentCol; ctx.globalAlpha = 0.7;
+  ctx.beginPath(); ctx.arc(knee.x, knee.y, 0.8, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
 
 class Tank {
   constructor(x, playerIdx) {
@@ -846,10 +954,147 @@ class Tank {
     this.x           = x; this.y = 0; this.angle = 0;
     this.barrelAngle = playerIdx===0 ? Math.PI/4 : Math.PI*3/4;
     this.power=50; this.hp=500; this.maxHp=500; this.weapon=0;
-    this.alive=true; this.legPhase=0; this.hitFlash=0;
-    // Jump state
-    this.vy=0; this.inAir=false; this.jumpsLeft=MAX_JUMPS;
+    this.alive=true; this.hitFlash=0;
+    // Presentation state
+    this.recoilT=0; this.breathSeed=Math.random()*Math.PI*2;
+    this.gaitDir=1; this.gaitMoved=0; this.wasAir=false;
+    // Jump / flight state
+    this.vy=0; this.inAir=false; this.fuel=FUEL_MAX;
+    this.jumpAtMs=0; this.boosted=false;
+    this.retroT=0; this.retroUsed=false; this.thrustFx=0;
+    this.crouchT=0; this.landCrouch=0; this.landImpact=0;
     this.snapToGround();
+    this.initLegs();
+  }
+
+  initLegs() {
+    this.legs = [];
+    for (let i = 0; i < LEG_COUNT; i++) {
+      const side = i < 4 ? 1 : -1, k = i % 4;
+      const leg = {
+        side, k,
+        // alternating tetrapods: neighbours step out of phase
+        cycle: (((k + (side > 0 ? 0 : 1)) % 2) ? 0.5 : 0) + k * 0.02,
+        mode: 'plant',   // plant | swing (gait) | step (explicit) | air
+        foot: { x: 0, y: 0 },
+        sx: 0, sy: 0, tx: 0, ty: 0, t: 0, dur: 1, whipAt: 0.72,
+        regripCd: 120 + Math.random() * 320,
+      };
+      const st = this.stanceTarget(leg, 0);
+      leg.foot.x = st.x; leg.foot.y = st.y;
+      this.legs.push(leg);
+    }
+  }
+
+  // Where this leg's foot "wants" to be: its stance slot, lead px ahead,
+  // planted on the actual terrain surface.
+  stanceTarget(leg, lead) {
+    const x = this.x + leg.side * LEG_STANCE[leg.k] * Math.cos(this.angle) + lead;
+    return { x, y: groundYAt(x) };
+  }
+
+  startStep(leg, tx, ty, dur, whipAt) {
+    leg.mode = 'step';
+    leg.sx = leg.foot.x; leg.sy = leg.foot.y;
+    leg.tx = tx; leg.ty = ty;
+    leg.t = 0; leg.dur = dur; leg.whipAt = whipAt;
+    leg.regripCd = 200 + Math.random() * 420;
+  }
+
+  // Per-frame leg brain: gait while walking, curl in the air, staggered
+  // re-grips on landing, crater scrambles, and idle single-leg re-grips.
+  updateLegs() {
+    if (!this.legs) return;
+    this.recoilT = this.recoilT > 0.003 ? this.recoilT * 0.85 : 0;
+    const moved = this.gaitMoved; this.gaitMoved = 0;
+
+    if (this.inAir) {
+      this.wasAir = true;
+      const c = Math.cos(this.angle), s = Math.sin(this.angle);
+      for (const leg of this.legs) {
+        leg.mode = 'air';
+        // legs release their grip and splay, reaching for the landing
+        const bx = leg.side * LEG_STANCE[leg.k] * 0.55, by = LEG_HIP_Y + 9;
+        const tx = this.x + bx * c - by * s, ty = this.y + bx * s + by * c;
+        leg.foot.x += (tx - leg.foot.x) * 0.22;
+        leg.foot.y += (ty - leg.foot.y) * 0.22;
+      }
+      return;
+    }
+    if (this.wasAir) {
+      // touchdown: every leg re-grips in a fast stagger, whips stabbing in —
+      // the harder the landing, the wider and faster the catch
+      this.wasAir = false;
+      const imp = Math.min(1, (this.landImpact || 0) / 12);
+      this.legs.forEach((leg, i) => {
+        const wide = leg.side * LEG_STANCE[leg.k] * 0.30 * imp;
+        const st = this.stanceTarget(leg, wide + Math.random() * 6 - 3);
+        this.startStep(leg, st.x, st.y, 6 + (i % 4) * (3 - imp * 1.5), 0.55);
+      });
+    }
+
+    for (const leg of this.legs) {
+      if (leg.mode === 'step') {
+        leg.t++;
+        const u = Math.min(1, leg.t / leg.dur);
+        const { d, lift } = whipCurve(u, leg.whipAt);
+        leg.foot.x = leg.sx + (leg.tx - leg.sx) * d;
+        leg.foot.y = leg.sy + (leg.ty - leg.sy) * d - lift * 8;
+        if (u >= 1) { leg.mode = 'plant'; leg.foot.x = leg.tx; leg.foot.y = leg.ty; }
+        continue;
+      }
+      if (moved > 0) {
+        // distance-driven gait
+        leg.cycle = (leg.cycle + moved / GAIT_CYCLE_PX) % 1;
+        if (leg.cycle < GAIT_STANCE_FRAC) {
+          if (leg.mode === 'swing') {
+            leg.mode = 'plant';
+            leg.foot.y = groundYAt(leg.foot.x);   // grip exactly on the surface
+          }
+        } else {
+          if (leg.mode !== 'swing') { leg.mode = 'swing'; leg.sx = leg.foot.x; leg.sy = leg.foot.y; }
+          const u = (leg.cycle - GAIT_STANCE_FRAC) / (1 - GAIT_STANCE_FRAC);
+          const st = this.stanceTarget(leg, this.gaitDir * GAIT_CYCLE_PX * 0.45);
+          const { d, lift } = whipCurve(u, 0.70);
+          leg.foot.x = leg.sx + (st.x - leg.sx) * d;
+          leg.foot.y = leg.sy + (st.y - leg.sy) * d - lift * 6.5;
+        }
+        continue;
+      }
+      if (leg.mode === 'swing') {
+        // walk stopped mid-swing: finish the step where we stand
+        leg.cycle += 0.045;
+        const u = Math.min(1, (leg.cycle - GAIT_STANCE_FRAC) / (1 - GAIT_STANCE_FRAC));
+        const st = this.stanceTarget(leg, 0);
+        const { d, lift } = whipCurve(u, 0.70);
+        leg.foot.x = leg.sx + (st.x - leg.sx) * d;
+        leg.foot.y = leg.sy + (st.y - leg.sy) * d - lift * 6.5;
+        if (u >= 1) {
+          leg.mode = 'plant'; leg.cycle = 0;
+          leg.foot.x = st.x; leg.foot.y = groundYAt(st.x);
+        }
+        continue;
+      }
+      // planted: did the ground move under this foot? (crater, silk bridge)
+      const gy = groundYAt(leg.foot.x);
+      if (Math.abs(gy - leg.foot.y) > 5) {
+        const st = this.stanceTarget(leg, Math.random() * 8 - 4);
+        this.startStep(leg, st.x, st.y, 14 + Math.random() * 6, 0.68);
+        continue;
+      }
+      // idle micro-motion: one leg at a time does the slow creepy re-grip
+      leg.regripCd--;
+      if (leg.regripCd <= 0 && !this.legs.some(L => L.mode === 'step')) {
+        const st = this.stanceTarget(leg, Math.random() * 7 - 3.5);
+        this.startStep(leg, st.x, st.y, 22 + Math.random() * 8, 0.78);
+      }
+    }
+  }
+
+  // Which hull damage sprite the current HP maps to (0 pristine → 2 wrecked)
+  hullState() {
+    const f = this.hp / this.maxHp;
+    return f > 0.62 ? 0 : f > 0.28 ? 1 : 2;
   }
   get col()        { return [PAL.p1body,    PAL.p2body   ][this.playerIdx]; }
   get accentCol()  { return [PAL.p1accent,  PAL.p2accent ][this.playerIdx]; }
@@ -864,24 +1109,66 @@ class Tank {
   }
 
   jump() {
-    if (this.jumpsLeft <= 0) return;
-    this.vy = JUMP_POWER;
-    this.inAir = true;
-    this.jumpsLeft--;
-    SFX.jump();
+    const now = performance.now();
+    if (!this.inAir) {
+      this.vy = JUMP_POWER;
+      this.inAir = true;
+      this.jumpAtMs = now;
+      this.boosted = false;
+      SFX.jump();
+    } else if (!this.boosted && now - this.jumpAtMs < JUMP_BOOST_MS) {
+      // double-tap: the same launch with more leg — ONE bigger boost
+      this.vy = JUMP_BOOST;
+      this.boosted = true;
+      SFX.jump();
+    }
+    // any later mid-air W does nothing — flight lives on SHIFT
+  }
+
+  // SHIFT held: rocket thrust while the fuel meter lasts
+  thrust() {
+    if (this.fuel <= 0) return;
+    this.fuel = Math.max(0, this.fuel - FUEL_BURN);
+    if (!this.inAir) { this.inAir = true; this.vy = Math.min(this.vy, -1.2); }
+    this.vy = Math.max(this.vy - THRUST_ACC, -THRUST_MAX_RISE);
+    this.thrustFx = 3;
   }
 
   updatePhysics() {
-    if (!this.inAir) return;
+    if (this.crouchT > 0) this.crouchT--;
+    if (this.thrustFx > 0) this.thrustFx--;
+    if (!this.inAir) {
+      this.fuel = Math.min(FUEL_MAX, this.fuel + FUEL_REGEN);
+      return;
+    }
     this.vy += JUMP_GRAVITY;
-    this.y  += this.vy;
     const xi = Math.max(0, Math.min(TERRAIN_W-1, Math.floor(this.x)));
     const groundY = H - terrain[xi] - TANK_H*0.4;
+    // Coming in hot with the ground rushing up: one automatic retro-burst —
+    // the machine saves itself. Threshold sits above the small hop's landing
+    // speed (9.5) so plain hops land raw on the leg-catch; boosted jumps and
+    // flight drops earn the flame.
+    if (!this.retroUsed && this.vy > 10.5 && groundY - this.y < this.vy * 7) {
+      this.retroUsed = true;
+      this.retroT = 14;
+    }
+    if (this.retroT > 0) {
+      this.retroT--;
+      this.vy = Math.max(3.0, this.vy * 0.80);
+      if (this.retroT % 2 === 0) addLight(this.x, this.y + 14, 46, 0.30, 3);
+    }
+    this.y += this.vy;
     if (this.y >= groundY) {
+      const impact = this.vy;
       this.y = groundY;
       this.vy = 0;
       this.inAir = false;
-      this.jumpsLeft = MAX_JUMPS;
+      this.retroUsed = false; this.retroT = 0; this.boosted = false;
+      // crouch absorb scaled by how hard we came in; the legs catch us in
+      // updateLegs (wasAir → staggered whip re-grips)
+      this.landImpact = impact;
+      this.landCrouch = Math.min(3.4, impact * 0.30);
+      this.crouchT = 14;
       this.snapToGround();
     }
   }
@@ -891,22 +1178,85 @@ class Tank {
     if (newX<30||newX>TERRAIN_W-30) return;
     this.x=newX;
     if (!this.inAir) this.snapToGround();
-    this.legPhase+=pixels*0.18;
+    this.gaitDir = dir;
+    this.gaitMoved += pixels;
   }
 
   draw() {
-    ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-    ctx.scale(this.playerIdx===0?1:-1, 1);
+    // The machine idles alive: the hull breathes above its planted feet, and
+    // recoil flinches the body while the legs absorb it. Both are visual-only
+    // offsets — fire/aim math stays on getMountPoint().
+    const breath = this.inAir ? 0 : Math.sin(performance.now() * 0.0032 + this.breathSeed) * 0.55;
+    const crouch = this.crouchT > 0
+      ? Math.sin((1 - this.crouchT / 14) * Math.PI) * this.landCrouch : 0;
+    const wa = this.getBarrelWorldAngle();
+    const r  = this.recoilT;
+    const ox = -Math.cos(wa) * 3.2 * r;
+    const oy = -Math.sin(wa) * 3.2 * r + r * 0.9 + breath + crouch;
+
+    this._drawExhaust(ox, oy);
     if (this.hitFlash>0) ctx.globalAlpha=0.6+0.4*Math.sin(this.hitFlash*0.8);
-    const spr = TANK_SPRITES[this.playerIdx];
-    const hasSprite = spr.complete && spr.naturalWidth > 0;
-    this._drawLegs();
-    this._drawBarrel();
-    if (!hasSprite) this._drawOutline();
-    this._drawBody();
-    if (!hasSprite) this._drawCockpit();
+
+    // far-side legs behind the hull, near-side in front (world space, planted)
+    this._drawLegSide(-1, ox, oy);
+    this._drawBarrelPart(wa, ox, oy, r);
+
+    ctx.save();
+    ctx.translate(this.x + ox, this.y + oy);
+    ctx.rotate(this.angle);
+    ctx.scale(this.playerIdx===0?1:-1, 1);
+    const hull = TANK_PARTS[this.playerIdx].hull[this.hullState()];
+    if (hull.complete && hull.naturalWidth > 0) {
+      const dw = HULL_DRAW_W, dh = dw * hull.naturalHeight / hull.naturalWidth;
+      // image center = turret-ball center = the mount point
+      ctx.drawImage(hull, -dw / 2, -TANK_H * 0.75 - dh / 2, dw, dh);
+    } else {
+      this._drawOutline();
+      this._drawBody();
+      this._drawCockpit();
+    }
     ctx.restore();
+
+    this._drawLegSide(1, ox, oy);
+    ctx.globalAlpha = 1;
     if (this.hitFlash>0) this.hitFlash--;
+  }
+
+  // The red-orange exhaust from Spider_Tank_2: a flickering plume under the
+  // keel while SHIFT thrusts, bigger and hotter during the landing retro-burst
+  _drawExhaust(ox, oy) {
+    const retro = this.retroT > 0;
+    if (!retro && this.thrustFx <= 0) return;
+    const len = retro ? 22 + Math.random() * 10 : 14 + Math.random() * 7;
+    const w   = retro ? 7 : 5;
+    ctx.save();
+    ctx.translate(this.x + ox, this.y + oy + 6);
+    const g = ctx.createLinearGradient(0, 0, 0, len);
+    g.addColorStop(0,    'rgba(255,220,150,0.95)');
+    g.addColorStop(0.45, 'rgba(255,106,34,0.80)');
+    g.addColorStop(1,    'rgba(200,40,10,0)');
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(-w, 0); ctx.lineTo(w, 0);
+    ctx.lineTo(Math.random() * 3 - 1.5, len);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff2d0';
+    ctx.beginPath(); ctx.ellipse(0, 2.5, w * 0.5, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  _drawLegSide(side, ox, oy) {
+    if (!this.legs) return;
+    const c = Math.cos(this.angle), s = Math.sin(this.angle);
+    for (const leg of this.legs) {
+      if (leg.side !== side) continue;
+      const bx = leg.side * LEG_HIP_X[leg.k], by = LEG_HIP_Y;
+      const hx = this.x + ox + bx * c - by * s;
+      const hy = this.y + oy + bx * s + by * c;
+      drawWhipLeg(hx, hy, leg.foot.x, leg.foot.y, leg.k, this.legCol, this.accentCol);
+    }
   }
 
   _drawOutline() {
@@ -932,15 +1282,7 @@ class Tank {
   }
 
   _drawBody() {
-    // Blender-rendered body when available; painted hull as the fallback
-    const spr = TANK_SPRITES[this.playerIdx];
-    if (spr.complete && spr.naturalWidth > 0) {
-      const dw = TANK_W * 2.0;
-      const dh = dw * spr.naturalHeight / spr.naturalWidth;
-      ctx.drawImage(spr, -dw / 2, -TANK_H * 0.5 - dh * 0.66, dw, dh);
-      return;
-    }
-
+    // Painted hull — fallback for when the Blender part layers are missing
     const W2 = TANK_W * 0.5, H2 = TANK_H * 0.5;
 
     // ---- Drop shadow ----
@@ -1093,84 +1435,37 @@ class Tank {
     };
   }
 
-  _drawBarrel() {
+  // Barrel part layer, drawn in world space from the visual mount (the true
+  // mount plus breath/recoil offsets). Recoil also slides the barrel back in
+  // its socket. Painted fallback matches the pre-render look.
+  _drawBarrelPart(worldAngle, ox, oy, recoil) {
+    const mount = this.getMountPoint();
+    const img = TANK_PARTS[this.playerIdx].barrel;
     ctx.save();
-    // Move to the top-of-hull mount in body space (rotates with body tilt),
-    // then undo the wrapping transforms and rotate to the true world barrel
-    // angle so draw matches fire exactly.
-    const worldAngle = this.getBarrelWorldAngle();
-    const flip = this.playerIdx === 0 ? 1 : -1;
-    ctx.translate(0, -TANK_H * 0.75);   // up to the mount (before un-tilting)
-    ctx.scale(flip, 1);          // undo the scale applied by draw()
-    ctx.rotate(-this.angle);     // undo the body tilt
-    // Turret ball — the barrel articulates out of this
-    ctx.fillStyle = '#141a20';
-    ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = this.accentCol; ctx.globalAlpha = 0.55;
-    ctx.beginPath(); ctx.arc(-0.8, -0.9, 0.8, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.rotate(worldAngle);      // apply the true world angle
-    const bLen = BARREL_LEN;
-    // Long, thin, with a slight bulge at the muzzle end (2500-series brief)
-    ctx.strokeStyle = '#141a20';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 2.8;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bLen * 0.35, -0.5); ctx.stroke();
-    ctx.lineWidth = 1.9;
-    ctx.beginPath(); ctx.moveTo(bLen * 0.35, -0.5); ctx.lineTo(bLen - 5, 0); ctx.stroke();
-    // Muzzle bulge
-    ctx.fillStyle = '#141a20';
-    ctx.beginPath(); ctx.ellipse(bLen - 4, 0, 2.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#0a0d10';
-    ctx.beginPath(); ctx.arc(bLen - 1.5, 0, 1.0, 0, Math.PI * 2); ctx.fill();
-    // Top highlight
-    ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(2, -1.4); ctx.lineTo(bLen * 0.6, -1.8); ctx.stroke();
-    ctx.restore();
-  }
-  _drawLegs() {
-    const phase = this.legPhase;
-    // 4 legs per side — long thin limbs that arch above the hull line
-    // before dropping to the ground, harvestman-style (per the reference art)
-    const hipY = -TANK_H * 0.25;
-    const attachXs = [-TANK_W*0.32, -TANK_W*0.11, TANK_W*0.11, TANK_W*0.32];
-
-    for (let i = 0; i < 8; i++) {
-      const side = i < 4 ? 1 : -1;
-      const idx  = i % 4;
-      const ax   = attachXs[idx];
-
-      // Alternating gait
-      const gp    = (idx % 2 === 0) ? phase : phase + Math.PI;
-      const lift  = Math.max(0, Math.sin(gp)) * 4;
-      const swing = Math.sin(gp + idx * 0.7) * 4;
-
-      // Knee rises above the hull; foot reaches well out to the side
-      const kneeX = ax + side * (TANK_W * 0.34 + swing * 0.6);
-      const kneeY = -TANK_H * 1.45 - lift - idx * 0.6;
-      const footX = ax + side * (TANK_W * 0.72 + swing);
-      const footY = TANK_H * 1.35 - lift * 0.25;
-
-      ctx.strokeStyle = this.legCol;
+    ctx.translate(mount.x + ox, mount.y + oy);
+    ctx.rotate(worldAngle);
+    ctx.translate(-recoil * 3.5, 0);
+    if (img.complete && img.naturalWidth > 0) {
+      const w = BARREL_LEN / (BARREL_TIP_FRAC - BARREL_ROOT_FRAC);
+      const h = w * img.naturalHeight / img.naturalWidth;
+      ctx.drawImage(img, -BARREL_ROOT_FRAC * w, -h / 2, w, h);
+    } else {
+      const bLen = BARREL_LEN;
+      // ball (normally baked into the hull layer)
+      ctx.fillStyle = '#141a20';
+      ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#141a20';
       ctx.lineCap = 'round';
-      // Femur — up and out over the shell
-      ctx.lineWidth = 2.6;
-      ctx.beginPath(); ctx.moveTo(ax, hipY); ctx.lineTo(kneeX, kneeY); ctx.stroke();
-      // Tibia — long taper down to the foot
+      ctx.lineWidth = 2.8;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(bLen * 0.35, -0.5); ctx.stroke();
       ctx.lineWidth = 1.9;
-      ctx.beginPath(); ctx.moveTo(kneeX, kneeY); ctx.lineTo(footX, footY); ctx.stroke();
-      // Tarsus tip
-      ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(footX, footY); ctx.lineTo(footX + side * 3.5, footY + 1.5); ctx.stroke();
-
-      // Knee node with a faint accent glint
-      ctx.fillStyle = '#0c1014';
-      ctx.beginPath(); ctx.arc(kneeX, kneeY, 2, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = this.accentCol;
-      ctx.globalAlpha = 0.7;
-      ctx.beginPath(); ctx.arc(kneeX, kneeY, 0.9, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(bLen * 0.35, -0.5); ctx.lineTo(bLen - 5, 0); ctx.stroke();
+      ctx.fillStyle = '#141a20';
+      ctx.beginPath(); ctx.ellipse(bLen - 4, 0, 2.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#0a0d10';
+      ctx.beginPath(); ctx.arc(bLen - 1.5, 0, 1.0, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
   }
 }
 
@@ -1297,7 +1592,8 @@ const STATES={MENU:'menu',COINFLIP:'coinflip',PLAYER_TURN:'player_turn',
 // mode is always 'training' for now — 2-player shelved (menu shows one START).
 // The pvp plumbing stays for whenever it comes back.
 let state='menu', mode='training', tanks=[], activePlayer=0;
-let menuStartRect = null;   // START button hitbox, set by drawMenu
+let menuStartRect = null;      // START button hitbox, set by drawMenu
+let menuPracticeRect = null;   // PRACTICE button hitbox, set by drawMenu
 let projectiles=[], explosions=[];
 let coinFlipTimer=0, coinResult='', transitionTimer=0;
 let gameOverMsg='', movePixelsLeft=0, aiThinkTimer=0;
@@ -1326,11 +1622,13 @@ function handleKeyDown(code) {
 
   if (state===STATES.MENU) {
     if (code==='Space'||code==='Enter'||code==='KeyT') { mode='training'; startGame(); }
+    if (code==='KeyP') { mode='practice'; startGame(); }
     return;
   }
   if (state===STATES.GAME_OVER) { if (code==='Space'||code==='Enter') returnToMenu(); return; }
   if (state!==STATES.PLAYER_TURN) return;
   const tank=tanks[activePlayer];
+  if (!tank || !tank.alive) return;
   if (code==='Digit1') { tank.weapon=0; weaponLabelT=120; SFX.select(); }
   if (code==='Digit2') { tank.weapon=1; weaponLabelT=120; SFX.select(); }
   if (code==='Digit3') { tank.weapon=2; weaponLabelT=120; SFX.select(); }
@@ -1346,9 +1644,14 @@ function handleKeyDown(code) {
 function handleHeldKeys() {
   if (state!==STATES.PLAYER_TURN) return;
   const tank=tanks[activePlayer], spd=1.8;
+  if (!tank || !tank.alive) return;
   // Movement lives on W/A/D (A/D walk, W jump) — the arrows are all gun.
-  if (keys['KeyA'] && movePixelsLeft>0) { tank.move(-1,spd); movePixelsLeft-=spd; SFX.move(); }
-  if (keys['KeyD'] && movePixelsLeft>0) { tank.move( 1,spd); movePixelsLeft-=spd; SFX.move(); }
+  // The practice range has no move budget: roam freely.
+  const free = mode==='practice';
+  if (keys['KeyA'] && (free || movePixelsLeft>0)) { tank.move(-1,spd); if(!free) movePixelsLeft-=spd; SFX.move(); }
+  if (keys['KeyD'] && (free || movePixelsLeft>0)) { tank.move( 1,spd); if(!free) movePixelsLeft-=spd; SFX.move(); }
+  // SHIFT held = rocket thrust while the fuel meter lasts (W stays pure jump)
+  if (keys['ShiftLeft'] || keys['ShiftRight']) tank.thrust();
   // Aim on ←/→ in screen direction: ← swings the barrel tip leftward for
   // either player, → rightward (barrelAngle is mirrored for P2, hence aimDir).
   // The 2500-series ball mount has a wide range of motion but sits on TOP of
@@ -1384,6 +1687,12 @@ function startGame() {
   ejectFx=null; exitTriggered=false; exitCountdown=0;
   aiLastHp = 500; aiWasHitLastTurn = false; aiTurnCount = 0;
   resetPresentation();
+  if (mode==='practice') {
+    // Straight onto the range: no coin toss, no turns, P1 forever
+    activePlayer = 0;
+    beginTurn();
+    return;
+  }
   state=STATES.COINFLIP; coinFlipTimer=90; SFX.coinflip();
 }
 function returnToMenu() {
@@ -1396,13 +1705,16 @@ function doCoinFlip() {
   coinResult=activePlayer===0?'PLAYER 1 GOES FIRST!':(mode==='training'?'COMPUTER GOES FIRST!':'PLAYER 2 GOES FIRST!');
 }
 function beginTurn() {
-  movePixelsLeft=MAX_MOVE; tanks[activePlayer].legPhase=0;
-  tanks[activePlayer].jumpsLeft = MAX_JUMPS;
+  movePixelsLeft=MAX_MOVE;
+  tanks[activePlayer].fuel = FUEL_MAX;
   weaponLabelT = 120;
   if (mode==='training'&&activePlayer===1) { state=STATES.AI_TURN; aiThinkTimer=60+Math.floor(Math.random()*60); }
   else state=STATES.PLAYER_TURN;
 }
-function endTurn() { activePlayer=1-activePlayer; state=STATES.TURN_TRANSITION; transitionTimer=50; }
+function endTurn() {
+  if (mode==='practice') { state=STATES.PLAYER_TURN; return; }   // no turns on the range
+  activePlayer=1-activePlayer; state=STATES.TURN_TRANSITION; transitionTimer=50;
+}
 
 // ============================================================
 //  FIRING
@@ -1448,14 +1760,18 @@ function fireTank(tank) {
   const vx = Math.cos(worldAngle) * speed;
   const vy = Math.sin(worldAngle) * speed;
   SFX.shoot(tank.weapon);
-  // Muzzle flash lights the legs; a small kick sells the recoil
+  // Muzzle flash lights the legs; the hull flinches back while the planted
+  // legs absorb the recoil (visual only — the shot has already left)
   addLight(wx, wy, 70, 0.5, 12);
   addShake(1.0);
-  if (tank.weapon===3) { fireBeam(tank, wx, wy, worldAngle); state=STATES.FIRING; return; }
+  tank.recoilT = 1;
+  // Practice range: stay in PLAYER_TURN — keep roaming while the shot flies
+  const nextState = mode==='practice' ? state : STATES.FIRING;
+  if (tank.weapon===3) { fireBeam(tank, wx, wy, worldAngle); state=nextState; return; }
   const p = new Projectile(wx, wy, vx, vy, tank.weapon, tank.playerIdx);
   if (tank.weapon===1) { p.isBomblet=true; p.splitTimer=80; }
   if (tank.weapon===4) { p.bounces=1; }
-  projectiles.push(p); state=STATES.FIRING;
+  projectiles.push(p); state=nextState;
 }
 
 function spawnBomblets(x,y,vx,vy,fromPlayer) {
@@ -1601,17 +1917,23 @@ class Spiderling {
     applyBlast(this.x, this.y, 16, 35);
   }
   draw() {
+    // Cheap whip-scuttle (roadmap #19's little cousin): each needle leg creeps
+    // slowly through its arc, then snaps back — kinked high like the parents.
     const y = this.y;
     ctx.save(); ctx.translate(this.x, y);
-    ctx.strokeStyle = '#1a1410'; ctx.lineWidth = 1; ctx.lineCap = 'round';
+    ctx.strokeStyle = '#12100c'; ctx.lineCap = 'round';
     for (let l = 0; l < 8; l++) {
       const side = l < 4 ? 1 : -1, li = l % 4;
-      const sway = Math.sin(this.phase + this.age * 0.45 + li * 1.5) * 1.6;
-      ctx.beginPath(); ctx.moveTo(0, 0);
-      ctx.lineTo(side * (3 + li) + sway * side, 4 - li * 0.6);
-      ctx.stroke();
+      const f = (this.phase / 6.28 + this.age * 0.055 + li * 0.27 + (side > 0 ? 0.5 : 0)) % 1;
+      const sw = f < 0.72 ? -1.8 + 3.4 * (f / 0.72) : 1.6 - 3.4 * ((f - 0.72) / 0.28);
+      const kx = side * (2.2 + li * 0.8) + sw * 0.4, ky = -3.2 - li * 0.3;
+      const fx = side * (3.5 + li) + sw, fy = 4 - li * 0.5;
+      ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(0, -1); ctx.lineTo(kx, ky); ctx.stroke();
+      ctx.lineWidth = 0.45;
+      ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
     }
-    ctx.fillStyle = '#2a1c14';
+    ctx.fillStyle = '#1a1210';
     ctx.beginPath(); ctx.ellipse(0, -1, 3.4, 2.6, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#e84040';
     ctx.fillRect(this.dir * 1.5 - 0.5, -2, 1, 1);
@@ -1826,10 +2148,17 @@ function overStartButton(p) {
     p.y >= menuStartRect.y && p.y <= menuStartRect.y + menuStartRect.h;
 }
 
+function overPracticeButton(p) {
+  return state === STATES.MENU && menuPracticeRect &&
+    p.x >= menuPracticeRect.x && p.x <= menuPracticeRect.x + menuPracticeRect.w &&
+    p.y >= menuPracticeRect.y && p.y <= menuPracticeRect.y + menuPracticeRect.h;
+}
+
 canvas.addEventListener('click', (e) => {
   const p = toGameCoords(e);
   if (state === STATES.MENU) {
-    if (overStartButton(p)) { mode = 'training'; startGame(); }
+    if (overStartButton(p))         { mode = 'training'; startGame(); }
+    else if (overPracticeButton(p)) { mode = 'practice'; startGame(); }
     return;
   }
   const r = stripHit(p);
@@ -1846,7 +2175,7 @@ canvas.addEventListener('click', (e) => {
 canvas.addEventListener('mousemove', (e) => {
   const p = toGameCoords(e);
   const wp = screenToWorld(p);
-  const hot = overStartButton(p) ||
+  const hot = overStartButton(p) || overPracticeButton(p) ||
     (state !== STATES.MENU && (!!stripHit(p) || blimpHit(wp.x, wp.y)));
   canvas.style.cursor = hot ? 'pointer' : 'default';
 });
@@ -2127,26 +2456,32 @@ function drawWorldHUD() {
   ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = `11px ${FONT_U}`; ctx.textAlign = 'center';
   ctx.fillText(`${displayAngle}°`, tipX + Math.cos(worldAngle) * 16, tipY + Math.sin(worldAngle) * 16 + 4);
 
-  // Move budget: thin track on the ground under the tank
-  const mv = movePixelsLeft / MAX_MOVE;
-  if (mv > 0.01) {
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x + 23, t.y + 24); ctx.stroke();
-    ctx.strokeStyle = '#88ff99'; ctx.globalAlpha = 0.8;
-    ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x - 23 + 46 * mv, t.y + 24); ctx.stroke();
-    ctx.globalAlpha = 1;
+  // Move budget: thin track on the ground under the tank (the practice
+  // range has no budget)
+  if (mode !== 'practice') {
+    const mv = movePixelsLeft / MAX_MOVE;
+    if (mv > 0.01) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x + 23, t.y + 24); ctx.stroke();
+      ctx.strokeStyle = '#88ff99'; ctx.globalAlpha = 0.8;
+      ctx.beginPath(); ctx.moveTo(t.x - 23, t.y + 24); ctx.lineTo(t.x - 23 + 46 * mv, t.y + 24); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
   }
 
-  // Jump pips
-  ctx.fillStyle = '#ff88cc'; ctx.globalAlpha = 0.85;
-  for (let j = 0; j < t.jumpsLeft; j++) {
-    const px2 = t.x - 32 - j * 9, py2 = t.y - 24;
-    ctx.beginPath();
-    ctx.moveTo(px2, py2 - 3.5); ctx.lineTo(px2 + 3.5, py2);
-    ctx.lineTo(px2, py2 + 3.5); ctx.lineTo(px2 - 3.5, py2);
-    ctx.closePath(); ctx.fill();
+  // Thrust fuel: slim vertical meter beside the hull; drains while SHIFT
+  // burns, refills on the ground. Hidden when full.
+  const fu = t.fuel / FUEL_MAX;
+  if (fu < 0.995) {
+    const fx = t.x - 46, fy = t.y + 8, fh = 30;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - fh); ctx.stroke();
+    ctx.strokeStyle = fu < 0.25 ? '#ff5030' : t.accentCol;
+    ctx.lineWidth = 2.4; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - fh * fu); ctx.stroke();
+    ctx.globalAlpha = 1;
   }
-  ctx.globalAlpha = 1;
 
   // Weapon name fades in above the tank after a switch or at turn start
   if (weaponLabelT > 0) {
@@ -2257,7 +2592,7 @@ function drawScreenHUD() {
   // Corner hints, quiet
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.font = `11px ${FONT_U}`; ctx.textAlign = 'left';
-  ctx.fillText('A/D move   W jump   ←/→ aim   ↑/↓ power   SPACE fire', 14, H - 14);
+  ctx.fillText('A/D move   W jump (×2 boost)   SHIFT thrust   ←/→ aim   ↑/↓ power   SPACE fire', 14, H - 14);
   ctx.textAlign = 'right';
   ctx.fillText('ESC menu   R restart', W - 14, H - 14);
 }
@@ -2315,9 +2650,21 @@ function drawMenu() {
   ctx.fillText('START', W/2, by + bh/2 + 15);
   menuStartRect = { x: bx, y: by, w: bw, h: bh };
 
+  // Practice range — quiet secondary button: free roam, no turns, no stakes
+  const pw = 210, ph = 44, px = W/2 - pw/2, py = by + bh + 20;
+  ctx.fillStyle = 'rgba(8,20,24,0.72)';
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 8); ctx.fill();
+  ctx.strokeStyle = PAL.p1accent; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
+  ctx.beginPath(); ctx.roundRect(px, py, pw, ph, 8); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = PAL.p1accent;
+  ctx.font = `bold 24px ${FONT_D}`;
+  ctx.fillText('PRACTICE', W/2, py + ph/2 + 8);
+  menuPracticeRect = { x: px, y: py, w: pw, h: ph };
+
   ctx.fillStyle = 'rgba(255,255,255,0.35)';
   ctx.font = `12px ${FONT_U}`;
-  ctx.fillText('A/D move   W jump   ←/→ aim   ↑/↓ power   1-6 weapon   SPACE fire   ESC menu   R restart', W/2, by + bh + 36);
+  ctx.fillText('A/D move   W jump (×2 boost)   SHIFT thrust   ←/→ aim   ↑/↓ power   1-6 weapon   SPACE fire   P practice   ESC menu   R restart', W/2, py + ph + 32);
 
   const t = Date.now()/1000;
   drawMenuTank(W/2 - 230, H*0.87, 0, t);
@@ -2325,75 +2672,80 @@ function drawMenu() {
 }
 
 function drawMenuTank(x, y, idx, phase) {
+  // Game-scale part layers and leg constants, magnified for the menu. Legs
+  // idle in the whip language: one leg at a time does the slow reach, then
+  // the needle tip stabs back in.
   ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(idx===0 ? 2.2 : -2.2, 2.2);
+  ctx.translate(x, y + 18);
+  ctx.scale(idx===0 ? 1.1 : -1.1, 1.1);
 
   const accentCol = [PAL.p1accent, PAL.p2accent][idx];
   const legCol    = [PAL.p1leg,    PAL.p2leg   ][idx];
+  const breath    = Math.sin(phase * 2.1) * 0.5;
+  const mountY    = -TANK_H * 0.75 + breath;
+  const GROUND    = 12.5;
 
-  // Legs — tall wide arches, tarantula stance; hull hangs low between them
-  for (let i = 0; i < 8; i++) {
-    const side = i < 4 ? 1 : -1, li = i % 4;
-    const ax = [-9.5, -3.2, 3.2, 9.5][li];
-    const sway = Math.sin(phase * 0.8 + li * 1.3) * 1.2;
-    const kx = ax + side * (12 + sway), ky = -19 - li * 0.5;
-    const fx = ax + side * (26 + sway), fy = 14;
-    ctx.strokeStyle = legCol; ctx.lineCap = 'round';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(ax, -2); ctx.lineTo(kx, ky); ctx.stroke();
-    ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
-    ctx.fillStyle = '#0c1014';
-    ctx.beginPath(); ctx.arc(kx, ky, 1.7, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = accentCol; ctx.globalAlpha = 0.6;
-    ctx.beginPath(); ctx.arc(kx, ky, 0.8, 0, Math.PI*2); ctx.fill();
-    ctx.globalAlpha = 1;
-  }
+  const legFoot = (i) => {
+    const side = i < 4 ? 1 : -1, k = i % 4;
+    const stanceX = side * LEG_STANCE[k];
+    // staggered deterministic re-grips: cycle index picks each plant offset
+    const raw = phase * 0.30 + i * 0.132;
+    const n = Math.floor(raw), cyc = raw - n;
+    const off  = (m) => Math.sin(m * 7.13 + i * 3.7) * 2.8;
+    const STEP_FRAC = 0.22;
+    if (cyc < STEP_FRAC) {
+      const { d, lift } = whipCurve(cyc / STEP_FRAC, 0.75);
+      const fx = stanceX + off(n - 1) + (off(n) - off(n - 1)) * d;
+      return { fx, fy: GROUND - lift * 5 };
+    }
+    return { fx: stanceX + off(n), fy: GROUND };
+  };
+  const drawLegs = (wantSide) => {
+    for (let i = 0; i < LEG_COUNT; i++) {
+      const side = i < 4 ? 1 : -1, k = i % 4;
+      if (side !== wantSide) continue;
+      const { fx, fy } = legFoot(i);
+      drawWhipLeg(side * LEG_HIP_X[k], LEG_HIP_Y + breath, fx, fy, k, legCol, accentCol);
+    }
+  };
 
-  // Body — low-slung and wide between the leg arches (per James's reference:
-  // tarantula stance, hull never above the knees). Sprite when loaded,
-  // painted lozenge otherwise. Drawn BEFORE the turret so the barrel reads
-  // as mounted on top of the hull, not floating among the legs.
-  const spr = TANK_SPRITES[idx];
-  let crownY;   // top-centre of the hull, where the turret ball sits
-  if (spr.complete && spr.naturalWidth > 0) {
-    const dw = 34, dh = dw * spr.naturalHeight / spr.naturalWidth;
-    ctx.drawImage(spr, -dw/2, -4.5 - dh*0.66, dw, dh);
-    crownY = -4.5 - dh*0.66 + 1.5;   // slightly sunk into the sprite's crown
-  } else {
-    ctx.fillStyle = [PAL.p1body, PAL.p2body][idx];
-    ctx.beginPath(); ctx.ellipse(0, -2, 12, 4, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = accentCol;
-    ctx.fillRect(-10, -4.2, 20, 1.5);
-    ctx.fillStyle = '#10161c';
-    ctx.beginPath(); ctx.arc(0, -5.8, 3, Math.PI, 0); ctx.fill();
-    crownY = -8;
-  }
+  drawLegs(-1);
 
-  // Turret — round ball mount on top of the mid-hull; the barrel comes out
-  // of the ball, held steady, angled up. Long and thin with a slight bulge
-  // at the muzzle end.
-  ctx.fillStyle = '#141a20';
-  ctx.beginPath(); ctx.arc(0, crownY, 3.2, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = accentCol; ctx.globalAlpha = 0.5;
-  ctx.beginPath(); ctx.arc(-1, crownY - 1, 1, 0, Math.PI*2); ctx.fill();
-  ctx.globalAlpha = 1;
+  // Barrel behind the hull crown, held steady, angled up (no sway — brief)
+  const barrelImg = TANK_PARTS[idx].barrel;
   ctx.save();
-  ctx.translate(0, crownY);
+  ctx.translate(0, mountY);
   ctx.rotate(-0.5);
-  ctx.strokeStyle = '#141a20'; ctx.lineCap = 'round';
-  ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(18, 0); ctx.stroke();
-  ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(30, 0); ctx.stroke();
-  // Muzzle bulge
-  ctx.fillStyle = '#141a20';
-  ctx.beginPath(); ctx.ellipse(30.5, 0, 2.4, 1.7, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#0a0d10';
-  ctx.beginPath(); ctx.arc(32.2, 0, 0.9, 0, Math.PI*2); ctx.fill();
+  if (barrelImg.complete && barrelImg.naturalWidth > 0) {
+    const w = BARREL_LEN / (BARREL_TIP_FRAC - BARREL_ROOT_FRAC);
+    const h = w * barrelImg.naturalHeight / barrelImg.naturalWidth;
+    ctx.drawImage(barrelImg, -BARREL_ROOT_FRAC * w, -h / 2, w, h);
+  } else {
+    ctx.strokeStyle = '#141a20'; ctx.lineCap = 'round';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(2, 0); ctx.lineTo(BARREL_LEN * 0.35, 0); ctx.stroke();
+    ctx.lineWidth = 1.9;
+    ctx.beginPath(); ctx.moveTo(BARREL_LEN * 0.35, 0); ctx.lineTo(BARREL_LEN - 5, 0); ctx.stroke();
+    ctx.fillStyle = '#141a20';
+    ctx.beginPath(); ctx.ellipse(BARREL_LEN - 4, 0, 2.6, 1.9, 0, 0, Math.PI*2); ctx.fill();
+  }
   ctx.restore();
 
+  // Hull — low-slung and wide between the leg arches, ball baked at center
+  const hullImg = TANK_PARTS[idx].hull[0];
+  if (hullImg.complete && hullImg.naturalWidth > 0) {
+    const dw = HULL_DRAW_W, dh = dw * hullImg.naturalHeight / hullImg.naturalWidth;
+    ctx.drawImage(hullImg, -dw / 2, mountY - dh / 2, dw, dh);
+  } else {
+    ctx.fillStyle = [PAL.p1body, PAL.p2body][idx];
+    ctx.beginPath(); ctx.ellipse(0, breath - 2, 12, 4, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = accentCol;
+    ctx.fillRect(-10, breath - 4.2, 20, 1.5);
+    ctx.fillStyle = '#141a20';
+    ctx.beginPath(); ctx.arc(0, mountY, 3.2, 0, Math.PI*2); ctx.fill();
+  }
+
+  drawLegs(1);
   ctx.restore();
 }
 
@@ -2482,41 +2834,15 @@ function update() {
   }
   if (state===STATES.EJECTING) { updateEject(); return; }
 
-  // Update tank jump physics every frame
+  // Update tank jump physics + the whip-leg system every frame
   tanks.forEach(t => { if (t.alive) t.updatePhysics(); });
+  tanks.forEach(t => { if (t.alive) t.updateLegs(); });
 
   if (state===STATES.COINFLIP) { coinFlipTimer--; if(coinFlipTimer===55)doCoinFlip(); if(coinFlipTimer<=0)beginTurn(); return; }
   if (state===STATES.TURN_TRANSITION) { transitionTimer--; if(transitionTimer<=0)beginTurn(); return; }
   if (state===STATES.AI_TURN) { aiThinkTimer--; if(aiThinkTimer<=0)aiAct(); return; }
   if (state===STATES.FIRING) {
-    const toRemove=[];
-    for (let i=projectiles.length-1;i>=0;i--) {
-      const proj=projectiles[i];
-      if (proj.isBomblet) { proj.splitTimer--; if(proj.splitTimer<=0){spawnBomblets(proj.x,proj.y,proj.vx,proj.vy,proj.fromPlayer);proj.alive=false;} }
-      if (!proj.alive){toRemove.push(i);continue;}
-      const result=proj.update();
-      if (proj.alive) {
-        // Direct hit on an OUT target ends the whole show
-        if (checkTargetHit(proj.x, proj.y, WEAPONS[proj.type].radius + 2)) {
-          proj.alive=false; toRemove.push(i); continue;
-        }
-        tanks.forEach(t=>{
-          if (!t.alive||t.playerIdx===proj.fromPlayer) return;
-          const dx=t.x-proj.x,dy=t.y-proj.y;
-          if (Math.sqrt(dx*dx+dy*dy)<20){proj.alive=false;handleImpact(proj);}
-        });
-      }
-      if (result==='terrain') {
-        if (proj.type===5)      buildSilkBridge(proj.x);
-        else if (proj.type===4) hatchEgg(proj);
-        else                    handleImpact(proj);
-      }
-      if (!proj.alive||result==='miss') toRemove.push(i);
-    }
-    toRemove.sort((a,b)=>b-a).forEach(i=>projectiles.splice(i,1));
-    crawlers.forEach(c=>c.update()); crawlers=crawlers.filter(c=>c.alive);
-    beams.forEach(b=>b.life--); beams=beams.filter(b=>b.life>0);
-    tanks.forEach(t=>t.snapToGround());
+    updateProjectiles();
     if (projectiles.length===0 && crawlers.length===0 && beams.length===0) state=STATES.EXPLODING;
   }
   if (state===STATES.EXPLODING) {
@@ -2531,7 +2857,66 @@ function update() {
       else endTurn();
     }
   }
-  if (state===STATES.PLAYER_TURN) tanks.forEach(t=>{ if(!t.inAir) t.snapToGround(); });
+  if (state===STATES.PLAYER_TURN) {
+    tanks.forEach(t=>{ if(!t.inAir) t.snapToGround(); });
+    if (mode==='practice') {
+      // On the range everything flies while you keep control; explosions
+      // resolve in place and dead machines respawn for another round.
+      updateProjectiles();
+      explosions.forEach(e=>e.update()); explosions=explosions.filter(e=>e.alive);
+      respawnPractice();
+    }
+  }
+}
+
+// Shared projectile/crawler/beam step — the FIRING state and the practice
+// range both run it (practice runs it inside PLAYER_TURN, so movement and
+// firing stay live while shots resolve).
+function updateProjectiles() {
+  const toRemove=[];
+  for (let i=projectiles.length-1;i>=0;i--) {
+    const proj=projectiles[i];
+    if (proj.isBomblet) { proj.splitTimer--; if(proj.splitTimer<=0){spawnBomblets(proj.x,proj.y,proj.vx,proj.vy,proj.fromPlayer);proj.alive=false;} }
+    if (!proj.alive){toRemove.push(i);continue;}
+    const result=proj.update();
+    if (proj.alive) {
+      // Direct hit on an OUT target ends the whole show
+      if (checkTargetHit(proj.x, proj.y, WEAPONS[proj.type].radius + 2)) {
+        proj.alive=false; toRemove.push(i); continue;
+      }
+      tanks.forEach(t=>{
+        if (!t.alive||t.playerIdx===proj.fromPlayer) return;
+        const dx=t.x-proj.x,dy=t.y-proj.y;
+        if (Math.sqrt(dx*dx+dy*dy)<20){proj.alive=false;handleImpact(proj);}
+      });
+    }
+    if (result==='terrain') {
+      if (proj.type===5)      buildSilkBridge(proj.x);
+      else if (proj.type===4) hatchEgg(proj);
+      else                    handleImpact(proj);
+    }
+    if (!proj.alive||result==='miss') toRemove.push(i);
+  }
+  toRemove.sort((a,b)=>b-a).forEach(i=>projectiles.splice(i,1));
+  crawlers.forEach(c=>c.update()); crawlers=crawlers.filter(c=>c.alive);
+  beams.forEach(b=>b.life--); beams=beams.filter(b=>b.life>0);
+  tanks.forEach(t=>{ if(!t.inAir) t.snapToGround(); });
+}
+
+// Practice range: once the fireworks settle, put the fallen machine back on
+// its pad at full strength — target practice never runs out of targets.
+function respawnPractice() {
+  if (projectiles.length || explosions.length || beams.length || crawlers.length) return;
+  tanks.forEach(t => {
+    if (t.alive) return;
+    t.hp = t.maxHp; t.alive = true; t.hitFlash = 0;
+    t.x = Math.floor(TERRAIN_W * (t.playerIdx === 0 ? 0.09 : 0.91));
+    t.inAir = false; t.vy = 0; t.fuel = FUEL_MAX;
+    t.boosted = false; t.retroT = 0; t.retroUsed = false;
+    t.crouchT = 0; t.thrustFx = 0;
+    t.snapToGround();
+    t.initLegs();
+  });
 }
 
 function draw() {

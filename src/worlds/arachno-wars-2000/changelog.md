@@ -3,6 +3,73 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-15 — Claude (with James) — session 2: the tanks
+
+Roadmap #10 (per-part black carbon re-render) + #19 (whip-leg motion language) shipped
+together — the first two stepping stones of `spider-vision.md`.
+
+- **2500-series part layers** (`tmp/arachno-wars-2000/build-tank-2500.py`, headless Blender →
+  `assets/tanks/`): black carbon hull with the turret ball baked in — wide low lens, glowing
+  waist seam, cockpit eye-slit, top deck, rear vents, hip sockets, underslung keel, antennae —
+  in THREE damage states (pristine / cracked / wrecked: gouges, molten rents, bent-then-dead
+  antennae, popped panel, soot), plus the barrel as its own articulating layer (root joint,
+  thin tube, accent ring, muzzle bulge). Per team: teal/amber accents on black. View transform
+  set to Standard so the emissive accents keep their color (AgX washed them white). Alignment
+  contract: hull image center = turret-ball center = `getMountPoint()`; barrel root/tip at
+  known image fractions, scaled in-game so root→tip = `BARREL_LEN`. Old `tank-body-*.png`
+  lozenge sprites are no longer referenced (files left in place).
+- **Whip-leg motion language** — the sinusoid gait is gone. Legs are now world-space 2-bone
+  IK chains (`legIK`, `drawWhipLeg`) from low hull hips to needle-tipped feet PLANTED on the
+  actual terrain, with the signature curve (`whipCurve`): slow reach with an anticipation
+  dip, then the tip whips the rest of the way and stabs in, tiny overshoot included. Runs
+  everywhere: distance-driven alternating-tetrapod walk gait, staggered fast re-grips on jump
+  landings, slow creepy idle single-leg re-grips, and crater scrambles — blast the ground
+  near a tank and its legs re-grip the new surface. Legs finish their step when walking
+  stops. Femur→kinked tibia→hairline needle taper per Spider_Tank_2.png; legs darkened to
+  near-black; far-side legs draw behind the hull, near-side in front.
+- **Hull presentation**: idle breathing (hull bobs ~0.5px above planted feet — the IK legs
+  absorb it), recoil flinch on fire (hull kicks back along the barrel line, barrel slides
+  back in its socket, legs hold their grip), and HP-driven damage states (>62% pristine,
+  >28% cracked, else wrecked) swapping the hull layer live.
+- **Menu tanks** rebuilt on the same part layers and leg system — deterministic staggered
+  idle re-grips, breathing, steady raised barrel. **Spiderlings** inherit a cheap whip-scuttle
+  (slow creep, snap back, needle tips).
+- Verified: `node --check` clean; renders eyeballed layer-by-layer (teal + amber, all three
+  damage states, barrel). NOT yet play-tested — James should judge: leg cadence and whip
+  snap (`GAIT_CYCLE_PX`, `whipCurve`, step durations), hull size (`HULL_DRAW_W = 70`), and
+  the render art itself (seam/slit brightness, damage-state readability). The Blender script
+  is parametric — art notes turn into quick re-renders.
+- **Practice range** (same session, James's call): a PRACTICE button under START (key P).
+  No game in it: gentle rolling terrain (noise flattened to 35%, no central mountain),
+  no coin toss, no turns — `mode='practice'` stays in PLAYER_TURN forever. Unlimited
+  move budget, fire at will — the projectile/
+  crawler/beam step was factored into `updateProjectiles()` so it runs live inside
+  PLAYER_TURN and movement stays hot while shots fly. The dummy tank never acts and
+  respawns on its pad at full HP once the fireworks settle (so does yours, if you
+  splash yourself). Move track and jump pips hidden on the range. R restarts the
+  range; ESC back to menu. Side fix: tanks no longer get yanked to the ground if
+  they were airborne when a shot resolves (snapToGround now respects `inAir` in the
+  shared projectile step).
+- **Jump / flight split** (same session, James's spec — supersedes the double-jump AND the
+  practice range's jump-at-will): W is JUMP only — tap = the little hop (`JUMP_POWER`),
+  quick double-tap inside 280ms = ONE bigger boost (`JUMP_BOOST` replaces the launch
+  velocity — an upgrade, never two stacked hops); any later mid-air W does nothing.
+  Flight is SHIFT: hold for rocket thrust (lifts off the ground too) burning a fuel
+  meter — ~1.9s of lift, cuts out dry, refills on the ground (~1.2s) and each turn.
+  Slim vertical fuel gauge beside the hull (accent color, red under 25%, hidden when
+  full) replaces the jump pips. Coming down fast (landing speed > the small hop's, so
+  raw hops stay crisp) triggers ONE automatic retro-burst — vy bled ~20%/frame to a
+  3px/f float — and touchdown scales the leg-catch: wider stance splay, faster whip
+  stabs, and a crouch-absorb dip on the hull, all scaled by impact speed. Thrust and
+  retro draw the red-orange keel plume from Spider_Tank_2 (white-hot core, flicker) —
+  spider-vision stone #3 (rocket boost) is now in the game. Thrust has no sound yet:
+  it wants a Web Audio synth loop (continuous/parametric per the audio rules), next
+  audio pass.
+- Where things stand: climbing arenas (#18) is the next big stepping stone; #11 real
+  spiderling sprites could reuse the part-layer pipeline. Thrust loop audio pending.
+  James to feel out: boost window (280ms), fuel burn/regen rates, thrust accel, retro
+  threshold/strength.
+
 ## 2026-07-15 — Claude (with James)
 
 Biome arenas: James delivered GPT-generated layer sets for three new biomes; every match now
