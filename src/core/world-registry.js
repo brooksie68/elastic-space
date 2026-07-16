@@ -5,6 +5,7 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "colors-meeting/index.html",
   "dead-letter-office/index.html",
   "jerrys-pool/index.html",
+  "orb-dimension/index.html",
   "pelagic-lantern-habitat/index.html",
   "singing-plate/index.html",
   "the-fifteen-sisters/index.html",

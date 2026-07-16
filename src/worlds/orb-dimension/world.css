@@ -1,0 +1,322 @@
+/* The Orb Dimension — an endless dark volume you can fly through.
+   Orbs are Blender-rendered translucent shells (assets/orbs/*.png) drawn as
+   instanced WebGL billboards; color is layered behind each shell in-shader.
+   The cave's dim ambient light is CSS behind the canvas; vignette above it. */
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #020305;
+}
+
+body {
+  /* not monitor-black: cave-black, lit by a source nobody can find */
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(96, 116, 160, 0.10), transparent 55%),
+    radial-gradient(90% 50% at 50% 108%, rgba(70, 86, 110, 0.05), transparent 60%),
+    linear-gradient(#020305, #04050a 45%, #030408);
+}
+
+/* vignette above the scene — the dark pressing in from the walls */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(115% 115% at 50% 50%, transparent 52%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* barely-there air, drifting */
+.mist {
+  position: fixed;
+  inset: -12%;
+  pointer-events: none;
+  z-index: 1;
+}
+.mist-a {
+  background: radial-gradient(55% 45% at 30% 40%, rgba(90, 110, 150, 0.045), transparent 70%);
+  animation: mistdrift 260s ease-in-out infinite alternate;
+}
+.mist-b {
+  background: radial-gradient(60% 50% at 72% 62%, rgba(80, 95, 140, 0.038), transparent 70%);
+  animation: mistdrift 340s ease-in-out infinite alternate-reverse;
+}
+@keyframes mistdrift {
+  from { transform: translate3d(-2.5%, -1.5%, 0); }
+  to   { transform: translate3d(2.5%, 1.5%, 0); }
+}
+
+#space {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+#space.dragging {
+  cursor: grabbing;
+}
+
+#field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* The drift exits are pale orbs rendered in the scene; these anchors are the
+   accessible/keyboard path. Kept off-screen until focused. */
+.orb.portal {
+  position: fixed;
+  left: -9999px;
+  bottom: 24px;
+  width: 14px;
+  height: 14px;
+  pointer-events: auto;
+  border-radius: 50%;
+  background: rgba(235, 242, 255, 0.9);
+  box-shadow: 0 0 14px 4px rgba(180, 200, 250, 0.5);
+}
+.orb.portal:focus-visible {
+  left: calc(50% - 7px);
+  outline: 2px solid rgba(200, 216, 255, 0.7);
+  outline-offset: 5px;
+  z-index: 8;
+}
+
+/* ---- hint + speed readout ---------------------------------------------- */
+
+#flight-hint {
+  position: fixed;
+  left: 18px;
+  bottom: 16px;
+  z-index: 6;
+  color: rgba(170, 184, 214, 0.55);
+  font: 12px/1.6 system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  transition: opacity 2.5s ease;
+}
+#flight-hint.faded {
+  opacity: 0;
+}
+
+/* ---- the invisible ship's HUD ------------------------------------------ */
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+.hud-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 0 solid rgba(220, 235, 255, 0.18);
+}
+.hud-corner.tl { top: 13px; left: 13px; border-top-width: 1px; border-left-width: 1px; }
+.hud-corner.tr { top: 13px; right: 13px; border-top-width: 1px; border-right-width: 1px; }
+.hud-corner.bl { bottom: 13px; left: 13px; border-bottom-width: 1px; border-left-width: 1px; }
+.hud-corner.br { bottom: 13px; right: 13px; border-bottom-width: 1px; border-right-width: 1px; }
+.hud-edge {
+  position: absolute;
+  backdrop-filter: blur(7px);
+}
+.hud-edge.top { top: 0; left: 0; right: 0; height: 6px;
+  background: linear-gradient(rgba(200, 220, 255, 0.05), transparent); }
+.hud-edge.bottom { bottom: 0; left: 0; right: 0; height: 6px;
+  background: linear-gradient(transparent, rgba(200, 220, 255, 0.05)); }
+.hud-edge.left { left: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(90deg, rgba(200, 220, 255, 0.05), transparent); }
+.hud-edge.right { right: 0; top: 0; bottom: 0; width: 6px;
+  background: linear-gradient(270deg, rgba(200, 220, 255, 0.05), transparent); }
+
+#speed-readout {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 6;
+  color: rgba(225, 238, 255, 0.6);
+  font: 200 15px/1 system-ui, sans-serif;
+  letter-spacing: 0.28em;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s ease, color 0.4s ease;
+}
+#speed-readout.show {
+  opacity: 1;
+  transition: opacity 0.1s ease, color 0.4s ease;
+}
+#speed-readout.over {
+  color: rgba(245, 250, 255, 0.92);
+  border-bottom: 1px solid rgba(220, 235, 255, 0.35);
+  padding-bottom: 4px;
+}
+
+#home-marker {
+  position: fixed;
+  left: -20px;
+  top: -20px;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: rgba(240, 245, 255, 0.9);
+  box-shadow: 0 0 10px 3px rgba(200, 215, 255, 0.55);
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+/* ---- tuner --------------------------------------------------------------- */
+
+.orb-tuner-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 7;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(140, 160, 210, 0.25);
+  background: rgba(10, 13, 22, 0.75);
+  color: rgba(180, 194, 224, 0.85);
+  font: 12px system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.orb-tuner-toggle:hover {
+  border-color: rgba(160, 180, 230, 0.5);
+  color: rgba(215, 226, 248, 0.95);
+}
+
+.orb-tuner {
+  position: fixed;
+  left: 50%;
+  bottom: 58px;
+  transform: translateX(-50%);
+  z-index: 7;
+  width: min(1080px, calc(100vw - 40px));
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(140, 160, 210, 0.18);
+  background: rgba(8, 10, 17, 0.86);
+  backdrop-filter: blur(10px);
+  color: #b8c2d8;
+  font: 12px system-ui, sans-serif;
+}
+.orb-tuner[hidden] {
+  display: none;
+}
+
+.orb-tuner .tuner-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.orb-tuner .tuner-group {
+  flex: 1 1 200px;
+  border: 1px solid rgba(140, 160, 210, 0.14);
+  border-radius: 9px;
+  padding: 9px 12px 10px;
+}
+.orb-tuner .tuner-group-label {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(150, 165, 200, 0.6);
+}
+.orb-tuner .tuner-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.orb-tuner .tuner-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.orb-tuner .tuner-mini label {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(170, 184, 214, 0.8);
+  letter-spacing: 0.05em;
+}
+.orb-tuner .tuner-mini output {
+  color: rgba(220, 230, 250, 0.95);
+  font-variant-numeric: tabular-nums;
+}
+.orb-tuner input[type="range"] {
+  width: 100%;
+  accent-color: #7f95c9;
+}
+.orb-tuner select {
+  background: rgba(16, 20, 32, 0.9);
+  color: #cdd8ef;
+  border: 1px solid rgba(140, 160, 210, 0.3);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: 12px system-ui, sans-serif;
+}
+.orb-tuner .tuner-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.orb-tuner .tuner-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(140, 160, 210, 0.12);
+}
+.orb-tuner .tuner-presets button {
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(140, 160, 210, 0.3);
+  background: rgba(20, 25, 40, 0.9);
+  color: #cdd8ef;
+  font: 12px system-ui, sans-serif;
+  cursor: pointer;
+}
+.orb-tuner .tuner-presets button:hover {
+  border-color: rgba(170, 190, 240, 0.55);
+}
+.orb-tuner input[type="text"] {
+  background: rgba(16, 20, 32, 0.9);
+  color: #cdd8ef;
+  border: 1px solid rgba(140, 160, 210, 0.3);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font: 12px system-ui, sans-serif;
+  width: 120px;
+}
+.orb-tuner .tuner-actions button {
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid rgba(140, 160, 210, 0.3);
+  background: rgba(20, 25, 40, 0.9);
+  color: #cdd8ef;
+  font: 12px system-ui, sans-serif;
+  cursor: pointer;
+}
+.orb-tuner .tuner-actions button:hover {
+  border-color: rgba(170, 190, 240, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mist-a,
+  .mist-b { animation: none; }
+}

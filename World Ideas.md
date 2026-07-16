@@ -196,6 +196,9 @@ Somewhere a video is playing — a movie screen in an empty theater, a TV glowin
 ### 54. The Wormhole — *a weekend* — `idea`
 A flying experience through a wormhole: continuous forward motion down a tunnel, you steering. Things drift toward you in the stream, and you can fly into them — some are just things, and some are exits that link to other pages. Drift portals as debris in the flow; navigation by collision. (Added 2026-07-12.)
 
+### 55. The Orb Dimension — *a weekend and counting* — `live 2026-07-16` → `src/worlds/orb-dimension/`
+An endless black volume — not monitor-black, cave-black: ten miles across, two miles high, lit very dimly by a mysterious ambient source. Dozens of glowing colored balls drift slowly through it. The space is code; the balls are Blender renders with transparency as a feature, lit up by layers of color stacked behind the glass. Grew into a full WebGL2 free-flight world (dolly/strafe/roll/thruster/overdrive, ghost HUD, tuner presets — history in its changelog, v1–v13). Roadmap: Blender cave walls, space stations, dimensional doors as exits, a POI map, secret worlds outside the drift.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
