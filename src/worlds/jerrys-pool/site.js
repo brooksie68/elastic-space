@@ -26,9 +26,80 @@ let signalStalks = [];
 let seafloorPlants = [];
 let brainCorals = [];
 
+// --- Pool tuner: state -------------------------------------------------------
+// Multipliers for creature spawn frequency and population caps (0–5×) plus the
+// dot field's swirl speed and dot count (0.5–2×). The panel UI lives at the
+// bottom of this file; state loads here — before anything spawns — so stored
+// settings shape the whole session. Jerry and the leviathan are not tunable.
+const TUNER_STORE_KEY = "jerrys-pool-tuner-v1";
+const tunerState = {
+  global: { freq: 1, pop: 1 },
+  dots: { speed: 1, count: 1 },
+  creatures: {},
+};
+try {
+  const storedTuner = JSON.parse(localStorage.getItem(TUNER_STORE_KEY) || "{}");
+  if (storedTuner.global) Object.assign(tunerState.global, storedTuner.global);
+  if (storedTuner.dots) Object.assign(tunerState.dots, storedTuner.dots);
+  if (storedTuner.creatures) Object.assign(tunerState.creatures, storedTuner.creatures);
+} catch { /* corrupted store: run on defaults */ }
+// sanitize whatever came out of storage — a NaN multiplier must never leak
+// into caps or the dot field (0 is a legal value, so no || fallbacks)
+const tunerNumber = (value, fallback = 1) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+tunerState.global.freq = tunerNumber(tunerState.global.freq);
+tunerState.global.pop = tunerNumber(tunerState.global.pop);
+tunerState.dots.speed = tunerNumber(tunerState.dots.speed);
+tunerState.dots.count = tunerNumber(tunerState.dots.count);
+
+function tunerSave() {
+  try { localStorage.setItem(TUNER_STORE_KEY, JSON.stringify(tunerState)); } catch { /* storage unavailable */ }
+}
+const tunerClamp = (value, low, high) => Math.min(high, Math.max(low, value));
+function tunerCreature(key) {
+  if (!tunerState.creatures[key]) tunerState.creatures[key] = { freq: 1, pop: 1 };
+  const config = tunerState.creatures[key];
+  config.freq = tunerNumber(config.freq);
+  config.pop = tunerNumber(config.pop);
+  return config;
+}
+function tunerFreq(key) {
+  return tunerClamp(tunerCreature(key).freq * tunerState.global.freq, 0, 5);
+}
+function tunerPop(key) {
+  return tunerClamp(tunerCreature(key).pop * tunerState.global.pop, 0, 5);
+}
+// per-creature concurrency caps scale with that creature's own multiplier
+function tunerCap(key, base) {
+  return Math.round(base * tunerPop(key));
+}
+// the shared active-denizen ceilings (6 general / 8 for schools) scale with
+// the global population multiplier; a creature boosted above 1× ignores the
+// shared ceiling (its own cap still governs) so its slider is always potent
+function tunerSharedCapBlocked(key, active, base) {
+  if (tunerPop(key) > 1) return false;
+  return active >= Math.round(base * tunerClamp(tunerState.global.pop, 0, 5));
+}
+// spawn-attempt delay: frequency divides the wait; at 0 the schedule idles on
+// a 4 s poll so raising the slider revives it without a reload
+function tunerDelay(key, delay) {
+  const f = tunerFreq(key);
+  return f > 0 ? delay / f : 4000;
+}
+function tunerEnabled(key) {
+  return tunerFreq(key) > 0 && tunerPop(key) > 0;
+}
+
+// Both initializers are re-runnable: the tuner calls them again with new
+// multipliers, so they tear down what they generated before rebuilding.
 function initializePolypColony() {
   if (!foregroundPolypField) return;
-  for (let index = 0; index < 24; index += 1) {
+  foregroundPolypField.querySelectorAll(".generated-polyp").forEach((polyp) => polyp.remove());
+  const staticPolyps = [...document.querySelectorAll("#denizen-field .pool-polyp")];
+  const polypTarget = Math.round(28 * tunerPop("polyp"));
+  staticPolyps.forEach((polyp, index) => {
+    polyp.style.display = index < polypTarget ? "" : "none";
+  });
+  for (let index = staticPolyps.length; index < polypTarget; index += 1) {
     const polyp = document.createElement("i");
     const species = Math.floor(Math.random() * 3);
     polyp.className = `pool-polyp generated-polyp${species === 1 ? " species-b" : species === 2 ? " species-c" : ""}`;
@@ -37,16 +108,22 @@ function initializePolypColony() {
     polyp.style.width = `${8 + Math.random() * 17}px`;
     foregroundPolypField.append(polyp);
   }
-  poolPolyps = [...document.querySelectorAll(".pool-polyp")];
+  poolPolyps = [...document.querySelectorAll("#denizen-field .pool-polyp, #foreground-polyps .pool-polyp")]
+    .filter((polyp) => polyp.style.display !== "none");
   poolPolyps.forEach((polyp) => {
+    if (polyp.dataset.flareWired === "true") return;
+    polyp.dataset.flareWired = "true";
     polyp.style.setProperty("--polyp-sway-duration", `${7 + Math.random() * 12}s`);
     polyp.style.setProperty("--polyp-sway-delay", `${-Math.random() * 20}s`);
     const scheduleFlare = () => {
       window.setTimeout(() => {
-        polyp.classList.add("flaring");
-        window.setTimeout(() => polyp.classList.remove("flaring"), 2800 + Math.random() * 3600);
+        if (!polyp.isConnected) return; // removed by a rebuild — end the loop
+        if (tunerFreq("polyp") > 0 && polyp.style.display !== "none") {
+          polyp.classList.add("flaring");
+          window.setTimeout(() => polyp.classList.remove("flaring"), 2800 + Math.random() * 3600);
+        }
         scheduleFlare();
-      }, 9000 + Math.random() * 38000);
+      }, tunerDelay("polyp", 9000 + Math.random() * 38000));
     };
     scheduleFlare();
   });
@@ -54,21 +131,27 @@ function initializePolypColony() {
 
 function initializeSeafloorFlora() {
   if (!foregroundPolypField) return;
-  for (let index = 0; index < 3; index += 1) {
+  foregroundPolypField.querySelectorAll(".brain-coral, .seafloor-plant, .alien-shrimp").forEach((el) => el.remove());
+  const coralTarget = Math.round(3 * tunerPop("coral"));
+  for (let index = 0; index < coralTarget; index += 1) {
     const coral = document.createElement("i");
-    coral.className = `brain-coral coral-${index + 1}`;
-    coral.style.left = `${8 + index * 34 + Math.random() * 14}%`;
+    coral.className = `brain-coral coral-${(index % 3) + 1}`;
+    coral.style.left = `${8 + (index % 3) * 34 + Math.random() * 14}%`;
     const coralSize = 62 + Math.random() * 54;
     coral.style.setProperty("--coral-size", `${coralSize}px`);
     coral.style.setProperty("--coral-height", `${coralSize * 0.62}px`);
     foregroundPolypField.prepend(coral);
   }
   const plantTypes = ["kelp", "seaweed", "seaweed", "fern-frond", "fan-frond", "lace-frond", "signal-stalk"];
-  // 23 plants: the 21-cycle yields 3 signal stalks, the 2 extras bring the
-  // stalk count to 5 (they feed the barrel drifters, so keep them plentiful)
-  for (let index = 0; index < 23; index += 1) {
+  // at the default 23 plants the 21-cycle yields 3 signal stalks and the last
+  // 2 are forced stalks, giving 5 (they feed the barrel drifters, so keep
+  // them plentiful); scaled counts keep the same shape
+  const plantTarget = Math.round(23 * tunerPop("plant"));
+  for (let index = 0; index < plantTarget; index += 1) {
     const plant = document.createElement("i");
-    const plantType = index >= 21 ? "signal-stalk" : plantTypes[index % plantTypes.length];
+    const plantType = plantTarget >= 3 && index >= plantTarget - 2
+      ? "signal-stalk"
+      : plantTypes[index % plantTypes.length];
     plant.className = `seafloor-plant ${plantType}`;
     plant.style.left = `${2 + Math.random() * 96}%`;
     const plantHeight = plantType === "signal-stalk"
@@ -83,7 +166,8 @@ function initializeSeafloorFlora() {
   seafloorPlants = [...foregroundPolypField.querySelectorAll(".seafloor-plant")];
   brainCorals = [...foregroundPolypField.querySelectorAll(".brain-coral")];
 
-  for (let index = 0; index < 11; index += 1) {
+  const shrimpTarget = Math.round(11 * tunerPop("shrimp"));
+  for (let index = 0; index < shrimpTarget; index += 1) {
     const shrimp = document.createElement("i");
     shrimp.className = "alien-shrimp";
     shrimp.style.left = `${3 + Math.random() * 94}%`;
@@ -98,6 +182,11 @@ function initializeSeafloorFlora() {
     shrimp.innerHTML = "<b></b><b></b><b></b>";
     foregroundPolypField.prepend(shrimp);
   }
+}
+
+function rebuildPermanentDenizens() {
+  initializePolypColony();
+  initializeSeafloorFlora();
 }
 
 initializePolypColony();
@@ -486,10 +575,15 @@ function triggerDistantShadow() {
 }
 
 function spawnAbyssalPredator(immediate = false) {
-  if (!denizenField || document.querySelector(".abyssal-predator")) return;
+  if (!denizenField || document.querySelector("#denizen-field .abyssal-predator")) return;
   const predator = document.createElement("img");
   predator.className = "denizen abyssal-predator";
-  predator.src = "./leviathan.png";
+  // leviathan-soft.png has the old CSS filter chain (blur 5px @display scale,
+  // brightness .45, contrast 1.15, saturate .65) baked in — a runtime blur on
+  // a 115vw layer re-rasters every frame while scale animates, and unfinished
+  // raster tiles composited as a see-through body. Regenerate from
+  // leviathan.png with tmp/jerrys-pool-denizens/bake_leviathan_filter.py.
+  predator.src = "./leviathan-soft.png";
   predator.alt = "";
   denizenField.append(predator);
   const initialDrift = -2.3 + Math.random() * 4.6;
@@ -646,7 +740,7 @@ function animateDenizen(element, keyframes, duration) {
 function nearestVisibleJelly(x, y) {
   let nearest = null;
   let nearestDistance = Infinity;
-  document.querySelectorAll(".pool-jelly:not([data-consumed='true'])").forEach((jelly) => {
+  document.querySelectorAll("#denizen-field .pool-jelly:not([data-consumed='true'])").forEach((jelly) => {
     const bell = jelly.querySelector(".jelly-bell");
     const bounds = (bell || jelly).getBoundingClientRect();
     if (bounds.bottom < 0 || bounds.top > window.innerHeight || bounds.right < 0 || bounds.left > window.innerWidth) return;
@@ -1065,8 +1159,10 @@ function aimAmoebaNucleus(amoeba, animation) {
   update();
 }
 
-function spawnCrossingDenizen(type) {
-  if (!denizenField || activeDenizens >= 6 || (type === "pool-amoeba" && activeAmoebas >= 5)) return;
+function spawnCrossingDenizen(type, headStart = 0) {
+  const tunerKey = type === "pool-amoeba" ? "amoeba" : "ray";
+  if (!denizenField || tunerPop(tunerKey) <= 0 || tunerSharedCapBlocked(tunerKey, activeDenizens, 6)) return;
+  if (type === "pool-amoeba" && activeAmoebas >= tunerCap("amoeba", 5)) return;
   const element = document.createElement("i");
   element.className = `denizen ${type}`;
   let durationScale = 1;
@@ -1160,7 +1256,8 @@ function spawnCrossingDenizen(type) {
         transform: `translate3d(${x}px,${y}px,0) scaleX(${(facing * frame.stretch).toFixed(3)}) scaleY(${frame.thickness})`,
       };
     });
-    animateDenizen(element, rayKeyframes, duration * 0.84);
+    const rayMovement = animateDenizen(element, rayKeyframes, duration * 0.84);
+    if (headStart) rayMovement.currentTime = duration * 0.84 * headStart;
     return;
   }
   const movement = animateDenizen(
@@ -1173,6 +1270,7 @@ function spawnCrossingDenizen(type) {
     ],
     duration,
   );
+  if (headStart) movement.currentTime = duration * headStart;
   if (type === "pool-amoeba") {
     aimAmoebaNucleus(element, movement);
     steerAmoebaFromJerry(element, movement);
@@ -1180,7 +1278,8 @@ function spawnCrossingDenizen(type) {
 }
 
 function spawnVake() {
-  if (!denizenField || document.querySelectorAll(".pool-vake").length >= 2) return;
+  if (!denizenField || tunerPop("vake") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-vake").length >= tunerCap("vake", 2)) return;
   const vake = document.createElement("i");
   vake.className = "denizen pool-vake";
   const depth = Math.random();
@@ -1297,6 +1396,10 @@ function spawnJerryZap(fromX, fromY, toX, toY) {
 
 const VAKE_SIGHT_FRACTION = 0.75;
 const VAKE_FED_AVOID_RANGE = 430; // px from Jerry's edge; fed vakes lean away inside this
+const VAKE_ZAP_RANGE = 234; // px from Jerry's edge (was 260; James trimmed Jerry's reach 10%)
+const VAKE_ZAP_MISS_CHANCE = 0.2; // 1 in 5 bolts go wide
+const VAKE_ZAP_REARM_MS = [2600, 4000]; // pause before Jerry can fire again after a miss
+const VAKE_BUFFER_RANGE = 320; // px; every vake bends toward pure flight as it nears the zap range
 
 function popOrbForVake(ball, vake, fedFilter) {
   if (ball.dataset.claimed === "true" || ball.dataset.finished === "true") return null;
@@ -1366,6 +1469,7 @@ function guideVake(vake, route) {
   const swingRate = 0.0022 + Math.random() * 0.0008;
   const maxTurn = 0.004; // rad/ms — banks hard, never speeds up
   const maxTurnFed = 0.006; // fed: tighter turning radius, sells the caution
+  const maxTurnEvade = 0.009; // inside the buffer or spooked by a near miss: hardest banking
   let target = null;
   let lastScanAt = 0;
   let hasEnteredView = false;
@@ -1375,6 +1479,8 @@ function guideVake(vake, route) {
   let zapped = false;
   let zappedRotation = 0;
   let riseVelocity = 0;
+  let zapCooldownUntil = 0;
+  let spookedUntil = 0;
   let lastJerryCheckAt = 0;
   let jerryDx = 0;
   let jerryDy = 0;
@@ -1387,7 +1493,8 @@ function guideVake(vake, route) {
     previousFrameAt = now;
 
     // Jerry doesn't like the vake — it eats the orbs meant for his worms.
-    // Inside 260 px of his edge he zaps it.
+    // Inside VAKE_ZAP_RANGE of his edge he fires, but 1 bolt in 5 goes wide:
+    // the vake spooks straight away and Jerry needs a moment to re-arm.
     if (!zapped && now - lastJerryCheckAt > 150 && cellMotion?.position) {
       lastJerryCheckAt = now;
       const jerryRadius = (orb?.getBoundingClientRect().width || 180) / 2;
@@ -1399,28 +1506,41 @@ function guideVake(vake, route) {
       jerryDx = dx;
       jerryDy = dy;
       jerryGap = gap;
-      if (gap < 260) {
-        zapped = true;
-        target = null;
-        trailColor = null;
+      if (gap < VAKE_ZAP_RANGE && now >= zapCooldownUntil) {
         // bolt starts at Jerry's rim, not his center
-        const edgeScale = jerryRadius / Math.max(1, Math.hypot(dx, dy));
-        spawnJerryZap(
-          cellMotion.position.x + dx * edgeScale,
-          cellMotion.position.y + dy * edgeScale,
-          vakeCenterX,
-          vakeCenterY,
-        );
-        let normalized = ((heading * 180) / Math.PI) % 360;
-        if (normalized > 180) normalized -= 360;
-        if (normalized < -180) normalized += 360;
-        zappedRotation = normalized;
-        vake.classList.remove("orb-fed");
-        vake.style.transition = "filter 700ms ease";
-        vake.style.filter = `${route.stunFilter} brightness(2.6)`; // strike flash
-        window.setTimeout(() => {
-          if (vake.isConnected) vake.style.filter = route.stunFilter;
-        }, 140);
+        const reach = Math.max(1, Math.hypot(dx, dy));
+        const edgeScale = jerryRadius / reach;
+        const boltFromX = cellMotion.position.x + dx * edgeScale;
+        const boltFromY = cellMotion.position.y + dy * edgeScale;
+        if (Math.random() < VAKE_ZAP_MISS_CHANCE) {
+          // the miss is visible: the bolt lands beside the vake, perpendicular
+          // to the firing line, and the vake drops everything to flee
+          const missBy = (30 + route.width * 0.6 + Math.random() * 36) * (Math.random() > 0.5 ? 1 : -1);
+          spawnJerryZap(
+            boltFromX,
+            boltFromY,
+            vakeCenterX + (-dy / reach) * missBy,
+            vakeCenterY + (dx / reach) * missBy,
+          );
+          zapCooldownUntil = now + VAKE_ZAP_REARM_MS[0] + Math.random() * (VAKE_ZAP_REARM_MS[1] - VAKE_ZAP_REARM_MS[0]);
+          spookedUntil = now + 1800;
+          target = null;
+        } else {
+          zapped = true;
+          target = null;
+          trailColor = null;
+          spawnJerryZap(boltFromX, boltFromY, vakeCenterX, vakeCenterY);
+          let normalized = ((heading * 180) / Math.PI) % 360;
+          if (normalized > 180) normalized -= 360;
+          if (normalized < -180) normalized += 360;
+          zappedRotation = normalized;
+          vake.classList.remove("orb-fed");
+          vake.style.transition = "filter 700ms ease";
+          vake.style.filter = `${route.stunFilter} brightness(2.6)`; // strike flash
+          window.setTimeout(() => {
+            if (vake.isConnected) vake.style.filter = route.stunFilter;
+          }, 140);
+        }
       }
     }
 
@@ -1459,7 +1579,11 @@ function guideVake(vake, route) {
     }
 
     let desired;
-    if (target) {
+    const spooked = now < spookedUntil;
+    if (spooked) {
+      // near-miss adrenaline: nothing matters but getting away from Jerry
+      desired = Math.atan2(jerryDy, jerryDx);
+    } else if (target) {
       const rect = target.getBoundingClientRect();
       const targetX = rect.left + rect.width * 0.5;
       const targetY = rect.top + rect.height * 0.5;
@@ -1474,12 +1598,12 @@ function guideVake(vake, route) {
       // cruising: head for the exit with the old swooping wobble
       desired = Math.atan2(route.exitY - y, route.exitX - x) + Math.sin(now * swingRate + swingPhase) * 0.5;
       // once fed it prefers to keep clear of Jerry on the way out: a
-      // proximity-weighted lean away (at most ~2/3 of the way toward pure
+      // proximity-weighted lean away (at most ~4/5 of the way toward pure
       // flight), so it curves wide around him — the turn-rate clamp and the
       // exit pull keep it from ever reading as a hairpin
       if (trailColor !== null && jerryGap < VAKE_FED_AVOID_RANGE) {
         const away = Math.atan2(jerryDy, jerryDx);
-        const w = (1 - Math.max(0, jerryGap) / VAKE_FED_AVOID_RANGE) * 0.65;
+        const w = (1 - Math.max(0, jerryGap) / VAKE_FED_AVOID_RANGE) * 0.8;
         let bend = away - desired;
         while (bend > Math.PI) bend -= Math.PI * 2;
         while (bend < -Math.PI) bend += Math.PI * 2;
@@ -1487,10 +1611,23 @@ function guideVake(vake, route) {
       }
     }
 
+    // buffer zone: every vake — mid-hunt included — bends toward pure flight
+    // as it closes on Jerry's reach, hitting full flight just outside the zap
+    // range. Most skirt the kill zone; momentum can still carry one in.
+    if (!spooked && jerryGap < VAKE_BUFFER_RANGE) {
+      const away = Math.atan2(jerryDy, jerryDx);
+      const w = Math.min(1, Math.max(0, 1 - (jerryGap - VAKE_ZAP_RANGE - 16) / (VAKE_BUFFER_RANGE - VAKE_ZAP_RANGE - 16)));
+      let bend = away - desired;
+      while (bend > Math.PI) bend -= Math.PI * 2;
+      while (bend < -Math.PI) bend += Math.PI * 2;
+      desired += bend * w;
+    }
+
     let delta = desired - heading;
     while (delta > Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
-    const turn = (trailColor !== null ? maxTurnFed : maxTurn) * dt;
+    const evading = spooked || jerryGap < VAKE_BUFFER_RANGE;
+    const turn = (evading ? maxTurnEvade : trailColor !== null ? maxTurnFed : maxTurn) * dt;
     heading += Math.max(-turn, Math.min(turn, delta));
 
     x += Math.cos(heading) * route.speed * dt;
@@ -1528,11 +1665,12 @@ const URCHIN_PALETTE = [
   "14, 104, 148",
 ];
 
-function spawnPulseUrchin(force = false) {
+function spawnPulseUrchin(force = false, headStart = 0) {
   if (
     !denizenField ||
-    document.querySelectorAll(".pool-urchin").length >= 3 ||
-    (!force && activeDenizens >= 6)
+    tunerPop("urchin") <= 0 ||
+    document.querySelectorAll("#denizen-field .pool-urchin").length >= tunerCap("urchin", 3) ||
+    (!force && tunerSharedCapBlocked("urchin", activeDenizens, 6))
   ) return;
 
   const urchin = document.createElement("i");
@@ -1550,7 +1688,8 @@ function spawnPulseUrchin(force = false) {
   }
 
   const duration = 50000 + Math.random() * 22000;
-  animateDenizen(
+  const headStartMs = duration * headStart;
+  const fade = animateDenizen(
     urchin,
     [
       { opacity: 0 },
@@ -1560,11 +1699,12 @@ function spawnPulseUrchin(force = false) {
     ],
     duration,
   );
-  guidePulseUrchin(urchin, duration, size);
+  if (headStartMs) fade.currentTime = headStartMs;
+  guidePulseUrchin(urchin, duration, size, headStartMs);
 }
 
-function guidePulseUrchin(urchin, duration, size) {
-  const startedAt = performance.now();
+function guidePulseUrchin(urchin, duration, size, headStartMs = 0) {
+  const startedAt = performance.now() - headStartMs;
   const direction = Math.random() > 0.5 ? 1 : -1;
   const startAngle = Math.random() * Math.PI * 2;
   const rotations = 1.35 + Math.random() * 0.35;
@@ -1572,7 +1712,7 @@ function guidePulseUrchin(urchin, duration, size) {
   const phaseY = Math.random() * Math.PI * 2;
   let flowOffsetX = 0;
   let flowOffsetY = 0;
-  let previousFrameAt = startedAt;
+  let previousFrameAt = performance.now();
 
   const update = () => {
     if (!urchin.isConnected) return;
@@ -1596,6 +1736,7 @@ function guidePulseUrchin(urchin, duration, size) {
     let flowWeight = 0;
 
     nodes.forEach((node) => {
+      if (!node.active) return; // inactive dots hold stale positions
       if (!Number.isFinite(node.previousX) || !Number.isFinite(node.previousY)) return;
       const distance = Math.hypot(node.x - x, node.y - y);
       if (distance > 210) return;
@@ -1620,8 +1761,9 @@ function guidePulseUrchin(urchin, duration, size) {
   update();
 }
 
-function spawnDotSchool() {
-  if (!denizenField || activeDenizens >= 8 || activeDotSchools.size >= 3) return;
+function spawnDotSchool(midPool = false) {
+  if (!denizenField || tunerPop("school") <= 0 || tunerSharedCapBlocked("school", activeDenizens, 8)) return;
+  if (activeDotSchools.size >= tunerCap("school", 3)) return;
   const school = document.createElement("i");
   school.className = "denizen dot-school";
   school.style.setProperty("--flock-color", energyColors[Math.floor(Math.random() * energyColors.length)]);
@@ -1632,7 +1774,9 @@ function spawnDotSchool() {
       ? 18 + Math.floor(Math.random() * 10)
       : 28 + Math.floor(Math.random() * 3);
   const fromLeft = Math.random() > 0.5;
-  const startX = fromLeft ? -95 : window.innerWidth + 95;
+  const startX = midPool
+    ? window.innerWidth * (0.22 + Math.random() * 0.56)
+    : fromLeft ? -95 : window.innerWidth + 95;
   const startY = 100 + Math.random() * Math.max(100, window.innerHeight - 260);
   const travelAngle = fromLeft ? -0.18 + Math.random() * 0.36 : Math.PI + (-0.18 + Math.random() * 0.36);
   const currentSpeed = 22 + Math.random() * 14;
@@ -1918,8 +2062,8 @@ function spawnDotSchool() {
   requestAnimationFrame(swim);
 }
 
-function spawnJelly() {
-  if (!denizenField || activeDenizens >= 6) return;
+function spawnJelly(headStart = 0) {
+  if (!denizenField || tunerPop("jelly") <= 0 || tunerSharedCapBlocked("jelly", activeDenizens, 6)) return;
   const NS = "http://www.w3.org/2000/svg";
   const models = [
     { name: "moon", bell: "moon", width: 118, height: 225, bellY: 48, bellW: 90, bellH: 38, tentacles: 8, length: 104, amplitude: 7, cycles: 1.55, period: 4.8, contraction: 0.405, arms: 4 },
@@ -1970,7 +2114,7 @@ function spawnJelly() {
   const travel = window.innerHeight + model.height * scale + 180;
   const duration = 32000 + Math.random() * 16000;
   const opacity = 0.42 + Math.random() * 0.34;
-  const born = performance.now();
+  const born = performance.now() - duration * headStart;
   const phaseOffset = Math.random() * Math.PI * 2;
   let lastGeometryTime = -Infinity;
   denizenField.append(jelly);
@@ -2081,8 +2225,9 @@ const LANTERN_TETHER_ENDS = {
 };
 
 function spawnLanternColony(force = false) {
-  if (!denizenField || document.querySelectorAll(".lantern-colony").length >= 2) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("colony") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .lantern-colony").length >= tunerCap("colony", 2)) return;
+  if (!force && tunerSharedCapBlocked("colony", activeDenizens, 6)) return;
   const colony = document.createElement("div");
   colony.className = "denizen lantern-colony";
   const depth = Math.random();
@@ -2221,8 +2366,9 @@ const WALKER_PUFF_LAYERS = [
 ];
 
 function spawnVentWalker(force = false) {
-  if (!denizenField || document.querySelector(".vent-walker")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("walker") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .vent-walker").length >= tunerCap("walker", 1)) return;
+  if (!force && tunerSharedCapBlocked("walker", activeDenizens, 6)) return;
   const walker = document.createElement("div");
   walker.className = "denizen vent-walker";
   const depth = Math.random();
@@ -2496,8 +2642,9 @@ const GULPER_ANCHORS = {
 };
 
 function spawnGulper(force = false) {
-  if (!denizenField || document.querySelector(".pool-gulper")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("gulper") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-gulper").length >= tunerCap("gulper", 1)) return;
+  if (!force && tunerSharedCapBlocked("gulper", activeDenizens, 6)) return;
   const fish = document.createElement("div");
   fish.className = "denizen pool-gulper";
   const depth = Math.random();
@@ -2633,8 +2780,9 @@ const FAN_ARMS = [
 const FAN_CENTER = { x: 0.5, y: 0.5 };
 
 function spawnFanDancer(force = false) {
-  if (!denizenField || document.querySelector(".pool-fan-dancer")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("fandancer") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-fan-dancer").length >= tunerCap("fandancer", 1)) return;
+  if (!force && tunerSharedCapBlocked("fandancer", activeDenizens, 6)) return;
   const star = document.createElement("div");
   star.className = "denizen pool-fan-dancer";
   const depth = Math.random();
@@ -2713,8 +2861,9 @@ function pickSignalStalk() {
 }
 
 function spawnBarrelDrifter(force = false) {
-  if (!denizenField || document.querySelector(".pool-barrel-drifter")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("barrel") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-barrel-drifter").length >= tunerCap("barrel", 1)) return;
+  if (!force && tunerSharedCapBlocked("barrel", activeDenizens, 6)) return;
   barrelSpawnCount += 1;
   // every other drifter detours down to graze a signal stalk
   const feedStalk = barrelSpawnCount % 2 === 0 ? pickSignalStalk() : null;
@@ -2977,8 +3126,9 @@ const COMB_ANCHORS = {
 };
 
 function spawnCombJelly(force = false) {
-  if (!denizenField || document.querySelector(".pool-comb-jelly")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("combjelly") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-comb-jelly").length >= tunerCap("combjelly", 1)) return;
+  if (!force && tunerSharedCapBlocked("combjelly", activeDenizens, 6)) return;
   const cteno = document.createElement("div");
   cteno.className = "denizen pool-comb-jelly";
   const depth = Math.random();
@@ -3065,8 +3215,9 @@ const FLOATER_SPORES = [
 ];
 
 function spawnSporeFloater(force = false) {
-  if (!denizenField || document.querySelector(".pool-spore-floater")) return;
-  if (!force && activeDenizens >= 6) return;
+  if (!denizenField || tunerPop("sporefloater") <= 0) return;
+  if (document.querySelectorAll("#denizen-field .pool-spore-floater").length >= tunerCap("sporefloater", 1)) return;
+  if (!force && tunerSharedCapBlocked("sporefloater", activeDenizens, 6)) return;
   const seedhead = document.createElement("div");
   seedhead.className = "denizen pool-spore-floater";
   const depth = Math.random();
@@ -3225,6 +3376,7 @@ function guideSporeFloater(seedhead, duration, size) {
     let flowWeight = 0;
 
     nodes.forEach((node) => {
+      if (!node.active) return; // inactive dots hold stale positions
       if (!Number.isFinite(node.previousX) || !Number.isFinite(node.previousY)) return;
       const distance = Math.hypot(node.x - x, node.y - y);
       if (distance > 210) return;
@@ -3248,95 +3400,109 @@ function guideSporeFloater(seedhead, duration, size) {
   update();
 }
 
+// Every scheduler runs through the tuner: frequency divides the wait (0 idles
+// on a short poll so the schedule revives when the slider comes back up).
 function scheduleDenizen(delay = 10000 + Math.random() * 6000) {
   window.setTimeout(() => {
-    spawnCrossingDenizen("pool-amoeba");
+    if (tunerEnabled("amoeba")) spawnCrossingDenizen("pool-amoeba");
     scheduleDenizen();
-  }, delay);
+  }, tunerDelay("amoeba", delay));
 }
 
 function scheduleDotSchool(delay = 8000 + Math.random() * 4000) {
   window.setTimeout(() => {
-    spawnDotSchool();
+    if (tunerEnabled("school")) spawnDotSchool();
     scheduleDotSchool();
-  }, delay);
+  }, tunerDelay("school", delay));
 }
 
 function scheduleJelly(delay = 6000 + Math.random() * 10000) {
   window.setTimeout(() => {
-    spawnJelly();
+    if (tunerEnabled("jelly")) spawnJelly();
     scheduleJelly();
-  }, delay);
+  }, tunerDelay("jelly", delay));
 }
 
 function scheduleRay(delay = 6000 + Math.random() * 6000) {
   window.setTimeout(() => {
-    spawnCrossingDenizen("pool-ray");
+    if (tunerEnabled("ray")) spawnCrossingDenizen("pool-ray");
     scheduleRay();
-  }, delay);
+  }, tunerDelay("ray", delay));
 }
 
 function schedulePulseUrchin(delay = 9000 + Math.random() * 6000) {
   window.setTimeout(() => {
-    spawnPulseUrchin();
+    if (tunerEnabled("urchin")) spawnPulseUrchin();
     schedulePulseUrchin();
-  }, delay);
+  }, tunerDelay("urchin", delay));
 }
 
 function scheduleVake(delay = 8000 + Math.random() * 8000) {
   window.setTimeout(() => {
-    spawnVake();
+    if (tunerEnabled("vake")) spawnVake();
     scheduleVake();
-  }, delay);
+  }, tunerDelay("vake", delay));
 }
 
 function scheduleGulper(delay = 25000 + Math.random() * 15000) {
   window.setTimeout(() => {
-    spawnGulper();
+    if (tunerEnabled("gulper")) spawnGulper();
     scheduleGulper();
-  }, delay);
+  }, tunerDelay("gulper", delay));
 }
 
 function scheduleFanDancer(delay = 22000 + Math.random() * 14000) {
   window.setTimeout(() => {
-    spawnFanDancer();
+    if (tunerEnabled("fandancer")) spawnFanDancer();
     scheduleFanDancer();
-  }, delay);
+  }, tunerDelay("fandancer", delay));
 }
 
 function scheduleBarrelDrifter(delay = 18000 + Math.random() * 14000) {
   window.setTimeout(() => {
-    spawnBarrelDrifter();
+    if (tunerEnabled("barrel")) spawnBarrelDrifter();
     scheduleBarrelDrifter();
-  }, delay);
+  }, tunerDelay("barrel", delay));
 }
 
 function scheduleCombJelly(delay = 24000 + Math.random() * 14000) {
   window.setTimeout(() => {
-    spawnCombJelly();
+    if (tunerEnabled("combjelly")) spawnCombJelly();
     scheduleCombJelly();
-  }, delay);
+  }, tunerDelay("combjelly", delay));
 }
 
 function scheduleSporeFloater(delay = 26000 + Math.random() * 16000) {
   window.setTimeout(() => {
-    spawnSporeFloater();
+    if (tunerEnabled("sporefloater")) spawnSporeFloater();
     scheduleSporeFloater();
-  }, delay);
+  }, tunerDelay("sporefloater", delay));
 }
 
 function scheduleLanternColony(delay = 16000 + Math.random() * 12000) {
   window.setTimeout(() => {
-    spawnLanternColony();
+    if (tunerEnabled("colony")) spawnLanternColony();
     scheduleLanternColony();
-  }, delay);
+  }, tunerDelay("colony", delay));
 }
 
 function scheduleVentWalker(delay = 20000 + Math.random() * 14000) {
   window.setTimeout(() => {
-    spawnVentWalker();
+    if (tunerEnabled("walker")) spawnVentWalker();
     scheduleVentWalker();
-  }, delay);
+  }, tunerDelay("walker", delay));
+}
+
+function seedOpeningResidents() {
+  // The pool loads already inhabited: ambient residents dropped in
+  // mid-passage, as if the scene had been running for minutes.
+  const headStart = () => 0.2 + Math.random() * 0.4;
+  spawnCrossingDenizen("pool-amoeba", headStart());
+  spawnCrossingDenizen("pool-amoeba", headStart());
+  spawnCrossingDenizen("pool-ray", headStart());
+  spawnJelly(headStart());
+  spawnPulseUrchin(true, headStart());
+  spawnDotSchool(true);
 }
 
 function initializeAlienFishSchool() {
@@ -3354,8 +3520,18 @@ function initializeAlienFishSchool() {
   fish.forEach((creature, index) => {
     const profileName = Object.keys(profiles).find((name) => creature.classList.contains(name));
     const profile = profiles[profileName];
+    const tunerKey = profileName === "fish-chain" ? "chainfish" : "tripodfish";
+    // tuner gate: while the creature is disabled the relaunch idles on a poll;
+    // frequency divides the pause between visits
+    const scheduleRelaunch = (pause) => {
+      window.setTimeout(() => {
+        if (tunerEnabled(tunerKey)) launch();
+        else scheduleRelaunch(4000);
+      }, pause);
+    };
     const launch = () => {
-      const groupSize = Math.random() < 0.34 ? 2 + Math.floor(Math.random() * 4) : 1;
+      // population raises the group-appearance odds (0.34 at ×1)
+      const groupSize = Math.random() < Math.min(0.95, 0.34 * tunerPop(tunerKey)) ? 2 + Math.floor(Math.random() * 4) : 1;
       const members = [creature];
       for (let member = 1; member < groupSize; member += 1) {
         const companion = creature.cloneNode(true);
@@ -3482,7 +3658,7 @@ function initializeAlienFishSchool() {
           creature.classList.remove("absorbed");
           members.slice(1).forEach((member) => member.remove());
         }, absorbed ? 420 : 0);
-        window.setTimeout(launch, randomBetween(profile.pause) * 1000);
+        scheduleRelaunch(tunerDelay(tunerKey, randomBetween(profile.pause) * 1000));
       }
       state.absorb = () => finish(true);
 
@@ -3566,7 +3742,7 @@ function initializeAlienFishSchool() {
       }
       requestAnimationFrame(swim);
     };
-    window.setTimeout(launch, 900 + index * 1700 + Math.random() * 1800);
+    scheduleRelaunch(900 + index * 1700 + Math.random() * 1800);
   });
 }
 
@@ -4087,7 +4263,13 @@ function resize() {
   cellMotion.curiosity.y = window.innerHeight * 0.3;
 }
 
-const nodes = Array.from({ length: 330 }, (_, index) => ({
+// The full 2× dot pool is built up front; the tuner's count slider (0.5–2×)
+// just moves the active window, so no Pixi rebuild ever happens live.
+const DOT_BASE_COUNT = 330;
+const DOT_MAX_COUNT = DOT_BASE_COUNT * 2;
+let activeDotCount = Math.round(DOT_BASE_COUNT * tunerClamp(tunerState.dots.count, 0.5, 2));
+const nodes = Array.from({ length: DOT_MAX_COUNT }, (_, index) => ({
+  active: index < activeDotCount,
   orbit: 0.02 + Math.pow(Math.random(), 0.72) * 1.48,
   radius: 1 + Math.random() * 4,
   speed: 0.1 + Math.random() * 0.5,
@@ -4098,9 +4280,16 @@ const nodes = Array.from({ length: 330 }, (_, index) => ({
   flowVelocityX: 0,
   flowVelocityY: 0,
   bias: index % 3,
-  dark: index >= 280 || index % 2 === 0,
+  dark: (index >= 280 && index < DOT_BASE_COUNT) || index % 2 === 0,
   depth: index % 2 !== 0 ? "near" : index % 4 === 0 ? "far" : "middle",
 }));
+
+function setActiveDotCount(multiplier) {
+  activeDotCount = Math.round(DOT_BASE_COUNT * tunerClamp(multiplier, 0.5, 2));
+  nodes.forEach((node, index) => {
+    node.active = index < activeDotCount;
+  });
+}
 
 const filaments = Array.from({ length: 4 }, (_, clusterIndex) => ({
   angle: -0.6 + Math.random() * 1.2,
@@ -4822,8 +5011,18 @@ function drawFilaments(time, drawContext) {
 const NETWORK_PHYSICS_STEP = 1000 / 30;
 let lastNetworkTime = 0;
 
+// Accumulated orbit clock: the tuner's swirl-speed multiplier scales how fast
+// this advances, so speed changes are continuous (orbits derive phase from
+// this clock, not from wall time — a raw multiplier on `time` would teleport
+// every dot). Jerry's wake physics stay on real time by design.
+let dotClock = 0;
+let dotClockLast = null;
+
 function updateNetworkPhysics(time) {
   lastNetworkTime = time;
+  if (dotClockLast === null) dotClock = time;
+  else dotClock += (time - dotClockLast) * tunerClamp(tunerState.dots.speed, 0.5, 2);
+  dotClockLast = time;
   const centerX = window.innerWidth * 0.54;
   const centerY = window.innerHeight * 0.52;
   const headingLength = Math.max(
@@ -4835,6 +5034,7 @@ function updateNetworkPhysics(time) {
   const influenceRadius = 115 + cellMotion.pulse.scale * 70;
 
   nodes.forEach((node) => {
+    if (!node.active) return;
     const priorDistance = Number.isFinite(node.x)
       ? Math.hypot(node.x - cellMotion.position.x, node.y - cellMotion.position.y)
       : Infinity;
@@ -4850,7 +5050,7 @@ function updateNetworkPhysics(time) {
     const damping = Math.exp(-2.4 * deltaSeconds);
     node.lastPhysicsTime = time;
     node.lastPhysicsStep = activeStep;
-    const theta = node.theta + time * 0.000175 * node.speed;
+    const theta = node.theta + dotClock * 0.000175 * node.speed;
     const radiusX = window.innerWidth * (0.03 + node.orbit * 0.43);
     const radiusY = window.innerHeight * (0.025 + node.orbit * 0.35);
     const wobbleX = Math.cos(theta * 2.1) * node.wobble;
@@ -4903,6 +5103,11 @@ function updateNetworkPhysics(time) {
 function drawNetwork(time) {
   updateNetworkPhysics(time);
   nodes.forEach((node) => {
+    if (!node.active) {
+      if (node.pixiParticle) node.pixiParticle.alpha = 0;
+      if (node.pixiHalo) node.pixiHalo.alpha = 0;
+      return;
+    }
     const interpolation = Math.max(0, Math.min(1, (time - node.lastPhysicsTime) / node.lastPhysicsStep));
     const x = lerp(node.previousX ?? node.x, node.x, interpolation);
     const y = lerp(node.previousY ?? node.y, node.y, interpolation);
@@ -5052,28 +5257,566 @@ emitOpeningTriad();
 scheduleEnergyBall();
 schedulePaletteShift();
 scheduleAmbientEvent();
-// Opening policy: every recurring creature makes one appearance inside the
-// first 30 seconds (leviathan excepted), landing at a random moment rather
-// than a scripted one. First spawns force past the concurrency skip where
-// they can; afterwards each creature's normal schedule takes over.
-const introduce = (firstSpawn, schedule, windowMs) => {
-  window.setTimeout(() => {
-    firstSpawn();
-    schedule();
-  }, Math.random() * windowMs);
-};
-introduce(() => spawnCrossingDenizen("pool-amoeba"), scheduleDenizen, 16000);
-introduce(() => spawnDotSchool(), scheduleDotSchool, 12000);
-introduce(() => spawnJelly(), scheduleJelly, 16000);
-introduce(() => spawnCrossingDenizen("pool-ray"), scheduleRay, 12000);
-introduce(() => spawnPulseUrchin(true), schedulePulseUrchin, 15000);
-introduce(() => spawnVake(), scheduleVake, 26000);
-introduce(() => spawnLanternColony(true), scheduleLanternColony, 26000);
-introduce(() => spawnVentWalker(true), scheduleVentWalker, 26000);
-introduce(() => spawnGulper(true), scheduleGulper, 26000);
-introduce(() => spawnFanDancer(true), scheduleFanDancer, 26000);
-introduce(() => spawnBarrelDrifter(true), scheduleBarrelDrifter, 26000);
-introduce(() => spawnCombJelly(true), scheduleCombJelly, 26000);
-introduce(() => spawnSporeFloater(true), scheduleSporeFloater, 26000);
+// --- Pool tuner: panel -------------------------------------------------------
+// Toggle button bottom-left; bottom sheet lists every denizen with thumbnail,
+// notes, and (except Jerry and the leviathan) frequency + population sliders,
+// plus global multipliers and the dot-field controls. Built lazily on first
+// open. All DOM is created here — index.html stays untouched.
+
+const TUNER_ROSTER = [
+  { key: "jerry", name: "Jerry", locked: true,
+    attributes: "The pool's radiant cell — drops energy orbs, zaps vakes, tends the floor",
+    movement: "Free swim with curiosity pulls; panic dive when the leviathan rises",
+    schedule: "Always present" },
+  { key: "leviathan", name: "Leviathan", locked: true,
+    attributes: "Abyssal silhouette at whole-pool scale",
+    movement: "Vertical rise, hover drift, slow descent",
+    schedule: "First rise 2–4 min, returns 2–4 min after leaving; 60 s passages" },
+  { key: "amoeba", name: "Amoebas",
+    attributes: "Translucent blobs, seven forms, drifting nuclei",
+    movement: "Slow crossings, steer shy of Jerry",
+    schedule: "Every 10–16 s, max 5" },
+  { key: "jelly", name: "Jellyfish",
+    attributes: "Moon, nettle, and box models, cycling in order",
+    movement: "Rises from the floor, pulsing bell, tentacle sway",
+    schedule: "Every 6–16 s" },
+  { key: "ray", name: "Rays",
+    attributes: "Depth-scaled silhouettes",
+    movement: "Eight-beat undulating crossing",
+    schedule: "Every 6–12 s" },
+  { key: "urchin", name: "Pulse urchin",
+    attributes: "Sixteen glowing spines",
+    movement: "Guided ellipse riding the dot current",
+    schedule: "Every 9–15 s, max 3, 50–72 s visits" },
+  { key: "school", name: "Dot schools",
+    attributes: "8–30 fish; Jerry can absorb a school",
+    movement: "Flocking with turns, regroups, and evasion",
+    schedule: "Every 8–12 s, max 3 schools" },
+  { key: "chainfish", name: "Three-diamond fish",
+    attributes: "Three linked diamonds; 34% chance of a 2–5 group",
+    movement: "Fast lateral dashes with reversals",
+    schedule: "Relaunches 4–9 s after each 25–46 s visit" },
+  { key: "tripodfish", name: "Three-tentacled ball fish",
+    attributes: "Ball body trailing three tentacles; Jerry prey",
+    movement: "Slow wander with depth bobbing",
+    schedule: "Relaunches 1–4 s after each 30–52 s visit" },
+  { key: "vake", name: "Vake",
+    attributes: "Orb thief; zapped inside 234 px of Jerry (1-in-5 miss)",
+    movement: "3–5 s dart pace, orb hunts, banks around Jerry's buffer",
+    schedule: "Every 8–16 s, max 2" },
+  { key: "colony", name: "Sulfur lantern colony",
+    attributes: "Twelve lanterns on a tether",
+    movement: "Mid-water head-first drift with sine bob",
+    schedule: "Every 16–28 s, max 2, 46–68 s visits" },
+  { key: "walker", name: "Vent walker",
+    attributes: "Tripod strider venting smoke",
+    movement: "Slow seafloor walk",
+    schedule: "Every 20–34 s, max 1, 52–78 s visits" },
+  { key: "gulper", name: "Lure gulper",
+    attributes: "Anglerfish — jaw snap every 6–11 s, bobbing lure",
+    movement: "Cruising crossing with tail beat",
+    schedule: "Every 25–40 s, max 1, 30–44 s visits" },
+  { key: "fandancer", name: "Fan dancer",
+    attributes: "Feather-star with ten feathered arms",
+    movement: "Metachronal arm wave, slow spin and drift",
+    schedule: "Every 22–36 s, max 1, 58–82 s visits" },
+  { key: "combjelly", name: "Comb jelly",
+    attributes: "Iridescent comb rows",
+    movement: "Slow drifting crossing",
+    schedule: "Every 24–38 s, max 1, 55–80 s visits" },
+  { key: "sporefloater", name: "Spore floater",
+    attributes: "Sheds sinking glow-spores (max 6 aloft)",
+    movement: "Loose ellipse, stall-and-reverse, rides the current",
+    schedule: "Every 26–42 s, max 1, 62–90 s visits" },
+  { key: "barrel", name: "Barrel drifter",
+    attributes: "Jet salp; every other one grazes a signal stalk",
+    movement: "Contraction surges with cyan exhaust",
+    schedule: "Every 18–32 s, max 1, 28–54 s crossings" },
+  { key: "polyp", name: "Polyps", permanent: true,
+    attributes: "Three species anchored to the floor",
+    movement: "Sway in place",
+    schedule: "28 permanent; each flares every 9–47 s" },
+  { key: "shrimp", name: "Alien shrimp", permanent: true, noFreq: true,
+    attributes: "Floor skitterers",
+    movement: "Continuous scuttling",
+    schedule: "11 permanent" },
+  { key: "coral", name: "Brain coral", permanent: true, noFreq: true,
+    attributes: "Brightens within 260 px of Jerry, 5 s hold, 20 s fade",
+    movement: "Stationary",
+    schedule: "3 permanent" },
+  { key: "plant", name: "Seafloor plants", permanent: true, noFreq: true,
+    attributes: "Includes 5 signal stalks that feed barrel drifters",
+    movement: "Current sway",
+    schedule: "23 permanent" },
+];
+
+function tunerThumbFor(key) {
+  const box = document.createElement("span");
+  box.className = "tuner-thumb";
+  const make = (tag, className, cssText) => {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (cssText) el.style.cssText = cssText;
+    box.append(el);
+    return el;
+  };
+  const img = (src, cssText) => {
+    const el = make("img", "tuner-thumb-img", cssText);
+    el.src = src;
+    el.alt = "";
+    return el;
+  };
+  // mini layer rig: same fractional placement the live rigs use
+  const rig = (folder, defs) => {
+    const frame = make("span", "tuner-thumb-rig");
+    defs.forEach(([name, def]) => {
+      const layer = document.createElement("img");
+      layer.src = `./${folder}/${name}.png`;
+      layer.alt = "";
+      layer.style.cssText = `position:absolute;left:${(def.x * 100).toFixed(1)}%;top:${(def.y * 100).toFixed(1)}%;width:${(def.w * 100).toFixed(1)}%;`;
+      frame.append(layer);
+    });
+    return frame;
+  };
+  switch (key) {
+    case "jerry": {
+      const source = document.getElementById("jerry");
+      if (!source) break;
+      const clone = source.cloneNode(true);
+      clone.removeAttribute("id");
+      // .orb's CSS width is 42% of the orbital wrapper, so inside the thumb
+      // it collapses — give the clone an explicit box and drop the live
+      // depth filter and pulse transform so he reads crisp and glowing
+      clone.style.position = "relative";
+      clone.style.left = "auto";
+      clone.style.top = "auto";
+      clone.style.width = "42px";
+      clone.style.height = "42px";
+      clone.style.transform = "none";
+      clone.style.filter = "none";
+      box.append(clone);
+      break;
+    }
+    case "leviathan":
+      img("./leviathan-soft.png", "filter:brightness(2.4);");
+      break;
+    case "amoeba": {
+      const blob = make("i", "denizen pool-amoeba blob-form-b", "width:34px;height:26px;");
+      const nucleus = document.createElement("b");
+      nucleus.className = "blob-nucleus";
+      nucleus.style.cssText = "left:50%;top:50%;width:32%;height:34%;";
+      blob.append(nucleus);
+      break;
+    }
+    case "jelly": {
+      // static moon-jelly frame (bell at rest + six tentacles)
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("class", "pool-jelly jelly-moon");
+      svg.setAttribute("viewBox", "0 0 118 225");
+      svg.setAttribute("width", "23");
+      svg.setAttribute("height", "44");
+      const bell = document.createElementNS(NS, "path");
+      bell.setAttribute("class", "jelly-bell");
+      bell.setAttribute("stroke-width", "1.25");
+      bell.setAttribute("d", "M 14 60.9 C 16.7 41.6, 34.3 33.6, 59 33.6 C 83.8 33.6, 101.3 41.6, 104 60.9 Q 81.5 67.9, 59 61.9 Q 36.5 67.9, 14 60.9 Z");
+      svg.append(bell);
+      for (let index = 0; index < 6; index += 1) {
+        const tentacle = document.createElementNS(NS, "path");
+        tentacle.setAttribute("class", "jelly-tentacle");
+        tentacle.setAttribute("stroke-width", index % 2 ? "0.75" : "1.05");
+        const rootX = 26 + index * 13;
+        const bow = index % 2 ? 7 : -6;
+        tentacle.setAttribute("d", `M ${rootX} 63 q ${bow} 45 ${bow * 0.4} 88`);
+        svg.append(tentacle);
+      }
+      box.append(svg);
+      break;
+    }
+    case "ray":
+      make("i", "denizen pool-ray", "width:44px;height:14px;");
+      break;
+    case "urchin": {
+      const urchin = make("i", "denizen pool-urchin", "width:30px;height:30px;--urchin-rgb:0, 172, 168;");
+      for (let index = 0; index < 16; index += 1) {
+        const spine = document.createElement("b");
+        spine.style.setProperty("--spine-angle", `${index * 22.5}deg`);
+        spine.style.setProperty("--spine-length", `${44 + (index % 3) * 9}%`);
+        spine.style.setProperty("--spine-delay", `${(index % 4) * 45}ms`);
+        urchin.append(spine);
+      }
+      break;
+    }
+    case "school": {
+      // --flock-color must be a space-separated RGB triplet — the fish CSS
+      // wraps it in rgb(); a hex value renders nothing
+      const school = make("span", "dot-school", "width:44px;height:28px;--flock-color:143 255 225;");
+      for (let index = 0; index < 12; index += 1) {
+        const fish = document.createElement("b");
+        fish.style.transform = `translate3d(${4 + Math.random() * 36}px,${3 + Math.random() * 21}px,0) rotate(${-20 + Math.random() * 40}deg)`;
+        school.append(fish);
+      }
+      break;
+    }
+    case "chainfish":
+    case "tripodfish": {
+      const source = document.querySelector(key === "chainfish" ? ".fish-chain" : ".fish-tripod");
+      if (!source) break;
+      const clone = source.cloneNode(true);
+      clone.removeAttribute("style");
+      clone.querySelectorAll("[style]").forEach((part) => part.removeAttribute("style"));
+      clone.setAttribute("width", "44");
+      clone.setAttribute("height", "30");
+      clone.style.cssText = "position:relative;opacity:1;";
+      box.append(clone);
+      break;
+    }
+    case "vake":
+      make("i", "denizen pool-vake", "width:44px;height:14px;filter:brightness(1.8);");
+      break;
+    case "colony":
+      img("./lantern-colony.png");
+      break;
+    case "walker":
+      img("./vent-walker.png");
+      break;
+    case "gulper":
+      rig("gulper", [
+        ["fin-tail", GULPER_LAYERS.finTail],
+        ["fin-pect", GULPER_LAYERS.finPect],
+        ["jaw", GULPER_LAYERS.jaw],
+        ["lure", GULPER_LAYERS.lure],
+        ["body", GULPER_LAYERS.body],
+      ]);
+      break;
+    case "fandancer":
+      rig("fan-dancer", FAN_ARMS.map((def, index) => [`arm-${index}`, def]).concat([["disc", FAN_DISC]]));
+      break;
+    case "combjelly":
+      rig("comb-jelly", [
+        ["tent-0", COMB_LAYERS.tent0],
+        ["tent-1", COMB_LAYERS.tent1],
+        ["body", COMB_LAYERS.body],
+        ...COMB_LAYERS.rows.map((def, index) => [`row-${index}`, def]),
+      ]);
+      break;
+    case "sporefloater":
+      rig("spore-floater", [
+        ["shell-far", FLOATER_LAYERS.shellFar],
+        ["core", FLOATER_LAYERS.core],
+        ["shell-mid", FLOATER_LAYERS.shellMid],
+        ["shell-near", FLOATER_LAYERS.shellNear],
+      ]);
+      break;
+    case "barrel":
+      rig("barrel-drifter", [
+        ["nucleus", BARREL_LAYERS.nucleus],
+        ["shell", BARREL_LAYERS.shell],
+      ]);
+      break;
+    case "polyp":
+      make("i", "pool-polyp species-b", "width:11px;height:38px;");
+      break;
+    case "shrimp": {
+      const shrimp = make("i", "alien-shrimp", "width:26px;height:11px;--shrimp-delay:0s;--shrimp-distance:0px;--shrimp-mid:0px;--shrimp-back:0px;");
+      shrimp.innerHTML = "<b></b><b></b><b></b>";
+      break;
+    }
+    case "coral":
+      make("i", "brain-coral coral-1", "--coral-size:34px;--coral-height:21px;");
+      break;
+    case "plant": {
+      const plant = make("i", "seafloor-plant kelp", "--plant-height:40px;--plant-delay:0s;");
+      plant.innerHTML = "<b></b><b></b><b></b>";
+      break;
+    }
+    default:
+      break;
+  }
+  return box;
+}
+
+// Delayed hover zoom: rest on a thumbnail for 100 ms and a 6× copy floats
+// beside it (flips to the left edge when the viewport runs out of room).
+let tunerZoomEl = null;
+let tunerZoomTimer = 0;
+
+function hideTunerZoom() {
+  window.clearTimeout(tunerZoomTimer);
+  tunerZoomTimer = 0;
+  if (tunerZoomEl) {
+    tunerZoomEl.remove();
+    tunerZoomEl = null;
+  }
+}
+
+function attachTunerZoom(thumb, key) {
+  thumb.addEventListener("mouseenter", () => {
+    window.clearTimeout(tunerZoomTimer);
+    tunerZoomTimer = window.setTimeout(() => {
+      if (tunerZoomEl) tunerZoomEl.remove();
+      const zoom = document.createElement("div");
+      zoom.className = "tuner-thumb-zoom";
+      zoom.append(tunerThumbFor(key));
+      const rect = thumb.getBoundingClientRect();
+      const zoomWidth = 336;
+      const zoomHeight = 264;
+      let left = rect.right + 12;
+      if (left + zoomWidth > window.innerWidth - 8) left = rect.left - zoomWidth - 12;
+      const top = Math.max(8, Math.min(window.innerHeight - zoomHeight - 8, rect.top + rect.height / 2 - zoomHeight / 2));
+      zoom.style.left = `${left.toFixed(0)}px`;
+      zoom.style.top = `${top.toFixed(0)}px`;
+      document.body.append(zoom);
+      tunerZoomEl = zoom;
+    }, 100);
+  });
+  thumb.addEventListener("mouseleave", hideTunerZoom);
+}
+
+function tunerSliderCell({ label, min, max, step, value, onInput, onCommit }) {
+  const cell = document.createElement("label");
+  cell.className = "tuner-slider";
+  const name = document.createElement("span");
+  name.className = "tuner-slider-label";
+  name.textContent = label;
+  const input = document.createElement("input");
+  input.type = "range";
+  input.min = String(min);
+  input.max = String(max);
+  input.step = String(step);
+  input.value = String(value);
+  const readout = document.createElement("output");
+  readout.textContent = `×${Number(value).toFixed(2)}`;
+  input.addEventListener("input", () => {
+    const next = Number(input.value);
+    readout.textContent = `×${next.toFixed(2)}`;
+    onInput(next);
+    tunerSave();
+  });
+  if (onCommit) input.addEventListener("change", () => onCommit(Number(input.value)));
+  cell.append(name, input, readout);
+  cell.tunerInput = input;
+  cell.tunerReadout = readout;
+  return cell;
+}
+
+let tunerPanel = null;
+
+function buildTunerPanel() {
+  if (tunerPanel) return tunerPanel;
+  tunerPanel = document.createElement("section");
+  tunerPanel.className = "pool-tuner";
+  tunerPanel.hidden = true;
+  tunerPanel.setAttribute("aria-label", "Jerry's Pool tuner");
+
+  const header = document.createElement("header");
+  header.className = "tuner-header";
+  const title = document.createElement("strong");
+  title.textContent = "Pool tuner";
+  const note = document.createElement("span");
+  note.className = "tuner-note";
+  note.textContent = "Changes hit new spawns; creatures already on screen finish their visit. Settings persist in this browser.";
+  const resetButton = document.createElement("button");
+  resetButton.type = "button";
+  resetButton.className = "tuner-button";
+  resetButton.textContent = "Reset all";
+
+  // text-size gear — the map room's stepper mechanic (scripts/text-size.js):
+  // ⚙ opens a −/+ popover, 5% per step, range −1..+5, remembered with the
+  // rest of the tuner state; applies as zoom on the whole panel
+  if (!tunerState.ui) tunerState.ui = { size: 0 };
+  tunerState.ui.size = tunerNumber(tunerState.ui.size, 0);
+  const sizeWrap = document.createElement("span");
+  sizeWrap.className = "tuner-sizewrap";
+  const sizeGear = document.createElement("button");
+  sizeGear.type = "button";
+  sizeGear.className = "tuner-button tuner-size-gear";
+  sizeGear.textContent = "⚙";
+  sizeGear.title = "text size";
+  const sizePop = document.createElement("span");
+  sizePop.className = "tuner-sizepop";
+  const sizeDown = document.createElement("button");
+  sizeDown.type = "button";
+  sizeDown.className = "tuner-button";
+  sizeDown.textContent = "−";
+  sizeDown.title = "smaller";
+  const sizeValue = document.createElement("span");
+  sizeValue.className = "tuner-sizeval";
+  const sizeUp = document.createElement("button");
+  sizeUp.type = "button";
+  sizeUp.className = "tuner-button";
+  sizeUp.textContent = "+";
+  sizeUp.title = "bigger";
+  sizePop.append(sizeDown, sizeValue, sizeUp);
+  sizeWrap.append(sizeGear, sizePop);
+  const applyPanelSize = () => {
+    const step = Math.round(tunerClamp(tunerState.ui.size, -1, 5));
+    tunerState.ui.size = step;
+    tunerPanel.style.zoom = 1 + step * 0.05;
+    sizeValue.textContent = (step > 0 ? "+" : "") + step;
+    sizeDown.disabled = step <= -1;
+    sizeUp.disabled = step >= 5;
+  };
+  sizeGear.addEventListener("click", () => sizePop.classList.toggle("show"));
+  sizeDown.addEventListener("click", () => { tunerState.ui.size -= 1; applyPanelSize(); tunerSave(); });
+  sizeUp.addEventListener("click", () => { tunerState.ui.size += 1; applyPanelSize(); tunerSave(); });
+  document.addEventListener("click", (event) => {
+    if (sizePop.classList.contains("show") && !sizeWrap.contains(event.target)) sizePop.classList.remove("show");
+  });
+  applyPanelSize();
+
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "tuner-close";
+  closeButton.textContent = "✕";
+  closeButton.setAttribute("aria-label", "Close pool config");
+  closeButton.addEventListener("click", () => setTunerPanelOpen(false));
+  header.append(title, note, sizeWrap, resetButton, closeButton);
+
+  const globals = document.createElement("div");
+  globals.className = "tuner-globals";
+  const globalCells = {
+    freq: tunerSliderCell({
+      label: "Global frequency", min: 0, max: 5, step: 0.05, value: tunerState.global.freq,
+      onInput: (value) => { tunerState.global.freq = value; },
+    }),
+    pop: tunerSliderCell({
+      label: "Global population", min: 0, max: 5, step: 0.05, value: tunerState.global.pop,
+      onInput: (value) => { tunerState.global.pop = value; },
+      onCommit: () => rebuildPermanentDenizens(),
+    }),
+    speed: tunerSliderCell({
+      label: "Pool swirl speed", min: 0.5, max: 2, step: 0.05, value: tunerState.dots.speed,
+      onInput: (value) => { tunerState.dots.speed = value; },
+    }),
+    count: tunerSliderCell({
+      label: "Pool dot count", min: 0.5, max: 2, step: 0.05, value: tunerState.dots.count,
+      onInput: (value) => { tunerState.dots.count = value; setActiveDotCount(value); },
+    }),
+  };
+  globals.append(globalCells.freq, globalCells.pop, globalCells.speed, globalCells.count);
+
+  const rows = document.createElement("div");
+  rows.className = "tuner-rows";
+  const rowCells = [];
+  TUNER_ROSTER.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = `tuner-row${entry.locked ? " tuner-row-locked" : ""}`;
+    const thumb = tunerThumbFor(entry.key);
+    attachTunerZoom(thumb, entry.key);
+    row.append(thumb);
+
+    const info = document.createElement("div");
+    info.className = "tuner-info";
+    const name = document.createElement("strong");
+    name.textContent = entry.name;
+    const schedule = document.createElement("span");
+    schedule.className = "tuner-schedule";
+    schedule.textContent = entry.schedule;
+    const meta = document.createElement("span");
+    meta.className = "tuner-meta";
+    meta.textContent = `${entry.attributes}. ${entry.movement}.`;
+    info.append(name, schedule, meta);
+    row.append(info);
+
+    const controls = document.createElement("div");
+    controls.className = "tuner-controls";
+    if (entry.locked) {
+      const badge = document.createElement("span");
+      badge.className = "tuner-locked-badge";
+      badge.textContent = "not tunable";
+      controls.append(badge);
+    } else {
+      const config = tunerCreature(entry.key);
+      if (!entry.noFreq) {
+        const freqCell = tunerSliderCell({
+          label: "frequency", min: 0, max: 5, step: 0.05, value: config.freq,
+          onInput: (value) => { config.freq = value; },
+        });
+        controls.append(freqCell);
+        rowCells.push({ key: entry.key, field: "freq", cell: freqCell });
+      }
+      const popCell = tunerSliderCell({
+        label: "population", min: 0, max: 5, step: 0.05, value: config.pop,
+        onInput: (value) => { config.pop = value; },
+        onCommit: entry.permanent ? () => rebuildPermanentDenizens() : undefined,
+      });
+      controls.append(popCell);
+      rowCells.push({ key: entry.key, field: "pop", cell: popCell });
+    }
+    row.append(controls);
+    rows.append(row);
+  });
+
+  resetButton.addEventListener("click", () => {
+    tunerState.global.freq = 1;
+    tunerState.global.pop = 1;
+    tunerState.dots.speed = 1;
+    tunerState.dots.count = 1;
+    Object.values(tunerState.creatures).forEach((config) => {
+      config.freq = 1;
+      config.pop = 1;
+    });
+    Object.values(globalCells).forEach((cell) => {
+      cell.tunerInput.value = "1";
+      cell.tunerReadout.textContent = "×1.00";
+    });
+    rowCells.forEach(({ cell }) => {
+      cell.tunerInput.value = "1";
+      cell.tunerReadout.textContent = "×1.00";
+    });
+    setActiveDotCount(1);
+    rebuildPermanentDenizens();
+    tunerSave();
+  });
+
+  rows.addEventListener("scroll", hideTunerZoom);
+  tunerPanel.append(header, globals, rows);
+  document.body.append(tunerPanel);
+  return tunerPanel;
+}
+
+function setTunerPanelOpen(open) {
+  const panel = buildTunerPanel();
+  panel.hidden = !open;
+  tunerToggle.setAttribute("aria-expanded", String(open));
+  if (!open) hideTunerZoom();
+}
+
+const tunerToggle = document.createElement("button");
+tunerToggle.type = "button";
+tunerToggle.className = "pool-tuner-toggle";
+tunerToggle.textContent = "⚙ pool config";
+tunerToggle.setAttribute("aria-expanded", "false");
+tunerToggle.addEventListener("click", () => {
+  setTunerPanelOpen(tunerPanel ? tunerPanel.hidden : true);
+});
+document.body.append(tunerToggle);
+
+// click-away closes the panel (the toggle handles its own clicks)
+document.addEventListener("pointerdown", (event) => {
+  if (!tunerPanel || tunerPanel.hidden) return;
+  if (tunerPanel.contains(event.target) || tunerToggle.contains(event.target)) return;
+  setTunerPanelOpen(false);
+});
+
+// Opening policy: the pool loads already inhabited — seedOpeningResidents
+// places a handful of the ambient cast mid-passage at load. No forced first
+// appearances beyond that; every creature runs its regular schedule from the
+// start, and the leviathan keeps its 2–4 minute entrance.
+seedOpeningResidents();
+scheduleDenizen();
+scheduleDotSchool();
+scheduleJelly();
+scheduleRay();
+schedulePulseUrchin();
+scheduleVake();
+scheduleLanternColony();
+scheduleVentWalker();
+scheduleGulper();
+scheduleFanDancer();
+scheduleBarrelDrifter();
+scheduleCombJelly();
+scheduleSporeFloater();
 initializeAlienFishSchool();
 window.setTimeout(() => spawnAbyssalPredator(), 120000 + Math.random() * 120000);

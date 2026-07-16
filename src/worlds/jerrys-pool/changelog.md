@@ -3,6 +3,93 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-15 — claude-fable (pool tuner panel, per James: "go!")
+
+- New in-world control panel (⚙ bottom-left toggle, bottom sheet, all DOM built by site.js —
+  index.html untouched). Follows the Chrome Rift tuner pattern: sliders + localStorage
+  (`jerrys-pool-tuner-v1`), lazily built on first open.
+- Full denizen roster (21 rows), each with a live thumbnail, name, attributes, movement, and
+  schedule. Thumbnails reuse the real assets: class replicas for CSS creatures, the actual
+  layer manifests for the Blender sprites, a scaled clone for Jerry, `leviathan-soft.png` for
+  the leviathan. Jerry and leviathan rows are display-only ("not tunable").
+- Per-creature frequency and population sliders, 0–5× (freq divides spawn delays, 0 idles the
+  scheduler on a 4 s poll; population scales each concurrency cap, 0 blocks spawning — live
+  creatures always finish their visit). Global frequency/population multipliers stack
+  multiplicatively with individual ones. The shared 6/8 active-denizen ceilings scale with
+  global population; creatures boosted above ×1 bypass the shared ceiling so their slider is
+  always potent. Permanent denizens (polyps, shrimp, coral, plants) rebuild live on slider
+  release; polyps also expose flare frequency. The alien fish pair scale their relaunch pause
+  (freq) and group-appearance odds (pop).
+- Dot-field controls: swirl speed and dot count, each 0.5–2×. Count works on a pre-built 660-
+  node pool with an active window — no Pixi rebuild ever happens live. Speed drives a new
+  accumulated orbit clock (`dotClock`) so changes are continuous instead of teleporting every
+  dot; Jerry's wake physics deliberately stay on real time.
+- Safety rework so panel replicas can't leak into the simulation: every runtime creature query
+  (spawn caps, jelly prey search, leviathan/vake/urchin counts) is now scoped to
+  `#denizen-field`; polyp/flora queries scoped to their fields. Stored tuner values are
+  NaN-sanitized before they touch caps or the dot field.
+- Rubric header now notes all its numbers are ×1 baselines for the tuner.
+- Rev 2 (same session, James: "this is so killer"): toggle moved to bottom-right, doubled in
+  size, relabeled "⚙ pool config" (panel follows, right-anchored above the button); panel got
+  a ✕ close button and click-away auto-close; thumbnails grew a delayed hover zoom — rest on
+  one for 250 ms and a 3× copy floats beside it (flips left when the viewport runs out,
+  hides on scroll/close). Rev 3: zoom bumped to 6× with a 100 ms delay. Rev 4: panel header
+  got the map room's text-size gear (⚙ → −/+ stepper, 5%/step, −1..+5, applies as panel zoom,
+  persists with tuner state). Rev 5: fixed the panel refusing to close — `.pool-tuner`'s
+  `display:flex` outranked the UA `[hidden]` rule, so every close path (✕, click-away, toggle)
+  set `hidden` to no visual effect; added a `.pool-tuner[hidden] { display:none }` rule. Idle
+  toggle restyled: words stay bright, chrome stays dim (whole-button opacity fade removed).
+
+## 2026-07-15 — claude-fable (leviathan transparency fix, per James)
+
+- James: during rise and descent the leviathan sometimes went partially transparent — dots
+  visible straight through the body. Diagnosis: `.abyssal-predator` carried
+  `filter: blur(5px) brightness(0.45) contrast(1.15) saturate(0.65)` while its 60 s WAAPI
+  keyframes animate scale (0.82→1.0 rising, 1.0→0.84 descending). A filtered 115vw layer
+  re-rasters every frame the scale changes, and Chromium composites not-yet-rastered tiles
+  as transparency. During the mid-arc hover, scale is static, the raster is cached — which
+  is why the body only ghosted "partially up / partially going down". The PNG itself is
+  fully opaque (body-center alpha 254–255), so the asset was never the problem.
+- Fix: the whole filter chain is baked into a new `leviathan-soft.png`
+  (`tmp/jerrys-pool-denizens/bake_leviathan_filter.py`: premultiplied Gaussian σ2.32 — 5
+  screen px at the 1024px→115vw display scale — then brightness/contrast/saturate in CSS
+  order on sRGB). The CSS filter is gone; the scale animation now moves a plain cached
+  texture on the GPU. Bonus: no more 5px blur over a giant layer every frame.
+- `leviathan.png` stays as the untouched source for regeneration.
+
+## 2026-07-15 — claude-fable (vake survival buffs, per James)
+
+- James: "I dont want the vake to succeed every time but I also dont want jerry to succesfully
+  kill every one of them." Four changes tilt the fight:
+- Jerry now misses 1 zap in 5 (`VAKE_ZAP_MISS_CHANCE = 0.2`): the bolt lands visibly beside
+  the vake (perpendicular offset ~50–120 px), the vake drops its hunt and flees straight away
+  from Jerry for 1.8 s, and Jerry re-arms for 2.6–4 s before he can fire at it again. Each
+  new shot re-rolls, so lingerers still die and runners escape.
+- Zap reach trimmed 10%: 260 → 234 px from Jerry's edge (`VAKE_ZAP_RANGE`).
+- New 320 px buffer zone (`VAKE_BUFFER_RANGE`): every vake, mid-hunt included, bends toward
+  pure flight as it nears Jerry's reach (full flight just outside zap range) at a new sharpest
+  turn rate (`maxTurnEvade` 0.009 rad/ms). Orbs drifting close to Jerry are effectively
+  guarded until they float clear — momentum can still carry a committed vake into the kill zone.
+- Fed exit lean strengthened: max weight 0.65 → 0.8 within the unchanged 430 px range.
+- Rubric vake row rewritten; also swept the rubric rows of stale opening-wave clauses
+  ("opening appearance…", "(opening spawn bypasses the limit)") missed in the seeded-opening
+  pass. Cache tag `?v=vake-buff-1`.
+
+## 2026-07-15 — claude-fable (seeded opening population, per James)
+
+- The pool now loads already inhabited (James: creatures "would all kinda be everywhere, all
+  the time" — watching it populate from empty read as artificial). `seedOpeningResidents()`
+  drops six ambient residents in mid-passage at page load: two amoebas, a ray, a jellyfish,
+  and a pulse urchin at 20–60% of their journeys, plus a dot school placed mid-pool
+  (22–78% of viewport width) swimming toward an edge.
+- Head-start mechanics: WAAPI crossers advance `animation.currentTime`; the jelly and urchin
+  backdate their rAF clocks (`born` / `startedAt`). The urchin's `previousFrameAt` now starts
+  at real now so the first frame's dot-current ease isn't distorted by the backdate.
+- The 30-second forced-introduction wave (`introduce()`, 2026-07-12) is gone. Every recurring
+  creature now runs its regular schedule from load; concurrency-cap skips apply as usual.
+  Leviathan entrance (2–4 min) unchanged. Rubric opening section rewritten to match.
+- Cache tag `?v=seeded-open-1`.
+
 ## 2026-07-15 — claude-fable (tuning pass, per James)
 
 - Jerry's orb economy nudged: drop cadence 3.75–9.58 s → 3.3–8.5 s, orb travel speed away from
