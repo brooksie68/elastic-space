@@ -29,7 +29,11 @@
     { kind: "mandala", k: 12, rings: 5, label: "✶12" },
   ];
   const ROMAN = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ"];
-  const freqOf = (m, n) => 44 * Math.sqrt(m * m + n * n); // an octave down
+  // Station pitch walks two full octaves (A3 → A5), tuned for play rather than
+  // plate physics — on the triad the rim rings do–mi–sol–do–mi–sol–do, and it
+  // never dips below the register the plate sings in. The figures still come
+  // from the honest mode pairs above.
+  const stationFreq = (i) => 220 * Math.pow(2, (i * 2) / (MODES.length - 1));
 
   // Every visit — and every Level the Sand — rolls fresh rotations and ring
   // spacings, so the same station never draws exactly the same figure twice.
@@ -294,7 +298,8 @@
     reverb: 0.3,
     delay: 0.12,
     strike: 0.6,
-    bend: 0, // -1 half step (q) … +1 half step (e)
+    bend: 0, // -1 half step (x) … +1 half step (c)
+    vibratoHeld: false, // v key held — the vibrato lever
     station: 8,        // the committed rim station (pitch + figure)
     keyStation: null,  // station held via the number-key manual
     bowLevel: 0,       // sustained bow pressure, 0..1
@@ -309,7 +314,7 @@
     ctx: null, master: null, bus: null,
     saws: [], sub: null, voiceFilter: null, voiceGain: null,
     bowNoiseGain: null, bowFilter: null, hissGain: null,
-    revGain: null, delayWet: null,
+    revGain: null, delayWet: null, vibGain: null,
     ready: false,
   };
 
@@ -346,7 +351,7 @@
       return notes.sort((a, b) => a - b);
     };
     return {
-      triad: build([0, 3, 7]),
+      triad: build([0, 4, 7]),
       penta: build([0, 3, 5, 7, 10]),
       overtone: Array.from({ length: 16 }, (_, i) => 55 * (i + 1)),
       lydb7: build([0, 2, 4, 6, 7, 9, 10]),      // lydian dominant
@@ -479,6 +484,16 @@
     lfoGain.connect(sub.detune);
     lfo.start();
 
+    // held-V vibrato: the same slow hand, pressed much deeper. The keyboard
+    // handlers steer this gain between 0 and VIB_CENTS, and strikeBowl
+    // patches its partials in so ringing taps waver too.
+    const vibGain = ctx.createGain();
+    vibGain.gain.value = state.vibratoHeld ? VIB_CENTS : 0;
+    lfo.connect(vibGain);
+    vibGain.connect(reed.detune);
+    vibGain.connect(sub.detune);
+    audio.vibGain = vibGain;
+
     // rosin
     const bowNoise = ctx.createBufferSource();
     bowNoise.buffer = noiseBuffer(ctx, 2);
@@ -532,12 +547,23 @@
       .catch(() => {});
   }
 
+  // Holding V is the vibrato lever: ±VIB_CENTS at the voice LFO's 5.1 Hz,
+  // eased in fast and released slow, like a hand settling.
+  const VIB_CENTS = 45;
+  function setVibrato(on) {
+    if (state.vibratoHeld === on) return;
+    state.vibratoHeld = on;
+    if (audio.vibGain) {
+      audio.vibGain.gain.setTargetAtTime(on ? VIB_CENTS : 0, audio.ctx.currentTime, on ? 0.09 : 0.2);
+    }
+  }
+
   function currentFreq() {
     const i0 = Math.max(0, Math.min(MODES.length - 1, Math.floor(state.modeFloat)));
     const i1 = Math.min(MODES.length - 1, i0 + 1);
     const t = Math.min(1, Math.max(0, state.modeFloat - i0));
-    const f0 = freqOf(MODES[i0][0], MODES[i0][1]);
-    const f1 = freqOf(MODES[i1][0], MODES[i1][1]);
+    const f0 = stationFreq(i0);
+    const f1 = stationFreq(i1);
     return f0 * (1 - t) + f1 * t;
   }
 
@@ -602,6 +628,7 @@
         const osc = ctx.createOscillator();
         osc.type = "sine";
         osc.frequency.value = f * p.ratio + beat;
+        if (audio.vibGain) audio.vibGain.connect(osc.detune);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0, now);
         g.gain.linearRampToValueAtTime(p.gain, now + 0.03);
@@ -1143,6 +1170,7 @@
 
   plate.addEventListener("pointerdown", (e) => {
     if (bowObj.held) return;
+    if (e.button !== 0) return; // right button is the vibrato, never a strike
     initAudio();
     plate.setPointerCapture(e.pointerId);
     const [u, v] = plateUV(e);
@@ -1169,7 +1197,8 @@
     state.cursorSpeed = state.cursorSpeed * 0.8 + Math.sqrt(du * du + dv * dv) * 0.2;
   });
 
-  // q bends down a half step, e bends up; the number row is a twelve-key
+  // x bends down a half step, c bends up, held v is the vibrato lever — a
+  // little x·c·v cluster under the left hand; the number row is a twelve-key
   // manual — hold to bow a station directly. The console hints, quietly.
   const bendKeys = { down: false, up: false };
   const KEY_STATIONS = {
@@ -1179,9 +1208,13 @@
   const heldStations = [];
   window.addEventListener("keydown", (e) => {
     if (e.repeat || e.target.tagName === "INPUT") return;
-    if (e.key === "q" || e.key === "Q") bendKeys.down = true;
-    else if (e.key === "e" || e.key === "E") bendKeys.up = true;
-    else if (KEY_STATIONS[e.key] !== undefined) {
+    if (e.key === "x" || e.key === "X") bendKeys.down = true;
+    else if (e.key === "c" || e.key === "C") bendKeys.up = true;
+    else if (e.key === "v" || e.key === "V") {
+      initAudio();
+      setVibrato(true);
+      return;
+    } else if (KEY_STATIONS[e.key] !== undefined) {
       initAudio();
       heldStations.push(e.key);
       state.keyStation = KEY_STATIONS[e.key];
@@ -1190,9 +1223,12 @@
     state.bend = (bendKeys.up ? 1 : 0) - (bendKeys.down ? 1 : 0);
   });
   window.addEventListener("keyup", (e) => {
-    if (e.key === "q" || e.key === "Q") bendKeys.down = false;
-    else if (e.key === "e" || e.key === "E") bendKeys.up = false;
-    else if (KEY_STATIONS[e.key] !== undefined) {
+    if (e.key === "x" || e.key === "X") bendKeys.down = false;
+    else if (e.key === "c" || e.key === "C") bendKeys.up = false;
+    else if (e.key === "v" || e.key === "V") {
+      setVibrato(false);
+      return;
+    } else if (KEY_STATIONS[e.key] !== undefined) {
       const i = heldStations.indexOf(e.key);
       if (i !== -1) heldStations.splice(i, 1);
       state.keyStation = heldStations.length
@@ -1218,7 +1254,7 @@
     const held = performance.now() - state.downAt;
     const moved = Math.hypot(u - state.downU, v - state.downV);
     const edge = Math.min(u, 1 - u, v, 1 - v);
-    if (held < 280 && moved < 0.02 && edge >= BOW_ZONE) {
+    if (e.button === 0 && held < 280 && moved < 0.02 && edge >= BOW_ZONE) {
       // wait out the audio gate so the very first tap already rings
       initAudio().then(() => strikeBowl(bowlNote(u, v)));
       malletHitAt = performance.now();

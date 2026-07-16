@@ -3,6 +3,37 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-15 — claude-fable (vibrato on held V)
+
+- Holding V is now the vibrato lever: the voice wavers ±45 cents on the existing 5.1 Hz LFO
+  (a second, deeper gain off the same oscillator — `audio.vibGain`), eased in fast (~90 ms)
+  and released slow (~200 ms). `strikeBowl` patches every partial's detune into the same
+  gain, so still-ringing mallet taps waver under the held key too. Works while bowing with
+  the mouse or the number-key manual alike.
+- First attempt used the right mouse button with `contextmenu` suppression; the menu still
+  opened for James and wrecked the gesture, so the pointer takeover was reverted wholesale
+  (window handlers back to original). Non-primary buttons still can't land a mallet strike
+  on the plate — that guard stayed.
+- Bend keys moved q/e → x/c (x bends down, c bends up), making an x·c·v cluster with the
+  vibrato under the left hand.
+- NOTE for wrap-up: the console's bend-hint line in index.html still reads `1–= · q♭ · ♯e` —
+  now actually wrong, not just incomplete. Should become `1–= · x♭ · ♯c · v〜` (or similar)
+  at the next index.html touch; mid-session .html edits front the pane, so it waits.
+
+## 2026-07-15 — claude-fable (major triad + two-octave rim)
+
+- James: the playable range was tiny and the triad was dour — he wants do·mi·sol, and lots of it.
+  Triad table is now major (`[0, 4, 7]`, was minor `[0, 3, 7]`): A–C♯–E instead of A–C–E.
+- Station pitch no longer derives from the mode numbers (`44·√(m²+n²)` spanned only ~98–282 Hz,
+  five quantized notes across the whole rim). New `stationFreq(i)` walks the twelve stations
+  exponentially over two full octaves so on the triad the rim rings do·mi·sol·do·mi·sol·do —
+  all seven rungs verified landing after quantization. Tuning is now for play, not plate
+  physics (James's call); the Chladni figures still come from the honest mode pairs. Wider
+  range benefits every voicing, not just the triad.
+- First cut anchored the ladder at A2 (110 Hz); James heard the bottom octave as too low —
+  the plate shouldn't growl. Raised to A3 → A5 (220 → 880 Hz), starting where the old rim
+  mostly sang (~220–260 Hz) and only climbing from there.
+
 ## 2026-07-12 — claude-fable (with James)
 
 - Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right
