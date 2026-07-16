@@ -74,7 +74,8 @@ body {
 }
 
 /* Tuner — speed and gradient controls. Sits above the drift portals. */
-.rift-tuner-toggle {
+.rift-tuner-toggle,
+.rift-music-toggle {
   align-items: center;
   appearance: none;
   background: rgba(20, 20, 20, 0.45);
@@ -95,14 +96,108 @@ body {
 }
 
 .rift-tuner-toggle:hover,
-.rift-tuner-toggle:focus-visible {
+.rift-tuner-toggle:focus-visible,
+.rift-music-toggle:hover,
+.rift-music-toggle:focus-visible {
   background: rgba(20, 20, 20, 0.7);
   color: #fff;
 }
 
-.rift-tuner-toggle svg {
+.rift-tuner-toggle svg,
+.rift-music-toggle svg {
   height: 1.15rem;
   width: 1.15rem;
+}
+
+/* Music player — a tiny playlist. The note button sits just left of the tuner
+   toggle; its panel opens directly above the pair. */
+.rift-music-toggle {
+  right: 4.1rem;
+}
+
+.rift-music {
+  backdrop-filter: blur(10px);
+  background: rgba(8, 8, 8, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 1rem;
+  bottom: 4.4rem;
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem 0.95rem;
+  position: fixed;
+  right: 4.1rem;
+  width: min(20rem, calc(100vw - 8rem));
+  z-index: 11;
+}
+
+.rift-music[hidden] {
+  display: none;
+}
+
+.music-tracks {
+  display: grid;
+  gap: 0.45rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.music-track {
+  align-items: center;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.music-play {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 1.9rem;
+  justify-content: center;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease;
+  width: 1.9rem;
+}
+
+.music-play:hover,
+.music-play:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}
+
+.music-play svg {
+  height: 0.85rem;
+  width: 0.85rem;
+}
+
+.music-glyph-pause {
+  display: none;
+}
+
+.music-track.is-playing .music-glyph-pause {
+  display: block;
+}
+
+.music-track.is-playing .music-glyph-play {
+  display: none;
+}
+
+.music-title {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.music-track.is-playing .music-title {
+  color: #fff;
 }
 
 .rift-tuner {
@@ -139,7 +234,8 @@ body {
   text-transform: uppercase;
 }
 
-.rift-tuner input[type="range"] {
+.rift-tuner input[type="range"],
+.rift-music input[type="range"] {
   appearance: none;
   background: transparent;
   cursor: pointer;
@@ -148,13 +244,15 @@ body {
   margin: 0;
 }
 
-.rift-tuner input[type="range"]::-webkit-slider-runnable-track {
+.rift-tuner input[type="range"]::-webkit-slider-runnable-track,
+.rift-music input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
   height: 4px;
 }
 
-.rift-tuner input[type="range"]::-webkit-slider-thumb {
+.rift-tuner input[type="range"]::-webkit-slider-thumb,
+.rift-music input[type="range"]::-webkit-slider-thumb {
   appearance: none;
   background: #f5f5f5;
   border-radius: 50%;
@@ -163,13 +261,15 @@ body {
   width: 1rem;
 }
 
-.rift-tuner input[type="range"]::-moz-range-track {
+.rift-tuner input[type="range"]::-moz-range-track,
+.rift-music input[type="range"]::-moz-range-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
   height: 4px;
 }
 
-.rift-tuner input[type="range"]::-moz-range-thumb {
+.rift-tuner input[type="range"]::-moz-range-thumb,
+.rift-music input[type="range"]::-moz-range-thumb {
   background: #f5f5f5;
   border: none;
   border-radius: 50%;

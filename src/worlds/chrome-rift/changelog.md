@@ -3,6 +3,38 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-16 — claude-fable (with James)
+
+- MUSIC REPLACED: James retired the raga drone (both `rift-drone` mp3s deleted) in favor of two
+  tracks he made in Suno — `assets/audio/saffron-01.mp3` and `saffron-02.mp3` (~8 minutes total).
+  He expects to add three or four more Saffron tracks later; adding one = drop the file in
+  `assets/audio/` and add a line to `TRACKS` in world.js — everything else follows.
+- NEW: tiny music player. A note button just left of the tuner toggle (same round style,
+  `right: 4.1rem`) opens a small panel above the pair — one row per track: play/pause button +
+  title, the playing track highlighted. Click a playing track's button to stop it; click another
+  track to switch. Left alone, the playlist plays in order and wraps around forever (the shared
+  sound control's autoplay attempt starts track 1, `ended` chains the rest).
+- One Audio element serves the whole playlist (src swaps per track), so the shared sound control
+  (mute/volume/on-off icon) and the breathe analyser keep working across track changes — the
+  MediaElementSource is wired to the element once and survives src swaps.
+- Wording updated drone → music: breathe slider tooltip, guide's breathe entry, world.json
+  soundtrack, and world.js comments.
+- Player round 2 (James): panel stretched to a fixed width (min(20rem, vw−8rem)) and a seek
+  slider added below the track list — same styling as the tuner sliders, scrubs the playing
+  track. While the pointer holds the thumb, timeupdate stops writing back so drags don't fight
+  the playhead; switching tracks resets it to 0. Note: server.mjs serves no Range requests, so
+  seeking relies on buffered data — instant on loopback, worth remembering if worlds ever ship
+  with long audio on a range-less host.
+- SEEK FIX (same session): the slider snapped back to 0 and restarted the track — the caveat
+  above was the whole story: no Range support + no-store meant Chrome could not seek at all.
+  server.mjs now serves byte ranges (Accept-Ranges/Content-Length on 200s, 206 with
+  Content-Range for `bytes=` requests incl. suffix/open-ended, 416 when unsatisfiable) and
+  learned audio/video MIME types (.mp3 was application/octet-stream). Server restarted via the
+  launcher pattern; verified with curl (200/206/416 all correct, pages and API unaffected).
+  No world-code change — the slider logic was fine.
+- Where things stand: player is in and wired; James curates the soundtrack himself (more Suno
+  tracks expected). World visuals unchanged this session.
+
 ## 2026-07-15 — claude-fable (with James)
 
 - RENAMED: The Monochrome Rift → **The Chrome Rift**. Folder moved `monochrome-rift/` →

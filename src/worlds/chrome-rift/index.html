@@ -24,6 +24,23 @@
       <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
     </nav>
 
+    <button id="rift-music-toggle" class="rift-music-toggle" type="button"
+            aria-expanded="false" aria-controls="rift-music"
+            title="Music" aria-label="Music player">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 18V5l12-2v13"></path>
+        <circle cx="6" cy="18" r="2.6" fill="currentColor" stroke="none"></circle>
+        <circle cx="18" cy="16" r="2.6" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </button>
+
+    <section id="rift-music" class="rift-music" role="group" aria-label="Music player" hidden>
+      <ol id="rift-tracks" class="music-tracks"></ol>
+      <input id="rift-seek" type="range" min="0" max="1000" step="1" value="0"
+             aria-label="Track position" title="Drag to scrub the playing track" />
+    </section>
+
     <button id="rift-tuner-toggle" class="rift-tuner-toggle" type="button"
             aria-expanded="false" aria-controls="rift-tuner"
             title="Tune the rift" aria-label="Tune the rift">
@@ -61,7 +78,7 @@
         <div class="tuner-mini">
           <label for="rift-breathe">breathe</label>
           <input id="rift-breathe" type="range" min="0" max="1000" step="1" value="500"
-                 title="The rift breathes with the drone — sound must be on — double-click resets" />
+                 title="The rift breathes with the music — sound must be on — double-click resets" />
           <output id="rift-breathe-readout" for="rift-breathe">50%</output>
         </div>
         <div class="tuner-mini">
@@ -112,9 +129,9 @@
             (default 6%). Squared mapping keeps the left half subtle; at 100% bands sweep the
             entire screen width and cross each other. At 0% they stand at attention and only
             shimmer in place.</li>
-          <li><strong>breathe</strong> — how hard the rift breathes with the drone, 0–100%
+          <li><strong>breathe</strong> — how hard the rift breathes with the music, 0–100%
             (default 50%). An analyser listens to the audio and auto-ranges its level, so even
-            the steady raga produces a usable breath. Band speed swells up to ~×1.9 and the
+            a steady track produces a usable breath. Band speed swells up to ~×1.9 and the
             center glow grows and brightens on the inhales. Needs sound on; does nothing at 0%
             or when muted.</li>
           <li><strong>pull</strong> — how strongly the center glow follows your cursor, 0–100%

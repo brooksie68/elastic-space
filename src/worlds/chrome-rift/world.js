@@ -121,8 +121,8 @@ function bandPair(index) {
 }
 
 // --- audio breathing --------------------------------------------------------
-// RMS from an analyser on the drone, auto-ranged against its own rolling
-// min/max so even a steady raga drone yields a usable 0..1 breath signal.
+// RMS from an analyser on the music, auto-ranged against its own rolling
+// min/max so even a steady track yields a usable 0..1 breath signal.
 
 let audioContext = null;
 let analyser = null;
@@ -134,7 +134,7 @@ let rmsHi = 0;
 function wireAnalyser() {
   // Routing the media element into a suspended context would silence it, so
   // this only runs once the context is confirmed running.
-  const source = audioContext.createMediaElementSource(drone);
+  const source = audioContext.createMediaElementSource(music);
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 512;
   source.connect(analyser);
@@ -144,9 +144,9 @@ function wireAnalyser() {
 
 function tryInitAnalyser() {
   if (analyser) return;
-  // Under file:// the drone counts as cross-origin: routing it through a
+  // Under file:// the tracks count as cross-origin: routing them through a
   // WebAudio graph outputs silence and would mute the world. Breathing is
-  // served-only; the drone itself keeps playing either way.
+  // served-only; the music itself keeps playing either way.
   if (window.location.protocol === "file:") return;
   try {
     const Ctor = window.AudioContext || window.webkitAudioContext;
@@ -543,16 +543,108 @@ document.getElementById("rift-reset").addEventListener("click", () => {
   saveConfig();
 });
 
-// --- sound ------------------------------------------------------------------
+// --- music --------------------------------------------------------------------
+// A tiny playlist player. One Audio element plays TRACKS in order, wrapping at
+// the end; the note button left of the tuner toggle opens a track list with a
+// play/pause button per track. The shared sound control owns mute and volume,
+// and the breathe analyser listens to the same element across track changes.
 
-const drone = new Audio("./assets/audio/rift-drone.mp3");
-drone.loop = true;
-drone.volume = 0.7;
-window.ElasticSoundControl.attach({ media: drone });
+const TRACKS = [
+  { title: "saffron 01", file: "saffron-01.mp3" },
+  { title: "saffron 02", file: "saffron-02.mp3" },
+];
 
-drone.addEventListener("play", tryInitAnalyser);
+let trackIndex = 0;
+const music = new Audio(`./assets/audio/${TRACKS[trackIndex].file}`);
+music.volume = 0.7;
+window.ElasticSoundControl.attach({ media: music });
+
+function playTrack(index) {
+  if (index !== trackIndex) {
+    trackIndex = index;
+    music.src = `./assets/audio/${TRACKS[index].file}`;
+    seekSlider.value = 0;
+  }
+  music.play().catch(() => {});
+}
+
+music.addEventListener("ended", () => playTrack((trackIndex + 1) % TRACKS.length));
+
+music.addEventListener("play", tryInitAnalyser);
 window.addEventListener("pointerdown", tryInitAnalyser);
 window.addEventListener("keydown", tryInitAnalyser);
+
+const musicToggle = document.getElementById("rift-music-toggle");
+const musicPanel = document.getElementById("rift-music");
+const trackHolder = document.getElementById("rift-tracks");
+
+const trackRows = TRACKS.map((track, index) => {
+  const row = document.createElement("li");
+  row.className = "music-track";
+  row.innerHTML = `
+    <button type="button" class="music-play">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path class="music-glyph-play" d="M8 5.5v13l10.5-6.5z"></path>
+        <g class="music-glyph-pause">
+          <rect x="7" y="5.5" width="3.4" height="13" rx="1"></rect>
+          <rect x="13.6" y="5.5" width="3.4" height="13" rx="1"></rect>
+        </g>
+      </svg>
+    </button>
+    <span class="music-title">${track.title}</span>
+  `;
+  row.querySelector(".music-play").addEventListener("click", () => {
+    if (index === trackIndex && !music.paused) {
+      music.pause();
+    } else {
+      playTrack(index);
+    }
+  });
+  trackHolder.appendChild(row);
+  return row;
+});
+
+function reflectTracks() {
+  trackRows.forEach((row, index) => {
+    const playing = index === trackIndex && !music.paused;
+    row.classList.toggle("is-playing", playing);
+    const button = row.querySelector(".music-play");
+    const label = `${playing ? "Stop" : "Play"} ${TRACKS[index].title}`;
+    button.setAttribute("aria-label", label);
+    button.title = label;
+  });
+}
+
+music.addEventListener("play", reflectTracks);
+music.addEventListener("pause", reflectTracks);
+reflectTracks();
+
+// Seek slider — scrubs the playing track. While the pointer holds the thumb,
+// timeupdate stops writing back so the drag never fights the playhead.
+const seekSlider = document.getElementById("rift-seek");
+let scrubbing = false;
+
+seekSlider.addEventListener("pointerdown", () => {
+  scrubbing = true;
+});
+window.addEventListener("pointerup", () => {
+  scrubbing = false;
+});
+seekSlider.addEventListener("input", () => {
+  if (music.duration) {
+    music.currentTime = (Number(seekSlider.value) / 1000) * music.duration;
+  }
+});
+music.addEventListener("timeupdate", () => {
+  if (scrubbing || !music.duration) return;
+  seekSlider.value = Math.round((music.currentTime / music.duration) * 1000);
+});
+
+musicToggle.addEventListener("click", () => {
+  const open = musicPanel.hidden;
+  musicPanel.hidden = !open;
+  musicToggle.setAttribute("aria-expanded", String(open));
+});
 
 // --- boot -------------------------------------------------------------------
 
