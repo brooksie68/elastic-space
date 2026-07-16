@@ -2,15 +2,8 @@
 
 ## Todo
 
-1. **Set up SSH remotes for GitHub pushes** (added 2026-07-15, do as a guided walkthrough —
-   James is not an IT guy, talk him through each step). Context: HTTPS pushes >~10MB fail
-   with TLS corruption on BOTH schannel and OpenSSL backends (the 07-15 `sslBackend openssl`
-   switch did NOT fix it — see memory `chunk-large-git-pushes`). SSH bypasses that code path
-   entirely. Steps: generate an ed25519 key (`ssh-keygen`), add the public key to James's
-   GitHub account (his part, in the browser), test with `ssh -T git@github.com`, then switch
-   each repo's remote URL (elastic-space, _workspace, buzzsaw, blipblops, JBB-UX-Portfolio,
-   arachno-wars-two, wifilolz, jam-terminal). Verify with a >10MB test push, then update the
-   memory + BOOTSTRAP.md so restore.sh instructions stay true.
+(nothing pending — SSH remotes shipped 2026-07-16: all repos push over SSH now, see memory
+`chunk-large-git-pushes`; blipblops was skipped, it has no `.git` directory)
 
 ## Local preview
 
