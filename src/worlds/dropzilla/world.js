@@ -8,46 +8,89 @@
 
   const BANKS = [
     {
-      id: "toots",
-      label: "TOOTS",
+      id: "gas",
+      label: "GAS",
       accent: "#59ff7d",
       pads: [
         ["01-squeaker", "Lil' Squeaker", "🐭"],
-        ["02-whisperer", "The Whisperer", "🤫"],
-        ["03-bass-drop", "Bass Drop", "🔊"],
+        ["Tester", "Tester", "🧪"],
+        ["Curlicue", "Curlicue", "🌀"],
         ["04-trombone", "Sad Trombone", "🎺"],
-        ["05-machine-gun", "Machine Gun", "🍿"],
-        ["06-long-haul", "The Long Haul", "🚛"],
-        ["07-wet-one", "Wet One", "💦"],
-        ["08-swamp-monster", "Swamp Monster", "🐊"],
-        ["09-balloon", "Balloon Pinch", "🎈"],
+        ["French-Horn", "French Horn", "📯"],
+        ["Honker", "Honker", "🪿"],
         ["10-ducky", "The Duck", "🦆"],
-        ["11-question", "The Question", "❓"],
+        ["LilBro", "Lil' Bro", "👦"],
+        ["Lil-Sis", "Lil' Sis", "👧"],
         ["12-grandpa", "Grandpa", "👴"],
-        ["13-bubble-bath", "Bubble Bath", "🛁"],
-        ["14-jet-engine", "Jet Engine", "✈️"],
-        ["15-tiny-toot", "Tiny Toot", "🐜"],
-        ["16-regret", "The Regret", "😬"],
-        ["17-velcro", "Velcro", "🩹"],
+        ["Trad", "Trad", "🎩"],
+        ["Hello-Goodbye", "Hello Goodbye", "👋"],
+        ["Fruit", "Fruit", "🍑"],
+        ["Juicy-Fruit", "Juicy Fruit", "🍉"],
+        ["Makin-Pancakes", "Makin' Pancakes", "🥞"],
+        ["Full", "Full", "🌕"],
         ["18-motorboat", "Motorboat", "🚤"],
-        ["19-squelch", "The Squelch", "🥾"],
-        ["20-foghorn", "Foghorn", "🚢"],
-        ["21-popcorn", "Popcorn", "🌽"],
-        ["22-slide-whistle", "Slide Whistle", "🎢"],
-        ["23-thunder", "Distant Thunder", "⛈️"],
-        ["24-sneak", "The Sneak", "🥷"],
-        ["25-rubber-chicken", "Rubber Chicken", "🐔"],
+        ["Up-Slope", "Up Slope", "📈"],
+        ["08-swamp-monster", "Swamp Monster", "🐊"],
+        ["Mud-Bubbles", "Mud Bubbles", "🫧"],
+        ["Grunt-Bucket", "Grunt Bucket", "🪣"],
+        ["Bowl-Rattler", "Bowl Rattler", "🚽"],
+        ["Poopy", "Poopy", "💩"],
+        ["Yikes-Shart", "Yikes Shart", "😬"],
+        ["Jeans-Ripper", "Jeans Ripper", "👖"],
+        ["Shorts-Filler", "Shorts Filler", "🩳"],
+        ["Tight-Ass", "Tight Ass", "🩲"],
+        ["My-Messy-Secret", "My Messy Secret", "🤐"],
+        ["Developing", "Developing", "🎞️"],
+        ["Surprise!", "Surprise!", "🎁"],
         ["26-double-tap", "Double Tap", "✌️"],
-        ["27-creaky-door", "Creaky Door", "🚪"],
-        ["28-raspberry", "Raspberry", "👅"],
-        ["29-espresso", "The Espresso", "☕"],
-        ["30-beast", "THE BEAST", "👹"],
-        ["31-whoopee", "Whoopee Classic", "🪑"],
-        ["32-deflate", "The Deflate", "🛟"],
+        ["Fart-With-Change", "Fart With Change", "💰"],
         ["33-gravel", "Gravel Road", "🪨"],
-        ["34-soprano", "The Soprano", "🎭"],
-        ["35-morse-code", "Morse Code", "📡"],
-        ["36-grand-finale", "GRAND FINALE", "🎆"],
+        ["Jesus-WTF-Man", "Jesus WTF Man", "🤯"],
+        ["Every-Last-Bit", "Every Last Bit", "🥤"],
+        ["Record-Breaker", "Record Breaker", "🏆"],
+      ],
+    },
+    {
+      id: "chuck-opines",
+      label: "CHUCK OPINES",
+      accent: "#ffb347",
+      pads: [
+        ["im-listening", "I'm Listening", "👂"],
+        ["please-go-on", "Please, Go On", "🛋️"],
+        ["your-story", "Your Story", "📖"],
+        ["i-was-thinking", "I Was Thinking", "💭"],
+        ["does-sound-interesting", "Sounds Interesting", "🤨"],
+        ["highly-interesting", "Highly Interesting", "🧐"],
+        ["great-point", "Great Point", "💡"],
+        ["i-really-agree", "I Really Agree", "💯"],
+        ["im-riveted-here", "I'm Riveted Here", "🔩"],
+        ["were-alike", "We're Alike", "👯"],
+        ["go-getter", "Go-Getter", "🚀"],
+        ["wisdom-begins", "Wisdom Begins", "🦉"],
+        ["i-dont-know", "I Don't Know", "🤷"],
+        ["im-sorry-disagree", "Sorry, I Disagree", "🙅"],
+        ["thats-bullshit", "That's Bullshit", "🐂"],
+        ["so-close", "So Close", "🤏"],
+        ["suit-yourself", "Suit Yourself", "🤵"],
+        ["were-not-pivoting", "We're Not Pivoting", "🧭"],
+        ["hahahahaha", "Hahahahaha", "😂"],
+        ["im-just-kidding", "I'm Just Kidding", "🃏"],
+        ["it-was-a-joke", "It Was a Joke", "🤡"],
+        ["cursing-tirade", "Cursing Tirade", "🤬"],
+        ["a-V-8", "A V-8", "🍅"],
+        ["pepperidge-farm-remembers", "Pepperidge Farm", "🍪"],
+        ["give-you-a-dime", "Give You a Dime", "🪙"],
+        ["sell-yourself", "Sell Yourself", "💼"],
+        ["dock-and-merge", "Dock & Merge", "🤝"],
+        ["cup-empty", "Cup Empty", "☕"],
+        ["he-didnt-make-it", "He Didn't Make It", "🪦"],
+        ["selling-my-ass", "Selling My Ass", "🫏"],
+        ["uh-huh", "Uh-Huh", "😑"],
+        ["thats-so-true", "That's So True", "🙌"],
+        ["seriously-right", "Seriously, Right?", "🎯"],
+        ["im-feelin-it", "I'm Feelin' It", "🕺"],
+        ["im-very-sensitive", "I'm Very Sensitive", "🥺"],
+        ["my-balls-itch", "My Balls Itch", "🎱"],
       ],
     },
   ];
@@ -234,15 +277,22 @@
 
   // ---------- voices ----------
 
+  const activePad = new Map(); // "bankId/index" -> latest voice, for retrigger choke
+
   function playPad(bank, index) {
     ensureCtx();
     if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    const key = bank.id + "/" + index;
+    const prev = activePad.get(key);
+    if (prev) prev.pause(); // same pad retriggers from the top
     if (playing.size >= MAX_CONCURRENT) {
       const oldest = playing.values().next().value;
       oldest.pause();
       playing.delete(oldest);
     }
     const audio = new Audio("./assets/audio/" + bank.id + "/" + bank.pads[index][0] + ".mp3");
+    audio._padKey = key;
+    activePad.set(key, audio);
     audio.preservesPitch = false; // tape-style: pitch knob is a varispeed control
     audio.playbackRate = pitchRate;
     if (FX_MEDIA && ctx) {
@@ -259,6 +309,7 @@
   function killAllVoices() {
     playing.forEach((a) => a.pause());
     playing.clear();
+    activePad.clear();
   }
 
   // ---------- pads + banks ----------
@@ -273,6 +324,7 @@
   }
 
   function triggerPad(bank, index, record) {
+    if (!bank.pads[index]) return; // open slot
     if (!soundOn) {
       lcd("SOUND IS OFF — HIT THE SPEAKER, TOP RIGHT");
       return;
@@ -290,6 +342,7 @@
     }
     const done = () => {
       playing.delete(audio);
+      if (activePad.get(audio._padKey) === audio) activePad.delete(audio._padKey);
       if (audio._src) { audio._src.disconnect(); audio._src = null; }
       if (el) {
         const n = (Number(el.dataset.lit) || 1) - 1;
@@ -304,9 +357,16 @@
 
   function renderPads(bank) {
     padsEl.textContent = "";
-    padEls = bank.pads.map(([, name, emoji], i) => {
+    padEls = bank.pads.map((pad, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
+      if (!pad) {
+        btn.className = "pad pad--empty";
+        btn.disabled = true;
+        padsEl.appendChild(btn);
+        return btn;
+      }
+      const [, name, emoji] = pad;
       btn.className = "pad";
       const icon = document.createElement("span");
       icon.className = "pad-icon";
@@ -596,8 +656,9 @@
   // ---------- RANDOM ----------
 
   document.getElementById("random").addEventListener("click", () => {
-    const i = Math.floor(Math.random() * currentBank.pads.length);
-    triggerPad(currentBank, i);
+    const filled = [];
+    currentBank.pads.forEach((p, i) => { if (p) filled.push(i); });
+    triggerPad(currentBank, filled[Math.floor(Math.random() * filled.length)]);
   });
 
   // ---------- shared sound control ----------

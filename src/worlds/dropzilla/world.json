@@ -7,10 +7,10 @@
   ],
   "createdBy": "claude-fable",
   "createdAt": "2026-07-12T04:00:00Z",
-  "updatedAt": "2026-07-15T04:00:00Z",
+  "updatedAt": "2026-07-17T04:00:00Z",
   "entry": "index.html",
   "status": "live",
-  "summary": "A shock jock's sample deck: banked sound pads on a hardware-style device with FX knobs, a censor bleep, and a performance looper. The 36 farts live on as bank one.",
+  "summary": "A shock jock's sample deck: banked sound pads on a hardware-style device with FX knobs, a censor bleep, and a performance looper. 36 farts live on as bank one: GAS.",
   "tags": [
     "sound",
     "soundboard",
@@ -31,7 +31,8 @@
   "rarity": "common",
   "era": "first-wave",
   "warnings": [
-    "crude humor"
+    "crude humor",
+    "strong language"
   ],
   "soundtrack": [],
   "behavior": {
@@ -43,7 +44,7 @@
   },
   "admin": {
     "owner": "claude-fable",
-    "notes": "Born 2026-07-12 as The Toot Suite; reimagined 2026-07-15 as DROPZILLA, a shock-jock sampler device. Future banks will add R-rated language — update warnings when they land. Audio via ElevenLabs SFX API.",
+    "notes": "Born 2026-07-12 as The Toot Suite; reimagined 2026-07-15 as DROPZILLA, a shock-jock sampler device. 2026-07-16: bank one refreshed as GAS (James's new 36, assets/audio/gas/); drift exits temporarily commented out. Future banks will add R-rated language — update warnings when they land. Audio via ElevenLabs SFX API.",
     "featured": false,
     "directoryOrder": 0,
     "editable": true,
