@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
 import {
   access,
@@ -12,9 +13,12 @@ import {
 import { createServer } from "node:http";
 import { basename, extname, join, normalize, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
+const execFileAsync = promisify(execFile);
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const worldsDir = join(rootDir, "src", "worlds");
+const archiveDir = join(rootDir, "archive");
 const host = process.env.ELASTIC_SPACE_HOST || "127.0.0.1";
 const port = Number(process.env.ELASTIC_SPACE_PORT || "4174");
 
@@ -546,6 +550,92 @@ async function writeWorldRecord(targetSlug, payload) {
   return nextSlug;
 }
 
+const draftsPath = join(rootDir, "world-drafts.json");
+
+async function readDrafts() {
+  try {
+    const parsed = JSON.parse(await readFile(draftsPath, "utf8"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeDrafts(drafts) {
+  await writeFile(draftsPath, `${JSON.stringify(drafts, null, 2)}\n`, "utf8");
+}
+
+function draftFromPayload(payload, existing = {}) {
+  const clean = (value) => (typeof value === "string" ? value.trim() : "");
+  return {
+    ...existing,
+    title: clean(payload.title),
+    synopsis: clean(payload.synopsis),
+    vibe: clean(payload.vibe),
+    links: clean(payload.links),
+    sound: clean(payload.sound),
+    ideas: clean(payload.ideas),
+    updated: new Date().toISOString(),
+  };
+}
+
+// Queue an engaged draft in CLAUDE.md's Todo section so the next session
+// sees it on load.
+async function addClaudeTodo(line) {
+  const claudePath = join(rootDir, "CLAUDE.md");
+  const text = await readFile(claudePath, "utf8");
+  const lines = text.split("\n");
+  const headingAt = lines.findIndex((item) => item.trim() === "## Todo");
+  if (headingAt === -1) {
+    return false;
+  }
+
+  lines.splice(headingAt + 1, 0, "", `- ${line}`);
+  await writeFile(claudePath, lines.join("\n"), "utf8");
+  return true;
+}
+
+async function regenerateWorldRegistry() {
+  await execFileAsync(process.execPath, [join(rootDir, "scripts", "generate-world-registry.mjs")], {
+    cwd: rootDir,
+  });
+}
+
+// Drop an archived world's row from the admin panel's static Pages list.
+// Rows are either a single <a> line or a .page-row <div> wrapping the world
+// link plus utility pills (e.g. curate); the file is one element per line.
+async function removeWorldFromAdminIndex(slug) {
+  const indexPath = join(rootDir, "index.html");
+  const lines = (await readFile(indexPath, "utf8")).split("\n");
+  const needle = `href="./src/worlds/${slug}/index.html"`;
+  const anchorAt = lines.findIndex((line) => line.includes(needle));
+
+  if (anchorAt === -1) {
+    return false;
+  }
+
+  let start = anchorAt;
+  let end = anchorAt;
+  let probe = anchorAt - 1;
+  while (probe >= 0 && lines[probe].trim().startsWith("<a")) {
+    probe -= 1;
+  }
+
+  if (probe >= 0 && lines[probe].includes('class="page-row"')) {
+    start = probe;
+    while (end < lines.length && !lines[end].trim().startsWith("</div>")) {
+      end += 1;
+    }
+    if (end === lines.length) {
+      return false;
+    }
+  }
+
+  lines.splice(start, end - start + 1);
+  await writeFile(indexPath, lines.join("\n"), "utf8");
+  return true;
+}
+
 function resolveStaticPath(pathname) {
   if (pathname === "/") {
     return "/index.html";
@@ -620,6 +710,92 @@ async function serveStatic(request, pathname, response) {
   }
 }
 
+const artFileExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+const layoutSlotKinds = new Set(["wall", "cord", "easel", "lean"]);
+
+// Shape check for a curator-mode layout save. Returns a problem string or null.
+// Geometry stays in Blender Z-up meters — the same shape assets/layout.js ships with.
+function validateLayout(layout) {
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) {
+    return "Layout must be an object.";
+  }
+  if (typeof layout.artDir !== "string" || !layout.artDir) {
+    return "layout.artDir must be a non-empty string.";
+  }
+  if (layout.kit && (typeof layout.kit !== "object" || Array.isArray(layout.kit))) {
+    return "layout.kit must be an object.";
+  }
+  if (!Array.isArray(layout.slots)) {
+    return "layout.slots must be an array.";
+  }
+
+  const seenIds = new Set();
+  for (const slot of layout.slots) {
+    if (!slot || typeof slot !== "object" || Array.isArray(slot)) {
+      return "Every slot must be an object.";
+    }
+    const label = typeof slot.id === "string" && slot.id ? slot.id : "?";
+    if (label === "?") {
+      return "Every slot needs a non-empty string id.";
+    }
+    if (seenIds.has(slot.id)) {
+      return `Duplicate slot id "${label}".`;
+    }
+    seenIds.add(slot.id);
+
+    if (slot.art !== null && typeof slot.art !== "string") {
+      return `Slot "${label}": art must be a filename or null.`;
+    }
+    if (slot.art && /[\\/]|\.\./.test(slot.art)) {
+      return `Slot "${label}": art must be a bare filename.`;
+    }
+    if (!layoutSlotKinds.has(slot.kind)) {
+      return `Slot "${label}": unknown kind "${slot.kind}".`;
+    }
+    if (
+      !Array.isArray(slot.pos) ||
+      slot.pos.length !== 3 ||
+      slot.pos.some((v) => typeof v !== "number" || !Number.isFinite(v))
+    ) {
+      return `Slot "${label}": pos must be three finite numbers.`;
+    }
+    for (const key of ["yaw", "w", "h"]) {
+      if (typeof slot[key] !== "number" || !Number.isFinite(slot[key])) {
+        return `Slot "${label}": ${key} must be a finite number.`;
+      }
+    }
+    if (slot.w <= 0 || slot.h <= 0) {
+      return `Slot "${label}": w and h must be positive.`;
+    }
+    if (typeof slot.style !== "string" || !slot.style) {
+      return `Slot "${label}": style must be a non-empty string.`;
+    }
+    if (slot.slice !== undefined) {
+      const ok =
+        Array.isArray(slot.slice) &&
+        slot.slice.length === 2 &&
+        slot.slice.every((v) => Number.isInteger(v)) &&
+        slot.slice[1] >= 2 &&
+        slot.slice[0] >= 0 &&
+        slot.slice[0] < slot.slice[1];
+      if (!ok) {
+        return `Slot "${label}": slice must be [panelIndex, panelCount].`;
+      }
+    }
+    if (slot.group !== undefined && typeof slot.group !== "string") {
+      return `Slot "${label}": group must be a string.`;
+    }
+    if (slot.flip !== undefined && typeof slot.flip !== "boolean") {
+      return `Slot "${label}": flip must be a boolean.`;
+    }
+  }
+  return null;
+}
+
+function layoutGlobalName(slug) {
+  return `${slug.toUpperCase().replace(/-/g, "_")}_LAYOUT`;
+}
+
 async function handleApi(request, response, pathname) {
   if (pathname === "/api/worlds" && request.method === "GET") {
     const worlds = await listWorldsDetailed();
@@ -629,6 +805,101 @@ async function handleApi(request, response, pathname) {
 
   if (pathname === "/api/worlds/tree" && request.method === "GET") {
     sendJson(response, 200, await buildTree(worldsDir));
+    return true;
+  }
+
+  if (pathname === "/api/drafts" && request.method === "GET") {
+    sendJson(response, 200, await readDrafts());
+    return true;
+  }
+
+  if (pathname === "/api/drafts" && request.method === "POST") {
+    const payload = await readBody(request);
+    const draft = draftFromPayload(payload);
+    if (!draft.title) {
+      sendJson(response, 400, { error: "A draft needs at least a title." });
+      return true;
+    }
+
+    const drafts = await readDrafts();
+    const baseId = slugify(draft.title) || "draft";
+    let id = baseId;
+    let suffix = 2;
+    while (drafts.some((item) => item.id === id)) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+
+    const created = {
+      id,
+      ...draft,
+      status: "draft",
+      created: new Date().toISOString(),
+    };
+    drafts.unshift(created);
+    await writeDrafts(drafts);
+    sendJson(response, 201, created);
+    return true;
+  }
+
+  const draftEngageMatch = pathname.match(/^\/api\/drafts\/([a-z0-9-]+)\/engage$/i);
+  if (draftEngageMatch && request.method === "POST") {
+    const drafts = await readDrafts();
+    const draft = drafts.find((item) => item.id === slugify(draftEngageMatch[1]));
+    if (!draft) {
+      sendJson(response, 404, { error: "Draft not found." });
+      return true;
+    }
+
+    draft.status = "engaged";
+    draft.engaged = new Date().toISOString();
+    await writeDrafts(drafts);
+    const todoAdded = await addClaudeTodo(
+      `Engaged world draft "${draft.title}" — read it in world-drafts.json (id: ${draft.id}), ` +
+        "ask James your questions (or show a build plan) and wait for his go before building.",
+    );
+    sendJson(response, 200, { ...draft, todoAdded });
+    return true;
+  }
+
+  const draftMatch = pathname.match(/^\/api\/drafts\/([a-z0-9-]+)$/i);
+  if (draftMatch) {
+    if (request.method !== "PUT") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const drafts = await readDrafts();
+    const index = drafts.findIndex((item) => item.id === slugify(draftMatch[1]));
+    if (index === -1) {
+      sendJson(response, 404, { error: "Draft not found." });
+      return true;
+    }
+
+    const payload = await readBody(request);
+    const updated = draftFromPayload(payload, drafts[index]);
+    if (!updated.title) {
+      sendJson(response, 400, { error: "A draft needs at least a title." });
+      return true;
+    }
+
+    drafts[index] = updated;
+    await writeDrafts(drafts);
+    sendJson(response, 200, updated);
+    return true;
+  }
+
+  if (pathname === "/api/archive" && request.method === "GET") {
+    let names = [];
+    try {
+      const entries = await readdir(archiveDir, { withFileTypes: true });
+      names = sortByName(entries.filter((entry) => entry.isDirectory())).map(
+        (entry) => entry.name,
+      );
+    } catch {
+      // No archive folder yet — an empty list is the right answer.
+    }
+    sendJson(response, 200, names);
     return true;
   }
 
@@ -651,6 +922,133 @@ async function handleApi(request, response, pathname) {
 
     const slug = await writeWorldRecord(requestedSlug, payload);
     sendJson(response, 201, await readWorldDetail(slug));
+    return true;
+  }
+
+  const archiveMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/archive$/i);
+  if (archiveMatch) {
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const archiveSlug = slugify(archiveMatch[1]);
+    if (!isValidSlug(archiveSlug)) {
+      sendJson(response, 400, { error: "Invalid world slug." });
+      return true;
+    }
+
+    const sourceDir = join(worldsDir, archiveSlug);
+    if (!(await pathExists(sourceDir))) {
+      sendJson(response, 404, { error: "World not found." });
+      return true;
+    }
+
+    const targetDir = join(archiveDir, archiveSlug);
+    if (await pathExists(targetDir)) {
+      sendJson(response, 409, {
+        error: `archive/${archiveSlug} already exists — move or rename it first.`,
+      });
+      return true;
+    }
+
+    await mkdir(archiveDir, { recursive: true });
+    await rename(sourceDir, targetDir);
+    const rowRemoved = await removeWorldFromAdminIndex(archiveSlug);
+    await regenerateWorldRegistry();
+
+    const result = {
+      archived: true,
+      slug: archiveSlug,
+      archivedTo: `archive/${archiveSlug}`,
+    };
+    if (!rowRemoved) {
+      result.warning = "No matching row found in the admin panel's Pages list; remove it by hand.";
+    }
+    sendJson(response, 200, result);
+    return true;
+  }
+
+  const artMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/art$/i);
+  if (artMatch) {
+    if (request.method !== "GET") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const artSlug = slugify(artMatch[1]);
+    if (!isValidSlug(artSlug)) {
+      sendJson(response, 400, { error: "Invalid world slug." });
+      return true;
+    }
+
+    const artDir = join(worldsDir, artSlug, "assets", "art");
+    if (!(await pathExists(artDir))) {
+      sendJson(response, 404, { error: "That world has no assets/art folder." });
+      return true;
+    }
+
+    const entries = await readdir(artDir, { withFileTypes: true });
+    const files = sortByName(
+      entries.filter(
+        (entry) =>
+          entry.isFile() && artFileExtensions.has(extname(entry.name).toLowerCase()),
+      ),
+    ).map((entry) => entry.name);
+    sendJson(response, 200, { files });
+    return true;
+  }
+
+  const layoutMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/layout$/i);
+  if (layoutMatch) {
+    if (request.method !== "PUT") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const layoutSlug = slugify(layoutMatch[1]);
+    if (!isValidSlug(layoutSlug)) {
+      sendJson(response, 400, { error: "Invalid world slug." });
+      return true;
+    }
+
+    const layoutPath = join(worldsDir, layoutSlug, "assets", "layout.js");
+    if (!(await pathExists(layoutPath))) {
+      sendJson(response, 404, { error: "That world has no assets/layout.js to update." });
+      return true;
+    }
+
+    const payload = await readBody(request);
+    const problem = validateLayout(payload);
+    if (problem) {
+      sendJson(response, 400, { error: problem });
+      return true;
+    }
+
+    // Timestamped backup of the current file before every save; tmp/ is gitignored.
+    const backupDir = join(rootDir, "tmp", layoutSlug, "layout-backups");
+    await mkdir(backupDir, { recursive: true });
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+    const backupName = `layout-${stamp}.js`;
+    await writeFile(join(backupDir, backupName), await readFile(layoutPath));
+
+    const banner =
+      "// Seeded by tmp/" +
+      layoutSlug +
+      "/build.py; maintained by curator mode (src/core/curator.js).\n" +
+      "// Coordinates are Blender Z-up meters; convert to Three.js with " +
+      "(x, y, z)_three = (x, z, -y)_blender. yaw in degrees.\n";
+    await writeFile(
+      layoutPath,
+      `${banner}globalThis.${layoutGlobalName(layoutSlug)} = ${JSON.stringify(payload, null, 1)};\n`,
+      "utf8",
+    );
+    sendJson(response, 200, {
+      saved: true,
+      slug: layoutSlug,
+      slots: payload.slots.length,
+      backup: `tmp/${layoutSlug}/layout-backups/${backupName}`,
+    });
     return true;
   }
 

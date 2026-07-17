@@ -3,6 +3,80 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-16 — Claude (with James) — session 2: CURATOR MODE SHIPPED
+
+- Curator mode v1 built and live, triptych authoring included (James's call: "fold that
+  puppy into v1"). Entered only via the admin panel curate pill (`?curate=1`, served only);
+  the old "coming soon" toast is gone.
+- Reusable framework as planned: `src/core/curator.js` is world-agnostic — the world hands
+  it an adapter (THREE + scene, live layout, analytic wall/floor geometry, slot CRUD hooks,
+  frame kit, protected ids, input locks). A future gallery world reuses it by building the
+  same adapter with its own kit/geometry.
+- Features: bottom art tray scanned from `assets/art/` via the new server endpoint
+  (thumbnails, ×N placement badges, blank-frame tile, rescan button); pick up → ghost
+  preview rides a raycast (walls snap flush + yaw from the wall, floor gives easel or
+  lean); kinds wall/cord/triptych on walls (keys 1–3 or pills), easel/lean on floor;
+  triptych drops three linked panels (data-driven `slice`/`group` — the hardcoded
+  TRIP_SLICE in world.js is gone, layout.js trip slots migrated); click selects (gold
+  outline, trio selects together), drag slides along/between walls, arrows nudge 1 cm
+  (Shift 10 cm), wheel or [ ] resizes, Q/E turns floor pieces, frame swatches + wall↔cord
+  switch + take-down on the HUD; Ctrl+Z undo (snapshot stack); preview toggle hides all
+  chrome; explicit save (dirty dot) → PUT with timestamped backup; revert reloads last
+  save. The shimmering blank is protected — it's a drift exit, delete is refused.
+- world.js refactor: slot registry (add/remove/update/reset with disposal), curator gates
+  on focus-glide/drift exits/door walk-out/hover cursor, arrows/wheel lockable, WALLS
+  (octagon + door keep-out band) exported to the adapter. Walking + collision untouched.
+- Server: `GET /api/worlds/:slug/art` (image scan) and `PUT /api/worlds/:slug/layout`
+  (shape validation incl. path-traversal guard; backup to `tmp/<slug>/layout-backups/`
+  before every write; rewrites `assets/layout.js` in the same globalThis + Blender Z-up
+  format). `build.py` layout.js reseed now gated behind `MS_WRITE_LAYOUT=1` — the file is
+  curator-owned. 4174 server restarted on the new code.
+- Verified statically (house rules, no browser QA): 11-check Node suite green against a
+  scratch-port server — endpoint round-trip (written layout deep-equals the PUT), backup
+  byte-match, malformed/traversal rejections, door-band + yaw + inset math against the
+  shipped slots. James is the first real user of the UI.
+- Not done: index.html build stamp still says r2 (bump to r3 at wrap-up — no mid-session
+  .html edits). The quirky-JPEG worry is dropped: James confirms the triptych renders.
+- Post-walkthrough tweaks (same session, James's notes): (1) "clear all" button in the
+  curator topbar — takes down every piece except the protected drifting blank, confirm
+  dialog, one Ctrl+Z restores the whole hang; (2) camera speed capped — stored wheel
+  impulse clamped to ±1.5 and total travel speed hard-capped at TOP_SPEED = 3.0 m/s
+  (~25% of the old uncapped wheel-rush top, per James's motion-sickness call; plain
+  walking at 1.7 unchanged); (3) control bar moved from top-left into a shared bottom
+  dock with the tray — pinned to the tray's left edge, 10px above, rides tray width
+  (selection HUD and toast bumped up to clear it). No autosave, confirmed to James:
+  explicit save only, amber dot = unsaved; plain F5/tab-close does NOT warn (offered a
+  beforeunload guard, not yet requested).
+- Curator UI iterations with James live: dock evolved bottom-center → left rail —
+  toolbar flush to the top-left corner, tray touching it below, flush left, running to
+  the page bottom; single column of 140px thumbnails, 12px even padding/gaps, scrollbar
+  fully hidden (scroll still works); rescan pinned at the strip top; HUD + toasts
+  bottom-center.
+- James caught a real bug via the triptych "mirroring on its own": wallRightDir was
+  negated, so any trio move/resize swapped the outer panels (and wall-piece arrow-nudges
+  ran backwards). Fixed — slice 0 verified to sit on the viewer's left against the
+  shipped seed. The accident became a feature at his request: mirror toggle (HUD button
+  or M) — flips a piece's art horizontally via texture transform (`flip` slot property,
+  server validates it, 4174 restarted); on a triptych it flips each panel AND swaps the
+  outer slices so the whole composition mirrors. Blanks refuse politely.
+- Live curation pass with James (running into the small hours of 2026-07-17), curator UI
+  iterated to its v1 shape:
+  - Dock rebuilt as a left rail flush to the screen edges: actions bar snug in the
+    top-left corner, vertical thumbnail strip touching it directly below and always
+    running to the bottom of the page. 140px tiles, even 12px padding and gaps, vertical
+    scrolling only with the scrollbar fully hidden, rescan button pinned in the strip
+    header. HUD and toasts recentered bottom-center. Room keeps ~92% of the screen.
+  - Triptych spread control: , / . keys (2cm steps, shift = 10cm) plus closer/apart HUD
+    buttons and a live gap readout. Moves and drags preserve the set gap (it used to snap
+    back to the formula), resize scales it proportionally, clamp 0–1.5× panel width
+    within wall space. Undoable.
+  - Per-slot mirror toggle (`flip` in layout.js): M key or HUD button flips a piece
+    horizontally at the UV level; a mirrored triptych also swaps its outer slices so the
+    composition flips whole. Blank frames decline.
+- Where things stand: curator v1 is real and James spent the night hanging art with it —
+  his verdict: "so cool… like a dream come true." Next: his queued wishlist (lighting
+  pass, proprietor, music; Meshy Premium lands 2026-07-17 for props/characters).
+
 ## 2026-07-16 — Claude (with James)
 
 - Direction shift, James's call: art placement moves out of Blender and into a reusable

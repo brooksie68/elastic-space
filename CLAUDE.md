@@ -2,7 +2,12 @@
 
 ## Todo
 
-(nothing pending — SSH remotes shipped 2026-07-16: all repos push over SSH now, see memory
+1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
+   are live). James supplies audio per bank; Claude wires pads, labels, and icons.
+2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
+   in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
+
+(SSH remotes shipped 2026-07-16: all repos push over SSH now, see memory
 `chunk-large-git-pushes`; blipblops was skipped, it has no `.git` directory)
 
 ## Local preview
@@ -38,6 +43,33 @@
   publish time it becomes the public site's `index.html` in place of the admin panel. Root-level
   pages load dashboard-control with `data-home="./index.html"` since the default home path
   assumes world folder depth.
+
+## World drafts (admin panel)
+
+- `world-drafts.json` at the repo root stores page drafts James creates in the admin panel's
+  world editor tab ("new draft" dialog: title, synopsis, vibe, reference links, sound notes,
+  ideas). The dev server reads and writes it via `/api/drafts`; don't hand-edit the shape.
+- The dialog's "engage" button marks a draft `engaged` and inserts a line into the Todo
+  section above. Picking up an engaged draft: read it from `world-drafts.json`, ask James any
+  questions first — if none, present a build plan — and wait for his explicit go before
+  building anything. New worlds are co-built, never unprompted. When the world ships, remove
+  the todo line, mark the draft's status `built`, and update `World Ideas.md`.
+
+## Curator mode (gallery worlds)
+
+- `src/core/curator.js` is the reusable in-world curation module (built 2026-07-16 on
+  Mandala Shop). A gallery world loads it via dynamic import when `?curate=1` is present
+  and the page is served, passing an adapter: THREE + scene/camera/stage, the live layout
+  object, analytic wall/floor geometry, slot add/remove/update/reset hooks, frame kit,
+  protected slot ids, and input locks. See `src/worlds/mandala-shop/world.js` for the
+  reference adapter.
+- Server side: `GET /api/worlds/:slug/art` lists `assets/art/` images;
+  `PUT /api/worlds/:slug/layout` validates and rewrites `assets/layout.js` (Blender Z-up
+  coords, `globalThis.<SLUG>_LAYOUT` format), backing up the previous file to
+  `tmp/<slug>/layout-backups/` first.
+- Layout files are curator-owned once a world ships: never hand-edit slot data casually,
+  and never let a Blender build script reseed `layout.js` unguarded (Mandala Shop's
+  build.py requires `MS_WRITE_LAYOUT=1`).
 
 ## World changelogs
 

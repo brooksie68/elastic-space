@@ -132,11 +132,15 @@ body {
 }
 
 .masthead {
-  align-items: flex-start;
+  align-items: center;
   display: flex;
-  gap: 1rem;
-  justify-content: space-between;
+  gap: 0.9rem;
   padding: 1.5rem;
+}
+
+/* Title block pushes the gear + status cards to the right edge */
+.masthead > div:first-child {
+  margin-right: auto;
 }
 
 .masthead-actions,
@@ -256,22 +260,8 @@ h2 {
   margin-top: 0.35rem;
 }
 
-.workspace {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
-}
-
-.tree-panel,
 .editor-panel {
   min-height: calc(100vh - 13rem);
-}
-
-.tree-panel {
-  display: grid;
-  gap: 1rem;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  padding: 1.25rem;
 }
 
 .panel-head,
@@ -282,16 +272,11 @@ h2 {
   justify-content: space-between;
 }
 
-.filters,
 .meta-grid,
 .relationships,
 .files {
   display: grid;
   gap: 1rem;
-}
-
-.filters {
-  grid-template-columns: 1fr 1fr;
 }
 
 .field {
@@ -343,68 +328,115 @@ h2 {
   color: var(--text);
 }
 
-.tree-root {
-  background: rgba(9, 13, 19, 0.56);
+/* Drafts + draft dialog (world editor tab) */
+.drafts-panel {
+  padding: 1.25rem 1.5rem;
+}
+
+.drafts-status {
+  margin: 0.5rem 0 0;
+}
+
+.drafts-status.error {
+  color: var(--danger);
+}
+
+.drafts-list {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.draft-card {
+  align-items: baseline;
+  background: var(--panel-soft);
   border: 1px solid var(--line);
-  border-radius: 5px;
-  overflow: auto;
-  padding: 0.75rem;
-}
-
-.tree-branch {
-  margin-left: 0.7rem;
-}
-
-.tree-folder,
-.tree-file {
-  align-items: center;
-  background: transparent;
-  border: 0;
   border-radius: 5px;
   color: var(--text);
   cursor: pointer;
   display: flex;
   font: inherit;
-  gap: 0.65rem;
-  justify-content: space-between;
-  padding: 0.55rem 0.7rem;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
   text-align: left;
-  width: 100%;
 }
 
-.tree-folder:hover,
-.tree-folder:focus-visible,
-.tree-file:hover,
-.tree-file:focus-visible,
-.tree-folder.active,
-.tree-file.active {
+.draft-card:hover,
+.draft-card:focus-visible {
   background: var(--accent-soft);
+  border-color: var(--line-strong);
 }
 
-.tree-meta {
+.draft-card strong {
+  font-size: 1.05rem;
+}
+
+.draft-syn {
   color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.tree-label {
+  flex: 1;
   min-width: 0;
 }
 
-.tree-label strong,
-.tree-label span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.draft-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  flex: none;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.6rem;
+  text-transform: uppercase;
 }
 
-.tree-status {
-  border: 1px solid var(--line);
+.draft-chip.engaged {
+  border-color: rgba(255, 207, 120, 0.5);
+  color: var(--accent);
+}
+
+.draft-dialog {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
   border-radius: 5px;
-  color: var(--muted);
-  font-size: 0.72rem;
-  padding: 0.2rem 0.55rem;
-  text-transform: uppercase;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  padding: 1.4rem 1.5rem;
+  width: min(40rem, 92vw);
+}
+
+.draft-dialog::backdrop {
+  backdrop-filter: blur(3px);
+  background: rgba(5, 8, 13, 0.55);
+}
+
+.draft-dialog h3 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+}
+
+.draft-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.draft-error {
+  color: var(--danger);
+  margin: 0.8rem 0 0;
+}
+
+.draft-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1.3rem;
+}
+
+#world-picker {
+  background: rgba(9, 13, 19, 0.82);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  color: var(--text);
+  font: inherit;
+  padding: 0.7rem 0.85rem;
 }
 
 .editor-panel {
@@ -504,9 +536,23 @@ h2 {
   border: 1px solid var(--line);
   border-radius: 5px;
   display: flex;
-  gap: 0.9rem;
-  max-width: 26rem;
-  padding: 1rem 1.2rem;
+  gap: 0.7rem;
+  padding: 0.55rem 0.85rem;
+}
+
+.chrome-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.55rem 0.85rem;
+}
+
+.chrome-card .eyebrow {
+  margin: 0 0 0.3rem;
+}
+
+.chrome-card .toggle span:last-child {
+  font-size: 0.88rem;
 }
 
 .server-light {
@@ -530,13 +576,53 @@ h2 {
 }
 
 .server-state {
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
 .server-hint {
-  font-size: 0.82rem;
-  margin-top: 0.25rem;
+  font-size: 0.78rem;
+  margin-top: 0.1rem;
   overflow-wrap: anywhere;
+}
+
+/* Tab bar between the masthead and the section panels */
+.tab-bar {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.45rem;
+}
+
+.tab-button {
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  padding: 0.6rem 1.1rem;
+  text-transform: uppercase;
+}
+
+.tab-button:hover,
+.tab-button:focus-visible {
+  color: var(--text);
+}
+
+.tab-button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.tab-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.tab-panel[hidden] {
+  display: none;
 }
 
 .pages-panel,
@@ -608,6 +694,80 @@ h2 {
   background: var(--accent-soft);
   color: var(--text);
   padding-left: 0.7rem;
+}
+
+/* Archive buttons + confirm dialog (injected by map-room.js when served) */
+.pages-list .archive-button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  margin-right: 0.6rem;
+  padding: 0.25rem 0.7rem;
+  text-transform: uppercase;
+}
+
+.pages-list .archive-button:hover,
+.pages-list .archive-button:focus-visible {
+  background: rgba(255, 128, 121, 0.14);
+  border-color: rgba(255, 128, 121, 0.4);
+  color: #ffd7d4;
+}
+
+.archive-status {
+  margin: 0.5rem 0 0;
+  padding: 0 0.6rem;
+}
+
+.archive-status.error {
+  color: var(--danger);
+}
+
+.archive-dialog {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  max-width: 27rem;
+  padding: 1.4rem 1.5rem;
+}
+
+.archive-dialog::backdrop {
+  backdrop-filter: blur(3px);
+  background: rgba(5, 8, 13, 0.55);
+}
+
+.archive-heading {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 0.7rem;
+}
+
+.archive-copy {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.archive-copy code {
+  color: var(--text);
+}
+
+.archive-error {
+  color: var(--danger);
+  margin: 0.8rem 0 0;
+}
+
+.archive-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+  margin-top: 1.3rem;
 }
 
 .controls-panel {
@@ -710,11 +870,6 @@ h2 {
 }
 
 @media (max-width: 1080px) {
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .tree-panel,
   .editor-panel {
     min-height: auto;
   }
@@ -731,7 +886,6 @@ h2 {
     flex-direction: column;
   }
 
-  .filters,
   .meta-grid,
   .relationships {
     grid-template-columns: 1fr;

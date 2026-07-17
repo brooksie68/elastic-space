@@ -85,6 +85,26 @@
       .jerry:focus-visible {
         outline: none;
       }
+
+      .sound-note {
+        bottom: 0.9rem;
+        color: rgba(205, 228, 255, 0.42);
+        font: 0.8rem/1.55 "Trebuchet MS", "Segoe UI", sans-serif;
+        left: 50%;
+        margin: 0;
+        max-width: 52rem;
+        padding: 0 1.2rem;
+        position: fixed;
+        text-align: center;
+        transform: translateX(-50%);
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .sound-note strong {
+        color: rgba(205, 228, 255, 0.6);
+        font-weight: 700;
+      }
     </style>
   </head>
   <body>
@@ -157,6 +177,15 @@
         </g>
       </svg>
     </a>
+
+    <p class="sound-note">
+      <strong>Sound:</strong> many worlds have it. Use the speaker icon in a world's top right corner
+      to turn it on, or let it play automatically everywhere: click the icon to the left of your
+      browser's address bar &rarr; <strong>Site settings</strong> &rarr; <strong>Sound</strong> &rarr;
+      <strong>Allow</strong>. (In Firefox: the permissions icon in the address bar &rarr; unblock
+      Autoplay. In Safari: right-click the address bar &rarr; Settings for This Website &rarr;
+      Auto-Play &rarr; Allow All.)
+    </p>
 
     <script src="./src/core/dashboard-control.js" data-home="./index.html"></script>
     <script>

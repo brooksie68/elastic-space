@@ -78,6 +78,8 @@ The pool includes amoebas, three jellyfish forms, rays, dot schools, pulse urchi
 
 One of every non-leviathan type appears within five seconds of load. Exact spawn intervals, opening times, passage durations, and concurrency limits are maintained only in `docs/denizen-frequency-rubric.md`; update that rubric whenever those values change.
 
+Mary, Jerry's girlfriend — a golden-pink cell two-thirds his size — visits every few minutes. Her courtship arc (mutual notice, paired swim around a drifting anchor, membrane touch with merged shared rings and warm bolts, parting) runs from `spawnGirlfriend` in site.js and steers Jerry through `cellMotion.courtship`, the same hijack pattern floor visits and leviathan panic use. Her timing is in the rubric; she is not tuner-scaled, but the tuner header's "Mary" button summons a visit immediately.
+
 Important behavioral rules:
 
 - Feeding amoebas and their prey remain position-locked until consumption completes.

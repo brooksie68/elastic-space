@@ -20,7 +20,22 @@
             <p id="server-hint" class="small server-hint"></p>
           </div>
         </section>
+        <section class="chrome-card" aria-label="Site chrome">
+          <p class="eyebrow">site chrome</p>
+          <label class="toggle">
+            <input id="dash-icons-toggle" type="checkbox" checked />
+            <span class="toggle-track" aria-hidden="true"></span>
+            <span>Show dashboard icons</span>
+          </label>
+        </section>
       </header>
+
+      <nav class="tab-bar panel" role="tablist" aria-label="Admin sections">
+        <button id="tab-button-worlds" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="tab-worlds">worlds</button>
+        <button id="tab-button-editor" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-editor">world editor</button>
+      </nav>
+
+      <div id="tab-worlds" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-worlds">
 
       <section class="panel pages-panel">
         <div class="panel-head">
@@ -28,7 +43,6 @@
             <p class="eyebrow">pages</p>
             <h2>Worlds</h2>
           </div>
-          <p class="small">The dashboard icon in each world's top right corner brings you back here.</p>
         </div>
         <nav class="pages-list" aria-label="Worlds">
           <a target="_blank" rel="noopener" href="./welcome.html">Welcome <span class="page-note">(public front door)</span></a>
@@ -50,20 +64,11 @@
         </nav>
       </section>
 
-      <section class="panel controls-panel">
-        <div>
-          <p class="eyebrow">site chrome</p>
-          <label class="toggle">
-            <input id="dash-icons-toggle" type="checkbox" checked />
-            <span class="toggle-track" aria-hidden="true"></span>
-            <span>Show dashboard icons</span>
-          </label>
-        </div>
-        <p class="small">
-          Hides or shows the top-right map-room icon on every page in the site.
-          Sound icons are not affected.
-        </p>
-      </section>
+      <section id="summary-strip" class="summary-strip"></section>
+
+      </div>
+
+      <div id="tab-editor" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-editor" hidden>
 
       <div id="editor-sections" class="editor-sections">
         <p id="offline-note" class="offline-note panel" hidden>
@@ -73,47 +78,26 @@
         <section class="panel editor-toolbar">
           <div>
             <p class="eyebrow">world editor</p>
-            <p class="small">Full folder-tree visibility, direct file editing, and publish control.</p>
+            <p class="small">Edit live worlds directly; start new ones as drafts.</p>
           </div>
           <div class="masthead-actions">
             <button id="refresh-button" class="button ghost" type="button">refresh</button>
-            <button id="new-world-button" class="button" type="button">new page</button>
+            <button id="new-world-button" class="button" type="button">new draft</button>
           </div>
         </section>
 
-        <section id="summary-strip" class="summary-strip"></section>
-
-        <section class="workspace">
-          <aside class="panel tree-panel">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">directory</p>
-                <h2>Folder tree</h2>
-              </div>
-              <p class="small">`src/worlds` plus each world’s working files</p>
+        <section class="panel drafts-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">drafts</p>
+              <h2>Page drafts</h2>
             </div>
+          </div>
+          <p id="drafts-status" class="small drafts-status"></p>
+          <div id="drafts-list" class="drafts-list"></div>
+        </section>
 
-            <div class="filters">
-              <label class="field">
-                <span>search</span>
-                <input id="search-input" type="search" placeholder="title, slug, tag, mood" />
-              </label>
-              <label class="field">
-                <span>status</span>
-                <select id="status-filter">
-                  <option value="all">all</option>
-                  <option value="live">live</option>
-                  <option value="draft">draft</option>
-                  <option value="hidden">hidden</option>
-                  <option value="retired">retired</option>
-                </select>
-              </label>
-            </div>
-
-            <div id="tree-root" class="tree-root"></div>
-          </aside>
-
-          <section class="panel editor-panel">
+        <section class="panel editor-panel">
             <form id="world-form" class="world-form">
               <div class="editor-head">
                 <div>
@@ -122,11 +106,11 @@
                   <p id="editor-path" class="path-text">Choose a world in the tree to inspect or edit it.</p>
                 </div>
                 <div class="editor-actions">
+                  <select id="world-picker" aria-label="Choose a world to edit"></select>
                   <a id="preview-link" class="button ghost disabled" href="/" target="_blank" rel="noreferrer">
                     open page
                   </a>
                   <button id="save-button" class="button" type="submit">save changes</button>
-                  <button id="delete-button" class="button danger" type="button">delete page</button>
                 </div>
               </div>
 
@@ -272,17 +256,45 @@
               <p id="form-status" class="form-status"></p>
             </form>
           </section>
-        </section>
       </div>
 
-      <p class="sound-note">
-        <strong>Sound:</strong> many worlds have it. Use the speaker icon in a world's top right corner
-        to turn it on, or let it play automatically everywhere: click the icon to the left of your
-        browser's address bar &rarr; <strong>Site settings</strong> &rarr; <strong>Sound</strong> &rarr;
-        <strong>Allow</strong>. (In Firefox: the permissions icon in the address bar &rarr; unblock
-        Autoplay. In Safari: right-click the address bar &rarr; Settings for This Website &rarr;
-        Auto-Play &rarr; Allow All.)
-      </p>
+      </div>
+
+      <dialog id="draft-dialog" class="draft-dialog">
+        <h3 id="draft-dialog-title">New page draft</h3>
+        <div class="draft-grid">
+          <label class="field">
+            <span>title</span>
+            <input id="draft-title" type="text" />
+          </label>
+          <label class="field">
+            <span>synopsis</span>
+            <textarea id="draft-synopsis" rows="2"></textarea>
+          </label>
+          <label class="field">
+            <span>vibe / mood</span>
+            <input id="draft-vibe" type="text" />
+          </label>
+          <label class="field">
+            <span>reference links</span>
+            <textarea id="draft-links" rows="2" placeholder="one per line"></textarea>
+          </label>
+          <label class="field">
+            <span>sound notes</span>
+            <textarea id="draft-sound" rows="2"></textarea>
+          </label>
+          <label class="field">
+            <span>ideas</span>
+            <textarea id="draft-ideas" rows="8"></textarea>
+          </label>
+        </div>
+        <p id="draft-error" class="draft-error" hidden></p>
+        <div class="draft-actions">
+          <button id="draft-cancel" class="button ghost" type="button">cancel</button>
+          <button id="draft-save" class="button ghost" type="button">save as draft</button>
+          <button id="draft-engage" class="button" type="button">engage</button>
+        </div>
+      </dialog>
     </main>
 
     <script src="./scripts/map-room.js" defer></script>

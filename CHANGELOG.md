@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-17 (global wrap — 07-16/17 sessions committed)
+
+- Dropzilla: GAS bank (replaces TOOTS) and CHUCK OPINES bank live — 2 of 10 banks filled;
+  drift exits temporarily disabled during the soundboard build-out.
+- Curator mode shipped: reusable `src/core/curator.js` (Mandala Shop is the reference
+  adapter) + server endpoints for art listing and layout writes.
+- Admin panel: world editor tab with drafts API (`world-drafts.json`), world archive control.
+- Jerry's Pool: Mary (Jerry's girlfriend) random visit event, rubric updated.
+- Dead Letter Office: Meshy postmaster experiment landed (ref art committed; working
+  assets in `tmp/`).
+- Get Your Ass in the Moss retired to `archive/` (James's call — dead end).
+
 ## 2026-07-13 (launcher cleanup)
 
 - ONE launcher: `start-elastic-space.cmd` (renamed from `map-room.cmd`) — idempotent,

@@ -3,6 +3,12 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-16 — claude-fable (dashboard-link sweep)
+
+- Removed the `.home-link` house-icon anchor (HTML + CSS) — it was a temporary testing shortcut
+  that duplicated the shared dashboard icon but ignored the admin panel's "show dashboard icons"
+  toggle. The toggle-controlled icon from `core/dashboard-control.js` is the one way back now.
+
 ## 2026-07-16 — claude-fable (with James)
 
 - MUSIC REPLACED: James retired the raga drone (both `rift-drone` mp3s deleted) in favor of two

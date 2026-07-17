@@ -1,7 +1,7 @@
 // Shared dashboard chrome for Elastic Space pages.
 // Renders a fixed dashboard icon in the top right corner linking back to the
-// map room at the repo root. Site-wide visibility is controlled from the map
-// room's "show dashboard icons" toggle (localStorage). While the icon is
+// admin panel at the repo root. Site-wide visibility is controlled from the
+// admin panel's "show dashboard icons" toggle (localStorage). While the icon is
 // visible, the shared sound control (if the page has one) slides down to sit
 // directly below it.
 //
@@ -10,8 +10,8 @@
 (function () {
   const KEY = "elastic-dashboard-icons";
 
-  // Worlds sit at src/worlds/<slug>/, three levels below the map room. Pages
-  // elsewhere override via <script src="..." data-home="./index.html">.
+  // Worlds sit at src/worlds/<slug>/, three levels below the admin panel.
+  // Pages elsewhere override via <script src="..." data-home="./index.html">.
   const HOME_HREF =
     (document.currentScript && document.currentScript.dataset.home) || "../../../index.html";
 
@@ -85,8 +85,8 @@
     const link = document.createElement("a");
     link.className = "es-dash";
     link.href = HOME_HREF;
-    link.title = "Map room";
-    link.setAttribute("aria-label", "Map room");
+    link.title = "Dashboard";
+    link.setAttribute("aria-label", "Dashboard");
     link.innerHTML = ICON;
     document.body.appendChild(link);
 

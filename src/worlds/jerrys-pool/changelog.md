@@ -3,6 +3,105 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-17 — claude-fable (Mary, Jerry's girlfriend)
+
+- New random event, per James: a golden-pink single-celled organism two-thirds Jerry's size
+  visits every few minutes (first visit 2.5–5 min, then 4–8 min after each departure; full
+  timing in the rubric). Visit arc: she drifts in from the side away from Jerry → mutual
+  notice (she pulses, he stops and leans his nucleus toward her) → they swim together around
+  a slowly drifting anchor, circling each other → membranes press while both outer ring sets
+  fade and three shared "union" orbit rings tumble around the pair, warm gold-pink bolts
+  arcing between their rims → rings unmerge, glow fades → they part and swim off separately.
+- All DOM built by site.js (index.html untouched); styles in a new `.gf-*` section at the end
+  of site.css. Bolts reuse `spawnJerryZap`, which grew an optional stroke-palette parameter
+  (existing vake-zap calls unchanged).
+- Jerry's side runs through a new `cellMotion.courtship` hijack (same pattern as floorVisit /
+  leviathanPanic): curiosity override, per-phase speed scale, held near-depth via a
+  `holdDepth` gate on the pulse retarget, prey-chasing suppressed, and a `glow` channel that
+  brightens him and blushes his glow colors toward hers during the union.
+- Safety: one at a time; spawn skipped and retried while the leviathan is visible, Jerry is
+  panicked/tending the seafloor, or the tab is hidden; a leviathan surfacing mid-date ends it
+  early (she flees); 120 s TTL hard-cleanup in case a hidden tab freezes rAF mid-visit.
+- Verified by Node simulation (200 seeded visits, scratchpad `gf-sim.mjs`): first pass caught
+  the pair being dragged through each other by the free-running offset rotation (8/200 runs);
+  fixed with bearing-tracked offset angle + a "press, never pass through" separation floor at
+  0.7× summed radii. After the fix all 200 runs complete the full arc — union reached ~3 s
+  into the touch phase, 4–13 bolts each, clean departures, no NaNs.
+- Not in the tuner roster (like Jerry and the leviathan). Rubric + current-index updated.
+- Rev 2 (same session): she has a name — **Mary** (James). The tuner panel header grew a
+  golden-pink "Mary" button that summons a visit immediately, replacing the console-only
+  `spawnGirlfriend()` hack: disabled and relabeled "Mary's here" mid-visit, refuses with a
+  little shake while the leviathan is about, and a summoned visit reschedules (never stacks)
+  the natural 4–8-minute chain via a tracked timer. Summoning also cancels an in-progress
+  floor visit at the notice beat ("Mary outranks gardening") — which also covers the natural
+  case where Jerry wandered floorward while she was still entering. Docs renamed to Mary.
+- Rev 3 (same session, James: "Mary is gorgeous", tuning pass): (1) Jerry notices her 100 px
+  farther out (430 px beyond contact range) and approaches during the notice beat instead of
+  hanging still (notice speedScale 0.12 → 0.26). (2) His nucleus now looks right at her for
+  the whole visit — a dedicated courting gaze branch in updateCell replaces the normal
+  intent-following nucleus lerp (softer response than the leviathan reaction: attention, not
+  alarm). Her live position feeds `cellMotion.courtship.gazeX/Y` from her frame loop.
+  (3) Culmination orbs: as the rings merge, each releases six energy orbs (~640 ms apart,
+  fanned across ±100° from each cell's far side) — his in the ambient blues, hers in six
+  golden-pink variations (`MARY_ORB_COLORS`, deep-water luminance since the energy-ball CSS
+  pushes saturation/brightness hard). `spawnEnergyBall` grew a `release` option ({x, y,
+  color}: arbitrary origin, radial direction, bypasses the 5-ball ambient cap; ambient
+  call sites unchanged) — so all twelve are real drift orbs that vakes can steal and worms
+  can eat. Sim re-run after the notice tuning: all 200 seeded visits still pass.
+- Rev 4 (same session, "they're kissing... they love each other"): Mary's nucleus is now
+  alive — once she's noticed Jerry it leans toward him (~24 px) with a soft lateral bob,
+  driven per-frame as `--gf-nucleus-x/y` on her orb and applied via the `translate` property
+  so it composes with her ambient sway animation. During the union both nuclei press toward
+  the contact point and sway on a shared sine clock (`time * 0.0024`, ~2.6 s period): hers
+  reaches ~30±7 px, his gaze reach grows 74 → 80±7 px via a new `courtship.kiss` flag (set
+  at ring-merge, cleared in endUnion, read in updateCell's gaze branch). Same phase on both
+  sides, so they lean in and ease back together — communicating, interested, in love.
+- Rev 5 (same session): three more per James. (1) Mary's nucleus now strains: on final
+  approach (touch phase pre-union) it presses to ~40 px, and during the kiss 44±7 px — right
+  up against the inside of her membrane (her orb's overflow clipping sells the press), matching
+  Jerry's existing strain. (2) Union wave: ~0.9 s into the union (the orb-release moment),
+  `radiateUnionWave` sends two expanding rings from the pair's midpoint — one in his cyan/teal,
+  one in her gold/pink, 260 ms apart, front speed 0.66 px/ms (`GF_WAVE_SPEED`), band at ~66% of
+  a 1100 px gradient scaled up so raster cost stays fixed. Every jerryGlowTick registry creature
+  the front passes gets `entry.waveUntil` = now + 6.5–9 s → held at full glow, then the normal
+  0.07 ease-down; polyps and brain corals are lit through their existing proximity datasets
+  (`awakeUntil` / `glowFullUntil`), which the 180 ms checker in updateCell converts to classes.
+  Leviathan exempt as always (not in the registry). (3) Leviathan halved: entrance and return
+  now 4–8 minutes (was 2–4) — timer sites, tuner roster text, opening comment, and rubric all
+  updated.
+- Rev 6 (same session, "she's still kinda too languid"): urgency + anticipation pass.
+  (1) Her nucleus seeks him from the moment she enters frame (gaze now runs in every phase
+  but depart; was notice-onward). (2) Notice pulses lengthened ~2× and tripled: gf-notice is
+  now 1150 ms × 6 (was 900 ms × 2), and the gf-noticing class rides into the approach instead
+  of being stripped at the together transition (removed at union start). (3) Jerry answers:
+  ~1.6 s after her pulses begin he fires two glow pulses of his own — |sin| humps (1150 ms
+  period, 2300 ms window) via courtship.noticePulseStart/Until, added straight into his
+  brightness/glow terms in updateCell so there's no ease lag. (4) Both nuclei pressed against
+  facing membranes for the entire coming-together (her press reach now covers the together
+  phase, not just touch; his 74 px gaze already pressed). (5) Faster close: together phase
+  6–8.5 s (was 9–13), her speeds 0.105/0.095/0.08 across enter/together/touch (was
+  0.09/0.075/0.06), Jerry's courtship speedScales 0.95/0.8/0.42 (was 0.72/0.6/0.34),
+  separation gap closes ~45% faster, and during notice she keeps easing toward him instead
+  of recoiling. Sim re-run: all 200 pass; the urgency actually tightened convergence — union
+  reached avg 1.7 s into touch (was 3.3 s), worst case 3.5 s (was 12.3 s), ≥9 bolts every run.
+- Rev 7 (same session, wave tuning): the union energy wave now (1) launches at 2.4 s after
+  ring-merge instead of 0.9 s, so the orbs are visibly streaming out when it goes — it reads
+  as the wave OF the release, not a herald of it; (2) carries a blur(10px) on the ring (the
+  filter scales with the transform, so the band softens as it spreads) plus a wider, gentler
+  gradient band (52–80%, was 58–76%); (3) travels at 0.3 px/ms instead of 0.66 — roughly 7.5 s
+  to cross the pool, slow enough to watch each creature light up as the front passes (ring
+  sweep and creature-glow arrival timeouts both derive from GF_WAVE_SPEED, so they stay in
+  sync). Second ring stagger widened 260 → 420 ms; peak opacity nudged up to compensate for
+  the blur.
+- Where things stand: shipped and signed off — James watched several visits and tuned the
+  event through seven revs in one sitting ("Mary is gorgeous"). The settled arc: she enters
+  looking for him → six long pulses, he answers with two → eager approach, both nuclei pressed
+  against facing membranes → union (merged rings, bolts, six orbs each, slow blurred energy
+  wave that sets the whole pool aglow) → parting. Summonable any time via the tuner panel's
+  Mary button. Cache tags on site.js/site.css not yet bumped (happens at wrap-up). Candidate
+  follow-ups if James wants: a rare gift exchange (she leaves an orb behind for Jerry), a
+  sound hook once the pool gets audio again, maybe a rare longer variant of the visit.
+
 ## 2026-07-15 — claude-fable (pool tuner panel, per James: "go!")
 
 - New in-world control panel (⚙ bottom-left toggle, bottom sheet, all DOM built by site.js —

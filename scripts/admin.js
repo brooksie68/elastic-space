@@ -1,26 +1,42 @@
 const state = {
   activeSlug: null,
+  archived: [],
   detail: null,
+  drafts: [],
   mode: "idle",
-  tree: null,
   worlds: [],
 };
 
 const form = document.getElementById("world-form");
 const summaryStrip = document.getElementById("summary-strip");
-const treeRoot = document.getElementById("tree-root");
-const searchInput = document.getElementById("search-input");
-const statusFilter = document.getElementById("status-filter");
 const refreshButton = document.getElementById("refresh-button");
 const newWorldButton = document.getElementById("new-world-button");
 const saveButton = document.getElementById("save-button");
-const deleteButton = document.getElementById("delete-button");
+const worldPicker = document.getElementById("world-picker");
 const previewLink = document.getElementById("preview-link");
 const editorTitle = document.getElementById("editor-title");
 const editorPath = document.getElementById("editor-path");
 const outboundList = document.getElementById("outbound-list");
 const inboundList = document.getElementById("inbound-list");
 const formStatus = document.getElementById("form-status");
+
+const draftsStatus = document.getElementById("drafts-status");
+const draftsList = document.getElementById("drafts-list");
+const draftDialog = document.getElementById("draft-dialog");
+const draftDialogTitle = document.getElementById("draft-dialog-title");
+const draftError = document.getElementById("draft-error");
+const draftCancelButton = document.getElementById("draft-cancel");
+const draftSaveButton = document.getElementById("draft-save");
+const draftEngageButton = document.getElementById("draft-engage");
+const draftFields = {
+  title: document.getElementById("draft-title"),
+  synopsis: document.getElementById("draft-synopsis"),
+  vibe: document.getElementById("draft-vibe"),
+  links: document.getElementById("draft-links"),
+  sound: document.getElementById("draft-sound"),
+  ideas: document.getElementById("draft-ideas"),
+};
+let activeDraftId = null;
 
 function splitList(value) {
   return String(value ?? "")
@@ -33,147 +49,6 @@ function formatList(value) {
   return Array.isArray(value) ? value.join(", ") : "";
 }
 
-function createEmptyDetail() {
-  return {
-    slug: "",
-    title: "",
-    creators: ["unknown signal"],
-    status: "draft",
-    summary: "",
-    tags: [],
-    moods: [],
-    contentType: "hybrid",
-    entryPoints: ["direct"],
-    exits: [],
-    weight: 5,
-    rarity: "common",
-    era: "first-wave",
-    warnings: [],
-    soundtrack: [],
-    admin: {
-      owner: "unknown signal",
-      notes: "",
-      featured: false,
-      editable: true,
-      driftEnabled: true,
-      hiddenFromDirectory: false,
-    },
-    files: {
-      "index.html": `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New World</title>
-    <link rel="stylesheet" href="./world.css" />
-  </head>
-  <body>
-    <main class="world-shell">
-      <section class="world-copy">
-        <p class="label">new world</p>
-        <h1>New World</h1>
-        <p>Replace this starter atmosphere with the real page.</p>
-      </section>
-      <nav class="portals" aria-label="world routes">
-        <a class="portal" href="/">home</a>
-      </nav>
-    </main>
-    <script src="./world.js" defer></script>
-  </body>
-</html>
-`,
-      "world.css": `:root {
-  color-scheme: dark;
-  --bg: #041116;
-  --panel: rgba(10, 28, 34, 0.74);
-  --line: rgba(160, 255, 236, 0.28);
-  --text: #ecfff8;
-  --muted: rgba(236, 255, 248, 0.74);
-  --accent: #8fffe1;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(143, 255, 225, 0.18), transparent 24%),
-    radial-gradient(circle at 80% 30%, rgba(101, 212, 255, 0.16), transparent 26%),
-    linear-gradient(180deg, #02070d, var(--bg));
-  color: var(--text);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-}
-
-body {
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-}
-
-.world-shell {
-  width: min(72rem, 100%);
-  display: grid;
-  gap: 1.5rem;
-}
-
-.world-copy,
-.portals {
-  backdrop-filter: blur(18px);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 1.5rem;
-  padding: 1.5rem;
-}
-
-.label {
-  color: var(--accent);
-  font-size: 0.75rem;
-  letter-spacing: 0.2em;
-  margin: 0 0 1rem;
-  text-transform: uppercase;
-}
-
-h1 {
-  font-family: "Palatino Linotype", "Book Antiqua", serif;
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 400;
-  margin: 0 0 1rem;
-}
-
-p {
-  color: var(--muted);
-  line-height: 1.6;
-  margin: 0;
-}
-
-.portals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-}
-
-.portal {
-  border: 1px solid rgba(160, 255, 236, 0.3);
-  border-radius: 999px;
-  color: var(--text);
-  padding: 0.8rem 1rem;
-  text-decoration: none;
-}
-`,
-      "world.js": `document.documentElement.dataset.world = "new-world";
-`,
-    },
-    inbound: [],
-    outbound: [],
-    publicPath: "",
-    folderPath: "src/worlds",
-  };
-}
-
 function setStatus(message, kind = "info") {
   formStatus.textContent = message;
   formStatus.className = `form-status${kind === "error" ? " error" : ""}`;
@@ -183,39 +58,16 @@ function getWorldBySlug(slug) {
   return state.worlds.find((world) => world.slug === slug) || null;
 }
 
-function worldMatchesFilters(world) {
-  const searchTerm = searchInput.value.trim().toLowerCase();
-  const filterStatus = statusFilter.value;
-
-  if (filterStatus !== "all" && world.status !== filterStatus) {
-    return false;
-  }
-
-  if (!searchTerm) {
-    return true;
-  }
-
-  const haystack = [
-    world.title,
-    world.slug,
-    world.summary,
-    ...(world.creators ?? []),
-    ...(world.tags ?? []),
-    ...(world.moods ?? []),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  return haystack.includes(searchTerm);
-}
-
 function renderSummary() {
+  // "retired" counts the folders sitting in archive/ plus anything still in
+  // src/worlds whose status was set to retired by hand.
   const counts = {
     total: state.worlds.length,
     live: state.worlds.filter((world) => world.status === "live").length,
     draft: state.worlds.filter((world) => world.status === "draft").length,
-    hidden: state.worlds.filter((world) => world.status === "hidden").length,
-    retired: state.worlds.filter((world) => world.status === "retired").length,
+    retired:
+      state.archived.length +
+      state.worlds.filter((world) => world.status === "retired").length,
   };
 
   summaryStrip.replaceChildren(
@@ -228,33 +80,7 @@ function renderSummary() {
   );
 }
 
-function filteredSlugSet() {
-  return new Set(state.worlds.filter(worldMatchesFilters).map((world) => world.slug));
-}
-
-function nodeHasVisibleWorld(node, visibleSlugs) {
-  if (node.slug && visibleSlugs.has(node.slug)) {
-    return true;
-  }
-
-  if (!node.children) {
-    return false;
-  }
-
-  return node.children.some((child) => nodeHasVisibleWorld(child, visibleSlugs));
-}
-
-function openFileEditor(fileName) {
-  const editor = document.querySelector(`[data-file="${fileName}"]`);
-  if (!editor) {
-    return;
-  }
-
-  editor.scrollIntoView({ behavior: "smooth", block: "center" });
-  editor.focus();
-}
-
-async function loadWorld(slug, focusFile = "") {
+async function loadWorld(slug) {
   const response = await fetch(`/api/worlds/${slug}`);
   if (!response.ok) {
     throw new Error("Unable to load that page.");
@@ -266,86 +92,28 @@ async function loadWorld(slug, focusFile = "") {
   state.mode = "edit";
   fillForm(detail);
   renderRelationships(detail);
-  renderTree();
-  if (focusFile) {
-    openFileEditor(focusFile);
+  if (worldPicker.value !== detail.slug) {
+    worldPicker.value = detail.slug;
   }
 }
 
-function createTreeNode(node, visibleSlugs) {
-  if (!nodeHasVisibleWorld(node, visibleSlugs) && node.path !== "src/worlds") {
-    return null;
+function populateWorldPicker() {
+  const sorted = [...state.worlds].sort((left, right) =>
+    (left.title || left.slug).localeCompare(right.title || right.slug),
+  );
+
+  worldPicker.replaceChildren(
+    ...sorted.map((world) => {
+      const option = document.createElement("option");
+      option.value = world.slug;
+      option.textContent = world.title || world.slug;
+      return option;
+    }),
+  );
+
+  if (state.activeSlug && getWorldBySlug(state.activeSlug)) {
+    worldPicker.value = state.activeSlug;
   }
-
-  if (node.kind === "file") {
-    const fileButton = document.createElement("button");
-    fileButton.className = `tree-file${node.slug === state.activeSlug ? " active" : ""}`;
-    fileButton.type = "button";
-    fileButton.innerHTML = `<span class="tree-label"><span>${node.name}</span></span>`;
-    fileButton.addEventListener("click", async () => {
-      if (!node.slug) {
-        return;
-      }
-      await loadWorld(node.slug, node.name);
-    });
-    return fileButton;
-  }
-
-  const branch = document.createElement("div");
-  branch.className = "tree-branch";
-
-  const world = node.slug ? getWorldBySlug(node.slug) : null;
-  if (world) {
-    const button = document.createElement("button");
-    button.className = `tree-folder${world.slug === state.activeSlug ? " active" : ""}`;
-    button.type = "button";
-    button.innerHTML = `
-      <span class="tree-label">
-        <strong>${node.name}</strong>
-        <span class="tree-meta">${world.title}</span>
-      </span>
-      <span class="tree-status">${world.status}</span>
-    `;
-    button.addEventListener("click", async () => {
-      await loadWorld(world.slug);
-    });
-    branch.append(button);
-  } else {
-    const label = document.createElement("p");
-    label.className = "tree-meta";
-    label.textContent = node.name;
-    branch.append(label);
-  }
-
-  if (node.children?.length) {
-    node.children.forEach((child) => {
-      const childNode = createTreeNode(child, visibleSlugs);
-      if (childNode) {
-        branch.append(childNode);
-      }
-    });
-  }
-
-  return branch;
-}
-
-function renderTree() {
-  treeRoot.replaceChildren();
-
-  if (!state.tree) {
-    treeRoot.innerHTML = '<p class="empty-state">No folder tree loaded yet.</p>';
-    return;
-  }
-
-  const visibleSlugs = filteredSlugSet();
-  const tree = createTreeNode(state.tree, visibleSlugs);
-
-  if (!tree || visibleSlugs.size === 0) {
-    treeRoot.innerHTML = '<p class="empty-state">No worlds match the current filter.</p>';
-    return;
-  }
-
-  treeRoot.append(tree);
 }
 
 function fillForm(detail) {
@@ -378,7 +146,6 @@ function fillForm(detail) {
   editorPath.textContent = `${detail.folderPath || "src/worlds"}${detail.publicPath ? ` · ${detail.publicPath}` : ""}`;
   previewLink.href = detail.publicPath || "/";
   previewLink.classList.toggle("disabled", !detail.publicPath);
-  deleteButton.disabled = state.mode !== "edit";
 }
 
 function renderRelationships(detail) {
@@ -476,40 +243,164 @@ function serializeForm() {
 }
 
 async function refresh(preferredSlug = state.activeSlug) {
-  const [worldsResponse, treeResponse] = await Promise.all([
+  const [worldsResponse, archiveResponse, draftsResponse] = await Promise.all([
     fetch("/api/worlds"),
-    fetch("/api/worlds/tree"),
+    fetch("/api/archive"),
+    fetch("/api/drafts"),
   ]);
 
-  if (!worldsResponse.ok || !treeResponse.ok) {
-    throw new Error("Unable to refresh the map room.");
+  if (!worldsResponse.ok) {
+    throw new Error("Unable to refresh the world list.");
   }
 
   state.worlds = await worldsResponse.json();
-  state.tree = await treeResponse.json();
+  state.archived = archiveResponse.ok ? await archiveResponse.json() : [];
+  state.drafts = draftsResponse.ok ? await draftsResponse.json() : [];
 
   renderSummary();
-  renderTree();
+  populateWorldPicker();
+  renderDrafts();
 
   if (preferredSlug && getWorldBySlug(preferredSlug)) {
     await loadWorld(preferredSlug);
     return;
   }
 
-  if (state.mode !== "create" && state.worlds[0]) {
+  if (state.worlds[0]) {
     await loadWorld(state.worlds[0].slug);
   }
 }
 
-function beginCreate() {
-  state.mode = "create";
-  state.activeSlug = null;
-  state.detail = createEmptyDetail();
-  fillForm(state.detail);
-  renderRelationships(state.detail);
-  renderTree();
-  setStatus("Drafting a new page. Save to create its folder and files.");
+// --- Page drafts ----------------------------------------------------------
+
+function setDraftsStatus(message, kind = "info") {
+  draftsStatus.textContent = message;
+  draftsStatus.classList.toggle("error", kind === "error");
 }
+
+function renderDrafts() {
+  draftsList.replaceChildren();
+
+  if (state.drafts.length === 0) {
+    draftsList.innerHTML = '<p class="empty-state">No drafts yet — "new draft" starts one.</p>';
+    return;
+  }
+
+  for (const draft of state.drafts) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "draft-card";
+
+    const title = document.createElement("strong");
+    title.textContent = draft.title;
+    const synopsis = document.createElement("span");
+    synopsis.className = "draft-syn";
+    synopsis.textContent = draft.synopsis || "";
+    const chip = document.createElement("span");
+    chip.className = `draft-chip${draft.status === "engaged" ? " engaged" : ""}`;
+    chip.textContent = draft.status;
+
+    card.append(title, synopsis, chip);
+    card.addEventListener("click", () => {
+      openDraftDialog(draft);
+    });
+    draftsList.append(card);
+  }
+}
+
+function openDraftDialog(draft) {
+  activeDraftId = draft?.id ?? null;
+  draftDialogTitle.textContent = draft ? `Draft: ${draft.title}` : "New page draft";
+  draftFields.title.value = draft?.title ?? "";
+  draftFields.synopsis.value = draft?.synopsis ?? "";
+  draftFields.vibe.value = draft?.vibe ?? "";
+  draftFields.links.value = draft?.links ?? "";
+  draftFields.sound.value = draft?.sound ?? "";
+  draftFields.ideas.value = draft?.ideas ?? "";
+  draftError.textContent = "";
+  draftError.hidden = true;
+  draftEngageButton.disabled = draft?.status === "engaged";
+  draftEngageButton.textContent = draft?.status === "engaged" ? "engaged" : "engage";
+  draftDialog.showModal();
+  draftFields.title.focus();
+}
+
+async function persistDraft() {
+  const payload = {
+    title: draftFields.title.value.trim(),
+    synopsis: draftFields.synopsis.value.trim(),
+    vibe: draftFields.vibe.value.trim(),
+    links: draftFields.links.value.trim(),
+    sound: draftFields.sound.value.trim(),
+    ideas: draftFields.ideas.value.trim(),
+  };
+
+  if (!payload.title) {
+    throw new Error("A draft needs at least a title.");
+  }
+
+  const response = await fetch(activeDraftId ? `/api/drafts/${activeDraftId}` : "/api/drafts", {
+    method: activeDraftId ? "PUT" : "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || "Saving the draft failed.");
+  }
+
+  activeDraftId = result.id;
+  return result;
+}
+
+function showDraftError(error) {
+  draftError.textContent = error.message;
+  draftError.hidden = false;
+}
+
+draftSaveButton.addEventListener("click", async () => {
+  try {
+    const draft = await persistDraft();
+    draftDialog.close();
+    await refresh();
+    setDraftsStatus(`Draft "${draft.title}" saved.`);
+  } catch (error) {
+    showDraftError(error);
+  }
+});
+
+draftEngageButton.addEventListener("click", async () => {
+  try {
+    const draft = await persistDraft();
+    const go = window.confirm(
+      `Engage "${draft.title}"? It goes on the session todo, and the next session will pick it up, ask questions or show a plan, and wait for your go.`,
+    );
+    if (!go) {
+      return;
+    }
+
+    const response = await fetch(`/api/drafts/${draft.id}/engage`, { method: "POST" });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || "Engage failed.");
+    }
+
+    draftDialog.close();
+    await refresh();
+    setDraftsStatus(`"${draft.title}" engaged — queued for the next session.`);
+  } catch (error) {
+    showDraftError(error);
+  }
+});
+
+draftCancelButton.addEventListener("click", () => {
+  draftDialog.close();
+});
+
+// --- Wiring ----------------------------------------------------------------
 
 refreshButton.addEventListener("click", async () => {
   setStatus("Refreshing directory...");
@@ -522,41 +413,12 @@ refreshButton.addEventListener("click", async () => {
 });
 
 newWorldButton.addEventListener("click", () => {
-  beginCreate();
+  openDraftDialog(null);
 });
 
-searchInput.addEventListener("input", () => {
-  renderTree();
-});
-
-statusFilter.addEventListener("change", () => {
-  renderTree();
-});
-
-deleteButton.addEventListener("click", async () => {
-  if (!state.activeSlug || state.mode !== "edit") {
-    return;
-  }
-
-  if (!window.confirm(`Delete "${state.activeSlug}" and its folder?`)) {
-    return;
-  }
-
-  setStatus("Deleting page...");
-
+worldPicker.addEventListener("change", async () => {
   try {
-    const response = await fetch(`/api/worlds/${state.activeSlug}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      throw new Error("Delete failed.");
-    }
-
-    state.activeSlug = null;
-    state.detail = null;
-    await refresh();
-    setStatus("Page deleted.");
+    await loadWorld(worldPicker.value);
   } catch (error) {
     setStatus(error.message, "error");
   }
@@ -564,14 +426,18 @@ deleteButton.addEventListener("click", async () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!state.activeSlug) {
+    setStatus("No world loaded yet.", "error");
+    return;
+  }
+
   setStatus("Saving changes...");
   saveButton.disabled = true;
 
   try {
     const payload = serializeForm();
-    const isCreate = state.mode === "create" || !state.activeSlug;
-    const response = await fetch(isCreate ? "/api/worlds" : `/api/worlds/${state.activeSlug}`, {
-      method: isCreate ? "POST" : "PUT",
+    const response = await fetch(`/api/worlds/${state.activeSlug}`, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
@@ -592,7 +458,7 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-// The map room also opens via file:// (before the server is started); the
+// The admin panel also opens via file:// (before the server is started); the
 // editor only self-loads when the page is actually served.
 if (location.protocol === "http:" || location.protocol === "https:") {
   refresh().catch((error) => {

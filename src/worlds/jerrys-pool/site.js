@@ -231,6 +231,20 @@ const cellMotion = {
     fromLeft: true,
     nextAt: 35000 + Math.random() * 40000,
   },
+  courtship: {
+    active: false,
+    targetX: 0,
+    targetY: 0,
+    gazeX: 0,
+    gazeY: 0,
+    kiss: false,
+    noticePulseStart: 0,
+    noticePulseUntil: 0,
+    speedScale: 0.7,
+    holdDepth: false,
+    glow: 0,
+    glowTarget: 0,
+  },
   pulse: {
     scale: 1,
     glowA: 0.28,
@@ -341,13 +355,19 @@ function scheduleEnergyBall(delay = 3300 + Math.random() * 5200) {
   }, delay);
 }
 
-function spawnEnergyBall(angleOverride = null) {
-  if (!energyField || activeEnergyBalls >= 5 || !cellMotion.roamingReady) {
+// release: { x, y, color } — a courtship orb let go from an arbitrary spot in
+// an arbitrary direction (radial, not the usual downward drift), bypassing the
+// ambient cap. Everything else (drift link, vake theft, worm feeding) matches.
+function spawnEnergyBall(angleOverride = null, release = null) {
+  if (!energyField || !cellMotion.roamingReady) {
+    return;
+  }
+  if (!release && activeEnergyBalls >= 5) {
     return;
   }
 
-  const startX = cellMotion.position.x;
-  const startY = cellMotion.position.y;
+  const startX = release ? release.x : cellMotion.position.x;
+  const startY = release ? release.y : cellMotion.position.y;
   const margin = 80;
   if (
     startX < -margin ||
@@ -358,10 +378,12 @@ function spawnEnergyBall(angleOverride = null) {
     return;
   }
 
-  const directionX = angleOverride === null
+  const directionX = release
+    ? Math.cos(angleOverride)
+    : angleOverride === null
     ? -0.85 + Math.random() * 1.7
     : Math.max(-0.85, Math.min(0.85, Math.cos(angleOverride) * 0.85));
-  const directionY = 0.68 + Math.random() * 0.32;
+  const directionY = release ? Math.sin(angleOverride) : 0.68 + Math.random() * 0.32;
   const distances = [];
   if (directionX > 0) distances.push((window.innerWidth - startX + margin) / directionX);
   if (directionX < 0) distances.push((-margin - startX) / directionX);
@@ -394,7 +416,7 @@ function spawnEnergyBall(angleOverride = null) {
   ball.style.setProperty("--energy-size", `${size}px`);
   ball.style.setProperty(
     "--energy-color",
-    energyColors[Math.floor(Math.random() * energyColors.length)],
+    release?.color || energyColors[Math.floor(Math.random() * energyColors.length)],
   );
   energyField.append(ball);
   activeEnergyBalls += 1;
@@ -667,7 +689,7 @@ function spawnAbyssalPredator(immediate = false) {
     if (panicTriggered && cellMotion.leviathanPanic.releaseAt === Infinity) {
       cellMotion.leviathanPanic.releaseAt = performance.now() + 3000;
     }
-    window.setTimeout(() => spawnAbyssalPredator(), 120000 + Math.random() * 120000);
+    window.setTimeout(() => spawnAbyssalPredator(), 240000 + Math.random() * 240000);
   });
 }
 
@@ -1348,7 +1370,12 @@ function spawnVake() {
   });
 }
 
-function spawnJerryZap(fromX, fromY, toX, toY) {
+const JERRY_ZAP_STROKES = [
+  { stroke: "rgba(118, 220, 255, 0.55)", width: "4.5" },
+  { stroke: "rgba(238, 251, 255, 0.95)", width: "1.6" },
+];
+
+function spawnJerryZap(fromX, fromY, toX, toY, strokes = JERRY_ZAP_STROKES) {
   if (!denizenField) return;
   const svgNS = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNS, "svg");
@@ -1369,10 +1396,7 @@ function spawnJerryZap(fromX, fromY, toX, toY) {
     points += ` ${(fromX + dx * t + perpX * jitter).toFixed(1)},${(fromY + dy * t + perpY * jitter).toFixed(1)}`;
   }
   points += ` ${toX.toFixed(1)},${toY.toFixed(1)}`;
-  [
-    { stroke: "rgba(118, 220, 255, 0.55)", width: "4.5" },
-    { stroke: "rgba(238, 251, 255, 0.95)", width: "1.6" },
-  ].forEach(({ stroke, width: strokeWidth }) => {
+  strokes.forEach(({ stroke, width: strokeWidth }) => {
     const line = document.createElementNS(svgNS, "polyline");
     line.setAttribute("points", points);
     line.setAttribute("fill", "none");
@@ -2563,6 +2587,7 @@ function registerJerryGlow(el) {
     el,
     glow: 0,
     target: 0,
+    waveUntil: 0,
     slot: (jerryGlowSlot += 1) % 3,
     base: el.style.filter,
     lastWritten: el.style.filter,
@@ -2607,6 +2632,8 @@ function jerryGlowTick() {
           if (gap < GLOW_RANGE) entry.target = 1 - Math.max(0, gap) / GLOW_RANGE;
         }
       }
+      // the union wave holds creatures it has passed at full glow for a while
+      if (entry.waveUntil && now < entry.waveUntil) entry.target = 1;
     }
     entry.glow += (entry.target - entry.glow) * 0.07;
     // boost quantized to 0.02 steps so a near-steady glow stops rewriting the
@@ -3402,6 +3429,535 @@ function guideSporeFloater(seedhead, duration, size) {
 
 // Every scheduler runs through the tuner: frequency divides the wait (0 idles
 // on a short poll so the schedule revives when the slider comes back up).
+/* --- Mary (Jerry's girlfriend) -----------------------------------------------
+   A golden-pink cell two-thirds Jerry's size who visits every few minutes.
+   Visit arc: she drifts in, they notice each other, swim a shared path around
+   a slowly wandering anchor, press membranes while their outer rings dim and
+   merge into shared orbit rings with warm bolts arcing between them, then
+   part and swim off separately. Maximum one, not tuner-scaled (like Jerry and
+   the leviathan); timing lives in docs/denizen-frequency-rubric.md. She
+   steers Jerry through cellMotion.courtship the same way floor visits and
+   leviathan panic hijack his curiosity. The tuner panel header has a "Mary"
+   button that summons a visit immediately. */
+
+const GF_BOLT_STROKES = [
+  { stroke: "rgba(255, 196, 150, 0.6)", width: "4" },
+  { stroke: "rgba(255, 246, 238, 0.95)", width: "1.5" },
+];
+
+// Mary's orb colors — deep-water luminance like energyColors (the energy-ball
+// CSS pushes saturation/brightness hard), warm golden-pink family
+const MARY_ORB_COLORS = [
+  "169 96 42",
+  "169 73 96",
+  "180 110 60",
+  "169 60 110",
+  "200 130 80",
+  "190 90 120",
+];
+
+const girlfriend = { active: false, nextTimer: 0 };
+let maryButtonEl = null;
+
+function updateMaryButton() {
+  if (!maryButtonEl) return;
+  maryButtonEl.disabled = girlfriend.active;
+  maryButtonEl.textContent = girlfriend.active ? "Mary's here" : "Mary";
+}
+
+function poolOrbitalSize() {
+  return Math.min(
+    window.innerWidth * (window.innerWidth < 900 ? 1.32 : 0.84),
+    576,
+  );
+}
+
+function jerryBodyRadius() {
+  return poolOrbitalSize() * 0.21 * cellMotion.pulse.scale;
+}
+
+function girlfriendBodyRadius() {
+  return poolOrbitalSize() * (2 / 3) * 0.21;
+}
+
+function buildGirlfriendCell() {
+  const el = document.createElement("div");
+  el.className = "gf-orbital";
+  el.setAttribute("aria-hidden", "true");
+  const orb = document.createElement("div");
+  orb.className = "gf-orb";
+  ["gf-nucleus", "gf-vesicle-a", "gf-vesicle-b", "gf-crystal", "gf-cloud"].forEach((name) => {
+    const organelle = document.createElement("span");
+    organelle.className = `gf-organelle ${name}`;
+    orb.append(organelle);
+  });
+  el.append(orb);
+  ["gf-ring-a", "gf-ring-b", "gf-ring-c"].forEach((name) => {
+    const ring = document.createElement("div");
+    ring.className = `gf-ring ${name}`;
+    el.append(ring);
+  });
+  document.body.append(el);
+  return { el, orb };
+}
+
+function girlfriendEligible() {
+  return (
+    !girlfriend.active &&
+    !document.hidden &&
+    !cellMotion.leviathanPanic.active &&
+    !cellMotion.floorVisit.active &&
+    !document.querySelector("#denizen-field .abyssal-predator")
+  );
+}
+
+function beginCourtshipDepth(time) {
+  // ease Jerry to near depth and hold him there for the visit
+  cellMotion.courtship.holdDepth = true;
+  cellMotion.pulseFrom = { ...cellMotion.pulse };
+  cellMotion.pulseTarget = {
+    ...cellMotion.pulse,
+    scale: 0.99 + Math.random() * 0.06,
+    glowA: 0.59,
+    glowB: 0.7,
+    membrane: 1.06,
+    membraneAlpha: 0.25,
+    tilt: -4 + Math.random() * 8,
+    cytoplasmRotate: cellMotion.pulse.cytoplasmRotate + 30,
+  };
+  cellMotion.pulseStart = time;
+  cellMotion.pulseTravelDuration = 3600;
+  cellMotion.pulseDuration = 3600;
+}
+
+// the union wave: at the orb release, a ring of their mingled energy sweeps
+// outward from the pair; every creature the front passes glows for a good
+// while. Registry creatures ride jerryGlowTick via entry.waveUntil; polyps
+// and brain corals reuse their existing Jerry-proximity datasets, which the
+// 180 ms checker in updateCell turns into classes.
+const GF_WAVE_SPEED = 0.3; // px/ms — unhurried, so every reaction reads; must match the ring animation below
+
+function radiateUnionWave(originX, originY) {
+  const maxSpan = Math.hypot(
+    Math.max(originX, window.innerWidth - originX),
+    Math.max(originY, window.innerHeight - originY),
+  );
+  const baseSize = 1100;
+  // the visible band sits at ~66% of the gradient radius; scale so the front
+  // crosses maxSpan exactly at the end of the sweep
+  const finalScale = maxSpan / (0.33 * baseSize);
+  const duration = maxSpan / GF_WAVE_SPEED;
+  ["gf-wave-jerry", "gf-wave-mary"].forEach((variant, index) => {
+    const ring = document.createElement("div");
+    ring.className = `gf-wave ${variant}`;
+    ring.style.left = `${originX.toFixed(1)}px`;
+    ring.style.top = `${originY.toFixed(1)}px`;
+    ring.style.width = `${baseSize}px`;
+    ring.style.height = `${baseSize}px`;
+    document.body.append(ring);
+    ring.animate(
+      [
+        { transform: "translate(-50%, -50%) scale(0.02)", opacity: 0 },
+        { opacity: 0.6, offset: 0.1 },
+        { opacity: 0.45, offset: 0.72 },
+        { transform: `translate(-50%, -50%) scale(${finalScale.toFixed(3)})`, opacity: 0 },
+      ],
+      { duration, delay: index * 420, easing: "linear", fill: "both" },
+    );
+    // plain timeout, not animation.finished — hidden panes freeze rAF
+    window.setTimeout(() => ring.remove(), duration + index * 420 + 400);
+  });
+
+  for (const entry of jerryGlowEntries) {
+    if (!entry.el.isConnected) continue;
+    const bounds = entry.el.getBoundingClientRect();
+    if (!bounds.width) continue;
+    const arrival = Math.hypot(
+      bounds.left + bounds.width * 0.5 - originX,
+      bounds.top + bounds.height * 0.5 - originY,
+    ) / GF_WAVE_SPEED;
+    window.setTimeout(() => {
+      entry.waveUntil = performance.now() + 6500 + Math.random() * 2500;
+    }, arrival);
+  }
+  poolPolyps.forEach((polyp) => {
+    const arrival = Math.hypot(
+      polyp.offsetLeft + polyp.offsetWidth * 0.5 - originX,
+      window.innerHeight - 25 - originY,
+    ) / GF_WAVE_SPEED;
+    window.setTimeout(() => {
+      polyp.dataset.awakeUntil = `${performance.now() + 6000 + Math.random() * 2000}`;
+    }, arrival);
+  });
+  brainCorals.forEach((coral) => {
+    const bounds = coral.getBoundingClientRect();
+    const arrival = Math.hypot(
+      bounds.left + bounds.width * 0.5 - originX,
+      bounds.top + bounds.height * 0.45 - originY,
+    ) / GF_WAVE_SPEED;
+    window.setTimeout(() => {
+      coral.dataset.glowFullUntil = String(performance.now() + 8000);
+    }, arrival);
+  });
+}
+
+function spawnGirlfriend(force = false) {
+  if (girlfriend.active) return;
+  if (force) {
+    // even a summons waits out the leviathan
+    if (cellMotion.leviathanPanic.active || document.querySelector("#denizen-field .abyssal-predator")) return;
+    window.clearTimeout(girlfriend.nextTimer);
+  } else if (!girlfriendEligible()) {
+    scheduleGirlfriend(45000 + Math.random() * 45000);
+    return;
+  }
+  girlfriend.active = true;
+  updateMaryButton();
+
+  const { el, orb } = buildGirlfriendCell();
+  let union = null;
+  let removed = false;
+
+  const startRadius = girlfriendBodyRadius();
+  const fromLeft = cellMotion.position.x > window.innerWidth * 0.5;
+  const g = {
+    x: fromLeft ? -startRadius * 2.4 : window.innerWidth + startRadius * 2.4,
+    y: window.innerHeight * (0.18 + Math.random() * 0.42),
+    vx: 0,
+    vy: 0,
+    glow: 0,
+    glowTarget: 0.3,
+    nucX: 0,
+    nucY: 0,
+  };
+
+  let phase = "enter";
+  let phaseStart = performance.now();
+  let lastTime = phaseStart;
+  const togetherDuration = 6000 + Math.random() * 2500;
+  const touchDuration = 7000 + Math.random() * 2000;
+  const anchor = { x: 0, y: 0 };
+  const anchorSeed = Math.random() * Math.PI * 2;
+  let offsetAngle = 0;
+  let separation = 0;
+  let unionStartedAt = 0;
+  let nextBoltAt = 0;
+
+  function setPhase(name, time) {
+    phase = name;
+    phaseStart = time;
+  }
+
+  function endUnion(fast = false) {
+    cellMotion.courtship.kiss = false;
+    orb.classList.remove("gf-communing");
+    orbital?.classList.remove("rings-dimmed");
+    el.classList.remove("rings-dimmed");
+    if (!union) return;
+    const fading = union;
+    union = null;
+    fading.classList.remove("gf-union-visible");
+    window.setTimeout(() => fading.remove(), fast ? 200 : 900);
+  }
+
+  function cleanup() {
+    if (removed) return;
+    removed = true;
+    window.clearTimeout(ttlTimer);
+    endUnion(true);
+    cellMotion.courtship.active = false;
+    cellMotion.courtship.glowTarget = 0;
+    cellMotion.courtship.holdDepth = false;
+    el.remove();
+    girlfriend.active = false;
+    updateMaryButton();
+    scheduleGirlfriend(240000 + Math.random() * 240000);
+  }
+
+  // hidden-tab safety net: if rAF freezes mid-visit, hard-remove eventually
+  const ttlTimer = window.setTimeout(cleanup, 120000);
+
+  function frame(time) {
+    if (removed) return;
+    const delta = Math.min(40, Math.max(8, time - lastTime));
+    lastTime = time;
+
+    const jerryX = cellMotion.position.x;
+    const jerryY = cellMotion.position.y;
+    const jerryR = jerryBodyRadius();
+    const gfR = girlfriendBodyRadius();
+    const pairGap = jerryR + gfR;
+    const toJerryX = jerryX - g.x;
+    const toJerryY = jerryY - g.y;
+    const jerryDistance = Math.hypot(toJerryX, toJerryY) || 1;
+
+    // where Jerry's nucleus looks while courting
+    cellMotion.courtship.gazeX = g.x;
+    cellMotion.courtship.gazeY = g.y;
+
+    // a surfacing leviathan ends the date early — she bolts for the edge
+    if (cellMotion.leviathanPanic.active && phase !== "depart") {
+      endUnion(true);
+      cellMotion.courtship.active = false;
+      cellMotion.courtship.glowTarget = 0;
+      cellMotion.courtship.holdDepth = false;
+      g.glowTarget = 0;
+      setPhase("depart", time);
+    }
+
+    let targetX = g.x;
+    let targetY = g.y;
+    let speed = 0.105;
+
+    if (phase === "enter") {
+      targetX = jerryX - Math.sign(toJerryX || 1) * pairGap * 2.2;
+      targetY = jerryY - pairGap * 0.35;
+      if (jerryDistance < pairGap + 430 || time - phaseStart > 14000) {
+        setPhase("notice", time);
+        orb.classList.add("gf-noticing");
+        g.glowTarget = 0.55;
+        if (cellMotion.floorVisit.active) {
+          // Mary outranks gardening
+          cellMotion.floorVisit.active = false;
+          foregroundPolypField?.classList.remove("jerry-tending");
+        }
+        cellMotion.courtship.active = true;
+        cellMotion.courtship.targetX = g.x;
+        cellMotion.courtship.targetY = g.y;
+        cellMotion.courtship.speedScale = 0.26;
+        cellMotion.courtship.glowTarget = 0.4;
+        // he answers her pulses with a couple of glow pulses of his own
+        cellMotion.courtship.noticePulseStart = time + 1600;
+        cellMotion.courtship.noticePulseUntil = time + 1600 + 2300;
+        beginCourtshipDepth(time);
+      }
+    } else if (phase === "notice") {
+      // a short beat, both turning toward each other — she keeps easing his way
+      speed = 0.04;
+      targetX = g.x + toJerryX * 0.05;
+      targetY = g.y + toJerryY * 0.05;
+      cellMotion.courtship.targetX = g.x;
+      cellMotion.courtship.targetY = g.y;
+      if (time - phaseStart > 1700) {
+        // gf-noticing stays on — her pulse run carries into the approach
+        setPhase("together", time);
+        anchor.x = (jerryX + g.x) * 0.5;
+        anchor.y = (jerryY + g.y) * 0.5;
+        offsetAngle = Math.atan2(g.y - jerryY, g.x - jerryX);
+        separation = jerryDistance;
+        cellMotion.courtship.speedScale = 0.95;
+        cellMotion.courtship.glowTarget = 0.55;
+      }
+    } else if (phase === "together" || phase === "touch") {
+      // both cells track a shared anchor drifting through mid-pool, offset to
+      // either side; the offset angle keeps rotating so they circle each other
+      const anchorPhase = time * 0.00006 + anchorSeed;
+      const anchorTargetX = window.innerWidth * (0.5 + Math.sin(anchorPhase) * 0.24);
+      const anchorTargetY = window.innerHeight * (0.44 + Math.sin(anchorPhase * 1.7 + 1.2) * 0.18);
+      anchor.x = lerp(anchor.x, anchorTargetX, Math.min(1, 0.0016 * delta));
+      anchor.y = lerp(anchor.y, anchorTargetY, Math.min(1, 0.0016 * delta));
+      anchor.x = Math.max(pairGap, Math.min(window.innerWidth - pairGap, anchor.x));
+      anchor.y = Math.max(pairGap * 0.8, Math.min(window.innerHeight - pairGap, anchor.y));
+      // track the real bearing between them so the rotating offset never
+      // runs ahead and drags the pair through each other
+      const measuredAngle = Math.atan2(g.y - jerryY, g.x - jerryX);
+      const angleLag = Math.atan2(Math.sin(measuredAngle - offsetAngle), Math.cos(measuredAngle - offsetAngle));
+      offsetAngle += angleLag * 0.05 + (phase === "touch" && unionStartedAt ? 0.00009 : 0.00028) * delta;
+      const separationTarget = pairGap * (phase === "touch" ? 0.9 : 1.55);
+      separation = lerp(separation, separationTarget, Math.min(1, 0.0016 * delta));
+      const cosA = Math.cos(offsetAngle);
+      const sinA = Math.sin(offsetAngle);
+      targetX = anchor.x + cosA * separation * 0.58;
+      targetY = anchor.y + sinA * separation * 0.58;
+      cellMotion.courtship.targetX = anchor.x - cosA * separation * 0.42;
+      cellMotion.courtship.targetY = anchor.y - sinA * separation * 0.42;
+      speed = phase === "touch" ? 0.08 : 0.095;
+
+      if (phase === "together" && time - phaseStart > togetherDuration) {
+        setPhase("touch", time);
+        cellMotion.courtship.speedScale = 0.8;
+      } else if (phase === "touch") {
+        if (!unionStartedAt && jerryDistance < pairGap * 1.06) {
+          // membranes meet: merge the outer rings, light the bolts
+          unionStartedAt = time;
+          union = document.createElement("div");
+          union.className = "gf-union";
+          union.setAttribute("aria-hidden", "true");
+          ["gf-union-a", "gf-union-b", "gf-union-c"].forEach((name) => {
+            const ring = document.createElement("div");
+            ring.className = `gf-union-ring ${name}`;
+            union.append(ring);
+          });
+          union.style.setProperty("--gf-union-w", `${((separationTarget + pairGap) * 1.16).toFixed(0)}px`);
+          union.style.setProperty("--gf-union-h", `${(Math.max(jerryR, gfR) * 2.6).toFixed(0)}px`);
+          document.body.append(union);
+          requestAnimationFrame(() => union?.classList.add("gf-union-visible"));
+          orbital?.classList.add("rings-dimmed");
+          el.classList.add("rings-dimmed");
+          orb.classList.add("gf-communing");
+          orb.classList.remove("gf-noticing");
+          g.glowTarget = 1;
+          cellMotion.courtship.glowTarget = 1;
+          cellMotion.courtship.speedScale = 0.42;
+          cellMotion.courtship.kiss = true;
+          nextBoltAt = time + 500;
+          // the release moment sends a wave of their energy through the pool —
+          // timed so the orbs are visibly streaming out when it launches
+          window.setTimeout(() => {
+            if (removed || phase === "depart") return;
+            radiateUnionWave(
+              (cellMotion.position.x + g.x) * 0.5,
+              (cellMotion.position.y + g.y) * 0.5,
+            );
+          }, 2400);
+          // culmination: they each release six orbs, fanned out from each
+          // cell's far side — his in the ambient blues, hers in her colors
+          for (let i = 0; i < 6; i += 1) {
+            const spread = (-1 + (2 * i) / 5) * 1.75;
+            window.setTimeout(() => {
+              if (removed || phase === "depart") return;
+              const pairAngle = Math.atan2(cellMotion.position.y - g.y, cellMotion.position.x - g.x);
+              spawnEnergyBall(pairAngle + spread + (Math.random() - 0.5) * 0.3, {
+                x: cellMotion.position.x,
+                y: cellMotion.position.y,
+              });
+            }, 900 + i * 640 + Math.random() * 220);
+            window.setTimeout(() => {
+              if (removed || phase === "depart") return;
+              const pairAngle = Math.atan2(cellMotion.position.y - g.y, cellMotion.position.x - g.x);
+              spawnEnergyBall(pairAngle + Math.PI - spread + (Math.random() - 0.5) * 0.3, {
+                x: g.x,
+                y: g.y,
+                color: MARY_ORB_COLORS[i % MARY_ORB_COLORS.length],
+              });
+            }, 1220 + i * 640 + Math.random() * 220);
+          }
+        }
+        if (unionStartedAt && time >= nextBoltAt) {
+          nextBoltAt = time + 460 + Math.random() * 480;
+          const nx = toJerryX / jerryDistance;
+          const ny = toJerryY / jerryDistance;
+          spawnJerryZap(
+            jerryX - nx * jerryR * 0.94,
+            jerryY - ny * jerryR * 0.94,
+            g.x + nx * gfR * 0.94,
+            g.y + ny * gfR * 0.94,
+            GF_BOLT_STROKES,
+          );
+        }
+        const touchElapsed = unionStartedAt ? time - unionStartedAt : 0;
+        if (touchElapsed > touchDuration || time - phaseStart > touchDuration + 8000) {
+          endUnion();
+          setPhase("separate", time);
+          g.glowTarget = 0.35;
+          cellMotion.courtship.glowTarget = 0.3;
+          cellMotion.courtship.speedScale = 0.55;
+        }
+      }
+    } else if (phase === "separate") {
+      separation = lerp(separation, pairGap * 2.1, Math.min(1, 0.0009 * delta));
+      const cosA = Math.cos(offsetAngle);
+      const sinA = Math.sin(offsetAngle);
+      targetX = anchor.x + cosA * separation * 0.58;
+      targetY = anchor.y + sinA * separation * 0.58;
+      cellMotion.courtship.targetX = anchor.x - cosA * separation * 0.42;
+      cellMotion.courtship.targetY = anchor.y - sinA * separation * 0.42;
+      speed = 0.07;
+      if (time - phaseStart > 2600) {
+        setPhase("depart", time);
+        cellMotion.courtship.active = false;
+        cellMotion.courtship.glowTarget = 0;
+        cellMotion.courtship.holdDepth = false;
+        cellMotion.steerStart = 0; // fresh wander target
+        cellMotion.pulseStart = time - cellMotion.pulseDuration; // fresh depth
+        g.glowTarget = 0.2;
+      }
+    } else if (phase === "depart") {
+      targetX = g.x < window.innerWidth * 0.5 ? -gfR * 3 : window.innerWidth + gfR * 3;
+      targetY = g.y - gfR * 0.4;
+      speed = 0.12;
+      if (
+        g.x < -gfR * 2.5 ||
+        g.x > window.innerWidth + gfR * 2.5 ||
+        time - phaseStart > 16000
+      ) {
+        cleanup();
+        return;
+      }
+    }
+
+    const toTargetX = targetX - g.x;
+    const toTargetY = targetY - g.y;
+    const targetDistance = Math.hypot(toTargetX, toTargetY) || 1;
+    const closeness = phase === "together" || phase === "touch" || phase === "separate"
+      ? Math.min(1.6, 0.45 + targetDistance / 180)
+      : 1;
+    const desiredVX = (toTargetX / targetDistance) * speed * closeness + Math.sin(time * 0.00052 + 2.1) * 0.01;
+    const desiredVY = (toTargetY / targetDistance) * speed * closeness + Math.cos(time * 0.00047) * 0.009;
+    g.vx = lerp(g.vx, desiredVX, 0.085);
+    g.vy = lerp(g.vy, desiredVY, 0.085);
+    g.x += g.vx * delta;
+    g.y += g.vy * delta;
+
+    if (phase !== "enter" && phase !== "depart") {
+      g.x = Math.max(gfR * 0.6, Math.min(window.innerWidth - gfR * 0.6, g.x));
+      g.y = Math.max(gfR * 0.7, Math.min(window.innerHeight - gfR - 16, g.y));
+      // membranes may press, never pass through
+      const sepX = g.x - jerryX;
+      const sepY = g.y - jerryY;
+      const sepDist = Math.hypot(sepX, sepY) || 1;
+      const minSep = pairGap * 0.7;
+      if (sepDist < minSep) {
+        g.x = jerryX + (sepX / sepDist) * minSep;
+        g.y = jerryY + (sepY / sepDist) * minSep;
+      }
+    }
+
+    if (union) {
+      const midX = (jerryX + g.x) * 0.5;
+      const midY = (jerryY + g.y) * 0.5;
+      const axisDegrees = Math.atan2(g.y - jerryY, g.x - jerryX) * (180 / Math.PI);
+      union.style.transform = `translate3d(${midX.toFixed(1)}px,${midY.toFixed(1)}px,0) rotate(${axisDegrees.toFixed(2)}deg)`;
+    }
+
+    // her nucleus is looking for him from the moment she enters — she's here
+    // to see him. It leans toward Jerry the whole visit, presses against her
+    // membrane for the entire coming-together, and during the union both
+    // nuclei sway on the same clock (his side reads courtship.kiss)
+    let nucTargetX = 0;
+    let nucTargetY = 0;
+    if (phase !== "depart") {
+      const nx = toJerryX / jerryDistance;
+      const ny = toJerryY / jerryDistance;
+      const kissing = phase === "touch" && unionStartedAt;
+      const pressing = phase === "together" || phase === "touch";
+      const reach = kissing
+        ? 46 + Math.sin(time * 0.0024) * 7
+        : pressing ? 44 : 24;
+      const bob = Math.sin(time * 0.0013 + 0.9) * (pressing ? 3 : 6);
+      nucTargetX = nx * reach - ny * bob;
+      nucTargetY = ny * reach + nx * bob;
+    }
+    g.nucX = lerp(g.nucX, nucTargetX, 0.055);
+    g.nucY = lerp(g.nucY, nucTargetY, 0.055);
+
+    g.glow = lerp(g.glow, g.glowTarget, 0.03);
+    const tilt = Math.max(-6, Math.min(6, g.vx * 26));
+    el.style.cssText = `left:${g.x.toFixed(2)}px;top:${g.y.toFixed(2)}px;transform:translate3d(-50%,-50%,0) rotate(${tilt.toFixed(2)}deg)`;
+    orb.style.cssText = `filter:brightness(${(0.96 + g.glow * 0.42).toFixed(3)}) saturate(${(1 + g.glow * 0.18).toFixed(3)});--gf-glow-a:${(0.26 + g.glow * 0.5).toFixed(3)};--gf-glow-b:${(0.32 + g.glow * 0.52).toFixed(3)};--gf-nucleus-x:${g.nucX.toFixed(2)}px;--gf-nucleus-y:${g.nucY.toFixed(2)}px`;
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+}
+
+function scheduleGirlfriend(delay = 150000 + Math.random() * 150000) {
+  // one natural chain only — a Mary-button visit reschedules, never stacks
+  window.clearTimeout(girlfriend.nextTimer);
+  girlfriend.nextTimer = window.setTimeout(spawnGirlfriend, delay);
+}
+
 function scheduleDenizen(delay = 10000 + Math.random() * 6000) {
   window.setTimeout(() => {
     if (tunerEnabled("amoeba")) spawnCrossingDenizen("pool-amoeba");
@@ -3830,7 +4386,7 @@ function maybeRetargetCell(time) {
       cellMotion.bodySteerDelayUntil = time + 900 + Math.random() * 1400;
   }
 
-  if (time - cellMotion.pulseStart >= cellMotion.pulseDuration) {
+  if (!cellMotion.courtship.holdDepth && time - cellMotion.pulseStart >= cellMotion.pulseDuration) {
     cellMotion.pulseFrom = { ...cellMotion.pulse };
     const goingFar = Math.random() < 0.14;
     const targetScale = goingFar
@@ -3892,7 +4448,7 @@ function updateCell(time) {
   const leviathanPanic = cellMotion.leviathanPanic.active;
   const panicEscaping = leviathanPanic && time >= cellMotion.leviathanPanic.escapeAt;
 
-  if (!leviathanPanic && !cellMotion.floorVisit.active && time >= cellMotion.floorVisit.nextAt) {
+  if (!leviathanPanic && !cellMotion.courtship.active && !cellMotion.floorVisit.active && time >= cellMotion.floorVisit.nextAt) {
     cellMotion.floorVisit.active = true;
     cellMotion.floorVisit.start = time;
     cellMotion.floorVisit.fromLeft = Math.random() > 0.5;
@@ -3934,6 +4490,13 @@ function updateCell(time) {
     cellMotion.bodySteerDelayUntil = 0;
   }
 
+  const courting = !leviathanPanic && cellMotion.courtship.active;
+  if (courting) {
+    cellMotion.curiosity.x = cellMotion.courtship.targetX;
+    cellMotion.curiosity.y = cellMotion.courtship.targetY;
+    cellMotion.bodySteerDelayUntil = 0;
+  }
+
   let chasingSchool = false;
   const activePrey = [...activeDotSchools, ...activeTripodPrey]
     .filter((prey) => !prey.absorbed && !prey.finished)
@@ -3941,7 +4504,7 @@ function updateCell(time) {
       Math.hypot(a.x - cellMotion.position.x, a.y - cellMotion.position.y)
       - Math.hypot(b.x - cellMotion.position.x, b.y - cellMotion.position.y)
     ))[0];
-  if (!leviathanPanic && !tendingMinions && activePrey && !activePrey.absorbed && !activePrey.finished) {
+  if (!leviathanPanic && !tendingMinions && !courting && activePrey && !activePrey.absorbed && !activePrey.finished) {
     const preyDistance = Math.hypot(
       activePrey.x - cellMotion.position.x,
       activePrey.y - cellMotion.position.y,
@@ -3976,6 +4539,7 @@ function updateCell(time) {
   const chaseSpeedScale = chasingSchool
     ? Math.max(0.85, Math.min(1.8, 0.42 + distanceToCuriosity / 230))
     : leviathanPanic ? (panicEscaping ? 1.2 : 0)
+    : courting ? cellMotion.courtship.speedScale
     : tendingMinions ? 0.56
     : 1;
   const desiredSpeed =
@@ -3983,7 +4547,7 @@ function updateCell(time) {
     chaseSpeedScale *
     (time < cellMotion.preySpeedBoostUntil ? 1.2 : 1);
   if (leviathanPanic || chasingSchool || tendingMinions || time >= cellMotion.bodySteerDelayUntil) {
-    const headingResponse = leviathanPanic ? 0.085 : chasingSchool ? 0.055 : tendingMinions ? 0.04 : 0.025;
+    const headingResponse = leviathanPanic ? 0.085 : chasingSchool ? 0.055 : courting ? 0.05 : tendingMinions ? 0.04 : 0.025;
     cellMotion.bodyHeading.x = lerp(cellMotion.bodyHeading.x, intentX, headingResponse);
     cellMotion.bodyHeading.y = lerp(cellMotion.bodyHeading.y, intentY, headingResponse);
     if (chasingSchool) {
@@ -4005,6 +4569,7 @@ function updateCell(time) {
     ? (desiredVelocitySpeed < currentVelocitySpeed ? 0.24 : 0.16)
     : chasingSchool
     ? (desiredVelocitySpeed < currentVelocitySpeed ? 0.24 : 0.16)
+    : courting ? (desiredVelocitySpeed < currentVelocitySpeed ? 0.2 : 0.13)
     : tendingMinions ? (desiredVelocitySpeed < currentVelocitySpeed ? 0.18 : 0.12)
     : 0.11;
   cellMotion.velocity.x = lerp(cellMotion.velocity.x, desiredVelocityX, velocityResponse);
@@ -4022,16 +4587,27 @@ function updateCell(time) {
     cellMotion.nucleusFlex.target,
     chasingSchool ? 0.045 : 0.008,
   );
-  cellMotion.nucleusTravel.x = lerp(
-    cellMotion.nucleusTravel.x,
-    intentX * cellMotion.nucleusFlex.current,
-    chasingSchool ? 0.24 : 0.045,
-  );
-  cellMotion.nucleusTravel.y = lerp(
-    cellMotion.nucleusTravel.y,
-    intentY * cellMotion.nucleusFlex.current,
-    chasingSchool ? 0.24 : 0.045,
-  );
+  if (courting) {
+    // his nucleus looks right at her — attention, not alarm; during the
+    // union it presses close to hers and sways on their shared clock
+    const kissReach = cellMotion.courtship.kiss ? 6 + Math.sin(time * 0.0024) * 7 : 0;
+    const gazeDX = cellMotion.courtship.gazeX - cellMotion.position.x;
+    const gazeDY = cellMotion.courtship.gazeY - cellMotion.position.y;
+    const gazeDistance = Math.max(1, Math.hypot(gazeDX, gazeDY));
+    cellMotion.nucleusTravel.x = lerp(cellMotion.nucleusTravel.x, (gazeDX / gazeDistance) * (74 + kissReach), 0.06);
+    cellMotion.nucleusTravel.y = lerp(cellMotion.nucleusTravel.y, (gazeDY / gazeDistance) * (74 + kissReach), 0.06);
+  } else {
+    cellMotion.nucleusTravel.x = lerp(
+      cellMotion.nucleusTravel.x,
+      intentX * cellMotion.nucleusFlex.current,
+      chasingSchool ? 0.24 : 0.045,
+    );
+    cellMotion.nucleusTravel.y = lerp(
+      cellMotion.nucleusTravel.y,
+      intentY * cellMotion.nucleusFlex.current,
+      chasingSchool ? 0.24 : 0.045,
+    );
+  }
   if (leviathanPanic) {
     const panicAge = time - cellMotion.leviathanPanic.start;
     const jerkDuration = cellMotion.leviathanPanic.jerkCount * 260;
@@ -4214,10 +4790,26 @@ function updateCell(time) {
   const depthBlur = Math.max(0, (0.34 - depth) / 0.34) * 3.2;
   const feedingBoost = Math.max(0, Math.min(1, (feedingGlowUntil - time) / 6000));
   const polypGlowBoost = cellMotion.polypWarmth;
-  const depthBrightness = 0.24 + depth * 0.86 + feedingBoost * 0.12 + polypGlowBoost * 0.2;
-  const glowColorA = "101 212 255";
-  const glowColorB = "143 255 225";
-  orb.style.cssText = `transform:scale(${cellMotion.pulse.scale.toFixed(4)}) rotate(${cellMotion.pulse.tilt.toFixed(2)}deg);filter:blur(${depthBlur.toFixed(2)}px) brightness(${depthBrightness.toFixed(3)}) saturate(${(1 + feedingBoost * 0.15).toFixed(3)}) contrast(${(1 + feedingBoost * 0.06).toFixed(3)});--cell-glow-color-a:${glowColorA};--cell-glow-color-b:${glowColorB};--cell-glow-a:${(cellMotion.pulse.glowA + feedingBoost * 0.22 + polypGlowBoost * 0.28).toFixed(3)};--cell-glow-b:${(cellMotion.pulse.glowB + feedingBoost * 0.26 + polypGlowBoost * 0.34).toFixed(3)};--cell-membrane-scale:${cellMotion.pulse.membrane.toFixed(4)};--cell-membrane-alpha:${cellMotion.pulse.membraneAlpha.toFixed(3)};--cell-cytoplasm-rotate:${cellMotion.pulse.cytoplasmRotate.toFixed(2)}deg;--cell-cytoplasm-scale:${cellMotion.pulse.cytoplasmScale.toFixed(4)};--cell-nucleus-scale:${cellMotion.pulse.nucleusScale.toFixed(4)};--cell-nucleus-x:${nucleusX.toFixed(2)}px;--cell-nucleus-y:${nucleusY.toFixed(2)}px;--organelle-follow-x:${(nucleusX * 0.07).toFixed(2)}px;--organelle-follow-y:${(nucleusY * 0.05).toFixed(2)}px;--organelle-counter-x:${(nucleusX * -0.055).toFixed(2)}px;--organelle-counter-y:${(nucleusY * -0.045).toFixed(2)}px;--organelle-soft-x:${(nucleusX * 0.025).toFixed(2)}px;--organelle-soft-y:${(nucleusY * 0.025).toFixed(2)}px;--organelle-cross-x:${(nucleusX * 0.04).toFixed(2)}px;--organelle-cross-y:${(nucleusY * -0.06).toFixed(2)}px;--cell-filament-rotate:${cellMotion.pulse.filamentRotate.toFixed(2)}deg;--cell-vesicle-shift:${cellMotion.pulse.vesicleShift.toFixed(2)}px`;
+  cellMotion.courtship.glow = lerp(
+    cellMotion.courtship.glow,
+    cellMotion.courtship.glowTarget,
+    0.028,
+  );
+  const courtGlow = cellMotion.courtship.glow;
+  // his answer to her arrival pulses: |sin| humps, one per 1150 ms
+  const noticePulse = time >= cellMotion.courtship.noticePulseStart && time < cellMotion.courtship.noticePulseUntil
+    ? Math.abs(Math.sin((time - cellMotion.courtship.noticePulseStart) * (Math.PI / 1150)))
+    : 0;
+  const depthBrightness = 0.24 + depth * 0.86 + feedingBoost * 0.12 + polypGlowBoost * 0.2 + courtGlow * 0.22 + noticePulse * 0.26;
+  // courting blushes Jerry's glow toward her golden-pink
+  let glowColorA = "101 212 255";
+  let glowColorB = "143 255 225";
+  if (courtGlow > 0.02) {
+    const mix = courtGlow * 0.75;
+    glowColorA = `${Math.round(101 + 154 * mix)} ${Math.round(212 - 16 * mix)} ${Math.round(255 - 105 * mix)}`;
+    glowColorB = `${Math.round(143 + 112 * mix)} ${Math.round(255 - 105 * mix)} ${Math.round(225 - 35 * mix)}`;
+  }
+  orb.style.cssText = `transform:scale(${cellMotion.pulse.scale.toFixed(4)}) rotate(${cellMotion.pulse.tilt.toFixed(2)}deg);filter:blur(${depthBlur.toFixed(2)}px) brightness(${depthBrightness.toFixed(3)}) saturate(${(1 + feedingBoost * 0.15 + courtGlow * 0.1).toFixed(3)}) contrast(${(1 + feedingBoost * 0.06).toFixed(3)});--cell-glow-color-a:${glowColorA};--cell-glow-color-b:${glowColorB};--cell-glow-a:${(cellMotion.pulse.glowA + feedingBoost * 0.22 + polypGlowBoost * 0.28 + courtGlow * 0.3 + noticePulse * 0.32).toFixed(3)};--cell-glow-b:${(cellMotion.pulse.glowB + feedingBoost * 0.26 + polypGlowBoost * 0.34 + courtGlow * 0.34 + noticePulse * 0.36).toFixed(3)};--cell-membrane-scale:${cellMotion.pulse.membrane.toFixed(4)};--cell-membrane-alpha:${cellMotion.pulse.membraneAlpha.toFixed(3)};--cell-cytoplasm-rotate:${cellMotion.pulse.cytoplasmRotate.toFixed(2)}deg;--cell-cytoplasm-scale:${cellMotion.pulse.cytoplasmScale.toFixed(4)};--cell-nucleus-scale:${cellMotion.pulse.nucleusScale.toFixed(4)};--cell-nucleus-x:${nucleusX.toFixed(2)}px;--cell-nucleus-y:${nucleusY.toFixed(2)}px;--organelle-follow-x:${(nucleusX * 0.07).toFixed(2)}px;--organelle-follow-y:${(nucleusY * 0.05).toFixed(2)}px;--organelle-counter-x:${(nucleusX * -0.055).toFixed(2)}px;--organelle-counter-y:${(nucleusY * -0.045).toFixed(2)}px;--organelle-soft-x:${(nucleusX * 0.025).toFixed(2)}px;--organelle-soft-y:${(nucleusY * 0.025).toFixed(2)}px;--organelle-cross-x:${(nucleusX * 0.04).toFixed(2)}px;--organelle-cross-y:${(nucleusY * -0.06).toFixed(2)}px;--cell-filament-rotate:${cellMotion.pulse.filamentRotate.toFixed(2)}deg;--cell-vesicle-shift:${cellMotion.pulse.vesicleShift.toFixed(2)}px`;
 }
 
 function resize() {
@@ -5271,7 +5863,7 @@ const TUNER_ROSTER = [
   { key: "leviathan", name: "Leviathan", locked: true,
     attributes: "Abyssal silhouette at whole-pool scale",
     movement: "Vertical rise, hover drift, slow descent",
-    schedule: "First rise 2–4 min, returns 2–4 min after leaving; 60 s passages" },
+    schedule: "First rise 4–8 min, returns 4–8 min after leaving; 60 s passages" },
   { key: "amoeba", name: "Amoebas",
     attributes: "Translucent blobs, seven forms, drifting nuclei",
     movement: "Slow crossings, steer shy of Jerry",
@@ -5671,7 +6263,25 @@ function buildTunerPanel() {
   closeButton.textContent = "✕";
   closeButton.setAttribute("aria-label", "Close pool config");
   closeButton.addEventListener("click", () => setTunerPanelOpen(false));
-  header.append(title, note, sizeWrap, resetButton, closeButton);
+
+  // Mary button — summons Jerry's girlfriend for a visit right now
+  const maryButton = document.createElement("button");
+  maryButton.type = "button";
+  maryButton.className = "tuner-button tuner-mary";
+  maryButton.title = "invite Mary over";
+  maryButton.addEventListener("click", () => {
+    if (girlfriend.active) return;
+    spawnGirlfriend(true);
+    if (!girlfriend.active) {
+      // blocked — the leviathan is about
+      maryButton.classList.add("tuner-mary-blocked");
+      window.setTimeout(() => maryButton.classList.remove("tuner-mary-blocked"), 700);
+    }
+  });
+  maryButtonEl = maryButton;
+  updateMaryButton();
+
+  header.append(title, note, sizeWrap, maryButton, resetButton, closeButton);
 
   const globals = document.createElement("div");
   globals.className = "tuner-globals";
@@ -5803,7 +6413,7 @@ document.addEventListener("pointerdown", (event) => {
 // Opening policy: the pool loads already inhabited — seedOpeningResidents
 // places a handful of the ambient cast mid-passage at load. No forced first
 // appearances beyond that; every creature runs its regular schedule from the
-// start, and the leviathan keeps its 2–4 minute entrance.
+// start, and the leviathan keeps its own rare entrance (4–8 minutes).
 seedOpeningResidents();
 scheduleDenizen();
 scheduleDotSchool();
@@ -5819,4 +6429,5 @@ scheduleBarrelDrifter();
 scheduleCombJelly();
 scheduleSporeFloater();
 initializeAlienFishSchool();
-window.setTimeout(() => spawnAbyssalPredator(), 120000 + Math.random() * 120000);
+scheduleGirlfriend();
+window.setTimeout(() => spawnAbyssalPredator(), 240000 + Math.random() * 240000);

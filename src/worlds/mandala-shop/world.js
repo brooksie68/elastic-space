@@ -28,6 +28,13 @@ const damp = THREE.MathUtils.damp;
 const clamp = THREE.MathUtils.clamp;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// Curator mode: entered only via the admin panel's curate pill (?curate=1).
+// While active it owns clicks/selection; walking and drag-look stay live, but
+// it can lock arrows (nudge) and wheel (resize) away from the walk controls.
+const CURATE = new URLSearchParams(location.search).has('curate');
+let curatorActive = false;
+const inputLocks = { arrows: false, wheel: false };
+
 // ------------------------------------------------------------------ renderer
 let renderer;
 try {
@@ -176,9 +183,10 @@ function artTexture(file) {
   return artCache.get(file);
 }
 
-const TRIP_SLICE = { trip_a: 0, trip_b: 1, trip_c: 2 };
 const CREAM = new THREE.MeshStandardMaterial({ color: 0xe6dcc4, roughness: 0.9 });
 const DEPTH = 0.05;
+const SHIMMER_ID = 'blank_n_hi';        // the drifting blank — protected in curator
+const slotObjects = new Map();          // slot id -> { groups: [Group...], artMesh }
 
 function buildSlot(slot) {
   const kit = LAYOUT.kit[slot.style] || LAYOUT.kit.walnut;
@@ -202,13 +210,19 @@ function buildSlot(slot) {
   let mat = CREAM;
   if (slot.art) {
     let tex = artTexture(slot.art);
-    if (slot.id in TRIP_SLICE) {
+    if (slot.slice || slot.flip) {
+      const [index, count] = slot.slice ?? [0, 1];
       tex = tex.clone();
-      tex.repeat.set(1 / 3, 1);
-      tex.offset.set(TRIP_SLICE[slot.id] / 3, 0);
+      if (slot.flip) {                 // horizontal mirror, in place
+        tex.repeat.set(-1 / count, 1);
+        tex.offset.set((index + 1) / count, 0);
+      } else {
+        tex.repeat.set(1 / count, 1);
+        tex.offset.set(index / count, 0);
+      }
     }
     mat = new THREE.MeshStandardMaterial({ map: tex, color: 0xffffff, roughness: 0.7 });
-  } else if (slot.id === 'blank_n_hi') {
+  } else if (slot.id === SHIMMER_ID) {
     mat = new THREE.MeshStandardMaterial({
       color: 0xe6dcc4, roughness: 0.85,
       emissive: 0xf5e8c8, emissiveIntensity: 0.15,
@@ -227,6 +241,7 @@ function buildSlot(slot) {
 
   g.position.copy(b2t(slot.pos));
   g.rotation.y = rad(slot.yaw);
+  const record = { groups: [g], artMesh: art };
 
   if (slot.kind === 'cord') {
     g.rotateX(0.07);
@@ -261,15 +276,67 @@ function buildSlot(slot) {
     ledge.position.set(0, slot.pos[2] - h / 2 - 0.02, 0.1);
     root.add(ledge);
     artGroup.add(root);
+    record.groups.push(root);
     // re-express the frame relative to the floor point so it rides the easel
     g.position.y = slot.pos[2];
     g.position.x = root.position.x;
     g.position.z = root.position.z;
   }
   artGroup.add(g);
+  slotObjects.set(slot.id, record);
 }
 
 for (const slot of LAYOUT.slots) buildSlot(slot);
+
+// --------------------------------------------- slot registry (curator hooks)
+function disposeSlotObject(obj) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    o.geometry?.dispose();
+    const m = o.material;
+    if (!m || m === CREAM) return;               // CREAM is shared — never dispose
+    if (m.map && ![...artCache.values()].includes(m.map)) m.map.dispose(); // slice clones
+    m.dispose();
+  });
+}
+
+function removeSlot(id) {
+  const record = slotObjects.get(id);
+  if (!record) return;
+  for (const grp of record.groups) {
+    artGroup.remove(grp);
+    disposeSlotObject(grp);
+  }
+  const ci = clickables.indexOf(record.artMesh);
+  if (ci !== -1) clickables.splice(ci, 1);
+  if (id === SHIMMER_ID) shimmerMat = null;
+  const si = LAYOUT.slots.findIndex((s) => s.id === id);
+  if (si !== -1) LAYOUT.slots.splice(si, 1);
+  slotObjects.delete(id);
+}
+
+function addSlot(slot) {
+  if (slotObjects.has(slot.id)) removeSlot(slot.id);
+  if (!LAYOUT.slots.includes(slot)) LAYOUT.slots.push(slot);
+  buildSlot(slot);
+}
+
+function updateSlot(slot) {
+  const index = LAYOUT.slots.findIndex((s) => s.id === slot.id);
+  removeSlot(slot.id);
+  if (index !== -1) LAYOUT.slots.splice(index, 0, slot);
+  else LAYOUT.slots.push(slot);
+  buildSlot(slot);
+}
+
+function resetSlots(slots) {
+  for (const id of [...slotObjects.keys()]) removeSlot(id);
+  LAYOUT.slots.length = 0;
+  for (const slot of slots) {
+    LAYOUT.slots.push(slot);
+    buildSlot(slot);
+  }
+}
 
 // ------------------------------------------------------------------ room
 const loader = new GLTFLoader();
@@ -394,13 +461,19 @@ stage.addEventListener('pointerup', (e) => {
 });
 
 addEventListener('wheel', (e) => {
+  if (inputLocks.wheel) return;        // curator is resizing with the wheel
   if (focusState === 'focused') {
     focusDist = clamp(focusDist + Math.sign(e.deltaY) * 0.22, 0.42, 3.4);
   } else if (focusState === 'free') {
-    dollyImpulse += Math.sign(e.deltaY) * -0.55;
+    // clamp the stored impulse so wheel-spinning can't stack a rocket ride
+    dollyImpulse = clamp(dollyImpulse + Math.sign(e.deltaY) * -0.55, -1.5, 1.5);
   }
 }, { passive: true });
 let dollyImpulse = 0;
+// Hard ceiling on camera travel speed — ~25% of the old uncapped wheel-rush
+// top speed (James's motion-sickness cap, 2026-07-16). Plain walking (1.7) is
+// unaffected; only stacked wheel dollies used to blow past this.
+const TOP_SPEED = 3.0;
 
 // ------------------------------------------------------------------ focus glide
 let focusState = 'free';   // free | gliding | focused | returning
@@ -452,6 +525,7 @@ function triggerDrift(id) {
 }
 
 function handleClick(e) {
+  if (curatorActive) return;           // curator owns clicks (select, not focus)
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects([...clickables, ...doorMeshes, ...(bowlMesh ? [bowlMesh] : [])], false);
@@ -504,29 +578,31 @@ function tick() {
     fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     right.set(-fwd.z, 0, fwd.x);
     wish.set(0, 0, 0);
-    if (keys.has('KeyW') || keys.has('ArrowUp')) wish.add(fwd);
-    if (keys.has('KeyS') || keys.has('ArrowDown')) wish.sub(fwd);
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) wish.sub(right);
-    if (keys.has('KeyD') || keys.has('ArrowRight')) wish.add(right);
+    const arrowsOk = !inputLocks.arrows;   // curator borrows arrows for nudging
+    if (keys.has('KeyW') || (arrowsOk && keys.has('ArrowUp'))) wish.add(fwd);
+    if (keys.has('KeyS') || (arrowsOk && keys.has('ArrowDown'))) wish.sub(fwd);
+    if (keys.has('KeyA') || (arrowsOk && keys.has('ArrowLeft'))) wish.sub(right);
+    if (keys.has('KeyD') || (arrowsOk && keys.has('ArrowRight'))) wish.add(right);
     if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(1.7);
     if (Math.abs(dollyImpulse) > 0.01) {
       wish.addScaledVector(fwd, dollyImpulse * 2.2);
       dollyImpulse *= Math.pow(0.0025, dt);
     }
+    if (wish.length() > TOP_SPEED) wish.setLength(TOP_SPEED);
     vel.x = damp(vel.x, wish.x, 6, dt);
     vel.z = damp(vel.z, wish.z, 6, dt);
     pos.x += vel.x * dt;
     pos.z += vel.z * dt;
     constrain(pos);
 
-    if (pos.x > 6.02 && Math.abs(pos.z) < DOOR_HALF + 0.1) triggerDrift('drift-door');
+    if (!curatorActive && pos.x > 6.02 && Math.abs(pos.z) < DOOR_HALF + 0.1) triggerDrift('drift-door');
 
     camera.position.copy(pos);
     camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
   }
 
-  // hover cursor (throttled)
-  if (frame % 3 === 0 && focusState === 'free' && !dragging) {
+  // hover cursor (throttled; curator styles its own cursor)
+  if (!curatorActive && frame % 3 === 0 && focusState === 'free' && !dragging) {
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects([...clickables, ...doorMeshes, ...(bowlMesh ? [bowlMesh] : [])], false);
     stage.style.cursor = hits.length ? 'pointer' : 'grab';
@@ -542,14 +618,58 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// ------------------------------------------------------------------ curate flag
-if (new URLSearchParams(location.search).has('curate')) {
-  const toast = document.createElement('div');
-  toast.textContent = 'Curator mode is on the workbench — this door will open soon.';
-  toast.style.cssText =
+// ------------------------------------------------------------------ curator
+// Placement surfaces for the curator: the eight wall planes (art hangs at
+// wallInset inside them) and the floor. The doorway wall carries a keep-out
+// band so nothing gets hung across the arch (door is centered on z = 0).
+const WALLS = EDGES.map((e, i) => {
+  const a = POLY[i], b = POLY[(i + 1) % POLY.length];
+  const wall = { a: [a.x, a.y], b: [b.x, b.y], n: [e.n.x, e.n.y], d: e.d };
+  if (e.door) {
+    const sAt = (z) => (z - a.y) / (b.y - a.y);
+    const span = [sAt(0.75), sAt(-0.75)].sort((p, q) => p - q);
+    wall.door = { s0: span[0], s1: span[1], top: 2.85 };
+  }
+  return wall;
+});
+
+function curatorNote(text) {
+  const note = document.createElement('div');
+  note.textContent = text;
+  note.style.cssText =
     'position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);' +
     'background:rgba(23,16,10,0.92);color:#e8d9bf;border:1px solid #c9a24b;' +
     'padding:0.7rem 1.2rem;border-radius:4px;font-family:Palatino,serif;z-index:40;';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 6000);
+  document.body.appendChild(note);
+  setTimeout(() => note.remove(), 6000);
+}
+
+if (CURATE) {
+  if (location.protocol === 'file:') {
+    curatorNote('Curator mode needs the shop server — start it and enter through the admin panel pill.');
+  } else {
+    import('../../core/curator.js').then(({ initCurator }) => {
+      curatorActive = true;
+      initCurator({
+        THREE, scene, camera, renderer, stage,
+        slug: 'mandala-shop',
+        layout: LAYOUT,
+        railY: LAYOUT.railZ ?? 3.0,
+        walls: WALLS,
+        wallInset: 0.06,
+        floorY: 0,
+        protectedIds: [SHIMMER_ID],
+        clickables,
+        slots: { add: addSlot, remove: removeSlot, update: updateSlot, reset: resetSlots },
+        meshFor: (id) => slotObjects.get(id)?.artMesh,
+        getTexture: artTexture,
+        toThree: b2t,
+        toBlender: (v) => [v.x, -v.z, v.y],
+        setInputLocks: (locks) => Object.assign(inputLocks, locks),
+      });
+    }).catch((err) => {
+      console.warn('[sanna] curator failed to load', err);
+      curatorNote('Curator mode failed to load — the shop still works; see the console.');
+    });
+  }
 }

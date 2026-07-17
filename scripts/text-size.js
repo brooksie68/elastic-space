@@ -47,13 +47,15 @@
     document.documentElement.style.fontSize = (ROOT_PX * f) + 'px';
   });
   site.classList.add('site-size');
-  document.querySelector('.masthead').append(site);
+  const masthead = document.querySelector('.masthead');
+  const serverCard = masthead.querySelector('.server-card');
+  if (serverCard) masthead.insertBefore(site, serverCard);
+  else masthead.append(site);
 
   const panels = [
     ['pages', '.pages-panel'],
-    ['chrome', '.controls-panel'],
     ['toolbar', '.editor-toolbar'],
-    ['tree', '.tree-panel'],
+    ['drafts', '.drafts-panel'],
     ['editor', '.editor-panel'],
   ];
   for (const [id, sel] of panels) {

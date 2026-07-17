@@ -5,7 +5,8 @@ This is the canonical reference for denizen timing in `src/worlds/jerrys-pool/si
 Every frequency and cap below is the ×1 baseline. The in-world tuner panel (bottom-left ⚙,
 added 2026-07-15) scales each creature's spawn frequency and population 0–5×, with matching
 global multipliers, and scales the background dot field's swirl speed and dot count 0.5–2×.
-Jerry and the leviathan are not tunable. Tuner settings live in localStorage
+Jerry, the leviathan, and Mary are not tunable, though the tuner header's
+"Mary" button summons her for an immediate visit. Tuner settings live in localStorage
 (`jerrys-pool-tuner-v1`) and are per-browser; this document always describes ×1.
 
 ## Opening (2026-07-15: seeded population replaced the 30-second guarantee)
@@ -16,7 +17,7 @@ mid-passage at page load: two amoebas, a ray, a jellyfish, and a pulse urchin, e
 creatures via a backdated clock), plus a dot school placed mid-pool swimming toward an edge.
 Nobody else gets a forced first appearance: every recurring creature runs its regular spawn
 schedule from load, with attempts blocked by the concurrency cap skipped as usual. The
-leviathan keeps its 2–4 minute entrance. The three-diamond and three-tentacled ball fish
+leviathan keeps its own rare entrance (4–8 minutes). The three-diamond and three-tentacled ball fish
 keep their own launch cycles.
 
 Permanent seafloor denizens are present immediately.
@@ -47,7 +48,8 @@ dive) and its silhouette is too large for edge-proximity to mean anything.
 | Comb jelly | Every 24–38 seconds | Crossing lasts 55–80 seconds; maximum one; skipped when 6 general denizens are active |
 | Spore floater | Every 26–42 seconds | Passage lasts 62–90 seconds: a loose ellipse around the pool (urchin-style guided drift) that stalls and reverses direction once or twice per visit, speed breathing between ~40–100% of its ceiling, radius wandering, riding the dot current like the pulse urchin; maximum one; skipped when 6 general denizens are active; sheds 2–3 sinking glow-spores every 5.5–9.5 seconds (maximum 6 aloft, 5.5–8.5 second lifetimes) |
 | Barrel drifter | Every 18–32 seconds | Crossing lasts 28–54 seconds; maximum one; skipped when 6 general denizens are active. Every other drifter grazes a signal stalk instead of crossing (grazing runs last 46–60 seconds): a slow diagonal glide down to the stalk (angle varies per visit), feed window at 52–68% of the run, then it rises a little, flattens out — sometimes settling back down — and cruises off the side like a normal crossing, red balls visible in its body with extra glow; the stalk regrows its balls ~15 seconds after they were eaten |
-| Abyssal predator / leviathan | First appearance after 2–4 minutes; subsequent appearance 2–4 minutes after departure | Each passage lasts 60 seconds; only one at a time |
+| Abyssal predator / leviathan | First appearance after 4–8 minutes; subsequent appearance 4–8 minutes after departure (halved from 2–4 on 2026-07-16 — more rare) | Each passage lasts 60 seconds; only one at a time |
+| Mary (Jerry's girlfriend) | First visit 2.5–5 minutes after load; next visit 4–8 minutes after she departs; the tuner header's "Mary" button summons a visit immediately (rescheduling, never stacking, the natural chain; the button is disabled mid-visit and refuses with a shake while the leviathan is about) | Golden-pink cell two-thirds Jerry's size, one visit at a time (~40–60 seconds): enters from the side away from Jerry with her nucleus already seeking him (she's there to see him — it leans his way from her first moments in frame), mutual notice ~430 px outside contact range (~1.7-second beat: she runs six ~1.15-second pulses that carry into the approach, Jerry answers ~1.6 seconds in with two glow pulses of his own and starts drifting toward her), eager paired swim 6–8.5 seconds around a drifting shared anchor — both nuclei pressed against their facing membranes for the entire coming-together — then membrane touch for 7–9 seconds (both outer ring sets dim and merge into three shared orbit rings around the pair, warm gold-pink bolts arc between their rims every 0.5–0.9 seconds, both nuclei press toward the contact point and sway together on a shared ~2.6-second clock, both glow up and Jerry's glow blushes golden-pink, and each releases six energy orbs fanned from their far sides — his in the ambient blues, hers in golden-pink variations; all twelve are real drift orbs that vakes and worms treat normally. The release also sends two expanding energy rings — one his colors, one hers — sweeping outward from the pair at ~0.66 px/ms; every glow-registry creature the front passes holds full brightness for 6.5–9 seconds before easing back, and polyps and brain corals wake through their usual Jerry-proximity mechanisms), ~2.6-second parting, then she exits the nearest side edge. Spawn attempts are skipped and retried every 45–90 seconds while the leviathan is visible, Jerry is panicking or tending the seafloor, or the tab is hidden; a leviathan surfacing mid-visit ends the date early. Jerry holds near depth for the visit and ignores prey. Not tuner-scaled |
 
 Spawn attempts blocked by a concurrency limit are skipped, not queued.
 
