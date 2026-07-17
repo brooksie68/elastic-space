@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "slug": "get-your-ass-in-the-moss",
+  "title": "Get Your Ass in the Moss",
+  "creators": [
+    "james",
+    "claude-fable"
+  ],
+  "createdBy": "claude-fable",
+  "createdAt": "2026-07-16T00:00:00Z",
+  "updatedAt": "2026-07-16T00:00:00Z",
+  "entry": "index.html",
+  "status": "draft",
+  "summary": "A psychedelic fungal grotto — giant glowing mushrooms under blacklit trees. Poke the shrooms, then do what the title says and settle into the moss bank; the longer you stay, the deeper it gets.",
+  "tags": [
+    "fungal",
+    "jungle",
+    "psychedelic",
+    "blender",
+    "interactive",
+    "sound"
+  ],
+  "moods": [
+    "tripped-out",
+    "lush",
+    "welcoming"
+  ],
+  "contentType": "interactive",
+  "entryPoints": [
+    "direct",
+    "drift"
+  ],
+  "exits": [],
+  "weight": 7,
+  "rarity": "uncommon",
+  "era": "launch-season",
+  "warnings": [],
+  "soundtrack": [
+    "synth drone bed",
+    "jungle air",
+    "pentatonic mushroom plucks",
+    "bird and frog chirps"
+  ],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": true
+  },
+  "notes": "James's title and brief (2026-07-16), interpretation left to Claude. Cycles-rendered plates + per-mushroom sprites from a fully procedural headless Blender build (tmp/get-your-ass-in-the-moss/build_scene.py); canvas god rays, spores, and trip grade on top. Three diegetic drift exits: tree hollow, fairy ring, mist gap. Sitting in the moss is the core mechanic — a ~24s trip ramp that eases back on standing.",
+  "admin": {
+    "owner": "brook",
+    "notes": "World Ideas.md #56. Draft until James approves.",
+    "featured": false,
+    "directoryOrder": 13,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/get-your-ass-in-the-moss",
+    "assetPaths": [
+      "src/worlds/get-your-ass-in-the-moss"
+    ]
+  }
+}

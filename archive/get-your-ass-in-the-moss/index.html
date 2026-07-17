@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Get Your Ass in the Moss</title>
+    <link rel="stylesheet" href="./world.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="scene">
+        <img class="plate plate-set" src="./assets/plates/set.png" alt="" draggable="false" />
+        <canvas id="deep" aria-hidden="true"></canvas>
+        <div id="shrooms"></div>
+        <img class="plate plate-fg" src="./assets/plates/moss-fg.png" alt="" draggable="false" />
+        <a class="exit exit-hollow" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+        <a class="exit exit-ring" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+        <a class="exit exit-gap" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
+        <button type="button" id="sit" aria-pressed="false" aria-label="Settle into the moss"></button>
+      </div>
+      <canvas id="front" aria-hidden="true"></canvas>
+      <p id="whisper">get your ass in the moss</p>
+    </div>
+
+    <script src="./assets/manifest.js"></script>
+    <script src="../../core/world-registry.js"></script>
+    <script src="../../core/drift.js"></script>
+    <script src="../../core/dashboard-control.js"></script>
+    <script src="../../core/sound-control.js"></script>
+    <script src="./world.js"></script>
+  </body>
+</html>

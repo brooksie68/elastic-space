@@ -3,6 +3,31 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-17 — claude-fable (with James, Meshy postmaster night)
+
+- First Meshy character experiment, and it landed: a full 3D postmaster generated from the
+  GPT concept art (`assets/ref/Normal.png`, cursor patched out — the blocky MPFB2 model was
+  deliberately NOT used as input in any form). Meshy-6 image-to-3D + PBR (30cr), rigged (5cr),
+  16 library animations (48cr). ~83 credits total, balance 997. All assets in
+  `tmp/dead-letter-office/meshy/`: static + rigged GLBs, walk/run, 16 animation GLBs, and a
+  consolidated 1.2MB `anims/postmaster-anim-pack.glb` (all 18 clips, NLA-track export).
+- Face expression system, zero credits: eyes located in two rotated UV islands of the texture
+  atlas (face-up = +X in both), four hand-painted variants (blink / wide / eye-roll / half-lid)
+  verified via headless Blender face renders — all first-try. `meshy/faces/*.jpg`.
+- Test viewer at `tmp/dead-letter-office/meshy/viewer.html` (served): postmaster standing IN
+  the layered concept art (room/basket/desk depth planes), scene-matched lighting, drag/turntable,
+  idle/walk/run modes, auto-fidget mode, 13 one-shot buttons, 4 face buttons, auto-blink.
+- Known issues for next session: (1) he pops ~8% bigger during idle than other clips — suspect
+  stale scale/root tracks differing between clips in the pack; inspect pack JSON, likely strip
+  scale tracks. (2) Most library one-shots read tiny/mushy (facepalm can't reach face, bow ~3°,
+  alert nothing) — leading suspicion is Meshy's retarget collapsing big gestures onto his stocky
+  proportions; verify by rendering the raw withSkin GLBs directly vs the pack, compare with
+  Meshy's own previews, and hand-animate replacements in Blender where needed.
+- Where things stand: experiment declared a smashing success by James. Next: fix the two anim
+  issues, audition/replace weak clips one by one, then the bigger arc — 3D room/desk treatment,
+  his comings and goings, real letter content, letters physically filling the basket, and a
+  furnace-feeding routine for the overflow.
+
 ## 2026-07-12 — claude-fable (with James)
 
 - Added the shared dashboard icon (`../../core/dashboard-control.js` in index.html): a top-right

@@ -199,6 +199,9 @@ A flying experience through a wormhole: continuous forward motion down a tunnel,
 ### 55. The Orb Dimension — *a weekend and counting* — `live 2026-07-16` → `src/worlds/orb-dimension/`
 An endless black volume — not monitor-black, cave-black: ten miles across, two miles high, lit very dimly by a mysterious ambient source. Dozens of glowing colored balls drift slowly through it. The space is code; the balls are Blender renders with transparency as a feature, lit up by layers of color stacked behind the glass. Grew into a full WebGL2 free-flight world (dolly/strafe/roll/thruster/overdrive, ghost HUD, tuner presets — history in its changelog, v1–v13). Roadmap: Blender cave walls, space stations, dimensional doors as exits, a POI map, secret worlds outside the drift.
 
+### 56. Get Your Ass in the Moss — *an evening* — `retired` (built 2026-07-16, retired to `archive/get-your-ass-in-the-moss/` the same day — James's call, a dead end)
+James's title and one-line brief (2026-07-16): "New, tripped-out, multi-color, green, fungal, tree-laden, jungular psychedelic world," interactivity included, interpretation left entirely to Claude — Blender explicitly on the table. Became a Cycles-rendered fungal grotto (procedural headless build, plates + per-mushroom sprites): seven pokeable giant mushrooms tuned to a pentatonic scale, spore motes that follow your cursor, and a sit-in-the-moss trip arc that deepens the longer you stay. Exits: tree hollow, fairy ring, mist gap.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
