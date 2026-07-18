@@ -64,7 +64,7 @@ import {
 	VectorKeyframeTrack,
 	SRGBColorSpace,
 	InstancedBufferAttribute
-} from 'three';
+} from '../three.module.js'; // patched from bare 'three' 2026-07-17: orb-dimension loads this loader WITHOUT an importmap (module imported from world.js dynamically); resolves to the same URL/instance the importmap gave mandala-shop
 import { toTrianglesDrawMode } from '../utils/BufferGeometryUtils.js';
 import { clone } from '../utils/SkeletonUtils.js';
 

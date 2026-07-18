@@ -9,7 +9,7 @@ import {
 	TriangleStripDrawMode,
 	TrianglesDrawMode,
 	Vector3,
-} from 'three';
+} from '../three.module.js'; // patched from bare 'three' 2026-07-17, see loaders/GLTFLoader.js note
 
 /**
  * @module BufferGeometryUtils

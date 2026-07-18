@@ -7,7 +7,7 @@ import {
 	SkeletonHelper,
 	Vector3,
 	VectorKeyframeTrack
-} from 'three';
+} from '../three.module.js'; // patched from bare 'three' 2026-07-17, see loaders/GLTFLoader.js note
 
 /**
  * @module SkeletonUtils
