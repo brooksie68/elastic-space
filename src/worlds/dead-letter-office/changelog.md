@@ -3,6 +3,110 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-18 — claude-fable (with James, viewer polish night)
+
+- Viewer modes split at James's request: **idle** = truly still (calmest clip frozen at
+  timeScale `STILL`=0.0001, facing forward) so the face can be inspected; **fidgets** = the
+  old living behavior (idle rotation + random one-shots). Idle also eases the head back 17°
+  (the still frame pitches him ~18° down). Two bugs en route, both James-caught: timeScale 0
+  stops the mixer rewriting bones, so the per-frame tilt compounded into ~3 somersaults/sec;
+  fixed by the near-zero timescale. Fix verified in the Node sim before shipping.
+- James's clip audit at true amplitude: keepers walk/run/shrug/wave/wag-no/bow; serviceable
+  sigh/scratch/stomp/alert/look-around (seated clip — needs a chair); replace one of
+  headache/facepalm (duplicates) and scheme. Details in `tmp/dead-letter-office/meshy/anim-notes.md`.
+- Face textures repainted from scratch (v3) after James's "skin with little dots" verdict on
+  the v1 eyes — v1's sclera was flesh-pink AND its paint regions were mostly wrong (only one
+  eye, splattered across neighboring UV islands). True per-eye atlas regions found by
+  ray-cast + UV dump; synthetic almond paint (white sclera/iris/pupil/glint/liner); verified
+  by headless Cycles portrait renders. Wide, half-lid, and blink read clearly; eyes-up is
+  subtle. v1 backups in `meshy/faces/_old-v1/`.
+- Face v3 (texture almands) also failed James's eyeball — too small, old eyes visible
+  behind ("eyes on top of eyes"). Root truth surfaced: Meshy has NO face rig; texture
+  swap was always a workaround. **Pivot: 3D eye rig**, James's call. Atlas eyes painted
+  out (`faces/face-skinned.jpg`), and the viewer now builds procedural eyeballs (sphere +
+  iris/pupil/glint) with rotating lid shells, attached to the Head bone at runtime — no
+  GLB re-export, anim pack untouched. Expressions are lid/gaze poses (normal / wide /
+  eye-roll / heavy + geometric auto-blink); gaze control comes free for future letter-
+  tracking. Verified in the Node sim: eyes land on the ray-cast socket points to 0.01mm,
+  12.9mm world radius, zero drift from the bone through a walk cycle.
+- Eye rig v2 after James's close-up review (screenshot: tiny cross-eyed circles floating
+  in the wide painterly sockets — "I look so fucking crazy"). Design principle from his
+  notes: the painted sockets keep ALL the lid/lash art; geometry supplies only what moves.
+  Eyeballs are now wide shallow ellipsoids (leaf-shaped whites), iris/pupil in an unscaled
+  front group (stays round), convergence yaw, unlit materials (lit ones caught the orange
+  bulb + green lamp → "Exorcist" demon eyes). Viewer also gained a face cam (follows the
+  Head bone, wheel zoom) and an **eye tuner panel** ("tune eyes" button, per the Chrome
+  Rift tuner pattern): 11 sliders (spread/height/depth/size/width/tall/bulge/iris/pupil/
+  converge/lidCover), live rebuild, localStorage (`dlo-eye-tuner`), JSON readout + reset.
+- Where things stand: **James tunes the eyes by eye in the panel, then reads the JSON
+  back to bake as defaults.** Then clip replacements and the room arc.
+
+## 2026-07-18 — claude-fable (with James: still mode, 3D eyes, eye tuner)
+
+- Viewer modes split per James: **idle** now means truly still — the calmest idle clip held
+  near frame 0 at timeScale `STILL` (0.0001), facing forward, face inspectable — while
+  **fidgets** owns the old living-idle behavior (rotating idles + random one-shots).
+  Two bugs en route: the head-lift somersault (at timeScale exactly 0 the mixer stops
+  rewriting bone poses, so the per-frame tilt compounded ~2.9 rev/s — hence STILL > 0)
+  and an idle head-lift (+17° eased head-back so his downcast still pose looks at you).
+- Faces, attempt 1 (texture swaps) worked but looked wrong at any distance: painted-on
+  eyes read tiny/creepy ("eyes on top of eyes" on eye-roll). Root causes fixed along the
+  way still matter: Meshy's material carries the color atlas twice (baseColor AND emissive
+  at [1,1,1]) — swap BOTH maps or nothing visibly changes.
+- Pivot to **3D eyeballs** (James: "shit, let's try the 3D eyeballs"). The painted eyes are
+  now skinned over in the base texture (`meshy/faces/face-skinned.jpg`); real geometry sits
+  in front: almond-warped eyeball (independent inner/outer corner pinch, so the corners pull
+  to points), unlit materials (lit ones caught the room lights — the demon-eyes build),
+  iris/pupil/glint discs that rotate for gaze/convergence, and lids as parametric bands
+  draped directly on the almond surface — their edges are arcs (arcUp/arcLow bow sliders),
+  their tips terminate exactly at the eye corners, closure is 0..1 (blink = closure 1).
+- **Eye tuner panel** in the viewer ("tune eyes" in the face row): 16 tight-range sliders
+  (position, size, shape, pinch, arcs, iris/pupil, converge, tilt — tilt counter-rotates
+  the eyes for angry-in/sad-out), values persisted in localStorage, live JSON readout,
+  reset. Slider rebuilds go through a rest-pose-captured matrix — rebuilding via the live
+  posed bone teleported the eyes ("pupils flew away"). Wheel-zoom mode added for close
+  inspection; build stamp in the corner hint catches stale tabs.
+- Admin panel: DLO row got a **testing page** pill (curate-pill style) linking to the
+  Meshy viewer.
+- Where things stand: **eye machinery works, art is next.** Tonight's plan: James paints
+  the definitive eyes in Procreate over a zoomed screenshot — one complete layer per piece
+  (sclera/iris/pupil/lids/lashes, both eyes), exported as PSD — and Claude UV-maps the
+  layers onto the existing parametric pieces and fits the shape defaults to his art, so
+  the sliders keep working under his paint. Open small items: one unexplained brown
+  arc-shaped smudge at the top inner of each eye (suspects: leftover painted crease in
+  face-skinned.jpg vs the flat-color lid band itself — James screenshot pending), and
+  expressions get redefined after the art lands.
+
+## 2026-07-17 — claude-fable (animation diagnosis session)
+
+- James re-supplied his full end-of-last-night assessment (the previous entry undersold it:
+  essentially every one-shot read tiny/mushy, and he kept returning to an unnatural pose).
+  Verbatim per-clip notes preserved in `tmp/dead-letter-office/meshy/anim-notes.md`.
+- Diagnosis, all headless (Node + vendored three.js AnimationMixer, no browser): the Meshy
+  clips are fine — full amplitude in both the raw GLBs and the consolidated pack, identical
+  skeletons, everything binds. The bug was in viewer.html: the `finished` handler nulled
+  `oneshotAction` before `playBase()`, so finished one-shots (clamped at weight 1 by
+  `clampWhenFinished`) were never faded out. Every gesture ever triggered stayed frozen in
+  the blend; each new one was averaged against the pile. Sim reproduced James's review
+  numerically (bow 40.4% head-motion → 3.8% by the time he tried it; alert → "nothing").
+  Fix: `e.action.fadeOut(0.35)` on finish. Verified by re-running the sequence sim —
+  full amplitude regardless of history.
+- Size pop: idle-1 alone carried a constant Hips scale track of 1.1765. Neutralized by
+  binary patch of the pack GLB (backup: `postmaster-anim-pack.glb.bak`). Native size is
+  the default now, per James — the room gets rebuilt around him anyway.
+- James auditioned at true amplitude: most clips keep (walk/run/shrug/wave/wag-no/bow strong;
+  bow "probably the best gesture"). To replace/rework: headache≈facepalm duplicates, scheme
+  unclear ("making bread"). Context-dependent: look-around is a seated clip (needs a chair),
+  alert needs a reason, sigh wants sound. Full audit in `meshy/anim-notes.md`.
+- Faces had never worked outside Blender renders. Root cause: Meshy's rigged GLB carries the
+  atlas twice — baseColorTexture AND emissiveTexture at factor [1,1,1]; setFace swapped only
+  `.map`, so the emissiveMap kept painting the original open eyes on top. setFace now swaps
+  both. Integration note: anything touching the postmaster atlas must swap both maps.
+- Where things stand: **face fix awaiting James's eyeball** (buttons + auto-blink should now
+  visibly work). Then: replace the weak clips, wire faces into gestures, and the bigger arc
+  (full 3D room with better Meshy-era assets, comings and goings, real letters, basket fill,
+  furnace routine).
+
 ## 2026-07-17 — claude-fable (with James, Meshy postmaster night)
 
 - First Meshy character experiment, and it landed: a full 3D postmaster generated from the
