@@ -105,13 +105,21 @@ export function initCurator(adapter) {
         color: #c9a24b; border-radius: 3px; font-size: 0.9rem; padding: 0.05rem 0.35rem; }
       .cur-tile.blank { display: flex; align-items: center; justify-content: center;
         background: #e6dcc4; color: #6b552f; font-size: 0.85rem; letter-spacing: 0.08em; }
-      #cur-hud { position: fixed; left: 50%; transform: translateX(-50%); bottom: 1rem; z-index: 43;
-        padding: 0.6rem 1rem; display: none; max-width: min(80vw, 860px); }
-      #cur-hud.show { display: block; }
+      #cur-hudwrap { position: fixed; left: 50%; transform: translateX(-50%); bottom: 1rem;
+        z-index: 43; display: none; align-items: stretch; gap: 10px; max-width: min(94vw, 1100px); }
+      #cur-hudwrap.show { display: flex; }
+      #cur-hud { padding: 0.6rem 1rem; }
       #cur-hud .cur-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
         justify-content: center; }
       #cur-hud .cur-hint { font-size: 0.85rem; opacity: 0.65; margin-top: 0.45rem; text-align: center; }
       #cur-hud .cur-name { font-size: 0.95rem; opacity: 0.85; }
+      #cur-frames { padding: 0.5rem 0.9rem; display: none; flex-direction: column;
+        justify-content: center; gap: 0.4rem; }
+      #cur-frames.show { display: flex; }
+      #cur-frames .cur-frames-label { font-size: 0.78rem; letter-spacing: 0.2em; color: #c9a24b;
+        opacity: 0.85; text-align: center; }
+      #cur-frames .cur-swatches { display: grid; grid-template-columns: repeat(5, auto);
+        gap: 7px; justify-content: center; }
       .cur-pill { border: 1px solid #6b552f; border-radius: 999px; background: none; color: #e8d9bf;
         font: inherit; font-size: 0.92rem; padding: 0.2rem 0.75rem; cursor: pointer; }
       .cur-pill.on { border-color: #c9a24b; color: #ffd77e; }
@@ -121,7 +129,7 @@ export function initCurator(adapter) {
       #cur-toast { position: fixed; bottom: 6.5rem; left: 50%; transform: translateX(-50%);
         z-index: 60; padding: 0.6rem 1.1rem; font-size: 0.95rem; border-color: #c9a24b;
         display: none; max-width: 80vw; text-align: center; }
-      body.cur-preview #cur-dock, body.cur-preview #cur-hud { display: none; }
+      body.cur-preview #cur-dock, body.cur-preview #cur-hudwrap { display: none; }
       #cur-preview-chip { position: fixed; top: 0.7rem; left: 0.7rem; z-index: 45; display: none;
         padding: 0.4rem 0.85rem; font-size: 0.92rem; cursor: pointer; letter-spacing: 0.1em; }
       body.cur-preview #cur-preview-chip { display: block; }
@@ -143,22 +151,25 @@ export function initCurator(adapter) {
       </div>
       <div id="cur-tiles"></div>
     </div>`);
-    const hud = el(`<div id="cur-hud" class="cur-ui cur-panel"></div>`);
+    const hudwrap = el(`<div id="cur-hudwrap" class="cur-ui"></div>`);
+    const hud = el(`<div id="cur-hud" class="cur-panel"></div>`);
+    const frames = el(`<div id="cur-frames" class="cur-panel"></div>`);
+    hudwrap.append(hud, frames);
     const toastBox = el(`<div id="cur-toast" class="cur-ui cur-panel"></div>`);
     const previewChip = el(`<div id="cur-preview-chip" class="cur-ui cur-panel">&larr; curating</div>`);
     // Control bar rides the tray: one dock, bar pinned to the tray's left edge,
     // 10px above it, whatever width the tray takes.
     const dock = el(`<div id="cur-dock" class="cur-ui"></div>`);
     dock.append(topbar, tray);
-    document.body.append(dock, hud, toastBox, previewChip);
+    document.body.append(dock, hudwrap, toastBox, previewChip);
 
     topbar.addEventListener('click', onAction);
     tray.addEventListener('click', onAction);
-    hud.addEventListener('click', onAction);
+    hudwrap.addEventListener('click', onAction);
     previewChip.addEventListener('click', () => togglePreview(false));
 
     return {
-      topbar, tray, hud, toastBox, previewChip,
+      topbar, tray, hudwrap, hud, frames, toastBox, previewChip,
       tiles: tray.querySelector('#cur-tiles'),
       dirtyDot: topbar.querySelector('#cur-dirty'),
     };
@@ -485,27 +496,33 @@ export function initCurator(adapter) {
     snapshot();
     const spec = c.ghost.spec;
     const hit = c.hit;
+    const placed = [];
     if (spec.count > 1) {
       const group = uniqueId(idBase(c.file));
       const right = wallRightDir(hit.wall);
       const step = spec.pw + spec.gap;
       for (let i = 0; i < 3; i++) {
         const p = hit.point.clone().addScaledVector(right, (i - 1) * step);
+        const id = uniqueId(idBase(c.file));
         slots.add({
-          id: uniqueId(idBase(c.file)), art: c.file, kind: 'wall',
+          id, art: c.file, kind: 'wall',
           pos: bpos(p), yaw: round3(hit.yaw), w: round3(spec.pw), h: round3(spec.h),
           style: c.style, slice: [i, 3], group,
         });
+        placed.push(id);
       }
     } else {
+      const id = uniqueId(idBase(c.file));
       slots.add({
-        id: uniqueId(idBase(c.file)), art: c.file, kind: hit.kind,
+        id, art: c.file, kind: hit.kind,
         pos: bpos(hit.point), yaw: round3(hit.yaw),
         w: round3(spec.pw), h: round3(spec.h), style: c.style,
       });
+      placed.push(id);
     }
     markDirty();
     cancelCarry();
+    select(placed);   // the piece you just hung is the one you're now adjusting
   }
 
   function round3(v) { return Math.round(v * 1000) / 1000; }
@@ -553,6 +570,11 @@ export function initCurator(adapter) {
 
   function selectedSlots() { return selection.map(slotById).filter(Boolean); }
 
+  // A linked triptych (shared group, sliced) vs an ad-hoc shift-click multi-selection.
+  function isTrio(list) {
+    return list.length > 1 && !!list[0].group && list.every((s) => s.group === list[0].group);
+  }
+
   function applyToSelection(fn, tag) {
     const list = selectedSlots();
     if (!list.length) return;
@@ -583,7 +605,7 @@ export function initCurator(adapter) {
     if (!list.length) return;
     snapshot(tag);
     const onWall = list[0].kind === 'wall' || list[0].kind === 'cord';
-    if (onWall && list.length > 1) {
+    if (onWall && isTrio(list)) {
       // trio: clamp the shared center, then respace panels at their current gap
       const centerSlot = list[Math.floor(list.length / 2)];
       const wall = targetWall ?? slotWall(centerSlot);
@@ -659,7 +681,7 @@ export function initCurator(adapter) {
     const maxDim = Math.max(...list.map((s) => Math.max(s.w, s.h)));
     if (maxDim * factor > 3.6 || maxDim * factor < 0.22) return;
     const onWall = list[0].kind === 'wall' || list[0].kind === 'cord';
-    if (list.length > 1 && onWall) {
+    if (isTrio(list) && onWall) {
       // trio: scale panels AND their gap around the center panel
       snapshot('resize');
       const centerSlot = list[Math.floor(list.length / 2)];
@@ -706,9 +728,114 @@ export function initCurator(adapter) {
     return Math.hypot(a[0] - b[0], a[1] - b[1]);
   }
 
+  // ------------------------------------------------- multi-selection tools
+  // "First piece you selected" is the reference for size and edge alignment.
+
+  function reclampSlot(slot) {
+    const p = new THREE.Vector3(slot.pos[0], slot.pos[2], -slot.pos[1]);
+    if (slot.kind === 'wall' || slot.kind === 'cord') {
+      const spot = clampToWall(slotWall(slot), p, slot.w, slot.h, slot.kind);
+      if (spot) { slot.pos = bpos(spot.point); slot.yaw = round3(spot.yaw); }
+    } else if (slot.kind === 'easel') {
+      p.y = slot.h / 2 + 0.675;
+      slot.pos = bpos(p);
+    } else if (slot.kind === 'lean') {
+      p.y = slot.h / 2 * 0.978 + 0.04;
+      slot.pos = bpos(p);
+    }
+  }
+
+  function matchSize(exact) {
+    const list = selectedSlots();
+    if (list.length < 2) return;
+    const ref = list[0];
+    snapshot();
+    for (const slot of list) {
+      if (slot === ref) continue;
+      if (exact) { slot.w = ref.w; slot.h = ref.h; }
+      else {   // same height, width keeps each piece's own aspect
+        slot.w = round3(slot.w * (ref.h / slot.h));
+        slot.h = ref.h;
+      }
+      reclampSlot(slot);
+      slots.update(slot);
+    }
+    markDirty();
+    rebuildOutlines();
+    renderHud();
+  }
+
+  function alignRow(edge) {   // 'top' | 'bottom' — wall/cord pieces only
+    const all = selectedSlots();
+    const list = all.filter((s) => s.kind === 'wall' || s.kind === 'cord');
+    if (list.length < 2) { toast('Aligning needs two or more wall pieces.'); return; }
+    const ref = list[0];
+    const refY = ref.pos[2] + (edge === 'top' ? ref.h / 2 : -ref.h / 2);
+    snapshot();
+    for (const slot of list) {
+      if (slot === ref) continue;
+      const y = edge === 'top' ? refY - slot.h / 2 : refY + slot.h / 2;
+      const p = new THREE.Vector3(slot.pos[0], y, -slot.pos[1]);
+      const spot = clampToWall(slotWall(slot), p, slot.w, slot.h, slot.kind);
+      if (spot) { slot.pos = bpos(spot.point); slot.yaw = round3(spot.yaw); }
+      slots.update(slot);
+    }
+    markDirty();
+    rebuildOutlines();
+    renderHud();
+  }
+
+  function respaceRow(delta) {
+    // Even gutters for a shift-click row: wall/cord pieces sharing one wall,
+    // respaced left-to-right around the row's current center. Each keeps its y.
+    const list = selectedSlots();
+    if (list.length < 2) return;
+    if (!list.every((s) => s.kind === 'wall' || s.kind === 'cord')) {
+      toast('Gutter spacing works on wall pieces.'); return;
+    }
+    const wall = slotWall(list[0]);
+    if (!list.every((s) => slotWall(s) === wall)) {
+      toast('Gutter spacing needs the pieces on one wall.'); return;
+    }
+    const right = wallRightDir(wall);
+    const proj = (x, z) => x * right.x + z * right.z;
+    const sorted = [...list].sort((a, b) =>
+      proj(a.pos[0], -a.pos[1]) - proj(b.pos[0], -b.pos[1]));
+    const first = sorted[0], last = sorted[sorted.length - 1];
+    const totalW = sorted.reduce((sum, s) => sum + s.w, 0);
+    const span = (proj(last.pos[0], -last.pos[1]) + last.w / 2)
+      - (proj(first.pos[0], -first.pos[1]) - first.w / 2);
+    const gaps = sorted.length - 1;
+    const current = (span - totalW) / gaps;
+    const gutter = clamp(current + delta, 0, 2);
+    const total = totalW + gutter * gaps;
+    // clamp the whole row on the wall around its current center
+    const center = new THREE.Vector3(first.pos[0], first.pos[2], -first.pos[1])
+      .addScaledVector(right, span / 2 - first.w / 2);
+    const maxH = Math.max(...sorted.map((s) => s.h));
+    center.y = clamp(center.y, maxH / 2 + 0.1, railY);   // neutral y for the fit check
+    const spot = clampToWall(wall, center, total, maxH, 'wall');
+    if (!spot) { toast('No room on this wall for that gutter.'); return; }
+    snapshot('respace');
+    const spotProj = proj(spot.point.x, spot.point.z);
+    let edge = spotProj - total / 2;
+    for (const slot of sorted) {
+      const off = edge + slot.w / 2 - spotProj;
+      slot.pos = bpos(new THREE.Vector3(
+        spot.point.x + right.x * off, slot.pos[2], spot.point.z + right.z * off));
+      slot.yaw = round3(wallYawDeg(wall));
+      slots.update(slot);
+      edge += slot.w + gutter;
+    }
+    markDirty();
+    rebuildOutlines();
+    renderHud();
+  }
+
   function spreadSelection(delta) {
     const list = selectedSlots();
     if (list.length < 2) { toast('Spread adjusts a triptych — select one first.'); return; }
+    if (!isTrio(list)) { respaceRow(delta); return; }
     const w = list[0].w;
     const current = trioStep(list) - w;
     const gap = clamp(current + delta, 0, w * 1.5);
@@ -797,55 +924,77 @@ export function initCurator(adapter) {
   }
 
   // ------------------------------------------------------------------- HUD
+  // Frame swatches live in their own little palette panel beside the main bar.
+  function framesHtml(current, attr) {
+    const swatches = kitNames.map((k) =>
+      `<button class="cur-swatch ${current === k ? 'on' : ''}" ${attr}="${k}"
+        style="background:${layout.kit[k].color}" title="${k}"></button>`).join('');
+    return `<div class="cur-frames-label">FRAME</div>
+      <div class="cur-swatches">${swatches}</div>`;
+  }
+
   let hudHtml = '';
   function renderHud() {
     let html = '';
+    let frames = '';
     if (carrying) {
       const surface = carrying.hit?.surface;
       const kinds = surface === 'floor' ? ['easel', 'lean'] : ['wall', 'cord', 'triptych'];
       const pills = kinds.map((k, i) =>
         `<button class="cur-pill ${carrying.kindPref === k || (!kinds.includes(carrying.kindPref) && i === 0) ? 'on' : ''}"
           data-kind="${k}">${i + 1} · ${k}</button>`).join('');
-      const swatches = kitNames.map((k) =>
-        `<button class="cur-swatch ${carrying.style === k ? 'on' : ''}" data-style="${k}"
-          style="background:${layout.kit[k].color}" title="${k}"></button>`).join('');
-      html = `<div class="cur-row">${pills}<span style="width:0.8rem"></span>${swatches}</div>
+      html = `<div class="cur-row">${pills}</div>
         <div class="cur-hint">click to hang &middot; wheel sizes it &middot; right-click or Esc puts it back</div>`;
+      frames = framesHtml(carrying.style, 'data-style');
     } else if (selection.length) {
       const list = selectedSlots();
       const s = list[0];
-      const trio = list.length > 1;
+      const trio = isTrio(list);
+      const multi = list.length > 1 && !trio;
       const name = trio
         ? `triptych &middot; ${(trioStep(list) - s.w).toFixed(2)}m gap`
-        : (s.art ?? 'blank frame');
-      const kindPills = (s.kind === 'wall' || s.kind === 'cord') && !trio
+        : multi ? `${list.length} pieces`
+        : `${s.art ?? 'blank frame'} &middot; ${s.w.toFixed(2)}&times;${s.h.toFixed(2)}m`;
+      const kindPills = multi ? ''
+        : (s.kind === 'wall' || s.kind === 'cord') && !trio
         ? ['wall', 'cord'].map((k) =>
             `<button class="cur-pill ${s.kind === k ? 'on' : ''}" data-setkind="${k}">${k}</button>`).join('')
         : `<span class="cur-pill on">${s.kind}</span>`;
-      const swatches = kitNames.map((k) =>
-        `<button class="cur-swatch ${s.style === k ? 'on' : ''}" data-selstyle="${k}"
-          style="background:${layout.kit[k].color}" title="${k}"></button>`).join('');
       const rotHint = (s.kind === 'easel' || s.kind === 'lean') ? ' &middot; Q / E turns it' : '';
-      const mirrorBtn = s.art
+      const mirrorBtn = s.art && !multi
         ? `<button class="cur-btn ${s.flip ? 'primary' : ''}" data-act="mirror" title="M">mirror</button>`
         : '';
-      const spreadBtns = trio
+      const spreadBtns = trio || multi
         ? `<button class="cur-btn" data-act="spread-in" title=",">closer</button>
            <button class="cur-btn" data-act="spread-out" title=".">apart</button>`
         : '';
-      const spreadHint = trio ? ' &middot; , . sets the gap' : '';
+      const multiBtns = multi
+        ? `<button class="cur-btn" data-act="match-h" title="heights match the first piece; widths keep their aspect">same height</button>
+           <button class="cur-btn" data-act="match-wh" title="exact width and height of the first piece">same size</button>
+           <button class="cur-btn" data-act="align-top" title="line up the top edges">tops</button>
+           <button class="cur-btn" data-act="align-bottom" title="line up the bottom edges">bottoms</button>`
+        : '';
+      const hint = multi
+        ? 'the first piece you selected sets sizes and edges &middot; , . sets the gutter &middot; ' +
+          'arrows nudge everything &middot; shift-click adds or removes &middot; Esc lets go'
+        : `drag it along the wall &middot; arrows nudge (shift = 10cm) &middot; wheel or [ ] resizes` +
+          `${trio ? ' &middot; , . sets the gap' : ''}${rotHint} &middot; M mirrors &middot; ` +
+          'shift-click gathers more &middot; Esc lets go';
       html = `<div class="cur-row">
-          <span class="cur-name">${name} &middot; ${s.w.toFixed(2)}&times;${s.h.toFixed(2)}m</span>
-          ${kindPills}${swatches}${spreadBtns}${mirrorBtn}
+          <span class="cur-name">${name}</span>
+          ${kindPills}${multiBtns}${spreadBtns}${mirrorBtn}
           <button class="cur-btn" data-act="delete">take down</button>
         </div>
-        <div class="cur-hint">drag it along the wall &middot; arrows nudge (shift = 10cm) &middot;
-          wheel or [ ] resizes${spreadHint}${rotHint} &middot; M mirrors &middot; Esc lets go</div>`;
+        <div class="cur-hint">${hint}</div>`;
+      frames = framesHtml(s.style, 'data-selstyle');
     }
-    if (html !== hudHtml) {
-      hudHtml = html;
+    const combined = html + ' ' + frames;
+    if (combined !== hudHtml) {
+      hudHtml = combined;
       ui.hud.innerHTML = html;
-      ui.hud.classList.toggle('show', !!html);
+      ui.frames.innerHTML = frames;
+      ui.frames.classList.toggle('show', !!frames);
+      ui.hudwrap.classList.toggle('show', !!html);
     }
   }
 
@@ -903,6 +1052,10 @@ export function initCurator(adapter) {
       else if (act === 'mirror') mirrorSelection();
       else if (act === 'spread-in') spreadSelection(-0.05);
       else if (act === 'spread-out') spreadSelection(0.05);
+      else if (act === 'match-h') matchSize(false);
+      else if (act === 'match-wh') matchSize(true);
+      else if (act === 'align-top') alignRow('top');
+      else if (act === 'align-bottom') alignRow('bottom');
       return;
     }
     if (btn.classList.contains('cur-tile')) { startCarry(btn.dataset.file || null); return; }
@@ -959,12 +1112,20 @@ export function initCurator(adapter) {
     // a genuine click
     if (carrying) { dropCarry(); return; }
     const hitMesh = raycastArt(e);
-    if (!hitMesh) { deselect(); return; }
+    if (!hitMesh) { if (!e.shiftKey) deselect(); return; }
     const slot = hitMesh.userData.slot;
     const ids = slot.group
       ? layout.slots.filter((s) => s.group === slot.group).map((s) => s.id)
       : [slot.id];
-    select(ids);
+    if (e.shiftKey && selection.length) {
+      // shift-click toggles membership; a trio joins or leaves whole
+      const already = ids.every((id) => selection.includes(id));
+      select(already
+        ? selection.filter((id) => !ids.includes(id))
+        : [...selection, ...ids.filter((id) => !selection.includes(id))]);
+    } else {
+      select(ids);
+    }
   }, { capture: true });
 
   addEventListener('contextmenu', (e) => {
@@ -980,6 +1141,7 @@ export function initCurator(adapter) {
     const { origin, direction } = raycaster.ray;
     const list = selectedSlots();
     if (!list.length) return;
+    if (list.length > 1 && !isTrio(list)) return;   // ad-hoc multi: nudge with arrows, not drag
     const onWall = list[0].kind === 'wall' || list[0].kind === 'cord';
     if (onWall) {
       const cast = castWalls(origin, direction);

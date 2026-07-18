@@ -674,8 +674,18 @@ h2 {
   border-bottom: 0;
 }
 
+/* Title hugs the left with the curate pill beside it; archive sits alone on
+   the right so the pill is nowhere near the destructive button. */
 .pages-list .page-row a:first-child {
-  flex: 1;
+  flex: 0 1 auto;
+}
+
+.pages-list .page-row a.curate-link {
+  margin-left: 0.75rem;
+}
+
+.pages-list .page-row .archive-button {
+  margin-left: auto;
 }
 
 .pages-list a.curate-link {
