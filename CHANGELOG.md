@@ -8,6 +8,42 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-18 (Orb Dimension: skull era)
+
+- Orb dimension v14–v33 (two nights): NMS-style flight matured (persistent banking,
+  coordinated turns, S-reverse), spaceship/cockpit arc explored end-to-end and retired by
+  James (parked in tmp/orb-dimension/parked/, v17 viewscreen restored + full-spin reticle).
+- THE SKULL shipped: James's Meshy "alien god skull" at world center — 1800m, tilted back
+  5°, rendered inside the world's own WebGL2 pipeline (depth-tested against orbs), red orb
+  eyes seated in measured sockets, 2.4km orb-free buffer, cleared load-in sightline,
+  spawn at 5.6km. Skull replaced the Heart as home.
+- Shared lib: vendored three.js loaders/utils bare 'three' specifiers patched to relative
+  imports (documented in orb + mandala changelogs; mandala unaffected functionally).
+- Meshy prompt-handoff workflow validated (Claude authors prompt package, James tunes on
+  canvas, Claude pulls via API) — ship + skull both produced this way.
+
+## 2026-07-18 (Fifteen Sisters polish session)
+
+- Fifteen Sisters: citysounds bed baked with Dropzilla-style convolution reverb (30%,
+  RMS-matched, loop-safe) so the city sits outside in the distance; bed cut to 0.49×,
+  world volume starts at 80%.
+- Fifteen Sisters: salon walls re-rendered with the mandala shop's sandstone (0.8
+  overlay, gentle); default evening now Candlelight, evening chips reordered.
+
+## 2026-07-18 (Mandala Shop marathon session)
+
+- Mandala Shop transformed — "fifty times better" (James): Meshy texture pipeline
+  validated as the look multiplier (sandstone walls, canvas tent, desert wood,
+  zellige→clay-tile floor, terracotta pottery, ~90cr); Meshy props (register, tea
+  service ×6 glasses, incense burner) replace procedurals; animated FS-style incense
+  smoke; music player (oasis tracks, 8% start, 20s hush); gallery lighting overhaul
+  (per-painting fixtures, focus dimming); counter rebuilt with real crescent scoop
+  (boolean-parenting bug found); room decluttered, doorway framed, souk street on a
+  wrapped panorama cylinder (city-tile image plan pending); curator multi-select +
+  align tools, 10-frame palette, select-on-place; drag-look grab/swing toggle; perf
+  passes (dynamic resolution, lights 13→7, draw-call merges) + browser-zoom fix.
+- Full detail in src/worlds/mandala-shop/changelog.md (rounds 1–13 + session close).
+
 ## 2026-07-17 (global wrap — 07-16/17 sessions committed)
 
 - Dropzilla: GAS bank (replaces TOOTS) and CHUCK OPINES bank live — 2 of 10 banks filled;

@@ -125,7 +125,28 @@ def plaster_material():
     bump.inputs["Strength"].default_value = 0.10
     nt.links.new(geo.outputs["Position"], grain.inputs["Vector"])
     nt.links.new(grain.outputs["Fac"], bump.inputs["Height"])
-    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+    # sandstone borrowed from the mandala shop, applied gently: box-projected in
+    # world space, folded in as a low-factor overlay so the salon keeps its dark
+    # evening value while the stone lends strata, cracks and a little warmth.
+    simg = bpy.data.images.load(ROOT + r"\src\worlds\mandala-shop\assets\textures\sandstone.png")
+    smap2 = nt.nodes.new("ShaderNodeMapping")
+    smap2.inputs["Scale"].default_value = (0.35, 0.35, 0.35)  # ~2.9 m repeat
+    stex = nt.nodes.new("ShaderNodeTexImage")
+    stex.image = simg
+    stex.projection = "BOX"
+    stex.projection_blend = 0.3
+    nt.links.new(geo.outputs["Position"], smap2.inputs["Vector"])
+    nt.links.new(smap2.outputs["Vector"], stex.inputs["Vector"])
+
+    # gentle relief from the stone so the candlelight can catch it
+    sbw = nt.nodes.new("ShaderNodeRGBToBW")
+    sbump = nt.nodes.new("ShaderNodeBump")
+    sbump.inputs["Strength"].default_value = 0.20
+    nt.links.new(stex.outputs["Color"], sbw.inputs["Color"])
+    nt.links.new(sbw.outputs["Val"], sbump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], sbump.inputs["Normal"])
+    nt.links.new(sbump.outputs["Normal"], bsdf.inputs["Normal"])
 
     def maprange(vmin, vmax, tmin, tmax):
         n = nt.nodes.new("ShaderNodeMapRange")
@@ -182,9 +203,16 @@ def plaster_material():
     cap.inputs[1].default_value = 0.55
     nt.links.new(add2.outputs[0], cap.inputs[0])
 
+    # base tone with the sandstone overlaid at low strength, then grime on top
+    sandmix, sfac, sa, sb, sout = mix_rgb(nt)
+    sandmix.blend_type = "OVERLAY"
+    sfac.default_value = 0.80
+    sa.default_value = (0.060, 0.064, 0.088, 1)
+    nt.links.new(stex.outputs["Color"], sb)
+
     mixn, mfac, ma, mb, mout = mix_rgb(nt)
-    ma.default_value = (0.060, 0.064, 0.088, 1)
     mb.default_value = (0.030, 0.028, 0.024, 1)  # brownish grime
+    nt.links.new(sout, ma)
     nt.links.new(cap.outputs[0], mfac)
     nt.links.new(mout, bsdf.inputs["Base Color"])
     return m

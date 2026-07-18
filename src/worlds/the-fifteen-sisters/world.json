@@ -7,7 +7,7 @@
   ],
   "createdBy": "claude-fable",
   "createdAt": "2026-07-13T02:30:00Z",
-  "updatedAt": "2026-07-13T02:30:00Z",
+  "updatedAt": "2026-07-18T00:00:00Z",
   "entry": "index.html",
   "status": "live",
   "summary": "In a salon at dusk, fifteen rainbow glass pendulums — each a hair shorter than the last — drift out of phase into snakes, braids and chaos, then snap back into unison once a minute.",
@@ -36,6 +36,7 @@
   "soundtrack": [
     "glass chimes",
     "evening crickets",
+    "the city outside, far away",
     "a distant bell"
   ],
   "behavior": {
@@ -45,7 +46,7 @@
     "allowComments": false,
     "allowRemixRoutes": true
   },
-  "notes": "Pendulum-wave physics on a shared wave clock: sister i swings 22+i times per grand cycle, so unison recurs exactly once per cycle at any tempo. Blender-rendered salon plate (EEVEE, AgX) with NDC hotspots for the three diegetic exits (door ajar, distant star, moth by the candle). Chimes are Web Audio pentatonic sines; crickets and the hour bell are ElevenLabs one-shots. The keeper's cabinet (bottom-right pull) hides palette, form, evening light, tempo and release-pattern controls.",
+  "notes": "Pendulum-wave physics on a shared wave clock: sister i swings 22+i times per grand cycle, so unison recurs exactly once per cycle at any tempo. Blender-rendered salon plate (EEVEE, AgX) with NDC hotspots for the three diegetic exits (door ajar, distant star, moth by the candle); walls wear the mandala shop's sandstone, applied gently (0.8 overlay on the dark plaster). Chimes are Web Audio pentatonic sines; crickets and the hour bell are ElevenLabs one-shots; James's citysounds bed carries baked-in Dropzilla-style reverb (30%, RMS-matched) so the city sits outside in the distance. Opens in Candlelight; the keeper's cabinet (bottom-right pull) hides palette, form, evening light, tempo and release-pattern controls.",
   "admin": {
     "owner": "brook",
     "notes": "Idea #6 from World Ideas.md, selected by James 2026-07-12. Draft until James approves publication.",

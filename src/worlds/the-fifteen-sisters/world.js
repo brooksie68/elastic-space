@@ -248,7 +248,7 @@
   };
   let palette = "rainbow";
   let form = "orb";
-  let evening = "midnight";
+  let evening = "candlelight";
 
   // One city painting per evening. Midnight and Candlelight share the night
   // plate — the interiors differ, the city outside doesn't.
@@ -389,7 +389,7 @@
   // --------------------------------------------------------------- chimes
   let actx = null;
   let chimeGain = null;
-  let masterVol = 1;
+  let masterVol = 0.8; // world starts at 80% — the slider is synced below
   let soundOn = false;
 
   const SCALES = {
@@ -499,11 +499,11 @@
 
   function applyVolume() {
     ambience.volume = 0.55 * masterVol;
-    citybed.volume = 0.7 * masterVol; // happy medium per James (0.3 too shy, 1.0 too loud)
+    citybed.volume = 0.49 * masterVol; // 0.7 cut 30% (2026-07-18): too loud against the sisters' bells
     if (chimeGain) chimeGain.gain.value = masterVol;
   }
 
-  ElasticSoundControl.attach({
+  const soundUI = ElasticSoundControl.attach({
     start: () => {
       ensureAudio();
       applyVolume();
@@ -523,6 +523,7 @@
       applyVolume();
     },
   });
+  soundUI.setVolume(masterVol); // sync the hover slider to the 80% start
 
   // ------------------------------------------------------------- controls
   pull.addEventListener("click", () => {

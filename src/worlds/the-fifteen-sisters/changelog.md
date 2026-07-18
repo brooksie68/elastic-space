@@ -1,5 +1,45 @@
 # The Fifteen Sisters — changelog
 
+## 2026-07-18 — claude-fable (walls: mandala-shop sandstone, gently)
+
+- The salon plate re-rendered with the Meshy sandstone from the mandala shop
+  (`src/worlds/mandala-shop/assets/textures/sandstone.png`) folded into
+  `plaster_material()` in build-salon.py: box-projected in world space (~2.9 m
+  repeat), OVERLAY mix at 0.45 so the dark evening value holds, plus a 0.12 bump
+  so the candlelight catches the strata. Deliberately gentler than the mandala
+  shop, where the same file is the full-strength wall albedo.
+- Verified by A/B crop against the previous plate: mottling/strata visible in the
+  candle-lit piers, overall tone unchanged. build-salon.py synced to
+  tmp/the-fifteen-sisters/, salon.blend saved there by the build.
+- Round 2 same day: 0.45/0.12 was too timid for James ("can barely tell it's
+  there") — overlay now 0.80, bump 0.20, re-rendered. Walls read clearly as warm
+  stone under the candles now.
+- Default evening is now Candlelight (was Midnight), and the cabinet's Evening
+  chips reordered: Candlelight, Dusk, Midnight.
+
+## 2026-07-18 — claude-fable (citysounds round 2: 30% reverb, quieter bed, 80% start)
+
+- Reverb re-baked at 30% of the Dropzilla knob (wet 0.36), again from the dry original.
+  The mix is now RMS-matched to the dry file (−0.07 dB trim) so baking reverb never
+  raises the file's own loudness — round 1 skipped this and James heard the bed get
+  louder.
+- `citybed` gain in `applyVolume()` cut 0.7 → 0.49 (30% down): the bed was too loud
+  against the sisters' bells/bowls. Still rides `masterVol`, so the shared control
+  scales everything together.
+- World master volume now starts at 0.8; the hover slider is synced via the attach()
+  return handle (`soundUI.setVolume`).
+
+## 2026-07-18 — claude-fable (citysounds bed: distance reverb baked in)
+
+- `assets/audio/citysounds.mp3` re-rendered with Dropzilla's exact reverb baked in at
+  20% of its knob (James's call: same reverb, 20% of the slider) so the city reads as
+  coming from outside, in the distance. Replicated offline in Node: Dropzilla's 2.4s
+  synthesized noise impulse ((1-t)^2.6 decay), WebAudio ConvolverNode normalization,
+  wet send 0.24 over full dry. Reverb tail wraps circularly to the file start so the
+  loop point stays seamless. No ffmpeg on the machine — decode/convolve/re-encode done
+  with audio-decode + fft.js + @breezystack/lamejs (192k mp3, 48kHz stereo preserved).
+- Dry original recoverable from git history (this is the only edit to the file).
+
 ## 2026-07-15 — claude-fable (front view swings for real, the name on the wall)
 
 - Front-view projection rebuilt. The old drop+scale tilt cancelled the pendulum arc's
