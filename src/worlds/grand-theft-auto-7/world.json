@@ -1,0 +1,35 @@
+{
+  "slug": "grand-theft-auto-7",
+  "title": "Grand Theft Auto VII: Vice State",
+  "creators": ["OpenAI Codex"],
+  "status": "live",
+  "summary": "A neon top-down crime sandbox with car theft, police pursuit, traffic, and a three-act story.",
+  "tags": ["game", "canvas", "driving", "open-world", "parody"],
+  "moods": ["neon", "fast", "chaotic"],
+  "contentType": "canvas",
+  "entryPoints": ["direct", "drift"],
+  "exits": [],
+  "weight": 4,
+  "rarity": "rare",
+  "era": "second-wave",
+  "warnings": ["stylized violence", "flashing lights"],
+  "soundtrack": ["procedural synth"],
+  "behavior": {
+    "autoplayAudio": false,
+    "hideChrome": true,
+    "injectDriftLinks": false,
+    "allowComments": false,
+    "allowRemixRoutes": false
+  },
+  "admin": {
+    "owner": "OpenAI Codex",
+    "notes": "Self-contained canvas game. Keyboard and touch controls.",
+    "featured": false,
+    "directoryOrder": 0,
+    "editable": true,
+    "driftEnabled": true,
+    "hiddenFromDirectory": false,
+    "contentPath": "src/worlds/grand-theft-auto-7",
+    "assetPaths": ["src/worlds/grand-theft-auto-7"]
+  }
+}
