@@ -14,7 +14,7 @@ powershell -window minimized -command ""
 curl.exe -s -o NUL --max-time 2 "http://127.0.0.1:4174/healthz"
 if not errorlevel 1 goto open
 
-start /min "elastic-space server (port 4174)" cmd /k "node server.mjs"
+start /min "elastic-space server (port 4174)" cmd /c "node server.mjs"
 
 set tries=0
 :wait

@@ -6,6 +6,8 @@
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
    in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
+3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
+   instead; there is no outside. If one ever returns, it gets built properly.)
 
 (SSH remotes shipped 2026-07-16: all repos push over SSH now, see memory
 `chunk-large-git-pushes`; blipblops was skipped, it has no `.git` directory)
@@ -118,33 +120,43 @@
 - After adding, removing, or renaming a world, run `npm run registry`.
 - The root `index.html` is an intentional named directory and may use direct links.
 
-## Jerry's Pool denizens
+## Per-world instructions
 
-- `docs/denizen-frequency-rubric.md` is the canonical denizen timing reference.
-- Update that rubric whenever denizen spawn timing, opening appearance timing, duration, counts, or concurrency limits change.
+- **Every world has its own `src/worlds/<slug>/CLAUDE.md`.** When James says "let's work on
+  <world>", the FIRST step is to read that world's CLAUDE.md (plus the docs it points to).
+  Claude Code also auto-loads it when touching files in the world's folder.
+- Division of documentation: anything specific to one world (rendering constraints,
+  physics, timing, protected behaviors, in-progress work) is documented in that world's
+  CLAUDE.md. This file (elastic-space level) holds only all-world rules and the services
+  we connect to.
+- New worlds get a CLAUDE.md at ship time (`src/worlds/_template/CLAUDE.md` is the starter),
+  and sessions add world rules there as they surface — not here.
+- Some worlds carry extra docs in their folder (e.g. `arachno-wars-2000/overhaul-roadmap.md`
+  and `spider-vision.md`, `dead-letter-office/README.md`); Jerry's Pool's deep-dive docs are
+  in repo-root `docs/` (`current-index.md`, `denizen-frequency-rubric.md`).
 
-## Jerry's Pool rendering
+## 3D assets (Meshy)
 
-- The live world is `src/worlds/jerrys-pool/`; read `docs/current-index.md` before changing its renderer or dot physics.
-- The 330 background dots use PixiJS/WebGL shared-texture batching.
-- Preserve Jerry's dot pressure, wake, side displacement, and recovery behavior. It is a core spatial effect, not expendable decoration.
-- Far, middle, and near dot physics run at 15, 30, and 60 FPS respectively. Dots near Jerry are promoted to 60 FPS regardless of depth.
-- Off-screen dots remain continuous in their orbits but skip rendering and Jerry-influence work outside the viewport margin.
-- Seamount elements are solid underwater terrain. Keep their opacity at `1` and `mask-image: none`; create depth with blur, value, and scale.
+- James has a Meshy Premium account (since 2026-07-17) and premade object libraries there —
+  check his library before hand-modeling props or characters in Blender.
+- The `meshy` MCP server is available in Claude Code sessions. Every generation call costs
+  credits: state the cost and get James's confirmation before calling anything that spends.
+- Seamless texture tiles via text-to-image are the go-to look multiplier for 3D worlds
+  (Mandala Shop is the reference).
+- Prompt-handoff workflow: Claude writes a prompt + context package, James tunes on the
+  Meshy canvas, Claude pulls results via `meshy_list_tasks` / download. Check scale against
+  viewing distance before importing.
+- Gotcha: Meshy materials duplicate the texture atlas as `emissiveMap` — when swapping
+  textures, swap both maps.
 
-## Wildflowers at Dusk rendering
+## Music (Suno)
 
-- The live world is `src/worlds/wildflowers-at-dusk/`.
-- Canvas handles rain, drifting cloud sprites, cedar framing, and foreground vegetation.
-- Painted landscape plates are DOM images in `assets/landscape/`, stacked beneath the Canvas with CSS z-index and depth-specific blur.
-- Runtime cloud and landscape PNGs have transparency; `*-source.png` files retain chroma green and are not loaded by the page.
-- Rain renders behind clouds. Terrain and mountains are opaque.
-- The scene is desktop-first; do not add mobile-specific compromises unless explicitly requested.
-- The world runs a one-way timed arc (flora dissolution → giant's rise + thrum → 20s end blur);
-  reload resets it. `REVIEW_SKIP_TO_GIANT` in world.js fast-forwards to the finale for tuning —
-  ships `false`.
-- Background vegetation ranks are offscreen canvases baked once (filters applied at bake time),
-  planted along the near-ridge plate's pixel-sampled top silhouette; per-frame cost is one
-  drawImage per rank. The giant lives in `assets/giant/` (runtime PNG + chroma `giant-source.png`).
-- All page audio (rain bed + giant thrum) routes through the single shared sound control — any
-  new sound must obey its mute/volume state.
+- James authors full music tracks himself at suno.com — it is a manual, browser-side tool
+  (no API, no CLI); Claude never generates there. Claude can help draft prompts or lyrics
+  when asked.
+- Integration pattern (reference: Chrome Rift's Saffron tracks): James drops finished MP3s
+  into `src/worlds/<slug>/assets/audio/`, Claude wires them — playlist array in world.js,
+  playback through the shared sound control like any other audio.
+- Division of labor with ElevenLabs: Suno for full songs/soundtracks James curates by ear;
+  ElevenLabs (`tools/eleven.mjs`) for SFX, voices, and ambience beds; Web Audio synthesis
+  for continuous/parametric sound.
