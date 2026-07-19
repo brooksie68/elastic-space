@@ -12,7 +12,7 @@
 // what makes flying through Blender sprites work.
 //
 // Flight is deliberately gentle (James): damped acceleration, smoothed look,
-// pitch clamp, no roll, no shake. Orb positions are stored normalized so the
+// A/D banking that persists (NMS-style), no shake. Orb positions are stored normalized so the
 // tuner's spread sliders stretch the volume live, mid-flight.
 //
 // Drift exits: pale white pulsing orbs. Clicking one triggers the hidden
@@ -121,7 +121,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S · A / D · Q / E roll · R levels · shift = thruster · space = overdrive · drag to steer · H home · v13";
+    "W / S · A / D roll · R levels · shift = thruster · space = overdrive · drag to steer · H home · v33";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -131,26 +131,87 @@
   marker.id = "home-marker";
   document.body.appendChild(marker);
 
-  // the HUD of a ship ten thousand years too advanced to need one: hairline
-  // corner brackets and frosted slivers at the very edge of the glass
+  // the viewscreen: you are INSIDE a small ship now. A dark canopy frame runs
+  // all the way around the glass — top strut, side struts, angled gussets —
+  // and a console of live readout panels spans the bottom. The whole rig stays
+  // inside ~10% of the screen (James's budget). WEP and SHD report OFFLINE:
+  // those systems are coming, the ship just doesn't have them installed yet.
+  // (2026-07-17: the v18-v24 rendered-chrome / three.js cockpit experiments
+  // were pulled by James — spaceship direction retired; code parked in
+  // tmp/orb-dimension/parked/. This is the v15/v17 viewscreen, restored.)
   const hud = document.createElement("div");
   hud.id = "hud";
   hud.setAttribute("aria-hidden", "true");
-  for (const c of ["tl", "tr", "bl", "br"]) {
-    const el = document.createElement("div");
-    el.className = "hud-corner " + c;
-    hud.appendChild(el);
-  }
-  for (const s of ["top", "bottom", "left", "right"]) {
-    const el = document.createElement("div");
-    el.className = "hud-edge " + s;
-    hud.appendChild(el);
-  }
+  hud.innerHTML = `
+    <div class="vs-strut vs-top"></div>
+    <div class="vs-strut vs-left"></div>
+    <div class="vs-strut vs-right"></div>
+    <div class="vs-gusset tl"></div><div class="vs-gusset tr"></div>
+    <div class="vs-gusset bl"></div><div class="vs-gusset br"></div>
+    <div class="vs-glass">
+      <div class="vs-arc left"></div>
+      <div class="vs-arc right"></div>
+      <svg class="vs-reticle" viewBox="-100 -100 200 200">
+        <g id="vs-horizon">
+          <path d="M -78 0 H -52 L -44 7" />
+          <path d="M 78 0 H 52 L 44 7" />
+        </g>
+        <g class="ret-ring">
+          <path d="M -46 -14 A 48 48 0 0 1 -14 -46" />
+          <path d="M 14 -46 A 48 48 0 0 1 46 -14" />
+          <path d="M 46 14 A 48 48 0 0 1 14 46" />
+          <path d="M -14 46 A 48 48 0 0 1 -46 14" />
+        </g>
+        <path class="ret-cross" d="M 0 -11 V -4 M 0 11 V 4 M -11 0 H -4 M 11 0 H 4" />
+        <circle class="ret-dot" r="1.3" />
+      </svg>
+    </div>
+    <div class="vs-console-rig">
+      <div class="vs-console">
+        <div class="vs-wing left"></div>
+        <section class="vs-pod pod-att">
+          <h2>ATT</h2>
+          <div class="vs-screen vs-rows">
+            <p><span>HDG</span><b id="vs-hdg">000</b></p>
+            <p><span>PIT</span><b id="vs-pit">+00</b></p>
+            <p><span>BNK</span><b id="vs-bnk">+00</b></p>
+          </div>
+        </section>
+        <section class="vs-cluster">
+          <div class="vs-screen">
+            <p class="vs-big"><b id="vs-spd">0</b><span> m/s</span></p>
+            <div class="vs-bar"><div id="vs-thr"></div></div>
+            <p class="vs-mode" id="vs-mode">IDLE</p>
+          </div>
+        </section>
+        <section class="vs-pod pod-nav">
+          <h2>NAV</h2>
+          <div class="vs-screen vs-rows">
+            <p><span>HOME</span><b id="vs-home">1.6 km</b></p>
+            <p><span>CNT</span><b id="vs-con">0</b></p>
+            <p><span>EXIT</span><b>3</b></p>
+          </div>
+        </section>
+        <section class="vs-pod pod-sys">
+          <h2>SYS</h2>
+          <div class="vs-screen vs-rows">
+            <p><span>ENG</span><b class="vs-ok" id="vs-eng">NOMINAL</b></p>
+            <p><span>WEP</span><b class="vs-off">OFFLINE</b></p>
+            <p><span>SHD</span><b class="vs-off">OFFLINE</b></p>
+          </div>
+        </section>
+        <div class="vs-wing right"></div>
+      </div>
+    </div>`;
   document.body.appendChild(hud);
-
-  const speedReadout = document.createElement("p");
-  speedReadout.id = "speed-readout";
-  document.body.appendChild(speedReadout);
+  const $v = (id) => hud.querySelector("#" + id);
+  const vsEls = {
+    hdg: $v("vs-hdg"), pit: $v("vs-pit"), bnk: $v("vs-bnk"),
+    spd: $v("vs-spd"), thr: $v("vs-thr"), mode: $v("vs-mode"),
+    home: $v("vs-home"), con: $v("vs-con"), eng: $v("vs-eng"),
+    ret: hud.querySelector(".vs-reticle"),
+  };
+  let hudNext = 0; // next text-readout refresh (ms); bar animates every frame
 
   const anchors = Array.from(document.querySelectorAll(".orb.portal"));
 
@@ -160,7 +221,7 @@
     alpha: true,
     premultipliedAlpha: true,
     antialias: false,
-    depth: false,
+    depth: true, // the skull is real geometry — orbs depth-test against it
   });
   if (!gl) {
     hint.textContent = "this dimension needs WebGL2 — the dark is all there is";
@@ -234,6 +295,8 @@ void main() {
   float sat = vA.z * mix(1.0, 0.55, clamp(dist / 18000.0, 0.0, 1.0));
   float l1 = 0.62, l2 = 0.60;
   if (portal > 0.5) { sat = 0.04; l1 = 0.80; l2 = 0.74; }
+  // flag 3: the skull's eyes — deep saturated red, never washed out
+  if (portal > 2.5) { sat = 0.92; l1 = 0.60; l2 = 0.54; }
 
   float k = 0.5 + 0.5 * sin(uTime * 6.28318 * uFadeScale / vA.w + vB.x);
   float lb = smoothstep(0.6, 0.0, r) * 0.13; // hot center
@@ -487,8 +550,34 @@ void main() {
   let groupCtx = null;
   let ringOrbs = [];
   let portalOrbs = [];
-  let heartOrb = null;
+  // (heartOrb retired 2026-07-18 — makeHeart() below kept for the lore; the
+  // skull's mouth-glow pulse in the skull shader carries the Heart's soul)
+
+  // the skull's eyes: two bright red orbs seated in the eye sockets. Socket
+  // centers measured from skull.bin (canonical 600m frame: x ±60, y −15,
+  // z +190 — recessed into the openings) × SKULL_SCALE 3. Fixed world
+  // positions (o.fix), immune to spread sliders and wander; flag 3 in the
+  // instance data gives them the heart's never-smaller-than-a-star clause
+  // and a red-tinted branch in the fragment shader.
+  function makeEyes() {
+    return [-1, 1].map((side) => {
+      const o = baseOrb([0, 0, 0], false, false);
+      o.eye = true;
+      // (±270, −45, 570) put through the skull's 5° back-tilt (see loader)
+      o.fix = [side * 270, 4.9, 571.7];
+      o.fixedR = 160;
+      o.h1 = 2;
+      o.h2 = 357;
+      o.sat = 100;
+      o.fadeDur = 3.2;
+      o.halo = 2.0;
+      o.spin = 0;
+      o.variant = 0;
+      return o;
+    });
+  }
   let veilOrbs = [];
+  let eyeOrbs = [];
   let fieldPool = [];
   let dustPool = [];
 
@@ -602,13 +691,49 @@ void main() {
       // ever truly empty, and flying always has parallax to read speed against
       dustPool.push(baseOrb([rand(-1.3, 1.3), rand(-1.3, 1.3), rand(-1.3, 1.3)], false, true));
     }
+    // (the Heart orb retired 2026-07-18 — the Skull took over as home; the
+    // HOME readout and edge marker still point at the origin, now its center)
     orbs = ringOrbs.slice(0, ringUsed).concat(
       fieldPool.slice(0, fieldNeed),
       portalOrbs,
-      [heartOrb],
+      eyeOrbs,
       veilOrbs,
       dustPool.slice(0, cfg.dust),
     );
+
+    // the monument stands alone: any orb inside KEEP meters of the origin is
+    // pushed radially out to a shell just beyond the skull (corner radius
+    // ~1370m at 3x scale, +wander margin). Eyes exempt (they live in the
+    // sockets), dust exempt (ember atmosphere), veils are outside anyway.
+    // Radial push in world space = scaling the normalized coords, since
+    // world = n * spread componentwise. Soft clamp keeps pushed orbs from
+    // leaving the field entirely at extreme tuner spreads.
+    const KEEP = 2400; // v33: widened from 1560 — "give the skull a nice buffer"
+    for (const o of orbs) {
+      if (o.veil || o.dust || o.eye) continue;
+      const wx = o.n[0] * cfg.spreadX, wy = o.n[1] * cfg.spreadY, wz = o.n[2] * cfg.spreadZ;
+      const r = Math.hypot(wx, wy, wz);
+      if (r < KEEP) {
+        const f = (KEEP * (1 + Math.random() * 0.18)) / Math.max(r, 1);
+        o.n[0] = clamp(o.n[0] * f, -1.35, 1.35);
+        o.n[1] = clamp(o.n[1] * f, -1.35, 1.35);
+        o.n[2] = clamp(o.n[2] * f, -1.35, 1.35);
+      }
+      // v33: the load-in sightline stays clear — a cylinder along +Z from the
+      // buffer edge to just past spawn (z 0..6200, radius 950 around the view
+      // axis). Anything drifting into frame between you and the face gets
+      // pushed sideways out of the corridor.
+      const wz2 = o.n[2] * cfg.spreadZ;
+      if (wz2 > 0 && wz2 < 6200) {
+        const wx2 = o.n[0] * cfg.spreadX, wy2 = o.n[1] * cfg.spreadY;
+        const rr = Math.hypot(wx2, wy2);
+        if (rr < 950) {
+          const f2 = (950 * (1 + Math.random() * 0.2)) / Math.max(rr, 1);
+          o.n[0] = clamp(o.n[0] * f2, -1.35, 1.35);
+          o.n[1] = clamp(o.n[1] * f2, -1.35, 1.35);
+        }
+      }
+    }
     instData = new Float32Array(orbs.length * FLOATS);
     order = new Uint16Array(orbs.length);
     dists = new Float32Array(orbs.length);
@@ -622,7 +747,7 @@ void main() {
     dustPool = [];
     ringOrbs = makeRing();
     portalOrbs = makePortals();
-    heartOrb = makeHeart();
+    eyeOrbs = makeEyes();
     veilOrbs = makeVeils();
     assemble();
   }
@@ -637,7 +762,7 @@ void main() {
   // orthonormal basis — f forward, r right, u up — rotated incrementally in
   // its OWN frame. Roll persists until R glides you back to the ecliptic.
   const cam = {
-    pos: [0, 0, 1600],
+    pos: [0, 0, 5600], // v22: 2600; v29: 3600; v30: 5600 (James keeps backing up — the skull deserves it)
     f: [0, 0, -1],
     r: [1, 0, 0],
     u: [0, 1, 0],
@@ -691,7 +816,7 @@ void main() {
   }
 
   function goHome() {
-    cam.pos = [0, 0, 1600];
+    cam.pos = [0, 0, 5600];
     cam.f = [0, 0, -1];
     cam.r = [1, 0, 0];
     cam.u = [0, 1, 0];
@@ -798,6 +923,161 @@ void main() {
     }
   }
 
+  // ---- the Skull -----------------------------------------------------------------
+  // A 600m fossil skull at the exact center of the dimension — James's Meshy
+  // model ("alien god skull v2"), prepped by tmp/orb-dimension/skull_prep.py:
+  // recentered on the origin, decimated 1.29M→206k tris, exported as a custom
+  // binary (interleaved pos/norm/uv + u32 indices) with a 2K basecolor JPG.
+  // It replaced the Heart as home: the HOME readout and edge marker point at
+  // the origin, which is now the skull's center. The face looks toward +Z —
+  // straight at the spawn point. The mouth is an open ring and the severed
+  // underside is open too: in through the teeth, out below. No collision;
+  // the walls are ghosts for now.
+  // Served-only enhancement: needs fetch(), so on file:// the world simply
+  // has no skull (graceful absence per house rules).
+  const skull = { ready: false, count: 0, prog: null, vao: null, tex: null, U: {} };
+  (async () => {
+    try {
+      const [buf, img] = await Promise.all([
+        fetch("assets/skull/skull.bin").then((r) => {
+          if (!r.ok) throw new Error("skull.bin " + r.status);
+          return r.arrayBuffer();
+        }),
+        new Promise((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = rej;
+          im.src = "assets/skull/skull-basecolor.jpg";
+        }),
+      ]);
+      const dv = new DataView(buf);
+      if (dv.getUint32(0, false) !== 0x534b554c) throw new Error("bad magic"); // "SKUL"
+      const nv = dv.getUint32(4, true);
+      const ni = dv.getUint32(8, true);
+      const verts = new Float32Array(buf, 12, nv * 8);
+      const idx = new Uint32Array(buf, 12 + nv * 32, ni);
+
+      // the binary is canonical at 600m tall; the world wants a monument.
+      // v28 after James's first look ("not even bigger than the orbs"):
+      // 3x → 1800m tall, subtending ~38° from spawn. Tune here.
+      // v32: head tilted back 5° (rotation about X; face lifts skyward).
+      // The eye orbs in makeEyes() carry the same rotation baked into their
+      // fixed positions — retilt them if this angle changes.
+      const SKULL_SCALE = 3.0;
+      const SKULL_TILT = (-5 * Math.PI) / 180;
+      const ct = Math.cos(SKULL_TILT), st = Math.sin(SKULL_TILT);
+      for (let i = 0; i < nv; i++) {
+        const o = i * 8;
+        const y = verts[o + 1] * SKULL_SCALE, z = verts[o + 2] * SKULL_SCALE;
+        verts[o] *= SKULL_SCALE;
+        verts[o + 1] = y * ct - z * st;
+        verts[o + 2] = y * st + z * ct;
+        const ny = verts[o + 4], nz = verts[o + 5];
+        verts[o + 4] = ny * ct - nz * st;
+        verts[o + 5] = ny * st + nz * ct;
+      }
+
+      const svs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=2) in vec2 aUV;
+uniform mat4 uVP;
+uniform vec3 uCamPos;
+out vec3 vN;
+out vec2 vUV;
+out float vDist;
+void main() {
+  vN = aNorm;
+  vUV = aUV;
+  vDist = distance(aPos, uCamPos);
+  gl_Position = uVP * vec4(aPos, 1.0);
+}`;
+      const sfs = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform float uFog;
+uniform float uTime;
+in vec3 vN;
+in vec2 vUV;
+in float vDist;
+out vec4 oC;
+void main() {
+  vec3 base = texture(uTex, vUV).rgb;
+  vec3 N = normalize(vN);
+  // starlight key high-left, cool fill from the right, and the Heart's soul:
+  // a warm pulse breathing up out of the open mouth from below
+  float key = max(dot(N, normalize(vec3(-0.45, 0.80, 0.42))), 0.0);
+  float fill = max(dot(N, normalize(vec3(0.65, -0.05, -0.60))), 0.0);
+  float up = max(dot(N, normalize(vec3(0.0, -0.92, 0.38))), 0.0);
+  float pulse = 0.55 + 0.45 * sin(uTime * 0.45);
+  vec3 col = base * (vec3(0.10, 0.11, 0.15)
+    + key * vec3(0.88, 0.95, 1.10) * 0.95
+    + fill * vec3(0.30, 0.38, 0.55) * 0.22
+    + up * vec3(1.00, 0.62, 0.28) * 0.55 * pulse);
+  // aerial haze, same knob as the orbs
+  col *= exp(-vDist * uFog * 1.6);
+  oC = vec4(col, 1.0);
+}`;
+      const mk = (type, src) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+          throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      const p = gl.createProgram();
+      gl.attachShader(p, mk(gl.VERTEX_SHADER, svs));
+      gl.attachShader(p, mk(gl.FRAGMENT_SHADER, sfs));
+      gl.linkProgram(p);
+      if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+        throw new Error(gl.getProgramInfoLog(p));
+      for (const n of ["uVP", "uCamPos", "uTex", "uFog", "uTime"])
+        skull.U[n] = gl.getUniformLocation(p, n);
+
+      const vao = gl.createVertexArray();
+      gl.bindVertexArray(vao);
+      const vb = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+      gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0);
+      gl.enableVertexAttribArray(1);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12);
+      gl.enableVertexAttribArray(2);
+      gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
+      const ib = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+      gl.bindVertexArray(null);
+
+      const tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE1); // orbs own unit 0
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+      if (aniso) {
+        gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+          Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+      }
+      gl.activeTexture(gl.TEXTURE0);
+
+      gl.useProgram(p);
+      gl.uniform1i(skull.U.uTex, 1);
+      gl.useProgram(prog); // hand the state back to the orb pipeline
+
+      skull.prog = p;
+      skull.vao = vao;
+      skull.tex = tex;
+      skull.count = ni;
+      skull.ready = true;
+    } catch (e) {
+      // file:// or missing assets: the dimension just has no skull
+    }
+  })();
+
   // ---- portals: raycast clicks ------------------------------------------------------
 
   let wp = new Float32Array(0); // orb world positions, filled each frame
@@ -873,12 +1153,16 @@ void main() {
     // Space toggles OVERDRIVE: ramp to 800 and hold there until tapped again.
     const VMAX = 400, VOVER = 800; // m/s
     const burning = keys.has("ShiftLeft") || keys.has("ShiftRight");
-    const target = overdrive ? VOVER : burning ? VMAX : 0;
-    if (target > 0) {
+    // the boosts respect the S key (per James 2026-07-17): holding S points
+    // the burn backwards — shift and overdrive thrust in REVERSE while it's
+    // down, swinging smoothly through zero, and swing forward again on release
+    const rev = keys.has("KeyS") ? -1 : 1;
+    const target = (overdrive ? VOVER : burning ? VMAX : 0) * rev;
+    if (target !== 0) {
       thrust += (target - thrust) * (1 - Math.exp(-dt / 1.2));
     } else {
       thrust *= Math.exp(-dt / 1.6);
-      if (thrust < 4) thrust = 0;
+      if (Math.abs(thrust) < 4) thrust = 0;
     }
 
     // -- the dolly: hold W to glide forward along your gaze, S to back out.
@@ -886,25 +1170,14 @@ void main() {
     // thruster (S acts as a soft brake while coasting).
     const DOLLY = 80; // m/s
     const dolly = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
-    // strafe: A/D slide left/right at dolly speed, view untouched, instant stop
-    const strafe = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
     const speed = dolly * DOLLY + thrust;
-    if (speed !== 0 || strafe !== 0) {
+    if (speed !== 0) {
       const bd = camBasis();
       const bounds = [cfg.spreadX * 0.95, cfg.spreadY * 0.95, cfg.spreadZ * 0.95];
       for (let i = 0; i < 3; i++) {
-        const step = bd.f[i] * speed + bd.r[i] * strafe * DOLLY;
-        cam.pos[i] = clamp(cam.pos[i] + step * dt, -bounds[i], bounds[i]);
+        cam.pos[i] = clamp(cam.pos[i] + bd.f[i] * speed * dt, -bounds[i], bounds[i]);
       }
     }
-    const groundSpeed = Math.hypot(speed, strafe * DOLLY);
-    if (groundSpeed > 1) {
-      speedReadout.textContent = Math.round(groundSpeed) + " m/s";
-      speedReadout.classList.add("show");
-    } else {
-      speedReadout.classList.remove("show");
-    }
-    speedReadout.classList.toggle("over", overdrive);
 
     // -- rotation, all in the camera's OWN frame (banked yaw curves the bank)
     const ROT = 0.7; // rad/s
@@ -920,13 +1193,25 @@ void main() {
     if (yawStep !== 0) rotateCam(cam.u, yawStep);
     if (pitchStep !== 0) rotateCam(cam.r, pitchStep);
 
-    // -- roll: Q/E bank while held and STAY banked (per James, NMS pilot)
-    const ROLL_RATE = 0.66; // rad/s (backed off 40% per James)
-    const rollIn = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
+    // -- roll: A/D bank while held and STAY banked (per James, NMS pilot —
+    // moved off Q/E 2026-07-17 so he can bank + point the nose with the mouse;
+    // Q/E stay unassigned for now)
+    const ROLL_RATE = 0.46; // rad/s (0.66 backed off a further 30% per James)
+    const rollIn = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
     rollVel += (rollIn * ROLL_RATE - rollVel) * (1 - Math.exp(-dt * 6));
     if (Math.abs(rollVel) > 1e-4) {
       rotateCam(cam.f, rollVel * dt);
       if (rollIn !== 0) leveling = false;
+    }
+
+    // -- coordinated turn: banking IS turning (James, v26). While banked the
+    // ship carves continuously around the world-vertical — hold a bank and
+    // you sweep a full circle back to your starting view; level out (or R)
+    // and the turn stops. Rate peaks at TURN_RATE on a 90° knife-edge.
+    const TURN_RATE = 0.5; // rad/s of heading at full bank
+    const bankRad = Math.atan2(cam.r[1], cam.u[1]);
+    if (Math.abs(bankRad) > 0.02) {
+      rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * dt);
     }
 
     // -- R: glide back to the plane of the ecliptic (level roll and pitch,
@@ -947,20 +1232,56 @@ void main() {
     const n = orbs.length;
     if (wp.length !== n * 3) wp = new Float32Array(n * 3);
     const sx = cfg.spreadX, sy = cfg.spreadY, sz = cfg.spreadZ;
+    let contacts = 0; // real orbs within sensor range (2.5 km), for the console
     for (let i = 0; i < n; i++) {
       const o = orbs[i];
       // wander is absolute meters, NOT spread-scaled: "drifting slowly about"
       // means a few m/s, and near orbs must never flee the visitor
-      const amp = o.heart || o.veil ? 0 : o.dust ? 30 : o.portal ? 15 : 60;
-      const x = o.n[0] * sx + wander(o.wx, t) * amp;
-      const y = o.n[1] * sy + wander(o.wy, t) * amp * 0.6;
-      const z = o.n[2] * sz + wander(o.wz, t) * amp;
+      let x, y, z;
+      if (o.fix) {
+        // seated in the skull: fixed world coords, no spread scaling, no wander
+        x = o.fix[0]; y = o.fix[1]; z = o.fix[2];
+      } else {
+        const amp = o.heart || o.veil ? 0 : o.dust ? 30 : o.portal ? 15 : 60;
+        x = o.n[0] * sx + wander(o.wx, t) * amp;
+        y = o.n[1] * sy + wander(o.wy, t) * amp * 0.6;
+        z = o.n[2] * sz + wander(o.wz, t) * amp;
+      }
       wp[i * 3] = x; wp[i * 3 + 1] = y; wp[i * 3 + 2] = z;
       const dx = x - cam.pos[0], dy = y - cam.pos[1], dz = z - cam.pos[2];
       dists[i] = dx * dx + dy * dy + dz * dz;
+      if (!o.dust && !o.veil && dists[i] < 6250000) contacts++;
       order[i] = i;
     }
     order.sort((a, bI) => dists[bI] - dists[a]);
+
+    // -- viewscreen: throttle bar and reticle horizon track every frame, the
+    // text readouts refresh at ~8 Hz so the numbers stay legible
+    vsEls.thr.style.width = Math.min(100, (Math.abs(thrust) / VOVER) * 100).toFixed(1) + "%";
+    vsEls.thr.classList.toggle("rev", thrust < 0);
+    const bankDeg = Math.atan2(cam.r[1], cam.u[1]) * 180 / Math.PI;
+    // the WHOLE reticle is the attitude instrument (James, v25): it counter-
+    // rotates through the full 360° as you roll, so a barrel roll spins it
+    // all the way around while the canopy frame stays put
+    vsEls.ret.style.transform =
+      "translate(-50%, -50%) rotate(" + (-bankDeg).toFixed(1) + "deg)";
+    if (now >= hudNext) {
+      hudNext = now + 120;
+      const spd = Math.abs(speed);
+      const signed = (v) =>
+        (v < 0 ? "−" : "+") + String(Math.abs(Math.round(v))).padStart(2, "0");
+      vsEls.spd.textContent = (speed < -1 ? "−" : "") + Math.round(spd);
+      vsEls.mode.textContent = overdrive ? "OVERDRIVE" : speed < -1 ? "REVERSE" : burning ? "BURN" : spd > 1 ? "COAST" : "IDLE";
+      vsEls.mode.classList.toggle("over", overdrive);
+      vsEls.hdg.textContent =
+        String(Math.round((Math.atan2(cam.f[0], -cam.f[2]) * 180 / Math.PI + 360) % 360)).padStart(3, "0");
+      vsEls.pit.textContent = signed(Math.asin(clamp(cam.f[1], -1, 1)) * 180 / Math.PI);
+      vsEls.bnk.textContent = signed(bankDeg);
+      const hd = Math.hypot(cam.pos[0], cam.pos[1], cam.pos[2]);
+      vsEls.home.textContent = hd >= 1000 ? (hd / 1000).toFixed(1) + " km" : Math.round(hd) + " m";
+      vsEls.con.textContent = String(contacts);
+      vsEls.eng.textContent = overdrive ? "OVERDRIVE" : "NOMINAL";
+    }
 
     let m = 0;
     for (let s = 0; s < n; s++) {
@@ -985,7 +1306,7 @@ void main() {
       instData[off + 10] = o.variant;
       instData[off + 11] = o.halo;
       instData[off + 12] = o.seed;
-      instData[off + 13] = o.heart ? 2 : o.portal ? 1 : 0;
+      instData[off + 13] = o.eye ? 3 : o.heart ? 2 : o.portal ? 1 : 0;
       instData[off + 14] = o.veil ? 1 : 0;
       instData[off + 15] = o.veil ? 1.05 : o.dust ? 1.6 : 2.6;
     }
@@ -1004,7 +1325,30 @@ void main() {
     setView(bb);
     mulVP();
 
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.depthMask(true); // clear respects the mask — re-arm it every frame
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // -- the skull draws first: opaque, depth-written. The orbs then draw
+    // with depth TEST on but writes off — soft sprites clipped correctly
+    // behind bone, shining past its edges, visible through the mouth.
+    if (skull.ready) {
+      gl.disable(gl.BLEND);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+      gl.useProgram(skull.prog);
+      gl.bindVertexArray(skull.vao);
+      gl.uniformMatrix4fv(skull.U.uVP, false, vp);
+      gl.uniform3fv(skull.U.uCamPos, cam.pos);
+      gl.uniform1f(skull.U.uFog, cfg.haze / 18000);
+      gl.uniform1f(skull.U.uTime, t);
+      gl.drawElements(gl.TRIANGLES, skull.count, gl.UNSIGNED_INT, 0);
+      gl.bindVertexArray(null);
+      gl.depthMask(false);
+      gl.enable(gl.BLEND);
+      gl.useProgram(prog);
+    } else {
+      gl.disable(gl.DEPTH_TEST);
+    }
     if (texReady) {
       gl.uniformMatrix4fv(U.uVP, false, vp);
       gl.uniform3fv(U.uRight, bb.r);

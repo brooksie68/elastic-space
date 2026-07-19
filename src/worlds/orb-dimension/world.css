@@ -73,7 +73,7 @@ body::after {
 .orb.portal {
   position: fixed;
   left: -9999px;
-  bottom: 24px;
+  bottom: calc(var(--console-h, 0px) + 16px);
   width: 14px;
   height: 14px;
   pointer-events: auto;
@@ -92,8 +92,8 @@ body::after {
 
 #flight-hint {
   position: fixed;
-  left: 18px;
-  bottom: 16px;
+  left: calc(var(--vs-side, 16px) + 10px);
+  bottom: calc(var(--console-h, 0px) + 10px);
   z-index: 6;
   color: rgba(170, 184, 214, 0.55);
   font: 12px/1.6 system-ui, sans-serif;
@@ -105,60 +105,299 @@ body::after {
   opacity: 0;
 }
 
-/* ---- the invisible ship's HUD ------------------------------------------ */
+/* ---- the ship's viewscreen ---------------------------------------------- */
+/* Canopy frame all the way around plus a console of readout panels along the
+   bottom. Budget: everything together stays inside ~10% of the screen. */
+
+:root {
+  --vs-top: clamp(16px, 2.2vh, 30px);
+  --vs-side: clamp(12px, 1.4vw, 24px);
+  --console-h: clamp(68px, 8vh, 118px);
+  --vs-line: rgba(130, 185, 235, 0.35);
+}
 
 #hud {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 6;
+  font: 11px/1.4 Consolas, "Cascadia Mono", ui-monospace, monospace;
 }
-.hud-corner {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  border: 0 solid rgba(220, 235, 255, 0.18);
-}
-.hud-corner.tl { top: 13px; left: 13px; border-top-width: 1px; border-left-width: 1px; }
-.hud-corner.tr { top: 13px; right: 13px; border-top-width: 1px; border-right-width: 1px; }
-.hud-corner.bl { bottom: 13px; left: 13px; border-bottom-width: 1px; border-left-width: 1px; }
-.hud-corner.br { bottom: 13px; right: 13px; border-bottom-width: 1px; border-right-width: 1px; }
-.hud-edge {
-  position: absolute;
-  backdrop-filter: blur(7px);
-}
-.hud-edge.top { top: 0; left: 0; right: 0; height: 6px;
-  background: linear-gradient(rgba(200, 220, 255, 0.05), transparent); }
-.hud-edge.bottom { bottom: 0; left: 0; right: 0; height: 6px;
-  background: linear-gradient(transparent, rgba(200, 220, 255, 0.05)); }
-.hud-edge.left { left: 0; top: 0; bottom: 0; width: 6px;
-  background: linear-gradient(90deg, rgba(200, 220, 255, 0.05), transparent); }
-.hud-edge.right { right: 0; top: 0; bottom: 0; width: 6px;
-  background: linear-gradient(270deg, rgba(200, 220, 255, 0.05), transparent); }
 
-#speed-readout {
-  position: fixed;
-  left: 50%;
-  bottom: 20px;
-  transform: translateX(-50%);
-  z-index: 6;
-  color: rgba(225, 238, 255, 0.6);
-  font: 200 15px/1 system-ui, sans-serif;
-  letter-spacing: 0.28em;
-  font-variant-numeric: tabular-nums;
+.vs-strut {
+  position: absolute;
+  background: linear-gradient(180deg, #161e2c, #0a0f18);
+}
+.vs-top {
+  top: 0; left: 0; right: 0;
+  height: var(--vs-top);
+  border-bottom: 1px solid var(--vs-line);
+  box-shadow: 0 2px 14px rgba(80, 150, 220, 0.10);
+}
+/* heading-tape ticks etched across the top strut's center */
+.vs-top::after {
+  content: "";
+  position: absolute;
+  left: 30%; right: 30%; bottom: 3px;
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(140, 190, 235, 0.35) 0 1px,
+    transparent 1px 24px
+  );
+}
+.vs-left, .vs-right {
+  top: var(--vs-top);
+  bottom: var(--console-h);
+  width: var(--vs-side);
+}
+.vs-left {
+  left: 0;
+  background: linear-gradient(90deg, #141c29, #0a0f18);
+  border-right: 1px solid rgba(130, 185, 235, 0.25);
+}
+.vs-right {
+  right: 0;
+  background: linear-gradient(270deg, #141c29, #0a0f18);
+  border-left: 1px solid rgba(130, 185, 235, 0.25);
+}
+
+/* angled gussets where the struts meet — the canopy reads as one welded frame */
+.vs-gusset {
+  position: absolute;
+  width: clamp(34px, 4vw, 62px);
+  height: clamp(34px, 4vw, 62px);
+  background: #101724;
+}
+.vs-gusset.tl { top: var(--vs-top); left: var(--vs-side); clip-path: polygon(0 0, 100% 0, 0 100%); }
+.vs-gusset.tr { top: var(--vs-top); right: var(--vs-side); clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.vs-gusset.bl { bottom: var(--console-h); left: var(--vs-side); clip-path: polygon(0 0, 0 100%, 100% 100%); }
+.vs-gusset.br { bottom: var(--console-h); right: var(--vs-side); clip-path: polygon(100% 0, 0 100%, 100% 100%); }
+
+/* ---- the glass: sparse projections on the canopy ------------------------ */
+
+.vs-glass {
+  position: absolute;
+  top: var(--vs-top); left: var(--vs-side);
+  right: var(--vs-side); bottom: var(--console-h);
+  box-shadow: inset 0 0 70px rgba(80, 140, 210, 0.06);
+}
+
+/* boresight reticle, dead center of the glass. The horizon bars (#vs-horizon)
+   counter-rotate with bank from world.js — the one live instrument up here */
+.vs-reticle {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: clamp(240px, 32vh, 420px);
+  height: clamp(240px, 32vh, 420px);
+  transform: translate(-50%, -50%);
+}
+.vs-reticle path,
+.vs-reticle circle {
+  fill: none;
+  stroke: rgba(150, 205, 255, 0.18);
+  stroke-width: 1.1;
+}
+.vs-reticle #vs-horizon path { stroke: rgba(150, 205, 255, 0.32); }
+.vs-reticle .ret-cross { stroke: rgba(170, 215, 255, 0.35); }
+.vs-reticle .ret-dot { fill: rgba(190, 225, 255, 0.5); stroke: none; }
+
+/* faint bracket arcs mid-screen left and right */
+.vs-arc {
+  position: absolute;
+  top: 50%;
+  width: 70px;
+  height: 34vh;
+  transform: translateY(-50%);
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+.vs-arc.left { left: 6%; border-left-color: rgba(150, 205, 255, 0.13); }
+.vs-arc.right { right: 6%; border-right-color: rgba(150, 205, 255, 0.13); }
+
+/* ---- the console: one canted machined deck, not a row of cards ---------- */
+
+.vs-console-rig {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--console-h);
+  perspective: 640px;
+  perspective-origin: 50% -40%;
+}
+/* slightly wider than the viewport so the rotateX convergence at the top edge
+   never opens a gap against the side struts */
+.vs-console {
+  position: absolute;
+  left: -2%; right: -2%; top: 0; bottom: 0;
+  transform-origin: 50% 100%;
+  transform: rotateX(13deg);
+  display: flex;
+  align-items: stretch;
+  background: linear-gradient(180deg, #1b2230 0%, #12161f 35%, #0a0d13 100%);
+  border-top: 1px solid rgba(150, 190, 230, 0.28);
+  box-shadow:
+    0 -3px 18px rgba(70, 130, 200, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* inert structure at the ends — unequal on purpose. Vent slats + bolt heads */
+.vs-wing {
+  position: relative;
+  flex: 0 0 7%;
+  background: linear-gradient(180deg, #151b26, #0b0e15);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.5);
+}
+.vs-wing.right {
+  flex-basis: 4.5%;
+  box-shadow: inset 1px 0 0 rgba(0, 0, 0, 0.5);
+}
+.vs-wing::before {
+  content: "";
+  position: absolute;
+  inset: 26% 20% 30%;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.55) 0 3px,
+    rgba(160, 180, 210, 0.08) 3px 4px,
+    transparent 4px 8px
+  );
+}
+.vs-wing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle 2.5px at 14% 16%, rgba(200, 220, 245, 0.30) 0 1px, rgba(0, 0, 0, 0.55) 1.5px, transparent 2.5px),
+    radial-gradient(circle 2.5px at 86% 16%, rgba(200, 220, 245, 0.30) 0 1px, rgba(0, 0, 0, 0.55) 1.5px, transparent 2.5px),
+    radial-gradient(circle 2.5px at 14% 84%, rgba(200, 220, 245, 0.30) 0 1px, rgba(0, 0, 0, 0.55) 1.5px, transparent 2.5px),
+    radial-gradient(circle 2.5px at 86% 84%, rgba(200, 220, 245, 0.30) 0 1px, rgba(0, 0, 0, 0.55) 1.5px, transparent 2.5px);
+}
+
+/* instrument bays: stencil paint on the metal, screen inset into the deck */
+.vs-pod {
+  position: relative;
+  flex: 0 0 15%;
+  min-width: 0;
+  padding: 3px 8px 6px;
+  border-left: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.03);
+}
+.pod-sys { flex-basis: 12.5%; }
+.vs-pod h2 {
+  margin: 0 0 2px 2px;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.34em;
+  color: rgba(185, 195, 212, 0.38);
+}
+.vs-screen {
+  position: relative;
+  overflow: hidden;
+  height: calc(100% - 15px);
+  box-sizing: border-box;
+  padding: 3px 8px;
+  background: linear-gradient(#04070c, #060b12);
+  border: 1px solid rgba(90, 130, 175, 0.35);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 0 12px rgba(0, 0, 0, 0.8),
+    inset 0 0 22px rgba(60, 120, 190, 0.08);
+}
+/* scanlines live on the instrument faces only */
+.vs-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    rgba(0, 0, 0, 0) 0 2px,
+    rgba(120, 180, 235, 0.04) 2px 3px
+  );
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.8s ease, color 0.4s ease;
 }
-#speed-readout.show {
-  opacity: 1;
-  transition: opacity 0.1s ease, color 0.4s ease;
+
+/* the central cluster rises out of the deck, hazard-striped lip on the bezel */
+.vs-cluster {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  z-index: 1;
+  margin-top: calc(var(--console-h) * -0.16);
+  padding: 9px 12px 6px;
+  background: linear-gradient(180deg, #212a3c, #10151f 45%, #0a0d13);
+  clip-path: polygon(5% 0, 95% 0, 100% 13%, 100% 100%, 0 100%, 0 13%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
-#speed-readout.over {
-  color: rgba(245, 250, 255, 0.92);
-  border-bottom: 1px solid rgba(220, 235, 255, 0.35);
-  padding-bottom: 4px;
+.vs-cluster::before {
+  content: "";
+  position: absolute;
+  top: 3px; left: 12%; right: 12%;
+  height: 3px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 180, 90, 0.30) 0 6px,
+    transparent 6px 12px
+  );
 }
+.vs-cluster .vs-screen {
+  height: calc(100% - 4px);
+  text-align: center;
+}
+
+/* readout typography */
+.vs-rows p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.vs-rows span {
+  color: rgba(130, 150, 180, 0.65);
+  letter-spacing: 0.08em;
+}
+.vs-rows b {
+  font-weight: 400;
+  color: rgba(200, 230, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+.vs-off { color: rgba(255, 170, 110, 0.55); letter-spacing: 0.1em; }
+.vs-ok { color: rgba(140, 235, 180, 0.85); letter-spacing: 0.1em; }
+
+.vs-big {
+  margin: 0;
+  font-size: clamp(17px, 2.7vh, 27px);
+  line-height: 1.1;
+  color: #dcecff;
+  font-variant-numeric: tabular-nums;
+}
+.vs-big b { font-weight: 400; }
+.vs-big span {
+  font-size: 10px;
+  color: rgba(140, 170, 210, 0.7);
+  letter-spacing: 0.15em;
+}
+.vs-bar {
+  height: 5px;
+  margin: 4px 10%;
+  border: 1px solid rgba(110, 160, 210, 0.3);
+  overflow: hidden;
+}
+.vs-bar > div {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #3a86c8, #7fd4ff);
+}
+/* reverse burn shows amber */
+.vs-bar > div.rev {
+  background: linear-gradient(90deg, #c8862a, #ffcf7f);
+}
+.vs-mode {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: rgba(150, 190, 230, 0.7);
+}
+.vs-mode.over { color: #ffd9a0; }
 
 #home-marker {
   position: fixed;
@@ -180,8 +419,8 @@ body::after {
 
 .orb-tuner-toggle {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: calc(var(--vs-side, 16px) + 10px);
+  bottom: calc(var(--console-h, 0px) + 12px);
   z-index: 7;
   padding: 7px 14px;
   border-radius: 999px;
@@ -200,7 +439,7 @@ body::after {
 .orb-tuner {
   position: fixed;
   left: 50%;
-  bottom: 58px;
+  bottom: calc(var(--console-h, 0px) + 54px);
   transform: translateX(-50%);
   z-index: 7;
   width: min(1080px, calc(100vw - 40px));
