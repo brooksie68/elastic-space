@@ -105,6 +105,95 @@
       pointer-events: none;
       white-space: nowrap;
     }
+    /* Tiny playlist player (pattern from Chrome Rift, shop palette) */
+    #shop-music-toggle {
+      position: fixed;
+      right: 0.7rem;
+      bottom: 0.55rem;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.1rem;
+      height: 2.1rem;
+      background: rgba(23, 16, 10, 0.6);
+      border: 1px solid #6b552f;
+      border-radius: 999px;
+      color: var(--ink);
+      opacity: 0.75;
+      cursor: pointer;
+    }
+    #shop-music-toggle:hover,
+    #shop-music-toggle:focus-visible {
+      opacity: 1;
+      border-color: var(--gold);
+      color: #ffe9bd;
+    }
+    #shop-music-toggle svg { width: 1.05rem; height: 1.05rem; }
+    #shop-music {
+      position: fixed;
+      right: 0.7rem;
+      bottom: 3.1rem;
+      z-index: 31;
+      background: rgba(23, 16, 10, 0.92);
+      border: 1px solid #4a3a22;
+      border-radius: 5px;
+      padding: 0.75rem 0.9rem;
+      display: grid;
+      gap: 0.55rem;
+    }
+    #shop-music[hidden] { display: none; }
+    #shop-tracks {
+      list-style: none;
+      display: grid;
+      gap: 0.45rem;
+    }
+    .music-track { display: flex; align-items: center; gap: 0.6rem; }
+    .music-play {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8rem;
+      height: 1.8rem;
+      background: none;
+      border: 1px solid #6b552f;
+      border-radius: 50%;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .music-play:hover,
+    .music-play:focus-visible { border-color: var(--gold); color: #ffe9bd; }
+    .music-play svg { width: 0.8rem; height: 0.8rem; }
+    .music-glyph-pause { display: none; }
+    .music-track.is-playing .music-glyph-pause { display: block; }
+    .music-track.is-playing .music-glyph-play { display: none; }
+    .music-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      opacity: 0.7;
+      white-space: nowrap;
+    }
+    .music-track.is-playing .music-title { opacity: 1; color: var(--gold); }
+    #shop-seek {
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+      height: 14px;
+    }
+    #shop-seek::-webkit-slider-runnable-track {
+      background: linear-gradient(90deg, rgba(201, 162, 75, 0.2), rgba(201, 162, 75, 0.6));
+      border-radius: 999px;
+      height: 4px;
+    }
+    #shop-seek::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      margin-top: -4px;
+      background: var(--gold);
+      border-radius: 50%;
+    }
   </style>
 </head>
 <body>
@@ -129,18 +218,34 @@
     <p class="note" id="poster-note">raising the tent&hellip;</p>
   </div>
 
+  <button id="shop-music-toggle" type="button" aria-expanded="false"
+          aria-controls="shop-music" title="Music" aria-label="Music player">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 18V5l12-2v13"></path>
+      <circle cx="6" cy="18" r="2.6" fill="currentColor" stroke="none"></circle>
+      <circle cx="18" cy="16" r="2.6" fill="currentColor" stroke="none"></circle>
+    </svg>
+  </button>
+  <section id="shop-music" role="group" aria-label="Music player" hidden>
+    <ol id="shop-tracks"></ol>
+    <input id="shop-seek" type="range" min="0" max="1000" step="1" value="0"
+           aria-label="Track position" title="Drag to scrub the playing track" />
+  </section>
+
   <p id="help">drag to look &middot; arrows / WASD to walk &middot; click a piece to step up close &middot; Esc steps back</p>
-  <p id="stamp">SANNA &middot; r2 &middot; 2026-07-16</p>
+  <p id="stamp">SANNA &middot; r3 &middot; 2026-07-18</p>
 
   <!-- diegetic drift exits, fired by the 3D scene -->
   <a data-drift id="drift-door" href="../../../index.html" hidden aria-hidden="true">out the shop door</a>
-  <a data-drift id="drift-bowl" href="../../../index.html" hidden aria-hidden="true">into the brass bowl</a>
+  <a data-drift id="drift-bowl" href="../../../index.html" hidden aria-hidden="true">into the tall clay urn</a>
   <a data-drift id="drift-blank" href="../../../index.html" hidden aria-hidden="true">through the unpainted mandala</a>
 
   <script src="assets/layout.js"></script>
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
   <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>

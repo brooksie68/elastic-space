@@ -27,429 +27,311 @@ globalThis.MANDALA_SHOP_LAYOUT = {
    "metal": 1,
    "rough": 0.2,
    "borderScale": 1
+  },
+  "bone": {
+   "color": "#efe6d4",
+   "metal": 0,
+   "rough": 0.75,
+   "borderScale": 1
+  },
+  "silver": {
+   "color": "#b8bec8",
+   "metal": 1,
+   "rough": 0.25,
+   "borderScale": 0.6
+  },
+  "copper": {
+   "color": "#a75f2e",
+   "metal": 1,
+   "rough": 0.35,
+   "borderScale": 0.8
+  },
+  "mahogany": {
+   "color": "#3f1a10",
+   "metal": 0,
+   "rough": 0.45,
+   "borderScale": 1.2
+  },
+  "lacquer": {
+   "color": "#77202a",
+   "metal": 0.15,
+   "rough": 0.25,
+   "borderScale": 0.9
+  },
+  "lapis": {
+   "color": "#1f3a63",
+   "metal": 0.2,
+   "rough": 0.4,
+   "borderScale": 0.9
   }
  },
  "slots": [
-  {
-   "id": "hero",
-   "art": "1E904D16-E681-4961-B6E0-C57C0C9D0AA6.jpg",
-   "kind": "wall",
-   "pos": [
-    -5.94,
-    0,
-    2.6
-   ],
-   "yaw": 90,
-   "w": 2.6,
-   "h": 2.6,
-   "style": "walnut"
-  },
-  {
-   "id": "kraft2b",
-   "art": "20180923_001859-1.jpg",
-   "kind": "wall",
-   "pos": [
-    -5.94,
-    1.85,
-    1.2
-   ],
-   "yaw": 90,
-   "w": 0.5,
-   "h": 0.5,
-   "style": "oak"
-  },
-  {
-   "id": "trip_a",
-   "art": "20230402_012714.jpg",
-   "kind": "wall",
-   "pos": [
-    -2.75,
-    4.44,
-    2.5
-   ],
-   "yaw": 0,
-   "w": 0.7,
-   "h": 2.1,
-   "style": "black",
-   "slice": [
-    0,
-    3
-   ],
-   "group": "trip"
-  },
-  {
-   "id": "trip_b",
-   "art": "20230402_012714.jpg",
-   "kind": "wall",
-   "pos": [
-    -1.9,
-    4.44,
-    2.5
-   ],
-   "yaw": 0,
-   "w": 0.7,
-   "h": 2.1,
-   "style": "black",
-   "slice": [
-    1,
-    3
-   ],
-   "group": "trip"
-  },
-  {
-   "id": "trip_c",
-   "art": "20230402_012714.jpg",
-   "kind": "wall",
-   "pos": [
-    -1.05,
-    4.44,
-    2.5
-   ],
-   "yaw": 0,
-   "w": 0.7,
-   "h": 2.1,
-   "style": "black",
-   "slice": [
-    2,
-    3
-   ],
-   "group": "trip"
-  },
-  {
-   "id": "ornate_big",
-   "art": "IMG_0061.jpg",
-   "kind": "wall",
-   "pos": [
-    0.95,
-    4.44,
-    2.45
-   ],
-   "yaw": 0,
-   "w": 1.9,
-   "h": 1.9,
-   "style": "walnut"
-  },
-  {
-   "id": "inksun",
-   "art": "20180803_202305_Burst01.jpg",
-   "kind": "wall",
-   "pos": [
-    2.6,
-    4.44,
-    1.5
-   ],
-   "yaw": 0,
-   "w": 0.85,
-   "h": 0.85,
-   "style": "walnut"
-  },
-  {
-   "id": "inkstar",
-   "art": "IMG_20200213_234107_441.jpg",
-   "kind": "wall",
-   "pos": [
-    2.55,
-    4.44,
-    2.55
-   ],
-   "yaw": 0,
-   "w": 0.6,
-   "h": 0.6,
-   "style": "oak"
-  },
-  {
-   "id": "kraft1b",
-   "art": "20180921_230021-1.jpg",
-   "kind": "wall",
-   "pos": [
-    3.38,
-    4.44,
-    1.9
-   ],
-   "yaw": 0,
-   "w": 0.5,
-   "h": 0.5,
-   "style": "oak"
-  },
   {
    "id": "blank_n_hi",
    "art": null,
    "kind": "wall",
    "pos": [
-    3.3,
-    4.44,
-    2.7
+    5.94,
+    1.429,
+    0.525
    ],
-   "yaw": 0,
+   "yaw": -90,
    "w": 0.4,
    "h": 0.4,
-   "style": "black"
+   "style": "gold"
   },
   {
-   "id": "green_big",
-   "art": "Mandala_13.png",
-   "kind": "wall",
-   "pos": [
-    -2.8,
-    -4.44,
-    2.35
-   ],
-   "yaw": 180,
-   "w": 1.5,
-   "h": 1.5,
-   "style": "walnut"
-  },
-  {
-   "id": "kraft_a",
+   "id": "2018092123_2",
    "art": "20180921_230021-1.jpg",
    "kind": "wall",
    "pos": [
-    -1.15,
-    -4.44,
-    1.42
+    -5.94,
+    -0.853,
+    2.649
    ],
-   "yaw": 180,
-   "w": 0.55,
-   "h": 0.55,
-   "style": "oak"
+   "yaw": 90,
+   "w": 0.629,
+   "h": 1.9,
+   "style": "black",
+   "slice": [
+    0,
+    3
+   ],
+   "group": "2018092123_1"
   },
   {
-   "id": "kraft_b",
+   "id": "2018092123_3",
+   "art": "20180921_230021-1.jpg",
+   "kind": "wall",
+   "pos": [
+    -5.94,
+    -0.049,
+    2.649
+   ],
+   "yaw": 90,
+   "w": 0.629,
+   "h": 1.9,
+   "style": "black",
+   "slice": [
+    1,
+    3
+   ],
+   "group": "2018092123_1"
+  },
+  {
+   "id": "2018092123_4",
+   "art": "20180921_230021-1.jpg",
+   "kind": "wall",
+   "pos": [
+    -5.94,
+    0.755,
+    2.649
+   ],
+   "yaw": 90,
+   "w": 0.629,
+   "h": 1.9,
+   "style": "black",
+   "slice": [
+    2,
+    3
+   ],
+   "group": "2018092123_1"
+  },
+  {
+   "id": "2018092300_5",
    "art": "20180923_001859-1.jpg",
    "kind": "wall",
    "pos": [
-    -0.45,
-    -4.44,
-    1.42
-   ],
-   "yaw": 180,
-   "w": 0.55,
-   "h": 0.55,
-   "style": "oak"
-  },
-  {
-   "id": "kraft_c",
-   "art": "IMG_20181010_232108_857.jpg",
-   "kind": "wall",
-   "pos": [
-    0.25,
-    -4.44,
-    1.42
-   ],
-   "yaw": 180,
-   "w": 0.55,
-   "h": 0.55,
-   "style": "oak"
-  },
-  {
-   "id": "compass2",
-   "art": "Mandala_14a.png",
-   "kind": "wall",
-   "pos": [
-    -0.45,
-    -4.44,
-    2.45
-   ],
-   "yaw": 180,
-   "w": 0.8,
-   "h": 0.8,
-   "style": "gold"
-  },
-  {
-   "id": "vintage",
-   "art": "Mandala.jpg",
-   "kind": "cord",
-   "pos": [
-    1.3,
-    -4.4,
-    1.85
-   ],
-   "yaw": 180,
-   "w": 1.1,
-   "h": 1.1,
-   "style": "walnut"
-  },
-  {
-   "id": "sepia",
-   "art": "IMG_20200224_232952_079.jpg",
-   "kind": "cord",
-   "pos": [
-    2.45,
-    -4.4,
-    1.5
-   ],
-   "yaw": 180,
-   "w": 0.75,
-   "h": 0.75,
-   "style": "gold"
-  },
-  {
-   "id": "peacock2",
-   "art": "1E904D16-E681-4961-B6E0-C57C0C9D0AA6.jpg",
-   "kind": "wall",
-   "pos": [
-    2.9,
-    -4.44,
-    2.75
-   ],
-   "yaw": 180,
-   "w": 0.85,
-   "h": 0.85,
-   "style": "black"
-  },
-  {
-   "id": "night_whole",
-   "art": "20230402_012714.jpg",
-   "kind": "wall",
-   "pos": [
-    4.96,
-    3.46,
-    1.8
-   ],
-   "yaw": -45,
-   "w": 1.3,
-   "h": 1.3,
-   "style": "gold"
-  },
-  {
-   "id": "vintage2",
-   "art": "Mandala.jpg",
-   "kind": "wall",
-   "pos": [
-    -4.96,
-    3.46,
-    1.75
-   ],
-   "yaw": 45,
-   "w": 1.1,
-   "h": 1.1,
-   "style": "oak"
-  },
-  {
-   "id": "inksun2",
-   "art": "20180803_202305_Burst01.jpg",
-   "kind": "wall",
-   "pos": [
-    -4.96,
-    -3.46,
-    1.75
+    -4.888,
+    -3.528,
+    2.621
    ],
    "yaw": 135,
-   "w": 1,
-   "h": 1,
+   "w": 1.368,
+   "h": 1.407,
    "style": "black"
   },
   {
-   "id": "inkstar2",
-   "art": "IMG_20200213_234107_441.jpg",
-   "kind": "wall",
-   "pos": [
-    4.96,
-    -3.46,
-    1.75
-   ],
-   "yaw": -135,
-   "w": 0.6,
-   "h": 0.6,
-   "style": "walnut"
-  },
-  {
-   "id": "kraft3b",
+   "id": "img2018101_6",
    "art": "IMG_20181010_232108_857.jpg",
    "kind": "wall",
    "pos": [
-    5.94,
-    1.75,
-    1.5
+    -4.939,
+    3.476,
+    2.564
    ],
-   "yaw": -90,
-   "w": 0.6,
-   "h": 0.6,
-   "style": "oak"
+   "yaw": 45,
+   "w": 1.477,
+   "h": 1.477,
+   "style": "black"
   },
   {
-   "id": "compass",
-   "art": "Mandala_14a.png",
-   "kind": "wall",
-   "pos": [
-    5.94,
-    1.7,
-    2.5
-   ],
-   "yaw": -90,
-   "w": 0.9,
-   "h": 0.9,
-   "style": "gold"
-  },
-  {
-   "id": "ornate2",
+   "id": "img0061_7",
    "art": "IMG_0061.jpg",
    "kind": "wall",
    "pos": [
-    5.94,
-    -1.85,
-    1.55
+    -0.026,
+    4.44,
+    2.606
    ],
-   "yaw": -90,
-   "w": 0.75,
-   "h": 0.75,
+   "yaw": 0,
+   "w": 1.832,
+   "h": 1.832,
+   "style": "gold"
+  },
+  {
+   "id": "mandala14a_8",
+   "art": "Mandala_14a.png",
+   "kind": "wall",
+   "pos": [
+    2.281,
+    4.44,
+    2.606
+   ],
+   "yaw": 0,
+   "w": 1.832,
+   "h": 1.832,
+   "style": "gold"
+  },
+  {
+   "id": "mandala13_9",
+   "art": "Mandala_13.png",
+   "kind": "wall",
+   "pos": [
+    4.915,
+    3.5,
+    2.597
+   ],
+   "yaw": -45,
+   "w": 1.477,
+   "h": 1.477,
+   "style": "silver"
+  },
+  {
+   "id": "1e904d16e6_1",
+   "art": "1E904D16-E681-4961-B6E0-C57C0C9D0AA6.jpg",
+   "kind": "wall",
+   "pos": [
+    -2.313,
+    4.44,
+    2.606
+   ],
+   "yaw": 0,
+   "w": 1.832,
+   "h": 1.832,
+   "style": "gold"
+  },
+  {
+   "id": "mandala_1",
+   "art": "Mandala.jpg",
+   "kind": "wall",
+   "pos": [
+    0.069,
+    -4.44,
+    2.646
+   ],
+   "yaw": 180,
+   "w": 1.629,
+   "h": 1.629,
    "style": "walnut"
   },
   {
-   "id": "sepia2",
+   "id": "img2020021_2",
+   "art": "IMG_20200213_234107_441.jpg",
+   "kind": "wall",
+   "pos": [
+    2.309,
+    -4.44,
+    2.627
+   ],
+   "yaw": 180,
+   "w": 1.34,
+   "h": 1.34,
+   "style": "walnut"
+  },
+  {
+   "id": "img2020022_3",
    "art": "IMG_20200224_232952_079.jpg",
    "kind": "wall",
    "pos": [
+    -2.171,
+    -4.44,
+    2.636
+   ],
+   "yaw": 180,
+   "w": 1.34,
+   "h": 1.34,
+   "style": "walnut"
+  },
+  {
+   "id": "2026070601_4",
+   "art": "20260706_013514.jpg",
+   "kind": "wall",
+   "pos": [
+    4.966,
+    -3.449,
+    2.649
+   ],
+   "yaw": -135,
+   "w": 1.629,
+   "h": 1.602,
+   "style": "walnut"
+  },
+  {
+   "id": "2026060900_5",
+   "art": "20260609_005241.jpg",
+   "kind": "wall",
+   "pos": [
     5.94,
-    -1.8,
-    2.45
+    -1.525,
+    3.111
    ],
    "yaw": -90,
-   "w": 0.7,
-   "h": 0.7,
+   "w": 0.746,
+   "h": 0.739,
    "style": "walnut"
   },
   {
-   "id": "easel_green",
-   "art": "Mandala_13.png",
-   "kind": "easel",
+   "id": "2026052511_6",
+   "art": "20260525_115633.jpg",
+   "kind": "wall",
    "pos": [
-    3.486321210861206,
-    -2.6854093074798584,
-    1.100000023841858
+    5.94,
+    -1.528,
+    2.145
    ],
-   "yaw": -136.8,
-   "w": 0.85,
-   "h": 0.85,
+   "yaw": -90,
+   "w": 0.742,
+   "h": 0.754,
    "style": "walnut"
   },
   {
-   "id": "lean_0",
-   "art": null,
-   "kind": "lean",
+   "id": "2023040201_7",
+   "art": "20230402_012714.jpg",
+   "kind": "wall",
    "pos": [
-    -5.71999979019165,
-    -1.899999976158142,
-    0.4018000066280365
+    5.94,
+    1.551,
+    3.071
    ],
-   "yaw": 90,
-   "w": 0.72,
-   "h": 0.72,
-   "style": "oak"
+   "yaw": -90,
+   "w": 0.676,
+   "h": 0.711,
+   "style": "walnut"
   },
   {
-   "id": "lean_1",
-   "art": null,
-   "kind": "lean",
+   "id": "2018080320_8",
+   "art": "20180803_202305_Burst01.jpg",
+   "kind": "wall",
    "pos": [
-    -5.630000114440918,
-    -1.7400000095367432,
-    0.33320000767707825
+    5.94,
+    1.553,
+    2.141
    ],
-   "yaw": 90,
-   "w": 0.58,
-   "h": 0.58,
-   "style": "oak"
+   "yaw": -90,
+   "w": 0.704,
+   "h": 0.704,
+   "style": "walnut"
   }
  ]
 };
