@@ -1,1 +1,74 @@
-[]
+[
+  {
+    "id": "the-reich-machine",
+    "title": "The Reich Machine",
+    "synopsis": "Inspired by Steve Reich's experiments with phase shifting. it will play a set of notes, each a tiny bit slower than the others. crazy patterns and unintended harmonies and melodies ensue.",
+    "vibe": "Upbeat, experimental, playful, inviting",
+    "links": "https://en.wikipedia.org/wiki/Philip_Glass",
+    "sound": "we need to experiment with DAWs and sound generators cause the stuff out of the box isn't going to cut it",
+    "ideas": "a cool looking machine like a synth/drum machine. with many parameters. \nset different scales and chords \nset different rhythms and tempo offset amounts\netc\n\nand maybe even a visualization panel",
+    "updated": "2026-07-19T23:16:19.307Z",
+    "status": "draft",
+    "created": "2026-07-19T23:15:38.697Z"
+  },
+  {
+    "id": "mossouk-baldah",
+    "title": "Mossouk Baldah",
+    "synopsis": "A walkable village full of shops, buildings, and activities, populated by NPCs and a visitor avatar. The first enterable shop is the Mandala Shop — its door in the village links to the existing world as a fixed authored route, keeping the shop interior and its curator setup untouched.",
+    "vibe": "A living place rather than a single room — streets you wander, villagers going about their business, doors that lead somewhere. Mandala Shop's warmth scaled up to a whole town.",
+    "links": "src/worlds/mandala-shop (reference interior + curator adapter); Meshy premade libraries for buildings/props; DLO postmaster pipeline for rigged NPCs",
+    "sound": "Village ambience bed (ElevenLabs), footsteps, distant activity; possibly a Suno town theme James curates later.",
+    "ideas": "First cut: one street, 3-4 building facades, 2-3 wandering NPCs (Meshy anim-packs: walk/idle/wave), one enterable shop (Mandala, fixed link through its door). Open questions: single visitor avatar vs multiplayer (avatar-only gets 90% of the feel for 10% of the cost); whether other buildings become future worlds' front doors; activities arrive building-by-building later. Meshy character pipeline and curator module are validated pieces.",
+    "updated": "2026-07-19T22:21:18.639Z",
+    "status": "draft",
+    "created": "2026-07-19T22:21:18.640Z"
+  },
+  {
+    "id": "the-character-falls",
+    "title": "The Character Falls",
+    "synopsis": "A waterfall rendered entirely in falling ASCII.",
+    "vibe": "light-hearted, pretty, clever, nice",
+    "links": "",
+    "sound": "forest, waterfal",
+    "ideas": "user sees a dry waterfall and streambed in an otherwise attractive forest grotto.\nthey are invited to type with a subtle but noteable UI at the bottom of the screen.\nas they type, the letters of their words begin to creep up to the top of the waterfall; eventually spilling over. every key pressed creates a '1-letter streamlet that keeps flowing. as they continue to type the streamlets build up and eventually its a torrent. streamlets have a life span of like 1 minute so eventually they fade again.",
+    "updated": "2026-07-19T15:35:47.571Z",
+    "status": "draft",
+    "created": "2026-07-19T15:35:22.455Z"
+  },
+  {
+    "id": "please-hold",
+    "title": "Please Hold",
+    "synopsis": "You've died and gone to Hell, and now for your punishment. You're gonna be on hold with tech support... for all eternity!",
+    "vibe": "Darkly funny, sarcastic, witty, observational, ironic.",
+    "links": "hell",
+    "sound": "the worst hold music known to man, and its staticky, too",
+    "ideas": "Okay. The setting is hell. You've died. You get there. They bring you into the room where you're gonna spend eternity, and a devil comes in and tells you you're on hold with tech support and then leaves. And then... so it's like an old fashioned touch tone phone, and it rings, and the viewpoint is like the hell room and a hand in the phone. Pick up the phone and put the earpiece up. And then the music plays and the voice happens, and you get these choices, and there's impossible choices. And... but you have to pick one or you can't move forward to try to get through this, and you keep intermittently getting put on hold, and then it's terrible music plays, and then it fails and, like, goes back to the beginning of the call, then you press a wrong thing, and it goes back again, and then the music, and then the impossible choices, and it just gives a long, funny script of stuff that you can't get out of. And you realize that it's circular no matter what you do. You're never escaping this. I",
+    "updated": "2026-07-19T19:06:06.857Z",
+    "status": "draft",
+    "created": "2026-07-19T05:47:46.976Z"
+  },
+  {
+    "id": "fireplace",
+    "title": "Fireplace",
+    "synopsis": "It's like the Yule log for any season but sometimes surprising or supernatural things happen",
+    "vibe": "Warm, calm, relaxing, meditative, surprising",
+    "links": "",
+    "sound": "a good sample of a crackling fire",
+    "ideas": "it's just pretty much... a fireplace. but occasionally surprising things happen. Little creatures like little fire elves appear occasionally in the fire, peeking around a log or looking at you, sitting on top of the fire with a little bit of an insolent smirk. Sometimes things rise up out of the fire and the smoke like ghostly images of things, skulls, and ghosts, and people's faces. Occasionally, fire salamanders move around underneath the fire, go in and out. Maybe a fire truck pulls up. It's very tiny. It tries to squirt water in a fire until it fails. Some little guys would get out and go, you need me, Pete? Diddley, me, peep. Like, little tiny firemen, but they can't put the fire out, so they race off again. Maybe there's a phoenix that comes up out of the fire and flies up into the chimney in the shower of spark and fire. Oh, fire tornado action. Like, a little micro tornado. These are just riffs.",
+    "updated": "2026-07-19T05:41:41.683Z",
+    "status": "draft",
+    "created": "2026-07-19T05:40:40.612Z"
+  },
+  {
+    "id": "otis",
+    "title": "Otis",
+    "synopsis": "An elevator with buttons for floors that shouldn't exist: 3½, −2, M, a button that's just warm. Each ride has muzak; each set of doors opens on a small authored vignette. We add floors forever. This is the world that grows sideways every time we're bored.",
+    "vibe": "Cozy, Melancholy, Nostalgic, Humorous, Warm, Poignant",
+    "links": "C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\otis\\assets\\ref",
+    "sound": "musak versions of inappropriate songs for musak",
+    "ideas": "Ideas for \"floors\" - in no order\n- a blacksmith foundry\n- a train station\n- a library\n- the arctic\n- hell\n- a cabaret\n- a room with one hundred monkeys typing\n- the beach\n- space\n- surface of the moon\n- a couple of the existing worlds\n-- extra cool if it was Mandala shop cause you can step out of the elevator into the shop",
+    "updated": "2026-07-19T05:34:37.423Z",
+    "status": "draft",
+    "created": "2026-07-19T05:32:40.868Z"
+  }
+]
