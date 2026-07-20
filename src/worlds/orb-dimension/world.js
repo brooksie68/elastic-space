@@ -31,12 +31,16 @@
   // ---- tuner config ----------------------------------------------------------
 
   const STORE_KEY = "elastic-orb-dimension-tuner-v1";
+  // v38: the space is STATIC now — fixed at the old slider maximums in all
+  // three dimensions (James: "that's the static size"). The spread sliders
+  // are gone; sanitizeCfg() force-restores these against stale saved presets.
+  const SPACE_X = 24000, SPACE_Z = 24000, SPACE_Y = 6000;
   const DEFAULTS = {
-    count: 140,
-    dust: 1400,
-    spreadX: 12000,
-    spreadZ: 12000,
-    spreadY: 2400,
+    count: 400, // v38: denser defaults for the big static space
+    dust: 2200,
+    spreadX: SPACE_X,
+    spreadZ: SPACE_Z,
+    spreadY: SPACE_Y,
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -49,9 +53,6 @@
   const SLIDERS = [
     { key: "count", label: "orbs", min: 12, max: 1200, step: 1, pool: true },
     { key: "dust", label: "dust", min: 0, max: 2500, step: 50, pool: true },
-    { key: "spreadX", label: "width m", min: 1000, max: 24000, step: 100 },
-    { key: "spreadZ", label: "depth m", min: 1000, max: 24000, step: 100 },
-    { key: "spreadY", label: "height m", min: 200, max: 6000, step: 50 },
     { key: "sizeMin", label: "size min", min: 5, max: 120, step: 1 },
     { key: "sizeMax", label: "size max", min: 20, max: 300, step: 1 },
     { key: "shellOp", label: "glass", min: 0.2, max: 1.5, step: 0.05 },
@@ -69,6 +70,11 @@
     for (const s of SLIDERS) {
       cfg[s.key] = clamp(Number(cfg[s.key]) || DEFAULTS[s.key], s.min, s.max);
     }
+    // the space is not tunable (v38) — saved cfgs and old presets may still
+    // carry spread values; they lose
+    cfg.spreadX = SPACE_X;
+    cfg.spreadZ = SPACE_Z;
+    cfg.spreadY = SPACE_Y;
     if (!["scatter", "clusters", "strata", "river"].includes(cfg.grouping)) {
       cfg.grouping = "scatter";
     }
@@ -121,7 +127,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S · A / D roll · R levels · shift = thruster · space = overdrive · drag to steer · H home · v33";
+    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag to steer · X stops · H home · CTRL on the console lists everything · v46";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -184,10 +190,19 @@
             <p class="vs-mode" id="vs-mode">IDLE</p>
           </div>
         </section>
+        <section class="vs-pod pod-pos">
+          <h2>POS</h2>
+          <div class="vs-screen vs-rows">
+            <p><span>X</span><b id="vs-px">0</b></p>
+            <p><span>Y</span><b id="vs-py">0</b></p>
+            <p><span>Z</span><b id="vs-pz">20000</b></p>
+          </div>
+        </section>
         <section class="vs-pod pod-nav">
           <h2>NAV</h2>
           <div class="vs-screen vs-rows">
             <p><span>HOME</span><b id="vs-home">1.6 km</b></p>
+            <p><span>REEF</span><b id="vs-reef">— km</b></p>
             <p><span>CNT</span><b id="vs-con">0</b></p>
             <p><span>EXIT</span><b>3</b></p>
           </div>
@@ -200,6 +215,18 @@
             <p><span>SHD</span><b class="vs-off">OFFLINE</b></p>
           </div>
         </section>
+        <section class="vs-pod pod-fuel">
+          <h2>FUEL</h2>
+          <div class="vs-screen vs-fuel">
+            <div class="vs-frow"><span>H2O</span><div class="vs-fbar fh2o" id="vs-h2o-bar"><div id="vs-h2o"></div></div></div>
+            <div class="vs-frow"><span>DEU</span><div class="vs-fbar fdeu" id="vs-deu-bar"><div id="vs-deu"></div></div></div>
+          </div>
+        </section>
+        <div class="vs-btns">
+          <button type="button" id="vs-navb" aria-expanded="false" aria-controls="orb-nav">NAV</button>
+          <button type="button" id="vs-tune" aria-expanded="false" aria-controls="orb-tuner">TUNE</button>
+          <button type="button" id="vs-ctrl" aria-expanded="false" aria-controls="orb-controls">CTRL</button>
+        </div>
         <div class="vs-wing right"></div>
       </div>
     </div>`;
@@ -208,7 +235,10 @@
   const vsEls = {
     hdg: $v("vs-hdg"), pit: $v("vs-pit"), bnk: $v("vs-bnk"),
     spd: $v("vs-spd"), thr: $v("vs-thr"), mode: $v("vs-mode"),
-    home: $v("vs-home"), con: $v("vs-con"), eng: $v("vs-eng"),
+    px: $v("vs-px"), py: $v("vs-py"), pz: $v("vs-pz"),
+    home: $v("vs-home"), reef: $v("vs-reef"), con: $v("vs-con"), eng: $v("vs-eng"),
+    h2o: $v("vs-h2o"), deu: $v("vs-deu"),
+    h2oBar: $v("vs-h2o-bar"), deuBar: $v("vs-deu-bar"),
     ret: hud.querySelector(".vs-reticle"),
   };
   let hudNext = 0; // next text-readout refresh (ms); bar animates every frame
@@ -576,8 +606,223 @@ void main() {
       return o;
     });
   }
+  // ---- the Reef ---------------------------------------------------------------
+  // A bioluminescent orb colony ~8.5km out from the skull: nine branching
+  // mineral growths crusted with pulsing polyps, a drifting haze of spores,
+  // and one pale orb nested inside — a hidden bonus exit (the three near home
+  // stay the canonical drift choices). Geometry comes from a seeded PRNG:
+  // the reef is a monument, identical on every visit, and tmp/orb-dimension/
+  // sim.mjs regenerates it exactly for verification. Fixed world coords like
+  // the skull — spread sliders don't stretch it, wander doesn't melt it.
+  // v35: the reef is a species, not a single monument — the flagship colony
+  // (grown ~30%) plus two outlying patches. Every colony checked against the
+  // skull buffer, sight corridor, and flight bounds by reef-sim.mjs. The
+  // hidden exit lives only in the flagship. NAV's REEF row reads the nearest.
+  const REEF_COLONIES = [
+    { c: [6600, -900, -5200], trees: 12, len: [200, 380], rad: [140, 560], spores: 380, shell: 780 },
+    { c: [-8200, 600, 3400], trees: 6, len: [120, 240], rad: [100, 340], spores: 160, shell: 520 },
+    { c: [-2600, -1500, -8600], trees: 5, len: [110, 220], rad: [90, 300], spores: 140, shell: 470 },
+  ];
+  const REEF_CENTER = REEF_COLONIES[0].c; // flagship: exit seat + legacy refs
+  const REEF_SEED = 0x5eaf00d;
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // pure geometry from the seed: {p, r, kind 0 mineral | 1 polyp | 2 spore, fam}
+  // (copied verbatim into sim.mjs — keep the two in sync)
+  function reefGeometry() {
+    const R = mulberry32(REEF_SEED);
+    const rr = (a, b) => a + R() * (b - a);
+    const pts = [];
+    const branch = (fam, x, y, z, dx, dy, dz, len, depth) => {
+      const steps = Math.max(3, Math.round(len / 7));
+      for (let s = 0; s < steps; s++) {
+        // gnarl: the direction wanders each step, biased gently back upward
+        dx += rr(-0.16, 0.16); dz += rr(-0.16, 0.16);
+        dy += rr(-0.1, 0.16) + (0.35 - dy) * 0.04;
+        const il = 1 / Math.hypot(dx, dy, dz);
+        dx *= il; dy *= il; dz *= il;
+        x += dx * 7; y += dy * 7; z += dz * 7;
+        const taper = 1 - (s / steps) * 0.55;
+        pts.push({ p: [x, y, z], r: rr(2.6, 5.4) * taper * (1 - depth * 0.18), kind: 0, fam });
+        if (R() < 0.16) {
+          pts.push({ p: [x + rr(-4, 4), y + rr(-4, 4), z + rr(-4, 4)], r: rr(3.5, 8.5), kind: 1, fam });
+        }
+        if (depth < 2 && s > steps * 0.4 && R() < 0.07) {
+          branch(fam, x, y, z, dx + rr(-0.9, 0.9), dy + rr(-0.3, 0.7), dz + rr(-0.9, 0.9), len * rr(0.4, 0.6), depth + 1);
+        }
+      }
+      if (depth < 2) {
+        for (let c = 0; c < 2; c++) {
+          branch(fam, x, y, z, dx + rr(-1, 1), dy + rr(-0.2, 0.8), dz + rr(-1, 1), len * rr(0.45, 0.65), depth + 1);
+        }
+      }
+    };
+    for (const col of REEF_COLONIES) {
+      for (let ti = 0; ti < col.trees; ti++) {
+        const ang = (ti / col.trees) * TAU + rr(-0.25, 0.25);
+        const rad = ti === 0 ? 0 : rr(col.rad[0], col.rad[1]);
+        branch(ti % 5,
+          col.c[0] + Math.cos(ang) * rad,
+          col.c[1] + rr(-90, 40),
+          col.c[2] + Math.sin(ang) * rad,
+          rr(-0.4, 0.4), 1, rr(-0.4, 0.4), rr(col.len[0], col.len[1]), 0);
+      }
+      for (let i = 0; i < col.spores; i++) {
+        const th = rr(0, TAU), ph = Math.asin(rr(-1, 1)), d = col.shell * Math.cbrt(R());
+        pts.push({
+          p: [
+            col.c[0] + Math.cos(th) * Math.cos(ph) * d,
+            col.c[1] + 60 + Math.sin(ph) * d * 0.55,
+            col.c[2] + Math.sin(th) * Math.cos(ph) * d,
+          ],
+          r: rr(1.2, 2.6), kind: 2, fam: (R() * 5) | 0,
+        });
+      }
+    }
+    return pts;
+  }
+  // hue families: teal, magenta, amber, cyan, violet — one per growth
+  const REEF_FAMS = [[168, 196], [300, 334], [36, 58], [186, 212], [262, 292]];
+  function makeReef() {
+    const pts = reefGeometry();
+    const out = pts.map((pt) => {
+      const o = baseOrb([0, 0, 0], false, false);
+      const [h1, h2] = REEF_FAMS[pt.fam];
+      o.reef = true;
+      o.fix = pt.p;
+      o.fixedR = pt.r;
+      o.spin = 0;
+      if (pt.kind === 0) {
+        // mineral bone of the colony: dim, desaturated, barely lit. Tight
+        // quads (no halo margin) — thousands of these must not multiply
+        // blended pixels; the v6 fill-rate lesson stands.
+        o.variant = 1;
+        o.h1 = h1; o.h2 = h2;
+        o.sat = rand(10, 22);
+        o.halo = 0.3;
+        o.fadeDur = rand(30, 60);
+        o.quadScale = 1.35;
+      } else if (pt.kind === 1) {
+        // polyps: the living light, fast bright pulses in the family hues
+        o.variant = 0;
+        o.h1 = rand(h1, h2); o.h2 = rand(h1, h2);
+        o.sat = rand(88, 97);
+        o.halo = 1.5;
+        o.fadeDur = rand(2.4, 6);
+      } else {
+        // spores: ember-like motes drifting through the colony
+        o.dust = true;
+        o.variant = 0;
+        o.h1 = rand(h1, h2); o.h2 = rand(h1, h2);
+        o.sat = rand(80, 94);
+        o.halo = 1.6;
+        o.fadeDur = rand(5, 14);
+        o.fixAmp = 8; // slow local drift around the fixed seat
+      }
+      return o;
+    });
+    // the hidden exit, nested at the colony's heart among the trunks
+    const p = baseOrb([0, 0, 0], true, false);
+    p.reef = true;
+    p.fix = [REEF_CENTER[0] + 40, REEF_CENTER[1] + 130, REEF_CENTER[2] - 25];
+    p.fixedR = 26;
+    out.push(p);
+    return out;
+  }
+
+  // ---- fuel stations (v38) --------------------------------------------------
+  // 64 water globes + 36 deuterium depots at fixed seeded positions — fuel is
+  // "quite forgiving": from anywhere in the volume the nearest water is a
+  // short impulse hop (sim-asserted). Deterministic like the reef; the sim
+  // extracts this block verbatim. Markers: `const STATION_SEED` … `// station hues`.
+  const STATION_SEED = 0xf0e15;
+  function stationGeometry() {
+    const R = mulberry32(STATION_SEED);
+    const out = { h2o: [], deu: [] };
+    // stratified, not random: one station per grid cell, jittered inside 80%
+    // of it — pure random left 14km deuterium voids (sim TEST 9 caught it).
+    // Cells re-roll until they clear the skull buffer and sight corridor.
+    const bad = (x, y, z) =>
+      Math.hypot(x, y, z) < 2600 || (z > 0 && z < 20600 && Math.hypot(x, y) < 1100);
+    const place = (arr, nx, ny, nz) => {
+      const XR = 21500, YR = 4600, ZR = 21500;
+      const cw = [(2 * XR) / nx, (2 * YR) / ny, (2 * ZR) / nz];
+      for (let i = 0; i < nx; i++) {
+        for (let j = 0; j < ny; j++) {
+          for (let k = 0; k < nz; k++) {
+            let x, y, z, tries = 0;
+            do {
+              x = -XR + (i + 0.1 + 0.8 * R()) * cw[0];
+              y = -YR + (j + 0.1 + 0.8 * R()) * cw[1];
+              z = -ZR + (k + 0.1 + 0.8 * R()) * cw[2];
+            } while (++tries < 60 && bad(x, y, z));
+            if (!bad(x, y, z)) arr.push([x, y, z]);
+          }
+        }
+      }
+    };
+    place(out.h2o, 4, 4, 4); // 64
+    place(out.deu, 3, 4, 3); // 36
+    return out;
+  }
+  // station hues: water blues; deuterium's hot amber-green
+  const STATIONS = stationGeometry();
+
+  function makeStations() {
+    const out = [];
+    for (const c of STATIONS.h2o) {
+      // a loose knot of blue glass globes — one big, four small
+      for (let i = 0; i < 5; i++) {
+        const o = baseOrb([0, 0, 0], false, false);
+        o.station = true;
+        const th = (i / 5) * TAU + rand(0, TAU / 5);
+        const d = i === 0 ? 0 : rand(26, 55);
+        o.fix = [c[0] + Math.cos(th) * d, c[1] + rand(-30, 30), c[2] + Math.sin(th) * d];
+        o.fixAmp = 4;
+        o.fixedR = i === 0 ? rand(16, 20) : rand(8, 13);
+        o.variant = 0;
+        o.h1 = rand(203, 214);
+        o.h2 = rand(216, 228);
+        o.sat = rand(88, 96);
+        o.halo = 1.5;
+        o.fadeDur = rand(3.5, 7);
+        o.spin = 0;
+        out.push(o);
+      }
+    }
+    for (const c of STATIONS.deu) {
+      // a tight hot knot pulsing fast — reads radioactive in this light language
+      for (let i = 0; i < 7; i++) {
+        const o = baseOrb([0, 0, 0], false, false);
+        o.station = true;
+        const th = (i / 7) * TAU + rand(0, TAU / 7);
+        const d = i === 0 ? 0 : rand(16, 40);
+        o.fix = [c[0] + Math.cos(th) * d, c[1] + rand(-22, 22), c[2] + Math.sin(th) * d];
+        o.fixAmp = 3;
+        o.fixedR = i === 0 ? rand(12, 15) : rand(5, 9);
+        o.variant = 1;
+        o.h1 = rand(68, 82);
+        o.h2 = rand(88, 102);
+        o.sat = rand(92, 98);
+        o.halo = 1.7;
+        o.fadeDur = rand(1.1, 2.2);
+        o.spin = 0;
+        out.push(o);
+      }
+    }
+    return out;
+  }
+
   let veilOrbs = [];
   let eyeOrbs = [];
+  let reefOrbs = [];
+  let stationOrbs = [];
   let fieldPool = [];
   let dustPool = [];
 
@@ -644,7 +889,7 @@ void main() {
     const patch = (nx, ny, nz) => {
       const o = baseOrb([nx, ny, nz], false, false);
       o.veil = true;
-      o.fixedR = rand(1600, 2600);
+      o.fixedR = rand(3200, 5200); // v38: doubled with the space — same angular cover
       o.halo = 0.4;
       o.sat = rand(18, 32);
       o.fadeDur = rand(30, 70);
@@ -697,6 +942,8 @@ void main() {
       fieldPool.slice(0, fieldNeed),
       portalOrbs,
       eyeOrbs,
+      reefOrbs,
+      stationOrbs,
       veilOrbs,
       dustPool.slice(0, cfg.dust),
     );
@@ -710,7 +957,7 @@ void main() {
     // leaving the field entirely at extreme tuner spreads.
     const KEEP = 2400; // v33: widened from 1560 — "give the skull a nice buffer"
     for (const o of orbs) {
-      if (o.veil || o.dust || o.eye) continue;
+      if (o.veil || o.dust || o.eye || o.fix) continue; // fixed monuments hold their ground
       const wx = o.n[0] * cfg.spreadX, wy = o.n[1] * cfg.spreadY, wz = o.n[2] * cfg.spreadZ;
       const r = Math.hypot(wx, wy, wz);
       if (r < KEEP) {
@@ -720,11 +967,11 @@ void main() {
         o.n[2] = clamp(o.n[2] * f, -1.35, 1.35);
       }
       // v33: the load-in sightline stays clear — a cylinder along +Z from the
-      // buffer edge to just past spawn (z 0..6200, radius 950 around the view
-      // axis). Anything drifting into frame between you and the face gets
-      // pushed sideways out of the corridor.
+      // buffer edge to just past spawn (radius 950 around the view axis;
+      // v41: stretched to z 20600 with the new spawn). Anything drifting
+      // into frame between you and the face gets pushed sideways out.
       const wz2 = o.n[2] * cfg.spreadZ;
-      if (wz2 > 0 && wz2 < 6200) {
+      if (wz2 > 0 && wz2 < 20600) {
         const wx2 = o.n[0] * cfg.spreadX, wy2 = o.n[1] * cfg.spreadY;
         const rr = Math.hypot(wx2, wy2);
         if (rr < 950) {
@@ -748,6 +995,8 @@ void main() {
     ringOrbs = makeRing();
     portalOrbs = makePortals();
     eyeOrbs = makeEyes();
+    reefOrbs = makeReef();
+    stationOrbs = makeStations();
     veilOrbs = makeVeils();
     assemble();
   }
@@ -761,18 +1010,39 @@ void main() {
   // Free-flight orientation (James is a No Man's Sky pilot): the camera is an
   // orthonormal basis — f forward, r right, u up — rotated incrementally in
   // its OWN frame. Roll persists until R glides you back to the ecliptic.
-  const cam = {
-    pos: [0, 0, 5600], // v22: 2600; v29: 3600; v30: 5600 (James keeps backing up — the skull deserves it)
-    f: [0, 0, -1],
+  // v42: spawn aims between Korrudan's eyes — James measured the dead-on
+  // pitch at −3° from the spawn point by eye. Position stays [0,0,20000];
+  // only the nose dips. R still levels to the true horizon.
+  const SPAWN_PITCH = (-3 * Math.PI) / 180;
+  const spawnBasis = () => ({
+    f: [0, Math.sin(SPAWN_PITCH), -Math.cos(SPAWN_PITCH)],
     r: [1, 0, 0],
-    u: [0, 1, 0],
+    u: [0, Math.cos(SPAWN_PITCH), Math.sin(SPAWN_PITCH)],
+  });
+  const cam = {
+    pos: [0, 0, 20000], // v22: 2600; v29: 3600; v30: 5600; v41: 20000 — a long approach across the static space
+    ...spawnBasis(),
   };
   let pendingYaw = 0;   // eased look input awaiting application
   let pendingPitch = 0;
   let rollVel = 0;      // rad/s
   let leveling = false;
   let thrust = 0;       // current thruster speed, m/s
+  let impulse = 0;      // impulse-drive speed, m/s — coasts on release (v44)
   let overdrive = false;
+  let allStop = false;  // X: brake to a halt (v37)
+  // the tanks (v38): fractions 0..1. H2O feeds the booster, deuterium feeds
+  // overdrive. Fly into a station to refill to full (chime + meter flourish).
+  const fuel = { h2o: 1, deu: 1 };
+  function refill(kind) {
+    fuel[kind] = 1;
+    fuelChime(kind);
+    const bar = kind === "h2o" ? vsEls.h2oBar : vsEls.deuBar;
+    bar.classList.remove("flare");
+    void bar.offsetWidth; // restart the animation even on back-to-back fills
+    bar.classList.add("flare");
+    setTimeout(() => bar.classList.remove("flare"), 1100);
+  }
 
   const vdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   const vcross = (a, b) => [
@@ -816,16 +1086,19 @@ void main() {
   }
 
   function goHome() {
-    cam.pos = [0, 0, 5600];
-    cam.f = [0, 0, -1];
-    cam.r = [1, 0, 0];
-    cam.u = [0, 1, 0];
+    cam.pos = [0, 0, 20000];
+    const b = spawnBasis();
+    cam.f = b.f;
+    cam.r = b.r;
+    cam.u = b.u;
     pendingYaw = 0;
     pendingPitch = 0;
     rollVel = 0;
     leveling = false;
     thrust = 0;
+    impulse = 0;
     overdrive = false;
+    autoNav = null;
   }
 
   const keys = new Set();
@@ -837,10 +1110,27 @@ void main() {
   window.addEventListener("keydown", (e) => {
     if (isTyping(e)) return;
     keys.add(e.code);
+    // hands ON anything = the autopilot lets go (N only toggles the panel)
+    if (autoNav && e.code !== "KeyN") autoNav = null;
+    if (e.code === "KeyN") setOpen("nav");
     if (e.code === "KeyH") goHome();
+    if (e.code === "KeyX") {
+      // all-stop (v37): cancel the drives, bleed to a halt fast
+      if (overdrive) odThump(false);
+      allStop = true;
+      overdrive = false;
+    }
+    // any fresh thrust input releases the all-stop
+    if (["ShiftLeft", "ShiftRight", "Space", "KeyW", "KeyS"].includes(e.code)) allStop = false;
     if (e.code === "Space") {
       e.preventDefault();
-      overdrive = !overdrive;
+      if (!overdrive && fuel.deu <= 0) {
+        // no deuterium: the pulse drive won't light. SYS says why.
+        vsEls.eng.textContent = "NO DEU";
+      } else {
+        overdrive = !overdrive;
+        odThump(overdrive); // pulse drive ignition / wind-down (v34)
+      }
     }
   });
   window.addEventListener("keyup", (e) => keys.delete(e.code));
@@ -868,12 +1158,24 @@ void main() {
     pendingYaw -= dx * 0.0013;
     pendingPitch -= dy * 0.0013;
     leveling = false;
+    autoNav = null; // steering by hand cancels the lock-on
   });
   canvas.addEventListener("pointerup", (e) => {
     drag.on = false;
     canvas.classList.remove("dragging");
     const moved = Math.abs(e.clientX - drag.downX) + Math.abs(e.clientY - drag.downY);
-    if (moved < 6 && performance.now() - drag.downT < 400) tryPortalClick(e.clientX, e.clientY);
+    if (moved < 6 && performance.now() - drag.downT < 400) {
+      // an armed nav ring takes the click first: inside the circle = lock on
+      if (navArmed && navTarget && navScreen.on &&
+          Math.hypot(e.clientX - navScreen.x, e.clientY - navScreen.y) <= navScreen.r + 8) {
+        autoNav = { standoff: navTarget.standoff };
+        navAligned = 0;
+        navArmed = false;
+        navRing.classList.remove("armed");
+      } else {
+        tryPortalClick(e.clientX, e.clientY);
+      }
+    }
   });
   // if the GPU ever drops the context (it happened once), recover honestly
   canvas.addEventListener("webglcontextlost", (e) => {
@@ -938,7 +1240,7 @@ void main() {
   const skull = { ready: false, count: 0, prog: null, vao: null, tex: null, U: {} };
   (async () => {
     try {
-      const [buf, img] = await Promise.all([
+      const [buf, img, normImg] = await Promise.all([
         fetch("assets/skull/skull.bin").then((r) => {
           if (!r.ok) throw new Error("skull.bin " + r.status);
           return r.arrayBuffer();
@@ -948,6 +1250,15 @@ void main() {
           im.onload = () => res(im);
           im.onerror = rej;
           im.src = "assets/skull/skull-basecolor.jpg";
+        }),
+        // the Meshy normal map (extracted raw from the source GLB, v34) — the
+        // fine sculpted detail the decimation can't carry. Optional: if it
+        // fails to load the skull just lights by vertex normals as before.
+        new Promise((res) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = () => res(null);
+          im.src = "assets/skull/skull-normal.jpg";
         }),
       ]);
       const dv = new DataView(buf);
@@ -986,24 +1297,46 @@ uniform vec3 uCamPos;
 out vec3 vN;
 out vec2 vUV;
 out float vDist;
+out vec3 vP;
 void main() {
   vN = aNorm;
   vUV = aUV;
+  vP = aPos;
   vDist = distance(aPos, uCamPos);
   gl_Position = uVP * vec4(aPos, 1.0);
 }`;
       const sfs = `#version 300 es
 precision highp float;
 uniform sampler2D uTex;
+uniform sampler2D uNorm;
+uniform float uHasNorm;
 uniform float uFog;
 uniform float uTime;
 in vec3 vN;
 in vec2 vUV;
 in float vDist;
+in vec3 vP;
 out vec4 oC;
+
+// cotangent-frame normal mapping (Schueler): the tangent basis is derived
+// per-pixel from screen-space derivatives of position and UV, so no tangent
+// attribute is needed and any UV flip is absorbed into B automatically.
+vec3 perturb(vec3 N, vec3 P, vec2 uv) {
+  vec3 dp1 = dFdx(P), dp2 = dFdy(P);
+  vec2 du1 = dFdx(uv), du2 = dFdy(uv);
+  vec3 dp2p = cross(dp2, N);
+  vec3 dp1p = cross(N, dp1);
+  vec3 T = dp2p * du1.x + dp1p * du2.x;
+  vec3 B = dp2p * du1.y + dp1p * du2.y;
+  float inv = inversesqrt(max(dot(T, T), dot(B, B)) + 1e-12);
+  vec3 tn = texture(uNorm, uv).rgb * 2.0 - 1.0; // glTF convention: +Y up
+  return normalize(mat3(T * inv, B * inv, N) * tn);
+}
+
 void main() {
   vec3 base = texture(uTex, vUV).rgb;
   vec3 N = normalize(vN);
+  if (uHasNorm > 0.5) N = perturb(N, vP, vUV);
   // starlight key high-left, cool fill from the right, and the Heart's soul:
   // a warm pulse breathing up out of the open mouth from below
   float key = max(dot(N, normalize(vec3(-0.45, 0.80, 0.42))), 0.0);
@@ -1032,7 +1365,7 @@ void main() {
       gl.linkProgram(p);
       if (!gl.getProgramParameter(p, gl.LINK_STATUS))
         throw new Error(gl.getProgramInfoLog(p));
-      for (const n of ["uVP", "uCamPos", "uTex", "uFog", "uTime"])
+      for (const n of ["uVP", "uCamPos", "uTex", "uNorm", "uHasNorm", "uFog", "uTime"])
         skull.U[n] = gl.getUniformLocation(p, n);
 
       const vao = gl.createVertexArray();
@@ -1062,10 +1395,28 @@ void main() {
         gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT,
           Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
       }
+      // the normal map rides on unit 2 (orbs own 0, basecolor owns 1)
+      let hasNorm = 0;
+      if (normImg) {
+        const ntex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE2);
+        gl.bindTexture(gl.TEXTURE_2D, ntex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, normImg);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        if (aniso) {
+          gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT,
+            Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+        }
+        skull.ntex = ntex;
+        hasNorm = 1;
+      }
       gl.activeTexture(gl.TEXTURE0);
 
       gl.useProgram(p);
       gl.uniform1i(skull.U.uTex, 1);
+      gl.uniform1i(skull.U.uNorm, 2);
+      gl.uniform1f(skull.U.uHasNorm, hasNorm);
       gl.useProgram(prog); // hand the state back to the orb pipeline
 
       skull.prog = p;
@@ -1151,31 +1502,90 @@ void main() {
     // seconds; release and you coast down to a stop over a few more. Velocity
     // always follows the gaze, so steering with the mouse curves the flight.
     // Space toggles OVERDRIVE: ramp to 800 and hold there until tapped again.
-    const VMAX = 400, VOVER = 800; // m/s
-    const burning = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const VMAX = 400, VOVER = 1200; // m/s (overdrive 800 → 1200, v38)
+    // the booster drinks water; overdrive burns deuterium (v38). Tanks are
+    // generous (180s / 120s of continuous burn) and impulse is always free —
+    // a dry tank means limping, never stranding.
+    const burning = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && fuel.h2o > 0;
+    if (burning && !overdrive) fuel.h2o = Math.max(0, fuel.h2o - dt / 180);
+    if (overdrive) {
+      fuel.deu = Math.max(0, fuel.deu - dt / 120);
+      if (fuel.deu === 0) {
+        overdrive = false; // the pulse drive sputters out
+        odThump(false);
+      }
+    }
     // the boosts respect the S key (per James 2026-07-17): holding S points
     // the burn backwards — shift and overdrive thrust in REVERSE while it's
     // down, swinging smoothly through zero, and swing forward again on release
     const rev = keys.has("KeyS") ? -1 : 1;
     const target = (overdrive ? VOVER : burning ? VMAX : 0) * rev;
-    if (target !== 0) {
+    if (autoNav && navTarget) {
+      // -- lock-on autopilot (v43): hands off — the nose eases onto the
+      // course and the nav-assist thrusters cruise (no tank drain). The
+      // ship hands back to the free coast exactly one coast-length short
+      // of the standoff, so you arrive just as the drift dies.
+      const dx = navTarget.pos[0] - cam.pos[0];
+      const dy = navTarget.pos[1] - cam.pos[1];
+      const dz = navTarget.pos[2] - cam.pos[2];
+      const dist = Math.hypot(dx, dy, dz) || 1;
+      const dir = [dx / dist, dy / dist, dz / dist];
+      const ang = Math.acos(clamp(vdot(cam.f, dir), -1, 1));
+      if (ang > 0.0005) {
+        rotateCam(vnorm(vcross(cam.f, dir)), Math.min(ang, 0.5 * dt));
+      }
+      if (dist <= autoNav.standoff + (Math.abs(thrust) + Math.abs(impulse)) * 3.2 + 40) {
+        autoNav = null; // release — the coast carries you to the doorstep
+      } else {
+        const cruise = clamp(dist / 8, 140, 900);
+        thrust += (cruise - thrust) * (1 - Math.exp(-dt / 1.2));
+      }
+    } else if (allStop) {
+      // X = all-stop (v37): brake hard but smooth — no head-snap. Any new
+      // thrust input releases it (handled in keydown).
+      thrust *= Math.exp(-dt / 0.35);
+      if (Math.abs(thrust) < 4) { thrust = 0; allStop = false; }
+    } else if (target !== 0) {
       thrust += (target - thrust) * (1 - Math.exp(-dt / 1.2));
     } else {
-      thrust *= Math.exp(-dt / 1.6);
+      // free coast (v37: 1.6 → 3.2 per James — the drift after a burn should
+      // carry you a good while; X is there when you want to stop)
+      thrust *= Math.exp(-dt / 3.2);
       if (Math.abs(thrust) < 4) thrust = 0;
     }
 
-    // -- the dolly: hold W to glide forward along your gaze, S to back out.
-    // Constant gentle speed, instant stop on release. Composes with the
-    // thruster (S acts as a soft brake while coasting).
-    const DOLLY = 80; // m/s
+    // -- IMPULSE (v38 name, was "the dolly"): hold W to glide forward along
+    // your gaze, S to back out. Burns nothing. Composes with the thruster.
+    // v44: releasing the key COASTS (same 3.2s constant as the thruster —
+    // it's space, 120 m/s doesn't just vanish); X still brakes everything.
+    const IMPULSE = 120; // m/s (80 → 120, v38)
     const dolly = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
-    const speed = dolly * DOLLY + thrust;
+    if (dolly !== 0) {
+      impulse += (dolly * IMPULSE - impulse) * (1 - Math.exp(-dt / 0.5));
+    } else if (allStop) {
+      impulse *= Math.exp(-dt / 0.35);
+      if (Math.abs(impulse) < 2) impulse = 0;
+    } else {
+      impulse *= Math.exp(-dt / 3.2);
+      if (Math.abs(impulse) < 2) impulse = 0;
+    }
+    const speed = impulse + thrust;
+    if (sound.on && sound.engine) updateEngine(thrust, dolly !== 0);
     if (speed !== 0) {
       const bd = camBasis();
       const bounds = [cfg.spreadX * 0.95, cfg.spreadY * 0.95, cfg.spreadZ * 0.95];
       for (let i = 0; i < 3; i++) {
         cam.pos[i] = clamp(cam.pos[i] + bd.f[i] * speed * dt, -bounds[i], bounds[i]);
+      }
+    }
+
+    // -- fuel pickup: fly within 150m of a station and that tank sweeps to
+    // full — success chime, meter flourish. Stations are depots, permanent.
+    for (const kind of ["h2o", "deu"]) {
+      if (fuel[kind] > 0.999) continue;
+      for (const c of STATIONS[kind]) {
+        const dx = cam.pos[0] - c[0], dy = cam.pos[1] - c[1], dz = cam.pos[2] - c[2];
+        if (dx * dx + dy * dy + dz * dz < 22500) { refill(kind); break; }
       }
     }
 
@@ -1210,8 +1620,13 @@ void main() {
     // and the turn stops. Rate peaks at TURN_RATE on a 90° knife-edge.
     const TURN_RATE = 0.5; // rad/s of heading at full bank
     const bankRad = Math.atan2(cam.r[1], cam.u[1]);
-    if (Math.abs(bankRad) > 0.02) {
-      rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * dt);
+    if (Math.abs(bankRad) > 0.02 && speed !== 0) {
+      // v40: wings need airflow. The carve scales with speed and is ZERO at
+      // a standstill — James's "drift while the speedo reads 0" was this
+      // turn spinning the world around a parked, banked ship. Full turn
+      // authority from impulse speed (120) up.
+      const authority = clamp(Math.abs(speed) / 120, 0, 1);
+      rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * authority * dt);
     }
 
     // -- R: glide back to the plane of the ecliptic (level roll and pitch,
@@ -1228,6 +1643,21 @@ void main() {
     }
     orthonormalize();
 
+    // -- THE GAZE (v34): within a few km the dead god's eyes follow you.
+    // Each eye drifts inside its socket toward your direction — clamped so it
+    // stays seated (the bone rim partially occludes it at extremes), eased at
+    // a deliberately slow time constant so you notice on the third visit,
+    // not the first. Beyond ~6km the gaze relaxes back to dead ahead.
+    for (const o of eyeOrbs) {
+      if (!o.gaze) o.gaze = [0, 0];
+      const ex = cam.pos[0] - o.fix[0], ey = cam.pos[1] - o.fix[1], ez = cam.pos[2] - o.fix[2];
+      const ed = Math.hypot(ex, ey, ez) || 1;
+      const w = clamp((6000 - ed) / 3500, 0, 1);
+      const k = 1 - Math.exp(-dt * 0.6);
+      o.gaze[0] += ((ex / ed) * 48 * w - o.gaze[0]) * k;
+      o.gaze[1] += ((ey / ed) * 48 * w - o.gaze[1]) * k;
+    }
+
     // -- orb world positions + depth sort (back to front)
     const n = orbs.length;
     if (wp.length !== n * 3) wp = new Float32Array(n * 3);
@@ -1239,8 +1669,15 @@ void main() {
       // means a few m/s, and near orbs must never flee the visitor
       let x, y, z;
       if (o.fix) {
-        // seated in the skull: fixed world coords, no spread scaling, no wander
+        // seated in the skull or the reef: fixed world coords, no spread
+        // scaling. Eyes carry the gaze offset; reef spores drift locally.
         x = o.fix[0]; y = o.fix[1]; z = o.fix[2];
+        if (o.gaze) { x += o.gaze[0]; y += o.gaze[1]; }
+        else if (o.fixAmp) {
+          x += wander(o.wx, t) * o.fixAmp;
+          y += wander(o.wy, t) * o.fixAmp * 0.6;
+          z += wander(o.wz, t) * o.fixAmp;
+        }
       } else {
         const amp = o.heart || o.veil ? 0 : o.dust ? 30 : o.portal ? 15 : 60;
         x = o.n[0] * sx + wander(o.wx, t) * amp;
@@ -1250,7 +1687,7 @@ void main() {
       wp[i * 3] = x; wp[i * 3 + 1] = y; wp[i * 3 + 2] = z;
       const dx = x - cam.pos[0], dy = y - cam.pos[1], dz = z - cam.pos[2];
       dists[i] = dx * dx + dy * dy + dz * dz;
-      if (!o.dust && !o.veil && dists[i] < 6250000) contacts++;
+      if (!o.dust && !o.veil && !o.reef && dists[i] < 6250000) contacts++;
       order[i] = i;
     }
     order.sort((a, bI) => dists[bI] - dists[a]);
@@ -1259,6 +1696,8 @@ void main() {
     // text readouts refresh at ~8 Hz so the numbers stay legible
     vsEls.thr.style.width = Math.min(100, (Math.abs(thrust) / VOVER) * 100).toFixed(1) + "%";
     vsEls.thr.classList.toggle("rev", thrust < 0);
+    vsEls.h2o.style.width = (fuel.h2o * 100).toFixed(1) + "%";
+    vsEls.deu.style.width = (fuel.deu * 100).toFixed(1) + "%";
     const bankDeg = Math.atan2(cam.r[1], cam.u[1]) * 180 / Math.PI;
     // the WHOLE reticle is the attitude instrument (James, v25): it counter-
     // rotates through the full 360° as you roll, so a barrel roll spins it
@@ -1271,16 +1710,35 @@ void main() {
       const signed = (v) =>
         (v < 0 ? "−" : "+") + String(Math.abs(Math.round(v))).padStart(2, "0");
       vsEls.spd.textContent = (speed < -1 ? "−" : "") + Math.round(spd);
-      vsEls.mode.textContent = overdrive ? "OVERDRIVE" : speed < -1 ? "REVERSE" : burning ? "BURN" : spd > 1 ? "COAST" : "IDLE";
+      vsEls.mode.textContent = autoNav ? "AUTO" : overdrive ? "OVERDRIVE" : allStop && spd > 1 ? "BRAKE" : speed < -1 ? "REVERSE" : burning ? "BURN" : dolly !== 0 ? "IMPULSE" : spd > 1 ? "COAST" : "IDLE";
       vsEls.mode.classList.toggle("over", overdrive);
       vsEls.hdg.textContent =
         String(Math.round((Math.atan2(cam.f[0], -cam.f[2]) * 180 / Math.PI + 360) % 360)).padStart(3, "0");
       vsEls.pit.textContent = signed(Math.asin(clamp(cam.f[1], -1, 1)) * 180 / Math.PI);
       vsEls.bnk.textContent = signed(bankDeg);
+      // live position: watch the numbers run while you fly (James, v34)
+      const pfmt = (v) => (v < 0 ? "−" : "") + Math.abs(Math.round(v)).toLocaleString("en-US");
+      vsEls.px.textContent = pfmt(cam.pos[0]);
+      vsEls.py.textContent = pfmt(cam.pos[1]);
+      vsEls.pz.textContent = pfmt(cam.pos[2]);
+      const kfmt = (d) => (d >= 1000 ? (d / 1000).toFixed(1) + " km" : Math.round(d) + " m");
       const hd = Math.hypot(cam.pos[0], cam.pos[1], cam.pos[2]);
-      vsEls.home.textContent = hd >= 1000 ? (hd / 1000).toFixed(1) + " km" : Math.round(hd) + " m";
+      vsEls.home.textContent = kfmt(hd);
+      let reefD = Infinity; // nearest colony — the sensor doesn't play favorites
+      for (const col of REEF_COLONIES) {
+        reefD = Math.min(reefD, Math.hypot(
+          cam.pos[0] - col.c[0], cam.pos[1] - col.c[1], cam.pos[2] - col.c[2]));
+      }
+      vsEls.reef.textContent = kfmt(reefD);
       vsEls.con.textContent = String(contacts);
-      vsEls.eng.textContent = overdrive ? "OVERDRIVE" : "NOMINAL";
+      {
+        const dry = fuel.deu <= 0 ? "NO DEU" : fuel.h2o <= 0 ? "NO H2O" : null;
+        vsEls.eng.textContent = overdrive ? "OVERDRIVE" : dry || "NOMINAL";
+        vsEls.eng.classList.toggle("vs-ok", !dry);
+        vsEls.eng.classList.toggle("vs-off", !!dry);
+        vsEls.h2oBar.classList.toggle("low", fuel.h2o < 0.25);
+        vsEls.deuBar.classList.toggle("low", fuel.deu < 0.25);
+      }
     }
 
     let m = 0;
@@ -1308,7 +1766,7 @@ void main() {
       instData[off + 12] = o.seed;
       instData[off + 13] = o.eye ? 3 : o.heart ? 2 : o.portal ? 1 : 0;
       instData[off + 14] = o.veil ? 1 : 0;
-      instData[off + 15] = o.veil ? 1.05 : o.dust ? 1.6 : 2.6;
+      instData[off + 15] = o.quadScale || (o.veil ? 1.05 : o.dust ? 1.6 : 2.6);
     }
 
     // -- draw
@@ -1395,6 +1853,78 @@ void main() {
       }
     }
 
+    // nav target (v38): the orange ring sits on the chosen item (edge-clamped
+    // when off-screen, like the home dot) and the pointer arrow orbits the
+    // reticle toward its bearing — swing the nose until they agree. Within
+    // ~3° the ring locks solid and the arrow stands down.
+    if (navTarget) {
+      const rx = navTarget.pos[0] - cam.pos[0];
+      const ry = navTarget.pos[1] - cam.pos[1];
+      const rz = navTarget.pos[2] - cam.pos[2];
+      const x = rx * bb.r[0] + ry * bb.r[1] + rz * bb.r[2];
+      const y = rx * bb.u[0] + ry * bb.u[1] + rz * bb.u[2];
+      const z = rx * bb.f[0] + ry * bb.f[1] + rz * bb.f[2];
+      const dist = Math.hypot(x, y, z) || 1;
+      const tf = Math.tan(FOV / 2);
+      let nx = 0, ny = 0, size = 40, on = false;
+      if (z > 0) {
+        nx = x / z / (tf * (W / H));
+        ny = y / z / tf;
+        if (Math.abs(nx) <= 0.92 && Math.abs(ny) <= 0.92) {
+          on = true;
+          size = clamp(140000 / dist, 34, 120);
+        }
+      }
+      if (!on) {
+        // clamp to the screen edge in the target's direction
+        const l2 = z > 0 ? Math.max(Math.abs(nx), Math.abs(ny)) : 0;
+        if (z > 0 && l2 > 0) {
+          const m = 0.92 / l2;
+          nx *= m; ny *= m;
+        } else {
+          const len = Math.hypot(x, y) || 1;
+          nx = (x / len) * 0.92;
+          ny = (y / len) * 0.92;
+        }
+        size = 34;
+      }
+      navRing.style.width = navRing.style.height = size + "px";
+      navRing.style.left = ((nx + 1) / 2) * W + "px";
+      navRing.style.top = ((1 - ny) / 2) * H + "px";
+      navScreen = { x: ((nx + 1) / 2) * W, y: ((1 - ny) / 2) * H, r: size / 2, on };
+      const locked = z > 0 && z / dist > 0.99863; // within ~3°
+      navRing.classList.toggle("locked", locked);
+      navRing.classList.toggle("engaged", !!autoNav);
+      navArrow.style.opacity = locked ? "0" : "1";
+      // arming: hold the nose on it for 3 seconds and the ring brightens —
+      // that's the window where a click inside the circle locks on
+      if (locked && !autoNav) {
+        if (!navAligned) navAligned = now;
+        const armedNow = now - navAligned > 3000;
+        if (armedNow !== navArmed) {
+          navArmed = armedNow;
+          navRing.classList.toggle("armed", navArmed);
+        }
+      } else if (!locked) {
+        navAligned = 0;
+        if (navArmed) {
+          navArmed = false;
+          navRing.classList.remove("armed");
+        }
+      }
+      if (!locked) {
+        // arrow angle: 0 = up, clockwise; ring it just outside the reticle
+        const ang = Math.atan2(x, y) * 180 / Math.PI;
+        const R = Math.min(Math.max(240, H * 0.32), 420) / 2 + 30;
+        navArrow.style.transform =
+          "translate(-50%, -50%) rotate(" + ang.toFixed(1) + "deg) translateY(" + (-R) + "px)";
+      }
+      if (now >= hudNext - 120) {
+        navRingLabel.textContent =
+          navTarget.name + " · " + (dist >= 1000 ? (dist / 1000).toFixed(1) + " km" : Math.round(dist) + " m");
+      }
+    }
+
     // hover cursor over exits
     if (!drag.on && mouse.x >= 0) {
       const hit = portalHit(mouse.x, mouse.y) >= 0;
@@ -1412,13 +1942,10 @@ void main() {
 
   const tunerInputs = {};
 
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "orb-tuner-toggle";
-  toggle.textContent = "tune";
-  toggle.setAttribute("aria-expanded", "false");
-  toggle.setAttribute("aria-controls", "orb-tuner");
-  document.body.appendChild(toggle);
+  // v37: the floating "tune" pill is gone — TUNE and CTRL are ship controls
+  // now, mounted on the deck (upper right of the console, per James)
+  const toggle = hud.querySelector("#vs-tune");
+  const ctrlBtn = hud.querySelector("#vs-ctrl");
 
   const panel = document.createElement("section");
   panel.id = "orb-tuner";
@@ -1478,8 +2005,8 @@ void main() {
   const sliderByKey = {};
   for (const s of SLIDERS) sliderByKey[s.key] = s;
   const GROUPS = [
+    // ("the space" group removed v38 — the volume is static at 24×24×6 km)
     { label: "the field", keys: ["count", "dust", "grouping"] },
-    { label: "the space", keys: ["spreadX", "spreadZ", "spreadY"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "fadeSpeed"] },
   ];
@@ -1608,10 +2135,138 @@ void main() {
   panel.appendChild(presetRow);
   document.body.appendChild(panel);
 
-  toggle.addEventListener("click", () => {
-    panel.hidden = !panel.hidden;
-    toggle.setAttribute("aria-expanded", String(!panel.hidden));
+  // ---- the controls card (v37) — CTRL on the deck opens the full reference
+  const ctrlCard = document.createElement("section");
+  ctrlCard.id = "orb-controls";
+  ctrlCard.className = "orb-controls";
+  ctrlCard.hidden = true;
+  ctrlCard.setAttribute("role", "group");
+  ctrlCard.setAttribute("aria-label", "Ship controls reference");
+  ctrlCard.innerHTML = `
+    <h3>flight</h3>
+    <dl>
+      <dt>drag / arrows</dt><dd>steer — the nose follows</dd>
+      <dt>W / S</dt><dd>impulse — glide forward / back (120 m/s, free)</dd>
+      <dt>shift</dt><dd>booster — hold to burn (400 m/s, drinks H2O)</dd>
+      <dt>space</dt><dd>overdrive on / off (1200 m/s, burns deuterium)</dd>
+      <dt>S + shift</dt><dd>reverse booster</dd>
+      <dt>X</dt><dd>all-stop — brake to a halt</dd>
+      <dt>A / D</dt><dd>bank — holding a bank carves a turn</dd>
+      <dt>R</dt><dd>level off</dd>
+      <dt>H</dt><dd>return home</dd>
+      <dt>N</dt><dd>nav panel on / off</dd>
+      <dt>lock-on</dt><dd>hold your nose on the orange ring 3s until it
+        brightens, then click inside it — the ship flies itself there and
+        coasts in; touching any control releases it</dd>
+      <dt>pale orbs</dt><dd>click one to drift onward</dd>
+    </dl>
+    <h3>console</h3>
+    <dl>
+      <dt>ATT</dt><dd>heading · pitch · bank</dd>
+      <dt>POS</dt><dd>where you are, meters from the skull</dd>
+      <dt>NAV</dt><dd>home · nearest reef · contacts · exits</dd>
+      <dt>SYS</dt><dd>engine state (WEP / SHD not installed)</dd>
+      <dt>FUEL</dt><dd>H2O + deuterium tanks — fly into blue water globes
+        or hot green depots to refill</dd>
+      <dt>NAV</dt><dd>places + resources — click one to ring it in orange,
+        follow the arrow by the reticle</dd>
+      <dt>TUNE</dt><dd>dimension tuning panel</dd>
+    </dl>`;
+  document.body.appendChild(ctrlCard);
+
+  // ---- the NAV panel (v38): named places + resources, click to target ------
+  // Clicking an entry rings the chosen item in orange on the glass and arms
+  // the pointer arrow by the reticle; clicking it again clears. Resource rows
+  // target the closest station at click time.
+  const NAV_NAMES = ["Yth-Alune", "Sorrek Bloom", "Vhal-Imir"];
+  const navPanel = document.createElement("section");
+  navPanel.id = "orb-nav";
+  navPanel.className = "orb-controls orb-nav";
+  navPanel.hidden = true;
+  navPanel.setAttribute("role", "group");
+  navPanel.setAttribute("aria-label", "Navigation");
+  navPanel.innerHTML = `
+    <h3>the monument</h3>
+    <button type="button" class="nav-row" data-nav="head">Korrudan <em>the Head · center of space</em></button>
+    <h3>globe-thread communities</h3>
+    <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship colony</em></button>
+    <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>outlying patch</em></button>
+    <button type="button" class="nav-row" data-nav="c2">${NAV_NAMES[2]} <em>deep patch</em></button>
+    <h3>resources</h3>
+    <button type="button" class="nav-row" data-nav="h2o">Water globes <em>nearest — refills H2O</em></button>
+    <button type="button" class="nav-row" data-nav="deu">Deuterium depot <em>nearest — refills DEU</em></button>`;
+  document.body.appendChild(navPanel);
+
+  let navTarget = null; // { key, name, pos, standoff }
+  // lock-on (v43): hold the nose in the ring 3s → it arms bright; click
+  // inside it → the autopilot flies you there. Standoff = where the coast
+  // should die: the skull's buffer edge, a colony's doorstep, or right on
+  // top of a fuel station (you want the flyover).
+  let navAligned = 0;      // when continuous alignment began (ms), 0 = not aligned
+  let navArmed = false;    // aligned 3s+ — ring is bright, click will lock on
+  let autoNav = null;      // { standoff } while the autopilot is flying
+  let navScreen = { x: 0, y: 0, r: 0, on: false }; // ring in screen px, for the click test
+  function navPick(key) {
+    if (key === "head") return { key, name: "KORRUDAN", pos: [0, 0, 0], standoff: 2600 };
+    if (key[0] === "c") {
+      const i = Number(key[1]);
+      return { key, name: NAV_NAMES[i].toUpperCase(), pos: REEF_COLONIES[i].c, standoff: 700 };
+    }
+    const arr = key === "h2o" ? STATIONS.h2o : STATIONS.deu;
+    let best = arr[0], bd = Infinity;
+    for (const c of arr) {
+      const d = Math.hypot(c[0] - cam.pos[0], c[1] - cam.pos[1], c[2] - cam.pos[2]);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return { key, name: key === "h2o" ? "WATER GLOBE" : "DEU DEPOT", pos: best, standoff: 60 };
+  }
+  navPanel.addEventListener("click", (e) => {
+    const row = e.target.closest(".nav-row");
+    if (!row) return;
+    const key = row.dataset.nav;
+    navTarget = navTarget && navTarget.key === key ? null : navPick(key);
+    autoNav = null;
+    navAligned = 0;
+    navArmed = false;
+    navRing.classList.remove("armed");
+    for (const r of navPanel.querySelectorAll(".nav-row")) {
+      r.classList.toggle("active", !!navTarget && r.dataset.nav === navTarget.key);
+    }
+    navRing.style.opacity = navTarget ? "1" : "0";
+    navArrow.style.opacity = navTarget ? "1" : "0";
+    row.blur();
   });
+
+  // the orange target ring + the pointer arrow by the reticle
+  const navRing = document.createElement("div");
+  navRing.id = "nav-ring";
+  navRing.innerHTML = `<span id="nav-ring-label"></span>`;
+  document.body.appendChild(navRing);
+  const navRingLabel = navRing.querySelector("#nav-ring-label");
+  const navArrow = document.createElement("div");
+  navArrow.id = "nav-arrow";
+  document.body.appendChild(navArrow);
+
+  // one panel at a time: NAV, TUNE and CTRL close each other
+  const PANELS = {
+    nav: { btn: hud.querySelector("#vs-navb"), el: navPanel },
+    tune: { btn: toggle, el: panel },
+    ctrl: { btn: ctrlBtn, el: ctrlCard },
+  };
+  function setOpen(which) {
+    for (const k in PANELS) {
+      const open = k === which ? PANELS[k].el.hidden : false;
+      PANELS[k].el.hidden = !open;
+      PANELS[k].btn.setAttribute("aria-expanded", String(open));
+      PANELS[k].btn.classList.toggle("lit", open);
+    }
+  }
+  for (const k in PANELS) {
+    PANELS[k].btn.addEventListener("click", () => {
+      setOpen(k);
+      PANELS[k].btn.blur(); // focus must not eat the space bar (overdrive)
+    });
+  }
 
   function reflectTuner(key) {
     const t = tunerInputs[key];
@@ -1693,6 +2348,174 @@ void main() {
     sound.pingBus.gain.value = 1;
     sound.pingBus.connect(sound.master);
     sound.pingBus.connect(delay);
+
+    // ---- the engines (v34): three synthesized voices, all physics-driven
+    // from the frame loop, on their own bus (the "engines" channel slider).
+    // Thruster = cold-gas hiss (W/S dolly). Booster = a low rushing noise
+    // that opens up with the shift burn. Overdrive = a different animal:
+    // detuned saws pulsing at ~4.4 Hz — the pulse drive pulses. A reverse
+    // burn (S) drops every pitch, so you HEAR the flip.
+    const eng = { vol: 1 };
+    sound.engine = eng;
+    eng.bus = ctx.createGain();
+    eng.bus.gain.value = (sound.engVol == null ? 1 : sound.engVol) ** 2;
+    eng.bus.connect(sound.master);
+
+    const white = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    {
+      const d = white.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const loopSrc = (buf) => {
+      const s = ctx.createBufferSource();
+      s.buffer = buf;
+      s.loop = true;
+      s.start();
+      return s;
+    };
+
+    // thruster hiss
+    const thBp = ctx.createBiquadFilter();
+    thBp.type = "bandpass";
+    thBp.frequency.value = 620;
+    thBp.Q.value = 0.9;
+    eng.thGain = ctx.createGain();
+    eng.thGain.gain.value = 0;
+    loopSrc(white).connect(thBp).connect(eng.thGain).connect(eng.bus);
+
+    // booster: a LOW RUSHING NOISE, nothing tonal (v36 — James: the sub saw +
+    // gliding whine read as a police siren / hot-air blast). Two noise paths:
+    // the rush, whose lowpass cutoff opens with the throttle, and a fixed
+    // very-low bed that gives it weight without pitch.
+    eng.boGroup = ctx.createGain();
+    eng.boGroup.gain.value = 0;
+    eng.boGroup.connect(eng.bus);
+    eng.boRushLp = ctx.createBiquadFilter();
+    eng.boRushLp.type = "lowpass";
+    eng.boRushLp.frequency.value = 180;
+    eng.boRushLp.Q.value = 0.5;
+    const boNg = ctx.createGain();
+    boNg.gain.value = 0.85;
+    loopSrc(white).connect(eng.boRushLp).connect(boNg).connect(eng.boGroup);
+    const boDeepLp = ctx.createBiquadFilter();
+    boDeepLp.type = "lowpass";
+    boDeepLp.frequency.value = 70;
+    const boDg = ctx.createGain();
+    boDg.gain.value = 0.6;
+    loopSrc(white).connect(boDeepLp).connect(boDg).connect(eng.boGroup);
+
+    // overdrive: the pulse drive — detuned saws, low-passed, breathing at 4.4 Hz
+    eng.odGain = ctx.createGain();
+    eng.odGain.gain.value = 0;
+    eng.odGain.connect(eng.bus);
+    const odCore = ctx.createGain();
+    odCore.gain.value = 0.55;
+    const odLp = ctx.createBiquadFilter();
+    odLp.type = "lowpass";
+    odLp.frequency.value = 430;
+    eng.odSaw1 = ctx.createOscillator();
+    eng.odSaw1.type = "sawtooth";
+    eng.odSaw1.frequency.value = 66;
+    eng.odSaw2 = ctx.createOscillator();
+    eng.odSaw2.type = "sawtooth";
+    eng.odSaw2.frequency.value = 66.5;
+    eng.odSaw1.connect(odLp);
+    eng.odSaw2.connect(odLp);
+    odLp.connect(odCore).connect(eng.odGain);
+    eng.odSaw1.start();
+    eng.odSaw2.start();
+    const odLfo = ctx.createOscillator();
+    odLfo.frequency.value = 4.4;
+    const odLfoG = ctx.createGain();
+    odLfoG.gain.value = 0.4;
+    odLfo.connect(odLfoG).connect(odCore.gain);
+    odLfo.start();
+    eng.white = white;
+  }
+
+  // physics → audio, called every frame while sound is on. All params move
+  // through setTargetAtTime so the voices swell and die smoothly.
+  function updateEngine(thrust, dollyActive) {
+    const e = sound.engine;
+    if (!e || !sound.ctx) return;
+    const ct = sound.ctx.currentTime;
+    const set = (p, v, tc) => p.setTargetAtTime(v, ct, tc);
+    const mag = Math.abs(thrust);
+    const rv = thrust < -1 ? 0.82 : 1; // reverse burn: everything detunes down
+    set(e.thGain.gain, dollyActive ? 0.05 : 0, 0.12);
+    const bo = !overdrive && mag > 6 ? clamp(mag / 400, 0, 1) : 0;
+    set(e.boGroup.gain, bo * 0.55, 0.22);
+    // the rush brightens with speed but stays a rush — cutoff only, no pitch.
+    // Reverse burn darkens it instead of dropping a tone.
+    set(e.boRushLp.frequency, (180 + 300 * clamp(mag / 400, 0, 1)) * rv, 0.25);
+    const od = overdrive ? clamp(mag / 1200, 0.25, 1) : 0; // VOVER 1200, v38
+    set(e.odGain.gain, od * 0.4, 0.3);
+    set(e.odSaw1.frequency, (66 + 28 * clamp(mag / 1200, 0, 1)) * rv, 0.3);
+    set(e.odSaw2.frequency, (66.5 + 28.2 * clamp(mag / 1200, 0, 1)) * rv, 0.3);
+  }
+
+  // success chime: two quick rising notes through the cave's echo chain —
+  // water sings high and glassy, deuterium lower and warmer
+  function fuelChime(kind) {
+    if (!sound.on || !sound.ctx || !sound.pingBus) return;
+    const ctx = sound.ctx;
+    const t0 = ctx.currentTime;
+    const freqs = kind === "h2o" ? [659, 880] : [440, 554];
+    freqs.forEach((f, i) => {
+      const env = ctx.createGain();
+      const ts = t0 + i * 0.09;
+      env.gain.setValueAtTime(0.0001, ts);
+      env.gain.exponentialRampToValueAtTime(0.14, ts + 0.03);
+      env.gain.exponentialRampToValueAtTime(0.0001, ts + 0.7);
+      for (const det of [-4, 4]) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f;
+        o.detune.value = det;
+        o.connect(env);
+        o.start(ts);
+        o.stop(ts + 0.8);
+      }
+      env.connect(sound.pingBus);
+    });
+  }
+
+  // one-shot: pulse drive ignition (a thump and a breath of noise) or
+  // wind-down (a lower, softer fall) on the space-bar toggle
+  function odThump(on) {
+    if (!sound.on || !sound.ctx || !sound.engine) return;
+    const ctx = sound.ctx;
+    const t0 = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    if (on) {
+      o.frequency.setValueAtTime(130, t0);
+      o.frequency.exponentialRampToValueAtTime(36, t0 + 0.35);
+      g.gain.exponentialRampToValueAtTime(0.5, t0 + 0.025);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+      const n = ctx.createBufferSource();
+      n.buffer = sound.engine.white;
+      const nf = ctx.createBiquadFilter();
+      nf.type = "lowpass";
+      nf.frequency.setValueAtTime(2400, t0);
+      nf.frequency.exponentialRampToValueAtTime(160, t0 + 0.4);
+      const ng = ctx.createGain();
+      ng.gain.setValueAtTime(0.16, t0);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+      n.connect(nf).connect(ng).connect(sound.engine.bus);
+      n.start(t0);
+      n.stop(t0 + 0.5);
+    } else {
+      o.frequency.setValueAtTime(64, t0);
+      o.frequency.exponentialRampToValueAtTime(26, t0 + 0.6);
+      g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.75);
+    }
+    o.connect(g).connect(sound.engine.bus);
+    o.start(t0);
+    o.stop(t0 + 0.8);
   }
 
   const PING_FREQS = [98, 110.5, 131, 147, 165, 196];
@@ -1755,6 +2578,20 @@ void main() {
         sound.volume = v;
         applyVolume();
       },
+      // the engines get their own slider under the main one (the arachno-wars
+      // second-channel pattern) — cave ambience vs. engine roar, tuned by ear
+      channels: [
+        {
+          label: "engines",
+          value: 1,
+          setVolume: (v) => {
+            sound.engVol = v;
+            if (sound.engine && sound.ctx) {
+              sound.engine.bus.gain.setTargetAtTime(v * v, sound.ctx.currentTime, 0.1);
+            }
+          },
+        },
+      ],
     });
   }
 })();

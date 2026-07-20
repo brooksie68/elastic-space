@@ -3,6 +3,222 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-19 — claude-fable (v46 — mouth globe removed)
+
+- James pulled the v45 mouth globe after seeing it ("that's my fault, just
+  take that out") — makeMouth() and its wiring removed clean. The eyes and
+  the mouth's warm shader pulse (v27) are untouched. Stamp v46.
+
+## 2026-07-19 — claude-fable (v45 — the red globe in Korrudan's mouth)
+
+- Per James: a red globe up inside the roof of the mouth. Palate located by
+  probing skull.bin for downward-facing normals in the mouth region
+  (canonical centroid 0,−117,155); the globe (r=100, flag-3 red like the
+  eyes) seats at world (0,−361.6,513.5) — nested up into the bone by the
+  depth test, glowing down into the mouth, pulsing on the old Heart's 7s
+  beat. Visible from spawn as a red star inside the open jaw (flag 3 carries
+  the star-size floor). It does not gaze-track; only the eyes do. Stamp v45.
+
+## 2026-07-19 — claude-fable (v44 — impulse coasts)
+
+- James: releasing W at 120 m/s in space should not be a wall. Impulse now
+  has its own velocity state: quick ramp while held (τ 0.5s), and on release
+  it coasts on the same 3.2s constant as the thruster — forward and reverse
+  alike. X (all-stop) bleeds it fast like everything else; H zeroes it; the
+  autopilot's release point accounts for impulse + thrust coast distance.
+  The instant stop is gone. Stamp v44.
+
+## 2026-07-19 — claude-fable (v43 — N toggles NAV, lock-on autopilot)
+
+- N toggles the NAV panel from the keyboard (any other key hands control
+  back — see below).
+- LOCK-ON, per James's spec: with a target ringed, hold the nose on the ring
+  (the existing ~3° lock) for 3 continuous seconds → the ring ARMS (bright,
+  breathing). Click inside the armed circle → autopilot: the nose eases onto
+  the course (0.5 rad/s cap), nav-assist thrusters cruise at up to 900 m/s
+  (distance/8, floor 140 — no tank drain), mode line reads AUTO, ring shows
+  a steady double border. Release point = standoff + |thrust|·3.2s (the
+  coast time constant), so the ship cuts power one coast-length out and
+  drifts to a stop at the doorstep: 2600m off Korrudan (the buffer edge),
+  700m off a colony, dead on top of a fuel station (the flyover refuels).
+- ANY control input cancels: keys (except N), mouse steering, H, X. Panel
+  retarget also resets the arm/lock state.
+- Controls card: N row + a lock-on explainer. Stamp v43.
+
+## 2026-07-19 — claude-fable (v42 — spawn aims between the eyes)
+
+- James: dead-on at the skull needs pitch −3 from spawn. Baked it: the spawn
+  basis (and H-home) now loads with the nose dipped 3° — position unchanged
+  at [0,0,20000], ATT honestly reads PIT −03, R levels to the true horizon
+  as always. spawnBasis() is the one source of the starting orientation.
+  Stamp v42.
+
+## 2026-07-19 — claude-fable (v41 — spawn at z 20,000)
+
+- Start position and H-home moved to [0, 0, 20000] — a proper long approach
+  to Korrudan across the static space (face ~19.4km out; ~16s of overdrive).
+- The load-in sight corridor stretched with it (z 0..20600, both the orb
+  exclusion and station placement) so nothing parks in the view on the way
+  in. Sim re-run: all 9 PASS (stations re-jittered around the longer
+  corridor, forgiveness bars unchanged). POS Z placeholder updated.
+  Stamp v41.
+
+## 2026-07-19 — claude-fable (v40 — the parked-bank drift, solved)
+
+- James pinned the "side-to-side coasting": bank the ship (A/D), stand still,
+  and the view slides sideways forever at 0 m/s. That was the v26 coordinated
+  turn carving heading at ANY speed — pure rotation, so the speedo was right.
+- Fix: turn authority now scales with speed (|speed| / 120, capped at 1) and
+  is zero at a standstill — wings need airflow. Held banks still sweep full
+  circles the moment you're moving at impulse speed or better; a parked
+  banked ship just sits there, tilted and patient. Stamp v40.
+
+## 2026-07-19 — claude-fable (v39 — slimmer bays, button stack past the fuel gauge)
+
+- All dash bays slimmed another notch per James (pods 11% → 9.5%, SYS 8.5%,
+  FUEL 11.5%, cluster 22% → 19% / min 210px).
+- NAV / TUNE / CTRL now stack vertically in the bay row itself, just past the
+  fuel gauge — no longer floating at the console's absolute top right. Same
+  instrument glass, tighter padding. Stamp v39.
+
+## 2026-07-19 — claude-fable (v38 — impulse, fuel, NAV, and the space goes static)
+
+Big approved batch (plan discussed, James: "love all suggestions", tanks doubled).
+
+- FLIGHT: W/S renamed IMPULSE, 80 → 120 m/s, burns nothing, mode line shows
+  IMPULSE. Overdrive 800 → 1200 m/s (engine drone rescaled to match). The
+  controls card now says "reverse booster" for S + shift.
+- THE SPACE IS STATIC: 48 × 48 × 12 km — the old slider maximums, now
+  SPACE_X/Z/Y constants. Spread sliders and "the space" tuner group removed;
+  sanitizeCfg() overrides stale saved presets. Defaults densified for the
+  bigger volume (orbs 140 → 400, dust 1400 → 2200) and the veil patches
+  doubled (r 3200–5200) to keep the same angular wall cover. sim.mjs updated
+  to the new cfg: all 6 legacy tests still PASS.
+- FUEL (forgiving by design): H2O tank feeds the booster (180s of continuous
+  burn), deuterium feeds overdrive (120s). Dry tank = that drive refuses
+  (ENG reads NO H2O / NO DEU; overdrive sputters out with the wind-down);
+  impulse is always free — limp, never stranded. 64 water globes (knots of
+  blue glass) + 36 deuterium depots (tight hot amber-green pulses) at seeded
+  STRATIFIED positions — pure-random left 14km voids, the jittered grid
+  caps the worst H2O gap at 9.7km (TEST 9). 150m flyover refills to full:
+  two-note chime through the cave echo (water high/glassy, deuterium lower)
+  + the meter sweeps up with a glow flourish. New FUEL bay (same glass) with
+  H2O and DEU bars; they breathe amber below 25%.
+- NAV: third deck button. Panel lists Korrudan (the Head), the globe-thread
+  communities by name — Yth-Alune, Sorrek Bloom, Vhal-Imir — and
+  water/deuterium (nearest at click). Click to target: orange ring on the
+  item (edge-clamped off-screen, name + live distance beneath), pointer
+  arrow orbiting the reticle toward its bearing; within ~3° the ring locks
+  solid and the arrow stands down. Click again to clear.
+- reef-sim.mjs grew TESTS 7–9 (station determinism/exclusions/forgiveness);
+  extraction-marker gotcha: the markers also appear in doc comments — the
+  sim anchors on `const STATION_SEED =` with an offset search. ALL PASS ×9.
+  Stamp v38.
+
+## 2026-07-19 — claude-fable (v37 — longer coast, X all-stop, deck buttons + controls card)
+
+Three James asks in one pass (his fourth item — side-to-side coasting should
+be shorter — is PENDING a numbered-question answer: there is no lateral
+velocity in this flight model, so it's either the bank-turn carving during a
+coast or the mouse-look ease; waiting on which before touching either).
+
+- Coast: free-coast time constant 1.6s → 3.2s — releasing a burn now carries
+  you roughly twice as long. The all-stop exists precisely so the long drift
+  never becomes a nuisance.
+- X = ALL-STOP: the clear "stop in space" control. Cancels overdrive (with
+  the wind-down thump), bleeds thrust at τ 0.35s — fast but no head-snap —
+  console reads BRAKE while it's working. Any fresh thrust input (shift,
+  space, W, S) releases it.
+- TUNE + CTRL are ship controls now: two buttons seated on the deck's flat
+  run, upper right of the console, styled as small panes of the same blue
+  instrument glass (same gradient, whitish outline, top sheen — per James,
+  "just like all the other panels look, but these are just buttons"). The
+  floating "tune" pill is gone. TUNE opens the tuner; CTRL opens a new
+  controls card (right side, above the console): every flight control plus a
+  legend of the console bays. One panel at a time — each closes the other;
+  buttons blur after click so the space bar keeps toggling overdrive, and
+  engaged buttons light like active instruments.
+- Hint line now mentions X and CTRL. Stamp v37.
+
+## 2026-07-19 — claude-fable (v36 — booster de-sirened)
+
+- James: the shift booster sounded like a police siren / blowing hot air. Guilty
+  parties: the 620→1500 Hz gliding sine "turbine whine" (that WAS a siren) and
+  the sawtooth sub growl. Both gone. The booster is now a pure low rushing
+  noise — white noise through a lowpass whose cutoff opens 180→480 Hz with the
+  throttle, over a fixed 70 Hz noise bed for weight. Nothing tonal, no pitch
+  glides; the reverse burn darkens the rush instead of dropping a tone.
+  Overdrive's pulsing saws are untouched (different drive, different animal).
+  Stamp v36.
+
+## 2026-07-19 — claude-fable (v35 — compact console rows, the reef spreads)
+
+James's pass on v34 (a couple minutes' look): panel rows fall too wide — labels
+and values shouldn't be justified across the bay — and the reef earns more.
+
+- Console rows compacted: no more space-between justify. Labels sit tight
+  against their values (fixed 4.6ch label column so values still align down
+  the glass), bays slimmed 14% → 11% (SYS 9.5%), the cluster capped at 22%,
+  and the whole instrument group packs toward the center with the wings
+  pinned at the ends — the bare deck between is deliberate open real estate
+  for future systems ("we can use that space for other things later").
+- THE REEF SPREADS: one colony → a species. REEF_COLONIES table: the flagship
+  at [6600,−900,−5200] grown ~30% (12 trees, longer branches, 380 spores) plus
+  two outlying patches at [−8200,600,3400] and [−2600,−1500,−8600]. Hidden
+  exit stays flagship-only; NAV's REEF row now reads the NEAREST colony.
+- reef-sim.mjs updated for multi-colony (extraction marker is now
+  `const REEF_COLONIES`): 5905 points, deterministic, nearest-to-origin
+  7723m, 0 corridor hits, max spread 893m, worst overdraw 2.6 screens, gaze
+  clamp holds. ALL PASS. Stamp v35.
+
+## 2026-07-19 — claude-fable (v34 — skull detail, engine sound, HUD readability, THE REEF, the gaze)
+
+James's session brief: skull needs its detail back, engines need voices, HUD text
+was unreadably tiny (plus he wants live position), and from the pitch list he
+picked the Reef and the Gaze to build.
+
+- SKULL NORMAL MAP: the Meshy source GLB carried a 4K normal map we'd been
+  throwing away. Extracted raw from the GLB (Node, zero re-encode —
+  `assets/skull/skull-normal.jpg`, 15.7MB) and sampled in the skull shader via
+  a screen-space cotangent frame (no tangent attribute needed; UV flips absorb
+  into B automatically). Fine sculpted detail returns at zero triangle cost;
+  decimation stays 0.45. Optional load — missing file = v33 lighting. glTF +Y
+  convention assumed: if bumps read as dents to James's eye, flip the green
+  channel sign in perturb(). If he still wants more, next lever is decimate
+  0.45 → 0.75 (~28MB bin).
+- ENGINE SOUND: three synthesized voices on a new "engines" bus with its own
+  channel slider (arachno-wars pattern). Thruster = cold-gas hiss (W/S).
+  Booster = throaty sub-saw + noise + turbine whine climbing with the shift
+  burn (and carrying the wind-down as thrust decays). Overdrive = detuned saws
+  pulsing at 4.4Hz — a genuinely different animal — with an ignition thump +
+  noise breath on engage and a low wind-down on disengage. Reverse burn (S)
+  detunes everything to 0.82x so the flip is audible. All params move through
+  setTargetAtTime from the frame loop.
+- HUD READABILITY REDESIGN: same footprint philosophy (console cap 118 → 150px,
+  ~7% of a 4K screen) but the type roughly DOUBLED: rows clamp to 20px, the
+  speed number to 46px, everything gets a faint phosphor glow. Screens went
+  glassy — gradient glass faces, top-edge sheen, cyan inner glow, rounded
+  bezels. New POS bay (live X/Y/Z in meters, running as you fly) between the
+  cluster and NAV; NAV gains a REEF range row. Wings slimmed to make room.
+- THE REEF: a bioluminescent orb colony at [6600, −900, −5200] (~8.5km out) —
+  nine seeded branching mineral growths (dim, desaturated nodes every 7m,
+  tight 1.35x quads) crusted with 272 fast-pulsing polyps in five hue
+  families, 300 drifting spores, and a pale exit orb nested at its heart (a
+  hidden BONUS exit — the three near home stay canonical). Fixed world coords
+  like the skull; spread sliders and wander can't touch it. Geometry is a pure
+  function of REEF_SEED — identical every visit.
+- THE GAZE: within ~6km the skull's red eyes track the ship — each eye drifts
+  inside its socket toward you (48m clamp < the 53m measured bone clearance,
+  slow 1/0.6s ease). Beyond range they relax to dead ahead. Cheapest possible
+  haunting.
+- Verification: `tmp/orb-dimension/reef-sim.mjs` extracts reefGeometry()
+  VERBATIM from world.js and asserts: deterministic (2 runs identical, 2223
+  pts), population budget, clears the KEEP-2400 buffer (nearest 7886m) and the
+  sight corridor (0 hits), inside default flight bounds, worst in-colony
+  overdraw 1.7 screens, gaze clamp ≤ 48m over 40k poses. ALL PASS. Stamp v34.
+- Untested by James's eye yet: normal-map light direction, engine mix levels,
+  HUD type scale, reef look from inside. All four are one-number tweaks.
+
 ## 2026-07-18 — claude-fable (v33 — bigger buffer + a clear sightline at load-in)
 
 - Monument buffer widened: KEEP 1560 → 2400m (skull corner ~1370, so ~1km of empty dark
