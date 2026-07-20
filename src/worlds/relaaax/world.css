@@ -1,0 +1,297 @@
+/* Relaaax — page shell, field geometry, tuner panel. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: #0b0b0e;
+}
+
+/* Stage: centers the temporary 1024×768 frame. */
+.rlx-stage {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+}
+
+.rlx-frame {
+  aspect-ratio: 4 / 3;
+  outline: 1px solid #26262c;
+  overflow: hidden;
+  width: min(1024px, 100vw, calc(100vh * 4 / 3));
+}
+
+/* --- field ------------------------------------------------------------------
+   All geometry is calc(var(--u) * <2002 px>) — --u is set by the renderer from
+   the container size, so the composition scales to any box. */
+
+.rlx-field {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.rlx-outer {
+  padding: calc(var(--u, 1px) * 50);
+}
+
+.rlx-box {
+  display: flex;
+  padding: calc(var(--u, 1px) * 10);
+  width: calc(var(--u, 1px) * 400);
+}
+
+.rlx-cell {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: calc(var(--u, 1px) * 20) 0;
+}
+
+.rlx-tile {
+  border: calc(var(--u, 1px) * var(--rlx-bw, 1)) solid #fff;
+  box-sizing: content-box;
+  height: calc(var(--u, 1px) * 32);
+  width: calc(var(--u, 1px) * 32);
+}
+
+/* --- tuner (Chrome Rift pattern) ------------------------------------------- */
+
+.rlx-tuner-toggle {
+  align-items: center;
+  appearance: none;
+  background: rgba(20, 20, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  bottom: 1rem;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  display: flex;
+  height: 2.5rem;
+  justify-content: center;
+  padding: 0;
+  position: fixed;
+  right: 1rem;
+  transition: background 200ms ease, color 200ms ease;
+  width: 2.5rem;
+  z-index: 11;
+}
+
+.rlx-tuner-toggle:hover,
+.rlx-tuner-toggle:focus-visible {
+  background: rgba(20, 20, 20, 0.7);
+  color: #fff;
+}
+
+.rlx-tuner-toggle svg {
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+.rlx-tuner {
+  backdrop-filter: blur(10px);
+  background: rgba(8, 8, 8, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  left: 50%;
+  padding: 1rem 1.3rem;
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(70rem, calc(100vw - 8rem));
+  z-index: 10;
+}
+
+.rlx-tuner[hidden] {
+  display: none;
+}
+
+.tuner-speed {
+  align-items: center;
+  display: flex;
+  gap: 0.85rem;
+}
+
+.tuner-speed label,
+.tuner-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.rlx-tuner input[type="range"] {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  flex: 1;
+  height: 1.4rem;
+  margin: 0;
+}
+
+.rlx-tuner input[type="range"]::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
+  border-radius: 999px;
+  height: 4px;
+}
+
+.rlx-tuner input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  height: 1rem;
+  margin-top: -6px;
+  width: 1rem;
+}
+
+.rlx-tuner input[type="range"]::-moz-range-track {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
+  border-radius: 999px;
+  height: 4px;
+}
+
+.rlx-tuner input[type="range"]::-moz-range-thumb {
+  background: #f5f5f5;
+  border: none;
+  border-radius: 50%;
+  height: 1rem;
+  width: 1rem;
+}
+
+.rlx-tuner output {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5ch;
+  text-align: right;
+}
+
+.tuner-minis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem 1.4rem;
+}
+
+.tuner-mini {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  min-width: 13rem;
+}
+
+.tuner-desc {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+  margin: -0.2rem 0 0;
+  width: 100%;
+}
+
+.tuner-mini label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.tuner-mini output {
+  min-width: 3.5ch;
+}
+
+.tuner-frame {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.tuner-frame input[type="number"] {
+  appearance: textfield;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.45rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0.3rem 0.5rem;
+  text-align: center;
+  width: 5.2rem;
+}
+
+.tuner-frame input[type="number"]:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  outline: none;
+}
+
+.tuner-x {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+}
+
+.tuner-frame .tuner-desc {
+  margin: 0;
+  width: auto;
+}
+
+.tuner-colors {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.tuner-colors input[type="color"] {
+  appearance: none;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.45rem;
+  cursor: pointer;
+  height: 1.9rem;
+  padding: 2px;
+  width: 2.6rem;
+}
+
+.tuner-colors input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.tuner-colors input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.tuner-colors input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 0.3rem;
+}
+
+.tuner-reset {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  margin-left: auto;
+  padding: 0.35rem 0.85rem 0.35rem 1.05rem;
+  text-transform: uppercase;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.tuner-reset:hover,
+.tuner-reset:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+}

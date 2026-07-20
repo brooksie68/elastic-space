@@ -1,11 +1,35 @@
 # Claude instructions
 
+The canonical world-building contract (folder layout, required wiring, drift/sound
+rules, ship checklist) is `docs/building-a-world.md` — follow it when adding or
+reviewing worlds, and keep it updated when all-world rules change here. `AGENTS.md`
+at the repo root is the equivalent entry point for non-Claude agents; keep the two
+consistent. `npm run check-worlds` audits every world against the contract.
+
 ## Todo
 
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
    in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
+3. ARACHNO-WARS: tank-color tuner panel (Chrome Rift tuner pattern) — two color pickers
+   driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
+4. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
+   approved 2026-07-19. Full analysis + GIF timing data + build plan in
+   `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
+   from the original GIFs with `tools/gif-analyze.mjs`). CSS/JS animation instead of GIFs,
+   scaled up for modern screens, hidden-link hotspots become drift exits, and each page gets
+   a Chrome Rift-style tuner panel for live timing tweaks (James wants to tune by eye).
+   UPDATE 2026-07-19: the Spastic Space Flash is NOT lost — 70 SWFs play via the Ruffle
+   harness at `tmp/flash-test/` (gitignored — they still need a durable home, ask James).
+   See the "Flash status update" section in recreation-notes.md. Embedding is parked;
+   recreations proceed as planned.
+   Co-build with James — plan first, his go before building.
+   UPDATE 2026-07-19 (build session): the pork half is BUILT as **Relaaax**
+   (`src/worlds/relaaax/`, James's rename) — tunable field renderer staged in a resizable
+   frame, draft status, no drift/registry yet. Remaining: James tunes by eye; decide the
+   setting (his idea: the field playing on a TV in a scene, people watching and drooling);
+   then ship wiring. scary_corndog not started — read that world's CLAUDE.md first.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 
@@ -52,9 +76,12 @@
   world editor tab ("new draft" dialog: title, synopsis, vibe, reference links, sound notes,
   ideas). The dev server reads and writes it via `/api/drafts`; don't hand-edit the shape.
 - The dialog's "engage" button marks a draft `engaged` and inserts a line into the Todo
-  section above. Picking up an engaged draft: read it from `world-drafts.json`, ask James any
-  questions first — if none, present a build plan — and wait for his explicit go before
-  building anything. New worlds are co-built, never unprompted. When the world ships, remove
+  section above. **Engage means discuss, never one-shot.** Picking up an engaged draft is a
+  conversation in three steps, in order: (1) read it from `world-drafts.json` and ask James
+  your questions; (2) present a build plan; (3) discuss the plan with him. Only after James
+  gives an explicit go on the discussed plan does any building start — no world code, no
+  scaffolding, no assets before that. This holds even when the draft was originally Claude's
+  idea. New worlds are co-built, never unprompted. When the world ships, remove
   the todo line, mark the draft's status `built`, and update `World Ideas.md`.
 
 ## Curator mode (gallery worlds)

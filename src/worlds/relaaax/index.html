@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relaaax</title>
+  <link rel="stylesheet" href="./world.css" />
+</head>
+<body>
+  <!-- Temporary staging: the field lives in a centered 1024×768 frame until
+       its final setting is decided. The renderer fills whatever box it's given. -->
+  <main class="rlx-stage">
+    <div id="relaaax-frame" class="rlx-frame"></div>
+  </main>
+
+  <button id="rlx-tuner-toggle" class="rlx-tuner-toggle" type="button"
+          aria-expanded="false" aria-controls="rlx-tuner"
+          title="Tune the field" aria-label="Tune the field">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" aria-hidden="true">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <circle cx="9" cy="6" r="2.4" fill="currentColor" stroke="none"></circle>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <circle cx="15" cy="12" r="2.4" fill="currentColor" stroke="none"></circle>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+      <circle cx="6" cy="18" r="2.4" fill="currentColor" stroke="none"></circle>
+    </svg>
+  </button>
+
+  <section id="rlx-tuner" class="rlx-tuner" role="group" aria-label="Field tuning" hidden>
+    <div class="tuner-speed">
+      <label for="rlx-speed">speed</label>
+      <input id="rlx-speed" type="range" min="0" max="1000" step="1" value="354"
+             title="Global tempo, stopped to ×8 — double-click resets to ×1" />
+      <output id="rlx-speed-readout" for="rlx-speed">×1.00</output>
+    </div>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-holds">holds</label>
+        <input id="rlx-holds" type="range" min="0" max="1000" step="1" value="333"
+               title="Double-click resets" />
+        <output id="rlx-holds-readout" for="rlx-holds">×1.00</output>
+        <p class="tuner-desc">how long each pulse rests at the ends of its fade — 0 removes the rests entirely</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-desync">desync</label>
+        <input id="rlx-desync" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-desync-readout" for="rlx-desync">0%</output>
+        <p class="tuner-desc">phase scatter between tiles — 0% pulses in unison like 2002, higher drifts them apart</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-ease">ease</label>
+        <input id="rlx-ease" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-ease-readout" for="rlx-ease">0%</output>
+        <p class="tuner-desc">fade shape — hard GIF triangle on the left, smooth breathing on the right</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-border">border</label>
+        <input id="rlx-border" type="range" min="0" max="1000" step="1" value="100"
+               title="Double-click resets" />
+        <output id="rlx-border-readout" for="rlx-border">1.0px</output>
+        <p class="tuner-desc">tile border width, in 2002 pixels — 0 dissolves the frames</p>
+      </div>
+    </div>
+    <div class="tuner-frame">
+      <span class="tuner-label">frame</span>
+      <input id="rlx-frame-w" type="number" min="160" max="7680" step="1" value="1024"
+             aria-label="Frame width in pixels" title="Frame width, px" />
+      <span class="tuner-x" aria-hidden="true">&times;</span>
+      <input id="rlx-frame-h" type="number" min="120" max="4320" step="1" value="768"
+             aria-label="Frame height in pixels" title="Frame height, px" />
+      <p class="tuner-desc">the staging frame, in pixels — any size, any aspect; scales down to fit the window</p>
+    </div>
+    <div class="tuner-colors">
+      <span class="tuner-label">colors</span>
+      <input id="rlx-color-low" type="color" value="#000000"
+             aria-label="Low color" title="Low end of the ramp" />
+      <input id="rlx-color-high" type="color" value="#ffffff"
+             aria-label="High color" title="High end of the ramp" />
+      <input id="rlx-color-bg" type="color" value="#333333"
+             aria-label="Background color" title="Page background behind the field" />
+      <button id="rlx-reset" class="tuner-reset" type="button"
+              title="Reset every control to the decoded-GIF defaults">reset</button>
+    </div>
+  </section>
+
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="./relaaax-field.js"></script>
+  <script src="./world.js"></script>
+</body>
+</html>

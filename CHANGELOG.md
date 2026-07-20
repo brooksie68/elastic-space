@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-19 (Relaaax: pork field built)
+
+- New draft world **Relaaax** (`src/worlds/relaaax/`) — the Spastic Space pork.html
+  recreation, renamed by James pre-build. Standalone renderer `relaaax-field.js`: rAF
+  oscillators with the decoded GIF timing (2.1s ramp + per-class holds), color-lerped,
+  geometry scaled off any container (`--u` = one 2002 px), phase-continuous live tuning.
+- Chrome Rift-style tuner: speed/holds/desync/ease/border sliders with description lines,
+  low/high/bg color pickers, frame width×height text inputs (staging frame, default
+  1024×768), reset; localStorage `relaaax-tuner` + `relaaax-frame`.
+- Caption cut by James; math verified by Node sim against the GIF table; added to admin
+  panel In progress list. Unregistered, no drift exits — setting TBD (in-scene TV idea).
+
 ## 2026-07-19 (Pelagic: 3D Jerry cameo)
 
 - Pelagic Lantern Habitat: 3D Jerry shipped — Blender-built cell (headless, scripted:
