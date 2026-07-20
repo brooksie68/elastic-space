@@ -1,8 +1,0 @@
-{
-  "name": "grand-theft-auto-7-site",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "node build.mjs"
-  }
-}
