@@ -84,7 +84,7 @@ scene.add(sun, sun.target);
 // (see the block after EDGES). Pre-experiment LANTERNS list lives in the
 // snapshot under tmp/mandala-shop/snapshots/2026-07-17-pre-spotlights/.
 const LANTERNS = [
-  [0, 5.57, 0, 5.4, 9],       // center ridge lantern (−40% again 07-18, was 9)
+  [0, 5.57, 0, 1.8, 9],       // center ridge lantern — 10% of original 18 (James 07-19: 25% still way too bright)
   [3.6, 1.22, -2.2, 9, 5],    // counter lantern
 ];
 for (const [x, y, z, i, d] of LANTERNS) {
@@ -509,8 +509,7 @@ function rayTargets() {
   if (hoverDirty) {
     hoverDirty = false;
     hoverTargets.length = 0;
-    hoverTargets.push(...clickables, ...doorMeshes);
-    if (bowlMesh) hoverTargets.push(bowlMesh);
+    hoverTargets.push(...clickables, ...doorMeshes, ...registerMeshes);
   }
   return hoverTargets;
 }
@@ -775,7 +774,7 @@ function resetSlots(slots) {
 
 // ------------------------------------------------------------------ room
 const loader = new GLTFLoader();
-let doorMeshes = new Set(), bowlMesh = null;
+let doorMeshes = new Set(), registerMeshes = new Set();
 
 loader.load('assets/room.glb', (gltf) => {
   gltf.scene.traverse((o) => {
@@ -796,8 +795,9 @@ loader.load('assets/room.glb', (gltf) => {
       // wainscot THROUGH the counter (James: "ghostly tiling in the cutout")
       mat.side = THREE.DoubleSide;
     }
-    if (o.name === 'SignSanna') {
-      // lit sign: letters glow softly, no light cast (James 2026-07-17)
+    if (o.name === 'SignSanna' || o.name.startsWith('SignCounter')) {
+      // lit signs: letters glow softly, no light cast (James 2026-07-17;
+      // counter letters joined 2026-07-19 — they read too dark unlit)
       o.material = mat.clone();
       o.material.emissive = new THREE.Color(0xd9a45b);
       o.material.emissiveIntensity = 0.55;
@@ -809,7 +809,7 @@ loader.load('assets/room.glb', (gltf) => {
       return;
     }
     if (o.name.startsWith('Door')) doorMeshes.add(o);
-    if (o.name === 'UrnFloor') bowlMesh = o;   // drift exit moved bowl → floor urn 2026-07-18
+    // (UrnFloor drift exit retired 2026-07-19 — exits are door, blank frame, register)
     if (o.name === 'Backdrop' || o.name === 'OutsideGround') {
       // there is no outside (James 2026-07-18): the Meshy door seals the arch,
       // so the GLB's sand slab + dusk backdrop retire with the panorama
@@ -817,11 +817,11 @@ loader.load('assets/room.glb', (gltf) => {
     }
   });
   scene.add(gltf.scene);
-  hoverDirty = true;   // doors + bowl just joined the ray targets
+  hoverDirty = true;   // doors just joined the ray targets
   posterFadeOut();
   addShopDoor();
 }, undefined, () => {
-  fail('The shop is closed just now (room failed to load) — the pictures above still drift.');
+  fail('The shop is closed just now (room failed to load) — come back another time.');
 });
 
 // Meshy shop door (James's library, 2026-07-18): closed leaf filling the arch,
@@ -863,7 +863,9 @@ const MESHY_SET = [
   { file: 'assets/plants/agave.glb', height: 0.55, spots: [[5.35, -1.9, -80], [0.5, -4.1, 140]] },
   // counter props (Meshy 2026-07-18, replacing the "unrealistic" procedurals);
   // they stand on the counter top, y 1.06
-  { file: 'assets/props/register.glb', height: 0.32, y: 1.06, spots: [[3.34, -1.84, 135]] },
+  // the register is a drift exit (2026-07-19) — its meshes join the ray targets
+  { file: 'assets/props/register.glb', height: 0.32, y: 1.06, drift: true,
+    spots: [[3.34, -1.84, 135]] },
   // tea service on the counter's RIGHT lobe (sides swapped 2026-07-18 — first
   // pass had them mirrored from what James meant); six glasses in a close
   // haphazard huddle by the carafe
@@ -893,6 +895,10 @@ for (const spec of MESHY_SET) {
       wrap.position.set(x, spec.y ?? 0, z);
       wrap.rotation.y = rad(yawDeg);
       scene.add(wrap);
+      if (spec.drift) {
+        inst.traverse((o) => { if (o.isMesh) registerMeshes.add(o); });
+        hoverDirty = true;
+      }
     }
   }, undefined, () => console.warn('[sanna] set piece failed to load:', spec.file));
 }
@@ -1218,7 +1224,7 @@ function handleClick(e) {
   if (!hits.length) { exitFocus(); return; }
   const obj = hits[0].object;
   if (doorMeshes.has(obj)) return triggerDrift('drift-door');
-  if (obj === bowlMesh) return triggerDrift('drift-bowl');
+  if (registerMeshes.has(obj)) return triggerDrift('drift-register');
   if (obj.userData.slot) {
     if (obj.userData.slot.id === 'blank_n_hi') return triggerDrift('drift-blank');
     if (focusArt === obj) return exitFocus();

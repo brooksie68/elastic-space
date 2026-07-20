@@ -3,6 +3,42 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-19 — Claude (with James) — drift exits locked to three: door, blank frame, register
+
+- James fixed the world's drift exits at exactly three: the shop door, the unpainted
+  (blank) mandala frame, and the cash register. The floor-urn exit (`UrnFloor` /
+  `drift-bowl`) is retired — its anchor in index.html is now `drift-register` ("into the
+  cash register's drawer").
+- world.js: `bowlMesh` replaced by a `registerMeshes` set; the register spec in
+  `MESHY_SET` carries `drift: true`, and the instancing loop collects its meshes into
+  the ray targets. Clicking the register fires `drift-register`.
+- Poster-preview images are no longer drift links (James: visitors could click out
+  before the shop even loads) — plain images now, anchor styling folded into
+  `.previews img`, poster sub text and the room-load failure message rewritten to
+  stop promising the pictures drift. Build stamp bumped to r4.
+
+## 2026-07-19 — Claude (with James) — counter sign hugs the drum, glows like the door sign
+
+- Counter SANNA sign rebuilt as five per-letter glyphs (`SignCounter_0..4` in build.py)
+  wrapped around the drum axis at r 1.212 — the old single flat text sat at local y 1.26
+  in front of a r 1.2 curved face, so it floated off the wood (a flat plane can't touch a
+  cylinder). Back faces verified at exactly r 1.200 via headless measure script before
+  the build edit; exported GLB node positions verified at r 1.212. room.glb re-exported
+  headless (layout.js untouched, guard held). First export read "ANNAS" from the room —
+  +phi runs right-to-left from the viewer's side; arc index flipped and re-exported.
+- Counter letters join the door sign's lit treatment in world.js (`SignSanna` emissive
+  0xd9a45b @ 0.55, condition extended to `SignCounter*`) — they read near-black unlit
+  down at z 0.8.
+
+## 2026-07-19 — Claude (with James) — ceiling light settled way down
+
+- Center ridge lantern: tried 4.5 (25% of original 18) per James, still "way too bright" —
+  settled at 1.8 (10% of original; history: 18 → 9 → 5.4 → 4.5 → 1.8).
+  James had started to ask for "absolutely no light up in the top of the ceiling" in the
+  2026-07-19 ~2 AM session but interrupted himself before it was built; today's call is to
+  keep the ceiling light, at a quarter of full. Note the light was never actually removed —
+  this is a brightness settle, not a restoration.
+
 ## 2026-07-18 — Claude (with James) — the shop gets a real door; the outside is retired
 
 - Meshy shop door (James's library asset, `assets/door/shop-door.glb`, 1.19×2.80m
