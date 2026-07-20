@@ -233,6 +233,405 @@ function drawJellies(time, dt) {
   });
 }
 
+// ---- Jerry: 3D-rendered cell, composited from per-part Blender layers ----
+// Layers rendered from tmp/pelagic-lantern-habitat/pelagic-jerry.blend
+// (jerry_build.py + jerry_export.py). All PNGs share one square camera frame,
+// so they stack pixel-aligned; each part animates independently.
+const JERRY_DEFAULTS = {
+  style: "c3d",     // "c3d" = Blender layers | "dom" = pool Jerry verbatim (A/B)
+  motion: "orbit",  // "orbit" = swims around the habitat | "drift" = stays near anchor
+  u: 0.45,          // anchor (drift) / orbit center (orbit), plate NDC
+  v: 0.36,
+  size: 0.5,        // sprite frame width as fraction of plate width
+  goo: 0.92,        // cytoplasm/membrane layer opacity
+  aura: 0.9,
+  ringSpeed: 1,
+  pulse: 1,         // organelle pulse intensity
+  drift: 1,         // organelle drift amplitude
+  swim: 1,          // whole-cell speed (wander and orbit)
+  orbitR: 0.3,      // orbit radius, plate NDC
+  orbitPeriod: 45,  // seconds per lap
+  backScale: 0.32,  // size at the far side of the orbit
+  backDim: 0.45,    // opacity at the far side
+  organGlow: 0.35,  // DOM Jerry: latent-organelle visibility
+};
+const JERRY_STORE_KEY = "pelagic-jerry-tuner";
+const jerryConfig = { ...JERRY_DEFAULTS };
+try {
+  Object.assign(jerryConfig, JSON.parse(localStorage.getItem(JERRY_STORE_KEY) || "{}"));
+} catch (error) { /* fresh defaults */ }
+
+// name, draw order back-to-front, and per-part motion:
+// drift = offset amplitude (fraction of sprite), dp = drift period ms,
+// pulse = scale amplitude, pp = pulse period ms, alpha = [base, wobble, period]
+const JERRY_PARTS = [
+  { name: "aura", pulse: 0.015, pp: 5200, alpha: [0.85, 0.15, 5200], cfgAlpha: "aura" },
+  { name: "dark", drift: 0.004, dp: 17000, spin: 4, sp: 23000, alpha: [0.9, 0.1, 9000] },
+  { name: "vesicle-a", drift: 0.01, dp: 8000, pulse: 0.06, pp: 5000 },
+  { name: "vesicle-b", drift: 0.009, dp: 9600, pulse: 0.05, pp: 6200 },
+  { name: "mito-a", drift: 0.008, dp: 9000, spin: 6, sp: 12000 },
+  { name: "mito-b", drift: 0.008, dp: 11000, spin: 5, sp: 14000 },
+  { name: "mito-c", drift: 0.007, dp: 7400, spin: 7, sp: 10000 },
+  { name: "golgi", drift: 0.005, dp: 12000, pulse: 0.05, pp: 11000 },
+  { name: "ribo", drift: 0.012, dp: 7000, alpha: [0.75, 0.25, 3000] },
+  { name: "crystal", drift: 0.006, dp: 10000, spin: 10, sp: 13000, alpha: [0.85, 0.15, 4000] },
+  { name: "seed", drift: 0.01, dp: 8200, pulse: 0.05, pp: 7000 },
+  { name: "void", drift: 0.005, dp: 9000, alpha: [0.7, 0.3, 6000] },
+  { name: "nucleus", drift: 0.005, dp: 13000, pulse: 0.04, pp: 7500 },
+  { name: "goo", pulse: 0.012, pp: 6800, cfgAlpha: "goo" },
+];
+
+// rings are drawn as 1px canvas ellipses in pool geometry (site.css .ring-a/b/c),
+// not rendered layers — James 2026-07-19: pool ring look is "correct", keep parity.
+// [w, h] as fractions of the sprite frame, base rotation deg, spin period ms
+// (negative = reverse), stroke color.
+const JERRY_RINGS = [
+  { w: 0.68, h: 0.68, rot: 0, spin: 20000, color: "rgba(175, 255, 235, 0.18)" },
+  { w: 0.54, h: 0.86, rot: 25, spin: 16000, color: "rgba(255, 211, 132, 0.2)" },
+  { w: 0.92, h: 0.92, rot: -18, spin: -32000, color: "rgba(255, 110, 168, 0.16)" },
+];
+
+function drawJerryRings(time, spriteW, poseAlpha) {
+  JERRY_RINGS.forEach((ring) => {
+    context.save();
+    context.rotate((ring.rot * Math.PI) / 180
+      + (time * jerryConfig.ringSpeed / ring.spin) * Math.PI * 2);
+    context.strokeStyle = ring.color;
+    context.globalAlpha = poseAlpha;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.ellipse(0, 0, (ring.w * spriteW) / 2, (ring.h * spriteW) / 2, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  });
+}
+
+// ---- nucleus interest: the little brain notices things ----
+// Eases toward the cursor when it moves, otherwise the nearest jelly, otherwise
+// the beacon. Travel is clamped so it reads as attention, not an eyeball.
+const jerryNucleus = { ox: 0, oy: 0, tx: 0, ty: 0, nextPick: 0 };
+const jerryCursor = { x: -1, y: -1, at: -Infinity };
+window.addEventListener("pointermove", (event) => {
+  jerryCursor.x = event.clientX;
+  jerryCursor.y = event.clientY;
+  jerryCursor.at = performance.now();
+});
+
+function updateJerryNucleus(time, dt, p, spriteW) {
+  if (time > jerryNucleus.nextPick) {
+    jerryNucleus.nextPick = time + 2400 + Math.random() * 2600;
+    let target = null;
+    if (time - jerryCursor.at < 4000) {
+      target = { x: jerryCursor.x, y: jerryCursor.y };
+    } else if (jellies.length) {
+      let best = Infinity;
+      jellies.forEach((jelly) => {
+        const jp = toScreen(jelly.u, jelly.v);
+        const d = (jp.x - p.x) ** 2 + (jp.y - p.y) ** 2;
+        if (d < best) { best = d; target = jp; }
+      });
+    } else {
+      target = toScreen(HOTSPOTS.beacon.u, HOTSPOTS.beacon.v);
+    }
+    const dx = target.x - p.x;
+    const dy = target.y - p.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const travel = spriteW * 0.05;
+    jerryNucleus.tx = (dx / len) * travel;
+    jerryNucleus.ty = (dy / len) * travel;
+  }
+  const ease = Math.min(1, dt * 0.0012);
+  jerryNucleus.ox += (jerryNucleus.tx - jerryNucleus.ox) * ease;
+  jerryNucleus.oy += (jerryNucleus.ty - jerryNucleus.oy) * ease;
+}
+
+const jerryLayers = new Map();
+JERRY_PARTS.forEach((part, index) => {
+  const img = new Image();
+  img.src = `assets/jerry/${part.name}.png`;
+  jerryLayers.set(part.name, img);
+  part.phase = index * 1.7; // stagger every animator
+});
+
+// station cutout: the plate's own station pixels masked by the Blender-rendered
+// silhouette (assets/jerry/station-mask.png), drawn over Jerry when his orbit
+// takes him behind the habitat. Pixel-identical to the plate, so no seam.
+const stationMask = new Image();
+stationMask.src = "assets/jerry/station-mask.png";
+let stationCutout = null;
+
+function getStationCutout() {
+  if (stationCutout) return stationCutout;
+  const plateImg = document.getElementById("plate");
+  if (!stationMask.complete || !stationMask.naturalWidth
+    || !plateImg || !plateImg.complete || !plateImg.naturalWidth) return null;
+  const off = document.createElement("canvas");
+  off.width = stationMask.naturalWidth;
+  off.height = stationMask.naturalHeight;
+  const octx = off.getContext("2d");
+  octx.drawImage(stationMask, 0, 0);
+  octx.globalCompositeOperation = "source-in";
+  octx.drawImage(plateImg, 0, 0, off.width, off.height);
+  stationCutout = off;
+  return stationCutout;
+}
+
+function drawStationCutout() {
+  const cutout = getStationCutout();
+  if (!cutout) return;
+  const m = coverMapping();
+  context.drawImage(cutout, m.ox, m.oy, PLATE_W * m.scale, PLATE_H * m.scale);
+}
+
+// where is Jerry right now? position, size factor, opacity, and depth
+// (z: 1 = nearest, -1 = far side of the orbit)
+function jerryPose(time) {
+  const t = time * 0.001 * jerryConfig.swim;
+  const wanderU = Math.sin(t * 0.021) * 0.018 + Math.sin(t * 0.0053) * 0.03;
+  const wanderV = Math.sin(t * 0.017 + 1.3) * 0.014 + Math.cos(t * 0.0041) * 0.02;
+  if (jerryConfig.motion === "drift") {
+    return { u: jerryConfig.u + wanderU, v: jerryConfig.v + wanderV, k: 1, alpha: 1, z: 1 };
+  }
+  const angle = (t / jerryConfig.orbitPeriod) * Math.PI * 2;
+  const z = Math.cos(angle);
+  const depth = (z + 1) / 2;
+  return {
+    u: jerryConfig.u + Math.sin(angle) * jerryConfig.orbitR + wanderU * 0.4,
+    v: jerryConfig.v + z * jerryConfig.orbitR * 0.18 + wanderV * 0.4,
+    k: jerryConfig.backScale + (1 - jerryConfig.backScale) * depth,
+    alpha: jerryConfig.backDim + (1 - jerryConfig.backDim) * depth,
+    z,
+  };
+}
+
+function drawJerry(time, dt) {
+  const pose = jerryPose(time);
+  if (jerryConfig.style === "dom") {
+    updateDomJerry(time, dt, pose);
+    if (pose.z < 0) drawStationCutout();
+    return;
+  }
+  if (domJerry) domJerry.style.display = "none";
+  const m = coverMapping();
+  const spriteW = jerryConfig.size * PLATE_W * m.scale * pose.k;
+  const p = toScreen(pose.u, pose.v);
+  updateJerryNucleus(time, dt, p, spriteW);
+
+  JERRY_PARTS.forEach((part) => {
+    const img = jerryLayers.get(part.name);
+    if (!img.complete || !img.naturalWidth) return;
+    context.save();
+    context.translate(p.x, p.y);
+    if (part.name === "nucleus") {
+      context.translate(jerryNucleus.ox, jerryNucleus.oy);
+    }
+    {
+      if (part.spin) {
+        context.rotate(Math.sin(time * ((Math.PI * 2) / part.sp) + part.phase)
+          * (part.spin * Math.PI / 180) * jerryConfig.drift);
+      }
+      if (part.drift) {
+        const a = part.drift * spriteW * jerryConfig.drift;
+        context.translate(
+          Math.sin(time * ((Math.PI * 2) / part.dp) + part.phase) * a,
+          Math.cos(time * ((Math.PI * 2) / (part.dp * 1.27)) + part.phase * 2) * a,
+        );
+      }
+      if (part.pulse) {
+        const s = 1 + Math.sin(time * ((Math.PI * 2) / part.pp) + part.phase)
+          * part.pulse * jerryConfig.pulse;
+        context.scale(s, s);
+      }
+    }
+    let alpha = 1;
+    if (part.alpha) {
+      alpha = part.alpha[0] + part.alpha[1]
+        * Math.sin(time * ((Math.PI * 2) / part.alpha[2]) + part.phase) * jerryConfig.pulse;
+    }
+    if (part.cfgAlpha) alpha *= jerryConfig[part.cfgAlpha];
+    context.globalAlpha = Math.max(0, Math.min(1, alpha * pose.alpha));
+    context.drawImage(img, -spriteW / 2, -spriteW / 2, spriteW, spriteW);
+    context.restore();
+  });
+  context.save();
+  context.translate(p.x, p.y);
+  drawJerryRings(time, spriteW, pose.alpha);
+  context.restore();
+  if (pose.z < 0) drawStationCutout();
+}
+
+// ---- DOM Jerry: pool Jerry verbatim (markup + CSS lifted from jerrys-pool) ----
+let domJerry = null;
+
+function buildDomJerry() {
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "assets/jerry/dom-jerry.css";
+  document.head.append(link);
+  domJerry = document.createElement("div");
+  domJerry.id = "jerry-dom";
+  domJerry.style.display = "none";
+  domJerry.innerHTML = `
+    <div class="orbital">
+      <div class="orb">
+        <span class="organelle nucleus-core"></span>
+        <span class="organelle vesicle vesicle-a"></span>
+        <span class="organelle vesicle vesicle-b"></span>
+        <span class="organelle filament-core"></span>
+        <span class="organelle mitochondrion mitochondrion-a"></span>
+        <span class="organelle mitochondrion mitochondrion-b"></span>
+        <span class="organelle mitochondrion mitochondrion-c"></span>
+        <span class="organelle golgi-body"></span>
+        <span class="organelle ribosome-cloud"></span>
+        <span class="organelle alien-crystal"></span>
+        <span class="organelle alien-seed"></span>
+        <span class="organelle alien-void"></span>
+        <span class="organelle dark-organelle dark-organelle-a"></span>
+        <span class="organelle dark-organelle dark-organelle-b"></span>
+        <span class="organelle dark-organelle dark-organelle-c"></span>
+        <span class="organelle dark-organelle dark-organelle-d"></span>
+        <span class="organelle dark-organelle dark-organelle-e"></span>
+      </div>
+      <div class="ring ring-a"></div>
+      <div class="ring ring-b"></div>
+      <div class="ring ring-c"></div>
+    </div>`;
+  domJerry.style.transform = "translate(-50%, -50%)";
+  // below #sea-canvas, above #plate
+  const seaCanvas = document.getElementById("sea-canvas");
+  seaCanvas.parentNode.insertBefore(domJerry, seaCanvas);
+}
+
+function updateDomJerry(time, dt, pose) {
+  if (!domJerry) buildDomJerry();
+  const m = coverMapping();
+  const p = toScreen(pose.u, pose.v);
+  updateJerryNucleus(time, dt, p, jerryConfig.size * PLATE_W * m.scale * pose.k);
+  // DOM orb is 42% of its .orbital box (pool proportions), close to the 3D
+  // membrane's share of the sprite frame, so both styles read the same size
+  const w = jerryConfig.size * PLATE_W * m.scale * pose.k;
+  domJerry.style.display = "block";
+  domJerry.style.left = `${p.x}px`;
+  domJerry.style.top = `${p.y}px`;
+  domJerry.style.width = `${w}px`;
+  domJerry.style.opacity = pose.alpha.toFixed(3);
+  domJerry.style.setProperty("--jdom-organ-glow", jerryConfig.organGlow);
+  // idle life the pool drives from JS: cytoplasm/filament slow churn,
+  // vesicle shift, nucleus wander
+  const t = time * 0.001;
+  const orbital = domJerry.firstElementChild;
+  orbital.style.setProperty("--cell-cytoplasm-rotate", `${(t * 2.1) % 360}deg`);
+  orbital.style.setProperty("--cell-filament-rotate", `${(-t * 1.4) % 360}deg`);
+  orbital.style.setProperty("--cell-vesicle-shift", `${Math.sin(t * 0.5) * 4}px`);
+  orbital.style.setProperty("--cell-nucleus-x", `${jerryNucleus.ox.toFixed(1)}px`);
+  orbital.style.setProperty("--cell-nucleus-y", `${jerryNucleus.oy.toFixed(1)}px`);
+  orbital.style.setProperty("--cell-membrane-scale", (1 + Math.sin(t * 0.9) * 0.012).toFixed(4));
+  orbital.style.setProperty("--cell-cytoplasm-scale", (1 + Math.sin(t * 0.7 + 2) * 0.02).toFixed(4));
+}
+
+// ---- Jerry tuner panel (Chrome Rift pattern; state in localStorage) ----
+function buildJerryTuner() {
+  const style = document.createElement("style");
+  style.textContent = `
+    #jerry-tuner-toggle { position: fixed; left: 14px; bottom: 14px; z-index: 40;
+      width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(160, 225, 255, 0.4);
+      background: rgba(8, 24, 40, 0.72); color: #9fdcff; font: 14px/1 "Trebuchet MS", sans-serif;
+      cursor: pointer; opacity: 0.55; transition: opacity 200ms; }
+    #jerry-tuner-toggle:hover { opacity: 1; }
+    #jerry-tuner { position: fixed; left: 12px; bottom: 56px; z-index: 40; width: 240px;
+      padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(160, 225, 255, 0.3);
+      background: rgba(6, 18, 32, 0.88); color: #cfeaff;
+      font: 11px/1.5 "Trebuchet MS", sans-serif; display: none; }
+    #jerry-tuner.open { display: block; }
+    #jerry-tuner label { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+    #jerry-tuner label span { width: 74px; flex: none; }
+    #jerry-tuner input[type="range"] { flex: 1; accent-color: #6fc8ff; }
+    #jerry-tuner button { margin-top: 8px; padding: 3px 10px; border-radius: 6px;
+      border: 1px solid rgba(160, 225, 255, 0.35); background: none; color: #9fdcff;
+      font: 11px "Trebuchet MS", sans-serif; cursor: pointer; }
+  `;
+  document.head.append(style);
+
+  const toggle = document.createElement("button");
+  toggle.id = "jerry-tuner-toggle";
+  toggle.type = "button";
+  toggle.textContent = "J";
+  toggle.title = "Jerry tuner";
+  const panel = document.createElement("div");
+  panel.id = "jerry-tuner";
+
+  // A/B toggles: render style and motion mode
+  const TOGGLES = [
+    ["style", { c3d: "3D layers", dom: "pool verbatim" }],
+    ["motion", { orbit: "orbit", drift: "drift" }],
+  ];
+  const toggleButtons = [];
+  TOGGLES.forEach(([key, labels]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    const paint = () => { btn.textContent = `${key}: ${labels[jerryConfig[key]]}`; };
+    paint();
+    btn.addEventListener("click", () => {
+      const values = Object.keys(labels);
+      jerryConfig[key] = values[(values.indexOf(jerryConfig[key]) + 1) % values.length];
+      localStorage.setItem(JERRY_STORE_KEY, JSON.stringify(jerryConfig));
+      paint();
+    });
+    btn.repaint = paint;
+    toggleButtons.push(btn);
+    panel.append(btn);
+  });
+
+  const sliders = [
+    ["u", "position x", 0, 1, 0.005],
+    ["v", "position y", 0, 1, 0.005],
+    ["size", "size", 0.1, 1, 0.01],
+    ["goo", "goo opacity", 0, 1, 0.02],
+    ["aura", "aura", 0, 1, 0.02],
+    ["ringSpeed", "ring speed", 0, 3, 0.05],
+    ["pulse", "pulse", 0, 2.5, 0.05],
+    ["drift", "organ drift", 0, 2.5, 0.05],
+    ["swim", "swim speed", 0, 3, 0.05],
+    ["orbitR", "orbit radius", 0.05, 0.45, 0.005],
+    ["orbitPeriod", "orbit lap s", 10, 120, 1],
+    ["backScale", "far size", 0.1, 1, 0.02],
+    ["backDim", "far dim", 0, 1, 0.02],
+    ["organGlow", "organ glow", 0, 1, 0.02],
+  ];
+  sliders.forEach(([key, label, min, max, step]) => {
+    const row = document.createElement("label");
+    const caption = document.createElement("span");
+    caption.textContent = label;
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = min;
+    input.max = max;
+    input.step = step;
+    input.value = jerryConfig[key];
+    input.addEventListener("input", () => {
+      jerryConfig[key] = Number(input.value);
+      localStorage.setItem(JERRY_STORE_KEY, JSON.stringify(jerryConfig));
+    });
+    row.append(caption, input);
+    panel.append(row);
+  });
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.textContent = "reset";
+  reset.addEventListener("click", () => {
+    Object.assign(jerryConfig, JERRY_DEFAULTS);
+    localStorage.removeItem(JERRY_STORE_KEY);
+    panel.querySelectorAll("input").forEach((input, index) => {
+      input.value = jerryConfig[sliders[index][0]];
+    });
+    toggleButtons.forEach((btn) => btn.repaint());
+  });
+  panel.append(reset);
+  toggle.addEventListener("click", () => panel.classList.toggle("open"));
+  document.body.append(toggle, panel);
+}
+buildJerryTuner();
+
 // ---- frame loop ----
 let lastTime = 0;
 
@@ -254,6 +653,7 @@ function animate(time) {
   drawMotes(time, dt);
   drawJellies(time, dt);
   drawBubbles(time, dt);
+  drawJerry(time, dt);
   drawBeacon(time);
   requestAnimationFrame(animate);
 }

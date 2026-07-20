@@ -8,6 +8,19 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-19 (Pelagic: 3D Jerry cameo)
+
+- Pelagic Lantern Habitat: 3D Jerry shipped — Blender-built cell (headless, scripted:
+  jerry_build.py) at beach-ball scale, exported as per-part transparent layers composited
+  by a new canvas rig in world.js; orbit path behind the station via a masked-plate cutout;
+  DOM pool-Jerry ported verbatim as an A/B alternate; "J" tuner panel (localStorage).
+- Look co-directed over ~13 lookdev renders; washout root-caused numerically (70W inner
+  lamp clipping layers to white + gradients running along the depth axis) — fixed with
+  sub-clip emissions, Standard view transform, face-plane diagonal gradients, violet
+  cytoplasm. Nucleus "interest" system eases toward cursor/jellies/beacon.
+- Open at close: true-3D rotation fork (pseudo-3D layer rig vs three.js GLB) undecided;
+  James questioning the world's purpose — may precede further polish with that conversation.
+
 ## 2026-07-18 (Orb Dimension: skull era)
 
 - Orb dimension v14–v33 (two nights): NMS-style flight matured (persistent banking,
