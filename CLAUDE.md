@@ -65,9 +65,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
   panel's "show dashboard icons" toggle (localStorage key `elastic-dashboard-icons`) shows/hides
   these icons site-wide; sound icons are unaffected. Every new page must include
   dashboard-control.js.
-- New worlds still get a direct link in the admin panel's Pages list as part of shipping.
-  Gallery worlds also get a "curate" pill in their row (`.page-row` / `.curate-link`) linking
-  to the world with `?curate=1`.
+- The worlds list is two sections since 2026-07-19: "In progress worlds" (Welcome pinned
+  on top) and "Completed worlds", each alphabetized ignoring a leading "The". New worlds
+  still get a direct link — into "In progress worlds" — as part of shipping. Gallery
+  worlds also get a "curate" pill in their row (`.page-row` / `.curate-link`) linking to
+  the world with `?curate=1`. Each world row ends in a kebab (⋮) menu (served copy only)
+  holding "move to completed"/"move to in progress" (via `POST /api/worlds/:slug/status`,
+  which rewrites index.html keeping the sort) and "archive". James never wants the
+  archive action visible outside the kebab.
 - `welcome.html` at the repo root is the visitor-facing front door (line-drawing Jerry on dark
   blue; clicking him enters Jerry's Pool — an intentional fixed route, no `data-drift`). At
   publish time it becomes the public site's `index.html` in place of the admin panel. Root-level

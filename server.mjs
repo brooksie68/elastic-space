@@ -601,17 +601,15 @@ async function regenerateWorldRegistry() {
   });
 }
 
-// Drop an archived world's row from the admin panel's static Pages list.
-// Rows are either a single <a> line or a .page-row <div> wrapping the world
-// link plus utility pills (e.g. curate); the file is one element per line.
-async function removeWorldFromAdminIndex(slug) {
-  const indexPath = join(rootDir, "index.html");
-  const lines = (await readFile(indexPath, "utf8")).split("\n");
+// Locate a world's row in the admin panel's static worlds lists. Rows are
+// either a single <a> line or a .page-row <div> wrapping the world link plus
+// utility pills (e.g. curate); the file is one element per line.
+function findWorldRowRange(lines, slug) {
   const needle = `href="./src/worlds/${slug}/index.html"`;
   const anchorAt = lines.findIndex((line) => line.includes(needle));
 
   if (anchorAt === -1) {
-    return false;
+    return null;
   }
 
   let start = anchorAt;
@@ -627,11 +625,93 @@ async function removeWorldFromAdminIndex(slug) {
       end += 1;
     }
     if (end === lines.length) {
-      return false;
+      return null;
     }
   }
 
-  lines.splice(start, end - start + 1);
+  return { start, end };
+}
+
+// Drop an archived world's row from the admin panel's static worlds lists.
+async function removeWorldFromAdminIndex(slug) {
+  const indexPath = join(rootDir, "index.html");
+  const lines = (await readFile(indexPath, "utf8")).split("\n");
+  const range = findWorldRowRange(lines, slug);
+
+  if (!range) {
+    return false;
+  }
+
+  lines.splice(range.start, range.end - range.start + 1);
+  await writeFile(indexPath, lines.join("\n"), "utf8");
+  return true;
+}
+
+// The lists alphabetize ignoring a leading "The"; non-world rows (Welcome)
+// return an empty key and are never used as insertion points.
+function worldRowSortKey(rowLines) {
+  for (const line of rowLines) {
+    const match = line.match(/href="\.\/src\/worlds\/[a-z0-9-]+\/index\.html"[^>]*>([^<]+)</);
+    if (match) {
+      return match[1].trim().replace(/^the\s+/i, "").toLowerCase();
+    }
+  }
+  return "";
+}
+
+// Move a world's row between the admin panel's "In progress worlds" and
+// "Completed worlds" lists, preserving alphabetical order.
+async function moveWorldRowInAdminIndex(slug, status) {
+  const indexPath = join(rootDir, "index.html");
+  const lines = (await readFile(indexPath, "utf8")).split("\n");
+  const range = findWorldRowRange(lines, slug);
+
+  if (!range) {
+    return false;
+  }
+
+  const rowLines = lines.splice(range.start, range.end - range.start + 1);
+  const navLabel = status === "completed" ? "Completed worlds" : "In progress worlds";
+  const navAt = lines.findIndex((line) =>
+    line.includes(`<nav class="pages-list" aria-label="${navLabel}"`),
+  );
+
+  if (navAt === -1) {
+    return false;
+  }
+
+  let navEnd = navAt + 1;
+  while (navEnd < lines.length && !lines[navEnd].trim().startsWith("</nav>")) {
+    navEnd += 1;
+  }
+  if (navEnd === lines.length) {
+    return false;
+  }
+
+  const key = worldRowSortKey(rowLines);
+  let insertAt = navEnd;
+  let cursor = navAt + 1;
+  while (cursor < navEnd) {
+    const trimmed = lines[cursor].trim();
+    let entryEnd = cursor;
+    if (trimmed.startsWith('<div class="page-row"')) {
+      while (entryEnd < navEnd && !lines[entryEnd].trim().startsWith("</div>")) {
+        entryEnd += 1;
+      }
+    } else if (!trimmed.startsWith("<a")) {
+      cursor += 1;
+      continue;
+    }
+
+    const entryKey = worldRowSortKey(lines.slice(cursor, entryEnd + 1));
+    if (entryKey && key < entryKey) {
+      insertAt = cursor;
+      break;
+    }
+    cursor = entryEnd + 1;
+  }
+
+  lines.splice(insertAt, 0, ...rowLines);
   await writeFile(indexPath, lines.join("\n"), "utf8");
   return true;
 }
@@ -855,8 +935,11 @@ async function handleApi(request, response, pathname) {
     draft.engaged = new Date().toISOString();
     await writeDrafts(drafts);
     const todoAdded = await addClaudeTodo(
-      `Engaged world draft "${draft.title}" — read it in world-drafts.json (id: ${draft.id}), ` +
-        "ask James your questions (or show a build plan) and wait for his go before building.",
+      `Engaged world draft "${draft.title}" — read it in world-drafts.json (id: ${draft.id}). ` +
+        "Engage means DISCUSS, not build: ask James your questions, then present a build plan, " +
+        "then talk it through with him. Do NOT write any world code — not even a scaffold — " +
+        "until he gives an explicit go on the discussed plan. This applies even if the idea " +
+        "was originally Claude's.",
     );
     sendJson(response, 200, { ...draft, todoAdded });
     return true;
@@ -966,6 +1049,40 @@ async function handleApi(request, response, pathname) {
       result.warning = "No matching row found in the admin panel's Pages list; remove it by hand.";
     }
     sendJson(response, 200, result);
+    return true;
+  }
+
+  const statusMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/status$/i);
+  if (statusMatch) {
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const statusSlug = slugify(statusMatch[1]);
+    if (!isValidSlug(statusSlug)) {
+      sendJson(response, 400, { error: "Invalid world slug." });
+      return true;
+    }
+
+    const payload = await readBody(request);
+    const status = payload?.status;
+    if (status !== "in-progress" && status !== "completed") {
+      sendJson(response, 400, {
+        error: 'status must be "in-progress" or "completed".',
+      });
+      return true;
+    }
+
+    const moved = await moveWorldRowInAdminIndex(statusSlug, status);
+    if (!moved) {
+      sendJson(response, 404, {
+        error: "No matching row found in the admin panel's worlds lists.",
+      });
+      return true;
+    }
+
+    sendJson(response, 200, { slug: statusSlug, status });
     return true;
   }
 

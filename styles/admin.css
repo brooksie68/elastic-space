@@ -10,6 +10,7 @@
   --accent: #ffcf78;
   --accent-soft: rgba(255, 207, 120, 0.18);
   --danger: #ff8079;
+  --highlight: rgba(104, 158, 255, 0.22);
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
 }
 
@@ -272,6 +273,11 @@ h2 {
   justify-content: space-between;
 }
 
+/* Second heading inside the worlds panel ("Completed worlds") */
+.panel-head.completed-head {
+  margin-top: 2rem;
+}
+
 .meta-grid,
 .relationships,
 .files {
@@ -363,7 +369,7 @@ h2 {
 
 .draft-card:hover,
 .draft-card:focus-visible {
-  background: var(--accent-soft);
+  background: var(--highlight);
   border-color: var(--line-strong);
 }
 
@@ -547,6 +553,18 @@ h2 {
   padding: 0.55rem 0.85rem;
 }
 
+/* The two masthead cards stretch to the same height, contents centered */
+.server-card,
+.chrome-card {
+  align-self: stretch;
+}
+
+.chrome-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .chrome-card .eyebrow {
   margin: 0 0 0.3rem;
 }
@@ -576,6 +594,7 @@ h2 {
 }
 
 .server-state {
+  color: var(--accent);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -612,8 +631,8 @@ h2 {
 }
 
 .tab-button.active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--highlight);
+  color: var(--text);
 }
 
 .tab-panel {
@@ -628,6 +647,11 @@ h2 {
 .pages-panel,
 .controls-panel {
   padding: 1.25rem 1.5rem;
+}
+
+/* Section titles match the gold accent used by eyebrows and summary labels */
+.pages-panel .panel-head h2 {
+  color: var(--accent);
 }
 
 .pages-list {
@@ -655,7 +679,7 @@ h2 {
 
 .pages-list a:hover,
 .pages-list a:focus-visible {
-  background: var(--accent-soft);
+  background: var(--highlight);
   padding-left: 1rem;
 }
 
@@ -674,8 +698,8 @@ h2 {
   border-bottom: 0;
 }
 
-/* Title hugs the left with the curate pill beside it; archive sits alone on
-   the right so the pill is nowhere near the destructive button. */
+/* Title hugs the left with the curate pill beside it; the kebab menu sits
+   alone on the right so utility pills stay clear of destructive choices. */
 .pages-list .page-row a:first-child {
   flex: 0 1 auto;
 }
@@ -684,7 +708,7 @@ h2 {
   margin-left: 0.75rem;
 }
 
-.pages-list .page-row .archive-button {
+.pages-list .page-row .kebab-wrap {
   margin-left: auto;
 }
 
@@ -701,31 +725,68 @@ h2 {
 
 .pages-list a.curate-link:hover,
 .pages-list a.curate-link:focus-visible {
-  background: var(--accent-soft);
+  background: var(--highlight);
   color: var(--text);
   padding-left: 0.7rem;
 }
 
-/* Archive buttons + confirm dialog (injected by map-room.js when served) */
-.pages-list .archive-button {
+/* Kebab row menus + archive confirm dialog (injected by map-room.js when served) */
+.pages-list .kebab-wrap {
+  margin-right: 0.4rem;
+  position: relative;
+}
+
+.pages-list .kebab-button {
   background: none;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  border: 0;
+  border-radius: 5px;
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  margin-right: 0.6rem;
-  padding: 0.25rem 0.7rem;
-  text-transform: uppercase;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.3rem 0.55rem;
 }
 
-.pages-list .archive-button:hover,
-.pages-list .archive-button:focus-visible {
-  background: rgba(255, 128, 121, 0.14);
-  border-color: rgba(255, 128, 121, 0.4);
-  color: #ffd7d4;
+.pages-list .kebab-button:hover,
+.pages-list .kebab-button:focus-visible,
+.pages-list .kebab-button[aria-expanded="true"] {
+  background: var(--highlight);
+  color: var(--text);
+}
+
+.pages-list .kebab-menu {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  min-width: 8rem;
+  padding: 0.3rem;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 20;
+}
+
+.pages-list .kebab-item {
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.pages-list .kebab-item:hover,
+.pages-list .kebab-item:focus-visible {
+  background: var(--highlight);
 }
 
 .archive-status {

@@ -64,7 +64,7 @@
   // --- Archive buttons ---------------------------------------------------
   // Archiving moves src/worlds/<slug> into archive/ through the server API,
   // so the buttons only appear on the served copy once the server is up.
-  const pagesList = document.querySelector(".pages-list");
+  const pagesLists = [...document.querySelectorAll(".pages-list")];
   let archiveButtonsReady = false;
   let archiveDialog = null;
   let archivePending = null;
@@ -82,7 +82,7 @@
     if (!archiveStatusLine) {
       archiveStatusLine = document.createElement("p");
       archiveStatusLine.className = "small archive-status";
-      pagesList.after(archiveStatusLine);
+      pagesLists[pagesLists.length - 1].after(archiveStatusLine);
     }
     archiveStatusLine.textContent = message;
     archiveStatusLine.classList.toggle("error", Boolean(isError));
@@ -168,13 +168,103 @@
     }
   }
 
+  // --- Status moves ------------------------------------------------------
+  // The worlds panel has two lists; the kebab menu offers a move to whichever
+  // one the row is not in. The server rewrites index.html to match.
+  const LIST_LABELS = {
+    "in-progress": "In progress worlds",
+    completed: "Completed worlds",
+  };
+
+  function listFor(status) {
+    return pagesLists.find(
+      (list) => list.getAttribute("aria-label") === LIST_LABELS[status],
+    );
+  }
+
+  function sortKeyFor(text) {
+    return text.trim().replace(/^the\s+/i, "").toLowerCase();
+  }
+
+  // Insert a row alphabetically (ignoring a leading "The"); rows without a
+  // world slug (Welcome) are never insertion points, so Welcome stays on top.
+  function insertRowSorted(list, row) {
+    const key = sortKeyFor(row.querySelector("a").textContent);
+    for (const entry of list.children) {
+      if (entry === row) {
+        continue;
+      }
+      const anchor = entry.matches("a") ? entry : entry.querySelector("a");
+      if (!anchor || !worldSlugFor(anchor)) {
+        continue;
+      }
+      if (key < sortKeyFor(anchor.textContent)) {
+        list.insertBefore(row, entry);
+        return;
+      }
+    }
+    list.append(row);
+  }
+
+  async function moveWorldRow(slug, title, row, moveItem) {
+    const inCompleted = row.closest(".pages-list") === listFor("completed");
+    const target = inCompleted ? "in-progress" : "completed";
+
+    try {
+      const response = await fetch(`/api/worlds/${slug}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: target }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error || `Move failed (${response.status}).`);
+      }
+
+      insertRowSorted(listFor(target), row);
+      moveItem.textContent =
+        target === "completed" ? "move to in progress" : "move to completed";
+      flashArchiveStatus(`"${title}" moved to ${LIST_LABELS[target].toLowerCase()}.`);
+    } catch (error) {
+      flashArchiveStatus(error.message, true);
+    }
+  }
+
+  // Each world row ends in a kebab (⋮) menu; destructive choices like
+  // archive live inside it, out of sight until asked for.
+  let openKebab = null;
+
+  function closeKebab() {
+    if (!openKebab) {
+      return;
+    }
+    openKebab.menu.hidden = true;
+    openKebab.button.setAttribute("aria-expanded", "false");
+    openKebab = null;
+  }
+
+  document.addEventListener("click", (event) => {
+    if (openKebab && !openKebab.wrap.contains(event.target)) {
+      closeKebab();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && openKebab) {
+      const { button } = openKebab;
+      closeKebab();
+      button.focus();
+    }
+  });
+
   function injectArchiveButtons() {
-    if (archiveButtonsReady || !served || !pagesList) {
+    if (archiveButtonsReady || !served || pagesLists.length === 0) {
       return;
     }
     archiveButtonsReady = true;
 
-    for (const anchor of [...pagesList.querySelectorAll("a")]) {
+    const anchors = pagesLists.flatMap((list) => [...list.querySelectorAll("a")]);
+    for (const anchor of anchors) {
       if (anchor.classList.contains("curate-link")) {
         continue;
       }
@@ -193,15 +283,57 @@
       }
 
       const title = anchor.textContent.trim();
+
+      const wrap = document.createElement("div");
+      wrap.className = "kebab-wrap";
+
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "archive-button";
-      button.textContent = "archive";
-      button.setAttribute("aria-label", `Archive ${title}`);
-      button.addEventListener("click", () => {
+      button.className = "kebab-button";
+      button.textContent = "⋮";
+      button.setAttribute("aria-label", `Options for ${title}`);
+      button.setAttribute("aria-haspopup", "menu");
+      button.setAttribute("aria-expanded", "false");
+
+      const menu = document.createElement("div");
+      menu.className = "kebab-menu";
+      menu.setAttribute("role", "menu");
+      menu.hidden = true;
+
+      const inCompleted = anchor.closest(".pages-list") === listFor("completed");
+      const moveItem = document.createElement("button");
+      moveItem.type = "button";
+      moveItem.className = "kebab-item";
+      moveItem.setAttribute("role", "menuitem");
+      moveItem.textContent = inCompleted ? "move to in progress" : "move to completed";
+      moveItem.addEventListener("click", () => {
+        closeKebab();
+        moveWorldRow(slug, title, row, moveItem);
+      });
+
+      const archiveItem = document.createElement("button");
+      archiveItem.type = "button";
+      archiveItem.className = "kebab-item danger";
+      archiveItem.setAttribute("role", "menuitem");
+      archiveItem.textContent = "archive";
+      archiveItem.addEventListener("click", () => {
+        closeKebab();
         confirmArchive(slug, title, row);
       });
-      row.append(button);
+      menu.append(moveItem, archiveItem);
+
+      button.addEventListener("click", () => {
+        const isOpen = openKebab && openKebab.button === button;
+        closeKebab();
+        if (!isOpen) {
+          menu.hidden = false;
+          button.setAttribute("aria-expanded", "true");
+          openKebab = { wrap, button, menu };
+        }
+      });
+
+      wrap.append(button, menu);
+      row.append(wrap);
     }
   }
 

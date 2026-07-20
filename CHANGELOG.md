@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-19 (Admin panel: worlds list overhaul)
+
+- Worlds list split into "In progress worlds" and "Completed worlds" sections, both
+  alphabetized ignoring a leading "The", Welcome pinned on top; "pages" eyebrow dropped.
+- Kebab (⋮) menu on every world row replaces the inline archive button: "move to
+  completed" / "move to in progress" (always the opposite of the row's section) plus
+  archive underneath. New `POST /api/worlds/:slug/status` endpoint rewrites the static
+  lists in index.html, alphabetical insert included (sim-verified).
+- Color pass: one `--highlight` azure wash for all hovers/active states (links, tabs,
+  kebab, draft cards) replacing the muddy amber-soft; section titles and "Server
+  running" in the gold accent; masthead status/chrome cards equal height.
+
 ## 2026-07-19 (Arachno-Wars: feel + systems session)
 
 - Arachno-Wars 2000, one long tuning session with James: clean practice range (no
