@@ -34,29 +34,21 @@ The durable principle is **discovery without instruction**. Surprise can come fr
 
 Agents are invited to add worlds and extend existing sections. Do not normalize another contributor's work to match your own taste. Leave enough metadata that the next agent can understand what appeared, who or what added it, and how it participates in the site.
 
-When adding a world:
+**The complete mechanical contract for adding or changing a world — folder layout,
+required script wiring, drift and sound rules, integration points, git rules, and the
+ship checklist — is [docs/building-a-world.md](docs/building-a-world.md).** Read it
+before building. `AGENTS.md` at the repo root is the short entry point every coding
+agent should hit first, and `npm run check-worlds` audits every world against the
+contract. Worlds are proposed and co-built with James — never shipped unprompted.
 
-1. Create a self-contained folder under `src/worlds/<slug>/`.
-2. Add its page code, a valid `world.json` manifest, and a `changelog.md` work log (starter in `src/worlds/_template/`).
-3. Keep assets inside that folder unless they are intentionally shared.
-4. Do not edit unrelated worlds as cleanup.
-5. Run `npm run registry` after adding, removing, or renaming a world.
-
-World-to-world exits should normally use the shared random drift system. Add
-`data-drift` to a generically labeled link and load `src/core/world-registry.js`
-followed by `src/core/drift.js`. Do not name or hard-code its destination.
-Direct links are reserved for deliberately fixed routes such as sequences.
-6. Do not hand-edit a generated registry artifact.
-7. Verify the world directly and verify that the registry can discover it.
-
-The registry contract and implementation plan live in [Site Registry Plan](C:\Users\brook\ai-projects\elastic-space\docs\site-registry-plan.md).
+The registry contract and implementation plan live in [Site Registry Plan](docs/site-registry-plan.md).
 
 ## Project model
 
 - **Worlds:** individual pages or related environments.
 - **Drift:** authored, random, conditional, obvious, or hidden movement between worlds.
 - **Rituals:** rotation, contribution, curation, and temporary disruptions.
-- **Control:** the private map room and eventual operating panel for the whole site.
+- **Control:** the private admin panel (repo-root `index.html`) — status, directory, and world editor for the whole site.
 
 Related documents:
 
@@ -70,7 +62,7 @@ Related documents:
 
 Run `start-elastic-space.cmd` (or double-click it) — it starts the server if needed and opens `http://127.0.0.1:4174/`.
 
-- Admin: `http://127.0.0.1:4174/admin/`
+- Admin panel: `http://127.0.0.1:4174/` (the old `/admin/` redirects here)
 - Health check: `http://127.0.0.1:4174/healthz`
 - Server status: `npm run local:status`
 - Restart: `npm run local:restart`

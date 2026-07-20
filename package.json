@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "registry": "node scripts/generate-world-registry.mjs",
+    "check-worlds": "node scripts/check-worlds.mjs",
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "local:start": "node scripts/local-server.mjs start",

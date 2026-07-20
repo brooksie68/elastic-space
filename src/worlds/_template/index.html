@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Replace Me</title>
+  <!-- Starter page: see docs/building-a-world.md for the full contract. -->
+  <link rel="stylesheet" href="./world.css" />
+</head>
+<body>
+  <main>
+    <h1>Replace Me</h1>
+
+    <!--
+      Drift exits: at least three, each a diegetic scene element (an object,
+      creature, sound, word — never a labeled nav control). Generic accessible
+      label; never name or choose the destination.
+    -->
+    <a data-drift href="../../../index.html" aria-label="Drift somewhere else">exit one</a>
+    <a data-drift href="../../../index.html" aria-label="Drift somewhere else">exit two</a>
+    <a data-drift href="../../../index.html" aria-label="Drift somewhere else">exit three</a>
+  </main>
+
+  <!-- Core wiring: registry+drift only if the world has drift exits;
+       dashboard-control ALWAYS; sound-control only if the world has sound
+       (and then world.js must call ElasticSoundControl.attach). -->
+  <script src="../../core/world-registry.js"></script>
+  <script src="../../core/drift.js"></script>
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="./world.js"></script>
+</body>
+</html>
