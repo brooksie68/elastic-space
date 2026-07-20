@@ -8,6 +8,17 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-19 (Arachno-Wars: feel + systems session)
+
+- Arachno-Wars 2000, one long tuning session with James: clean practice range (no
+  decorations), thinner HUD rings, smaller chevron, slower waist-seam pulse, per-player
+  hull tints (`HULL_TINT`, screen-composite tinting), real shield stat + energy-sphere /
+  HP-arc / orange power-line indicator re-map, smoothed thrust envelope, ~3s fuel,
+  always-on retro-braking (sim-verified soft landings), double-tap A/D burst run with
+  momentum-carrying rocket leaps. Detail in the world changelog.
+- Direction discovery: rapid-fire horde combat ("me against the world") is the fun —
+  logged as a todo, discussion pending.
+
 ## 2026-07-19 (Relaaax: pork field built)
 
 - New draft world **Relaaax** (`src/worlds/relaaax/`) — the Spastic Space pork.html

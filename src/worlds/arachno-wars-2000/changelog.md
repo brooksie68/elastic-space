@@ -3,6 +3,47 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-19 — Claude (with James) — HUD line-weight pass + clean practice range
+
+Direction discovery, logged for the next session: James found that unrestricted rapid-fire
+in practice mode ("strings on strings of weapons") is the fun. The game wants to be "me
+against the world" — massive blasting vs many enemies, not 1v1. Open questions (replace
+the duel or add a third mode? enemy types? per-weapon fire-rate governor?) are in the
+repo CLAUDE.md todo — discuss before building.
+
+- Practice range spawns no decorations (boulders/hoodoos/trees/grass) — `spawnDecorations()`
+  bails in practice mode; silk-bridge structures still build since they're added at fire time.
+- Armor arc and power ring stroke width 4 / 3.5 → 2 (they render heavier under camera zoom).
+- Active-tank chevron shrunk (14×9 → 9×6, bob amplitude 3 → 2).
+- Idle breath bob halved (0.0032 → 0.0016): the hull's glowing waist seam was shimmering
+  bright/dim about every ¾ s as the 1px seam crossed pixel boundaries; James wanted it slower.
+- Burst run + momentum flight: double-tap A/D sprints for ~0.6s (`RUN_TAP_MS`/`RUN_FRAMES`/
+  `RUN_EXTRA`, eased in/out via `runBoost()`, re-tap to renew; costs move budget at the
+  boosted rate in turn modes). Ground speed is captured as `moveVx` and handed to a new
+  airborne momentum channel `vx` on any takeoff (W jump or SHIFT lift), so run + jump/
+  thrust = a rocket-boosted leap; momentum bleeds at `AIR_DRAG` 0.995 and zeroes on
+  landing. Sim: walk jump carries ~94px, full-run jump ~243px. W double-tap unchanged.
+- Shields are now real: `shield`/`maxShield` (250) on each tank, full at spawn; damage in
+  `applyBlast` drains shield before HP (damage text still shows the total). Visualized as
+  an energy sphere (R=46, `drawShieldSphere`) that dims as it drains, ripples on hits, and
+  vanishes at zero. The 8-segment chitin arc stays as HP. The old power ring is replaced by
+  a small dashed orange line under the hull (`PWR_W`, readout beside it). Note: the AI's
+  was-I-hit check reads HP only, so it won't react while its shield soaks hits.
+- Flight forgiveness: fuel burn 0.9 → 0.55 (~3s of lift); the one-shot retro-burst became
+  continuous auto retro-braking near the ground (re-armed every frame while descending
+  fast within vy×10 px) — sim-verified: hop, boosted jump, and 190px drop all land at
+  1.6–1.8 px/frame (old raw hop hit at 9.5).
+- Thrust smoothing: SHIFT lift now runs through a smoothstep power envelope (`thrustT`,
+  ramps in over ~0.37s, fades out over ~0.27s after release) instead of snapping to full
+  accel; climb cap 5.5 → 3.2 px/frame, accel 0.75 → 0.62. Verified by Node sim: steady
+  controlled climb, ~40px of coast after release, no more rocketing off the top of the
+  screen. New tuning knobs THRUST_RAMP / THRUST_FADE beside the other thrust constants.
+- Hull/barrel body tint: the black-carbon part sprites were swallowing the dark legs, so
+  they're now screen-composited with a per-player colour at draw time (cached offscreen
+  canvases, `tintedSprite()`). `HULL_TINT` next to `TANK_PARTS` is the one knob:
+  player #053959 (deep blue), computer #36470F (olive). Applies in-game and on the menu
+  tanks; emissive accents keep their brightness.
+
 ## 2026-07-15 — Claude (with James) — session 2: the tanks
 
 Roadmap #10 (per-part black carbon re-render) + #19 (whip-leg motion language) shipped

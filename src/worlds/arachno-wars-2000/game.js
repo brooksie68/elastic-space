@@ -333,6 +333,7 @@ function generateTerrain() {
 // check live terrain height and skip ones buried by craters.
 function spawnDecorations() {
   decorationList = [];
+  if (mode === 'practice') return;  // clean range: no rocks, trees, or flora
   const rng = (() => {
     let s = 12345 + Math.floor(terrain[100] * 997);
     return () => { s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; };
@@ -849,6 +850,32 @@ const TANK_PARTS = ['teal', 'amber'].map(team => {
   return { hull: [0, 1, 2].map(s => load(`hull-${team}-${s}`)), barrel: load(`barrel-${team}`) };
 });
 
+// Hull/barrel body colour, one per player — THE knob to retheme a tank.
+// The part sprites are near-black carbon; each is screen-composited with this
+// colour at draw time, so black lifts to exactly this tone while the emissive
+// accents stay bright. [0] = player, [1] = computer.
+const HULL_TINT = ['#053959', '#36470F'];
+
+// Screen-tint a loaded sprite, preserving its alpha. Cached per image+colour.
+const tintCache = new Map();
+function tintedSprite(img, color) {
+  const key = img.src + '|' + color;
+  let c = tintCache.get(key);
+  if (!c) {
+    c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0);
+    g.globalCompositeOperation = 'screen';
+    g.fillStyle = color;
+    g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'destination-in';
+    g.drawImage(img, 0, 0);
+    tintCache.set(key, c);
+  }
+  return c;
+}
+
 // W is JUMP only: tap = a little hop, quick double-tap = ONE bigger boost
 // (an upgrade to the same launch, never two stacked hops). Flight is a
 // different verb and lives on SHIFT: short-term rocket thrust burning a fuel
@@ -860,10 +887,18 @@ const JUMP_BOOST    = -14.2;  // double-tap upgraded launch velocity
 const JUMP_BOOST_MS = 280;    // double-tap window
 const JUMP_GRAVITY  = 0.42;
 const FUEL_MAX        = 100;
-const FUEL_BURN       = 0.9;   // per thrusting frame (~1.9s of lift)
+const FUEL_BURN       = 0.55;  // per thrusting frame (~3s of lift)
 const FUEL_REGEN      = 1.4;   // per grounded frame
-const THRUST_ACC      = 0.75;  // beats gravity by ~0.33/frame
-const THRUST_MAX_RISE = 5.5;   // upward speed cap while thrusting
+const THRUST_ACC      = 0.62;  // full-power accel; beats gravity by ~0.2/frame
+const THRUST_MAX_RISE = 3.2;   // upward speed cap while thrusting (was 5.5 — too wild)
+const THRUST_RAMP     = 1/22;  // power eases in over ~0.37s of held SHIFT
+const THRUST_FADE     = 1/16;  // and bleeds off over ~0.27s after release
+// Burst run: double-tap A/D for a short sprint. Ground speed carries into the
+// air as momentum on takeoff, so run + jump/SHIFT = a rocket-boosted leap.
+const RUN_TAP_MS = 260;    // double-tap window
+const RUN_FRAMES = 38;     // burst duration (~0.6s), re-tap to renew
+const RUN_EXTRA  = 1.6;    // peak speed = base * (1 + RUN_EXTRA)
+const AIR_DRAG   = 0.995;  // airborne momentum barely bleeds
 
 // ============================================================
 //  WHIP-LEG MOTION LANGUAGE  (roadmap #19, spider-vision.md)
@@ -954,6 +989,7 @@ class Tank {
     this.x           = x; this.y = 0; this.angle = 0;
     this.barrelAngle = playerIdx===0 ? Math.PI/4 : Math.PI*3/4;
     this.power=50; this.hp=500; this.maxHp=500; this.weapon=0;
+    this.shield=250; this.maxShield=250; this.shieldFlash=0;
     this.alive=true; this.hitFlash=0;
     // Presentation state
     this.recoilT=0; this.breathSeed=Math.random()*Math.PI*2;
@@ -962,7 +998,11 @@ class Tank {
     this.vy=0; this.inAir=false; this.fuel=FUEL_MAX;
     this.jumpAtMs=0; this.boosted=false;
     this.retroT=0; this.retroUsed=false; this.thrustFx=0;
+    this.thrustT=0; this.thrustOn=false;   // thrust power envelope (0..1) + held-this-frame flag
     this.crouchT=0; this.landCrouch=0; this.landImpact=0;
+    // Burst run + airborne momentum
+    this.vx=0; this.moveVx=0; this.runT=0; this.runDir=0;
+    this.lastTapDir=0; this.lastTapMs=0;
     this.snapToGround();
     this.initLegs();
   }
@@ -1113,6 +1153,7 @@ class Tank {
     if (!this.inAir) {
       this.vy = JUMP_POWER;
       this.inAir = true;
+      this.vx = this.moveVx;   // carry ground speed (run momentum) into the leap
       this.jumpAtMs = now;
       this.boosted = false;
       SFX.jump();
@@ -1129,39 +1170,68 @@ class Tank {
   thrust() {
     if (this.fuel <= 0) return;
     this.fuel = Math.max(0, this.fuel - FUEL_BURN);
-    if (!this.inAir) { this.inAir = true; this.vy = Math.min(this.vy, -1.2); }
-    this.vy = Math.max(this.vy - THRUST_ACC, -THRUST_MAX_RISE);
+    if (!this.inAir) {
+      this.inAir = true; this.vy = Math.min(this.vy, -1.2);
+      this.vx = this.moveVx;   // carry ground speed (run momentum) into flight
+    }
+    this.thrustOn = true;   // lift itself is applied through the envelope in updatePhysics
     this.thrustFx = 3;
+  }
+
+  // Speed multiplier for A/D movement: >1 while a burst run in that
+  // direction is live, with a short ease-in and fade-out.
+  runBoost(dir) {
+    if (this.runT <= 0 || this.runDir !== dir) return 1;
+    const elapsed = RUN_FRAMES - this.runT;
+    const k = Math.max(0, Math.min(elapsed / 6, 1, this.runT / 10));
+    return 1 + RUN_EXTRA * k;
   }
 
   updatePhysics() {
     if (this.crouchT > 0) this.crouchT--;
     if (this.thrustFx > 0) this.thrustFx--;
+    if (this.runT > 0) this.runT--;
     if (!this.inAir) {
       this.fuel = Math.min(FUEL_MAX, this.fuel + FUEL_REGEN);
+      this.thrustT = 0; this.thrustOn = false;
       return;
     }
     this.vy += JUMP_GRAVITY;
+    // Thrust power envelope: eases in while SHIFT burns, bleeds off after
+    // release — lift ramps both ways instead of snapping on and off.
+    this.thrustT = this.thrustOn
+      ? Math.min(1, this.thrustT + THRUST_RAMP)
+      : Math.max(0, this.thrustT - THRUST_FADE);
+    this.thrustOn = false;
+    if (this.thrustT > 0) {
+      const k = this.thrustT * this.thrustT * (3 - 2 * this.thrustT);  // smoothstep
+      this.vy = Math.max(this.vy - THRUST_ACC * k, -THRUST_MAX_RISE);
+    }
     const xi = Math.max(0, Math.min(TERRAIN_W-1, Math.floor(this.x)));
     const groundY = H - terrain[xi] - TANK_H*0.4;
-    // Coming in hot with the ground rushing up: one automatic retro-burst —
-    // the machine saves itself. Threshold sits above the small hop's landing
-    // speed (9.5) so plain hops land raw on the leg-catch; boosted jumps and
-    // flight drops earn the flame.
-    if (!this.retroUsed && this.vy > 10.5 && groundY - this.y < this.vy * 7) {
+    // Unrealistically forgiving flight (James 2026-07-19): continuous auto
+    // retro-braking near the ground — the machine ALWAYS fires the flame
+    // before touchdown and sets itself down soft, no raw landings.
+    if (this.vy > 2.2 && groundY - this.y < this.vy * 10) {
+      this.retroT = 2;   // re-armed every frame the descent still needs it
       this.retroUsed = true;
-      this.retroT = 14;
     }
     if (this.retroT > 0) {
       this.retroT--;
-      this.vy = Math.max(3.0, this.vy * 0.80);
+      this.vy = Math.max(1.6, this.vy * 0.72);
       if (this.retroT % 2 === 0) addLight(this.x, this.y + 14, 46, 0.30, 3);
+    }
+    // Airborne momentum: run speed carries through the arc, barely bleeding
+    if (this.vx !== 0) {
+      this.x = Math.max(30, Math.min(TERRAIN_W - 30, this.x + this.vx));
+      this.vx *= AIR_DRAG;
     }
     this.y += this.vy;
     if (this.y >= groundY) {
       const impact = this.vy;
       this.y = groundY;
       this.vy = 0;
+      this.vx = 0;   // the legs plant; momentum is a flight thing
       this.inAir = false;
       this.retroUsed = false; this.retroT = 0; this.boosted = false;
       // crouch absorb scaled by how hard we came in; the legs catch us in
@@ -1186,7 +1256,7 @@ class Tank {
     // The machine idles alive: the hull breathes above its planted feet, and
     // recoil flinches the body while the legs absorb it. Both are visual-only
     // offsets — fire/aim math stays on getMountPoint().
-    const breath = this.inAir ? 0 : Math.sin(performance.now() * 0.0032 + this.breathSeed) * 0.55;
+    const breath = this.inAir ? 0 : Math.sin(performance.now() * 0.0016 + this.breathSeed) * 0.55;
     const crouch = this.crouchT > 0
       ? Math.sin((1 - this.crouchT / 14) * Math.PI) * this.landCrouch : 0;
     const wa = this.getBarrelWorldAngle();
@@ -1209,7 +1279,7 @@ class Tank {
     if (hull.complete && hull.naturalWidth > 0) {
       const dw = HULL_DRAW_W, dh = dw * hull.naturalHeight / hull.naturalWidth;
       // image center = turret-ball center = the mount point
-      ctx.drawImage(hull, -dw / 2, -TANK_H * 0.75 - dh / 2, dw, dh);
+      ctx.drawImage(tintedSprite(hull, HULL_TINT[this.playerIdx]), -dw / 2, -TANK_H * 0.75 - dh / 2, dw, dh);
     } else {
       this._drawOutline();
       this._drawBody();
@@ -1448,7 +1518,7 @@ class Tank {
     if (img.complete && img.naturalWidth > 0) {
       const w = BARREL_LEN / (BARREL_TIP_FRAC - BARREL_ROOT_FRAC);
       const h = w * img.naturalHeight / img.naturalWidth;
-      ctx.drawImage(img, -BARREL_ROOT_FRAC * w, -h / 2, w, h);
+      ctx.drawImage(tintedSprite(img, HULL_TINT[this.playerIdx]), -BARREL_ROOT_FRAC * w, -h / 2, w, h);
     } else {
       const bLen = BARREL_LEN;
       // ball (normally baked into the hull layer)
@@ -1635,6 +1705,16 @@ function handleKeyDown(code) {
   if (code==='Digit4') { tank.weapon=3; weaponLabelT=120; SFX.select(); }
   if (code==='Digit5') { tank.weapon=4; weaponLabelT=120; SFX.select(); }
   if (code==='Digit6') { tank.weapon=5; weaponLabelT=120; SFX.select(); }
+  // Double-tap A/D: kick off a burst run in that direction
+  if (code==='KeyA'||code==='KeyD') {
+    const dir = code==='KeyA' ? -1 : 1;
+    const now = performance.now();
+    if (tank.lastTapDir === dir && now - tank.lastTapMs < RUN_TAP_MS) {
+      tank.runT = RUN_FRAMES; tank.runDir = dir;
+    }
+    tank.lastTapDir = dir; tank.lastTapMs = now;
+    return;
+  }
   if (code==='KeyW'||code==='Space') {
     if (code==='KeyW') { tank.jump(); return; }
     fireTank(tank);
@@ -1648,8 +1728,11 @@ function handleHeldKeys() {
   // Movement lives on W/A/D (A/D walk, W jump) — the arrows are all gun.
   // The practice range has no move budget: roam freely.
   const free = mode==='practice';
-  if (keys['KeyA'] && (free || movePixelsLeft>0)) { tank.move(-1,spd); if(!free) movePixelsLeft-=spd; SFX.move(); }
-  if (keys['KeyD'] && (free || movePixelsLeft>0)) { tank.move( 1,spd); if(!free) movePixelsLeft-=spd; SFX.move(); }
+  // Burst run scales the walk while live; the resulting speed is remembered
+  // as moveVx so a takeoff this frame launches with that momentum.
+  tank.moveVx = 0;
+  if (keys['KeyA'] && (free || movePixelsLeft>0)) { const s=spd*tank.runBoost(-1); tank.move(-1,s); tank.moveVx=-s; if(!free) movePixelsLeft-=s; SFX.move(); }
+  if (keys['KeyD'] && (free || movePixelsLeft>0)) { const s=spd*tank.runBoost( 1); tank.move( 1,s); tank.moveVx= s; if(!free) movePixelsLeft-=s; SFX.move(); }
   // SHIFT held = rocket thrust while the fuel meter lasts (W stays pure jump)
   if (keys['ShiftLeft'] || keys['ShiftRight']) tank.thrust();
   // Aim on ←/→ in screen direction: ← swings the barrel tip leftward for
@@ -1805,9 +1888,17 @@ function applyBlast(x, y, blastR, dmg) {
     else if (dist < (blastR + 18) * 2.2)  dmgFraction = 0.50;
     else if (dist < (blastR + 18) * 3.5)  dmgFraction = 0.20;
     if (dmgFraction > 0) {
-      const dealt = Math.round(dmg * dmgFraction);
-      t.hp -= dealt; t.hitFlash = 20; anyHit = true;
-      dmgTexts.push({ x: t.x + (Math.random()*16-8), y: t.y - 44, val: dealt, life: 55 });
+      const total = Math.round(dmg * dmgFraction);
+      let dealt = total;
+      anyHit = true;
+      // Shield soaks damage first; only what punches through chews the hull
+      if (t.shield > 0) {
+        const absorbed = Math.min(t.shield, dealt);
+        t.shield -= absorbed; dealt -= absorbed;
+        t.shieldFlash = 20;
+      }
+      if (dealt > 0) { t.hp -= dealt; t.hitFlash = 20; }
+      dmgTexts.push({ x: t.x + (Math.random()*16-8), y: t.y - 44, val: total, life: 55 });
       if (t.hp <= 0) {
         t.hp = 0; t.alive = false;
         // The killing blow gets its moment: slow-mo + tight focus
@@ -2384,7 +2475,7 @@ const WPN_ICONS = [
 
 // ---- World-space HUD: drawn inside the camera, lives on the battlefield ----
 function drawWorldHUD() {
-  tanks.forEach(t => drawTankArmor(t));
+  tanks.forEach(t => { drawShieldSphere(t); drawTankArmor(t); });
   drawPlateShards();
   drawDmgTexts();
 
@@ -2393,13 +2484,13 @@ function drawWorldHUD() {
 
   // Active-tank marker: bobbing chevron in the player's colour
   if (state === STATES.PLAYER_TURN || state === STATES.AI_TURN) {
-    const bob = Math.sin(Date.now() * 0.006) * 3;
+    const bob = Math.sin(Date.now() * 0.006) * 2;
     ctx.fillStyle = t.cockpitCol;
     ctx.globalAlpha = 0.9;
     ctx.beginPath();
-    ctx.moveTo(t.x - 7, t.y - 66 + bob);
-    ctx.lineTo(t.x + 7, t.y - 66 + bob);
-    ctx.lineTo(t.x, t.y - 57 + bob);
+    ctx.moveTo(t.x - 4.5, t.y - 64 + bob);
+    ctx.lineTo(t.x + 4.5, t.y - 64 + bob);
+    ctx.lineTo(t.x, t.y - 58 + bob);
     ctx.closePath(); ctx.fill();
     ctx.globalAlpha = 1;
   }
@@ -2418,16 +2509,17 @@ function drawWorldHUD() {
   const tipX = mount.x + Math.cos(worldAngle) * BARREL_LEN;
   const tipY = mount.y + Math.sin(worldAngle) * BARREL_LEN;
 
-  // Power: charging ring around the hub
-  const R = 30, a0 = Math.PI * 0.75, sweep = Math.PI * 1.5;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 3.5;
-  ctx.beginPath(); ctx.arc(t.x, t.y - 4, R, a0, a0 + sweep); ctx.stroke();
-  ctx.strokeStyle = t.accentCol; ctx.globalAlpha = 0.85;
-  ctx.beginPath(); ctx.arc(t.x, t.y - 4, R, a0, a0 + sweep * (t.power / 100)); ctx.stroke();
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = '#fff'; ctx.font = `bold 12px ${FONT_U}`; ctx.textAlign = 'center';
-  ctx.fillText(Math.round(t.power), t.x, t.y + R + 8);
+  // Fire power: small dashed orange line tucked right under the hull
+  const PWR_W = 40, px0 = t.x - PWR_W / 2, pyl = t.y + 13;
+  ctx.lineCap = 'butt';
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(px0, pyl); ctx.lineTo(px0 + PWR_W, pyl); ctx.stroke();
+  ctx.strokeStyle = '#ff9020'; ctx.globalAlpha = 0.9;
+  ctx.beginPath(); ctx.moveTo(px0, pyl); ctx.lineTo(px0 + PWR_W * (t.power / 100), pyl); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff'; ctx.font = `bold 11px ${FONT_U}`; ctx.textAlign = 'left';
+  ctx.fillText(Math.round(t.power), px0 + PWR_W + 8, pyl + 4);
 
   // Aim: ghost arc — the first stretch of the trajectory, then you're on your own
   const speed = 4 + t.power * 0.14;
@@ -2492,6 +2584,31 @@ function drawWorldHUD() {
   }
 }
 
+// Shield: a sphere of energy wrapped around the whole machine. Its glow fades
+// as the shield soaks damage, ripples bright on a hit, and disappears at zero.
+function drawShieldSphere(t) {
+  if (!t.alive) return;
+  const f = t.shield / t.maxShield;
+  if (f <= 0 && t.shieldFlash <= 0) return;
+  const flash = t.shieldFlash > 0 ? t.shieldFlash / 20 : 0;
+  if (t.shieldFlash > 0) t.shieldFlash--;
+  const cx = t.x, cy = t.y - 10, R = 46;
+  // Body: hollow radial glow that thickens toward the rim
+  const g = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R);
+  g.addColorStop(0, 'rgba(140,220,255,0)');
+  g.addColorStop(1, `rgba(140,220,255,${(0.05 + 0.10 * f + 0.28 * flash).toFixed(3)})`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  // Rim
+  ctx.strokeStyle = `rgba(170,230,255,${(0.16 + 0.28 * f + 0.40 * flash).toFixed(3)})`;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  // Specular arc up top — sells the sphere
+  ctx.strokeStyle = `rgba(255,255,255,${(0.08 + 0.20 * f).toFixed(3)})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R - 3, -Math.PI * 0.80, -Math.PI * 0.45); ctx.stroke();
+}
+
 // HP as armour: 8 chitin plate segments arched over each hull.
 // Losing a segment flakes visible shards off the tank.
 function drawTankArmor(t) {
@@ -2513,7 +2630,7 @@ function drawTankArmor(t) {
   const R = 25;
   const a0 = -Math.PI * 0.86, a1 = -Math.PI * 0.14;
   const span = (a1 - a0) / segs, gap = 0.035;
-  ctx.lineCap = 'butt'; ctx.lineWidth = 4;
+  ctx.lineCap = 'butt'; ctx.lineWidth = 2;
   for (let s = 0; s < segs; s++) {
     const filled = s < whole;
     ctx.strokeStyle = filled ? t.accentCol : 'rgba(0,0,0,0.35)';
@@ -2719,7 +2836,7 @@ function drawMenuTank(x, y, idx, phase) {
   if (barrelImg.complete && barrelImg.naturalWidth > 0) {
     const w = BARREL_LEN / (BARREL_TIP_FRAC - BARREL_ROOT_FRAC);
     const h = w * barrelImg.naturalHeight / barrelImg.naturalWidth;
-    ctx.drawImage(barrelImg, -BARREL_ROOT_FRAC * w, -h / 2, w, h);
+    ctx.drawImage(tintedSprite(barrelImg, HULL_TINT[idx]), -BARREL_ROOT_FRAC * w, -h / 2, w, h);
   } else {
     ctx.strokeStyle = '#141a20'; ctx.lineCap = 'round';
     ctx.lineWidth = 2.6;
@@ -2735,7 +2852,7 @@ function drawMenuTank(x, y, idx, phase) {
   const hullImg = TANK_PARTS[idx].hull[0];
   if (hullImg.complete && hullImg.naturalWidth > 0) {
     const dw = HULL_DRAW_W, dh = dw * hullImg.naturalHeight / hullImg.naturalWidth;
-    ctx.drawImage(hullImg, -dw / 2, mountY - dh / 2, dw, dh);
+    ctx.drawImage(tintedSprite(hullImg, HULL_TINT[idx]), -dw / 2, mountY - dh / 2, dw, dh);
   } else {
     ctx.fillStyle = [PAL.p1body, PAL.p2body][idx];
     ctx.beginPath(); ctx.ellipse(0, breath - 2, 12, 4, 0, 0, Math.PI*2); ctx.fill();
@@ -2910,10 +3027,12 @@ function respawnPractice() {
   tanks.forEach(t => {
     if (t.alive) return;
     t.hp = t.maxHp; t.alive = true; t.hitFlash = 0;
+    t.shield = t.maxShield; t.shieldFlash = 0;
     t.x = Math.floor(TERRAIN_W * (t.playerIdx === 0 ? 0.09 : 0.91));
     t.inAir = false; t.vy = 0; t.fuel = FUEL_MAX;
     t.boosted = false; t.retroT = 0; t.retroUsed = false;
-    t.crouchT = 0; t.thrustFx = 0;
+    t.crouchT = 0; t.thrustFx = 0; t.thrustT = 0; t.thrustOn = false;
+    t.vx = 0; t.moveVx = 0; t.runT = 0;
     t.snapToGround();
     t.initLegs();
   });

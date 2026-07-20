@@ -14,7 +14,11 @@ consistent. `npm run check-worlds` audits every world against the contract.
    in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
 3. ARACHNO-WARS: tank-color tuner panel (Chrome Rift tuner pattern) — two color pickers
    driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
-4. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
+4. ARACHNO-WARS: "me against the world" horde direction — James discovered rapid-fire
+   free-shooting in practice mode is the fun; wants massive blasting vs many enemies, not
+   1v1. Open questions posed 2026-07-19 (replace duel or third mode? enemy types? fire-rate
+   governor?) — discuss before building. Prototype instinct: third menu entry, keep duel.
+5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
    from the original GIFs with `tools/gif-analyze.mjs`). CSS/JS animation instead of GIFs,
