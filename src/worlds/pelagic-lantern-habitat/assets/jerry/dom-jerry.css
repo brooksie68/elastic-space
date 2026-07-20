@@ -1,0 +1,535 @@
+/* DOM Jerry — pool Jerry verbatim, extracted from jerrys-pool/site.css by
+   tmp/pelagic-lantern-habitat/extract_dom_jerry.js. Regenerate rather than
+   hand-editing if the pool's Jerry changes. Scoped under #jerry-dom. */
+
+#jerry-dom {
+  aspect-ratio: 1;
+  pointer-events: none;
+  position: fixed;
+  /* left/top/width + opacity set per-frame by the rig in world.js */
+}
+
+#jerry-dom .orbital {
+  --ring-depth-scale: 1;
+  --cell-glow-color-a: 101 212 255;
+  --cell-glow-color-b: 143 255 225;
+  --cell-glow-a: 0.28;
+  --cell-glow-b: 0.36;
+  --cell-scale: 1;
+  --cell-tilt: 0deg;
+  --cell-cytoplasm-rotate: 0deg;
+  --cell-cytoplasm-scale: 1;
+  --cell-membrane-alpha: 0.18;
+  --cell-membrane-scale: 1;
+  --cell-nucleus-x: 0px;
+  --cell-nucleus-y: 0px;
+  --cell-nucleus-scale: 1;
+  --cell-filament-rotate: 0deg;
+  --cell-vesicle-shift: 0px;
+  aspect-ratio: 1;
+  display: grid;
+  inset: 0;
+  place-items: center;
+  position: absolute;
+}
+
+#jerry-dom .orb,
+#jerry-dom .ring {
+  border-radius: 50%;
+  position: absolute;
+}
+
+#jerry-dom .orb {
+  background:
+    radial-gradient(circle at 31% 24%, rgba(255, 255, 255, 0.98), rgba(210, 255, 244, 0.86) 10%, rgba(136, 255, 227, 0.66) 21%, rgba(85, 180, 255, 0.42) 43%, rgba(103, 86, 214, 0.34) 58%, rgba(255, 110, 168, 0.22) 76%, transparent 84%),
+    radial-gradient(circle at 66% 62%, rgba(23, 74, 160, 0.46), rgba(12, 34, 88, 0.3) 19%, rgba(8, 17, 46, 0.16) 30%, transparent 48%),
+    radial-gradient(circle at 42% 44%, rgba(255, 244, 195, 0.16), transparent 10%),
+    radial-gradient(circle at 58% 34%, rgba(255, 145, 188, 0.14), transparent 12%),
+    conic-gradient(from 210deg at 50% 50%, rgba(143, 255, 225, 0.12), rgba(101, 212, 255, 0.08), rgba(88, 120, 255, 0.1), rgba(255, 110, 168, 0.12), rgba(240, 211, 132, 0.09), rgba(143, 255, 225, 0.12)),
+    radial-gradient(circle at 48% 48%, rgba(150, 255, 231, 0.28), transparent 74%);
+  border: 1px solid rgba(220, 255, 248, 0.22);
+  box-shadow:
+    inset 15px 13px 22px rgba(255, 255, 255, 0.16),
+    inset -20px -24px 32px rgba(3, 8, 35, 0.58),
+    inset -7px -9px 14px rgba(75, 45, 150, 0.24),
+    0 0 92px rgb(var(--cell-glow-color-a) / var(--cell-glow-a)),
+    0 0 34px rgb(var(--cell-glow-color-b) / var(--cell-glow-b));
+  height: 42%;
+  overflow: hidden;
+  transform: scale(var(--cell-scale)) rotate(var(--cell-tilt));
+  width: 42%;
+}
+
+#jerry-dom .orb::before {
+  background:
+    radial-gradient(circle at 66% 38%, rgba(255, 255, 255, 0.18) 0%, transparent 12%),
+    radial-gradient(circle at 42% 64%, rgba(191, 255, 239, 0.14) 0%, transparent 10%),
+    radial-gradient(circle at 57% 53%, rgba(8, 18, 72, 0.5), rgba(12, 48, 118, 0.3) 19%, transparent 32%),
+    radial-gradient(circle at 34% 40%, rgba(255, 250, 224, 0.12) 0%, transparent 7%),
+    radial-gradient(circle at 64% 67%, rgba(255, 110, 168, 0.12) 0%, transparent 8%),
+    radial-gradient(circle at 46% 47%, transparent 0 22%, rgba(255, 255, 255, 0.08) 24%, transparent 30%),
+    radial-gradient(circle at 52% 46%, transparent 0 11%, rgba(143, 255, 225, 0.08) 13%, transparent 18%),
+    radial-gradient(circle at 29% 55%, rgba(118, 223, 255, 0.09) 0%, transparent 9%),
+    radial-gradient(circle at 70% 49%, rgba(245, 207, 122, 0.08) 0%, transparent 8%),
+    conic-gradient(from 0deg, rgba(143, 255, 225, 0.1), rgba(101, 212, 255, 0.05), rgba(255, 110, 168, 0.11), rgba(240, 211, 132, 0.09), rgba(88, 120, 255, 0.08), rgba(143, 255, 225, 0.1));
+  mix-blend-mode: screen;
+  opacity: 0.92;
+  transform: rotate(var(--cell-cytoplasm-rotate)) scale(var(--cell-cytoplasm-scale));
+}
+
+#jerry-dom .orb::after {
+  background:
+    radial-gradient(ellipse 13% 9% at 23% 31%, rgba(3, 11, 24, 0.06) 0 58%, transparent 64%),
+    radial-gradient(ellipse 9% 14% at 71% 25%, rgba(3, 11, 24, 0.06) 0 56%, transparent 63%),
+    radial-gradient(ellipse 16% 10% at 78% 64%, rgba(3, 11, 24, 0.06) 0 59%, transparent 66%),
+    radial-gradient(ellipse 10% 15% at 34% 76%, rgba(3, 11, 24, 0.06) 0 55%, transparent 63%),
+    radial-gradient(ellipse 8% 6% at 52% 18%, rgba(3, 11, 24, 0.06) 0 57%, transparent 65%),
+    radial-gradient(ellipse 7% 11% at 16% 57%, rgba(3, 11, 24, 0.06) 0 58%, transparent 66%),
+    repeating-linear-gradient(12deg, rgba(255, 250, 230, 0.028) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(97deg, rgba(7, 25, 38, 0.024) 0 1px, transparent 1px 7px),
+    radial-gradient(circle at center, transparent 52%, rgba(255, 255, 255, var(--cell-membrane-alpha)) 66%, rgba(160, 255, 235, 0.18) 76%, rgba(88, 141, 255, 0.12) 83%, rgba(10, 28, 56, 0.22) 91%, transparent 100%);
+  background-blend-mode: multiply, multiply, multiply, multiply, multiply, multiply, soft-light, soft-light, normal;
+  box-shadow:
+    inset 6px 5px 10px rgba(255, 255, 255, 0.18),
+    inset 14px 12px 22px rgba(192, 255, 242, 0.1),
+    inset -12px -15px 24px rgba(7, 18, 58, 0.48),
+    inset -3px -4px 7px rgba(4, 8, 20, 0.42);
+  transform: scale(var(--cell-membrane-scale));
+}
+
+#jerry-dom .organelle {
+  border-radius: 50%;
+  pointer-events: none;
+  position: absolute;
+}
+
+#jerry-dom .vesicle-a,
+#jerry-dom .mitochondrion-b,
+#jerry-dom .ribosome-cloud,
+#jerry-dom .alien-seed {
+  translate:
+    var(--organelle-follow-x, 0px)
+    var(--organelle-follow-y, 0px);
+}
+
+#jerry-dom .vesicle-b,
+#jerry-dom .mitochondrion-a,
+#jerry-dom .golgi-body,
+#jerry-dom .alien-crystal {
+  translate:
+    var(--organelle-counter-x, 0px)
+    var(--organelle-counter-y, 0px);
+}
+
+#jerry-dom .filament-core {
+  translate:
+    var(--organelle-soft-x, 0px)
+    var(--organelle-soft-y, 0px);
+}
+
+#jerry-dom .mitochondrion-c,
+#jerry-dom .alien-void,
+#jerry-dom .dark-organelle {
+  translate:
+    var(--organelle-cross-x, 0px)
+    var(--organelle-cross-y, 0px);
+}
+
+#jerry-dom .nucleus-core {
+  animation: nucleus-undulate 7.5s ease-in-out infinite alternate;
+  background:
+    radial-gradient(circle at 32% 27%, rgba(255, 250, 229, 0.58), rgba(226, 218, 238, 0.4) 15%, rgba(169, 170, 220, 0.5) 36%, rgba(117, 114, 194, 0.62) 61%, rgba(84, 70, 157, 0.74) 82%, rgba(49, 37, 101, 0.84) 100%);
+  box-shadow:
+    0 0 18px rgba(175, 143, 238, 0.32),
+    inset 5px 4px 9px rgba(255, 230, 194, 0.16),
+    inset -8px -10px 14px rgba(35, 28, 94, 0.32);
+  height: 34%;
+  left: 48%;
+  opacity: 0.7225;
+  top: 52%;
+  transform: translate3d(calc(-50% + var(--cell-nucleus-x)), calc(-50% + var(--cell-nucleus-y)), 0) scale(var(--cell-nucleus-scale));
+  width: 34%;
+}
+
+#jerry-dom .nucleus-core::before {
+  background:
+    radial-gradient(circle at 42% 38%, rgba(255, 239, 207, 0.28), rgba(130, 110, 177, 0.16) 24%, rgba(0, 0, 0, 0) 58%);
+  border-radius: 58% 42% 53% 47% / 44% 59% 41% 56%;
+  content: "";
+  inset: 26%;
+  position: absolute;
+}
+
+#jerry-dom .nucleus-core::after {
+  background:
+    radial-gradient(circle at 23% 31%, rgba(255, 229, 190, 0.12) 0 1.2%, transparent 2.2%),
+    radial-gradient(circle at 72% 27%, rgba(196, 226, 255, 0.1) 0 1%, transparent 2%),
+    radial-gradient(circle at 62% 72%, rgba(255, 214, 172, 0.1) 0 1.3%, transparent 2.3%),
+    radial-gradient(circle at 35% 67%, rgba(205, 191, 255, 0.11) 0 0.9%, transparent 1.9%),
+    radial-gradient(circle at 81% 53%, rgba(255, 235, 199, 0.08) 0 0.8%, transparent 1.8%),
+    radial-gradient(circle at 45% 18%, rgba(189, 225, 245, 0.08) 0 0.8%, transparent 1.7%),
+    repeating-radial-gradient(ellipse at 47% 51%, transparent 0 7%, rgba(255, 226, 190, 0.035) 8% 9%, transparent 10% 15%),
+    repeating-radial-gradient(ellipse at 55% 49%, transparent 0 9%, rgba(190, 211, 255, 0.03) 10% 11%, transparent 12% 17%);
+  background-size: auto, auto, auto, auto, auto, auto, 72% 92%, 68% 88%;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+  content: "";
+  inset: 8%;
+  position: absolute;
+}
+
+#jerry-dom .vesicle {
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.42), rgba(184, 255, 239, 0.24) 24%, rgba(87, 173, 255, 0.18) 58%, rgba(0, 0, 0, 0) 100%);
+  box-shadow: 0 0 10px rgba(143, 255, 225, 0.16);
+  opacity: 0.88;
+}
+
+#jerry-dom .vesicle-a {
+  height: 12%;
+  left: 26%;
+  top: 30%;
+  transform: translate3d(calc(var(--cell-vesicle-shift) * -0.35), calc(var(--cell-vesicle-shift) * 0.22), 0);
+  width: 12%;
+}
+
+#jerry-dom .vesicle-b {
+  background:
+    radial-gradient(circle at 38% 28%, rgba(255, 255, 255, 0.36), rgba(255, 186, 222, 0.2) 24%, rgba(109, 122, 255, 0.18) 56%, rgba(0, 0, 0, 0) 100%);
+  height: 10%;
+  left: 68%;
+  top: 63%;
+  transform: translate3d(calc(var(--cell-vesicle-shift) * 0.28), calc(var(--cell-vesicle-shift) * -0.24), 0);
+  width: 10%;
+}
+
+#jerry-dom .filament-core {
+  background:
+    radial-gradient(circle at 46% 44%, rgba(255, 255, 255, 0.12), rgba(0, 0, 0, 0) 54%),
+    repeating-conic-gradient(from 0deg, rgba(143, 255, 225, 0.08) 0deg 10deg, rgba(101, 212, 255, 0.02) 10deg 22deg, rgba(255, 110, 168, 0.06) 22deg 34deg, rgba(0, 0, 0, 0) 34deg 50deg);
+  border-radius: 42% 58% 47% 53% / 50% 38% 62% 50%;
+  filter: blur(0.4px);
+  height: 58%;
+  left: 21%;
+  mix-blend-mode: screen;
+  opacity: 0.48;
+  top: 21%;
+  transform: rotate(var(--cell-filament-rotate));
+  width: 58%;
+}
+
+#jerry-dom .mitochondrion,
+#jerry-dom .golgi-body,
+#jerry-dom .ribosome-cloud,
+#jerry-dom .alien-crystal,
+#jerry-dom .alien-seed,
+#jerry-dom .alien-void {
+  opacity: 0.08;
+}
+
+#jerry-dom .mitochondrion {
+  animation: organelle-drift 9s ease-in-out infinite alternate;
+  background:
+    repeating-radial-gradient(ellipse at center, transparent 0 9%, rgba(47, 15, 82, 0.72) 11% 15%, transparent 17% 24%),
+    linear-gradient(135deg, #ffcc70, #ff5db1 48%, #755dff);
+  border: 1px solid rgba(255, 235, 184, 0.72);
+  border-radius: 55% 45% 62% 38% / 44% 58% 42% 56%;
+  box-shadow:
+    inset -4px -5px 7px rgba(45, 15, 92, 0.42),
+    0 0 7px rgba(255, 99, 190, 0.5);
+}
+
+#jerry-dom .mitochondrion-a {
+  height: 12%;
+  left: 18%;
+  top: 55%;
+  transform: rotate(28deg);
+  width: 23%;
+}
+
+#jerry-dom .mitochondrion-b {
+  animation-delay: -3s;
+  height: 10%;
+  left: 58%;
+  top: 22%;
+  transform: rotate(-34deg) scale(0.82);
+  width: 20%;
+}
+
+#jerry-dom .mitochondrion-c {
+  animation-delay: -6s;
+  height: 9%;
+  left: 61%;
+  top: 73%;
+  transform: rotate(14deg) scale(0.7);
+  width: 17%;
+}
+
+#jerry-dom .golgi-body {
+  animation: golgi-fold 11s ease-in-out infinite alternate;
+  border-color: #9dffcf transparent;
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 3px 0;
+  box-shadow:
+    0 4px 0 -1px #54d6ff,
+    0 8px 0 -2px #8170ff,
+    0 12px 0 -3px #ff65c8,
+    0 -4px 0 -1px rgba(221, 255, 135, 0.82);
+  height: 12%;
+  left: 27%;
+  top: 24%;
+  transform: rotate(-18deg);
+  width: 25%;
+}
+
+#jerry-dom .ribosome-cloud {
+  animation: organelle-drift 7s ease-in-out -2s infinite alternate-reverse;
+  background: #fff28e;
+  box-shadow:
+    7px 2px #ff78d5,
+    14px -3px #8fffe1,
+    21px 4px #ffe189,
+    3px 10px #88d9ff,
+    11px 13px #ff78d5,
+    20px 11px #bbff91,
+    27px 16px #9f8aff,
+    8px 22px #fff28e,
+    18px 25px #72f1ff,
+    29px 28px #ff8cce;
+  height: 2.4%;
+  left: 35%;
+  top: 66%;
+  width: 2.4%;
+}
+
+#jerry-dom .alien-crystal {
+  animation: alien-turn 13s linear infinite;
+  background: linear-gradient(135deg, #f7ff9a 0 24%, #32f0d1 25% 48%, #376dff 49% 72%, #ff4ec7 73%);
+  border-radius: 12% 52% 18% 44%;
+  clip-path: polygon(50% 0, 88% 28%, 72% 100%, 18% 82%, 0 34%);
+  filter: drop-shadow(0 0 5px rgba(89, 255, 224, 0.8));
+  height: 15%;
+  left: 75%;
+  top: 43%;
+  width: 11%;
+}
+
+#jerry-dom .dark-organelle {
+  animation: dark-organelle-writhe 10s ease-in-out infinite alternate;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(93, 130, 145, 0.72), transparent 18%),
+    radial-gradient(circle at 58% 62%, #101a2d, #07101b 58%, #020509);
+  border: 1px solid rgba(65, 107, 117, 0.68);
+  box-shadow:
+    inset 3px 2px 4px rgba(116, 170, 170, 0.22),
+    inset -4px -3px 5px rgba(0, 0, 0, 0.8);
+  opacity: 0.12;
+}
+
+#jerry-dom .dark-organelle-a {
+  border-radius: 64% 36% 53% 47% / 38% 62% 42% 58%;
+  height: 7%;
+  left: 22%;
+  top: 72%;
+  transform: rotate(18deg);
+  width: 9%;
+}
+
+#jerry-dom .dark-organelle-b {
+  animation-delay: -2s;
+  border-radius: 31% 69% 37% 63% / 57% 32% 68% 43%;
+  height: 5%;
+  left: 68%;
+  top: 34%;
+  transform: rotate(-31deg);
+  width: 8%;
+}
+
+#jerry-dom .dark-organelle-c {
+  animation-delay: -5s;
+  border-radius: 72% 28% 61% 39% / 29% 54% 46% 71%;
+  height: 8%;
+  left: 39%;
+  top: 81%;
+  transform: rotate(42deg);
+  width: 6%;
+}
+
+#jerry-dom .dark-organelle-d {
+  animation-delay: -7s;
+  border-radius: 45% 55% 28% 72% / 68% 35% 65% 32%;
+  height: 5%;
+  left: 79%;
+  top: 59%;
+  transform: rotate(9deg);
+  width: 7%;
+}
+
+#jerry-dom .dark-organelle-e {
+  animation-delay: -9s;
+  border-radius: 67% 33% 46% 54% / 41% 74% 26% 59%;
+  height: 6%;
+  left: 17%;
+  top: 20%;
+  transform: rotate(-16deg);
+  width: 5%;
+}
+
+#jerry-dom .alien-seed {
+  animation: organelle-drift 8s ease-in-out -4s infinite alternate;
+  background:
+    radial-gradient(circle at 42% 38%, #040713 0 16%, transparent 18%),
+    conic-gradient(#ffea63, #ff3eaf, #725cff, #3dffce, #ffea63);
+  border: 2px solid rgba(255, 255, 255, 0.62);
+  border-radius: 62% 38% 51% 49% / 34% 66% 42% 58%;
+  box-shadow: inset 0 0 8px #fff, 0 0 10px rgba(255, 73, 198, 0.7);
+  height: 12%;
+  left: 12%;
+  top: 35%;
+  transform: rotate(21deg);
+  width: 10%;
+}
+
+#jerry-dom .alien-void {
+  animation: void-blink 6s ease-in-out infinite;
+  background: radial-gradient(circle at 58% 43%, #000 0 34%, #26154d 46%, #6b54ff 62%, #ff64c8 74%, transparent 78%);
+  border: 1px solid rgba(184, 255, 232, 0.7);
+  box-shadow: 0 0 12px rgba(112, 83, 255, 0.82);
+  height: 11%;
+  left: 46%;
+  top: 14%;
+  width: 11%;
+}
+
+#jerry-dom .ring {
+  border: 1px solid rgba(175, 255, 235, 0.18);
+}
+
+#jerry-dom .ring-a {
+  animation: spin-a 20s linear infinite;
+  height: 68%;
+  width: 68%;
+}
+
+#jerry-dom .ring-b {
+  animation: spin-b 16s linear infinite;
+  border-color: rgba(255, 211, 132, 0.2);
+  height: 86%;
+  transform: rotate(25deg);
+  width: 54%;
+}
+
+#jerry-dom .ring-c {
+  animation: spin-a 32s linear infinite reverse;
+  border-color: rgba(255, 110, 168, 0.16);
+  height: 92%;
+  transform: rotate(-18deg);
+  width: 92%;
+}
+
+@keyframes spin-a {
+  from {
+    transform: scale(var(--ring-depth-scale)) rotate(0deg);
+  }
+
+  to {
+    transform: scale(var(--ring-depth-scale)) rotate(360deg);
+  }
+}
+
+@keyframes spin-b {
+  from {
+    transform: scale(var(--ring-depth-scale)) rotate(25deg);
+  }
+
+  to {
+    transform: scale(var(--ring-depth-scale)) rotate(385deg);
+  }
+}
+
+@keyframes organelle-drift {
+  from {
+    translate: -2px 1px;
+  }
+
+  to {
+    translate: 3px -2px;
+  }
+}
+
+@keyframes nucleus-undulate {
+  0% {
+    border-radius: 48% 52% 45% 55% / 55% 43% 57% 45%;
+  }
+
+  38% {
+    border-radius: 57% 43% 52% 48% / 46% 58% 42% 54%;
+  }
+
+  72% {
+    border-radius: 44% 56% 59% 41% / 53% 45% 55% 47%;
+  }
+
+  100% {
+    border-radius: 54% 46% 43% 57% / 42% 54% 46% 58%;
+  }
+}
+
+@keyframes golgi-fold {
+  from {
+    transform: rotate(-18deg) scaleX(0.92);
+  }
+
+  to {
+    transform: rotate(-12deg) scaleX(1.08);
+  }
+}
+
+@keyframes alien-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes void-blink {
+  0%,
+  100% {
+    filter: brightness(0.8);
+    transform: scale(0.88);
+  }
+
+  50% {
+    filter: brightness(1.45);
+    transform: scale(1.12);
+  }
+}
+
+@keyframes dark-organelle-writhe {
+  from {
+    scale: 0.86 1.08;
+    translate: -2px 1px;
+  }
+
+  to {
+    scale: 1.12 0.9;
+    translate: 3px -2px;
+  }
+}
+
+
+/* Habitat-only: the pool keeps these organelles latent (opacity 0.08/0.12)
+   until feeding; here a tuner var can bring the organs up. */
+#jerry-dom .mitochondrion,
+#jerry-dom .golgi-body,
+#jerry-dom .ribosome-cloud,
+#jerry-dom .alien-crystal,
+#jerry-dom .alien-seed,
+#jerry-dom .alien-void {
+  opacity: calc(0.08 + var(--jdom-organ-glow, 0.35) * 0.8);
+}
+
+#jerry-dom .dark-organelle {
+  opacity: calc(0.12 + var(--jdom-organ-glow, 0.35) * 0.5);
+}
