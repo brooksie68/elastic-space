@@ -1367,7 +1367,7 @@ let trackIndex = 0;
 const music = new Audio(`assets/music/${TRACKS[0].file}`);
 music.volume = 0.08;   // barely-there by default (James 2026-07-17)
 
-// 20-second hush before the music debuts (James 2026-07-17). Custom adapter:
+// 5-second hush before the music debuts (James 2026-07-20; was 20s). Custom adapter:
 // the control's one autoplay attempt probes permission silently and arms the
 // timer; manual clicks always play immediately; stopping cancels the debut.
 let debutTimer = 0, probed = false;
@@ -1381,7 +1381,7 @@ const soundCtl = window.ElasticSoundControl?.attach({
       music.pause();
       music.currentTime = 0;
       music.volume = v;
-      debutTimer = setTimeout(() => music.play().catch(() => {}), 20000);
+      debutTimer = setTimeout(() => music.play().catch(() => {}), 5000);
     }).catch((err) => { music.volume = v; throw err; });
   },
   stop: () => { clearTimeout(debutTimer); music.pause(); },

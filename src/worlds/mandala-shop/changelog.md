@@ -3,6 +3,12 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-20 — Claude (with James) — music debut delay shortened to 5 seconds
+
+- The pre-music hush after load is now 5 seconds (was 20, set 2026-07-17). One-line
+  change to the debut timer in world.js; the silent autoplay-permission probe and
+  manual-click behavior are unchanged.
+
 ## 2026-07-19 — Claude (with James) — drift exits locked to three: door, blank frame, register
 
 - James fixed the world's drift exits at exactly three: the shop door, the unpainted
