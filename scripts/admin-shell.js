@@ -1,4 +1,4 @@
-// Map room page logic: server status light, file:// -> served auto-switch,
+// Admin panel shell: server status light, file:// -> served auto-switch,
 // dashboard-icons toggle, and waking the editor panels when the server is up.
 // The world editor itself lives in admin.js.
 
@@ -11,8 +11,8 @@
   const light = document.getElementById("server-light");
   const stateText = document.getElementById("server-state");
   const hintText = document.getElementById("server-hint");
-  const editorSections = document.getElementById("editor-sections");
-  const offlineNote = document.getElementById("offline-note");
+  const editorSections = [...document.querySelectorAll(".editor-sections")];
+  const offlineNotes = [...document.querySelectorAll(".offline-note")];
 
   async function serverUp() {
     try {
@@ -39,8 +39,12 @@
   }
 
   function setEditorAwake(awake) {
-    editorSections.classList.toggle("offline", !awake);
-    offlineNote.hidden = awake;
+    for (const sections of editorSections) {
+      sections.classList.toggle("offline", !awake);
+    }
+    for (const note of offlineNotes) {
+      note.hidden = awake;
+    }
   }
 
   async function poll() {
@@ -187,8 +191,13 @@
   }
 
   // Insert a row alphabetically (ignoring a leading "The"); rows without a
-  // world slug (Welcome) are never insertion points, so Welcome stays on top.
+  // world slug (Welcome) are never insertion points, so Welcome stays on top —
+  // and when Welcome itself moves, it pins to the top of the target list.
   function insertRowSorted(list, row) {
+    if (!worldSlugFor(row.querySelector("a"))) {
+      list.prepend(row);
+      return;
+    }
     const key = sortKeyFor(row.querySelector("a").textContent);
     for (const entry of list.children) {
       if (entry === row) {
@@ -269,7 +278,10 @@
         continue;
       }
 
-      const slug = worldSlugFor(anchor);
+      // Welcome is a root-level page, not a world folder: it gets the move
+      // option (the server special-cases the "welcome" slug) but never archive.
+      const isWelcome = (anchor.getAttribute("href") || "") === "./welcome.html";
+      const slug = isWelcome ? "welcome" : worldSlugFor(anchor);
       if (!slug) {
         continue;
       }
@@ -282,7 +294,8 @@
         row.append(anchor);
       }
 
-      const title = anchor.textContent.trim();
+      const note = anchor.querySelector(".page-note");
+      const title = (note ? anchor.textContent.replace(note.textContent, "") : anchor.textContent).trim();
 
       const wrap = document.createElement("div");
       wrap.className = "kebab-wrap";
@@ -311,16 +324,20 @@
         moveWorldRow(slug, title, row, moveItem);
       });
 
-      const archiveItem = document.createElement("button");
-      archiveItem.type = "button";
-      archiveItem.className = "kebab-item danger";
-      archiveItem.setAttribute("role", "menuitem");
-      archiveItem.textContent = "archive";
-      archiveItem.addEventListener("click", () => {
-        closeKebab();
-        confirmArchive(slug, title, row);
-      });
-      menu.append(moveItem, archiveItem);
+      menu.append(moveItem);
+
+      if (!isWelcome) {
+        const archiveItem = document.createElement("button");
+        archiveItem.type = "button";
+        archiveItem.className = "kebab-item danger";
+        archiveItem.setAttribute("role", "menuitem");
+        archiveItem.textContent = "archive";
+        archiveItem.addEventListener("click", () => {
+          closeKebab();
+          confirmArchive(slug, title, row);
+        });
+        menu.append(archiveItem);
+      }
 
       button.addEventListener("click", () => {
         const isOpen = openKebab && openKebab.button === button;
@@ -337,8 +354,8 @@
     }
   }
 
-  // Tabs: "worlds" (pages list + site chrome) and "world editor" (directory
-  // tree, metadata form, file editors). Worlds is the default on every load.
+  // Tabs: "worlds" (pages list + site chrome), "world editor" (metadata form,
+  // file editors), and "drafts". Worlds is the default on every load.
   const tabButtons = [...document.querySelectorAll('.tab-bar [role="tab"]')];
 
   tabButtons.forEach((button) => {

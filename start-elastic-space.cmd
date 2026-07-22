@@ -5,7 +5,7 @@ cd /d "%~dp0"
 rem Elastic Space launcher — the ONE way to start this project.
 rem Double-click: reuses the server if it is already running on port 4174,
 rem otherwise starts it in its own minimized CMD window, waits for it to
-rem answer, then opens the map room. The server window sits minimized in
+rem answer, then opens the admin panel. The server window sits minimized in
 rem the taskbar — close it to stop the server.
 
 rem Minimize this launcher window (PowerShell shares the console).

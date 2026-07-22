@@ -33,6 +33,7 @@
       <nav class="tab-bar panel" role="tablist" aria-label="Admin sections">
         <button id="tab-button-worlds" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="tab-worlds">worlds</button>
         <button id="tab-button-editor" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-editor">world editor</button>
+        <button id="tab-button-drafts" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-drafts">drafts</button>
       </nav>
 
       <div id="tab-worlds" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-worlds">
@@ -74,8 +75,6 @@
         </nav>
       </section>
 
-      <section id="summary-strip" class="summary-strip"></section>
-
       </div>
 
       <div id="tab-editor" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-editor" hidden>
@@ -88,23 +87,11 @@
         <section class="panel editor-toolbar">
           <div>
             <p class="eyebrow">world editor</p>
-            <p class="small">Edit live worlds directly; start new ones as drafts.</p>
+            <p class="small">Edit live worlds directly; new pages start in the drafts tab.</p>
           </div>
           <div class="masthead-actions">
             <button id="refresh-button" class="button ghost" type="button">refresh</button>
-            <button id="new-world-button" class="button" type="button">new draft</button>
           </div>
-        </section>
-
-        <section class="panel drafts-panel">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">drafts</p>
-              <h2>Page drafts</h2>
-            </div>
-          </div>
-          <p id="drafts-status" class="small drafts-status"></p>
-          <div id="drafts-list" class="drafts-list"></div>
         </section>
 
         <section class="panel editor-panel">
@@ -270,6 +257,30 @@
 
       </div>
 
+      <div id="tab-drafts" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-drafts" hidden>
+
+      <div class="editor-sections">
+        <p class="offline-note panel" hidden>
+          Drafts wake up once the server is running.
+        </p>
+
+        <section class="panel drafts-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">drafts</p>
+              <h2>Page drafts</h2>
+            </div>
+            <div class="masthead-actions">
+              <button id="new-world-button" class="button" type="button">new draft</button>
+            </div>
+          </div>
+          <p id="drafts-status" class="small drafts-status"></p>
+          <div id="drafts-list" class="drafts-list"></div>
+        </section>
+      </div>
+
+      </div>
+
       <dialog id="draft-dialog" class="draft-dialog">
         <h3 id="draft-dialog-title">New page draft</h3>
         <div class="draft-grid">
@@ -307,7 +318,7 @@
       </dialog>
     </main>
 
-    <script src="./scripts/map-room.js" defer></script>
+    <script src="./scripts/admin-shell.js" defer></script>
     <script src="./scripts/admin.js" defer></script>
     <script src="./scripts/text-size.js" defer></script>
   </body>

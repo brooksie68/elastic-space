@@ -92,7 +92,7 @@
 
     apply();
 
-    // Live-update when the map room toggle changes in another tab.
+    // Live-update when the admin panel toggle changes in another tab.
     window.addEventListener("storage", (event) => {
       if (!event.key || event.key === KEY) {
         apply();

@@ -1,4 +1,4 @@
-// Text-size gears for the admin page (map room).
+// Text-size gears for the admin panel.
 // Each gear opens a −/+ stepper: 5% per step, range −1 (smaller) to +5 (bigger),
 // remembered in localStorage. One site-wide gear in the masthead steps the root
 // font-size (everything here is rem); each major panel also gets its own gear.

@@ -1,14 +1,14 @@
 # admin
 
-> **2026-07-12:** the map room moved from `/admin/` to the repo-root `index.html`, with a
-> server status light, one-click launcher (`map-room.cmd`), page directory, and the site-wide
-> dashboard-icons toggle above the editor panels. `/admin/` now redirects to `/`. The
+> **2026-07-12:** the admin panel moved from `/admin/` to the repo-root `index.html`, with a
+> server status light, one-click launcher (`start-elastic-space.cmd`), page directory, and the
+> site-wide dashboard-icons toggle above the editor panels. `/admin/` now redirects to `/`. The
 > requirements below still describe the editor itself.
 
 ## Purpose
 
 The public site is a maze.
-The admin is the map room.
+The admin panel is the clear view of it.
 
 Visitors should drift, stumble, and discover. You should be able to see the whole organism at once, open any page directly, and change whatever needs changing without playing hide-and-seek with your own project.
 

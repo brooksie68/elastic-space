@@ -1,6 +1,5 @@
 const state = {
   activeSlug: null,
-  archived: [],
   detail: null,
   drafts: [],
   mode: "idle",
@@ -8,7 +7,6 @@ const state = {
 };
 
 const form = document.getElementById("world-form");
-const summaryStrip = document.getElementById("summary-strip");
 const refreshButton = document.getElementById("refresh-button");
 const newWorldButton = document.getElementById("new-world-button");
 const saveButton = document.getElementById("save-button");
@@ -54,30 +52,23 @@ function setStatus(message, kind = "info") {
   formStatus.className = `form-status${kind === "error" ? " error" : ""}`;
 }
 
-function getWorldBySlug(slug) {
-  return state.worlds.find((world) => world.slug === slug) || null;
+// The status lines are easy to miss (and the draft dialog closes before its
+// feedback can be read), so successful saves also flash a fixed toast.
+const saveToast = document.createElement("p");
+saveToast.className = "save-toast";
+saveToast.setAttribute("role", "status");
+document.body.append(saveToast);
+let saveToastTimer = null;
+
+function showSaveToast(message) {
+  saveToast.textContent = message;
+  saveToast.classList.add("show");
+  clearTimeout(saveToastTimer);
+  saveToastTimer = setTimeout(() => saveToast.classList.remove("show"), 2600);
 }
 
-function renderSummary() {
-  // "retired" counts the folders sitting in archive/ plus anything still in
-  // src/worlds whose status was set to retired by hand.
-  const counts = {
-    total: state.worlds.length,
-    live: state.worlds.filter((world) => world.status === "live").length,
-    draft: state.worlds.filter((world) => world.status === "draft").length,
-    retired:
-      state.archived.length +
-      state.worlds.filter((world) => world.status === "retired").length,
-  };
-
-  summaryStrip.replaceChildren(
-    ...Object.entries(counts).map(([label, value]) => {
-      const card = document.createElement("article");
-      card.className = "summary-card";
-      card.innerHTML = `<p class="eyebrow">${label}</p><strong>${value}</strong>`;
-      return card;
-    }),
-  );
+function getWorldBySlug(slug) {
+  return state.worlds.find((world) => world.slug === slug) || null;
 }
 
 async function loadWorld(slug) {
@@ -243,9 +234,8 @@ function serializeForm() {
 }
 
 async function refresh(preferredSlug = state.activeSlug) {
-  const [worldsResponse, archiveResponse, draftsResponse] = await Promise.all([
+  const [worldsResponse, draftsResponse] = await Promise.all([
     fetch("/api/worlds"),
-    fetch("/api/archive"),
     fetch("/api/drafts"),
   ]);
 
@@ -254,10 +244,8 @@ async function refresh(preferredSlug = state.activeSlug) {
   }
 
   state.worlds = await worldsResponse.json();
-  state.archived = archiveResponse.ok ? await archiveResponse.json() : [];
   state.drafts = draftsResponse.ok ? await draftsResponse.json() : [];
 
-  renderSummary();
   populateWorldPicker();
   renderDrafts();
 
@@ -365,6 +353,7 @@ draftSaveButton.addEventListener("click", async () => {
   try {
     const draft = await persistDraft();
     draftDialog.close();
+    showSaveToast(`Draft "${draft.title}" saved`);
     await refresh();
     setDraftsStatus(`Draft "${draft.title}" saved.`);
   } catch (error) {
@@ -389,6 +378,7 @@ draftEngageButton.addEventListener("click", async () => {
     }
 
     draftDialog.close();
+    showSaveToast(`"${draft.title}" engaged — queued for the next session`);
     await refresh();
     setDraftsStatus(`"${draft.title}" engaged — queued for the next session.`);
   } catch (error) {
@@ -451,6 +441,7 @@ form.addEventListener("submit", async (event) => {
 
     await refresh(result.slug);
     setStatus("Page saved.");
+    showSaveToast(`"${payload.world.title || result.slug}" saved`);
   } catch (error) {
     setStatus(error.message, "error");
   } finally {

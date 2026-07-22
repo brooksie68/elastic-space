@@ -242,25 +242,6 @@ h2 {
   pointer-events: none;
 }
 
-.summary-strip {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-}
-
-.summary-card {
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 1rem;
-}
-
-.summary-card strong {
-  display: block;
-  font-size: 2rem;
-  margin-top: 0.35rem;
-}
-
 .editor-panel {
   min-height: calc(100vh - 13rem);
 }
@@ -337,6 +318,35 @@ h2 {
 /* Drafts + draft dialog (world editor tab) */
 .drafts-panel {
   padding: 1.25rem 1.5rem;
+}
+
+/* Save confirmation toast (scripts/admin.js) */
+.save-toast {
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  left: 50%;
+  margin: 0;
+  opacity: 0;
+  padding: 0.7rem 1.2rem;
+  pointer-events: none;
+  position: fixed;
+  top: 1.1rem;
+  transform: translate(-50%, -0.6rem);
+  transition: opacity 250ms ease, transform 250ms ease;
+  z-index: 30;
+}
+
+.save-toast::before {
+  color: #4ade80;
+  content: "✓ ";
+}
+
+.save-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .drafts-status {
@@ -649,7 +659,7 @@ h2 {
   padding: 1.25rem 1.5rem;
 }
 
-/* Section titles match the gold accent used by eyebrows and summary labels */
+/* Section titles match the gold accent used by eyebrows */
 .pages-panel .panel-head h2 {
   color: var(--accent);
 }
@@ -730,7 +740,7 @@ h2 {
   padding-left: 0.7rem;
 }
 
-/* Kebab row menus + archive confirm dialog (injected by map-room.js when served) */
+/* Kebab row menus + archive confirm dialog (injected by admin-shell.js when served) */
 .pages-list .kebab-wrap {
   margin-right: 0.4rem;
   position: relative;

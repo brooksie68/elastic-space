@@ -6213,7 +6213,7 @@ function buildTunerPanel() {
   resetButton.className = "tuner-button";
   resetButton.textContent = "Reset all";
 
-  // text-size gear — the map room's stepper mechanic (scripts/text-size.js):
+  // text-size gear — the admin panel's stepper mechanic (scripts/text-size.js):
   // ⚙ opens a −/+ popover, 5% per step, range −1..+5, remembered with the
   // rest of the tuner state; applies as zoom on the whole panel
   if (!tunerState.ui) tunerState.ui = { size: 0 };

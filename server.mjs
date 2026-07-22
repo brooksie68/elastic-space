@@ -50,7 +50,7 @@ function sendJson(response, status, payload) {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store",
-    // The map room polls /healthz from file:// before switching to the served
+    // The admin panel polls /healthz from file:// before switching to the served
     // copy; a cross-origin allow is required for that first probe to succeed.
     "Access-Control-Allow-Origin": "*",
   });
@@ -603,9 +603,14 @@ async function regenerateWorldRegistry() {
 
 // Locate a world's row in the admin panel's static worlds lists. Rows are
 // either a single <a> line or a .page-row <div> wrapping the world link plus
-// utility pills (e.g. curate); the file is one element per line.
+// utility pills (e.g. curate); the file is one element per line. The pseudo-slug
+// "welcome" maps to the root-level front door row, which moves between lists
+// like any world but pins to the top (its sort key is empty).
 function findWorldRowRange(lines, slug) {
-  const needle = `href="./src/worlds/${slug}/index.html"`;
+  const needle =
+    slug === "welcome"
+      ? 'href="./welcome.html"'
+      : `href="./src/worlds/${slug}/index.html"`;
   const anchorAt = lines.findIndex((line) => line.includes(needle));
 
   if (anchorAt === -1) {
@@ -1233,7 +1238,7 @@ const server = createServer(async (request, response) => {
     return;
   }
 
-  // The map room now lives at the root; the old /admin/ page is retired.
+  // The admin panel now lives at the root; the old /admin/ page is retired.
   if (pathname === "/admin" || pathname === "/admin/" || pathname === "/admin/index.html") {
     response.writeHead(302, { Location: "/" });
     response.end();
