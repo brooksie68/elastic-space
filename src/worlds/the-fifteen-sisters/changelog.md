@@ -1,5 +1,17 @@
 # The Fifteen Sisters — changelog
 
+## 2026-07-20 — claude-fable (bell removed, city quieter)
+
+- Removed the unison hour-bell (distant-bell.mp3): James found it clashing with
+  the sisters' chimes. `ringBell()`, the release-kind/bell-clock bookkeeping,
+  and the strike check in `frame()` are gone from world.js. The `<audio
+  id="bell">` element and the mp3 are still in place — pull them at a wrap-up
+  pass (html edits are deferred mid-session), they're harmless dead weight.
+- City bed volume cut 25%: 0.49 → 0.37 of master in `applyVolume()`.
+- Coming next: chromatic C3–C5 sample bank rendered from Surge XT (real synth
+  notes, no pitch-shifting) once James picks a patch — see repo tmp/synth-test
+  for the DawDreamer pipeline.
+
 ## 2026-07-18 — claude-fable (walls: mandala-shop sandstone, gently)
 
 - The salon plate re-rendered with the Meshy sandstone from the mandala shop

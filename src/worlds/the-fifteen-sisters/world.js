@@ -64,8 +64,6 @@
   let voices = "blend";        // glass (synth) | bowls (pitched bowl scale) | blend
   const FRICTION_TAU = 40;     // seconds for amplitude to fall to 1/e
   let pattern = "together";
-  let releaseKind = null;      // last full-row release ("together" rings the bell)
-  let bellBaseU = 0;           // wave clock at the together-release; bell rings each full cycle after
   let pendingAfterGather = null;
   let cascadeQueue = [];       // [{ index, atU }]
 
@@ -132,16 +130,14 @@
     hideDropCall();
     cascadeQueue = [];
     if (pattern === "cascade") {
-      releaseKind = "cascade";
       for (let i = 0; i < N; i++) {
         cascadeQueue.push({ index: i, atU: waveU + (CASCADE_GAP * i) / cycleT });
       }
     } else if (pattern === "byhand") {
-      releaseKind = "byhand"; // sisters wait for clicks; Release lets the rest go
+      // sisters wait for clicks; Release lets the rest go
       for (let i = 0; i < N; i++) if (sisters[i].mode === "held") releaseSister(i);
     } else {
-      releaseKind = pattern; // together | mirror
-      bellBaseU = waveU;
+      // together | mirror
       for (let i = 0; i < N; i++) releaseSister(i);
     }
   }
@@ -151,7 +147,6 @@
   const ctx2d = canvas.getContext("2d");
   const ambience = document.getElementById("ambience");
   const citybed = document.getElementById("citybed");
-  const bell = document.getElementById("bell");
   const bowl = document.getElementById("bowl");
   const doorExit = document.querySelector(".exit-door");
   const starExit = document.querySelector(".exit-star");
@@ -488,18 +483,9 @@
     } catch (e) { /* the bowl rests */ }
   }
 
-  function ringBell() {
-    if (!soundOn) return;
-    try {
-      bell.currentTime = 0;
-      bell.volume = 0.26 * masterVol;
-      bell.play().catch(() => {});
-    } catch (e) { /* bell is a luxury */ }
-  }
-
   function applyVolume() {
     ambience.volume = 0.55 * masterVol;
-    citybed.volume = 0.49 * masterVol; // 0.7 cut 30% (2026-07-18): too loud against the sisters' bells
+    citybed.volume = 0.37 * masterVol; // 0.49 cut 25% (2026-07-20); 0.7 cut 30% (2026-07-18)
     if (chimeGain) chimeGain.gain.value = masterVol;
   }
 
@@ -992,7 +978,6 @@
     const dt = Math.min(0.1, nowS - lastS);
     lastS = nowS;
 
-    const prevU = waveU;
     waveU += dt / cycleT;
 
     // cascade schedule
@@ -1010,13 +995,6 @@
     if (friction) {
       const decay = Math.exp(-dt / FRICTION_TAU);
       for (const s of sisters) if (s.mode === "swing") s.amp *= decay;
-    }
-
-    // the hour strikes when the sisters come home to unison (not over stillness)
-    if (releaseKind === "together" &&
-        Math.floor(waveU - bellBaseU) > Math.floor(prevU - bellBaseU) &&
-        sisters.some((s) => s.amp > 0.2)) {
-      ringBell();
     }
 
     // camera swing between vantages (returning from 90° passes back through 45°)
