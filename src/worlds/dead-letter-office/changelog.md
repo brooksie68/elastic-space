@@ -3,6 +3,30 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r3: the optimization pass + the z-fight)
+
+- **Poster flicker fixed**: THE MAIL IS WATCHING overlapped the DEAD LETTER OFFICE sign at
+  the same wall depth (z-fighting). Moved left/down clear of the sign and staggered the
+  wall offsets (sign 0.02 / calendar 0.03 / eye 0.035).
+- **The lag diagnosis** (James: slows when he's near the camera with letters falling): the
+  hover raycaster was testing his actual skinned mesh every 3rd frame — CPU per-triangle
+  skinning math on (then) 288k tris. He now has an invisible capsule click-proxy; the
+  skinned mesh is never raycast. Hover checks throttled 3rd → 6th frame.
+- **Postmaster decimated** 288k → 86k tris in headless Blender (decimate keeps vertex
+  groups; all 24 pack-targeted bones verified present by name — the anim pack binds
+  unchanged). GLB 19.2MB → 11MB. Original stays in tmp/dead-letter-office/meshy/.
+- **Render cost trims**: dynamic-resolution caps 1.75/1.35 → 1.5/1.1 (fill rate was the
+  budget on a 2560 screen); envelopes share ONE plane geometry + one cached material per
+  letter (was: fresh geometry + fresh Standard material per envelope); envelopes, posters,
+  parcels, paper piles, rug switched Standard → Lambert (no specular lobe × lights on
+  dozens of small meshes); real point lights 9 → 8 (east bulb is now glow-only); settled
+  pile letters + floor strays freeze their matrices (hundreds of static transforms no
+  longer recompose per frame).
+- Where things stand: **r3 committed, awaiting James's FPS verdict.** If it still drags:
+  next levers are fluor light count (5 real → 3), envelope pile mesh-merging past ~layer 3,
+  and a ?fps=1-style frame readout is already available from the Mandala pattern if we
+  want numbers.
+
 ## 2026-07-22 — claude-fable (James's first-walk-through punch list: "more light overall")
 
 - **Brightness pass** (the r1 room read as a castle dungeon): 7 fluorescent twin-tube

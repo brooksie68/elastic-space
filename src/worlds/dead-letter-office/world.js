@@ -297,8 +297,10 @@ try {
 // Dynamic resolution (Mandala Shop pattern): full sharpness at rest, lighter
 // pixel load while the camera moves. ?px=N pins a ratio for perf testing.
 const pxOverride = parseFloat(new URLSearchParams(location.search).get('px'));
-const RES_HIGH = Math.min(devicePixelRatio, 1.75);
-const RES_LOW = Math.min(devicePixelRatio, 1.35);
+// Caps lowered in the r3 perf pass (2026-07-22): 1.75 at rest was ~4500px wide
+// on James's screen — fill rate was the frame budget. 1.5 still reads sharp.
+const RES_HIGH = Math.min(devicePixelRatio, 1.5);
+const RES_LOW = Math.min(devicePixelRatio, 1.1);
 let resCurrent = pxOverride > 0 ? pxOverride : RES_HIGH;
 renderer.setPixelRatio(resCurrent);
 function applyRes(target) {
@@ -351,20 +353,24 @@ scene.add(hemi);
 
 // two hanging bulbs (warm accents): mid-room and the east side. The one that
 // used to hang over the basket is gone — letters fell through it (James); the
-// basket gets a flanking pair of fluorescents instead.
+// basket gets a flanking pair of fluorescents instead. Only the mid-room bulb
+// carries a real light (r3 perf pass — every point light is a per-fragment tax
+// on every Standard material; the east corner is covered by fluor + furnace).
 const BULBS = [
-  [0.6, 3.1, 0.6],
-  [5.6, 3.05, 1.6],
+  [0.6, 3.1, 0.6, true],
+  [5.6, 3.05, 1.6, false],
 ];
 const bulbLights = [];
 const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0 });
 const shadeMat = new THREE.MeshStandardMaterial({ color: 0x243026, roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
 const cordMat = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.9 });
-for (const [x, y, z] of BULBS) {
-  const pt = new THREE.PointLight(0xffc87a, 1.5, 13, 1.6);
-  pt.position.set(x, y - 0.09, z);
-  bulbLights.push(pt);
-  scene.add(pt);
+for (const [x, y, z, lit] of BULBS) {
+  if (lit) {
+    const pt = new THREE.PointLight(0xffc87a, 1.5, 13, 1.6);
+    pt.position.set(x, y - 0.09, z);
+    bulbLights.push(pt);
+    scene.add(pt);
+  }
   const cordLen = ROOM.h - y - 0.18;
   const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, cordLen + 0.36, 5), cordMat);
   cord.position.set(x, y + 0.18 + cordLen / 2, z);
@@ -518,7 +524,9 @@ const matWood = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.8 })
 const matWoodDark = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.85, color: 0x8a7a66 });
 const matIron = new THREE.MeshStandardMaterial({ color: 0x2b2b2d, roughness: 0.55, metalness: 0.7 });
 const matPipe = new THREE.MeshStandardMaterial({ color: 0x3a3d3c, roughness: 0.5, metalness: 0.75 });
-const matPaper = new THREE.MeshStandardMaterial({ color: 0xd8cdae, roughness: 0.95 });
+// paper goods are Lambert (r3 perf pass): dozens of small meshes — envelopes,
+// posters, parcels — don't need a PBR specular lobe times nine lights each
+const matPaper = new THREE.MeshLambertMaterial({ color: 0xd8cdae });
 
 /* ================= room shell ================= */
 
@@ -586,7 +594,7 @@ function signTexture(w, h, draw) {
 function addSign(tex, w, h, x, y, z, ry, { lit = false } = {}) {
   const mat = lit
     ? new THREE.MeshBasicMaterial({ map: tex })
-    : new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 });
+    : new THREE.MeshLambertMaterial({ map: tex });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
   m.position.set(x, y, z);
   m.rotation.y = ry;
@@ -968,7 +976,7 @@ const texParcel = canvasBase(128, (g, px) => {
   g.fillRect(px * 0.44, 0, px * 0.12, px);
   g.fillRect(0, px * 0.44, px, px * 0.12);
 });
-const matParcel = new THREE.MeshStandardMaterial({ map: texParcel, roughness: 0.95 });
+const matParcel = new THREE.MeshLambertMaterial({ map: texParcel });
 function parcel(x, y, z, w, h, d, ry) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matParcel);
   m.position.set(x, y + h / 2, z);
@@ -1091,8 +1099,9 @@ function paperPoster(wM, hM, x, y, z, ry, draw) {
   return sign;
 }
 
-// north wall: the eye, and the calendar
-paperPoster(0.62, 0.82, -2.2, 2.05, ROOM.z0 + 0.02, 0, (g, w, h) => {
+// north wall: the eye, and the calendar (offsets staggered — two signs at the
+// same wall depth z-fight where they overlap, the r2 flicker James saw)
+paperPoster(0.62, 0.82, -2.75, 1.72, ROOM.z0 + 0.035, 0, (g, w, h) => {
   g.font = '700 30px "Courier New", monospace';
   g.fillText('THE MAIL', w / 2, 48);
   g.fillText('IS WATCHING', w / 2, 84);
@@ -1110,7 +1119,7 @@ paperPoster(0.62, 0.82, -2.2, 2.05, ROOM.z0 + 0.02, 0, (g, w, h) => {
   g.fillStyle = '#3a3226';
   g.fillText('sort accordingly', w / 2, h - 30);
 });
-paperPoster(0.55, 0.68, 0.75, 1.98, ROOM.z0 + 0.02, 0, (g, w, h) => {
+paperPoster(0.55, 0.68, 0.75, 1.98, ROOM.z0 + 0.03, 0, (g, w, h) => {
   g.font = '700 30px "Courier New", monospace';
   g.fillText('MARCH 1991', w / 2, 44);
   g.font = '400 18px "Courier New", monospace';
@@ -1329,7 +1338,7 @@ addSign(signTexture(512, 400, (g, w, h) => {
     }
   });
   const rug = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.2),
-    new THREE.MeshStandardMaterial({ map: texRug, roughness: 0.98 }));
+    new THREE.MeshLambertMaterial({ map: texRug }));
   rug.rotation.x = -Math.PI / 2;
   rug.rotation.z = 0.03;
   rug.position.set(2.4, 0.006, -3.0);
@@ -1538,7 +1547,7 @@ const STILL = 0.0001;   // never exactly 0 — the mixer stops rewriting bones
 
 const pmGroup = new THREE.Group();
 scene.add(pmGroup);
-let pmModel = null, mixer = null, headBone = null, handBone = null;
+let pmModel = null, mixer = null, headBone = null, handBone = null, pmProxy = null;
 const actions = {};
 let baseAction = null, oneshotAction = null, oneshotDone = null;
 
@@ -1605,6 +1614,15 @@ Promise.all([
   });
   pmGroup.add(pmModel);
   pmGroup.add(blobShadow());
+  // Click/hover proxy: raycasting the skinned mesh itself does CPU per-triangle
+  // skinning math every test — it was the r2 "slows down when he's near" lag.
+  // The capsule is never rendered (material.visible=false skips the draw call
+  // but Mesh.raycast still tests it).
+  pmProxy = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.42, 0.95, 4, 8),
+    new THREE.MeshBasicMaterial({ visible: false }));
+  pmProxy.position.y = 0.92;
+  pmGroup.add(pmProxy);
   headBone = pmModel.getObjectByName('Head');
   handBone = pmModel.getObjectByName('RightHand');
 
@@ -1889,6 +1907,7 @@ function pmRoutine() {
       playOneshot('scratch', () => {
         pmGroup.visible = false;             // out the door, up the stairs
         pmAway = true;
+        hoverDirty = true;                   // his click proxy leaves with him
         pmAwayUntil = performance.now() + 18000 + Math.random() * 25000;
       });
     });
@@ -1958,6 +1977,7 @@ function pmTick(dt, now) {
     if (now >= pmAwayUntil) {              // back down the stairs
       pmAway = false;
       pmGroup.visible = true;
+      hoverDirty = true;
       speak(PM_DOOR_RETURN_LINES[Math.floor(Math.random() * PM_DOOR_RETURN_LINES.length)]);
       pmWalkTo('desk', () => { playBase(pickIdle()); pmDone(8, 8); });
     }
@@ -2192,6 +2212,10 @@ function placeInPile(group) {
   PILE.layers[L].push(group);
   PILE.resident += 1;
   basketPile.push(group);
+  // settled letters are static: freeze the matrix so hundreds of pile residents
+  // stop recomposing transforms every frame (r3 perf pass)
+  group.updateMatrix();
+  group.matrixAutoUpdate = false;
   if (PILE.resident > PILE_CAP) {          // recycle the buried bottom, invisibly
     for (const layer of PILE.layers) {
       if (layer.length && layer !== PILE.layers[pileTopLayer()]) {
@@ -2277,12 +2301,22 @@ function envelopeTexture(letterIndex) {
 }
 
 const ENV_W = 0.34, ENV_H = 0.2125;
+// one shared geometry + one cached material per letter (r3 perf pass — a fresh
+// geometry and Standard material per envelope was pure waste at pile scale)
+const ENV_GEO = new THREE.PlaneGeometry(ENV_W, ENV_H);
+const ENV_BACK_MAT = new THREE.MeshLambertMaterial({ color: 0xcfc5a4 });
+const envFrontMats = new Map();
+function envFrontMat(letterIndex) {
+  if (!envFrontMats.has(letterIndex)) {
+    envFrontMats.set(letterIndex,
+      new THREE.MeshLambertMaterial({ map: envelopeTexture(letterIndex) }));
+  }
+  return envFrontMats.get(letterIndex);
+}
 function envelopeMesh(letterIndex, registerClick = true) {
   const group = new THREE.Group();
-  const front = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, ENV_H),
-    new THREE.MeshStandardMaterial({ map: envelopeTexture(letterIndex), roughness: 0.9 }));
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(ENV_W, ENV_H),
-    new THREE.MeshStandardMaterial({ color: 0xcfc5a4, roughness: 0.9 }));
+  const front = new THREE.Mesh(ENV_GEO, envFrontMat(letterIndex));
+  const back = new THREE.Mesh(ENV_GEO, ENV_BACK_MAT);
   back.rotation.y = Math.PI;
   back.position.z = -0.002;
   group.add(front, back);
@@ -2348,6 +2382,8 @@ function settleIntoBasket(f) {
       BASKET_POS.z + Math.sin(a) * (0.75 + Math.random() * 0.55));
     slideEnvelope(f.group, target, () => {
       f.group.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
+      f.group.updateMatrix();
+      f.group.matrixAutoUpdate = false;
       floorStrays.push(f.group);
       while (floorStrays.length > STRAY_CAP) removeEnvelopeGroup(floorStrays[0]);
     });
@@ -2427,6 +2463,8 @@ function seedStrays() {
       BASKET_POS.z + 0.5 + Math.random() * 0.9);
     group.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
     scene.add(group);
+    group.updateMatrix();
+    group.matrixAutoUpdate = false;
     floorStrays.push(group);
   }
 }
@@ -2721,7 +2759,7 @@ function rayTargets() {
     hoverDirty = false;
     hoverTargets.length = 0;
     hoverTargets.push(...envClickables, ...doorMeshes, ...punchClockMeshes, ...propClickables.furnace);
-    if (pmModel) pmModel.traverse((o) => { if (o.isMesh) hoverTargets.push(o); });
+    if (pmProxy && !pmAway) hoverTargets.push(pmProxy);   // never the skinned mesh
   }
   return hoverTargets;
 }
@@ -2752,8 +2790,7 @@ function handleClick(e) {
     playSfx(sfxWhoosh, 0.5);
     return;
   }
-  // anything else that isn't scenery is him
-  postmasterClicked();
+  if (obj === pmProxy) postmasterClicked();
 }
 
 function openNearestEnvelope() {
@@ -2901,7 +2938,7 @@ function tick() {
   applyRes(t - resStillAt > 0.25 ? RES_HIGH : RES_LOW);
 
   // hover cursor, throttled
-  if (frame % 3 === 0 && !dragging && !letterOpen) {
+  if (frame % 6 === 0 && !dragging && !letterOpen) {
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(rayTargets(), false);
     stage.style.cursor = hits.length ? 'pointer' : 'grab';
