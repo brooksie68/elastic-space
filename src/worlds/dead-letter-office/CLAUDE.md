@@ -25,12 +25,20 @@ return addresses still work.
      otherwise pile up in the blend and every later gesture reads tiny).
   3. Never hold a looping action at timeScale exactly 0 — use a hair above (STILL=0.0001).
 - The postmaster's movement uses a hand-laid nav graph (`NAV_NODES`/`NAV_EDGES` in world.js)
-  and the camera uses circle+box keep-outs (`CIRCLES`/`BOXES`). If you move furniture or
-  stations, re-run the sim in the changelog's 2026-07-21 entry pattern (segment clearance +
-  30k-point constraint fuzz) before shipping — the fuzz has caught two real traps already.
-  Wall-flush keep-out boxes must extend ≥2m past their wall or the push loop traps the camera.
-- Room look is tuned live via the "tune the office" panel (localStorage `dlo-room-tuner`);
+  and the camera uses circle+box keep-outs (`CIRCLES`/`BOXES` → precomputed `BOX_PUSHES`:
+  only faces inside the walls and not buried in a neighboring box are push targets — naive
+  least-penetration pushes trapped the camera two different ways). If you move furniture or
+  stations, re-run the fuzz sim (scratchpad pattern in the 2026-07-21/22 changelog entries)
+  before shipping. Adjacent keep-out boxes should OVERLAP, never leave a sub-body-radius gap.
+- Never make the fluorescents (or anything) flicker/strobe — hard James veto from the 2D
+  era ("makes me feel like I'm gonna have a seizure"). The furnace's slow ember waver is
+  the approved exception.
+- Room look is tuned live via the "tune the office" panel (localStorage `dlo-room-tuner-v2`;
+  the key version-bumps whenever defaults change materially, or stored values mask them);
   bake James's numbers back into `TUNE_DEFAULTS` when he settles them.
+- The basket pile is real accumulation (per-layer, `PILE` in world.js): letters land bottom
+  layer first, mound past the rim, spill to the floor. Never bring back silent despawn of
+  visible letters — the cage is see-through.
 - Tile textures follow the never-black rule: procedural canvas fallback first, Meshy tile
   overlay on load. Prop materials clone the wood tile — clones are registered on
   `texWood.userData.clones` so the overlay marks them dirty too.

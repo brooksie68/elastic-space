@@ -3,6 +3,47 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (James's first-walk-through punch list: "more light overall")
+
+- **Brightness pass** (the r1 room read as a castle dungeon): 7 fluorescent twin-tube
+  fixtures (5 with real lights, 2 emissive-only; STEADY — the flicker veto from the 2D
+  era stands), hemisphere fill nearly doubled behind a new `ambient` tuner, exposure up,
+  fog down, window light up. Tuner gains `ambient` + `fluor` sliders and moves to
+  localStorage key `dlo-room-tuner-v2` so stored dungeon-era values don't override the
+  new defaults.
+- **Floor**: dungeon pavers out, polished concrete in (new 6cr Meshy tile with coffee-ring
+  stains, `assets/textures/concrete.png`; old floor.png kept on disk, unused). Roughness
+  dropped so the sheen catches the fixtures.
+- **Cozier walls**: two more barred windows (south pair) with light shafts; posters —
+  THE MAIL IS WATCHING eye, MARCH 1991 calendar (the 11th circled), LIFT WITH YOUR
+  KNEES / SORT WITH YOUR HEART, ZIP DIRECTORY (the letters' destinations), IDLE HANDS
+  SORT NOTHING, and two chaste pin-ups (Miss Par Avion + Mr. Special Delivery, line-art,
+  fully dressed); a corkboard with pinned notes and the little status stickers.
+- **More furniture**: double-deep bank of ten green file cabinets on the east wall (one
+  drawer open since '85; the lone cabinet it replaces is gone, plant moved onto the bank);
+  donut table by the desk (coffee service, box of six donuts, his lunchbox); big table by
+  the stairwell door (parcel scale with a stuck needle, parcels, twine, ledger, ink);
+  parcels scattered wherever a surface holds still.
+- **The basket fills for real**: letters land bottom-first and genuinely accumulate —
+  per-layer pile that fills the tapered cage, mounds past the rim, then spills onto the
+  floor around it (spill chance grows with the mound). Only the top layer + floor spill
+  stay clickable; buried letters quietly recycle past 250 residents. The bulb the letters
+  used to fall through is gone — replaced by the two fluorescents flanking the basket.
+- **Postmaster fixes + variety**: found the stuck-treadmill bug (walking to the station he
+  was already at yielded an empty path and he walked in place forever — routine picks now
+  exclude the current station, and pmWalkTo arrives immediately on an empty route). New
+  rounds: consults the corkboard, browses the file cabinets, pokes the fire, and takes a
+  door break — walks out the stairwell door, gone 18–43s, comes back with a line
+  ("Upstairs is still there. Unfortunately."). Coffee now happens at the donut table,
+  sometimes with a donut instead of the mug.
+- **Constraint hardening**: the fuzz sim caught two more trap classes — wall-flush box
+  faces losing to the wall clamp, then adjacent-box corners ping-ponging the push. Keep-out
+  boxes now precompute valid push faces (inside the walls, not buried in a neighbor);
+  30k-point fuzz is clean, all 13 stations BFS-reachable.
+- Where things stand: **r2 awaiting James's second walk-through.** Same soft spots as r1
+  (prop scale/orientation, carry offset, walk timeScale) plus new eyes on: fluorescent
+  levels vs the cozy target, pile look at high counts, spill scatter.
+
 ## 2026-07-21 — claude-fable (solo, James's "make it a lot cooler" directive)
 
 - **Full 3D room rebuild** ("the room arc" the changelog kept promising). The 2D rendered-plate

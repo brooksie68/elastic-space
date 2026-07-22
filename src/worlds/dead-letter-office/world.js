@@ -247,6 +247,29 @@ const PM_BASKET_EMPTY_LINES = [
   "Basket's quiet. It's saving up.",
   "Nothing to sort. Suspicious.",
 ];
+const PM_CORKBOARD_LINES = [
+  "Notice 44-C. Still in effect.",
+  "Green sticker means it's fine. It's never green.",
+  "Somebody keeps pinning the same memo. It's me.",
+];
+const PM_CABINET_LINES = [
+  "A through M. The rest is estimates.",
+  "Every drawer is the miscellaneous drawer.",
+  "That one's been open since '85. We respect its decision.",
+];
+const PM_POKE_LINES = [
+  "Just checking it's still hungry.",
+  "It likes the poker. Nobody else does.",
+];
+const PM_DOOR_RETURN_LINES = [
+  "Upstairs is still there. Unfortunately.",
+  "Checked the top of the stairs. Still stairs.",
+  "Break's over. It never started.",
+];
+const PM_DONUT_LINES = [
+  "The donuts are from a Tuesday.",
+  "Powdered. Like everything down here.",
+];
 
 /* ================= DOM, renderer, scene ================= */
 
@@ -286,7 +309,7 @@ function applyRes(target) {
 }
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = 1.22;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0d100f);
@@ -302,28 +325,34 @@ const ROOM = { x0: -9, x1: 9, z0: -6, z1: 6, h: 4.1 };   // ~2x Mandala Shop's f
 /* ================= tuner (loaded early — lights read it) ================= */
 
 const TUNE_DEFAULTS = {
-  bulb: 1.5,      // hanging-bulb intensity multiplier
+  ambient: 0.95,  // hemisphere fill — the "can actually see him" knob
+  fluor: 1.7,     // fluorescent fixture intensity
+  bulb: 1.8,      // hanging-bulb intensity multiplier
   lamp: 1.8,      // banker's lamp glow
   furnace: 1.1,   // furnace ember glow
   shaft: 0.16,    // window light-shaft opacity
-  fog: 0.026,     // basement murk density
-  mailEvery: 6,   // seconds between falling letters
+  fog: 0.016,     // basement murk density
+  mailEvery: 4.5, // seconds between falling letters
   fallSpeed: 0.4, // m/s base descent
   pace: 1.0,      // postmaster activity gap multiplier (higher = lazier)
   walk: 0.95,     // postmaster walk speed m/s
 };
 let tune = { ...TUNE_DEFAULTS };
-try { Object.assign(tune, JSON.parse(localStorage.getItem('dlo-room-tuner') || '{}')); } catch (e) { /* fresh */ }
+// v2 key (2026-07-22 brightness pass): stored v1 values were tuned against the
+// dungeon-dark build and would override the new, much brighter defaults
+try { Object.assign(tune, JSON.parse(localStorage.getItem('dlo-room-tuner-v2') || '{}')); } catch (e) { /* fresh */ }
 
 scene.fog = new THREE.FogExp2(0x0c0e0d, tune.fog);
 
 /* ================= lighting ================= */
 
-scene.add(new THREE.HemisphereLight(0x8a9a90, 0x2a2620, 0.5));
+const hemi = new THREE.HemisphereLight(0x9aa89e, 0x3a352c, 0.95);
+scene.add(hemi);
 
-// three hanging bulbs on cords: over the basket, mid-room, and the east side
+// two hanging bulbs (warm accents): mid-room and the east side. The one that
+// used to hang over the basket is gone — letters fell through it (James); the
+// basket gets a flanking pair of fluorescents instead.
 const BULBS = [
-  [-4.5, 3.05, -1.5],
   [0.6, 3.1, 0.6],
   [5.6, 3.05, 1.6],
 ];
@@ -346,6 +375,46 @@ for (const [x, y, z] of BULBS) {
   scene.add(cord, shade, glass);
 }
 
+// Fluorescent fixtures (2026-07-22, "more light" pass): hanging twin-tube shop
+// lights. STEADY — never flicker these (the 2D world's flicker overlay was a
+// hard James veto). Fixtures with `lit` carry a real PointLight; the rest are
+// emissive-only so the light count stays sane.
+const fluorLights = [];
+const fluorTubeMat = new THREE.MeshBasicMaterial({ color: 0xe4f2e2 });
+const fluorBodyMat = new THREE.MeshStandardMaterial({ color: 0x8a9088, roughness: 0.5, metalness: 0.6 });
+function fluorFixture(x, y, z, ry, lit) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.07, 0.28), fluorBodyMat);
+  g.add(body);
+  for (const off of [-0.07, 0.07]) {
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.15, 10), fluorTubeMat);
+    tube.rotation.z = Math.PI / 2;
+    tube.position.set(0, -0.05, off);
+    g.add(tube);
+  }
+  for (const rx of [-0.45, 0.45]) {
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, ROOM.h - y, 5), cordMat);
+    rod.position.set(rx, (ROOM.h - y) / 2, 0);
+    g.add(rod);
+  }
+  g.position.set(x, y, z);
+  g.rotation.y = ry;
+  scene.add(g);
+  if (lit) {
+    const pt = new THREE.PointLight(0xdff0e0, 1.7, 10, 1.7);
+    pt.position.set(x, y - 0.14, z);
+    fluorLights.push(pt);
+    scene.add(pt);
+  }
+}
+fluorFixture(-5.6, 3.0, -1.5, Math.PI / 2, true);   // flanking the basket…
+fluorFixture(-3.4, 3.0, -1.5, Math.PI / 2, true);   // …clear of the letter drop
+fluorFixture(2.5, 3.05, -4.1, 0, true);             // over the desk area
+fluorFixture(0.2, 3.1, 2.9, 0.25, true);            // center-south
+fluorFixture(-7.3, 3.05, 3.4, Math.PI / 2, true);   // door + big table corner
+fluorFixture(6.3, 3.05, -4.7, 0, false);            // pigeonholes (emissive only)
+fluorFixture(8.1, 3.05, -2.2, Math.PI / 2, false);  // file cabinet bank (emissive only)
+
 // banker's lamp pool of green at the desk (fixture built with the desk below)
 const lampLight = new THREE.PointLight(0x9adb6e, 1.8, 5, 1.8);
 lampLight.position.set(2.12, 1.1, -4.68);
@@ -358,7 +427,7 @@ scene.add(furnaceLight);
 let furnaceFlare = 0;
 
 // high window: cool spill from the world upstairs
-const windowLight = new THREE.DirectionalLight(0x9db8cc, 0.32);
+const windowLight = new THREE.DirectionalLight(0x9db8cc, 0.5);
 windowLight.position.set(-8.6, 3.1, -2.0);
 windowLight.target.position.set(-3.5, 0, -0.5);
 scene.add(windowLight, windowLight.target);
@@ -410,12 +479,18 @@ const texWall = tileTex('assets/textures/wall.png', (g, px) => {
     g.fillRect(i * bw + off + 2, r * bh + 2, bw - 4, bh - 4);
   }
 });
-const texFloor = tileTex('assets/textures/floor.png', (g, px) => {
-  g.fillStyle = '#4a443c'; g.fillRect(0, 0, px, px);
-  const s = px / 4;
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
-    g.fillStyle = jitter('#575046', 0.1);
-    g.fillRect(i * s + 2, j * s + 2, s - 4, s - 4);
+// Polished concrete (2026-07-22): the paver tile read as dungeon brick (James:
+// "the floor needs to be more like a post office"). Uniform sealed grey with
+// organic stains; the old floor.png stays on disk unused.
+const texFloor = tileTex('assets/textures/concrete.png', (g, px) => {
+  g.fillStyle = '#5c5850'; g.fillRect(0, 0, px, px);
+  for (let k = 0; k < 30; k++) {
+    g.fillStyle = `rgba(70,64,54,${0.05 + Math.random() * 0.08})`;
+    g.beginPath();
+    g.ellipse(Math.random() * px, Math.random() * px,
+      px * (0.05 + Math.random() * 0.2), px * (0.04 + Math.random() * 0.12),
+      Math.random() * Math.PI, 0, Math.PI * 2);
+    g.fill();
   }
 });
 const texWood = tileTex('assets/textures/wood.png', (g, px) => {
@@ -435,9 +510,10 @@ function uvScale(geo, sx, sy) {
   return geo;
 }
 
-const WALL_TILE = 2.2, FLOOR_TILE = 3.0, WOOD_TILE = 1.7;
+const WALL_TILE = 2.2, FLOOR_TILE = 4.2, WOOD_TILE = 1.7;
 const matWall = new THREE.MeshStandardMaterial({ map: texWall, roughness: 0.94 });
-const matFloor = new THREE.MeshStandardMaterial({ map: texFloor, roughness: 0.9 });
+// low roughness = the sealed-concrete sheen picking up the fixtures
+const matFloor = new THREE.MeshStandardMaterial({ map: texFloor, roughness: 0.55 });
 const matWood = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.8 });
 const matWoodDark = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.85, color: 0x8a7a66 });
 const matIron = new THREE.MeshStandardMaterial({ color: 0x2b2b2d, roughness: 0.55, metalness: 0.7 });
@@ -609,33 +685,8 @@ addSign(signTexture(256, 340, (g, w, h) => {
 
 /* ================= west wall: window, radiator, door, punch clock ============ */
 
-// high barred window with a cool light shaft
-{
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.05, 1.7), matIron);
-  frame.position.set(ROOM.x0 + 0.04, 3.0, -2.0);
-  scene.add(frame);
-  const panes = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.56, 0.92),
-    new THREE.MeshBasicMaterial({ color: 0x4a6070 }));
-  panes.position.set(ROOM.x0 + 0.1, 3.0, -2.0);
-  panes.rotation.y = Math.PI / 2;
-  scene.add(panes);
-  const barGeos = [];
-  for (let i = -2; i <= 2; i++) {
-    const g = new THREE.CylinderGeometry(0.018, 0.018, 0.98, 6);
-    g.translate(0, 0, 0);
-    g.rotateX(0);
-    g.translate(0, 0, i * 0.3);
-    barGeos.push(g);
-  }
-  const hbar = new THREE.CylinderGeometry(0.016, 0.016, 1.6, 6);
-  hbar.rotateX(Math.PI / 2);
-  barGeos.push(hbar);
-  const bars = new THREE.Mesh(mergeGeometries(barGeos), matIron);
-  bars.position.set(ROOM.x0 + 0.14, 3.0, -2.0);
-  scene.add(bars);
-}
-// the shaft itself: an additive gradient quad angling to the floor
+// high barred windows with cool light shafts — three now (2026-07-22): it's the
+// dead letter office, not a dungeon; the upstairs world leaks in cozily
 const shaftMat = (() => {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 256;
@@ -650,12 +701,44 @@ const shaftMat = (() => {
     blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
   });
 })();
-{
+// window group built facing +z, then rotated onto its wall
+function mkWindow(x, z, ry) {
+  const g = new THREE.Group();
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.05, 0.1), matIron);
+  g.add(frame);
+  const panes = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.56, 0.92),
+    new THREE.MeshBasicMaterial({ color: 0x7d98a8 }));
+  panes.position.z = 0.06;
+  g.add(panes);
+  const barGeos = [];
+  for (let i = -2; i <= 2; i++) {
+    const bar = new THREE.CylinderGeometry(0.018, 0.018, 0.98, 6);
+    bar.translate(i * 0.3, 0, 0);
+    barGeos.push(bar);
+  }
+  const hbar = new THREE.CylinderGeometry(0.016, 0.016, 1.6, 6);
+  hbar.rotateZ(Math.PI / 2);
+  barGeos.push(hbar);
+  const bars = new THREE.Mesh(mergeGeometries(barGeos), matIron);
+  bars.position.z = 0.1;
+  g.add(bars);
+  g.position.set(x, 3.0, z);
+  g.rotation.y = ry;
+  scene.add(g);
+}
+function mkShaft(x, y, z, zRoll) {
   const shaft = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 4.6), shaftMat);
-  shaft.position.set(ROOM.x0 + 1.65, 1.85, -1.6);
-  shaft.rotation.set(0, Math.PI / 2, 0.62);
+  shaft.position.set(x, y, z);
+  shaft.rotation.set(0, Math.PI / 2, zRoll);
   scene.add(shaft);
 }
+mkWindow(ROOM.x0 + 0.06, -2.0, Math.PI / 2);   // west (the original)
+mkShaft(ROOM.x0 + 1.65, 1.85, -1.6, 0.62);
+mkWindow(-5.5, ROOM.z1 - 0.06, Math.PI);       // south pair
+mkShaft(-5.2, 1.85, ROOM.z1 - 1.6, -0.62);
+mkWindow(5.8, ROOM.z1 - 0.06, Math.PI);
+mkShaft(5.5, 1.85, ROOM.z1 - 1.6, -0.62);
 
 // radiator under the window — its fins speak a little Morse
 {
@@ -800,35 +883,45 @@ const pigeonholeSlots = [];   // world positions envelopes fly into
   }
 }
 
-/* ================= east wall: filing cabinet, coffee, coat rack ============== */
+/* ================= east wall: the file cabinet bank, coat rack ============== */
 
+// A double-deep bank of green filing cabinets (2026-07-22, James): five wide
+// along the wall, two rows deep. The lone cabinet + coffee hotplate it replaces
+// moved on: coffee service lives on the donut table by the desk now.
 let cabinetTopY = 1.32;
+const cabMat = new THREE.MeshStandardMaterial({ color: 0x4e5a54, roughness: 0.55, metalness: 0.5 });
+const handleMat = new THREE.MeshStandardMaterial({ color: 0x9a8a5a, metalness: 0.8, roughness: 0.4 });
 {
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(0.62, 1.32, 1.0),
-    new THREE.MeshStandardMaterial({ color: 0x4e5a54, roughness: 0.55, metalness: 0.5 }));
-  cab.position.set(8.35, 0.66, -0.6);
-  scene.add(cab);
-  for (let i = 0; i < 4; i++) {
-    const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.26, 0.86), matIron);
-    drawer.position.set(8.02, 0.24 + i * 0.31, -0.6);
-    scene.add(drawer);
-    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.16),
-      new THREE.MeshStandardMaterial({ color: 0x9a8a5a, metalness: 0.8, roughness: 0.4 }));
-    handle.position.set(7.99, 0.3 + i * 0.31, -0.6);
-    scene.add(handle);
+  const drawerGeos = [], handleGeos = [], bodyGeos = [];
+  for (let row = 0; row < 2; row++) {
+    for (let i = 0; i < 5; i++) {
+      const cx = 8.55 - row * 0.68, cz = -3.9 + i * 0.72;
+      const body = new THREE.BoxGeometry(0.62, 1.32, 0.66);
+      body.translate(cx, 0.66, cz);
+      bodyGeos.push(body);
+      if (row === 1) {   // only the room-facing row shows drawer fronts
+        for (let d = 0; d < 4; d++) {
+          const dr = new THREE.BoxGeometry(0.03, 0.26, 0.56);
+          dr.translate(cx - 0.33, 0.24 + d * 0.31, cz);
+          drawerGeos.push(dr);
+          const h = new THREE.BoxGeometry(0.03, 0.035, 0.16);
+          h.translate(cx - 0.36, 0.3 + d * 0.31, cz);
+          handleGeos.push(h);
+        }
+      }
+    }
   }
-  // hotplate + glass pot + a mug: the coffee station
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.05, 14), matIron);
-  plate.position.set(8.3, cabinetTopY + 0.025, -0.32);
-  scene.add(plate);
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.115, 0.2, 14),
-    new THREE.MeshStandardMaterial({ color: 0x2a1c10, roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.85 }));
-  pot.position.set(8.3, cabinetTopY + 0.15, -0.32);
-  scene.add(pot);
-  const potHandle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 12, Math.PI), matIron);
-  potHandle.position.set(8.17, cabinetTopY + 0.16, -0.32);
-  potHandle.rotation.set(0, 0, -Math.PI / 2);
-  scene.add(potHandle);
+  scene.add(new THREE.Mesh(mergeGeometries(bodyGeos), cabMat));
+  scene.add(new THREE.Mesh(mergeGeometries(drawerGeos), matIron));
+  scene.add(new THREE.Mesh(mergeGeometries(handleGeos), handleMat));
+  // one drawer left open, papers poking out — nobody closes anything down here
+  const open = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.24, 0.54), cabMat);
+  open.position.set(7.65, 1.13, -2.46);
+  scene.add(open);
+  const openPapers = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.44), matPaper);
+  openPapers.position.set(7.62, 1.27, -2.46);
+  openPapers.rotation.z = 0.08;
+  scene.add(openPapers);
 }
 
 // coat rack with the postmaster's off-duty coat and mail bag (he is never off duty)
@@ -849,6 +942,322 @@ let cabinetTopY = 1.32;
   bag.scale.set(1, 1, 0.6);
   scene.add(bag);
 }
+
+/* ================= tables: donut service + the big door table ================ */
+
+function mkTable(x, z, w, d, h, ry) {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(uvScale(new THREE.BoxGeometry(w, 0.06, d), w / WOOD_TILE, d / WOOD_TILE), matWood);
+  top.position.y = h - 0.03;
+  g.add(top);
+  for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, h - 0.06, 0.06), matWood);
+    leg.position.set(lx * (w / 2 - 0.07), (h - 0.06) / 2, lz * (d / 2 - 0.07));
+    g.add(leg);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = ry;
+  scene.add(g);
+  return h;   // tabletop height for dressing
+}
+
+// shared parcel look: brown paper + twine cross
+const texParcel = canvasBase(128, (g, px) => {
+  g.fillStyle = '#a58a62'; g.fillRect(0, 0, px, px);
+  g.fillStyle = 'rgba(122,98,64,0.5)';
+  g.fillRect(px * 0.44, 0, px * 0.12, px);
+  g.fillRect(0, px * 0.44, px, px * 0.12);
+});
+const matParcel = new THREE.MeshStandardMaterial({ map: texParcel, roughness: 0.95 });
+function parcel(x, y, z, w, h, d, ry) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matParcel);
+  m.position.set(x, y + h / 2, z);
+  m.rotation.y = ry;
+  scene.add(m);
+}
+
+// the donut table — coffee service, a box of donuts, his lunchbox (by the desk)
+{
+  const h = mkTable(0.5, -5.05, 1.15, 0.62, 0.78, 0);
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.05, 14), matIron);
+  plate.position.set(0.12, h + 0.025, -5.1);
+  scene.add(plate);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.105, 0.19, 14),
+    new THREE.MeshStandardMaterial({ color: 0x2a1c10, roughness: 0.25, transparent: true, opacity: 0.85 }));
+  pot.position.set(0.12, h + 0.145, -5.1);
+  scene.add(pot);
+  const cupMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.6 });
+  for (let i = 0; i < 3; i++) {
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.07, 10), cupMat);
+    cup.position.set(0.38, h + 0.035 + i * 0.072, -5.14);
+    scene.add(cup);
+  }
+  // donut box: open cardboard lid + six donuts
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 0.3), matParcel);
+  box.position.set(0.78, h + 0.025, -5.0);
+  box.rotation.y = 0.15;
+  scene.add(box);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.3), matParcel);
+  lid.position.set(0.94, h + 0.16, -5.22);
+  lid.rotation.set(-1.15, 0.15, 0);
+  scene.add(lid);
+  const icings = [0xc98a9a, 0x8a5a38, 0xd8c9a0, 0xc98a9a, 0x8a5a38, 0xd8c9a0];
+  for (let i = 0; i < 6; i++) {
+    const donut = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.02, 8, 14),
+      new THREE.MeshStandardMaterial({ color: icings[i], roughness: 0.8 }));
+    donut.position.set(0.66 + (i % 3) * 0.115, h + 0.065, -5.06 + Math.floor(i / 3) * 0.11);
+    donut.rotation.set(Math.PI / 2 + 0.1, 0, i);
+    scene.add(donut);
+  }
+  // lunchbox: dented green metal, latch, handle
+  const lunch = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x3e5a48, roughness: 0.5, metalness: 0.5 }));
+  lunch.position.set(0.16, h + 0.08, -4.85);
+  lunch.rotation.y = -0.3;
+  scene.add(lunch);
+  const lunchHandle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.009, 6, 12, Math.PI), matIron);
+  lunchHandle.position.set(0.16, h + 0.16, -4.85);
+  lunchHandle.rotation.set(0, -0.3, 0);
+  scene.add(lunchHandle);
+}
+
+// the big table by the stairwell door — outgoing that never goes
+{
+  const h = mkTable(-8.25, 4.4, 0.78, 1.55, 0.85, 0);
+  // parcel scale: platform, column, big round dial
+  const scaleBase = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), matIron);
+  scaleBase.position.set(-8.3, h + 0.025, 3.85);
+  scene.add(scaleBase);
+  const scaleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), matIron);
+  scaleCol.position.set(-8.3, h + 0.2, 3.72);
+  scene.add(scaleCol);
+  const dial = addSign(signTexture(128, 128, (g) => {
+    g.fillStyle = '#d8d2c4';
+    g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#26221c'; g.lineWidth = 6;
+    g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.stroke();
+    g.lineWidth = 3;
+    for (let i = 0; i < 12; i++) {
+      const a = i * Math.PI / 6;
+      g.beginPath();
+      g.moveTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44);
+      g.lineTo(64 + Math.cos(a) * 52, 64 + Math.sin(a) * 52);
+      g.stroke();
+    }
+    g.lineWidth = 4;
+    g.beginPath(); g.moveTo(64, 64); g.lineTo(38, 34); g.stroke();   // stuck needle
+  }), 0.2, 0.2, -8.3, h + 0.42, 3.72, Math.PI / 2);
+  dial.rotation.z = 0.04;
+  parcel(-8.3, h, 4.45, 0.3, 0.18, 0.24, 0.2);
+  parcel(-8.28, h + 0.18, 4.45, 0.24, 0.14, 0.2, -0.25);
+  parcel(-8.2, h, 4.95, 0.34, 0.22, 0.26, 0.5);
+  const twine = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8),
+    new THREE.MeshStandardMaterial({ color: 0xc9b98a, roughness: 0.98 }));
+  twine.position.set(-8.42, h + 0.07, 4.18);
+  scene.add(twine);
+  const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.42),
+    new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.7 }));
+  ledger.position.set(-8.15, h + 0.025, 5.05);
+  ledger.rotation.y = -0.2;
+  scene.add(ledger);
+  const ink = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.07, 10),
+    new THREE.MeshStandardMaterial({ color: 0x1a2438, roughness: 0.3 }));
+  ink.position.set(-8.45, h + 0.035, 4.75);
+  scene.add(ink);
+}
+
+// more boxes generally (James): parcels wherever a surface holds still
+parcel(8.55, 1.32, -3.6, 0.4, 0.26, 0.34, 0.3);     // on the file bank
+parcel(8.5, 1.32, -3.1, 0.32, 0.2, 0.28, -0.4);
+parcel(8.52, 1.58, -3.45, 0.26, 0.18, 0.24, 0.8);   // stacked
+parcel(3.9, 0, -5.5, 0.5, 0.36, 0.42, 0.25);        // floor, by the pigeonholes
+parcel(3.95, 0.36, -5.45, 0.4, 0.28, 0.34, -0.3);
+parcel(-6.4, 0, 5.35, 0.55, 0.4, 0.45, 0.4);        // southwest corner drift
+parcel(-6.35, 0.4, 5.3, 0.42, 0.3, 0.36, -0.2);
+parcel(-5.9, 0, 5.55, 0.38, 0.26, 0.32, 0.9);
+
+/* ================= posters, calendar, pin-ups, corkboard ================ */
+
+// aged-paper poster helper: draws content on cream stock, pins it slightly askew
+function paperPoster(wM, hM, x, y, z, ry, draw) {
+  const sign = addSign(signTexture(256, Math.round(256 * hM / wM), (g, w, h) => {
+    g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#8a7d60'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12);
+    g.fillStyle = '#3a3226';
+    g.textAlign = 'center';
+    draw(g, w, h);
+  }), wM, hM, x, y, z, ry);
+  sign.rotation.z = (Math.random() - 0.5) * 0.06;
+  return sign;
+}
+
+// north wall: the eye, and the calendar
+paperPoster(0.62, 0.82, -2.2, 2.05, ROOM.z0 + 0.02, 0, (g, w, h) => {
+  g.font = '700 30px "Courier New", monospace';
+  g.fillText('THE MAIL', w / 2, 48);
+  g.fillText('IS WATCHING', w / 2, 84);
+  // one large unblinking eye
+  g.strokeStyle = '#3a3226'; g.lineWidth = 7; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(w * 0.15, h * 0.52);
+  g.quadraticCurveTo(w / 2, h * 0.3, w * 0.85, h * 0.52);
+  g.quadraticCurveTo(w / 2, h * 0.74, w * 0.15, h * 0.52);
+  g.closePath(); g.stroke();
+  g.fillStyle = '#3a3226';
+  g.beginPath(); g.arc(w / 2, h * 0.52, 26, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#cfc2a0';
+  g.beginPath(); g.arc(w / 2 + 8, h * 0.48, 7, 0, Math.PI * 2); g.fill();
+  g.font = '400 20px "Courier New", monospace';
+  g.fillStyle = '#3a3226';
+  g.fillText('sort accordingly', w / 2, h - 30);
+});
+paperPoster(0.55, 0.68, 0.75, 1.98, ROOM.z0 + 0.02, 0, (g, w, h) => {
+  g.font = '700 30px "Courier New", monospace';
+  g.fillText('MARCH 1991', w / 2, 44);
+  g.font = '400 18px "Courier New", monospace';
+  const days = 'SMTWTFS';
+  for (let i = 0; i < 7; i++) g.fillText(days[i], 32 + i * 32, 76);
+  let d = 1;
+  for (let r = 0; r < 5 && d <= 31; r++) {
+    for (let c = (r === 0 ? 5 : 0); c < 7 && d <= 31; c++) {
+      g.fillText(String(d), 32 + c * 32, 104 + r * 30);
+      if (d === 11) {   // the 11th, circled: nobody remembers why
+        g.strokeStyle = '#8a3a2e'; g.lineWidth = 3;
+        g.beginPath(); g.arc(32 + c * 32, 98 + r * 30, 15, 0, Math.PI * 2); g.stroke();
+      }
+      d++;
+    }
+  }
+  g.font = '400 17px "Courier New", monospace';
+  g.fillText('payday (rumor)', w / 2, h - 22);
+});
+
+// south wall: safety, zip chart, and productivity
+paperPoster(0.66, 0.84, -6.8, 2.25, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
+  g.font = '700 26px "Courier New", monospace';
+  g.fillText('LIFT WITH', w / 2, 46);
+  g.fillText('YOUR KNEES', w / 2, 78);
+  // stick figure doing it wrong, crossed out
+  g.strokeStyle = '#3a3226'; g.lineWidth = 5; g.lineCap = 'round';
+  g.beginPath(); g.arc(w / 2 - 20, h * 0.44, 14, 0, Math.PI * 2); g.stroke();
+  g.beginPath();
+  g.moveTo(w / 2 - 14, h * 0.5); g.lineTo(w / 2 + 14, h * 0.62);   // bent back
+  g.lineTo(w / 2 + 10, h * 0.76);
+  g.moveTo(w / 2 + 14, h * 0.62); g.lineTo(w / 2 + 34, h * 0.72);
+  g.stroke();
+  g.strokeStyle = '#8a3a2e'; g.lineWidth = 6;
+  g.beginPath(); g.arc(w / 2, h * 0.58, 52, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(w / 2 - 38, h * 0.72); g.lineTo(w / 2 + 38, h * 0.44); g.stroke();
+  g.font = '700 22px "Courier New", monospace';
+  g.fillText('SORT WITH YOUR HEART', w / 2, h - 26);
+});
+paperPoster(0.56, 0.74, 2.2, 2.3, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
+  g.font = '700 24px "Courier New", monospace';
+  g.fillText('ZIP DIRECTORY', w / 2, 40);
+  g.font = '400 16px "Courier New", monospace';
+  g.textAlign = 'left';
+  const rows = ['00000  the void', '03421  ashfield', '11973  the sea (all)',
+    '19104  delancey st', '31129  point perpetua', '40213  vane street',
+    '66601  the canyon', '75910  the dusk field', '88088  below the shelf',
+    '99999  see 00000'];
+  rows.forEach((r, i) => g.fillText(r, 24, 72 + i * 24));
+});
+paperPoster(0.6, 0.44, -0.9, 2.45, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
+  g.font = '700 26px "Courier New", monospace';
+  g.fillText('IDLE HANDS', w / 2, 56);
+  g.fillText('SORT NOTHING', w / 2, 92);
+  g.font = '400 17px "Courier New", monospace';
+  g.fillText('— the management', w / 2, h - 24);
+});
+
+// east wall: the chaste pin-ups
+paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2, (g, w, h) => {
+  // Miss Par Avion, 1952 — fully dressed, winking, holding a letter
+  g.font = '700 24px "Courier New", monospace';
+  g.fillText('MISS PAR AVION', w / 2, 40);
+  g.strokeStyle = '#3a3226'; g.lineWidth = 4; g.lineCap = 'round';
+  const cx = w / 2;
+  g.beginPath(); g.arc(cx, 108, 26, 0, Math.PI * 2); g.stroke();       // head
+  g.beginPath(); g.arc(cx - 2, 96, 30, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); // bob
+  g.beginPath(); g.moveTo(cx - 10, 106); g.lineTo(cx - 3, 106); g.stroke();  // wink
+  g.beginPath(); g.arc(cx + 8, 106, 3, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.arc(cx, 118, 8, 0.2, Math.PI - 0.2); g.stroke();    // smile
+  g.beginPath();                                                        // a-line dress
+  g.moveTo(cx - 12, 134); g.lineTo(cx - 34, 226); g.lineTo(cx + 34, 226); g.lineTo(cx + 12, 134);
+  g.closePath(); g.stroke();
+  g.beginPath(); g.moveTo(cx + 14, 150); g.lineTo(cx + 46, 168); g.stroke(); // arm out
+  g.strokeRect(cx + 40, 158, 26, 18);                                   // the letter
+  g.beginPath();                                                        // legs, primly
+  g.moveTo(cx - 12, 226); g.lineTo(cx - 10, 262);
+  g.moveTo(cx + 12, 226); g.lineTo(cx + 8, 262);
+  g.stroke();
+  g.font = '400 18px "Courier New", monospace';
+  g.fillText('first class, always', w / 2, h - 22);
+});
+paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, 1.4, -Math.PI / 2, (g, w, h) => {
+  // Mr. Special Delivery — flexing with a parcel
+  g.font = '700 22px "Courier New", monospace';
+  g.fillText('MR. SPECIAL', w / 2, 38);
+  g.fillText('DELIVERY', w / 2, 64);
+  g.strokeStyle = '#3a3226'; g.lineWidth = 4; g.lineCap = 'round';
+  const cx = w / 2;
+  g.beginPath(); g.arc(cx, 112, 22, 0, Math.PI * 2); g.stroke();       // head
+  g.strokeRect(cx - 16, 90, 32, 8);                                    // cap brim
+  g.beginPath();                                                        // torso, heroic
+  g.moveTo(cx - 30, 138); g.lineTo(cx - 16, 216); g.lineTo(cx + 16, 216); g.lineTo(cx + 30, 138);
+  g.closePath(); g.stroke();
+  g.beginPath();                                                        // flex arms
+  g.moveTo(cx - 30, 144); g.lineTo(cx - 52, 130); g.lineTo(cx - 52, 106);
+  g.moveTo(cx + 30, 144); g.lineTo(cx + 52, 130); g.lineTo(cx + 52, 106);
+  g.stroke();
+  g.strokeRect(cx + 40, 84, 26, 22);                                   // parcel aloft
+  g.beginPath();
+  g.moveTo(cx - 16, 216); g.lineTo(cx - 16, 254);
+  g.moveTo(cx + 16, 216); g.lineTo(cx + 16, 254);
+  g.stroke();
+  g.font = '400 17px "Courier New", monospace';
+  g.fillText('rain nor sleet nor', w / 2, h - 40);
+  g.fillText('reasons', w / 2, h - 20);
+});
+
+// west wall: the corkboard with the little stickers (he consults it)
+addSign(signTexture(512, 400, (g, w, h) => {
+  g.fillStyle = '#8a6a48'; g.fillRect(0, 0, w, h);           // cork
+  for (let k = 0; k < 400; k++) {
+    g.fillStyle = `rgba(${100 + Math.random() * 60},${70 + Math.random() * 40},${40 + Math.random() * 30},0.4)`;
+    g.fillRect(Math.random() * w, Math.random() * h, 3, 3);
+  }
+  g.strokeStyle = '#4a3a26'; g.lineWidth = 14; g.strokeRect(7, 7, w - 14, h - 14);
+  // pinned notes, tilted, scribbled
+  for (let n = 0; n < 7; n++) {
+    const nx = 40 + (n % 4) * 115 + Math.random() * 20;
+    const ny = 46 + Math.floor(n / 4) * 150 + Math.random() * 30;
+    g.save();
+    g.translate(nx, ny);
+    g.rotate((Math.random() - 0.5) * 0.3);
+    g.fillStyle = n % 3 === 0 ? '#d8cdae' : '#cfc9b8';
+    g.fillRect(0, 0, 92, 110);
+    g.strokeStyle = 'rgba(58,50,38,0.7)'; g.lineWidth = 2;
+    for (let l = 0; l < 6; l++) {
+      g.beginPath();
+      g.moveTo(10, 24 + l * 14);
+      g.lineTo(14 + Math.random() * 66, 24 + l * 14);
+      g.stroke();
+    }
+    g.fillStyle = '#8a3a2e';
+    g.beginPath(); g.arc(46, 8, 5, 0, Math.PI * 2); g.fill();   // pin
+    g.restore();
+  }
+  // the little stickers: a status column nobody explains
+  const stickers = ['#b04a3a', '#b04a3a', '#c9a24b', '#b04a3a', '#c9a24b', '#b04a3a', '#5a8a4a'];
+  stickers.forEach((c, i) => {
+    g.fillStyle = c;
+    g.beginPath(); g.arc(w - 44, 52 + i * 44, 13, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(58,50,38,0.6)'; g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(w - 110, 52 + i * 44); g.lineTo(w - 66, 52 + i * 44);
+    g.stroke();
+  });
+}), 1.05, 0.82, ROOM.x0 + 0.03, 1.72, 0.2, Math.PI / 2);
 
 /* ================= south side clutter: crates, mail cart, sacks ============== */
 
@@ -1020,7 +1429,7 @@ const PROPS = [
       scene.add(ember);
     },
   },
-  { file: 'assets/props/plant.glb', height: 0.62, pos: [8.3, cabinetTopY, -0.95], rotY: 0.6 },
+  { file: 'assets/props/plant.glb', height: 0.62, pos: [8.55, cabinetTopY, -1.02], rotY: 0.6 },
 ];
 
 const furnaceMouth = new THREE.Vector3(6.8 + Math.sin(-2.05) * 0.55, 0.62, 3.5 + Math.cos(-2.05) * 0.55);
@@ -1243,16 +1652,19 @@ function posterFadeOut() {
 /* ================= navigation graph (verified in tools sim) ================= */
 
 const PM_STATIONS = {
-  desk:    { x: 2.5, z: -4.15, face: Math.PI },     // works at the desk, back to the room
-  basket:  { x: -3.3, z: -0.6, face: -2.21 },
-  furnace: { x: 5.7, z: 2.6, face: 0.885 },
-  clock:   { x: -7.9, z: 1.2, face: -Math.PI / 2 },
-  coffee:  { x: 7.3, z: -0.6, face: Math.PI / 2 },
-  window:  { x: -7.8, z: -2.9, face: -0.93 },
-  pigeon:  { x: 5.6, z: -4.5, face: Math.PI },
-  wander1: { x: 0, z: 1.5, face: 0 },
-  wander2: { x: -1.5, z: -2.5, face: Math.PI },
-  wander3: { x: 3.5, z: 1.8, face: 0.4 },
+  desk:      { x: 2.5, z: -4.15, face: Math.PI },   // works at the desk, back to the room
+  basket:    { x: -3.3, z: -0.6, face: -2.21 },
+  furnace:   { x: 5.7, z: 2.6, face: 0.885 },
+  clock:     { x: -7.9, z: 1.2, face: -Math.PI / 2 },
+  coffee:    { x: 0.5, z: -4.25, face: Math.PI },   // the donut table by his desk
+  window:    { x: -7.8, z: -2.9, face: -0.93 },
+  pigeon:    { x: 5.6, z: -4.5, face: Math.PI },
+  corkboard: { x: -8.05, z: 0.2, face: -Math.PI / 2 },
+  cabinets:  { x: 6.9, z: -2.0, face: Math.PI / 2 },
+  doorSt:    { x: -8.1, z: 2.6, face: -Math.PI / 2 },
+  wander1:   { x: 0, z: 1.5, face: 0 },
+  wander2:   { x: -1.5, z: -2.5, face: Math.PI },
+  wander3:   { x: 3.5, z: 1.8, face: 0.4 },
 };
 
 const NAV_NODES = {
@@ -1266,11 +1678,12 @@ const NAV_NODES = {
 };
 const NAV_EDGES = [
   ['desk', 'H7'], ['H7', 'H3'], ['H7', 'pigeon'],
-  ['H3', 'H1'], ['H3', 'H5'], ['H3', 'furnace'], ['H3', 'coffee'], ['H3', 'wander3'],
+  ['H3', 'H1'], ['H3', 'H5'], ['H3', 'furnace'], ['H3', 'wander3'], ['H3', 'cabinets'],
   ['H5', 'furnace'],
-  ['H1', 'H2'], ['H1', 'wander1'], ['H1', 'wander2'], ['H1', 'basket'],
+  ['H1', 'H2'], ['H1', 'wander1'], ['H1', 'wander2'], ['H1', 'basket'], ['H1', 'coffee'],
+  ['desk', 'coffee'],
   ['H2', 'basket'], ['H2', 'H4'], ['H2', 'window'],
-  ['H4', 'clock'], ['H4', 'window'],
+  ['H4', 'clock'], ['H4', 'window'], ['H4', 'corkboard'], ['H4', 'doorSt'],
 ];
 const NAV_ADJ = {};
 for (const [a, b] of NAV_EDGES) {
@@ -1317,6 +1730,16 @@ function pmWalkTo(stationKey, arrived) {
   const route = navRoute(pmStationKey, stationKey);
   pmPath = route.slice(1).map((k) => NAV_NODES[k]);
   pmStationKey = stationKey;
+  if (!pmPath.length) {
+    // already there — walking to where you stand left him treadmilling forever
+    // (the stuck-in-place bug James saw); arrive immediately instead
+    pmState = 'station';
+    const st = PM_STATIONS[stationKey];
+    if (st) pmFaceTarget = st.face;
+    if (arrived) arrived();
+    else pmScheduleNext(6 + Math.random() * 6);
+    return;
+  }
   pmState = 'walking';
   pmArrived = arrived || null;
   playBase('walk', 0.3, tune.walk / 0.9);
@@ -1335,25 +1758,57 @@ function makeCarriedEnvelope() {
   return group;
 }
 
+// finish a station visit: back to station state, next routine queued
+function pmDone(min = 8, spread = 10) {
+  pmState = 'station';
+  pmScheduleNext(min + Math.random() * spread);
+}
+
+// away through the stairwell door (doorBreak): gone for a bit, then back
+let pmAwayUntil = 0;
+let pmAway = false;
+
+const PM_ROUTINES = [
+  { key: 'deskwork', station: 'desk', w: 0.15 },
+  { key: 'basketRun', station: 'basket', w: 0.17 },
+  { key: 'coffee', station: 'coffee', w: 0.11 },
+  { key: 'clock', station: 'clock', w: 0.07 },
+  { key: 'window', station: 'window', w: 0.07 },
+  { key: 'corkboard', station: 'corkboard', w: 0.1 },
+  { key: 'cabinets', station: 'cabinets', w: 0.1 },
+  { key: 'firePoke', station: 'furnace', w: 0.08 },
+  { key: 'doorBreak', station: 'doorSt', w: 0.06 },
+  { key: 'wander', station: null, w: 0.09 },
+];
+
 function pmRoutine() {
-  const roll = Math.random();
-  if (roll < 0.24) {                       // desk work
+  // never re-pick the station he's already standing at (except desk, which has
+  // an in-place work branch) — walking to your own feet was the treadmill bug
+  const options = PM_ROUTINES.filter((r) =>
+    r.key === 'deskwork' || !r.station || r.station !== pmStationKey);
+  let total = 0;
+  for (const r of options) total += r.w;
+  let roll = Math.random() * total;
+  let pick = options[options.length - 1];
+  for (const r of options) { roll -= r.w; if (roll <= 0) { pick = r; break; } }
+
+  if (pick.key === 'deskwork') {
     if (pmStationKey !== 'desk') {
-      pmWalkTo('desk', () => { playBase(pickIdle()); pmScheduleNext(10 + Math.random() * 10); });
+      pmWalkTo('desk', () => { playBase(pickIdle()); pmDone(9, 9); });
     } else {
       pmState = 'busy';
       const g = Math.random();
       const clip = g < 0.4 ? 'scheme' : g < 0.6 ? 'shrug' : g < 0.8 ? 'wag-no' : 'sigh';
       if (clip === 'scheme') setTimeout(() => playThunk(), 1400);
-      playOneshot(clip, () => { pmState = 'station'; pmScheduleNext(8 + Math.random() * 12); });
+      playOneshot(clip, () => pmDone(8, 10));
     }
-  } else if (roll < 0.46) {                // basket run: pick up, then file or burn
+  } else if (pick.key === 'basketRun') {
     pmWalkTo('basket', () => {
       const source = takeBasketEnvelope();
       if (!source) {
         pmSpeakFrom(PM_BASKET_EMPTY_LINES);
         pmState = 'busy';
-        playOneshot('shrug', () => { pmState = 'station'; pmScheduleNext(9 + Math.random() * 8); });
+        playOneshot('shrug', () => pmDone(9, 8));
         return;
       }
       pmState = 'busy';
@@ -1363,45 +1818,94 @@ function pmRoutine() {
         pmWalkTo(burn ? 'furnace' : 'pigeon', burn ? pmBurnCarried : pmFileCarried);
       });
     });
-  } else if (roll < 0.58) {                // coffee
+  } else if (pick.key === 'coffee') {
     pmWalkTo('coffee', () => {
       pmState = 'busy';
-      pmSpeakFrom(PM_COFFEE_LINES);
-      const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.038, 0.09, 10),
-        new THREE.MeshStandardMaterial({ color: 0x8a8378, roughness: 0.7 }));
-      scene.add(mug);
-      pmCarried = mug;
-      playOneshot('sigh', () => {           // long breath: blowing on it
-        playSfx(sfxSip, 0.7);
-        scene.remove(mug);
-        pmCarried = null;
-        pmState = 'station';
-        pmScheduleNext(10 + Math.random() * 10);
-      });
+      if (Math.random() < 0.5) {
+        pmSpeakFrom(PM_COFFEE_LINES);
+        const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.038, 0.09, 10),
+          new THREE.MeshStandardMaterial({ color: 0x8a8378, roughness: 0.7 }));
+        scene.add(mug);
+        pmCarried = mug;
+        playOneshot('sigh', () => {         // long breath: blowing on it
+          playSfx(sfxSip, 0.7);
+          scene.remove(mug);
+          pmCarried = null;
+          pmDone(10, 10);
+        });
+      } else {                              // or: a donut from the Tuesday box
+        pmSpeakFrom(PM_DONUT_LINES);
+        const donut = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.02, 8, 14),
+          new THREE.MeshStandardMaterial({ color: 0xc98a9a, roughness: 0.8 }));
+        scene.add(donut);
+        pmCarried = donut;
+        playOneshot('scratch', () => {
+          scene.remove(donut);
+          pmCarried = null;
+          pmDone(9, 9);
+        });
+      }
     });
-  } else if (roll < 0.68) {                // punch the clock
+  } else if (pick.key === 'clock') {
     pmWalkTo('clock', () => {
       pmState = 'busy';
       pmSpeakFrom(PM_CLOCK_LINES);
       playOneshot('alert', () => {
         playSfx(sfxPunch, 0.8);
         punchFlash = 1.2;
-        pmState = 'station';
-        pmScheduleNext(9 + Math.random() * 9);
+        pmDone(9, 9);
       });
     });
-  } else if (roll < 0.78) {                // the window
+  } else if (pick.key === 'window') {
     pmWalkTo('window', () => {
       pmState = 'busy';
-      playOneshot('sigh', () => { pmState = 'station'; pmScheduleNext(10 + Math.random() * 10); });
+      playOneshot('sigh', () => pmDone(10, 10));
     });
-  } else if (roll < 0.9) {                 // wander
-    const w = ['wander1', 'wander2', 'wander3'][Math.floor(Math.random() * 3)];
-    pmWalkTo(w, () => { playBase(pickIdle()); pmScheduleNext(6 + Math.random() * 8); });
-  } else {                                 // a gesture wherever he stands
-    pmState = 'busy';
-    const clip = ['scratch', 'look-around', 'doze', 'stomp'][Math.floor(Math.random() * 4)];
-    playOneshot(clip, () => { pmState = 'station'; pmScheduleNext(9 + Math.random() * 10); });
+  } else if (pick.key === 'corkboard') {
+    pmWalkTo('corkboard', () => {
+      pmState = 'busy';
+      pmSpeakFrom(PM_CORKBOARD_LINES);
+      playOneshot(Math.random() < 0.5 ? 'alert' : 'scratch', () => pmDone(9, 9));
+    });
+  } else if (pick.key === 'cabinets') {
+    pmWalkTo('cabinets', () => {
+      pmState = 'busy';
+      pmSpeakFrom(PM_CABINET_LINES);
+      playOneshot(Math.random() < 0.5 ? 'scratch' : 'wag-no', () => pmDone(9, 9));
+    });
+  } else if (pick.key === 'firePoke') {
+    pmWalkTo('furnace', () => {
+      pmState = 'busy';
+      pmSpeakFrom(PM_POKE_LINES);
+      playOneshot('scheme', () => {          // poking at it
+        furnaceFlare = Math.max(furnaceFlare, 0.4);
+        playSfx(sfxWhoosh, 0.35);
+        pmDone(10, 10);
+      });
+    });
+  } else if (pick.key === 'doorBreak') {
+    pmWalkTo('doorSt', () => {
+      pmState = 'busy';
+      playOneshot('scratch', () => {
+        pmGroup.visible = false;             // out the door, up the stairs
+        pmAway = true;
+        pmAwayUntil = performance.now() + 18000 + Math.random() * 25000;
+      });
+    });
+  } else {                                   // wander somewhere he isn't
+    const spots = ['wander1', 'wander2', 'wander3'].filter((w) => w !== pmStationKey);
+    const w = spots[Math.floor(Math.random() * spots.length)];
+    pmWalkTo(w, () => {
+      playBase(pickIdle());
+      // sometimes a small gesture out in the open
+      if (Math.random() < 0.4) {
+        pmState = 'busy';
+        playOneshot(['scratch', 'doze', 'stomp', 'shrug'][Math.floor(Math.random() * 4)],
+          () => pmDone(6, 8));
+      } else {
+        pmDone(6, 8);
+      }
+    });
   }
 }
 
@@ -1435,16 +1939,35 @@ function pmFileCarried() {
   });
 }
 
-// flying envelope: hand -> target along a little arc, then gone
+// flying envelope: hand -> target along a little arc, then gone…
 const flights = [];
 function tossEnvelope(mesh, target, onLand) {
   const from = mesh.position.clone();
-  flights.push({ mesh, from, target, t: 0, dur: 0.7, onLand });
+  flights.push({ mesh, from, target, t: 0, dur: 0.7, arc: 0.35, onLand });
+}
+// …or a low slide that keeps the mesh (mound overflow onto the floor)
+function slideEnvelope(mesh, target, onLand) {
+  const from = mesh.position.clone();
+  flights.push({ mesh, from, target, t: 0, dur: 0.55, arc: 0.1, keep: true, onLand });
 }
 
 function pmTick(dt, now) {
   if (!pmModel || reducedMotion) return;
 
+  if (pmAway) {
+    if (now >= pmAwayUntil) {              // back down the stairs
+      pmAway = false;
+      pmGroup.visible = true;
+      speak(PM_DOOR_RETURN_LINES[Math.floor(Math.random() * PM_DOOR_RETURN_LINES.length)]);
+      pmWalkTo('desk', () => { playBase(pickIdle()); pmDone(8, 8); });
+    }
+    return;
+  }
+
+  if (pmState === 'walking' && !pmPath.length) {
+    pmState = 'station';                   // belt + braces vs the treadmill bug
+    pmDone(4, 4);
+  }
   if (pmState === 'walking' && pmPath.length) {
     const next = pmPath[0];
     const dx = next.x - pmGroup.position.x;
@@ -1503,14 +2026,15 @@ function pmTick(dt, now) {
     const f = flights[i];
     f.t += dt / f.dur;
     if (f.t >= 1) {
-      scene.remove(f.mesh);
+      if (f.keep) f.mesh.position.copy(f.target);
+      else scene.remove(f.mesh);
       flights.splice(i, 1);
       if (f.onLand) f.onLand();
       continue;
     }
     const e = f.t * f.t * (3 - 2 * f.t);
     f.mesh.position.lerpVectors(f.from, f.target, e);
-    f.mesh.position.y += Math.sin(f.t * Math.PI) * 0.35;
+    f.mesh.position.y += Math.sin(f.t * Math.PI) * f.arc;
     f.mesh.rotation.x += dt * 6;
   }
 }
@@ -1560,7 +2084,7 @@ function bubbleTick() {
 
 function ambientTick(now) {
   if (now < nextAmbientAt) return;
-  if (letterOpen) { nextAmbientAt = now + 8000; return; }
+  if (letterOpen || pmAway) { nextAmbientAt = now + 8000; return; }
   const line = drawLine(ambientPool, PM_AMBIENT);
   speak(line);
   if (PM_SIGH_LINES.has(line) && pmState === 'station' && !reducedMotion) {
@@ -1579,7 +2103,7 @@ function shiftTick() {
   texPunch.needsUpdate = true;
 
   const due = PM_SHIFT_LINES.find((entry) => !entry.said && elapsed >= entry.at);
-  if (due && !letterOpen) {
+  if (due && !letterOpen && !pmAway) {
     due.said = true;
     speak(due.line);
     nextAmbientAt = performance.now() + 26000;
@@ -1587,6 +2111,7 @@ function shiftTick() {
 }
 
 function postmasterClicked() {
+  if (pmAway) return;   // he is upstairs; the click hits nothing that answers
   speak(drawLine(clickPool, PM_CLICKED));
   nextAmbientAt = performance.now() + 26000;
   pmFaceCamera = 5;
@@ -1600,9 +2125,89 @@ function postmasterClicked() {
 /* ================= the mail ================= */
 
 const MAX_FALLING = 4;
-const MAX_IN_BASKET = 9;
 const BASKET_POS = new THREE.Vector3(-4.5, 0, -1.5);
 const CHUTE_Y = ROOM.h - 0.35;
+
+// ---- the pile (2026-07-22): letters genuinely accumulate, bottom first ----
+// The basket is a see-through wire cage, so the pile is real geometry: filled
+// layer by layer from the basket floor, mounding above the rim, then spilling
+// onto the floor around it. Only the top layer (and floor spill) is clickable.
+const PILE = {
+  baseY: 0.1,
+  layerH: 0.045,
+  layers: [],        // per-layer resident groups
+  resident: 0,
+};
+const PILE_CAP = 250;      // beyond this the buried bottom quietly recycles
+const STRAY_CAP = 30;
+function pileRimLayer() { return Math.max(3, Math.floor((basketRimY - 0.18 - PILE.baseY) / PILE.layerH)); }
+function pileRadius(layerIdx) {
+  const rim = pileRimLayer();
+  if (layerIdx <= rim) {
+    // the cage tapers: narrow floor, wide rim
+    return 0.26 + 0.32 * (layerIdx / rim);
+  }
+  return Math.max(0.16, 0.5 - 0.06 * (layerIdx - rim));   // the mound above
+}
+function pileLayerCap(layerIdx) {
+  const r = pileRadius(layerIdx);
+  return Math.max(2, Math.round((r / 0.58) * (r / 0.58) * 8));
+}
+function pileTopLayer() {
+  for (let i = PILE.layers.length - 1; i >= 0; i--) {
+    if (PILE.layers[i].length) return i;
+  }
+  return -1;
+}
+function pileTopY() {
+  return PILE.baseY + (pileTopLayer() + 1) * PILE.layerH;
+}
+function setLayerClickable(layerIdx, on) {
+  const layer = PILE.layers[layerIdx];
+  if (!layer) return;
+  for (const group of layer) {
+    for (const child of group.children) {
+      const i = envClickables.indexOf(child);
+      if (on && i === -1) envClickables.push(child);
+      if (!on && i !== -1) envClickables.splice(i, 1);
+    }
+  }
+  hoverDirty = true;
+}
+function placeInPile(group) {
+  let L = pileTopLayer();
+  if (L < 0) L = 0;
+  if (PILE.layers[L] && PILE.layers[L].length >= pileLayerCap(L)) L += 1;
+  while (PILE.layers.length <= L) PILE.layers.push([]);
+  if (PILE.layers[L].length === 0 && L > 0) setLayerClickable(L - 1, false);
+  const r = Math.sqrt(Math.random()) * pileRadius(L);
+  const a = Math.random() * Math.PI * 2;
+  group.position.set(
+    BASKET_POS.x + Math.cos(a) * r,
+    PILE.baseY + L * PILE.layerH,
+    BASKET_POS.z + Math.sin(a) * r * 0.85);
+  group.rotation.set(-Math.PI / 2 + (Math.random() - 0.5) * 0.3,
+    Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.2);
+  group.userData.pileLayer = L;
+  PILE.layers[L].push(group);
+  PILE.resident += 1;
+  basketPile.push(group);
+  if (PILE.resident > PILE_CAP) {          // recycle the buried bottom, invisibly
+    for (const layer of PILE.layers) {
+      if (layer.length && layer !== PILE.layers[pileTopLayer()]) {
+        const old = layer.shift();
+        removeEnvelopeGroup(old);
+        break;
+      }
+    }
+  }
+}
+// spill chance grows as the mound rises past the rim
+function spillChance() {
+  const over = pileTopLayer() - pileRimLayer();
+  if (over < 0) return 0;
+  return clamp(0.25 + over * 0.18, 0.25, 0.85);
+}
 
 let deck = [];
 function drawFromDeck() {
@@ -1723,24 +2328,32 @@ function spawnEnvelope(startMidAir) {
     phase: Math.random() * Math.PI * 2,
     speed: 0.75 + Math.random() * 0.5,
     target: new THREE.Vector3(
-      BASKET_POS.x + (Math.random() - 0.5) * 0.6,
-      basketRimY - 0.16 - Math.min(basketPile.length, 5) * 0.02,
-      BASKET_POS.z + (Math.random() - 0.5) * 0.45),
+      BASKET_POS.x + (Math.random() - 0.5) * 0.5,
+      pileTopY() + 0.05,
+      BASKET_POS.z + (Math.random() - 0.5) * 0.4),
   });
 }
 
 function settleIntoBasket(f) {
   const i = falling.indexOf(f);
   if (i !== -1) falling.splice(i, 1);
-  f.group.position.copy(f.target);
-  f.group.rotation.set(-Math.PI / 2 + (Math.random() - 0.5) * 0.5, Math.random() * Math.PI * 2, 0);
-  basketPile.push(f.group);
   bumpDeadLetters();
   playSfx(sfxFlutter, 0.35);
-  while (basketPile.length > MAX_IN_BASKET) {
-    const old = basketPile.shift();
-    removeEnvelopeGroup(old);
+  if (Math.random() < spillChance()) {
+    // the mound is past the rim: this one slides off onto the floor
+    const a = Math.random() * Math.PI * 2;
+    const target = new THREE.Vector3(
+      BASKET_POS.x + Math.cos(a) * (0.9 + Math.random() * 0.6),
+      0.015,
+      BASKET_POS.z + Math.sin(a) * (0.75 + Math.random() * 0.55));
+    slideEnvelope(f.group, target, () => {
+      f.group.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
+      floorStrays.push(f.group);
+      while (floorStrays.length > STRAY_CAP) removeEnvelopeGroup(floorStrays[0]);
+    });
+    return;
   }
+  placeInPile(f.group);
 }
 
 function removeEnvelopeGroup(group) {
@@ -1750,6 +2363,12 @@ function removeEnvelopeGroup(group) {
     if (ei !== -1) envClickables.splice(ei, 1);
   }
   hoverDirty = true;
+  const L = group.userData.pileLayer;
+  if (L !== undefined && PILE.layers[L]) {
+    const pi = PILE.layers[L].indexOf(group);
+    if (pi !== -1) { PILE.layers[L].splice(pi, 1); PILE.resident -= 1; }
+    delete group.userData.pileLayer;
+  }
   for (const list of [basketPile, floorStrays]) {
     const i = list.indexOf(group);
     if (i !== -1) list.splice(i, 1);
@@ -1758,12 +2377,19 @@ function removeEnvelopeGroup(group) {
   if (fi !== -1) falling.splice(fi, 1);
 }
 
-// the postmaster takes one from the pile (or a floor stray) for his rounds
+// the postmaster takes one for his rounds: a floor stray first, else off the top
 function takeBasketEnvelope() {
-  const source = floorStrays.length ? floorStrays : basketPile;
-  if (!source.length) return null;
-  const group = source[source.length - 1];
+  if (floorStrays.length) {
+    const group = floorStrays[floorStrays.length - 1];
+    removeEnvelopeGroup(group);
+    return group;
+  }
+  const L = pileTopLayer();
+  if (L < 0) return null;
+  const layer = PILE.layers[L];
+  const group = layer[layer.length - 1];
   removeEnvelopeGroup(group);
+  if (PILE.layers[L].length === 0 && L > 0) setLayerClickable(L - 1, true);
   return group;
 }
 
@@ -1781,7 +2407,9 @@ function mailTick(dt, now) {
     g.position.x += Math.sin(f.phase) * dt * 0.12;
     g.rotation.z = Math.sin(f.phase) * 0.35;
     g.rotation.y += dt * 0.4;
-    // ease toward the basket as it nears the rim
+    // the pile may have grown while this one was falling — land on its live top
+    f.target.y = Math.max(f.target.y, pileTopY() + 0.05);
+    // ease toward the basket as it nears the pile
     const kx = clamp(1.6 - (g.position.y - f.target.y) / 2.2, 0.05, 1.4);
     g.position.x += (f.target.x - g.position.x) * kx * dt;
     g.position.z += (f.target.z - g.position.z) * kx * dt;
@@ -1854,13 +2482,8 @@ function openLetter(group) {
   if (reducedMotion) {
     // static placement: replace it instantly so the room never empties
     const fresh = envelopeMesh(drawFromDeck());
-    fresh.position.set(
-      BASKET_POS.x + (Math.random() - 0.5) * 0.5,
-      basketRimY - 0.18,
-      BASKET_POS.z + (Math.random() - 0.5) * 0.4);
-    fresh.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
     scene.add(fresh);
-    basketPile.push(fresh);
+    placeInPile(fresh);
   }
 
   overlay.hidden = false;
@@ -1945,13 +2568,43 @@ const CIRCLES = [
 // resolves into the room (a face just past the wall loses to the wall clamp and
 // traps the camera — the fuzz sim caught it).
 const BOXES = [
-  [1.35, 3.65, -8.0, -4.5],                // desk (no walkable band behind it)
+  [-0.15, 3.65, -8.0, -4.5],               // desk + donut table (no band behind)
   [4.45, 9.5, -8.0, -5.05],                // pigeonholes + coat-rack corner
-  [7.7, 11.5, -1.35, 0.15],                // filing cabinet
+  [7.45, 11.5, -5.15, 0.15],               // file cabinet bank (overlaps the
+                                           // pigeonhole box so no sliver opens)
   [-11.5, -8.05, -2.8, -1.2],              // radiator
+  [-11.5, -7.55, 3.6, 5.2],                // big table by the door
   [-5.1, -1.35, 4.6, 8.0],                 // crates + sacks
   [3.25, 4.75, 4.3, 8.0],                  // mail cart
 ];
+
+// Precomputed push faces per box: a face is only a valid push target if it lies
+// inside the walkable rect AND isn't buried inside a neighboring box — pushing
+// to an invalid face ping-pongs against the wall clamp or the neighbor (both
+// failure modes caught by the fuzz sim).
+const BOX_PUSHES = BOXES.map(([x0, x1, z0, z1], bi) => {
+  const l = x0 - BODY_R, r = x1 + BODY_R, n = z0 - BODY_R, s = z1 + BODY_R;
+  const wx0 = ROOM.x0 + INSET, wx1 = ROOM.x1 - INSET;
+  const wz0 = ROOM.z0 + INSET, wz1 = ROOM.z1 - INSET;
+  const zMid = (Math.max(z0, wz0) + Math.min(z1, wz1)) / 2;
+  const xMid = (Math.max(x0, wx0) + Math.min(x1, wx1)) / 2;
+  const buried = (px, pz) => BOXES.some(([ox0, ox1, oz0, oz1], oi) => oi !== bi &&
+    px > ox0 - BODY_R && px < ox1 + BODY_R && pz > oz0 - BODY_R && pz < oz1 + BODY_R);
+  const faces = [];
+  if (l >= wx0 && l <= wx1 && !buried(l, zMid)) {
+    faces.push({ dist: (p) => p.x - l, apply: (p) => { p.x = l; } });
+  }
+  if (r >= wx0 && r <= wx1 && !buried(r, zMid)) {
+    faces.push({ dist: (p) => r - p.x, apply: (p) => { p.x = r; } });
+  }
+  if (n >= wz0 && n <= wz1 && !buried(xMid, n)) {
+    faces.push({ dist: (p) => p.z - n, apply: (p) => { p.z = n; } });
+  }
+  if (s >= wz0 && s <= wz1 && !buried(xMid, s)) {
+    faces.push({ dist: (p) => s - p.z, apply: (p) => { p.z = s; } });
+  }
+  return { l, r, n, s, faces };
+});
 
 function constrain(p) {
   for (let pass = 0; pass < 3; pass++) {
@@ -1964,16 +2617,14 @@ function constrain(p) {
         p.z = cz + dz / d * rr;
       }
     }
-    for (const [x0, x1, z0, z1] of BOXES) {
-      const l = x0 - BODY_R, rgt = x1 + BODY_R, n = z0 - BODY_R, s = z1 + BODY_R;
-      if (p.x > l && p.x < rgt && p.z > n && p.z < s) {
-        const pushes = [
-          [p.x - l, () => { p.x = l; }],
-          [rgt - p.x, () => { p.x = rgt; }],
-          [p.z - n, () => { p.z = n; }],
-          [s - p.z, () => { p.z = s; }],
-        ].sort((a, b) => a[0] - b[0]);
-        pushes[0][1]();
+    for (const bp of BOX_PUSHES) {
+      if (p.x > bp.l && p.x < bp.r && p.z > bp.n && p.z < bp.s) {
+        let best = null, bestD = Infinity;
+        for (const f of bp.faces) {
+          const d = f.dist(p);
+          if (d < bestD) { bestD = d; best = f; }
+        }
+        if (best) best.apply(p);
       }
     }
     if (pmModel) {   // he is solid too, gently
@@ -2119,6 +2770,7 @@ function openNearestEnvelope() {
 /* ================= tuner panel ================= */
 
 const TUNER_SPEC = [
+  ['ambient', 0.2, 1.8, 0.05], ['fluor', 0.0, 3.5, 0.05],
   ['bulb', 0.4, 3.0, 0.05], ['lamp', 0.0, 4.0, 0.05],
   ['furnace', 0.0, 3.0, 0.05], ['shaft', 0.0, 0.5, 0.01],
   ['fog', 0.0, 0.08, 0.002], ['mailEvery', 2, 15, 0.5],
@@ -2161,7 +2813,7 @@ for (const [key, min, max] of TUNER_SPEC) {
     out.className = 'val';
     range.addEventListener('input', () => {
       tune[key] = parseFloat(range.value);
-      localStorage.setItem('dlo-room-tuner', JSON.stringify(tune));
+      localStorage.setItem('dlo-room-tuner-v2', JSON.stringify(tune));
       refresh();
     });
     row.append(label, range, out);
@@ -2170,7 +2822,7 @@ for (const [key, min, max] of TUNER_SPEC) {
   }
   resetBtn.addEventListener('click', () => {
     tune = { ...TUNE_DEFAULTS };
-    localStorage.removeItem('dlo-room-tuner');
+    localStorage.removeItem('dlo-room-tuner-v2');
     refresh();
   });
   btn.addEventListener('click', () => {
@@ -2184,7 +2836,9 @@ function applyTune() {
   scene.fog.density = tune.fog;
   shaftMat.opacity = tune.shaft;
   lampLight.intensity = tune.lamp;
+  hemi.intensity = tune.ambient;
   for (const l of bulbLights) l.intensity = tune.bulb;
+  for (const l of fluorLights) l.intensity = tune.fluor;
 }
 
 /* ================= main loop ================= */
@@ -2274,13 +2928,8 @@ if (reducedMotion) {
     const group = envelopeMesh(k === 0
       ? LETTERS.findIndex((l) => l.portal)
       : drawFromDeck());
-    group.position.set(
-      BASKET_POS.x + (Math.random() - 0.5) * 0.5,
-      basketRimY - 0.18 - k * 0.02,
-      BASKET_POS.z + (Math.random() - 0.5) * 0.4);
-    group.rotation.set(-Math.PI / 2, Math.random() * Math.PI * 2, 0);
     scene.add(group);
-    basketPile.push(group);
+    placeInPile(group);
   }
 } else {
   spawnEnvelope(true);
