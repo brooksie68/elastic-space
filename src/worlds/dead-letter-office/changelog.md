@@ -3,6 +3,10 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r7: taller still)
+
+- Postmaster 1.79m → 1.89m (James: four more inches). `PM_HEIGHT`, one constant.
+
 ## 2026-07-22 — claude-fable (r6: couch, bookshelf, sad plants)
 
 - **Couch** (Meshy preview, 5cr — the prop pipeline dresses previews in code, so no
