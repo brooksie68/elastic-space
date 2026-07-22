@@ -1185,46 +1185,25 @@ function paperPoster(wM, hM, x, y, z, ry, draw) {
   return sign;
 }
 
-// north wall: the eye, and the calendar (offsets staggered — two signs at the
-// same wall depth z-fight where they overlap, the r2 flicker James saw)
-paperPoster(0.62, 0.82, -2.75, 1.72, ROOM.z0 + 0.035, 0, (g, w, h) => {
-  g.font = '700 30px "Courier New", monospace';
-  g.fillText('THE MAIL', w / 2, 48);
-  g.fillText('IS WATCHING', w / 2, 84);
-  // one large unblinking eye
-  g.strokeStyle = '#3a3226'; g.lineWidth = 7; g.lineCap = 'round';
-  g.beginPath(); g.moveTo(w * 0.15, h * 0.52);
-  g.quadraticCurveTo(w / 2, h * 0.3, w * 0.85, h * 0.52);
-  g.quadraticCurveTo(w / 2, h * 0.74, w * 0.15, h * 0.52);
-  g.closePath(); g.stroke();
-  g.fillStyle = '#3a3226';
-  g.beginPath(); g.arc(w / 2, h * 0.52, 26, 0, Math.PI * 2); g.fill();
-  g.fillStyle = '#cfc2a0';
-  g.beginPath(); g.arc(w / 2 + 8, h * 0.48, 7, 0, Math.PI * 2); g.fill();
-  g.font = '400 20px "Courier New", monospace';
-  g.fillStyle = '#3a3226';
-  g.fillText('sort accordingly', w / 2, h - 30);
-});
-paperPoster(0.55, 0.68, 0.75, 1.98, ROOM.z0 + 0.03, 0, (g, w, h) => {
-  g.font = '700 30px "Courier New", monospace';
-  g.fillText('MARCH 1991', w / 2, 44);
-  g.font = '400 18px "Courier New", monospace';
-  const days = 'SMTWTFS';
-  for (let i = 0; i < 7; i++) g.fillText(days[i], 32 + i * 32, 76);
-  let d = 1;
-  for (let r = 0; r < 5 && d <= 31; r++) {
-    for (let c = (r === 0 ? 5 : 0); c < 7 && d <= 31; c++) {
-      g.fillText(String(d), 32 + c * 32, 104 + r * 30);
-      if (d === 11) {   // the 11th, circled: nobody remembers why
-        g.strokeStyle = '#8a3a2e'; g.lineWidth = 3;
-        g.beginPath(); g.arc(32 + c * 32, 98 + r * 30, 15, 0, Math.PI * 2); g.stroke();
-      }
-      d++;
-    }
-  }
-  g.font = '400 17px "Courier New", monospace';
-  g.fillText('payday (rumor)', w / 2, h - 22);
-});
+// James's GPT posters (2026-07-22, assets/posters/*.jpg; source PNGs in repo
+// assets/Dead Letter Layers/posters). Plane sized from each image's true
+// aspect; offsets staggered so nothing z-fights the DEAD LETTER OFFICE sign.
+const posterLoader = new THREE.TextureLoader();
+function imagePoster(file, wM, aspect, x, y, z, ry) {
+  const tex = posterLoader.load(`assets/posters/${file}`);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(wM, wM * aspect),
+    new THREE.MeshLambertMaterial({ map: tex }));
+  mesh.position.set(x, y, z);
+  mesh.rotation.y = ry;
+  mesh.rotation.z = (Math.random() - 0.5) * 0.04;
+  scene.add(mesh);
+}
+// north wall: the eye of the office, and the egret calendar
+imagePoster('poster-wesee.jpg', 0.66, 1.333, -2.75, 1.78, ROOM.z0 + 0.035, 0);
+imagePoster('poster-calendar.jpg', 0.72, 0.8, 0.85, 1.98, ROOM.z0 + 0.03, 0);
 
 // south wall: safety, zip chart, and productivity
 paperPoster(0.66, 0.84, -6.8, 2.25, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
@@ -1256,38 +1235,14 @@ paperPoster(0.56, 0.74, 2.2, 2.3, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
     '99999  see 00000'];
   rows.forEach((r, i) => g.fillText(r, 24, 72 + i * 24));
 });
-paperPoster(0.6, 0.44, -0.9, 2.45, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
-  g.font = '700 26px "Courier New", monospace';
-  g.fillText('IDLE HANDS', w / 2, 56);
-  g.fillText('SORT NOTHING', w / 2, 92);
-  g.font = '400 17px "Courier New", monospace';
-  g.fillText('— the management', w / 2, h - 24);
-});
+// the management's rules, starring the management's only employee
+imagePoster('poster-workrules.jpg', 0.68, 1.333, -0.9, 2.4, ROOM.z1 - 0.02, Math.PI);
 
-// east wall: the chaste pin-ups
-paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2, (g, w, h) => {
-  // Miss Par Avion, 1952 — fully dressed, winking, holding a letter
-  g.font = '700 24px "Courier New", monospace';
-  g.fillText('MISS PAR AVION', w / 2, 40);
-  g.strokeStyle = '#3a3226'; g.lineWidth = 4; g.lineCap = 'round';
-  const cx = w / 2;
-  g.beginPath(); g.arc(cx, 108, 26, 0, Math.PI * 2); g.stroke();       // head
-  g.beginPath(); g.arc(cx - 2, 96, 30, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); // bob
-  g.beginPath(); g.moveTo(cx - 10, 106); g.lineTo(cx - 3, 106); g.stroke();  // wink
-  g.beginPath(); g.arc(cx + 8, 106, 3, 0, Math.PI * 2); g.stroke();
-  g.beginPath(); g.arc(cx, 118, 8, 0.2, Math.PI - 0.2); g.stroke();    // smile
-  g.beginPath();                                                        // a-line dress
-  g.moveTo(cx - 12, 134); g.lineTo(cx - 34, 226); g.lineTo(cx + 34, 226); g.lineTo(cx + 12, 134);
-  g.closePath(); g.stroke();
-  g.beginPath(); g.moveTo(cx + 14, 150); g.lineTo(cx + 46, 168); g.stroke(); // arm out
-  g.strokeRect(cx + 40, 158, 26, 18);                                   // the letter
-  g.beginPath();                                                        // legs, primly
-  g.moveTo(cx - 12, 226); g.lineTo(cx - 10, 262);
-  g.moveTo(cx + 12, 226); g.lineTo(cx + 8, 262);
-  g.stroke();
-  g.font = '400 18px "Courier New", monospace';
-  g.fillText('first class, always', w / 2, h - 22);
-});
+// east wall: the pin-up, done properly now (Miss Par Avion's line-art era is
+// over — James's painted girl says happiness can't be addressed)
+imagePoster('poster-happiness.jpg', 0.62, 1.5, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2);
+// and by the door table, the office's most wanted
+imagePoster('poster-wanted.jpg', 0.68, 1.333, ROOM.x0 + 0.03, 2.3, 4.5, Math.PI / 2);
 paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, 1.4, -Math.PI / 2, (g, w, h) => {
   // Mr. Special Delivery — flexing with a parcel
   g.font = '700 22px "Courier New", monospace';

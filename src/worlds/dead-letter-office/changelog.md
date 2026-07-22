@@ -3,6 +3,23 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r8: James's GPT posters hung)
+
+- Five painted posters from James (GPT-made; source PNGs archived in repo
+  `assets/Dead Letter Layers/posters/`, converted to ~400KB JPGs in world
+  `assets/posters/` via headless Blender — 15MB → 1.9MB):
+  WE SEE/WE SORT/WE FORGET eye (north, replaces the procedural eye poster),
+  the egret MARCH calendar (north, replaces procedural MARCH 1991),
+  WORKSHIFTS & REMINDERS starring the postmaster himself (south, replaces
+  IDLE HANDS SORT NOTHING), the happiness pin-up (east, replaces line-art
+  Miss Par Avion), and WANTED BY THE FBI — correspondence-related offenses
+  (west, above the door table; one of the mugshots wears a mail cap).
+- Kept procedurals with no replacement: LIFT WITH YOUR KNEES, ZIP DIRECTORY,
+  Mr. Special Delivery, the LOST? cat (it's the future cat's setup), corkboard.
+- New `imagePoster` helper: true-aspect planes, SRGB, Lambert, staggered wall
+  offsets (no z-fighting with the office sign), slight hang tilt.
+- Where things stand: hung, awaiting James's eyeball on sizes/spots.
+
 ## 2026-07-22 — claude-fable (r7: taller still)
 
 - Postmaster 1.79m → 1.89m (James: four more inches). `PM_HEIGHT`, one constant.
