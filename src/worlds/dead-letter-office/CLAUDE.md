@@ -11,6 +11,16 @@ return addresses still work.
 - `assets/props/props-manifest.json` — Meshy task ids for every generated asset (props are
   UNTEXTURED previews, textured in-engine; a proper Meshy refine is 10cr/prop later).
 
+## Planned (James, 2026-07-22): the behavior weekend
+
+A dedicated weekend session on the postmaster's behaviors — much more natural: needs-based
+routine picking (coffee level / basket fullness / boredom) instead of weighted random,
+dumping the basket down the furnace chute (chute slot itself still to build, south wall
+between the ZIP and IDLE HANDS posters), drinking the coffee he pours, answering a wall
+telephone (his half in the bubble only), and — someday — a rare Jerry visit: flat white
+line-drawing billboard walking through the 3D room, unacknowledged. Also parked: GPT
+posters (PNGs → assets/posters/), the cat (low-poly procedural path recommended).
+
 ## World-specific rules
 
 - **The twelve letters are authored (2026-07-04) and protected** — never generate or reword
