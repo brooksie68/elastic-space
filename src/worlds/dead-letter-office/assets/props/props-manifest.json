@@ -1,0 +1,16 @@
+{
+  "note": "Meshy text-to-3d previews (untextured, 20cr each), generated 2026-07-21. Decimated + cube-UV'd in headless Blender (tmp/dead-letter-office/props-web/process-props.py); raw meshes in tmp/dead-letter-office/props-web/raw/ (gitignored). Textured in-engine by material name (world.js PROP_MATERIALS). To texture properly later: meshy_text_to_3d_refine against these task ids (10cr each).",
+  "textures_note": "assets/textures/{wall,floor,wood}.png are meshy_text_to_image nano-banana-2 seamless tiles (6cr each), task ids below.",
+  "props": [
+    { "name": "desk", "task_id": "019f8784-54a6-7699-8f9d-96ccfad0c0c7", "tris_web": 60000 },
+    { "name": "chair", "task_id": "019f8784-72e6-783c-985f-ae8def5e268f", "tris_web": 45000 },
+    { "name": "basket", "task_id": "019f8784-7dbd-783d-b861-a239bc6ba4e9", "tris_web": 52234, "note": "generated as a tall domed birdcage; lower 39% bisected off in Blender to make the open-top basket" },
+    { "name": "furnace", "task_id": "019f8784-8a55-783e-8fad-3750ad7112f3", "tris_web": 50000 },
+    { "name": "plant", "task_id": "019f8784-9661-76a3-9921-b2e013204db2", "tris_web": 90000, "note": "pot/foliage split into prop_plant_pot / prop_plant_leaf material slots by face height" }
+  ],
+  "textures": [
+    { "name": "wall", "task_id": "019f8784-13d5-7692-a737-07c3d35b8066" },
+    { "name": "floor", "task_id": "019f8784-26a3-7106-9e58-bd1354697ac7" },
+    { "name": "wood", "task_id": "019f8784-2dbf-71cf-974e-295547b5d641" }
+  ]
+}
