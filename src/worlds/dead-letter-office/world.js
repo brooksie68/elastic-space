@@ -270,6 +270,11 @@ const PM_DONUT_LINES = [
   "The donuts are from a Tuesday.",
   "Powdered. Like everything down here.",
 ];
+const PM_COUCH_LINES = [
+  "We had chairs once. Now we have this.",
+  "Five minutes. The mail can practice patience.",
+  "Best seat in the office. Only seat that counts.",
+];
 
 /* ================= DOM, renderer, scene ================= */
 
@@ -952,6 +957,86 @@ const handleMat = new THREE.MeshStandardMaterial({ color: 0x9a8a5a, metalness: 0
   scene.add(bag);
 }
 
+/* ================= the bookshelf (boring manuals + romance novels) =========== */
+
+// one canvas per shelf row: spines with jittered widths/colors, vertical titles
+// on the fat ones — 1 draw call per row instead of 30 book meshes
+function bookRowTex(kind) {
+  return signTexture(512, 128, (g, w, h) => {
+    g.fillStyle = '#241a10'; g.fillRect(0, 0, w, h);   // shadow behind the books
+    const manuals = ['#4a5460', '#55604a', '#5a5248', '#606055', '#4e4a58'];
+    const romance = ['#9a4a5c', '#b06a6a', '#8a4a7a', '#c98a8a', '#a85a48'];
+    const titles = kind === 'manuals'
+      ? ['POSTAL REG. VOL 7', 'ROUTES', 'ZIP SUPPL. 1974', 'FORMS 11-C', 'BAG MAINT.', 'CODES']
+      : ['THE LONELY COURIER', 'POSTMARKED, LOVE', 'FIRST CLASS HEARTS', 'RETURN TO SENDER', 'AIR MAIL AFFAIR'];
+    const colors = kind === 'manuals' ? manuals : romance;
+    let x = 4, t = 0;
+    // one leaning gap per row: a book at rest against its neighbors
+    const gapAt = w * (0.55 + Math.random() * 0.25);
+    while (x < w - 20) {
+      if (x > gapAt && x < gapAt + 40) {   // the leaner
+        const bw = 22, bh = h * 0.72;
+        g.save();
+        g.translate(x + bw / 2, h);
+        g.rotate(-0.32);
+        g.fillStyle = jitter(colors[t % colors.length], 0.12);
+        g.fillRect(-bw / 2, -bh, bw, bh);
+        g.restore();
+        x += 52; t++;
+        continue;
+      }
+      const bw = 16 + Math.random() * 22;
+      const bh = h * (0.68 + Math.random() * 0.24);
+      const c = jitter(colors[Math.floor(Math.random() * colors.length)], 0.1);
+      g.fillStyle = c;
+      g.fillRect(x, h - bh, bw, bh);
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      g.fillRect(x, h - bh, 2, bh);                    // spine edge shade
+      g.fillStyle = 'rgba(230,220,190,0.7)';
+      g.fillRect(x + 3, h - bh + 6, bw - 6, 3);        // top band
+      if (bw > 26 && t < titles.length) {              // vertical title
+        g.save();
+        g.translate(x + bw / 2 + 4, h - 10);
+        g.rotate(-Math.PI / 2);
+        g.fillStyle = 'rgba(240,232,205,0.85)';
+        g.font = '700 13px "Courier New", monospace';
+        g.textAlign = 'left';
+        g.fillText(titles[t], 6, 4);
+        g.restore();
+        t++;
+      }
+      x += bw + 2 + Math.random() * 6;
+    }
+  });
+}
+{
+  const SH_X = 8.69, SH_Z = 1.1, SH_W = 1.4, SH_H = 1.88, SH_D = 0.32;
+  const side = (z) => {
+    const m = new THREE.Mesh(uvScale(new THREE.BoxGeometry(SH_D, SH_H, 0.05), 0.3, 1.6), matWood);
+    m.position.set(SH_X, SH_H / 2, z);
+    scene.add(m);
+  };
+  side(SH_Z - SH_W / 2); side(SH_Z + SH_W / 2);
+  const back = new THREE.Mesh(uvScale(new THREE.BoxGeometry(0.04, SH_H, SH_W), 1.2, 1.6), matWood);
+  back.position.set(SH_X + SH_D / 2 - 0.02, SH_H / 2, SH_Z);
+  scene.add(back);
+  const rowKinds = ['manuals', 'manuals', 'romance', 'romance'];
+  for (let s = 0; s < 5; s++) {                       // 5 boards: bottom to top
+    const y = 0.06 + s * (SH_H - 0.12) / 4;
+    const board = new THREE.Mesh(uvScale(new THREE.BoxGeometry(SH_D, 0.045, SH_W), 0.3, 1.4), matWood);
+    board.position.set(SH_X, y, SH_Z);
+    scene.add(board);
+    if (s < 4) {                                      // books above this board
+      const row = new THREE.Mesh(
+        new THREE.PlaneGeometry(SH_W - 0.1, 0.36),
+        new THREE.MeshLambertMaterial({ map: bookRowTex(rowKinds[s]) }));
+      row.position.set(SH_X - SH_D / 2 + 0.09, y + 0.21, SH_Z);
+      row.rotation.y = -Math.PI / 2;
+      scene.add(row);
+    }
+  }
+}
+
 /* ================= tables: donut service + the big door table ================ */
 
 function mkTable(x, z, w, d, h, ry) {
@@ -1385,6 +1470,7 @@ const PROP_MATERIALS = {
   prop_furnace: () => new THREE.MeshStandardMaterial({ color: 0x232120, roughness: 0.6, metalness: 0.55 }),
   prop_plant_leaf: () => new THREE.MeshStandardMaterial({ color: 0x5a6b3a, roughness: 0.9 }),
   prop_plant_pot: () => new THREE.MeshStandardMaterial({ color: 0x9a5a38, roughness: 0.85 }),
+  prop_couch: () => new THREE.MeshLambertMaterial({ color: 0x6b7052 }),   // tired olive
 };
 
 let basketRimY = 1.1;           // refined from the basket bbox on load
@@ -1440,6 +1526,13 @@ const PROPS = [
     },
   },
   { file: 'assets/props/plant.glb', height: 0.62, pos: [8.55, cabinetTopY, -1.02], rotY: 0.6 },
+  // two more plants (2026-07-22, James): "a little brown and a little sad, but
+  // okay generally" — same mesh, browner tints, different scales/turns
+  { file: 'assets/props/plant.glb', height: 0.5, pos: [8.62, 1.9, 0.72], rotY: 1.8, tint: 0xd8b088 },
+  // the beat-up couch (2026-07-22, Meshy preview 5cr): north wall, aimed square
+  // at the basket so he can sit and watch the letters fall
+  { file: 'assets/props/couch.glb', height: 0.8, pos: [-5.0, 0, -5.5], rotY: 0 },
+  { file: 'assets/props/plant.glb', height: 0.72, pos: [-3.5, 0, -5.25], rotY: 3.6, tint: 0xc9a070 },
 ];
 
 const furnaceMouth = new THREE.Vector3(6.8 + Math.sin(-2.05) * 0.55, 0.62, 3.5 + Math.cos(-2.05) * 0.55);
@@ -1460,6 +1553,11 @@ for (const spec of PROPS) {
       const key = stem === 'plant' ? 'prop_plant_leaf' : 'prop_' + stem;
       if (PROP_MATERIALS[key]) o.material = PROP_MATERIALS[key]();
     });
+    if (spec.tint) {                       // per-instance mood (the sad plants)
+      src.traverse((o) => {
+        if (o.isMesh && o.material) o.material.color.multiply(new THREE.Color(spec.tint));
+      });
+    }
     const box = new THREE.Box3().setFromObject(src);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
@@ -1688,6 +1786,7 @@ const PM_STATIONS = {
   corkboard: { x: -8.05, z: 0.2, face: -Math.PI / 2 },
   cabinets:  { x: 6.9, z: -2.0, face: Math.PI / 2 },
   doorSt:    { x: -8.1, z: 2.6, face: -Math.PI / 2 },
+  couch:     { x: -5.0, z: -4.9, face: 0 },          // seat edge, facing the basket
   wander1:   { x: 0, z: 1.5, face: 0 },
   wander2:   { x: -1.5, z: -2.5, face: Math.PI },
   wander3:   { x: 3.5, z: 1.8, face: 0.4 },
@@ -1710,6 +1809,7 @@ const NAV_EDGES = [
   ['desk', 'coffee'],
   ['H2', 'basket'], ['H2', 'H4'], ['H2', 'window'],
   ['H4', 'clock'], ['H4', 'window'], ['H4', 'corkboard'], ['H4', 'doorSt'],
+  ['wander2', 'couch'],
 ];
 const NAV_ADJ = {};
 for (const [a, b] of NAV_EDGES) {
@@ -1804,6 +1904,7 @@ const PM_ROUTINES = [
   { key: 'cabinets', station: 'cabinets', w: 0.1 },
   { key: 'firePoke', station: 'furnace', w: 0.08 },
   { key: 'doorBreak', station: 'doorSt', w: 0.06 },
+  { key: 'couchSit', station: 'couch', w: 0.09 },
   { key: 'wander', station: null, w: 0.09 },
 ];
 
@@ -1917,6 +2018,15 @@ function pmRoutine() {
         pmAway = true;
         hoverDirty = true;                   // his click proxy leaves with him
         pmAwayUntil = performance.now() + 18000 + Math.random() * 25000;
+      });
+    });
+  } else if (pick.key === 'couchSit') {
+    pmWalkTo('couch', () => {
+      pmState = 'busy';
+      pmSpeakFrom(PM_COUCH_LINES);
+      playOneshot('look-around', () => {     // the seated clip, finally at home
+        if (Math.random() < 0.4) playOneshot('doze', () => pmDone(10, 10));
+        else pmDone(10, 10);
       });
     });
   } else {                                   // wander somewhere he isn't
@@ -2622,6 +2732,9 @@ const BOXES = [
   [-11.5, -7.55, 3.6, 5.2],                // big table by the door
   [-5.1, -1.35, 4.6, 8.0],                 // crates + sacks
   [3.25, 4.75, 4.3, 8.0],                  // mail cart
+  [-6.1, -3.9, -8.0, -5.2],                // the couch (box face sits behind the
+                                           // cushion so his sit station clears it)
+  [8.2, 11.5, 0.05, 1.9],                  // bookshelf (overlaps the cabinet bank)
 ];
 
 // Precomputed push faces per box: a face is only a valid push target if it lies

@@ -3,6 +3,31 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r6: couch, bookshelf, sad plants)
+
+- **Couch** (Meshy preview, 5cr — the prop pipeline dresses previews in code, so no
+  refine needed; total spend 129): worn olive three-seater on the north wall, aimed
+  square at the basket. New `couchSit` routine gives the seated `look-around` clip a
+  home at last — he walks over, delivers a couch line ("We had chairs once. Now we
+  have this."), sits and watches the letters fall, sometimes dozes. Camera keep-out
+  box face sits behind the cushion so his sit station clears the (strict) sim.
+- **Bookshelf**: procedural, east wall between the cabinet bank and furnace. Frame +
+  five boards in house wood; each shelf row is ONE canvas plane of painted spines
+  (jittered widths/colors, one leaning book per row, vertical titles): manuals up top
+  (POSTAL REG. VOL 7, ZIP SUPPL. 1974, FORMS 11-C), romance below (THE LONELY
+  COURIER, POSTMARKED, LOVE, FIRST CLASS HEARTS, RETURN TO SENDER, AIR MAIL AFFAIR).
+- **Plants**: two more instances of the existing Meshy plant with new per-spec `tint`
+  support — browner, sadder, alive ("a little brown and a little sad, but okay
+  generally"): one on the bookshelf top, one potted by the couch.
+- Parked by James for later sessions: GPT-made posters (he supplies PNGs →
+  assets/posters/, plates sized to fit), the furnace chute slot in the south wall
+  (timed pile dumps — solves pile lifecycle diegetically), and the cat (revisit;
+  low-poly procedural is the recommended path; the LOST? poster is its setup).
+- Where things stand: **r6 committed, awaiting James's eyeball.** Watch: couch scale/
+  orientation (Meshy preview normalized to 0.8m tall — width follows), the sit
+  alignment (he sits ~15cm proud of the cushion front; nudge station z if it reads
+  as hovering), bookshelf spine legibility at walking distance, plant tint browns.
+
 ## 2026-07-22 — claude-fable (r5: he stands a little taller)
 
 - Postmaster height 1.70m → 1.79m (James: ~3–4 inches — he read small against the
