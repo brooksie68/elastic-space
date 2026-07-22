@@ -8,6 +8,23 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-22 (Dead Letter Office: the 3D room, r1–r8)
+
+- DLO rebuilt as a walkable 3D basement hall (Mandala-Shop-style walk/look controls):
+  Meshy-rigged postmaster walks a nav-graph shift (desk, basket pickups via bow, filing,
+  furnace burns, punch clock, coffee/donuts, corkboard, cabinets, fire-poking, couch
+  sits, door breaks), mail falls from a ceiling chute and genuinely piles up in the
+  basket bottom-first, mounding past the rim and spilling to the floor. All 12 authored
+  letters + airmail drift exits preserved; stairwell door is a fifth exit.
+- James's punch-list rounds: fluorescent brightness pass, polished-concrete Meshy floor,
+  extra windows, file-cabinet bank, tables, parcels; optimization pass (skinned-mesh
+  raycast proxy, 288k→86k decimation, Lambert paper, frozen pile matrices); pmGlow
+  always-visible self-light; height to 1.89m; couch/bookshelf/sad plants; James's five
+  GPT posters hung. Meshy spend ~129cr total. Room tuner (v2 key) + strict fuzz sim.
+- Parked in the world CLAUDE.md: behavior weekend (needs-based routines, furnace chute
+  slot, telephone), ElevenLabs voice for his lines, letters-lore expansion (threads +
+  the June desk correspondence — two open questions await James), the cat, Jerry visit.
+
 ## 2026-07-19 (Admin panel: worlds list overhaul)
 
 - Worlds list split into "In progress worlds" and "Completed worlds" sections, both
