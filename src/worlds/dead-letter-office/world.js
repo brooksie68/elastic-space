@@ -327,7 +327,8 @@ const ROOM = { x0: -9, x1: 9, z0: -6, z1: 6, h: 4.1 };   // ~2x Mandala Shop's f
 /* ================= tuner (loaded early — lights read it) ================= */
 
 const TUNE_DEFAULTS = {
-  ambient: 0.95,  // hemisphere fill — the "can actually see him" knob
+  pmGlow: 0.42,   // postmaster self-light: 0 = room-lit only, 1 = fully unlit-bright
+  ambient: 0.95,  // hemisphere fill
   fluor: 1.7,     // fluorescent fixture intensity
   bulb: 1.8,      // hanging-bulb intensity multiplier
   lamp: 1.8,      // banker's lamp glow
@@ -1548,6 +1549,7 @@ const STILL = 0.0001;   // never exactly 0 — the mixer stops rewriting bones
 const pmGroup = new THREE.Group();
 scene.add(pmGroup);
 let pmModel = null, mixer = null, headBone = null, handBone = null, pmProxy = null;
+const pmMats = [];   // his materials — pmGlow tuner drives emissiveIntensity
 const actions = {};
 let baseAction = null, oneshotAction = null, oneshotDone = null;
 
@@ -1605,11 +1607,15 @@ Promise.all([
   pmModel.position.y = -bbox.min.y * scale;
   pmModel.traverse((o) => {
     if (!o.isMesh || !o.material) return;
-    // Meshy dual atlas: strip the emissive copy so the room's light owns him
-    o.material.emissiveMap = null;
-    if (o.material.emissive) o.material.emissive.set(0x000000);
+    // Meshy dual atlas, now on purpose (James r4: "just lighten him up so I can
+    // always see him"): the emissive copy stays at PARTIAL strength — he glows
+    // with his own colors so the face reads in any corner, and the room's real
+    // light still layers on top. pmGlow in the tuner is the knob.
+    if (o.material.emissive) o.material.emissive.set(0xffffff);
+    o.material.emissiveIntensity = tune.pmGlow;
     o.material.roughness = 0.85;
     o.material.needsUpdate = true;
+    pmMats.push(o.material);
     o.frustumCulled = false;   // skinned mesh: bind-pose bounds lie once he walks
   });
   pmGroup.add(pmModel);
@@ -2807,6 +2813,7 @@ function openNearestEnvelope() {
 /* ================= tuner panel ================= */
 
 const TUNER_SPEC = [
+  ['pmGlow', 0.0, 1.0, 0.02],
   ['ambient', 0.2, 1.8, 0.05], ['fluor', 0.0, 3.5, 0.05],
   ['bulb', 0.4, 3.0, 0.05], ['lamp', 0.0, 4.0, 0.05],
   ['furnace', 0.0, 3.0, 0.05], ['shaft', 0.0, 0.5, 0.01],
@@ -2876,6 +2883,7 @@ function applyTune() {
   hemi.intensity = tune.ambient;
   for (const l of bulbLights) l.intensity = tune.bulb;
   for (const l of fluorLights) l.intensity = tune.fluor;
+  for (const m of pmMats) m.emissiveIntensity = tune.pmGlow;
 }
 
 /* ================= main loop ================= */

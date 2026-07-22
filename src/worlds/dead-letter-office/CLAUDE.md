@@ -18,9 +18,10 @@ return addresses still work.
 - **Face/eyes: hands off** (James, 2026-07-21) — the frozen face ships as-is; the 3D eye-rig
   work stays parked in `tmp/dead-letter-office/meshy/viewer.html` until James reopens it.
 - Postmaster integration facts (learned the hard way, sessions 07-17/18):
-  1. Meshy materials carry the color atlas twice — `map` AND `emissiveMap`. In the 3D room
-     the emissive copy is stripped at load so the scene lights own him. Anything that swaps
-     his atlas must handle both maps.
+  1. Meshy materials carry the color atlas twice — `map` AND `emissiveMap`. Since r4 the
+     emissive copy is kept ON at partial strength deliberately (James: he must always be
+     visible; `pmGlow` tuner drives `emissiveIntensity`, default 0.42). Anything that swaps
+     his atlas must swap both maps, and never zero pmGlow "for realism."
   2. One-shot actions MUST `fadeOut` in the mixer `finished` handler (clamped end poses
      otherwise pile up in the blend and every later gesture reads tiny).
   3. Never hold a looping action at timeScale exactly 0 — use a hair above (STILL=0.0001).

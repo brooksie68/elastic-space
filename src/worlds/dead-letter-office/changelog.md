@@ -3,6 +3,15 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r4: the postmaster is always visible)
+
+- James: skip physically-correct lighting on him — "just lighten him up so I can always
+  see him." The Meshy dual-atlas emissive copy (stripped in r1 for realism) is back ON at
+  partial strength: he self-lights with his own colors in any corner, and the room's real
+  light still layers on top. New `pmGlow` tuner slider (0 = room-lit only, 1 = fully
+  bright; default 0.42) — live, persisted, zero per-frame cost.
+- Where things stand: James dials pmGlow by eye; bake his number into TUNE_DEFAULTS after.
+
 ## 2026-07-22 — claude-fable (r3: the optimization pass + the z-fight)
 
 - **Poster flicker fixed**: THE MAIL IS WATCHING overlapped the DEAD LETTER OFFICE sign at
