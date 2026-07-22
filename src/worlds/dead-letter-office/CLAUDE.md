@@ -21,6 +21,16 @@ telephone (his half in the bubble only), and — someday — a rare Jerry visit:
 line-drawing billboard walking through the 3D room, unacknowledged. Also parked: GPT
 posters (PNGs → assets/posters/), the cat (low-poly procedural path recommended).
 
+Also approved in spirit (2026-07-22, plans pitched, James went to bed before answering):
+**ElevenLabs voice** for all his lines — James picks a homey gruff older voice from the
+library, then: consolidate line pools into one module, bake per-line mp3s keyed to text,
+"voice" channel on the sound control, tune delivery on 3-4 test lines first. **Letters
+lore expansion** — deck 12 → ~30 with 3-4 threads (both halves of correspondences that
+never met; thread deals in order once opened), plus his own desk letters: an unrequited
+correspondence (proposed name June — pending his verdict) with the open question of the
+knife: unsent replies, or replies returned "moved — left no address" (Claude's vote:
+the second — the office holds their whole almost-romance). Get his answers first.
+
 ## World-specific rules
 
 - **The twelve letters are authored (2026-07-04) and protected** — never generate or reword
