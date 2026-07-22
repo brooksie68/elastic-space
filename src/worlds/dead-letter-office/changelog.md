@@ -3,6 +3,12 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (r5: he stands a little taller)
+
+- Postmaster height 1.70m → 1.79m (James: ~3–4 inches — he read small against the
+  furniture). One constant (`PM_HEIGHT` in the load block); stations, nav, and clips
+  are height-agnostic so nothing else moves.
+
 ## 2026-07-22 — claude-fable (r4: the postmaster is always visible)
 
 - James: skip physically-correct lighting on him — "just lighten him up so I can always

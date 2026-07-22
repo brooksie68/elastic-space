@@ -1602,7 +1602,9 @@ Promise.all([
   pmModel = modelGltf.scene;
   const bbox = new THREE.Box3().setFromObject(pmModel);
   const size = bbox.getSize(new THREE.Vector3());
-  const scale = 1.7 / size.y;
+  // 1.70 read small against the furniture (James r5) — he gained ~3.5 inches
+  const PM_HEIGHT = 1.79;
+  const scale = PM_HEIGHT / size.y;
   pmModel.scale.setScalar(scale);
   pmModel.position.y = -bbox.min.y * scale;
   pmModel.traverse((o) => {
