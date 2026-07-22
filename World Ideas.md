@@ -202,6 +202,21 @@ An endless black volume — not monitor-black, cave-black: ten miles across, two
 ### 56. Get Your Ass in the Moss — *an evening* — `retired` (built 2026-07-16, retired to `archive/get-your-ass-in-the-moss/` the same day — James's call, a dead end)
 James's title and one-line brief (2026-07-16): "New, tripped-out, multi-color, green, fungal, tree-laden, jungular psychedelic world," interactivity included, interpretation left entirely to Claude — Blender explicitly on the table. Became a Cycles-rendered fungal grotto (procedural headless build, plates + per-mushroom sprites): seven pokeable giant mushrooms tuned to a pentatonic scale, spore motes that follow your cursor, and a sit-in-the-moss trip arc that deepens the longer you stay. Exits: tree hollow, fairy ring, mist gap.
 
+### 57. The Solar System — *a Jerry* — `idea`
+James's brief (2026-07-22, riffing after the Orb Dimension drag-stick session): a separate
+world — one sun in the middle, planets around it, travel handled the No Man's Sky way. The
+key loop: any distant thing is just a smudge on screen, but if the NAV knows about it you can
+lock on, light the long-distance superboost, and "go in the other room and grab a drink while
+your ship flies there." Orb Dimension is most of the way to this already (nav-ring lock-on →
+armed → AUTO autopilot with coast-in); what's missing is the supercruise tier and planetary
+scale. Enables: much larger objects, hollow structures you fly inside, rings to thread,
+everything arranged in clumps. STARGATES: a few of the richest orb-string communities (grown
+to Jerry's Pool-grade density and activity) get gates linking them — zap in two seconds or
+fly it in two minutes, both always valid ("every gate has a road"). Related but separate:
+the 100×100×40 km Orb Dimension expansion, parked on the CLAUDE.md Todo pending a proper
+planning conversation. Depends on the same tech (depth strategy at long range, camera-local
+dust, clumped population seeding) — build the tech once in Orb Dimension, inherit it here.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy

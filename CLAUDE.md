@@ -8,6 +8,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
+0. ORB DIMENSION "the big dimension": expand to ~100×100×40 km with populations in clumps —
+   James is excited but explicitly NOT one-shot ("definitely not for tonight"). Wants a
+   ~20-minute planning conversation first and more thinking time of his own. Claude's
+   feasibility read (2026-07-22, in session): size is nearly free; real work items are a
+   depth-precision strategy (~150km far plane), camera-local recycling dust, clumped
+   population seeding, fuel geography (overdrive crosses 100km in ~83s vs 120s deu tank —
+   open design question: long lonely gulfs vs a faster cruise tier), fog/fade retune.
+   Related: World Ideas #57 (The Solar System) inherits this tech; stargate-linked rich
+   communities idea lives there too. DISCUSS → PLAN → his go → build.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
@@ -52,9 +61,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - The repo-root `index.html` is the admin panel: server status light, the page directory, the
   dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
   to `/`). It is James's primary starting point while the project is in active development.
-- `start-elastic-space.cmd` at the repo root is the ONE launcher (renamed from `map-room.cmd`
-  2026-07-13; `serve-local.cmd` and `start-local.cmd` were deleted the same day — do not
-  recreate them). Double-click: reuses a running server or starts it in its own CMD window on
+- `start-elastic-space.cmd` at the repo root is the ONE launcher (`serve-local.cmd` and
+  `start-local.cmd` were deleted 2026-07-13 — do not recreate them, nor any older launcher
+  names). Double-click: reuses a running server or starts it in its own CMD window on
   port 4174, then opens the admin panel. It can also be launched from the ai-projects ops
   dashboard's Launch button. Never make James start the server from a command line.
 - The admin panel page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
