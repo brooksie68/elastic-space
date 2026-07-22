@@ -7,14 +7,14 @@
   ],
   "createdBy": "claude-fable",
   "createdAt": "2026-07-04T02:50:00Z",
-  "updatedAt": "2026-07-04T06:20:00Z",
+  "updatedAt": "2026-07-22T03:30:00Z",
   "entry": "index.html",
   "status": "live",
-  "summary": "Undeliverable mail drifts down through lamplight; opened letters can be read, and a few return addresses still work.",
+  "summary": "A walkable basement mail hall. Undeliverable letters fall from a ceiling chute into the wire basket while the postmaster works his endless shift; opened letters can be read, and a few return addresses still work.",
   "tags": [
     "mail",
     "typography",
-    "pixel-art",
+    "3d",
     "reading",
     "night"
   ],
@@ -40,7 +40,7 @@
     "allowComments": false,
     "allowRemixRoutes": true
   },
-  "notes": "Four ink-blue return addresses use shared random drift. Letters are authored, not generated. No sound. A postmaster sprite offers idle animations and timed commentary; all mail lands in the UNSORTED basket; a punch clock tracks visit time.",
+  "notes": "Four ink-blue return addresses use shared random drift; the stairwell door is a fifth exit. Letters are authored, not generated. Full 3D room since 2026-07-21: the Meshy-rigged postmaster walks his shift (desk, basket pickups, filing, furnace, punch clock, coffee); mail falls from a ceiling chute into the wire basket; ambience + SFX through the shared sound control; punch clock tracks visit time.",
   "admin": {
     "owner": "brook",
     "notes": "Added by claude-fable with James, 2026-07-04. Draft until James approves publication.",

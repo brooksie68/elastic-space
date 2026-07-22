@@ -7,16 +7,17 @@
     <link rel="stylesheet" href="./world.css" />
   </head>
   <body>
-    <div class="room" aria-hidden="true">
-      <canvas id="room-canvas"></canvas>
+    <canvas id="stage" aria-label="The Dead Letter Office, a walkable basement mail room"></canvas>
+
+    <div id="poster">
+      <h1>DEAD LETTER OFFICE</h1>
+      <p class="sub">Sub-basement four. Undeliverable mail falls from somewhere upstairs and the
+        postmaster keeps it differently. Mind the basket.</p>
+      <img src="assets/ref/Dead-Letter-Office.png"
+           alt="Concept painting of the basement office: a wire basket of dead letters, a desk with a green lamp, the postmaster sorting" />
+      <p class="note" id="poster-note">coming down the stairs&hellip;</p>
     </div>
 
-    <main id="mail" aria-label="Undelivered mail drifting through the room"></main>
-
-    <canvas id="basket-canvas" aria-hidden="true"></canvas>
-    <canvas id="desk-canvas" aria-hidden="true"></canvas>
-    <canvas id="postmaster" role="button" tabindex="0" aria-label="The postmaster"></canvas>
-    <div id="punchclock" aria-hidden="true">0:00</div>
     <div id="bubble" role="status" aria-live="polite" hidden></div>
 
     <div id="overlay" class="overlay" hidden>
@@ -40,10 +41,20 @@
       </article>
     </div>
 
+    <p id="help">drag to look &middot; WASD / arrows to walk &middot; click a letter to read it &middot; E opens the nearest &middot; Esc refolds</p>
+    <p id="stamp">DEAD LETTER OFFICE &middot; 3D r1 &middot; 2026-07-21</p>
+
+    <!-- diegetic drift exit, fired by clicking the stairwell door in the scene;
+         the four airmail letters build their own return-address drift links -->
+    <a data-drift id="drift-door" href="../../../index.html" hidden aria-hidden="true">through the stairwell door</a>
+
     <script src="../../core/world-registry.js"></script>
     <script src="../../core/drift.js"></script>
     <script src="../../core/dashboard-control.js"></script>
     <script src="../../core/sound-control.js"></script>
-    <script src="./world.js" defer></script>
+    <script type="importmap">
+      { "imports": { "three": "../../lib/three/three.module.js" } }
+    </script>
+    <script type="module" src="world.js"></script>
   </body>
 </html>

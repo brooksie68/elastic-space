@@ -3,6 +3,55 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-21 — claude-fable (solo, James's "make it a lot cooler" directive)
+
+- **Full 3D room rebuild** ("the room arc" the changelog kept promising). The 2D rendered-plate
+  world is replaced by a walkable three.js basement hall, 18×12m (~2× Mandala Shop), built on
+  the Mandala Shop architecture: WASD + drag-look (shared grab/swing preference), wheel dolly
+  with the motion-sickness speed cap, dynamic resolution, keep-out constraint system. Eyes and
+  facial expressions deliberately untouched per James — the eye-rig work stays parked in the
+  tmp viewer.
+- **The postmaster walks his shift.** The Meshy rig + patched 18-clip anim pack (copied from
+  tmp into assets/postmaster/) drives a station-graph brain: desk work (stamp thunk), basket
+  pickups (bow = the pickup; the letter rides his right hand), filing into the pigeonholes,
+  feeding the furnace (scheme = striking the match, whoosh + light flare), punching the wall
+  clock (ka-chunk), coffee at the filing cabinet (sigh clip finally makes sense: he's blowing
+  on it), window gazing, wandering. Clicking him turns him to face you + a line + wave/bow/
+  wag-no. All the authored line pools survive; new small contextual pools for furnace/coffee/
+  clock/filing. Nav graph + camera constraints verified by Node sim (30k-point fuzz found and
+  fixed two real trap bugs: wall-adjacent circles, then wall-flush box faces).
+- **Mail falls for real**: envelopes (canvas-textured planes, airmail striping intact) drop
+  from a ceiling INCOMING chute, flutter into the wire basket, land (flutter sfx, DEAD LETTERS
+  wall tally ticks up), stay clickable from any angle — falling, in the basket, or floor
+  strays. Letter overlay + deck logic + the four return-address drift exits unchanged; the
+  stairwell door is a fifth (click = drift). E opens the nearest letter.
+- **Meshy assets** (~118cr total, 18cr over the 100 pre-approval — overage is textures-only
+  arithmetic, flagged to James): 3 seamless tiles (wall/floor/wood, 6cr ea) + 5 text-to-3d
+  preview meshes at 20cr ea (desk — a roll-top bureau with built-in pigeonholes, captain's
+  swivel chair, wire basket, potbelly furnace, potted plant). Previews are untextured: NOT
+  refined (would be +50cr past the cap) — decimated 3.8M→~300k tris + cube-UV'd in headless
+  Blender, textured in-engine (wood tile + tints; task ids in assets/props/props-manifest.json
+  for a proper 10cr/prop refine later if James wants). Basket generated as a domed birdcage;
+  bisected in Blender to an open-top cage. Plant split pot/leaf materials by height.
+- **Room dressing**, all procedural: hanging cone-shade bulbs, banker's lamp (green pool),
+  furnace stovepipe + ember glow, barred high window + light shaft, radiator, stairwell door
+  with wire glass + STAIRS sign, punch clock (live MM:SS canvas), pigeonhole wall unit, filing
+  cabinet + coffee station, coat rack + mail bag, crates/sacks/mail cart, worn rug, DEAD
+  LETTER OFFICE / WE DELIVER NOWHERE sign, stopped clock at 3:11, DEAD LETTERS + UNCLAIMED
+  tally boards, LOST? cat poster.
+- **Sound**: ElevenLabs ambience bed (hum + pipe clanks + drips, looped) through the shared
+  control, plus furnace-whoosh / punch-clock / letter-flutter / coffee-sip one-shots and the
+  existing stamp-thunk, all gated by the control's state and volume.
+- **Tuner**: "tune the office" panel (Chrome Rift pattern) — bulb/lamp/furnace/shaft/fog/
+  mailEvery/fallSpeed/pace/walk, localStorage `dlo-room-tuner`, JSON readout + reset.
+- Verified: `node --check`, nav/constraint sim green, `npm run check-worlds` (one warn: the
+  4 letter exits are dynamic so the checker only counts the door — 5 real drift choices).
+  NOT eyeballed in a browser (no-inline-QA rule; server was down all session). James tunes
+  by eye next: prop scales/orientations, desk-item raycast placements, light levels, carry
+  offset in his hand, walk timeScale vs feet-skating.
+- Where things stand: **built, sim-verified, awaiting James's first walk-through.** Known
+  soft spots for that pass listed above; the old 2D world is fully preserved in git history.
+
 ## 2026-07-18 — claude-fable (with James, viewer polish night)
 
 - Viewer modes split at James's request: **idle** = truly still (calmest clip frozen at
