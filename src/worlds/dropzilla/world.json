@@ -1,14 +1,9 @@
 {
-  "schemaVersion": 1,
   "slug": "dropzilla",
   "title": "DROPZILLA",
   "creators": [
     "claude-fable"
   ],
-  "createdBy": "claude-fable",
-  "createdAt": "2026-07-12T04:00:00Z",
-  "updatedAt": "2026-07-17T04:00:00Z",
-  "entry": "index.html",
   "status": "live",
   "summary": "A shock jock's sample deck: banked sound pads on a hardware-style device with FX knobs, a censor bleep, and a performance looper. 36 farts live on as bank one: GAS.",
   "tags": [
@@ -22,7 +17,7 @@
     "silly",
     "unhinged"
   ],
-  "contentType": "interactive",
+  "contentType": "",
   "entryPoints": [
     "direct"
   ],
@@ -44,7 +39,7 @@
   },
   "admin": {
     "owner": "claude-fable",
-    "notes": "Born 2026-07-12 as The Toot Suite; reimagined 2026-07-15 as DROPZILLA, a shock-jock sampler device. 2026-07-16: bank one refreshed as GAS (James's new 36, assets/audio/gas/); drift exits temporarily commented out. Future banks will add R-rated language — update warnings when they land. Audio via ElevenLabs SFX API.",
+    "notes": "Born 2026-07-12 as The Toot Suite; reimagined 2026-07-15 as DROPZILLA, a shock-jock sampler device. 2026-07-16: bank one refreshed as GAS (James's new 36, assets/audio/gas/); drift exits temporarily commented out. Future banks will add R-rated language — update warnings when they land. Audio via ElevenLabs SFX API.\n\nIdeas for sounds I have to have\nwilhelm scream\nreggae air horn\nda dada da da BUM BUM! thing from sports\neverybody clap your hands\nbike Horn\nChicken freaking out\nBig Sneeze\nCrowd Groans\nGolf clap\nApplause\nFrantic Cheering at a concert\nThe roar of a crowd in a stadium\nA horde of wildraiders on horses\nfork on a glass ting ting ting\nWomp womp\n1970's dating game You Lose sound\nowl hooting\nDoor slam\nbaby crying\npeople booing\nA man singing the national anthem very well and seriously\nAnnouncer going wild for jet cars and funny cars\nWhere's the Beef!?\nLet's get ready to rumble!\nDinner bell\nFog horn\nTrain whistle\nLightning & Thunder\nWindows Error sound\nGoat Scream\nMario Gets Gold Coin\nTuco Tight Tight Tight\n\n",
     "featured": false,
     "directoryOrder": 0,
     "editable": true,
