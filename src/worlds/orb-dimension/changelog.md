@@ -3,6 +3,154 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-22 — claude-fable (v48 — the drag-stick: deflection steering with a saturation rim)
+
+James named the problem precisely: with relative-drag steering he had to keep
+moving the mouse "farther and farther" to hold a turn — he'd independently
+invented the saturation radius every mouse-flight game uses. Discussed first
+(his call: build my recommendation, tune by feel), then built:
+
+- DRAG-STICK: pressing plants a virtual joystick where you clicked; the
+  pointer's offset from that anchor commands a turn RATE. Deadzone (14px),
+  response curve (^1.7 — gentle near center for aim), and a saturation rim
+  (260px) past which more distance adds nothing: park the cursor at the rim
+  and the ship holds its best turn forever. Nothing accumulates in pointermove
+  anymore — the frame loop reads the live offset and feeds pending at rate*dt,
+  exactly like the arrow keys, so the v47 critically-damped servo still owns
+  all smoothing. Pitch max 30°/s vs yaw 42°/s (~70% — kinder to the stomach).
+- INSTRUMENTS: a faint ice-blue anchor dot + dashed saturation rim (reticle's
+  palette — orange stays nav's), shown while steering or once a press is
+  clearly a hold; the rim brightens at full deflection so "farther adds
+  nothing" is visible. z-index 5, under the nav ring.
+- HANDS-ON DISCIPLINE: crossing the deadzone is the "hands on" signal — it
+  arms the stick and releases autopilot/leveling. AutoNav engage, R, and H
+  all DISARM it (stickLive=false), so a cursor merely parked off-center can
+  never steer; the hand must move again to reclaim the ship.
+- TUNER: new "the stick" group — mode select (drag-stick / center-stick,
+  the latter always-on at screen center, Freelancer style), dead zone, reach,
+  yaw °/s, pitch °/s, response. Presets carry stickMode like grouping.
+- VERIFIED: new `tmp/orb-dimension/stick-sim.mjs` (source-guard on the
+  shipped formulas + 6 tests: deadzone, saturation, signs, monotonic curve,
+  servo settles on command with zero overshoot and dies on release). v47-sim's
+  stamp check now accepts any v>=47. All three sims pass.
+
+Where things stand: James hasn't flown it yet — defaults are educated guesses
+awaiting his hands. Center-stick mode is built but untried. If the drag-stick
+feels wrong, the old feel is NOT a tuner setting — it was replaced; the
+changelog history (v9–v47) has the full flight-model account.
+
+v48.1 (same day, after James's first flight): "definitely an improvement" —
+but the rim circle was too present, maybe unnecessary. Hidden via STICK_RIM
+flag in the stick block (physics and anchor dot untouched, rim DOM/CSS kept);
+flip the flag to bring it back. Stamp bumped to v48.1 so a stale tab is
+detectable.
+
+v48.2 (same day, James's spec, verbally precise): the stick is PINNED to the
+center reticle — "don't follow the mouse click around... pin it to the
+middle." Center mode is now hold + pull: grab must BEGIN within reach/2 of
+the reticle (a drag started out at a portal stays a drag), pull away =
+increasing turn pressure through the same deadzone/curve/saturation, release
+or return = neutral. Arming is per-hold (pointerup always disarms). No dot,
+no rim in center mode — the reticle itself marks neutral; the always-on
+no-button center variant from v48 is gone. Drag-stick survives as the tuner
+alternative. One-time migration (stickModeV) forces saved v48 cfgs onto
+center once; after that the tuner choice rules. Same deflection math —
+stick-sim still passes untouched.
+
+v48.3 (same day): James felt roll fighting the pull ("upside down, it wants
+to pull the other way") — correctly diagnosed: the v26 coordinated bank-carve
+rotates around WORLD-vertical while the stick pulls in SCREEN space; at steep
+bank it bends the ship off the mouse line, inverted it reads reversed. Fix:
+the carve yields to the hand — scaled by (1 − stickMag), so full pull = pure
+mouse authority, hands-off banked flight keeps the v26 carve exactly. The
+carve line is now source-guarded in stick-sim.
+
+v48.4 (same day): the yield wasn't enough — James's pencil spec retired the
+v26 carve outright: "A and D shouldn't make me do anything except rotate the
+ship around its middle axis... like a pencil coming all the way straight
+through the middle." His test case: flying at the skull + D should corkscrew
+with the nose glued to the skull, not careen right. The carve was the
+pre-stick era's only way to turn in flight; the stick owns turning now.
+BANK_CARVE flag (default false) keeps the v26 code one flip from returning.
+Roll still banks-and-stays; R still levels.
+
+v48.5 (same day): "this feels better... I should turn slower" — max turn
+rate defaults dropped 42→28°/s yaw, 30→20°/s pitch (ratio kept). Stick
+migrations restructured into a versioned ladder (stickModeV, now 3) — each
+voice-made feel decision force-applies once over older saved cfgs, then the
+tuner rules. The rates remain live sliders (TUNE → "the stick") for James's
+by-eye pass.
+
+v48.6 (same day): with the stick slowed, roll stopped keeping up with the
+nose ("time for the rolling to keep up with the nose pull"). ROLL_RATE
+0.46→0.51 rad/s — James's protocol: +10% per step, iterate by ear until it
+sits. History of this const: 0.66 → 0.46 → 0.51.
+
+## 2026-07-21 — claude-fable (v47 — THE DIMENSION WAKES UP: interiors, worldlets, Vess-Karai, colony life, the fleet)
+
+James's six-item brief ("surprise the shit out of me", 100 Meshy credits authorized —
+81 spent), all built:
+
+- SMOOTH STEERING: the mouse-look ease is now a critically-damped second-order
+  servo (LOOK_W 10) — angular velocity is continuous, so hand jitter can't echo
+  into rapid back-and-forth. Net rotation still equals drag distance. Verified by
+  sim: 3.4x less 8Hz jitter in output velocity, half the peak jerk, same latency.
+- VESS-KARAI, THE LANTERN: a 1km beveled glass pyramid (Blender headless →
+  `assets/pyramid/pyramid.bin`, magic PYRA, 284 flat-shaded tris) standing on the
+  cave floor at [9500, −5850, 6500] — apex 850m above the flight floor, provably
+  outside the station grid and sight corridor. Fresnel glass pass (facets quiet,
+  beveled ribs catch rim light), a white-gold fog-proof sun pulsing inside, a warm
+  wash pooling beneath, six ember lights circling the base, a low 55Hz beat-hum
+  within 2km. On the NAV panel under the monument section (standoff 1500).
+- ORB INTERIORS: instance data grew 16→20 floats (i4 = kind, p0, p1, activity).
+  ~52% of field orbs now carry an interior; every one is a vague glowing nothing
+  from afar, stirs as you approach, and is fully awake beside you (act 0/1/2,
+  distance-driven, smoothed, thresholds scale with orb size). 23 procedural scenes
+  in the fragment shader — James's list (swirl lights, water+fish w/ bubbles,
+  kaleidoscope, metaball blobs, orrery, tech×6: reactor/data-rain/radar/gyro/
+  circuit/beacon — tech deliberately common) plus inventions: snow-globe city,
+  storm orb w/ lightning, ember hive, clockwork, galaxy, the eye that opens when
+  you get close, forge, singing crystals, moons, metronome, jellyfish tank,
+  library w/ a book that leaves its shelf. Three Meshy paintings live behind
+  glass as rare finds: THE BEAR READING (moss-green, spectacles, tea — ~1 in
+  170 orbs), a bioluminescent terrarium, an inventor's workshop.
+- WORLDLETS: five Meshy planet maps (lava, ice, gas giant, ocean, desert) on a
+  1024² texture array; ~8% of field orbs render as rotating lit planets —
+  seed-keyed light direction, limb darkening, hue-tinted atmosphere, night-side
+  city lights that only sparkle at act 2. Longitude samples mirror-wrapped, so
+  the maps never show a seam. Welcoming ring guarantees: gas worldlet, reactor,
+  the bear, and the fish near the skull.
+- COLONY LIFE: polyp pulses are COORDINATED now — phase falls with distance from
+  each colony's heart, waves of light rolling outward (fadePhase math in
+  makeReef; the extracted reefGeometry block untouched — all 9 sim tests PASS).
+  Per colony: 10 exchange motes arcing polyp-to-polyp on eased Béziers, 8 rune
+  glyphs (64-rune seeded canvas atlas, unit 4) drifting out into the dark, and
+  three energy species — 5 darters (closed-form lissajous streaks with 3-echo
+  tails, screen-space elongation), 4 pulse jellies, 6 flutter moths on figure-8s
+  around favorite polyps. Colony comms chatter (sparse glassy blips through the
+  cave echo) within 2.6km.
+- THE FLEET: 14 service robots — James's Meshy bot (meshy-6 text-to-3d + refine,
+  the credits' centerpiece: cyclops eye, teal panels, hazard-striped hover skirt)
+  prepped headless to `assets/robot/robot.bin` (RBOT, 9k tris, 6m tall) + 1K
+  basecolor. Own mesh pass, per-robot matrix, engine-light-from-below in the
+  shader, hover bob. Job loop: travel (eased, ~110 m/s max) → service (patient
+  orbit) → next client; clients weighted to inhabited orbs, then depots,
+  colonies, and the Lantern (robots 0–1 are its dedicated caretakers). Cargo orb
+  swings below on supply runs; cyan engine glow brightens with speed. A robot's
+  visit WAKES its client orb (svc boost → act). Fleet is served-only (mesh
+  fetch) and stays fully dark on file://.
+- Draw order: skull + robots (opaque, depth-written) → Lantern glass (blended,
+  no depth write) → orbs (depth-tested, no writes). Orbs behind the glass shine
+  through it, as glass full of light should.
+- Verification: `tmp/orb-dimension/v47-sim.mjs` (6 tests: binary formats, robot
+  height, Lantern placement invariants, instance-stride wiring, shader kind
+  coverage, asset presence — ALL PASS) + reef-sim 9/9 + all 8 GLSL shaders parsed
+  clean (@shaderfrog/glsl-parser) + node --check. Stamp v47.
+- UNTESTED BY JAMES'S EYE (all one-number tunes): interior brightness/scale per
+  scene, worldlet rotation speeds, glass alpha + inner-glow strength, creature
+  sizes, act distance thresholds, chatter/hum levels, and ROBOT_FACING (flip to
+  −1 in world.js if the fleet flies backwards).
+
 ## 2026-07-19 — claude-fable (v46 — mouth globe removed)
 
 - James pulled the v45 mouth globe after seeing it ("that's my fault, just

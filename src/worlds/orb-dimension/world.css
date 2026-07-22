@@ -587,6 +587,37 @@ body::after {
   letter-spacing: 0.08em;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
+/* v48 drag-stick instruments: the planted anchor dot + the saturation rim.
+   Ice-blue like the reticle (the hand's color; orange belongs to nav), and
+   faint on purpose — instruments, not decoration. */
+#stick-dot {
+  position: fixed;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: rgba(190, 225, 255, 0.6);
+  box-shadow: 0 0 8px rgba(150, 205, 255, 0.45);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+#stick-rim {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(150, 205, 255, 0.2);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.12s ease, border-color 0.25s ease;
+}
+#stick-dot.on,
+#stick-rim.on { opacity: 1; }
+/* full deflection: the rim wakes so you can see "farther adds nothing" */
+#stick-rim.sat { border-color: rgba(190, 230, 255, 0.55); }
+
 #nav-arrow {
   position: fixed;
   left: 50%;

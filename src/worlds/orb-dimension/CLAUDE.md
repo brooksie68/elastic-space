@@ -36,3 +36,44 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
   clearance between eye center and socket bone. Don't raise the clamp without re-measuring.
 - The skull normal map (`assets/skull/skull-normal.jpg`) is raw-extracted from the source
   GLB, glTF +Y convention. If bumps ever read as dents, flip the green sign in perturb().
+- v47 systems (interiors, worldlets, Vess-Karai, colony life, the fleet): run
+  `tmp/orb-dimension/v47-sim.mjs` after touching any of them (binary formats, Lantern
+  placement, instance-stride wiring, shader kind coverage) — plus reef-sim as always.
+- Mouse look is a critically-damped second-order servo (LOOK_W 10, v47). Do not revert
+  to a first-order ease — the discontinuous velocity was the jerk James flagged.
+- Steering is a virtual joystick PINNED to the center reticle (v48.2, James's spec):
+  grab within reach/2 of the reticle, hold, pull — offset commands a turn rate
+  (deadzone → curve → saturation rim), fed to the v47 servo at rate*dt like the
+  arrows. Release = neutral, arming is per-hold. No stick chrome in center mode —
+  the reticle marks neutral (the v48 rim circle was "too present"; STICK_RIM flag
+  brings it back for tuning). Feel lives in cfg (stickDead/Reach/YawMax/PitchMax/
+  Curve, tuner group "the stick"); drag-stick (press plants it anywhere) is the
+  tuner alternative. Don't touch the formulas — `tmp/orb-dimension/stick-sim.mjs`
+  source-guards them and must pass after any change. stickLive discipline:
+  autopilot engage, R, H, and release disarm; only beyond-deadzone motion while
+  holding re-arms. Never let a parked cursor steer.
+- The v26 bank-carve is RETIRED (v48.4, James's pencil spec): A/D is pure roll
+  about the boresight and must never change heading — flying + roll = corkscrew
+  with the nose glued to the target. Turning belongs to the stick alone. The
+  carve code survives behind BANK_CARVE (false); don't re-enable without James.
+  General rule from the v48.3→v48.4 arc: no world-frame rotation may ever fight
+  or redirect the pilot's pull.
+- Instance data is 5 vec4s (FLOATS 20); i4 = kind, p0, p1, activity. Kinds: 0 plain,
+  1–26 procedural interiors, 40+p0 art layers, 50+p0 worldlets, 60–64 colony actors.
+  Interiors have three proximity states (act 0/1/2, smoothed, size-scaled thresholds) —
+  "vague nothings from far away" is the contract, don't make far orbs busy.
+- Tech interiors stay relatively common (decorate() weights, James's spec). The bear
+  (art layer 0) stays rare — that's what makes finding it an event.
+- Vess-Karai the Lantern is fixed geometry at [9500, −5850, 6500] (LANTERN consts;
+  `pyramid_build.py` in tmp regenerates pyramid.bin). Its apex must stay below the
+  station grid's floor (−4370) — the no-overlap proof in v47-sim depends on it.
+- Worldlet maps sample with MIRRORED longitude (no seam, geography doubles back —
+  deliberate). Planet layers are 3–7 of the art array; a 3.5% inset crop at upload
+  kills the generated maps' letterbox borders.
+- Colony actors rewrite their o.fix arrays every frame — the renderer doesn't know
+  they move. Never spawn an actor at [0,0,0] (that's inside the skull); seat it first.
+- The robot fleet is served-only (mesh fetch) and its glow/cargo actors stay at
+  radius 0 until the mesh loads. ROBOT_FACING in world.js flips the nose if James
+  reports the fleet flying backwards — glTF says +Z front, unverified by eye.
+- Meshy spend 2026-07-21: 81 credits (5 planet maps, 3 interior paintings, robot
+  preview+refine) — James pre-authorized 100.

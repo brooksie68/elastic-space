@@ -48,6 +48,22 @@
     haze: 1,
     fadeSpeed: 1,
     grouping: "scatter",
+    // v48 drag-stick steering: press plants a virtual joystick, offset
+    // commands a turn RATE. Deadzone / reach in CSS px, rates in deg/s
+    // (yaw 42 ≈ the arrows' 0.7 rad/s; pitch ~70% — kinder to the stomach),
+    // curve is the response exponent between deadzone and rim.
+    // v48.2 (James, after flying v48): the stick is PINNED to the center
+    // reticle — hold and pull away from it; the press must start near the
+    // reticle to count as a grab. "drag" (press plants the stick anywhere)
+    // survives as the tuner alternative. stickModeV 0 in DEFAULTS is the
+    // migration trigger — see sanitizeCfg().
+    stickMode: "center",
+    stickModeV: 0,
+    stickDead: 14,
+    stickReach: 260,
+    stickYawMax: 28,  // v48.5: down from 42 — James: "I should turn slower"
+    stickPitchMax: 20, // stays ~70% of yaw
+    stickCurve: 1.7,
   };
   // pool: slider adds/removes orbs incrementally — NEVER re-rolls the field
   const SLIDERS = [
@@ -59,6 +75,11 @@
     { key: "glow", label: "glow", min: 0, max: 2, step: 0.05 },
     { key: "haze", label: "haze", min: 0, max: 3, step: 0.05 },
     { key: "fadeSpeed", label: "color fade", min: 0.2, max: 4, step: 0.1 },
+    { key: "stickDead", label: "dead zone", min: 0, max: 60, step: 1 },
+    { key: "stickReach", label: "reach", min: 80, max: 600, step: 5 },
+    { key: "stickYawMax", label: "yaw °/s", min: 10, max: 120, step: 1 },
+    { key: "stickPitchMax", label: "pitch °/s", min: 6, max: 120, step: 1 },
+    { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -78,6 +99,17 @@
     if (!["scatter", "clusters", "strata", "river"].includes(cfg.grouping)) {
       cfg.grouping = "scatter";
     }
+    if (!["drag", "center"].includes(cfg.stickMode)) cfg.stickMode = "center";
+    // stick migrations — one per feel decision James made by voice. Each
+    // runs once against older saved cfgs; after any save the version is
+    // persisted and his tuner choices rule from then on.
+    const stickV = Number(cfg.stickModeV) || 0;
+    if (stickV < 2) cfg.stickMode = "center"; // v48.2: pinned to the reticle
+    if (stickV < 3) { // v48.5: "I should turn slower"
+      cfg.stickYawMax = DEFAULTS.stickYawMax;
+      cfg.stickPitchMax = DEFAULTS.stickPitchMax;
+    }
+    cfg.stickModeV = 3;
   }
   sanitizeCfg();
 
@@ -98,7 +130,7 @@
     } catch {}
   }
   function cfgSnapshot() {
-    const snap = { grouping: cfg.grouping };
+    const snap = { grouping: cfg.grouping, stickMode: cfg.stickMode };
     for (const s of SLIDERS) snap[s.key] = cfg[s.key];
     return snap;
   }
@@ -127,7 +159,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag to steer · X stops · H home · CTRL on the console lists everything · v46";
+    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v48.6";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -264,6 +296,7 @@ layout(location=1) in vec4 i0; // world pos, radius
 layout(location=2) in vec4 i1; // h1, h2, sat, fadeDur
 layout(location=3) in vec4 i2; // fadePhase, spin, variant, halo
 layout(location=4) in vec4 i3; // seed, portal, veil, quadScale
+layout(location=5) in vec4 i4; // kind, p0, p1, activity (v47)
 uniform mat4 uVP;
 uniform vec3 uRight;
 uniform vec3 uUp;
@@ -273,6 +306,7 @@ flat out vec4 vA;
 flat out vec4 vB;
 flat out vec4 vC; // seed, portal, dist, radius
 flat out vec2 vMisc; // veil flag, quad scale
+flat out vec4 vD; // kind, p0, p1, activity
 void main() {
   float d = distance(i0.xyz, uCamPos);
   float radius = i0.w;
@@ -289,6 +323,7 @@ void main() {
   vB = i2;
   vC = vec4(i3.x, i3.y, d, radius);
   vMisc = vec2(i3.z, i3.w);
+  vD = i4;
   gl_Position = uVP * vec4(wp, 1.0);
 }`;
 
@@ -299,7 +334,10 @@ flat in vec4 vA;
 flat in vec4 vB;
 flat in vec4 vC;
 flat in vec2 vMisc;
+flat in vec4 vD; // kind, p0, p1, activity (v47)
 uniform mediump sampler2DArray uShells;
+uniform mediump sampler2DArray uArt;   // interior paintings + planet maps
+uniform sampler2D uGlyphs;             // 8x8 rune atlas, canvas-drawn
 uniform float uTime;
 uniform float uFog;
 uniform float uGlow;
@@ -313,13 +351,126 @@ vec3 hsl2rgb(float h, float s, float l) {
   return (rgb - 0.5) * c + l;
 }
 
+// v47 helpers for the interior scenes
+float h11(float n) { return fract(sin(n) * 43758.5453); }
+float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+vec2 rot2(vec2 p, float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c) * p; }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x),
+             mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
+}
+
 void main() {
   float r = length(vUv);
-  if (r > vMisc.y) discard;
+  int kind = int(vD.x + 0.5);
+  // glyphs are square runes — everyone else clips to the disc
+  if (kind != 60 && r > vMisc.y) discard;
   float seed = vC.x;
   float portal = vC.y;
   float dist = vC.z;
   float radius = vC.w;
+
+  // fog + near-fade live up here now (v47): the standalone kinds below need
+  // them before the glass pipeline runs
+  float fogF = exp(-dist * uFog);
+  if (portal > 1.5) fogF = 1.0;
+  else if (portal > 0.5) fogF = mix(fogF, 1.0, 0.6);
+  float nearF = vMisc.x > 0.5 ? 1.0 : smoothstep(radius * 0.7, radius * 1.8, dist);
+
+  // the three states (v47): act 0 = a vague glowing nothing from far away,
+  // act 1 = the scene stirs as you close in, act 2 = fully awake beside you.
+  // JS smooths act by distance, so the states GLIDE into each other.
+  float act = vD.w;
+  float vis = clamp(act, 0.0, 1.0);
+  float full2 = clamp(act - 1.0, 0.0, 1.0);
+  float spd = 0.35 + 0.65 * min(act, 2.0);
+  float t0 = uTime + seed * 7.0;
+
+  // early hue pair — the scenes tint with the orb's own colors
+  float satE = vA.z;
+  vec3 ec1 = hsl2rgb(vA.x / 360.0, satE, 0.62);
+  vec3 ec2 = hsl2rgb(vA.y / 360.0, satE, 0.60);
+
+  // ---- standalone kinds: no glass, they ARE the whole sprite --------------
+  if (kind == 60) { // colony glyph: a rune sent into the dark
+    vec2 guv = vUv * 0.5 + 0.5;
+    float cx = mod(vD.y, 8.0);
+    float cy = floor(vD.y / 8.0);
+    float g = texture(uGlyphs, vec2((cx + guv.x) / 8.0, (cy + guv.y) / 8.0)).r;
+    vec3 gc = mix(ec1, vec3(1.0), 0.25) * (0.75 + 0.25 * sin(t0 * 3.0));
+    float ga = g * vD.z;
+    frag = vec4(gc * ga, ga * 0.85) * fogF;
+    return;
+  }
+  if (kind == 61) { // transfer mote: a hot bead of traded light
+    float m = pow(smoothstep(1.0, 0.0, r), 2.0);
+    vec3 mc = mix(ec1, vec3(1.0), 0.45);
+    frag = vec4(mc * m * 1.3, m * 0.9) * fogF * nearF;
+    return;
+  }
+  if (kind == 62) { // darter: a streak of living energy (p0 = screen angle)
+    vec2 dq = rot2(vUv, -vD.y);
+    dq.x *= 0.3;
+    float dd = length(dq);
+    float core = pow(smoothstep(0.85, 0.0, dd), 3.0);
+    vec3 dc = mix(vec3(1.0), ec1, clamp(dd * 2.4, 0.0, 1.0));
+    float da = core * vD.z;
+    frag = vec4(dc * da * 1.4, da) * fogF * nearF;
+    return;
+  }
+  if (kind == 63) { // pulse jelly: a slow bell with trailing wisps
+    float ph = t0 * 1.1 + vD.y;
+    vec2 jq = vUv / (0.85 + 0.15 * sin(ph));
+    float bellA = smoothstep(0.62, 0.22, length(vec2(jq.x, (jq.y - 0.18) * 1.5)));
+    float tent = 0.0;
+    for (int i = 0; i < 4; i++) {
+      float tx = (float(i) - 1.5) * 0.17;
+      tent += smoothstep(0.045, 0.0, abs(jq.x - tx - sin(jq.y * 3.5 + ph * 2.0 + float(i)) * 0.07))
+        * smoothstep(0.15, -0.85, jq.y);
+    }
+    vec3 jc = mix(ec1, ec2, jq.y * 0.5 + 0.5);
+    float ja = (bellA * 0.7 + clamp(tent, 0.0, 1.0) * 0.28) * (0.55 + 0.3 * sin(ph));
+    frag = vec4(jc * ja * 1.2, ja) * fogF * nearF;
+    return;
+  }
+  if (kind == 64) { // flutter moth: a flickering wing-beat of light
+    float flap = abs(sin(t0 * (6.0 + vD.z) + vD.y));
+    float wingA = smoothstep(0.9, 0.1, length(vec2(vUv.x * (0.8 + 1.4 * flap), vUv.y * 2.2)));
+    vec3 wc = mix(ec1, vec3(1.0), 0.3);
+    float wa = wingA * (0.45 + 0.55 * flap);
+    frag = vec4(wc * wa, wa * 0.85) * fogF * nearF;
+    return;
+  }
+  if (kind >= 50) { // worldlet: a living planet in the dark (p0 = map layer)
+    if (r < 1.0) {
+      float nz = sqrt(max(0.0, 1.0 - r * r));
+      vec3 n = vec3(vUv, nz);
+      float rspd = 0.006 + 0.018 * h11(seed);
+      float lon = atan(n.x, nz) / 6.28318 + uTime * rspd;
+      float lat = asin(clamp(n.y, -1.0, 1.0)) / 3.14159 + 0.5;
+      // mirror-wrapped longitude: the map never shows a seam
+      float mu = abs(fract(lon) * 2.0 - 1.0);
+      vec3 surf = texture(uArt, vec3(mix(0.035, 0.965, mu), mix(0.965, 0.035, lat), vD.y)).rgb;
+      float la = seed * 2.4;
+      vec3 L = normalize(vec3(cos(la) * 0.8, 0.45, 0.55 + 0.3 * sin(la)));
+      float dif = max(dot(n, L), 0.0);
+      vec3 pc = surf * (0.05 + 1.05 * dif) * (0.5 + 0.5 * nz);
+      // night-side city lights wake as you come close
+      float night = clamp(0.25 - dif, 0.0, 0.25) * 4.0;
+      float sp = step(0.985, h21(floor(vec2(mu * 90.0, lat * 60.0))));
+      pc += vec3(1.0, 0.85, 0.5) * sp * night * full2 * 0.55;
+      // thin atmosphere at the limb, tinted the orb's hue
+      pc += ec1 * pow(1.0 - nz, 3.0) * (0.22 + 0.3 * vis);
+      frag = vec4(pc, 1.0) * fogF * nearF;
+    } else {
+      float glowR = smoothstep(1.25, 1.0, r);
+      float aA = glowR * glowR * 0.3 * (0.5 + 0.5 * vis);
+      frag = vec4(ec1 * aA, aA) * fogF * nearF;
+    }
+    return;
+  }
 
   // aerial perspective: far orbs lose saturation before they lose light
   float sat = vA.z * mix(1.0, 0.55, clamp(dist / 18000.0, 0.0, 1.0));
@@ -349,6 +500,326 @@ void main() {
     coreA *= 0.18;
   }
 
+  // ---- the interiors (v47): a scene behind each inhabited glass ----------
+  // From far away every one of these is the plain two-layer glow above.
+  // As act rises the scene crossfades in over it, animating faster and
+  // showing its act-2-only extras when you're truly close.
+  if (kind > 0 && act > 0.01) {
+    vec2 q = vUv;
+    vec3 scn = vec3(0.0);
+    float sca = 0.0;
+    if (kind == 1) { // swirling lights
+      float ang = atan(q.y, q.x);
+      float tw = t0 * spd;
+      float s1 = smoothstep(0.15, 0.95, sin(ang * 3.0 + r * (6.0 + 2.0 * sin(t0 * 0.2)) - tw * 2.2));
+      float s2 = smoothstep(0.3, 0.95, sin(ang * 5.0 - r * 9.0 + tw * 1.6 + 2.1));
+      scn = (c1 * s1 + c2 * 0.6 * s2) * (1.2 - r);
+      sca = (s1 + 0.6 * s2) * (1.0 - r * 0.7) * 0.85;
+    } else if (kind == 2) { // water, with fish
+      float dp = q.y * 0.5 + 0.5;
+      scn = mix(vec3(0.012, 0.08, 0.16), vec3(0.05, 0.3, 0.42), dp);
+      float ca = sin(q.x * 9.0 + t0 * spd * 1.3) * sin(q.y * 7.0 - t0 * spd * 0.9);
+      scn += vec3(0.05, 0.13, 0.15) * smoothstep(0.55, 1.0, ca);
+      sca = 0.85 * (1.0 - r * 0.35);
+      for (int i = 0; i < 4; i++) {
+        float fs = seed + float(i) * 13.7;
+        float w1f = 0.22 + 0.06 * h11(fs);
+        vec2 fp = vec2(sin(t0 * spd * w1f + fs) * 0.55,
+                       sin(t0 * spd * (0.31 + 0.05 * h11(fs + 1.0)) + fs * 2.0) * 0.4);
+        vec2 fd = q - fp;
+        fd.x *= cos(t0 * spd * w1f + fs) > 0.0 ? 1.0 : -1.0;
+        fd.y += sin(t0 * spd * 6.0 + float(i)) * 0.012;
+        float body = length(vec2(fd.x * 2.4, fd.y * 7.5));
+        float tail = length(vec2((fd.x + 0.1) * 4.5, fd.y * 9.0 + sin(fd.x * 40.0 + t0 * spd * 8.0) * 0.12));
+        float fish = smoothstep(0.17, 0.1, min(body, tail));
+        scn = mix(scn, vec3(0.02, 0.05, 0.07), fish * 0.9);
+        scn += vec3(0.1, 0.22, 0.24) * fish * clamp(-fd.y, 0.0, 1.0) * 3.0;
+      }
+      if (act > 1.2) { // bubbles
+        float bc = floor((q.x * 0.5 + 0.5) * 6.0);
+        float by = fract(t0 * spd * (0.05 + 0.04 * h11(bc + seed)) + h11(bc * 3.1 + seed));
+        vec2 bp = vec2((bc + 0.5) / 3.0 - 1.0 + sin(by * 8.0 + bc) * 0.04, by * 1.6 - 0.8);
+        scn += vec3(0.5, 0.8, 0.9) * smoothstep(0.035, 0.014, length(q - bp)) * full2 * 0.6;
+      }
+    } else if (kind == 4) { // kaleidoscope patterns
+      float ang = atan(q.y, q.x);
+      float sec = 0.7854;
+      float fa = abs(mod(ang, sec * 2.0) - sec);
+      vec2 kq = vec2(cos(fa), sin(fa)) * r;
+      float pet = smoothstep(0.3, 0.9, sin(kq.x * 11.0 - t0 * spd) * sin(kq.y * 11.0 + t0 * spd * 0.7));
+      float ring = smoothstep(0.5, 0.95, sin(r * 14.0 - t0 * spd * 1.5));
+      scn = (c1 * pet + c2 * 0.55 * ring) * (1.1 - r * 0.6);
+      sca = (pet + 0.5 * ring) * 0.7 * (1.0 - r * 0.5);
+    } else if (kind == 5) { // weird blobs, organic who-knows-whats
+      float f = 0.0;
+      for (int i = 0; i < 4; i++) {
+        float bs = seed + float(i) * 7.3;
+        vec2 bp = vec2(sin(t0 * spd * (0.3 + 0.15 * h11(bs)) + bs),
+                       sin(t0 * spd * (0.4 + 0.1 * h11(bs + 2.0)) + bs * 1.7)) * 0.45;
+        f += 0.03 / (dot(q - bp, q - bp) + 0.008);
+      }
+      float body = smoothstep(1.1, 1.5, f);
+      float rim = smoothstep(1.1, 1.25, f) - smoothstep(1.5, 2.2, f);
+      scn = c1 * body * 0.5 + c2 * rim * 0.9 + vec3(1.0) * smoothstep(3.5, 6.0, f) * 0.3;
+      sca = body * 0.85;
+    } else if (kind == 6) { // orrery: lights and spinning objects
+      float lamp = pow(smoothstep(0.3, 0.0, r), 2.0);
+      scn = mix(vec3(1.0), c1, 0.3) * lamp;
+      sca = lamp;
+      for (int i = 0; i < 3; i++) {
+        float oi = float(i);
+        float tilt = max(sin(0.35 + oi * 0.5), 0.2);
+        float orad = 0.3 + oi * 0.22;
+        float er = abs(length(vec2(q.x, q.y / tilt) / orad) - 1.0);
+        float ring = smoothstep(0.05, 0.012, er) * 0.12;
+        float ba = t0 * spd * (0.5 - oi * 0.13) + seed + oi * 2.0;
+        vec2 bp = vec2(cos(ba), sin(ba) * tilt) * orad;
+        float bead = pow(smoothstep(0.09, 0.0, length(q - bp)), 1.5);
+        scn += c2 * ring + mix(c1, vec3(1.0), 0.5) * bead;
+        sca += ring + bead;
+      }
+      sca = clamp(sca, 0.0, 0.95);
+    } else if (kind == 7) { // reactor core
+      float core = pow(smoothstep(0.35, 0.0, r), 1.6) * (0.7 + 0.3 * sin(t0 * spd * 6.0));
+      float ang = atan(q.y, q.x);
+      float ring1 = smoothstep(0.04, 0.015, abs(r - 0.55)) * step(0.5, fract(ang * 1.2732 + t0 * spd * 0.5));
+      float ring2 = smoothstep(0.04, 0.015, abs(r - 0.78)) * step(0.5, fract(ang * 1.9099 - t0 * spd * 0.7));
+      float spokes = smoothstep(0.7, 0.95, sin(ang * 6.0 + t0 * spd)) * smoothstep(0.8, 0.45, r) * step(0.3, r) * 0.35;
+      scn = c1 * core * 1.3 + c2 * (ring1 + ring2) * 0.9 + c1 * spokes;
+      sca = clamp(core + ring1 + ring2 + spokes, 0.0, 0.95);
+      scn += vec3(1.0) * core * full2 * 0.5 * step(0.96, sin(t0 * 9.0));
+    } else if (kind == 8) { // data rain
+      float ci = floor((q.x * 0.5 + 0.5) * 9.0);
+      float cs = h11(ci + seed);
+      float fall = fract(t0 * spd * (0.15 + 0.25 * cs) + cs * 7.0);
+      float yy = fract((q.y * 0.5 + 0.5) + fall);
+      float trail = pow(smoothstep(0.45, 1.0, yy), 3.0);
+      float cell = step(0.35, h21(vec2(ci, floor((q.y * 0.5 + 0.5) * 22.0))));
+      scn = mix(vec3(0.1, 1.0, 0.55), vec3(0.4, 0.9, 1.0), cs) * trail * cell * 1.1;
+      sca = trail * cell * 0.85 * (1.0 - r * 0.4);
+    } else if (kind == 9) { // radar sweep
+      float ang = atan(q.y, q.x);
+      float sweep = fract(ang * 0.1592 - t0 * spd * 0.22);
+      float beam = pow(1.0 - sweep, 6.0);
+      float grid = smoothstep(0.02, 0.008, abs(r - 0.45)) + smoothstep(0.02, 0.008, abs(r - 0.8));
+      scn = c1 * (beam * 0.8 * (1.0 - r * 0.5) + grid * 0.12);
+      sca = beam * 0.7 * (1.0 - r * 0.3) + grid * 0.12;
+      for (int i = 0; i < 3; i++) {
+        float bs = seed + float(i) * 3.3;
+        vec2 bp = vec2(h11(bs) * 1.4 - 0.7, h11(bs + 1.0) * 1.4 - 0.7)
+          + full2 * vec2(sin(t0 * 0.2 + bs), cos(t0 * 0.17 + bs)) * 0.15;
+        float bang = fract(atan(bp.y, bp.x) * 0.1592 - t0 * spd * 0.22);
+        float blip = smoothstep(0.05, 0.015, length(q - bp)) * exp(-bang * 5.0);
+        scn += vec3(1.0, 0.6, 0.3) * blip;
+        sca += blip;
+      }
+    } else if (kind == 10) { // gyroscope rings
+      for (int i = 0; i < 3; i++) {
+        float gi = float(i);
+        float w = t0 * spd * (0.4 + gi * 0.23) + seed * gi;
+        vec2 gq = rot2(q, gi * 1.05 + sin(w * 0.7) * 0.6);
+        float minor = max(abs(cos(w)), 0.12);
+        float er = abs(length(vec2(gq.x, gq.y / minor) / (0.75 - gi * 0.18)) - 1.0);
+        float ring = smoothstep(0.06, 0.02, er);
+        scn += mix(c1, c2, gi * 0.5) * ring * (0.5 + 0.3 * gi);
+        sca += ring * 0.45;
+      }
+      float hub = pow(smoothstep(0.12, 0.0, r), 2.0);
+      scn += vec3(1.0) * hub;
+      sca = clamp(sca + hub, 0.0, 0.95);
+    } else if (kind == 11) { // circuitry
+      vec2 cq = q * 4.5 + seed;
+      vec2 cel = floor(cq);
+      vec2 fr = fract(cq);
+      float hx = h21(cel);
+      float lines = step(0.35, hx) * smoothstep(0.06, 0.02, abs(fr.y - 0.5));
+      lines = max(lines, step(0.7, hx) * smoothstep(0.06, 0.02, abs(fr.x - 0.5)));
+      float pp = fract(t0 * spd * 0.3 + hx * 3.0);
+      float px = smoothstep(0.12, 0.0, abs(fr.x - pp)) * step(0.35, hx) * smoothstep(0.08, 0.03, abs(fr.y - 0.5));
+      float pad = smoothstep(0.12, 0.06, length(fr - 0.5)) * step(0.85, hx);
+      scn = c1 * lines * 0.35 + c2 * (px * 1.2 + pad * 0.8);
+      sca = (lines * 0.3 + px + pad * 0.7) * (1.0 - r * 0.55);
+    } else if (kind == 12) { // snow-globe city
+      float bx = floor((q.x * 0.5 + 0.5) * 14.0);
+      float bh = 0.15 + 0.55 * h11(bx + seed);
+      float inB = step(q.y, -0.55 + bh) * step(-0.55, q.y);
+      vec2 wq = vec2(fract((q.x * 0.5 + 0.5) * 14.0), fract((q.y + 0.55) * 10.0));
+      float win = step(0.25, wq.x) * step(wq.x, 0.75) * step(0.2, wq.y) * step(wq.y, 0.7);
+      float lit = step(0.4, h21(vec2(bx, floor((q.y + 0.55) * 10.0)))) * (0.6 + 0.4 * sin(t0 * 0.5 + bx));
+      scn = vec3(0.02, 0.03, 0.05) * inB + vec3(1.0, 0.8, 0.45) * inB * win * lit * (0.3 + 0.7 * vis);
+      sca = inB * 0.8;
+      float snow = step(0.995, h21(floor(q * 24.0 + vec2(0.0, -t0 * spd * 2.0))));
+      scn += vec3(0.8) * snow * full2 * 0.5;
+      sca += snow * full2 * 0.3;
+      float moon = pow(smoothstep(0.2, 0.0, length(q - vec2(0.35, 0.55))), 1.5);
+      scn += vec3(0.9, 0.95, 1.0) * moon * 0.5;
+      sca += moon * 0.4;
+    } else if (kind == 13) { // storm orb
+      vec2 sq = rot2(q, t0 * spd * 0.15);
+      float cloud = vnoise(sq * 3.0 + t0 * spd * 0.2) * 0.65 + vnoise(sq * 6.0 - t0 * spd * 0.13) * 0.35;
+      scn = mix(vec3(0.05, 0.06, 0.1), vec3(0.25, 0.28, 0.38), cloud);
+      scn = mix(scn, c1 * 0.4, smoothstep(0.6, 0.85, cloud) * 0.4);
+      sca = 0.8 * (1.0 - r * 0.5);
+      if (h11(floor(t0 * 1.7) + floor(seed)) > 0.8 - 0.15 * full2) {
+        float fl = pow(fract(-t0 * 1.7), 2.0);
+        scn += vec3(0.8, 0.85, 1.0) * fl * (1.2 - cloud) * (0.6 + full2);
+        sca = min(sca + fl * 0.4, 0.95);
+      }
+    } else if (kind == 14) { // ember hive
+      vec2 oq = q * 5.0;
+      oq.x += mod(floor(oq.y), 2.0) * 0.5;
+      vec2 fh = fract(oq) - 0.5;
+      float cd = length(fh);
+      float wave = 0.5 + 0.5 * sin(t0 * spd * 2.0 - length(floor(oq)) * 0.9);
+      float comb = smoothstep(0.48, 0.42, cd) * smoothstep(0.3, 0.42, cd);
+      float fill = smoothstep(0.35, 0.1, cd) * wave;
+      scn = vec3(1.0, 0.65, 0.2) * (comb * 0.5 + fill * 0.8) * (0.35 + 0.65 * vis);
+      sca = (comb * 0.4 + fill * 0.6) * (1.0 - r * 0.55);
+      for (int i = 0; i < 5; i++) {
+        float bs = seed + float(i) * 5.1;
+        vec2 bp = vec2(sin(t0 * spd * (0.8 + 0.3 * h11(bs)) + bs * 3.0),
+                       sin(t0 * spd * (1.1 + 0.2 * h11(bs + 1.0)) + bs)) * 0.55;
+        float bee = pow(smoothstep(0.05, 0.0, length(q - bp)), 1.2);
+        scn += vec3(1.0, 0.85, 0.3) * bee * (0.4 + 0.6 * vis);
+        sca += bee * 0.7;
+      }
+    } else if (kind == 15) { // clockwork
+      float ang = atan(q.x, q.y);
+      float tick = smoothstep(0.035, 0.015, abs(fract(ang * 1.9099 + 0.5) - 0.5)) * smoothstep(0.92, 0.82, r) * step(0.7, r);
+      vec2 mq = rot2(q, t0 * spd * 0.35);
+      float hand = smoothstep(0.03, 0.01, abs(mq.x)) * step(0.0, mq.y) * step(mq.y, 0.62);
+      vec2 hq = rot2(q, t0 * spd * 0.029);
+      hand += smoothstep(0.045, 0.02, abs(hq.x)) * step(0.0, hq.y) * step(hq.y, 0.38);
+      vec2 pq = rot2(q - vec2(0.0, -0.1), sin(t0 * spd * 2.4) * 0.5);
+      float rod = smoothstep(0.02, 0.008, abs(pq.x)) * step(pq.y, -0.1) * step(-0.75, pq.y) * 0.4;
+      float bob = pow(smoothstep(0.09, 0.0, length(pq - vec2(0.0, -0.72))), 1.4);
+      scn = vec3(1.0, 0.78, 0.35) * (tick * 0.5 + hand * 0.9 + rod + bob * 1.1);
+      sca = clamp(tick * 0.4 + hand * 0.8 + rod * 0.4 + bob, 0.0, 0.95);
+    } else if (kind == 16) { // galaxy
+      vec2 gq = rot2(q, t0 * spd * 0.06);
+      float ang = atan(gq.y, gq.x);
+      float armM = smoothstep(0.0, 0.9, sin(ang * 2.0 - log(max(r, 0.05)) * 4.5));
+      float sh = h21(floor(gq * 40.0));
+      float stars = step(0.93, sh) * (0.5 + 0.5 * sin(t0 * 3.0 + sh * 20.0));
+      float coreG = pow(smoothstep(0.5, 0.0, r), 2.2);
+      scn = c1 * armM * 0.3 * (1.0 - r * 0.7) + vec3(1.0, 0.95, 0.85) * coreG
+        + vec3(0.9) * stars * (0.2 + armM * 0.8) * (1.0 - r * 0.6);
+      sca = clamp(armM * 0.3 + coreG + stars * 0.6, 0.0, 0.95);
+    } else if (kind == 17) { // the eye that opens
+      float open = 0.15 + 0.85 * clamp(act * 0.55, 0.0, 1.0);
+      float lid = smoothstep(open + 0.05, open - 0.05, abs(q.y));
+      vec2 pc2 = full2 * vec2(sin(t0 * 0.4 + seed), sin(t0 * 0.31 + seed * 2.0)) * 0.12;
+      float pr = length(q - pc2);
+      float ang = atan(q.y - pc2.y, q.x - pc2.x);
+      float iris = smoothstep(0.62, 0.58, pr) * smoothstep(0.16, 0.2, pr);
+      float streak = 0.6 + 0.4 * sin(ang * 22.0 + h11(seed) * 40.0);
+      scn = mix(c1, c2, streak) * streak * iris * 0.9 * lid;
+      scn += vec3(0.9) * pow(smoothstep(0.08, 0.0, length(q - pc2 - vec2(0.1, 0.12))), 2.0) * lid;
+      sca = (iris * 0.85 + smoothstep(0.2, 0.16, pr) * 0.9 + smoothstep(0.66, 0.6, pr) * 0.3) * lid;
+    } else if (kind == 20) { // the forge
+      float pool = smoothstep(-0.35, -0.6, q.y);
+      float ripple = 0.5 + 0.5 * sin(q.x * 8.0 + t0 * spd * 2.0) * sin(-q.y * 6.0 - t0 * spd * 1.4);
+      scn = mix(vec3(1.0, 0.25, 0.02), vec3(1.0, 0.8, 0.2), ripple * pool) * pool * 1.1;
+      sca = pool * 0.9;
+      float sxc = floor((q.x * 0.5 + 0.5) * 10.0);
+      float ssp = h11(sxc + seed);
+      float sy = fract(t0 * spd * (0.2 + 0.2 * ssp) + ssp * 5.0);
+      vec2 spq = vec2((sxc + 0.5) / 5.0 - 1.0 + sin(sy * 9.0 + ssp * 7.0) * 0.06, -0.5 + sy * 1.3);
+      float spark = smoothstep(0.03, 0.008, length(q - spq)) * (1.0 - sy);
+      scn += vec3(1.0, 0.6, 0.15) * spark * 1.3;
+      sca += spark;
+      scn += vec3(0.6, 0.15, 0.02) * (0.25 + 0.15 * sin(t0 * spd * 3.0)) * smoothstep(0.4, -0.6, q.y) * 0.5;
+    } else if (kind == 21) { // singing crystals
+      for (int i = 0; i < 5; i++) {
+        float csd = seed + float(i) * 11.3;
+        vec2 cq2 = q - vec2(h11(csd) * 1.2 - 0.6, -0.65);
+        float ht = 0.5 + 0.6 * h11(csd + 1.0);
+        float shard = step(abs(cq2.x), (0.08 + 0.1 * h11(csd + 2.0)) * (1.0 - cq2.y / ht))
+          * step(0.0, cq2.y) * step(cq2.y, ht);
+        float glint = pow(0.5 + 0.5 * sin(t0 * spd * 1.5 + csd * 3.0), 6.0);
+        scn += (c1 * 0.25 + c2 * glint * 0.9 + vec3(0.7) * glint * 0.4) * shard;
+        sca += shard * (0.3 + glint * 0.6);
+      }
+      sca = clamp(sca, 0.0, 0.95);
+    } else if (kind == 22) { // moons around a hearth
+      float coreM = pow(smoothstep(0.3, 0.0, r), 1.8);
+      scn = c1 * coreM * 1.2;
+      sca = coreM;
+      for (int i = 0; i < 3; i++) {
+        float ms = seed + float(i) * 4.7;
+        float orad = 0.42 + float(i) * 0.2;
+        float ma = t0 * spd * (0.5 - float(i) * 0.12) + ms * 10.0;
+        vec2 mp = vec2(cos(ma), sin(ma) * 0.55) * orad;
+        float moon = smoothstep(0.07 + float(i) * 0.01, 0.01, length(q - mp));
+        scn += mix(c2, vec3(0.85), 0.4) * moon * (0.3 + 0.7 * (0.5 + 0.5 * cos(ma)));
+        sca += moon * 0.85;
+        float trace = smoothstep(0.03, 0.012, abs(length(vec2(q.x, q.y / 0.55) / orad) - 1.0));
+        scn += c2 * trace * 0.06;
+        sca += trace * 0.08;
+      }
+    } else if (kind == 23) { // signal beacon
+      float ang = atan(q.y, q.x);
+      float rotb = t0 * spd * 0.5;
+      float b1 = pow(abs(cos(ang - rotb)), 24.0);
+      float b2 = pow(abs(cos(ang - rotb + 1.5708)), 60.0) * 0.5;
+      float lens = pow(smoothstep(0.18, 0.0, r), 1.5);
+      float morse = step(0.5, h11(floor(t0 * 2.5) + floor(seed * 10.0)));
+      scn = c1 * (b1 + b2) * (1.0 - r * 0.55) * 0.9 + vec3(1.0) * lens * (0.5 + 0.5 * morse);
+      sca = clamp((b1 + b2) * (1.0 - r * 0.4) * 0.8 + lens, 0.0, 0.95);
+    } else if (kind == 24) { // metronome
+      vec2 pq = rot2(q - vec2(0.0, 0.6), sin(t0 * spd * 1.8 + seed) * 0.7);
+      float rod = smoothstep(0.015, 0.006, abs(pq.x)) * step(-1.1, pq.y) * step(pq.y, 0.0);
+      float bob = pow(smoothstep(0.13, 0.0, length(pq - vec2(0.0, -1.05))), 1.6);
+      float arc = smoothstep(0.02, 0.008, abs(length(q - vec2(0.0, 0.6)) - 1.05)) * smoothstep(-0.6, -0.2, q.y) * 0.2;
+      scn = c2 * rod * 0.8 + mix(c1, vec3(1.0), 0.6) * bob * 1.2 + c1 * arc;
+      sca = clamp(rod * 0.6 + bob + arc * 0.5, 0.0, 0.95);
+    } else if (kind == 25) { // the lone jellyfish tank
+      scn = mix(vec3(0.01, 0.05, 0.09), vec3(0.03, 0.12, 0.18), q.y * 0.5 + 0.5);
+      sca = 0.75;
+      float ph = t0 * spd * 0.7 + seed;
+      vec2 jq = (q - vec2(sin(ph * 0.3) * 0.2, sin(ph * 0.23) * 0.15)) / (0.9 + 0.1 * sin(ph));
+      float bellA = smoothstep(0.55, 0.2, length(vec2(jq.x, (jq.y - 0.15) * 1.5)));
+      float tent = 0.0;
+      for (int i = 0; i < 4; i++) {
+        float tx = (float(i) - 1.5) * 0.16;
+        tent += smoothstep(0.04, 0.0, abs(jq.x - tx - sin(jq.y * 3.0 + ph * 2.0 + float(i)) * 0.07))
+          * smoothstep(0.15, -0.9, jq.y);
+      }
+      scn += c1 * (bellA * 0.55 + clamp(tent, 0.0, 1.0) * 0.3) * (0.6 + 0.3 * sin(ph));
+    } else if (kind == 26) { // the library
+      float shelfY = fract((q.y + 1.0) * 1.5);
+      float band = floor((q.y + 1.0) * 1.5);
+      float sx = (q.x * 0.5 + 0.5) * 16.0;
+      float book = floor(sx);
+      float bw = h21(vec2(book, band) + floor(seed));
+      float spine = step(0.15, fract(sx)) * step(fract(sx), 0.9);
+      float inShelf = step(shelfY, 0.55 + 0.35 * bw) * step(0.08, shelfY);
+      vec3 bcol = mix(vec3(0.45, 0.2, 0.1), vec3(0.15, 0.3, 0.4), h21(vec2(book * 3.0, band)));
+      bcol = mix(bcol, vec3(0.5, 0.4, 0.15), step(0.7, bw));
+      scn = bcol * spine * inShelf * (0.35 + 0.55 * vis) * (0.7 + 0.3 * sin(q.y * 2.0 + 1.0));
+      sca = spine * inShelf * 0.75;
+      if (act > 1.2) { // a book left its shelf
+        vec2 fb = q - vec2(sin(t0 * 0.3 + seed) * 0.4, 0.15 + sin(t0 * 0.23) * 0.2);
+        float pages = smoothstep(0.2, 0.05, abs(fb.x) + abs(fb.y) * 2.5) * (0.8 + 0.2 * sin(t0 * 2.0));
+        scn += vec3(1.0, 0.95, 0.8) * pages * full2;
+        sca += pages * full2 * 0.8;
+      }
+    } else if (kind >= 40) { // a painting lives here (p0 = art layer)
+      vec2 auv = clamp(q * 0.5 * 0.98 + 0.5, 0.0, 1.0);
+      vec3 tex = texture(uArt, vec3(auv.x, 1.0 - auv.y, vD.y)).rgb;
+      float breathe = 0.9 + 0.1 * sin(t0 * 0.8) + 0.04 * sin(t0 * 7.3);
+      scn = tex * (0.35 + 0.65 * vis) * breathe;
+      float lum = max(max(scn.r, scn.g), scn.b);
+      sca = clamp(lum * 1.4, 0.0, 0.92);
+      float mote = step(0.997, h21(floor(q * 40.0) + floor(t0 * 2.0)));
+      scn += mote * full2 * 0.25;
+    }
+    // crossfade the scene in over the plain glow, held inside the glass
+    float mixK = vis * smoothstep(1.0, 0.9, r);
+    coreP = mix(coreP, scn, mixK);
+    coreA = mix(coreA, clamp(sca, 0.0, 0.95), mixK);
+  }
+
   // the glass shell over the light
   vec4 shell = vec4(0.0);
   if (r < 1.02 && vMisc.x < 0.5) {
@@ -374,12 +845,7 @@ void main() {
   outP += mix(c1, c2, 1.0 - k) * haloA * 0.8;
   outA = min(1.0, outA + haloA * 0.55);
 
-  // distance haze; fade out gently when flying straight through one.
-  // pale exit orbs resist the fog; the heart ignores it entirely
-  float fogF = exp(-dist * uFog);
-  if (portal > 1.5) fogF = 1.0;
-  else if (portal > 0.5) fogF = mix(fogF, 1.0, 0.6);
-  float nearF = vMisc.x > 0.5 ? 1.0 : smoothstep(radius * 0.7, radius * 1.8, dist);
+  // distance haze + near-fade were computed up top (v47)
   frag = vec4(outP, outA) * fogF * nearF;
 }`;
 
@@ -401,7 +867,7 @@ void main() {
   }
   gl.useProgram(prog);
   const U = {};
-  for (const name of ["uVP", "uRight", "uUp", "uCamPos", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uFadeScale"]) {
+  for (const name of ["uVP", "uRight", "uUp", "uCamPos", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uFadeScale", "uArt", "uGlyphs"]) {
     U[name] = gl.getUniformLocation(prog, name);
   }
 
@@ -417,11 +883,12 @@ void main() {
   gl.enableVertexAttribArray(0);
   gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-  // instance buffer: 4 vec4 per orb
-  const FLOATS = 16;
+  // instance buffer: 5 vec4 per orb (v47: i4 = kind, p0, p1, activity — the
+  // interior/worldlet/creature channel)
+  const FLOATS = 20;
   const instBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-  for (let a = 1; a <= 4; a++) {
+  for (let a = 1; a <= 5; a++) {
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 4, gl.FLOAT, false, FLOATS * 4, (a - 1) * 16);
     gl.vertexAttribDivisor(a, 1);
@@ -500,6 +967,139 @@ void main() {
     });
   }
 
+  // ---- interior art + planet maps (v47) --------------------------------------
+  // One 1024^2 texture array on unit 3: layers 0-2 are the Meshy interior
+  // paintings (the bear, the terrarium, the workshop), layers 3-7 the five
+  // planetoid surface maps. Images are drawn through a canvas with a 3.5%
+  // inset crop (kills letterbox borders on the generated maps); if a PNG
+  // can't load or upload (file://), a procedural painted fallback goes in
+  // instead — the world degrades, never dies.
+  const ART_SIZE = 1024;
+  const ART_FILES = [
+    "interior-art/bear-reading", "interior-art/terrarium", "interior-art/workshop",
+    "planetoids/planet-lava", "planetoids/planet-ice", "planetoids/planet-gas",
+    "planetoids/planet-ocean", "planetoids/planet-desert",
+  ];
+  const artTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, artTex);
+  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 10, gl.RGBA8, ART_SIZE, ART_SIZE, ART_FILES.length);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.uniform1i(U.uArt, 3);
+
+  // painted fallback: banded, seeded washes in a layer-specific palette —
+  // close enough that worldlets still read as worlds without the files
+  function fallbackArt(layer) {
+    const c = document.createElement("canvas");
+    c.width = c.height = ART_SIZE;
+    const x = c.getContext("2d");
+    const R = mulberry32(0xa27 + layer * 77);
+    const hues = [[30, 20], [165, 45], [38, 30], [18, 80], [195, 45], [280, 40], [190, 60], [275, 50]][layer] || [200, 40];
+    x.fillStyle = "hsl(" + hues[0] + ", " + hues[1] + "%, 6%)";
+    x.fillRect(0, 0, ART_SIZE, ART_SIZE);
+    for (let i = 0; i < 46; i++) {
+      const y = R() * ART_SIZE;
+      const h = (hues[0] + (R() - 0.5) * 40 + 360) % 360;
+      x.fillStyle = "hsla(" + h + ", " + hues[1] + "%, " + (10 + R() * 30) + "%, " + (0.2 + R() * 0.5) + ")";
+      x.fillRect(0, y, ART_SIZE, 8 + R() * 90);
+    }
+    return c;
+  }
+
+  {
+    const cnv = document.createElement("canvas");
+    cnv.width = cnv.height = ART_SIZE;
+    const cx2 = cnv.getContext("2d");
+    let artDone = 0;
+    const uploadArt = (layer, img) => {
+      cx2.clearRect(0, 0, ART_SIZE, ART_SIZE);
+      if (img) {
+        const inset = 0.035;
+        cx2.drawImage(img,
+          img.naturalWidth * inset, img.naturalHeight * inset,
+          img.naturalWidth * (1 - 2 * inset), img.naturalHeight * (1 - 2 * inset),
+          0, 0, ART_SIZE, ART_SIZE);
+      } else {
+        cx2.drawImage(fallbackArt(layer), 0, 0);
+      }
+      gl.activeTexture(gl.TEXTURE3);
+      gl.bindTexture(gl.TEXTURE_2D_ARRAY, artTex);
+      try {
+        gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, layer, ART_SIZE, ART_SIZE, 1, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      } catch {
+        cx2.clearRect(0, 0, ART_SIZE, ART_SIZE);
+        cx2.drawImage(fallbackArt(layer), 0, 0);
+        gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, layer, ART_SIZE, ART_SIZE, 1, gl.RGBA, gl.UNSIGNED_BYTE, cnv);
+      }
+      if (++artDone === ART_FILES.length) {
+        gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+      }
+      gl.activeTexture(gl.TEXTURE0);
+    };
+    ART_FILES.forEach((name, layer) => {
+      const img = new Image();
+      img.onload = () => uploadArt(layer, img);
+      img.onerror = () => uploadArt(layer, null);
+      img.src = "./assets/" + name + ".png";
+    });
+  }
+
+  // ---- the glyph atlas (v47) --------------------------------------------------
+  // 64 runes on an 8x8 canvas grid — the colony language, drawn fresh but
+  // deterministically every load (seeded strokes on a 4x4 lattice). Unit 4.
+  const GLYPH_N = 64;
+  {
+    const GS = 512, CELL = GS / 8;
+    const c = document.createElement("canvas");
+    c.width = c.height = GS;
+    const x = c.getContext("2d");
+    const R = mulberry32(0x617c9);
+    x.lineCap = "round";
+    for (let g = 0; g < GLYPH_N; g++) {
+      const ox = (g % 8) * CELL, oy = ((g / 8) | 0) * CELL;
+      const P = () => [ox + 10 + ((R() * 4) | 0) * ((CELL - 20) / 3), oy + 10 + ((R() * 4) | 0) * ((CELL - 20) / 3)];
+      // soft pass then sharp pass: a faint glow bakes right into the atlas
+      for (const [w, a] of [[7, 0.35], [3, 1]]) {
+        x.strokeStyle = "rgba(255,255,255," + a + ")";
+        x.fillStyle = x.strokeStyle;
+        x.lineWidth = w;
+        const R2 = mulberry32(0x2b1d + g * 131);
+        const P2 = () => [ox + 10 + ((R2() * 4) | 0) * ((CELL - 20) / 3), oy + 10 + ((R2() * 4) | 0) * ((CELL - 20) / 3)];
+        const strokes = 2 + ((R2() * 4) | 0);
+        for (let s = 0; s < strokes; s++) {
+          const [x1, y1] = P2(), [x2, y2] = P2();
+          x.beginPath();
+          if (R2() < 0.3) {
+            x.arc(x1, y1, 4 + R2() * 10, 0, TAU * (0.35 + R2() * 0.65));
+          } else {
+            x.moveTo(x1, y1);
+            if (R2() < 0.35) x.quadraticCurveTo((x1 + x2) / 2 + (R2() - 0.5) * 26, (y1 + y2) / 2 + (R2() - 0.5) * 26, x2, y2);
+            else x.lineTo(x2, y2);
+          }
+          x.stroke();
+        }
+        if (R2() < 0.5) {
+          const [dx, dy] = P2();
+          x.beginPath();
+          x.arc(dx, dy, w * 0.8, 0, TAU);
+          x.fill();
+        }
+      }
+      void P;
+    }
+    const gt = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE4);
+    gl.bindTexture(gl.TEXTURE_2D, gt);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.uniform1i(U.uGlyphs, 4);
+    gl.activeTexture(gl.TEXTURE0);
+  }
+
   // ---- orbs ---------------------------------------------------------------------
   // Positions are normalized to [-1,1]^3; world = n * spread. Spread sliders
   // therefore stretch the inhabited volume live.
@@ -542,8 +1142,45 @@ void main() {
       seed: rand(0, 100),
       portal: !!portal,
       dust: !!dust,
+      // v47: the interior channel — kind selects the scene (0 = plain glow),
+      // p0/p1 are its parameters, act is the smoothed 0..2 proximity state,
+      // svc the robot-service boost
+      kind: 0, p0: 0, p1: 1, act: 0, svc: 0,
       wx: makeWander(), wy: makeWander(), wz: makeWander(),
     };
+  }
+
+  // ---- who lives inside (v47) -----------------------------------------------
+  // Roughly half the free-floating orbs carry an interior. From far away they
+  // are indistinguishable from the plain ones — a vague glowing nothing — and
+  // the scene only wakes as you close in. Tech is deliberately common
+  // (James's spec); the bear is deliberately rare.
+  const TECH_KINDS = [7, 8, 9, 10, 11, 23]; // reactor, data rain, radar, gyro, circuit, beacon
+  const WONDER_KINDS = [1, 2, 4, 5, 6, 12, 13, 14, 15, 16, 17, 20, 21, 22, 24, 25, 26];
+  function decorate(o) {
+    if (o.portal || o.dust) return o;
+    const roll = Math.random();
+    if (roll < 0.08) {
+      // a worldlet: one of the five planet maps, biased large, tight quad
+      o.kind = 50;
+      o.p0 = 3 + ((Math.random() * 5) | 0);
+      o.ur = rand(0.7, 1);
+      o.quadScale = 1.3;
+      o.spin = 0;
+      o.halo = 0.5;
+      o.sat = rand(55, 80);
+    } else if (roll < 0.1) {
+      // a painting behind the glass — the bear reads in ~1 orb in 170
+      o.kind = 40;
+      const a = Math.random();
+      o.p0 = a < 0.28 ? 0 : a < 0.62 ? 1 : 2;
+      o.ur = rand(0.55, 1);
+    } else if (roll < 0.33) {
+      o.kind = pick(TECH_KINDS);
+    } else if (roll < 0.53) {
+      o.kind = pick(WONDER_KINDS);
+    }
+    return o;
   }
 
   function groupedPoint(mode, ctx) {
@@ -689,7 +1326,20 @@ void main() {
   }
   // hue families: teal, magenta, amber, cyan, violet — one per growth
   const REEF_FAMS = [[168, 196], [300, 334], [36, 58], [186, 212], [262, 292]];
+  // v47: each colony's polyp positions, for the exchange motes / glyph
+  // spawners / creatures to live around. Filled by makeReef.
+  let colonyPolyps = [[], [], []];
+  const nearestColony = (p) => {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < REEF_COLONIES.length; i++) {
+      const c = REEF_COLONIES[i].c;
+      const d = Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    return bi;
+  };
   function makeReef() {
+    colonyPolyps = REEF_COLONIES.map(() => []);
     const pts = reefGeometry();
     const out = pts.map((pt) => {
       const o = baseOrb([0, 0, 0], false, false);
@@ -709,12 +1359,18 @@ void main() {
         o.fadeDur = rand(30, 60);
         o.quadScale = 1.35;
       } else if (pt.kind === 1) {
-        // polyps: the living light, fast bright pulses in the family hues
+        // polyps: the living light in the family hues. v47: the pulses are
+        // COORDINATED now — phase falls with distance from the colony's
+        // heart, so waves of light roll outward through the whole growth.
         o.variant = 0;
         o.h1 = rand(h1, h2); o.h2 = rand(h1, h2);
         o.sat = rand(88, 97);
         o.halo = 1.5;
-        o.fadeDur = rand(2.4, 6);
+        const ci = nearestColony(pt.p);
+        const cc = REEF_COLONIES[ci].c;
+        o.fadeDur = 5.2 + ci * 1.3;
+        o.fadePhase = -Math.hypot(pt.p[0] - cc[0], pt.p[1] - cc[1], pt.p[2] - cc[2]) / 55;
+        colonyPolyps[ci].push(pt.p);
       } else {
         // spores: ember-like motes drifting through the colony
         o.dust = true;
@@ -819,6 +1475,343 @@ void main() {
     return out;
   }
 
+  // ---- Vess-Karai, the Lantern (v47) ----------------------------------------
+  // A kilometer of beveled glass standing on the cave floor, far out at
+  // [9500, ·, 6500] — base seated at y −5850 (buried a little toward the
+  // floor veils), apex at −4850, a white-gold sun pulsing inside. The mesh
+  // comes from Blender (tmp/orb-dimension/pyramid_build.py → pyramid.bin);
+  // the glass is a fresnel pass in this file. Fixed geometry like the skull.
+  const LANTERN = {
+    pos: [9500, -5850, 6500],           // base center, world coords
+    light: [9500, -5450, 6500],         // the sun inside, 400m up the axis
+    nav: [9500, -5300, 6500],           // NAV ring target (mid-height)
+  };
+
+  // ---- actors (v47): everything that moves on its own -----------------------
+  // Colony exchange motes, glyph messages, three species of energy creature,
+  // the Lantern's lights, robot engine glows and cargo. All are orb
+  // instances whose o.fix arrays get rewritten every frame — the renderer
+  // never knows the difference.
+  function actorBase(kind, r, h1, h2) {
+    const o = baseOrb([0, 0, 0], false, false);
+    o.actor = true;
+    o.fix = [0, 0, 0];
+    o.fixedR = r;
+    o.kind = kind;
+    o.h1 = h1;
+    o.h2 = h2;
+    o.sat = 90;
+    o.halo = 0.4;
+    o.spin = 0;
+    o.quadScale = kind === 60 ? 1.0 : kind === 62 ? 1.7 : 1.4;
+    return o;
+  }
+  const qBez = (a, m, b, u, i) =>
+    (1 - u) * (1 - u) * a[i] + 2 * u * (1 - u) * m[i] + u * u * b[i];
+
+  let actorOrbs = [];
+  const colonyLife = []; // update records, one per animated actor
+  const robotFleet = { list: [], nodes: null };
+
+  function makeActors() {
+    actorOrbs = [];
+    colonyLife.length = 0;
+    robotFleet.list = [];
+    robotFleet.nodes = null;
+
+    // -- colony life
+    for (let ci = 0; ci < REEF_COLONIES.length; ci++) {
+      const col = REEF_COLONIES[ci];
+      const polyps = colonyPolyps[ci].length ? colonyPolyps[ci] : [col.c];
+      const [h1, h2] = REEF_FAMS[ci % 5];
+      const pp = () => pick(polyps);
+      // exchange motes: beads of light traded polyp to polyp
+      for (let i = 0; i < 10; i++) {
+        const o = actorBase(61, rand(1.8, 3.2), rand(h1, h2), rand(h1, h2));
+        actorOrbs.push(o);
+        colonyLife.push({ type: "mote", o, ci, a: pp(), b: pp(), u: Math.random(), dur: rand(2.5, 6) });
+      }
+      // glyphs: runes released into the dark around the growths
+      for (let i = 0; i < 8; i++) {
+        const o = actorBase(60, rand(4, 9), h1, h2);
+        o.p0 = (Math.random() * GLYPH_N) | 0;
+        o.p1 = 0;
+        const fr = pp();
+        o.fix = fr.slice(); // seat at a polyp from frame one — never at the origin
+        actorOrbs.push(o);
+        colonyLife.push({ type: "glyph", o, ci, from: fr, vel: [0, 0, 0], life: rand(0, 8), dur: rand(6, 11) });
+      }
+      // darters: streaks with a 3-echo tail (closed-form path, echoes lag it)
+      for (let i = 0; i < 5; i++) {
+        const os = [];
+        for (let k = 0; k < 4; k++) {
+          const o = actorBase(62, 3, rand(h1, h2), rand(h1, h2));
+          o.p1 = [1, 0.55, 0.32, 0.16][k];
+          actorOrbs.push(o);
+          os.push(o);
+        }
+        colonyLife.push({
+          type: "darter", os, ci,
+          R: rand(140, 380), w1: rand(0.22, 0.45), w2: rand(0.3, 0.55), w3: rand(0.2, 0.4),
+          s1: rand(0, TAU), s2: rand(0, TAU), s3: rand(0, TAU),
+        });
+      }
+      // jellies: slow pulsing bells riding thermals
+      for (let i = 0; i < 4; i++) {
+        const o = actorBase(63, rand(5, 9), h1, h2);
+        o.p0 = rand(0, TAU);
+        actorOrbs.push(o);
+        colonyLife.push({ type: "jelly", o, ci, R: rand(120, 380), w: rand(0.04, 0.09), s: rand(0, TAU), bob: rand(0.3, 0.6) });
+      }
+      // moths: quick figure-eights around a favorite polyp
+      for (let i = 0; i < 6; i++) {
+        const o = actorBase(64, 1.7, rand(h1, h2), rand(h1, h2));
+        o.p0 = rand(0, TAU);
+        o.p1 = rand(2, 6); // flap speed
+        actorOrbs.push(o);
+        colonyLife.push({ type: "moth", o, ci, anchor: pp(), A: rand(14, 30), w: rand(0.5, 1.1), s: rand(0, TAU), retarget: rand(14, 26) });
+      }
+    }
+
+    // -- the Lantern's own light
+    {
+      const sun = actorBase(0, 90, 46, 52);
+      sun.heart = true; // fog-proof, never smaller than a star — a lit window across the whole space
+      sun.sat = 65;
+      sun.fadeDur = 9;
+      sun.halo = 2.2;
+      sun.fix = LANTERN.light.slice();
+      actorOrbs.push(sun);
+      const washy = actorBase(0, 800, 40, 46);
+      washy.veil = true;
+      washy.sat = 55;
+      washy.halo = 0.4;
+      washy.fadeDur = 40;
+      washy.quadScale = 1.05;
+      washy.fix = [LANTERN.pos[0], LANTERN.pos[1] - 100, LANTERN.pos[2]];
+      actorOrbs.push(washy);
+      for (let i = 0; i < 6; i++) {
+        const o = actorBase(0, 6, 42, 50);
+        o.sat = 80;
+        o.halo = 1.5;
+        o.fadeDur = rand(3, 6);
+        actorOrbs.push(o);
+        colonyLife.push({ type: "ringlight", o, i });
+      }
+    }
+
+    // -- the service fleet: robots spawn scattered among the stations
+    for (let i = 0; i < 14; i++) {
+      const home = i % 2 ? pick(STATIONS.h2o) : pick(STATIONS.deu);
+      const glow = actorBase(0, 0, 190, 200);
+      glow.sat = 90;
+      glow.halo = 1.8;
+      glow.fadeDur = 1.3;
+      actorOrbs.push(glow);
+      const cargo = actorBase(0, 0, 210, 218);
+      cargo.sat = 92;
+      cargo.halo = 1.2;
+      cargo.fadeDur = 2.5;
+      actorOrbs.push(cargo);
+      robotFleet.list.push({
+        pos: [home[0] + rand(-40, 40), home[1] + rand(-20, 20), home[2] + rand(-40, 40)],
+        vel: [0, 0, 0],
+        f: [0, 0, -1], // smoothed facing
+        state: "idle",
+        node: null,
+        serviceT: 0,
+        orbit: rand(0, TAU),
+        carrying: false,
+        glow, cargo,
+        seed: rand(0, 100),
+      });
+    }
+  }
+
+  // world position of a free orb right now (same math as the frame loop) —
+  // lets a robot follow the thing it's servicing as it wanders
+  function orbWorldPos(o, t) {
+    if (o.fix) return [o.fix[0], o.fix[1], o.fix[2]];
+    const amp = o.dust ? 30 : o.portal ? 15 : 60;
+    return [
+      o.n[0] * cfg.spreadX + wander(o.wx, t) * amp,
+      o.n[1] * cfg.spreadY + wander(o.wy, t) * amp * 0.6,
+      o.n[2] * cfg.spreadZ + wander(o.wz, t) * amp,
+    ];
+  }
+
+  // pick the fleet's next stop: inhabited orbs mostly, else depots, the
+  // colonies, and the Lantern (two robots keep it as their whole beat)
+  function robotNextNode(rb, idx) {
+    if (idx < 2) {
+      // Lantern caretakers circle between its corners and the sun
+      const a = rand(0, TAU);
+      return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(120, 500), LANTERN.pos[1] + rand(150, 900), LANTERN.pos[2] + Math.sin(a) * rand(120, 500)], stand: 30 };
+    }
+    const roll = Math.random();
+    if (roll < 0.45) {
+      if (!robotFleet.nodes || !robotFleet.nodes.length) {
+        robotFleet.nodes = orbs.filter((o) => o.kind && o.kind < 60 && !o.actor && !o.veil);
+      }
+      const o = pick(robotFleet.nodes);
+      if (o) return { kind: "orb", o, stand: 0 };
+    }
+    if (roll < 0.7) {
+      const arr = Math.random() < 0.6 ? STATIONS.h2o : STATIONS.deu;
+      return { kind: "point", p: pick(arr), stand: 40, isStation: true };
+    }
+    if (roll < 0.9) {
+      const col = pick(REEF_COLONIES);
+      return { kind: "point", p: [col.c[0] + rand(-200, 200), col.c[1] + rand(0, 160), col.c[2] + rand(-200, 200)], stand: 60 };
+    }
+    const a = rand(0, TAU);
+    return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(200, 700), LANTERN.pos[1] + rand(200, 800), LANTERN.pos[2] + Math.sin(a) * rand(200, 700)], stand: 40 };
+  }
+
+  function updateActors(t, dt, bb) {
+    // colony life + lantern ring
+    for (const a of colonyLife) {
+      if (a.type === "mote") {
+        a.u += dt / a.dur;
+        if (a.u >= 1) {
+          a.a = a.b;
+          a.b = pick(colonyPolyps[a.ci].length ? colonyPolyps[a.ci] : [REEF_COLONIES[a.ci].c]);
+          a.u = 0;
+          a.dur = rand(2.5, 6);
+        }
+        const c = REEF_COLONIES[a.ci].c;
+        const mid = [
+          (a.a[0] + a.b[0]) / 2 + ((a.a[0] + a.b[0]) / 2 - c[0]) * 0.25,
+          (a.a[1] + a.b[1]) / 2 + 30,
+          (a.a[2] + a.b[2]) / 2 + ((a.a[2] + a.b[2]) / 2 - c[2]) * 0.25,
+        ];
+        const e = a.u * a.u * (3 - 2 * a.u); // ease
+        for (let i = 0; i < 3; i++) a.o.fix[i] = qBez(a.a, mid, a.b, e, i);
+      } else if (a.type === "glyph") {
+        a.life += dt;
+        if (a.life >= a.dur) {
+          a.life = 0;
+          a.dur = rand(6, 11);
+          a.from = pick(colonyPolyps[a.ci].length ? colonyPolyps[a.ci] : [REEF_COLONIES[a.ci].c]);
+          const c = REEF_COLONIES[a.ci].c;
+          const out = vnorm([a.from[0] - c[0], 0, a.from[2] - c[2]]);
+          const sp = rand(6, 14);
+          a.vel = [out[0] * sp + rand(-3, 3), rand(4, 10), out[2] * sp + rand(-3, 3)];
+          a.o.p0 = (Math.random() * GLYPH_N) | 0;
+          a.o.fixedR = rand(4, 9);
+          a.o.fix = a.from.slice();
+        }
+        for (let i = 0; i < 3; i++) a.o.fix[i] += a.vel[i] * dt;
+        const u = a.life / a.dur;
+        a.o.p1 = Math.min(1, u / 0.12) * Math.min(1, (1 - u) / 0.3) * 0.9;
+      } else if (a.type === "darter") {
+        const c = REEF_COLONIES[a.ci].c;
+        const P = (tt) => [
+          c[0] + Math.sin(tt * a.w1 + a.s1) * a.R,
+          c[1] + 40 + Math.sin(tt * a.w2 + a.s2) * a.R * 0.35,
+          c[2] + Math.sin(tt * a.w3 + a.s3) * a.R,
+        ];
+        const now = P(t), prev = P(t - 0.06);
+        const v = [now[0] - prev[0], now[1] - prev[1], now[2] - prev[2]];
+        const ang = Math.atan2(vdot(v, bb.u), vdot(v, bb.r));
+        for (let k = 0; k < 4; k++) {
+          const p = k === 0 ? now : P(t - k * 0.07);
+          a.os[k].fix[0] = p[0];
+          a.os[k].fix[1] = p[1];
+          a.os[k].fix[2] = p[2];
+          a.os[k].p0 = ang;
+        }
+      } else if (a.type === "jelly") {
+        const c = REEF_COLONIES[a.ci].c;
+        const th = t * a.w + a.s;
+        a.o.fix[0] = c[0] + Math.cos(th) * a.R;
+        a.o.fix[1] = c[1] + 60 + Math.sin(t * a.bob + a.s * 2) * 45;
+        a.o.fix[2] = c[2] + Math.sin(th) * a.R;
+      } else if (a.type === "moth") {
+        a.retarget -= dt;
+        if (a.retarget <= 0) {
+          a.retarget = rand(14, 26);
+          a.anchor = pick(colonyPolyps[a.ci].length ? colonyPolyps[a.ci] : [REEF_COLONIES[a.ci].c]);
+        }
+        const th = t * a.w + a.s;
+        a.o.fix[0] = a.anchor[0] + Math.sin(th) * a.A;
+        a.o.fix[1] = a.anchor[1] + Math.sin(th * 2) * a.A * 0.4;
+        a.o.fix[2] = a.anchor[2] + Math.cos(th) * a.A;
+      } else if (a.type === "ringlight") {
+        const th = t * 0.05 + (a.i / 6) * TAU;
+        a.o.fix[0] = LANTERN.pos[0] + Math.cos(th) * 700;
+        a.o.fix[1] = LANTERN.pos[1] + 120 + Math.sin(t * 0.3 + a.i) * 25;
+        a.o.fix[2] = LANTERN.pos[2] + Math.sin(th) * 700;
+      }
+    }
+
+    // the fleet: to and fro, pick up, deliver (only once the body exists)
+    if (!robotMesh.ready) return;
+    for (let ri = 0; ri < robotFleet.list.length; ri++) {
+      const rb = robotFleet.list[ri];
+      if (!rb.node) {
+        rb.node = robotNextNode(rb, ri);
+        rb.state = "travel";
+        // leaving a station = picking up supplies
+        rb.carrying = Math.random() < 0.55;
+      }
+      const tp = rb.node.kind === "orb" ? orbWorldPos(rb.node.o, t) : rb.node.p;
+      const stand = rb.node.kind === "orb" ? radiusOf(rb.node.o) + 16 : rb.node.stand;
+      const dx = tp[0] - rb.pos[0], dy = tp[1] - rb.pos[1], dz = tp[2] - rb.pos[2];
+      const d = Math.hypot(dx, dy, dz) || 1;
+      if (rb.state === "travel") {
+        const cruise = clamp(d / 6, 24, 110);
+        const k = 1 - Math.exp(-dt / 1.4);
+        rb.vel[0] += ((dx / d) * cruise - rb.vel[0]) * k;
+        rb.vel[1] += ((dy / d) * cruise - rb.vel[1]) * k;
+        rb.vel[2] += ((dz / d) * cruise - rb.vel[2]) * k;
+        if (d < stand + 26) {
+          rb.state = "service";
+          rb.serviceT = rand(7, 16);
+        }
+      } else {
+        // service: a slow patient orbit around the client
+        rb.serviceT -= dt;
+        rb.orbit += dt * 0.35;
+        const so = stand + 10;
+        const want = [
+          tp[0] + Math.cos(rb.orbit) * so,
+          tp[1] + Math.sin(t * 0.9 + rb.seed) * 5,
+          tp[2] + Math.sin(rb.orbit) * so,
+        ];
+        const k = 1 - Math.exp(-dt / 0.9);
+        rb.vel[0] += ((want[0] - rb.pos[0]) * 0.8 - rb.vel[0]) * k;
+        rb.vel[1] += ((want[1] - rb.pos[1]) * 0.8 - rb.vel[1]) * k;
+        rb.vel[2] += ((want[2] - rb.pos[2]) * 0.8 - rb.vel[2]) * k;
+        if (rb.node.kind === "orb") rb.node.o.svc = 1.6; // the visit wakes the orb
+        if (rb.serviceT <= 0) {
+          rb.node = null; // deliveries done — next client
+          rb.carrying = false;
+        }
+      }
+      rb.pos[0] += rb.vel[0] * dt;
+      rb.pos[1] += rb.vel[1] * dt;
+      rb.pos[2] += rb.vel[2] * dt;
+      const sp = Math.hypot(rb.vel[0], rb.vel[1], rb.vel[2]);
+      if (sp > 2) {
+        const k2 = 1 - Math.exp(-dt * 3);
+        rb.f = vnorm(vlerp(rb.f, [rb.vel[0] / sp, rb.vel[1] / sp, rb.vel[2] / sp], k2));
+      }
+      // engine glow rides under the hull, brighter the harder it works
+      rb.glow.fix[0] = rb.pos[0];
+      rb.glow.fix[1] = rb.pos[1] - 2.6 + Math.sin(t * 1.3 + rb.seed) * 0.4;
+      rb.glow.fix[2] = rb.pos[2];
+      rb.glow.fixedR = 1.1 + (sp / 110) * 1.6;
+      // cargo swings below on the way to a delivery
+      rb.cargo.fixedR = rb.carrying ? 1.7 : 0;
+      if (rb.carrying) {
+        rb.cargo.fix[0] = rb.pos[0] + rb.f[0] * -1.2;
+        rb.cargo.fix[1] = rb.pos[1] - 4.4;
+        rb.cargo.fix[2] = rb.pos[2] + rb.f[2] * -1.2;
+      }
+    }
+  }
+
   let veilOrbs = [];
   let eyeOrbs = [];
   let reefOrbs = [];
@@ -852,6 +1845,13 @@ void main() {
         clamp((Math.sin(th) * Math.cos(ph) * d) / cfg.spreadZ, -1, 1),
       ], false);
       o.ur = rand(0.45, 1);
+      decorate(o);
+      // the welcoming committee guarantees a few wonders by the monument:
+      // a gas-giant worldlet, a reactor, the reading bear, and the fish
+      if (i === 0) { o.kind = 50; o.p0 = 5; o.ur = rand(0.8, 1); o.quadScale = 1.3; o.spin = 0; o.halo = 0.5; o.sat = 70; }
+      if (i === 3) { o.kind = 7; o.p0 = 0; }
+      if (i === 5) { o.kind = 40; o.p0 = 0; o.ur = rand(0.7, 1); }
+      if (i === 8) { o.kind = 2; o.p0 = 0; }
       ring.push(o);
     }
     return ring;
@@ -923,7 +1923,7 @@ void main() {
     // even structured modes keep a few strays — the cave is inhabited everywhere
     const stray = groupCtx.mode !== "scatter" && Math.random() < 0.1;
     const n = groupedPoint(stray ? "scatter" : groupCtx.mode, groupCtx);
-    return baseOrb(n, (i + 1) % 60 === 0);
+    return decorate(baseOrb(n, (i + 1) % 60 === 0));
   }
 
   function assemble() {
@@ -944,9 +1944,11 @@ void main() {
       eyeOrbs,
       reefOrbs,
       stationOrbs,
+      actorOrbs,
       veilOrbs,
       dustPool.slice(0, cfg.dust),
     );
+    robotFleet.nodes = null; // the fleet re-learns its clients after a reshuffle
 
     // the monument stands alone: any orb inside KEEP meters of the origin is
     // pushed radially out to a shell just beyond the skull (corner radius
@@ -997,6 +1999,7 @@ void main() {
     eyeOrbs = makeEyes();
     reefOrbs = makeReef();
     stationOrbs = makeStations();
+    makeActors(); // after makeReef — the colony life needs the polyp lists
     veilOrbs = makeVeils();
     assemble();
   }
@@ -1025,6 +2028,20 @@ void main() {
   };
   let pendingYaw = 0;   // eased look input awaiting application
   let pendingPitch = 0;
+  // v47: the nose has rotational inertia now. Mouse deltas land in the
+  // pending reservoir as before, but the applied rotation runs through a
+  // critically-damped second-order filter — angular VELOCITY is continuous,
+  // so hand jitter can't echo into rapid back-and-forth. Net rotation still
+  // exactly equals the drag distance; it just arrives like a ship, not a
+  // laser pointer. (James: "a space ship wouldn't fly like that.")
+  let lookRateYaw = 0;   // rad/s, smoothed
+  let lookRatePitch = 0;
+  // v48 drag-stick: where the press planted the stick center, and whether
+  // the pilot's hand is "on". Beyond-deadzone pointer motion arms it;
+  // autopilot engage, R-leveling, and H all disarm it, so a cursor merely
+  // parked off-center can never steer the ship on its own.
+  const stick = { ax: 0, ay: 0 };
+  let stickLive = false;
   let rollVel = 0;      // rad/s
   let leveling = false;
   let thrust = 0;       // current thruster speed, m/s
@@ -1093,6 +2110,9 @@ void main() {
     cam.u = b.u;
     pendingYaw = 0;
     pendingPitch = 0;
+    lookRateYaw = 0;
+    lookRatePitch = 0;
+    stickLive = false;
     rollVel = 0;
     leveling = false;
     thrust = 0;
@@ -1136,32 +2156,42 @@ void main() {
   window.addEventListener("keyup", (e) => keys.delete(e.code));
   window.addEventListener("blur", () => keys.clear());
 
-  const drag = { on: false, x: 0, y: 0, downX: 0, downY: 0, downT: 0 };
+  const drag = { on: false, downX: 0, downY: 0, downT: 0 };
   const mouse = { x: -1, y: -1 };
 
   canvas.addEventListener("pointerdown", (e) => {
     drag.on = true;
-    drag.x = drag.downX = e.clientX;
-    drag.y = drag.downY = e.clientY;
+    drag.downX = e.clientX;
+    drag.downY = e.clientY;
     drag.downT = performance.now();
+    stick.ax = e.clientX; // v48: the press plants the stick center
+    stick.ay = e.clientY;
     canvas.classList.add("dragging");
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    // v48 drag-stick: nothing accumulates here anymore — the frame loop
+    // reads the live offset. Crossing the deadzone while holding is the
+    // "hands on" signal that arms the stick and releases the autopilot /
+    // leveling. Arming is per-hold (cleared on release, v48.2).
     if (!drag.on) return;
-    const dx = e.clientX - drag.x;
-    const dy = e.clientY - drag.y;
-    drag.x = e.clientX;
-    drag.y = e.clientY;
-    pendingYaw -= dx * 0.0013;
-    pendingPitch -= dy * 0.0013;
-    leveling = false;
-    autoNav = null; // steering by hand cancels the lock-on
+    const ax = cfg.stickMode === "center" ? window.innerWidth / 2 : stick.ax;
+    const ay = cfg.stickMode === "center" ? window.innerHeight / 2 : stick.ay;
+    // center mode: only a hold that BEGAN near the reticle (half of reach)
+    // is a steering grab — a drag that started out at a portal stays a drag
+    const grabbed = cfg.stickMode !== "center" ||
+      Math.hypot(drag.downX - ax, drag.downY - ay) <= cfg.stickReach * 0.5;
+    if (grabbed && Math.hypot(e.clientX - ax, e.clientY - ay) > cfg.stickDead) {
+      stickLive = true;
+      leveling = false;
+      autoNav = null; // steering by hand cancels the lock-on
+    }
   });
   canvas.addEventListener("pointerup", (e) => {
     drag.on = false;
+    stickLive = false; // v48.2: arming is per-hold — release always neutrals
     canvas.classList.remove("dragging");
     const moved = Math.abs(e.clientX - drag.downX) + Math.abs(e.clientY - drag.downY);
     if (moved < 6 && performance.now() - drag.downT < 400) {
@@ -1171,6 +2201,7 @@ void main() {
         autoNav = { standoff: navTarget.standoff };
         navAligned = 0;
         navArmed = false;
+        stickLive = false; // v48: the parked cursor must not re-steer
         navRing.classList.remove("armed");
       } else {
         tryPortalClick(e.clientX, e.clientY);
@@ -1429,6 +2460,192 @@ void main() {
     }
   })();
 
+  // ---- generic mesh plumbing (v47): the Lantern + the fleet ride the
+  // skull's binary format (magic / nv / ni / interleaved pos-norm-uv / u32
+  // idx). Served-only like the skull — on file:// these simply don't exist.
+  async function loadMeshBin(url, magic) {
+    const buf = await fetch(url).then((r) => {
+      if (!r.ok) throw new Error(url + " " + r.status);
+      return r.arrayBuffer();
+    });
+    const dv = new DataView(buf);
+    if (dv.getUint32(0, false) !== magic) throw new Error("bad magic " + url);
+    const nv = dv.getUint32(4, true);
+    const ni = dv.getUint32(8, true);
+    const verts = new Float32Array(buf, 12, nv * 8);
+    const idx = new Uint32Array(buf, 12 + nv * 32, ni);
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 32, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 32, 12);
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, 32, 24);
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, count: ni };
+  }
+  function makeProg(vsrc, fsrc, names) {
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vsrc));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsrc));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const Us = {};
+    for (const nm of names) Us[nm] = gl.getUniformLocation(p, nm);
+    return { p, U: Us };
+  }
+
+  // ---- Vess-Karai's glass (v47): fresnel panes over a warm inner sun.
+  // Drawn blended after the opaque meshes, no depth write — orbs behind it
+  // shine through the glass, which is what glass full of light should do.
+  const pyr = { ready: false, count: 0, vao: null, prog: null };
+  (async () => {
+    try {
+      const mesh = await loadMeshBin("assets/pyramid/pyramid.bin", 0x50595241); // "PYRA"
+      const vs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=2) in vec2 aUV;
+uniform mat4 uVP;
+uniform vec3 uOrigin;
+out vec3 vN;
+out vec3 vP;
+void main() {
+  vP = aPos + uOrigin;
+  vN = aNorm;
+  gl_Position = uVP * vec4(vP, 1.0);
+}`;
+      const fs = `#version 300 es
+precision highp float;
+uniform vec3 uCamPos;
+uniform vec3 uLight;
+uniform float uTime;
+uniform float uFog;
+in vec3 vN;
+in vec3 vP;
+out vec4 oC;
+void main() {
+  vec3 N = normalize(vN);
+  vec3 V = normalize(uCamPos - vP);
+  // faceted crystal: flat panes stay quiet, the beveled ribs catch rim light
+  float fres = pow(1.0 - abs(dot(N, V)), 2.2);
+  float pulse = 0.75 + 0.25 * sin(uTime * 0.7);
+  // the sun inside — glass nearer the light glows warm from within
+  float ld = distance(vP, uLight);
+  float glow = 260000.0 / (ld * ld + 30000.0);
+  vec3 glass = vec3(0.5, 0.8, 1.0) * (0.06 + fres * (0.5 + 0.3 * pulse));
+  vec3 warm = vec3(1.0, 0.78, 0.42) * glow * (0.5 + 0.5 * pulse);
+  float a = clamp(0.08 + fres * 0.75 + glow * 0.2, 0.0, 0.85);
+  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2);
+  oC = vec4((glass + warm) * a * fogF, a * fogF);
+}`;
+      const pr = makeProg(vs, fs, ["uVP", "uOrigin", "uCamPos", "uLight", "uTime", "uFog"]);
+      pyr.prog = pr;
+      pyr.vao = mesh.vao;
+      pyr.count = mesh.count;
+      pyr.ready = true;
+    } catch (e) {
+      // no pyramid on file:// — the floor keeps its dark
+    }
+  })();
+
+  // ---- the fleet's body (v47): James's Meshy service robot, prepped by
+  // tmp/orb-dimension/robot_prep.py into robot.bin + a 1K basecolor.
+  // ROBOT_FACING flips the nose if the model turns out to fly backwards —
+  // one-number tune, can't be judged without James's eyes.
+  const ROBOT_FACING = 1;
+  const robotMesh = { ready: false, count: 0, vao: null, prog: null };
+  (async () => {
+    try {
+      const [mesh, img] = await Promise.all([
+        loadMeshBin("assets/robot/robot.bin", 0x52424f54), // "RBOT"
+        new Promise((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = rej;
+          im.src = "assets/robot/robot-basecolor.jpg";
+        }),
+      ]);
+      const vs = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=2) in vec2 aUV;
+uniform mat4 uVP;
+uniform mat4 uModel;
+out vec3 vN;
+out vec2 vUV;
+out vec3 vP;
+void main() {
+  vec4 wp = uModel * vec4(aPos, 1.0);
+  vP = wp.xyz;
+  vN = mat3(uModel) * aNorm;
+  vUV = aUV;
+  gl_Position = uVP * wp;
+}`;
+      const fs = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform vec3 uCamPos;
+uniform float uFog;
+in vec3 vN;
+in vec2 vUV;
+in vec3 vP;
+out vec4 oC;
+void main() {
+  vec3 base = texture(uTex, vUV).rgb;
+  vec3 N = normalize(vN);
+  float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
+  float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
+  float under = max(-N.y, 0.0); // its own engine light, from below
+  vec3 col = base * (vec3(0.16, 0.17, 0.2)
+    + key * vec3(0.9, 0.95, 1.05) * 0.9
+    + rim * vec3(0.3, 0.4, 0.55) * 0.25
+    + under * vec3(0.4, 0.9, 1.0) * 0.5);
+  col *= exp(-distance(vP, uCamPos) * uFog * 1.4);
+  oC = vec4(col, 1.0);
+}`;
+      const pr = makeProg(vs, fs, ["uVP", "uModel", "uCamPos", "uFog", "uTex"]);
+      const tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE5);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.useProgram(pr.p);
+      gl.uniform1i(pr.U.uTex, 5);
+      gl.useProgram(prog);
+      robotMesh.prog = pr;
+      robotMesh.vao = mesh.vao;
+      robotMesh.count = mesh.count;
+      robotMesh.ready = true;
+    } catch (e) {
+      // no robot mesh — the fleet stays grounded (its actors stay dark too)
+    }
+  })();
+
+  // column-major model matrix for one robot: nose along its smoothed facing
+  const robotMat = new Float32Array(16);
+  function robotModel(rb, t) {
+    let f = [rb.f[0] * ROBOT_FACING, rb.f[1] * ROBOT_FACING, rb.f[2] * ROBOT_FACING];
+    let rgt = Math.abs(f[1]) > 0.98 ? [1, 0, 0] : vnorm(vcross([0, 1, 0], f));
+    const up = vcross(f, rgt);
+    robotMat[0] = rgt[0]; robotMat[1] = rgt[1]; robotMat[2] = rgt[2]; robotMat[3] = 0;
+    robotMat[4] = up[0]; robotMat[5] = up[1]; robotMat[6] = up[2]; robotMat[7] = 0;
+    robotMat[8] = f[0]; robotMat[9] = f[1]; robotMat[10] = f[2]; robotMat[11] = 0;
+    robotMat[12] = rb.pos[0];
+    robotMat[13] = rb.pos[1] + Math.sin(t * 1.1 + rb.seed) * 0.5; // hover bob
+    robotMat[14] = rb.pos[2];
+    robotMat[15] = 1;
+  }
+
   // ---- portals: raycast clicks ------------------------------------------------------
 
   let wp = new Float32Array(0); // orb world positions, filled each frame
@@ -1590,14 +2807,78 @@ void main() {
     }
 
     // -- rotation, all in the camera's OWN frame (banked yaw curves the bank)
-    const ROT = 0.7; // rad/s
+    //
+    // v48 drag-stick: the pointer's OFFSET from where the press planted the
+    // stick commands a turn RATE — a virtual joystick. Deadzone in the
+    // middle, response curve between, and a saturation rim ("reach") past
+    // which more distance adds nothing: park the cursor at the rim and the
+    // ship holds its best turn forever. No more feeding the turn with desk
+    // travel. The rate feeds pending at rate*dt exactly like the arrow keys,
+    // so the v47 servo below still owns all the smoothing. Center mode
+    // (default since v48.2, James's spec): the stick is PINNED to the
+    // center reticle — grab near it, hold, and pull; the reticle itself
+    // marks neutral, so no extra chrome on the glass. Both modes steer
+    // only while the button is held.
+    const DEG = Math.PI / 180;
+    const stickAx = cfg.stickMode === "center" ? window.innerWidth / 2 : stick.ax;
+    const stickAy = cfg.stickMode === "center" ? window.innerHeight / 2 : stick.ay;
+    const stickHeld = stickLive && !autoNav && drag.on;
+    let stickMag = 0; // 0..1 deflection after deadzone, 1 = saturated
+    if (stickHeld) {
+      const dx = mouse.x - stickAx, dy = mouse.y - stickAy;
+      const mag = Math.hypot(dx, dy);
+      if (mag > cfg.stickDead) {
+        const span = Math.max(1, cfg.stickReach - cfg.stickDead);
+        stickMag = Math.min(1, (mag - cfg.stickDead) / span);
+        // radial curve, direction preserved — gentle near center for aim,
+        // full authority at the rim
+        const gain = Math.pow(stickMag, cfg.stickCurve) / mag;
+        pendingYaw -= dx * gain * cfg.stickYawMax * DEG * dt;
+        pendingPitch -= dy * gain * cfg.stickPitchMax * DEG * dt;
+      }
+    }
+    // the stick's instruments: anchor dot + saturation rim. Shown while
+    // steering, or once a press is clearly a hold (so you can see neutral
+    // before committing); the rim brightens when you've hit full deflection.
+    // v48.1: rim hidden — James found the circle too present on his first
+    // flight ("might not be necessary"). Physics untouched; the anchor dot
+    // stays as the neutral marker. Flip STICK_RIM to bring the rim back.
+    const STICK_RIM = false;
+    const showStick = cfg.stickMode === "center"
+      ? false // the reticle IS the center marker — nothing extra (v48.2)
+      : drag.on && (stickLive || performance.now() - drag.downT > 250);
+    if (showStick !== stickUi.shown) {
+      stickUi.shown = showStick;
+      stickDot.classList.toggle("on", showStick);
+      stickRim.classList.toggle("on", showStick && STICK_RIM);
+    }
+    if (showStick) {
+      stickDot.style.left = stickAx + "px";
+      stickDot.style.top = stickAy + "px";
+      if (STICK_RIM) {
+        stickRim.style.left = stickAx + "px";
+        stickRim.style.top = stickAy + "px";
+        stickRim.style.width = stickRim.style.height = cfg.stickReach * 2 + "px";
+        stickRim.classList.toggle("sat", stickMag >= 1);
+      }
+    }
+
+    const ROT = 0.7; // rad/s (arrow keys)
     if (keys.has("ArrowLeft")) { pendingYaw += ROT * dt; leveling = false; }
     if (keys.has("ArrowRight")) { pendingYaw -= ROT * dt; leveling = false; }
     if (keys.has("ArrowUp")) { pendingPitch += ROT * dt; leveling = false; }
     if (keys.has("ArrowDown")) { pendingPitch -= ROT * dt; leveling = false; }
-    const lookEase = 1 - Math.exp(-dt * 8);
-    const yawStep = pendingYaw * lookEase;
-    const pitchStep = pendingPitch * lookEase;
+    // critically-damped servo onto the pending look (v47): rate accelerates
+    // toward the remaining input and damps as it arrives — smooth start,
+    // smooth stop, zero overshoot, and rapid mouse reversals blend instead
+    // of snapping. LOOK_W sets the response (~0.4s to settle); the old
+    // first-order ease had the same latency but a discontinuous velocity,
+    // which was the jerk James felt.
+    const LOOK_W = 10;
+    lookRateYaw += (LOOK_W * LOOK_W * pendingYaw - 2 * LOOK_W * lookRateYaw) * dt;
+    lookRatePitch += (LOOK_W * LOOK_W * pendingPitch - 2 * LOOK_W * lookRatePitch) * dt;
+    const yawStep = lookRateYaw * dt;
+    const pitchStep = lookRatePitch * dt;
     pendingYaw -= yawStep;
     pendingPitch -= pitchStep;
     if (yawStep !== 0) rotateCam(cam.u, yawStep);
@@ -1606,7 +2887,9 @@ void main() {
     // -- roll: A/D bank while held and STAY banked (per James, NMS pilot —
     // moved off Q/E 2026-07-17 so he can bank + point the nose with the mouse;
     // Q/E stay unassigned for now)
-    const ROLL_RATE = 0.46; // rad/s (0.66 backed off a further 30% per James)
+    // v48.6: climbing back up in +10% steps by ear (James) — the slower
+    // stick made 0.46 feel like nothing. History: 0.66 → 0.46 → 0.51.
+    const ROLL_RATE = 0.51; // rad/s
     const rollIn = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
     rollVel += (rollIn * ROLL_RATE - rollVel) * (1 - Math.exp(-dt * 6));
     if (Math.abs(rollVel) > 1e-4) {
@@ -1614,24 +2897,38 @@ void main() {
       if (rollIn !== 0) leveling = false;
     }
 
-    // -- coordinated turn: banking IS turning (James, v26). While banked the
-    // ship carves continuously around the world-vertical — hold a bank and
-    // you sweep a full circle back to your starting view; level out (or R)
-    // and the turn stops. Rate peaks at TURN_RATE on a 90° knife-edge.
+    // -- coordinated turn: banking IS turning (James, v26) — RETIRED v48.4.
+    // James's pencil spec: "A and D shouldn't make me do anything except
+    // rotate the ship around its middle axis... like a pencil coming all
+    // the way straight through the middle of it." The carve dates from the
+    // pre-stick era when banking was the only way to turn in flight; the
+    // pinned stick owns turning now, so roll is pure orientation. Flying
+    // forward + D = corkscrew barrel roll, nose glued to the target.
+    // Flip BANK_CARVE to bring the v26 behavior back.
+    const BANK_CARVE = false;
     const TURN_RATE = 0.5; // rad/s of heading at full bank
     const bankRad = Math.atan2(cam.r[1], cam.u[1]);
-    if (Math.abs(bankRad) > 0.02 && speed !== 0) {
+    if (BANK_CARVE && Math.abs(bankRad) > 0.02 && speed !== 0) {
       // v40: wings need airflow. The carve scales with speed and is ZERO at
       // a standstill — James's "drift while the speedo reads 0" was this
       // turn spinning the world around a parked, banked ship. Full turn
       // authority from impulse speed (120) up.
       const authority = clamp(Math.abs(speed) / 120, 0, 1);
-      rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * authority * dt);
+      // v48.3: the carve YIELDS to the hand. It rotates in the WORLD frame,
+      // so under a held pull it bent the ship off the mouse's line — and
+      // read reversed when inverted (James: "it wants to pull the other
+      // way"). Stick deflection fades it: full pull = pure mouse authority,
+      // hands off = the v26 carve untouched. Never let a world-frame
+      // rotation fight the pilot's pull.
+      rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * authority * (1 - stickMag) * dt);
     }
 
     // -- R: glide back to the plane of the ecliptic (level roll and pitch,
     // keep heading) over about a second
-    if (keys.has("KeyR")) leveling = true;
+    if (keys.has("KeyR")) {
+      if (!leveling) stickLive = false; // v48: R takes the stick until the hand moves again
+      leveling = true;
+    }
     if (leveling) {
       let fl = [cam.f[0], 0, cam.f[2]];
       if (Math.hypot(fl[0], fl[2]) < 0.05) fl = [cam.u[0], 0, cam.u[2]]; // was looking straight up/down
@@ -1658,10 +2955,14 @@ void main() {
       o.gaze[1] += ((ey / ed) * 48 * w - o.gaze[1]) * k;
     }
 
+    // -- the living layer (v47): colony life, the Lantern's lights, the fleet
+    updateActors(t, dt, camBasis());
+
     // -- orb world positions + depth sort (back to front)
     const n = orbs.length;
     if (wp.length !== n * 3) wp = new Float32Array(n * 3);
     const sx = cfg.spreadX, sy = cfg.spreadY, sz = cfg.spreadZ;
+    const actEase = 1 - Math.exp(-dt / 0.9);
     let contacts = 0; // real orbs within sensor range (2.5 km), for the console
     for (let i = 0; i < n; i++) {
       const o = orbs[i];
@@ -1687,7 +2988,21 @@ void main() {
       wp[i * 3] = x; wp[i * 3 + 1] = y; wp[i * 3 + 2] = z;
       const dx = x - cam.pos[0], dy = y - cam.pos[1], dz = z - cam.pos[2];
       dists[i] = dx * dx + dy * dy + dz * dz;
-      if (!o.dust && !o.veil && !o.reef && dists[i] < 6250000) contacts++;
+      if (!o.dust && !o.veil && !o.reef && !o.actor && dists[i] < 6250000) contacts++;
+      // the three states (v47): far = vague nothing, near = stirring, very
+      // near = fully awake. Thresholds scale with the orb's size (a big
+      // worldlet declares itself sooner); a robot's service call also wakes
+      // its client. Smoothed, so the states glide.
+      if (o.kind && o.kind < 60) {
+        const orr = radiusOf(o);
+        const nearD = orr * 20 + 1200, vnearD = orr * 6 + 250;
+        let tgt = dists[i] < vnearD * vnearD ? 2 : dists[i] < nearD * nearD ? 1 : 0;
+        if (o.svc > 0) {
+          tgt = Math.max(tgt, Math.min(o.svc, 2));
+          o.svc = Math.max(0, o.svc - dt / 2.5);
+        }
+        o.act += (tgt - o.act) * actEase;
+      }
       order[i] = i;
     }
     order.sort((a, bI) => dists[bI] - dists[a]);
@@ -1739,6 +3054,11 @@ void main() {
         vsEls.h2oBar.classList.toggle("low", fuel.h2o < 0.25);
         vsEls.deuBar.classList.toggle("low", fuel.deu < 0.25);
       }
+      // the Lantern hums when you're close to the glass (v47)
+      if (sound.on && sound.lantern && sound.ctx) {
+        const ld = Math.hypot(cam.pos[0] - LANTERN.light[0], cam.pos[1] - LANTERN.light[1], cam.pos[2] - LANTERN.light[2]);
+        sound.lantern.gain.setTargetAtTime(clamp(1 - ld / 2000, 0, 1) * 0.1, sound.ctx.currentTime, 0.4);
+      }
     }
 
     let m = 0;
@@ -1767,6 +3087,10 @@ void main() {
       instData[off + 13] = o.eye ? 3 : o.heart ? 2 : o.portal ? 1 : 0;
       instData[off + 14] = o.veil ? 1 : 0;
       instData[off + 15] = o.quadScale || (o.veil ? 1.05 : o.dust ? 1.6 : 2.6);
+      instData[off + 16] = o.kind;
+      instData[off + 17] = o.p0;
+      instData[off + 18] = o.p1;
+      instData[off + 19] = o.act;
     }
 
     // -- draw
@@ -1786,21 +3110,54 @@ void main() {
     gl.depthMask(true); // clear respects the mask — re-arm it every frame
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // -- the skull draws first: opaque, depth-written. The orbs then draw
-    // with depth TEST on but writes off — soft sprites clipped correctly
-    // behind bone, shining past its edges, visible through the mouth.
-    if (skull.ready) {
+    // -- mesh passes first (v47 order): opaque bone + robots write depth,
+    // then the Lantern's glass blends over them (no depth write), then the
+    // orbs draw with depth TEST on but writes off — soft sprites clipped
+    // behind solids, shining past their edges, glowing through the glass.
+    const anyMesh = skull.ready || robotMesh.ready || pyr.ready;
+    if (anyMesh) {
       gl.disable(gl.BLEND);
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
-      gl.useProgram(skull.prog);
-      gl.bindVertexArray(skull.vao);
-      gl.uniformMatrix4fv(skull.U.uVP, false, vp);
-      gl.uniform3fv(skull.U.uCamPos, cam.pos);
-      gl.uniform1f(skull.U.uFog, cfg.haze / 18000);
-      gl.uniform1f(skull.U.uTime, t);
-      gl.drawElements(gl.TRIANGLES, skull.count, gl.UNSIGNED_INT, 0);
-      gl.bindVertexArray(null);
+      if (skull.ready) {
+        gl.useProgram(skull.prog);
+        gl.bindVertexArray(skull.vao);
+        gl.uniformMatrix4fv(skull.U.uVP, false, vp);
+        gl.uniform3fv(skull.U.uCamPos, cam.pos);
+        gl.uniform1f(skull.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(skull.U.uTime, t);
+        gl.drawElements(gl.TRIANGLES, skull.count, gl.UNSIGNED_INT, 0);
+        gl.bindVertexArray(null);
+      }
+      if (robotMesh.ready) {
+        gl.useProgram(robotMesh.prog.p);
+        gl.bindVertexArray(robotMesh.vao);
+        gl.uniformMatrix4fv(robotMesh.prog.U.uVP, false, vp);
+        gl.uniform3fv(robotMesh.prog.U.uCamPos, cam.pos);
+        gl.uniform1f(robotMesh.prog.U.uFog, cfg.haze / 18000);
+        for (const rb of robotFleet.list) {
+          const rdx = rb.pos[0] - cam.pos[0], rdy = rb.pos[1] - cam.pos[1], rdz = rb.pos[2] - cam.pos[2];
+          if (rdx * rdx + rdy * rdy + rdz * rdz > 196000000) continue; // > 14 km: subpixel
+          robotModel(rb, t);
+          gl.uniformMatrix4fv(robotMesh.prog.U.uModel, false, robotMat);
+          gl.drawElements(gl.TRIANGLES, robotMesh.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.bindVertexArray(null);
+      }
+      if (pyr.ready) {
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        gl.useProgram(pyr.prog.p);
+        gl.bindVertexArray(pyr.vao);
+        gl.uniformMatrix4fv(pyr.prog.U.uVP, false, vp);
+        gl.uniform3fv(pyr.prog.U.uOrigin, LANTERN.pos);
+        gl.uniform3fv(pyr.prog.U.uCamPos, cam.pos);
+        gl.uniform3fv(pyr.prog.U.uLight, LANTERN.light);
+        gl.uniform1f(pyr.prog.U.uTime, t);
+        gl.uniform1f(pyr.prog.U.uFog, cfg.haze / 18000);
+        gl.drawElements(gl.TRIANGLES, pyr.count, gl.UNSIGNED_INT, 0);
+        gl.bindVertexArray(null);
+      }
       gl.depthMask(false);
       gl.enable(gl.BLEND);
       gl.useProgram(prog);
@@ -2001,6 +3358,28 @@ void main() {
   });
   groupWrap.append(groupLabel, groupSel);
 
+  // v48: stick mode select — drag-stick (press plants it) or center-stick
+  // (always-on at screen center, Freelancer style)
+  const stickWrap = document.createElement("div");
+  stickWrap.className = "tuner-mini";
+  const stickLabel = document.createElement("label");
+  const stickSpan = document.createElement("span");
+  stickSpan.textContent = "stick";
+  stickLabel.appendChild(stickSpan);
+  const stickSel = document.createElement("select");
+  for (const [value, text] of [["center", "center-stick (hold + pull)"], ["drag", "drag-stick (press plants it)"]]) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = text;
+    stickSel.appendChild(opt);
+  }
+  stickSel.value = cfg.stickMode;
+  stickSel.addEventListener("change", () => {
+    cfg.stickMode = stickSel.value;
+    saveCfg();
+  });
+  stickWrap.append(stickLabel, stickSel);
+
   // related controls live together in labelled subpanels
   const sliderByKey = {};
   for (const s of SLIDERS) sliderByKey[s.key] = s;
@@ -2009,6 +3388,7 @@ void main() {
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "fadeSpeed"] },
+    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickYawMax", "stickPitchMax", "stickCurve"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
@@ -2024,7 +3404,10 @@ void main() {
     grid.className = "tuner-grid";
     box.appendChild(grid);
     for (const key of g.keys) {
-      grid.appendChild(key === "grouping" ? groupWrap : makeSliderEl(sliderByKey[key]));
+      grid.appendChild(
+        key === "grouping" ? groupWrap :
+        key === "stickMode" ? stickWrap :
+        makeSliderEl(sliderByKey[key]));
     }
     groupsRow.appendChild(box);
   }
@@ -2046,6 +3429,7 @@ void main() {
     Object.assign(cfg, DEFAULTS);
     for (const k in tunerInputs) reflectTuner(k);
     groupSel.value = cfg.grouping;
+    stickSel.value = cfg.stickMode;
     rebuildAll();
     goHome();
     saveCfg();
@@ -2080,6 +3464,7 @@ void main() {
   function reflectAll() {
     for (const k in tunerInputs) reflectTuner(k);
     groupSel.value = cfg.grouping;
+    stickSel.value = cfg.stickMode;
   }
 
   function presetButton(label, fn) {
@@ -2145,13 +3530,17 @@ void main() {
   ctrlCard.innerHTML = `
     <h3>flight</h3>
     <dl>
-      <dt>drag / arrows</dt><dd>steer — the nose follows</dd>
+      <dt>drag / arrows</dt><dd>steer — grab near the center reticle, hold,
+        and pull: the farther from center, the harder the turn, maxing out
+        at "reach" px. Park the cursor to hold a turn; release to fly
+        straight. TUNE → "the stick" adjusts the feel</dd>
       <dt>W / S</dt><dd>impulse — glide forward / back (120 m/s, free)</dd>
       <dt>shift</dt><dd>booster — hold to burn (400 m/s, drinks H2O)</dd>
       <dt>space</dt><dd>overdrive on / off (1200 m/s, burns deuterium)</dd>
       <dt>S + shift</dt><dd>reverse booster</dd>
       <dt>X</dt><dd>all-stop — brake to a halt</dd>
-      <dt>A / D</dt><dd>bank — holding a bank carves a turn</dd>
+      <dt>A / D</dt><dd>roll — a pure spin around the nose, like a pencil
+        through the ship; it never changes where you're headed</dd>
       <dt>R</dt><dd>level off</dd>
       <dt>H</dt><dd>return home</dd>
       <dt>N</dt><dd>nav panel on / off</dd>
@@ -2159,6 +3548,8 @@ void main() {
         brightens, then click inside it — the ship flies itself there and
         coasts in; touching any control releases it</dd>
       <dt>pale orbs</dt><dd>click one to drift onward</dd>
+      <dt>the fleet</dt><dd>service robots run supplies between depots,
+        inhabited orbs and the communities — what they visit, wakes</dd>
     </dl>
     <h3>console</h3>
     <dl>
@@ -2188,6 +3579,7 @@ void main() {
   navPanel.innerHTML = `
     <h3>the monument</h3>
     <button type="button" class="nav-row" data-nav="head">Korrudan <em>the Head · center of space</em></button>
+    <button type="button" class="nav-row" data-nav="pyr">Vess-Karai <em>the glass lantern · on the floor</em></button>
     <h3>globe-thread communities</h3>
     <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship colony</em></button>
     <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>outlying patch</em></button>
@@ -2208,6 +3600,7 @@ void main() {
   let navScreen = { x: 0, y: 0, r: 0, on: false }; // ring in screen px, for the click test
   function navPick(key) {
     if (key === "head") return { key, name: "KORRUDAN", pos: [0, 0, 0], standoff: 2600 };
+    if (key === "pyr") return { key, name: "VESS-KARAI", pos: LANTERN.nav, standoff: 1500 };
     if (key[0] === "c") {
       const i = Number(key[1]);
       return { key, name: NAV_NAMES[i].toUpperCase(), pos: REEF_COLONIES[i].c, standoff: 700 };
@@ -2246,6 +3639,15 @@ void main() {
   const navArrow = document.createElement("div");
   navArrow.id = "nav-arrow";
   document.body.appendChild(navArrow);
+
+  // v48 drag-stick instruments: the planted anchor + the saturation rim
+  // (ice-blue like the reticle — the hand's color; orange stays nav's)
+  const stickRim = document.createElement("div");
+  stickRim.id = "stick-rim";
+  const stickDot = document.createElement("div");
+  stickDot.id = "stick-dot";
+  document.body.append(stickRim, stickDot);
+  const stickUi = { shown: false };
 
   // one panel at a time: NAV, TUNE and CTRL close each other
   const PANELS = {
@@ -2431,6 +3833,53 @@ void main() {
     odLfo.connect(odLfoG).connect(odCore.gain);
     odLfo.start();
     eng.white = white;
+
+    // the Lantern's hum (v47): warm low sines with a slow beat, silent until
+    // you drift near the glass — gain steered from the frame loop
+    sound.lantern = ctx.createGain();
+    sound.lantern.gain.value = 0;
+    sound.lantern.connect(sound.master);
+    for (const [f, g] of [[55, 0.45], [55.35, 0.45], [82.6, 0.25]]) {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = f;
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(sound.lantern);
+      o.start();
+    }
+  }
+
+  // colony comms (v47): within earshot of a globe-thread community, sparse
+  // runs of high glassy blips ride the cave echo — the glyphs, audible
+  function chatter() {
+    if (!sound.on || !sound.ctx) return;
+    let cd = Infinity;
+    for (const col of REEF_COLONIES) {
+      cd = Math.min(cd, Math.hypot(cam.pos[0] - col.c[0], cam.pos[1] - col.c[1], cam.pos[2] - col.c[2]));
+    }
+    if (cd < 2600 && sound.pingBus) {
+      const ctx = sound.ctx;
+      const t0 = ctx.currentTime;
+      const prox = 1 - cd / 2600;
+      const nBlips = 2 + ((Math.random() * 3) | 0);
+      for (let i = 0; i < nBlips; i++) {
+        const f = pick([523, 659, 784, 880, 1047, 1175]) * (Math.random() < 0.25 ? 2 : 1);
+        const ts = t0 + i * rand(0.07, 0.16);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.0001, ts);
+        env.gain.exponentialRampToValueAtTime(0.045 * prox + 0.006, ts + 0.015);
+        env.gain.exponentialRampToValueAtTime(0.0001, ts + rand(0.18, 0.35));
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f;
+        o.connect(env);
+        env.connect(sound.pingBus);
+        o.start(ts);
+        o.stop(ts + 0.5);
+      }
+    }
+    sound.chatterTimer = window.setTimeout(chatter, rand(1400, 3800));
   }
 
   // physics → audio, called every frame while sound is on. All params move
@@ -2561,6 +4010,8 @@ void main() {
             if (sound.ctx.state !== "running") throw new Error("audio blocked");
             window.clearTimeout(sound.timer);
             sound.timer = window.setTimeout(ping, rand(2000, 6000));
+            window.clearTimeout(sound.chatterTimer);
+            sound.chatterTimer = window.setTimeout(chatter, rand(1500, 4000));
           })
           .catch((err) => {
             sound.on = false;
@@ -2571,6 +4022,7 @@ void main() {
       stop: () => {
         sound.on = false;
         window.clearTimeout(sound.timer);
+        window.clearTimeout(sound.chatterTimer);
         applyVolume();
         if (sound.ctx) sound.ctx.suspend().catch(() => {});
       },
