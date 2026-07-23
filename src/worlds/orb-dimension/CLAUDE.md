@@ -5,6 +5,9 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
 ## Docs
 
 - `changelog.md` — session history, newest first (long flight-model history; the spaceship arc was retired).
+- `expansion-spec.md` — "the big dimension" phase spec (2026-07-23, James's numbers):
+  1,000×1,000×250 km, flat speed ladder, stargates, depot grid. Spec only — the build
+  plan still needs drafting, discussion, and James's go before any code.
 
 ## World-specific rules
 

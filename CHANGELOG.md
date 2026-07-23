@@ -8,6 +8,20 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-23 (Orb Dimension: expansion spec recorded — planning only, no code)
+
+- "The big dimension" phase spec settled with James and recorded in
+  `src/worlds/orb-dimension/expansion-spec.md`: 1,000×1,000×250 km, flat non-additive
+  speed ladder (impulse 240 free · booster 1,200 / 240s tank / 5s spool · overdrive
+  3,600 / 360s tank / 3s spool → 1,296 km range), 5–6 stargates, guaranteed-find depot
+  grid (~50 km default).
+- GOD MODE tuner-controls running tally started in the spec (top speed + tank length
+  are the key knobs); constraint recorded: size and key POI locations eventually
+  finalize and become immutable — feel stays tunable, the map becomes law.
+- Open riff, unsettled: circular/spherical space vs galaxy-disc population shape.
+- Todo #0 updated (spec done, now at PLAN); world changelog entry appended. world.js
+  untouched.
+
 ## 2026-07-22 (Dead Letter Office: the 3D room, r1–r8)
 
 - DLO rebuilt as a walkable 3D basement hall (Mandala-Shop-style walk/look controls):

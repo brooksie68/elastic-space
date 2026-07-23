@@ -3,6 +3,29 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-23 — claude-fable (expansion spec recorded — no code changes)
+
+Planning session for "the big dimension." James riffed the numbers live and settled a
+phase spec, recorded in `expansion-spec.md`: 1,000×1,000×250 km space, flat non-additive
+speed ladder (impulse 240 free · booster 1,200, 240s tank, 5s spool · overdrive 3,600,
+360s tank, 3s spool → 1,296 km per tank, so a 1,000 km crossing lands with ~23% reserve
+and only the diagonal forces a depot stop), 5–6 stargates, guaranteed-find fuel-depot
+grid (~50 km default). Key design rules that emerged: tank-as-ruler shaping (one tank ≈
+one map plus reserve), overdrive slams while booster builds, "every gate has a road."
+
+Also in the spec: a GOD MODE tuner-controls running tally (James's list, keeps growing —
+top speed and tank length are the key knobs) with the constraint that geography is NOT
+god mode: overall size and key POI locations eventually finalize and freeze, v38-style.
+Feel is forever tunable, the map is eventually law. Late riff, unsettled: circular or
+spherical space — Claude's read is boundary shape is nearly free and nearly imperceptible;
+the real lever is population shape (galaxy-disc distribution inside any boundary), noting
+a 1,000 km disc/sphere kills the tank-out-ranging diagonal.
+
+Where things stand: SPEC ONLY. world.js untouched — current build still flies
+120/400/1200 additive. Next step is a build plan drafted from the spec's open-questions
+list (gate placement, core relocation, clump character, depot catch, 3,600 m/s
+readability), discussed with James, explicit go before any code.
+
 ## 2026-07-22 — claude-fable (v48 — the drag-stick: deflection steering with a saturation rim)
 
 James named the problem precisely: with relative-drag steering he had to keep

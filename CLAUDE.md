@@ -8,15 +8,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
-0. ORB DIMENSION "the big dimension": expand to ~100×100×40 km with populations in clumps —
-   James is excited but explicitly NOT one-shot ("definitely not for tonight"). Wants a
-   ~20-minute planning conversation first and more thinking time of his own. Claude's
-   feasibility read (2026-07-22, in session): size is nearly free; real work items are a
-   depth-precision strategy (~150km far plane), camera-local recycling dust, clumped
-   population seeding, fuel geography (overdrive crosses 100km in ~83s vs 120s deu tank —
-   open design question: long lonely gulfs vs a faster cruise tier), fog/fade retune.
-   Related: World Ideas #57 (The Solar System) inherits this tech; stargate-linked rich
-   communities idea lives there too. DISCUSS → PLAN → his go → build.
+0. ORB DIMENSION "the big dimension": SPEC RECORDED 2026-07-23 in
+   `src/worlds/orb-dimension/expansion-spec.md` (read it first) — 1,000×1,000×250 km,
+   flat non-additive speed ladder 240 / 1,200 (240s tank, 5s spool) / 3,600 (360s tank,
+   3s spool), 5–6 stargates, guaranteed-find depot grid. Explicitly NOT one-shot.
+   Next step: draft the build plan from the spec's open questions, discuss it, and get
+   James's explicit go before ANY code. Related: World Ideas #57 (The Solar System)
+   inherits this tech; stargate-linked rich communities idea lives there too.
+   DISCUSS → PLAN → his go → build (spec done; now at PLAN).
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
