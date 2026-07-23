@@ -15,5 +15,9 @@
   "dependencies": {
     "pixi.js": "^8.19.0",
     "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "audio-decode": "^4.0.0"
   }
 }

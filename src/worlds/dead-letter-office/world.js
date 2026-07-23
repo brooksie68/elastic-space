@@ -1202,8 +1202,8 @@ function imagePoster(file, wM, aspect, x, y, z, ry) {
   scene.add(mesh);
 }
 // north wall: the eye of the office, and the egret calendar
-imagePoster('poster-wesee.jpg', 0.66, 1.333, -2.75, 1.78, ROOM.z0 + 0.035, 0);
-imagePoster('poster-calendar.jpg', 0.72, 0.8, 0.85, 1.98, ROOM.z0 + 0.03, 0);
+imagePoster('poster-wesee.jpg', 1.32, 1.333, -2.75, 1.78, ROOM.z0 + 0.035, 0);
+imagePoster('poster-calendar.jpg', 1.44, 0.8, 0.85, 1.98, ROOM.z0 + 0.03, 0);
 
 // south wall: safety, zip chart, and productivity
 paperPoster(0.66, 0.84, -6.8, 2.25, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
@@ -1236,13 +1236,13 @@ paperPoster(0.56, 0.74, 2.2, 2.3, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
   rows.forEach((r, i) => g.fillText(r, 24, 72 + i * 24));
 });
 // the management's rules, starring the management's only employee
-imagePoster('poster-workrules.jpg', 0.68, 1.333, -0.9, 2.4, ROOM.z1 - 0.02, Math.PI);
+imagePoster('poster-workrules.jpg', 1.36, 1.333, -0.9, 2.4, ROOM.z1 - 0.02, Math.PI);
 
 // east wall: the pin-up, done properly now (Miss Par Avion's line-art era is
 // over — James's painted girl says happiness can't be addressed)
-imagePoster('poster-happiness.jpg', 0.62, 1.5, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2);
+imagePoster('poster-happiness.jpg', 1.24, 1.5, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2);
 // and by the door table, the office's most wanted
-imagePoster('poster-wanted.jpg', 0.68, 1.333, ROOM.x0 + 0.03, 2.3, 4.5, Math.PI / 2);
+imagePoster('poster-wanted.jpg', 1.36, 1.333, ROOM.x0 + 0.03, 2.3, 4.5, Math.PI / 2);
 paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, 1.4, -Math.PI / 2, (g, w, h) => {
   // Mr. Special Delivery — flexing with a parcel
   g.font = '700 22px "Courier New", monospace';

@@ -10,6 +10,10 @@ return addresses still work.
 - `README.md` — world overview and structure.
 - `assets/props/props-manifest.json` — Meshy task ids for every generated asset (props are
   UNTEXTURED previews, textured in-engine; a proper Meshy refine is 10cr/prop later).
+- `assets/radio-music/` — Suno tracks James authors for the office's future tinny AM radio
+  (prop not built yet). Each source mp3 gets a baked `-radio.mp3` sibling via
+  `node tools/radio-bake.mjs <file>` (AM squash chain, flags documented in the script) —
+  the radio plays the baked versions. Two tracks landed 2026-07-23; more coming.
 
 ## Planned (James, 2026-07-22): the behavior weekend
 

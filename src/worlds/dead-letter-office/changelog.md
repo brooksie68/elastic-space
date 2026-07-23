@@ -3,6 +3,26 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-23 — claude-fable (radio music lands)
+
+- First two Suno tracks for the office's future AM radio (James authored:
+  High-Chapparal, Highland-Ghost-Waltz → `assets/radio-music/`), from a
+  Claude-drafted prompt: old-timey pedal steel quartet, wistful-not-sad,
+  1957 AM-radio production. James: "the music sounds great."
+- New durable bake tool `tools/radio-bake.mjs` (audio-decode + lamejs devDeps;
+  the Fifteen Sisters bake script was ephemeral and lost): mono sum, 300Hz–3.5kHz
+  4th-order bandpass, +4dB box at 1.4kHz, 5:1 squash + soft clip, faint static
+  bed + dust ticks, RMS-matched (~3dB under source after peak limiting). Baked
+  `-radio.mp3` siblings for both tracks — those are what the radio will play.
+- Second prompt drafted (bass/drums/harmonica/theremin, spooky Lydian-b7 country)
+  — two more tracks coming tomorrow night. Radio prop itself not built yet.
+
+## 2026-07-23 — claude-fable (r9: posters doubled)
+
+- All five r8 GPT posters doubled in width (heights follow aspect): wesee 0.66→1.32,
+  calendar 0.72→1.44, workrules 0.68→1.36, happiness 0.62→1.24, wanted 0.68→1.36.
+  Tallest now tops out ~3.3m against the 4.1m ceiling; no wall-neighbor overlaps.
+
 ## 2026-07-22 — claude-fable (r8: James's GPT posters hung)
 
 - Five painted posters from James (GPT-made; source PNGs archived in repo
