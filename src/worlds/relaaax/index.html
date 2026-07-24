@@ -28,11 +28,34 @@
   </button>
 
   <section id="rlx-tuner" class="rlx-tuner" role="group" aria-label="Field tuning" hidden>
+    <div class="tuner-pattern">
+      <label for="rlx-preset" class="tuner-label">presets</label>
+      <select id="rlx-preset" aria-label="Preset">
+        <option value="">— custom —</option>
+      </select>
+      <button id="rlx-preset-save" class="tuner-btn" type="button"
+              title="Save the current settings as a named preset">save</button>
+      <button id="rlx-preset-delete" class="tuner-btn" type="button" disabled
+              title="Delete the selected saved preset (built-ins are protected)">delete</button>
+      <p class="tuner-desc">built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list</p>
+    </div>
     <div class="tuner-speed">
       <label for="rlx-speed">speed</label>
       <input id="rlx-speed" type="range" min="0" max="1000" step="1" value="354"
              title="Global tempo, stopped to ×8 — double-click resets to ×1" />
       <output id="rlx-speed-readout" for="rlx-speed">×1.00</output>
+    </div>
+    <div class="tuner-speed">
+      <label for="rlx-tilesize">size</label>
+      <input id="rlx-tilesize" type="range" min="0" max="1000" step="1" value="327"
+             title="The little squares themselves — grid spacing stays put, so big tiles close the gaps, butt up, overlap, then chaos. Double-click resets to 32" />
+      <output id="rlx-tilesize-readout" for="rlx-tilesize">32px</output>
+    </div>
+    <div class="tuner-speed">
+      <label for="rlx-blur">blur</label>
+      <input id="rlx-blur" type="range" min="0" max="1000" step="1" value="0"
+             title="Gaussian blur over the whole field — double-click resets to none" />
+      <output id="rlx-blur-readout" for="rlx-blur">off</output>
     </div>
     <div class="tuner-minis">
       <div class="tuner-mini">
@@ -64,6 +87,140 @@
         <p class="tuner-desc">tile border width, in 2002 pixels — 0 dissolves the frames</p>
       </div>
     </div>
+
+    <p class="tuner-section">pattern</p>
+    <div class="tuner-pattern">
+      <button id="rlx-pattern-prev" class="tuner-step" type="button"
+              title="Previous pattern" aria-label="Previous pattern">&#9664;</button>
+      <select id="rlx-pattern" aria-label="Flashing pattern"></select>
+      <button id="rlx-pattern-next" class="tuner-step" type="button"
+              title="Next pattern" aria-label="Next pattern">&#9654;</button>
+      <p id="rlx-pattern-hint" class="tuner-desc"></p>
+    </div>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-spread">spread</label>
+        <input id="rlx-spread" type="range" min="0" max="1000" step="1" value="500"
+               title="Double-click resets" />
+        <output id="rlx-spread-readout" for="rlx-spread">×1.00</output>
+        <p class="tuner-desc">how far the pattern pulls tiles apart in time — 0 collapses any pattern to unison, past ×1 it wraps into extra bands</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-twist">twist</label>
+        <input id="rlx-twist" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-twist-readout" for="rlx-twist">0%</output>
+        <p class="tuner-desc">each pattern's own variant knob — see the pattern note above for what it does here</p>
+      </div>
+    </div>
+
+    <p class="tuner-section">grid</p>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-rows">rows</label>
+        <input id="rlx-rows" type="range" min="1" max="24" step="1" value="3"
+               title="Double-click resets" />
+        <output id="rlx-rows-readout" for="rlx-rows">3</output>
+        <p class="tuner-desc">tile rows — 3 is the 2002 composition</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-cols">cols</label>
+        <input id="rlx-cols" type="range" min="1" max="24" step="1" value="4"
+               title="Double-click resets" />
+        <output id="rlx-cols-readout" for="rlx-cols">4</output>
+        <p class="tuner-desc">tiles per row — 4 is the 2002 composition</p>
+      </div>
+      <label class="tuner-check" for="rlx-fill" title="Stretch the whole composition to fill the frame edge to edge">
+        <input id="rlx-fill" type="checkbox" />
+        fill
+      </label>
+    </div>
+
+    <p class="tuner-section">margins</p>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-margin-mode" class="tuner-label">link</label>
+        <select id="rlx-margin-mode" aria-label="Margin linking mode"
+                title="linked moves all four together, mirrored pairs top/bottom and left/right, free is independent">
+          <option value="linked">linked</option>
+          <option value="mirrored">mirrored</option>
+          <option value="free">free</option>
+        </select>
+        <p class="tuner-desc">how the four margin sliders travel — linked, mirrored pairs, or each on its own</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-mt">top</label>
+        <input id="rlx-mt" type="range" min="0" max="1000" step="1" value="250"
+               title="Double-click resets" />
+        <output id="rlx-mt-readout" for="rlx-mt">50px</output>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-mr">right</label>
+        <input id="rlx-mr" type="range" min="0" max="1000" step="1" value="250"
+               title="Double-click resets" />
+        <output id="rlx-mr-readout" for="rlx-mr">50px</output>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-mb">bottom</label>
+        <input id="rlx-mb" type="range" min="0" max="1000" step="1" value="250"
+               title="Double-click resets" />
+        <output id="rlx-mb-readout" for="rlx-mb">50px</output>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-ml">left</label>
+        <input id="rlx-ml" type="range" min="0" max="1000" step="1" value="250"
+               title="Double-click resets" />
+        <output id="rlx-ml-readout" for="rlx-ml">50px</output>
+      </div>
+    </div>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-gapx">gap &#8596;</label>
+        <input id="rlx-gapx" type="range" min="0" max="1000" step="1" value="340"
+               title="Double-click resets" />
+        <output id="rlx-gapx-readout" for="rlx-gapx">68px</output>
+        <p class="tuner-desc">horizontal room between tiles</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-gapy">gap &#8597;</label>
+        <input id="rlx-gapy" type="range" min="0" max="1000" step="1" value="200"
+               title="Double-click resets" />
+        <output id="rlx-gapy-readout" for="rlx-gapy">40px</output>
+        <p class="tuner-desc">vertical room between tile rows</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-inset">row inset</label>
+        <input id="rlx-inset" type="range" min="0" max="1000" step="1" value="100"
+               title="Double-click resets" />
+        <output id="rlx-inset-readout" for="rlx-inset">10px</output>
+        <p class="tuner-desc">how far each row's flashing background reaches past its tiles</p>
+      </div>
+    </div>
+
+    <p class="tuner-section">corners</p>
+    <div class="tuner-minis">
+      <div class="tuner-mini">
+        <label for="rlx-rtile">tiles</label>
+        <input id="rlx-rtile" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-rtile-readout" for="rlx-rtile">0%</output>
+        <p class="tuner-desc">tile corner radius as a share of tile size — 50% makes circles at any size</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-rrow">rows</label>
+        <input id="rlx-rrow" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-rrow-readout" for="rlx-rrow">0px</output>
+        <p class="tuner-desc">row background corner radius</p>
+      </div>
+      <div class="tuner-mini">
+        <label for="rlx-rframe">frame</label>
+        <input id="rlx-rframe" type="range" min="0" max="1000" step="1" value="0"
+               title="Double-click resets" />
+        <output id="rlx-rframe-readout" for="rlx-rframe">0px</output>
+        <p class="tuner-desc">outer breathing box corner radius</p>
+      </div>
+    </div>
     <div class="tuner-frame">
       <span class="tuner-label">frame</span>
       <input id="rlx-frame-w" type="number" min="160" max="7680" step="1" value="1024"
@@ -71,6 +228,10 @@
       <span class="tuner-x" aria-hidden="true">&times;</span>
       <input id="rlx-frame-h" type="number" min="120" max="4320" step="1" value="768"
              aria-label="Frame height in pixels" title="Frame height, px" />
+      <button id="rlx-frame-fullw" class="tuner-btn" type="button"
+              title="Snap the frame to 100% of the window width, height scaled to keep the current proportion">full width</button>
+      <button id="rlx-frame-fit" class="tuner-btn" type="button"
+              title="Snap the frame to the window's exact size and aspect ratio">fit screen</button>
       <p class="tuner-desc">the staging frame, in pixels — any size, any aspect; scales down to fit the window</p>
     </div>
     <div class="tuner-colors">
@@ -88,6 +249,7 @@
 
   <script src="../../core/dashboard-control.js"></script>
   <script src="./relaaax-field.js"></script>
+  <script src="./presets.js"></script>
   <script src="./world.js"></script>
 </body>
 </html>

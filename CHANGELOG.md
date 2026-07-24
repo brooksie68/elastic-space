@@ -8,6 +8,22 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Relaaax: tuner mega-expansion — patterns, presets, chaos)
+
+- Field renderer generalized from the fixed pork layout to an N×M grid (1–24 each)
+  with a 24-pattern engine (sweeps, ripple, rings, pinwheel, checkerboard, spiral,
+  scatter, sparkle, tempo rows/cols…), spread/twist tweak sliders; "pork 2002"
+  still reproduces the 2002 composition verbatim (Node-sim verified).
+- New controls: per-side margins with link modes, gaps, row inset, corner radii
+  (tiles/rows/frame), long-range gaussian blur, fill-the-frame toggle, and tile
+  size decoupled from grid pitch — tiles close gaps, butt up, overlap, into chaos.
+- Preset system: permanent built-in list in `presets.js` (8 seeded, deliberately
+  distinct) + James's saves in localStorage; frame snap buttons (full width /
+  fit screen); click-away closes the tuner panel.
+- James: "way beyond what I expected." Next session: music reactivity (5–6 imported
+  tracks, track player, rhythm-driven field, many sliders) — spec in the world's
+  CLAUDE.md.
+
 ## 2026-07-24 (Face Lab: expressive-character pipeline, postmaster head rebuild begins)
 
 - New lab `src/labs/face-lab/` (admin panel gets a "Labs" section): three.js workbench
