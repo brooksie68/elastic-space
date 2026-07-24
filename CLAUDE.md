@@ -62,6 +62,12 @@ consistent. `npm run check-worlds` audits every world against the contract.
    frame, draft status, no drift/registry yet. Remaining: James tunes by eye; decide the
    setting (his idea: the field playing on a TV in a scene, people watching and drooling);
    then ship wiring. scary_corndog not started — read that world's CLAUDE.md first.
+   UPDATE 2026-07-24: tuner massively expanded per James (grid, margins, corners, tile
+   size/overlap, blur, 24 patterns, presets system, frame snaps — see world changelog).
+   James delighted ("way beyond what I expected"). NEXT SESSION: music reactivity —
+   James imports 5–6 tracks, track player chooses, field reacts rhythmically, its own
+   many-slider tuner section; maybe live input later. Plan at session start — details
+   in the world's CLAUDE.md "Next session" section.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 
