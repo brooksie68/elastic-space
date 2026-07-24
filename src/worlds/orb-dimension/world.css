@@ -785,6 +785,11 @@ body::after {
 .orb-tuner[hidden] {
   display: none;
 }
+/* v49: six groups now (GOD MODE joined) — never spill off a small window */
+.orb-tuner {
+  max-height: 72vh;
+  overflow-y: auto;
+}
 
 .orb-tuner .tuner-groups {
   display: flex;

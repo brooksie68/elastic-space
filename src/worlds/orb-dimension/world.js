@@ -31,16 +31,38 @@
   // ---- tuner config ----------------------------------------------------------
 
   const STORE_KEY = "elastic-orb-dimension-tuner-v1";
-  // v38: the space is STATIC now — fixed at the old slider maximums in all
-  // three dimensions (James: "that's the static size"). The spread sliders
-  // are gone; sanitizeCfg() force-restores these against stale saved presets.
-  const SPACE_X = 24000, SPACE_Z = 24000, SPACE_Y = 6000;
+  // v49 "the big dimension": the FLYABLE space is 1,000 × 1,000 × 250 km
+  // (half-extents below — still static, still not tunable; James: geography
+  // finalizes and freezes). The POPULATED CORE — the skull, the station
+  // grid, the field, the Lantern — keeps its v38 size (CORE_*): the world
+  // got vastly bigger, home didn't. The reef colonies moved OUT to a ring
+  // (colonyLayout below); everything between is the gulf.
+  const SPACE_X = 500000, SPACE_Z = 500000, SPACE_Y = 125000;
+  const CORE_X = 24000, CORE_Z = 24000, CORE_Y = 6000;
   const DEFAULTS = {
     count: 400, // v38: denser defaults for the big static space
     dust: 2200,
-    spreadX: SPACE_X,
-    spreadZ: SPACE_Z,
-    spreadY: SPACE_Y,
+    spreadX: CORE_X,
+    spreadZ: CORE_Z,
+    spreadY: CORE_Y,
+    // v49 GOD MODE — the physics/feel knobs (James's running tally: top
+    // speed and tank length are the key ones). The flat ladder: impulse /
+    // booster / overdrive each carry a TOP SPEED (never a sum), a tank in
+    // seconds of burn, and a 0-to-full spool time. expansion-spec.md is
+    // the contract: 240 / 1,200 (240s, 5s) / 3,600 (360s, 3s).
+    impTop: 240,
+    boostTop: 1200,
+    overTop: 3600,
+    h2oTank: 240,
+    deuTank: 360,
+    boostSpool: 5,
+    overSpool: 3,
+    // v49 the ring — colony layout dials (tunable during the shaping phase,
+    // then these freeze with the geography, v38-style). Distance/height in
+    // km; jitter 0..1 scatters the perfect polygon organic.
+    colonyDist: 250,
+    colonyVert: 0,
+    colonyJitter: 0.5,
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -80,6 +102,18 @@
     { key: "stickYawMax", label: "yaw °/s", min: 10, max: 120, step: 1 },
     { key: "stickPitchMax", label: "pitch °/s", min: 6, max: 120, step: 1 },
     { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
+    // v49 GOD MODE (drive) + the ring. layout: true = rebuilds colonies,
+    // stations and actors on release (change), not per-tick (input).
+    { key: "impTop", label: "impulse m/s", min: 60, max: 720, step: 10 },
+    { key: "boostTop", label: "booster m/s", min: 300, max: 3000, step: 25 },
+    { key: "overTop", label: "overdrive m/s", min: 1200, max: 9000, step: 100 },
+    { key: "h2oTank", label: "H2O tank s", min: 60, max: 600, step: 10 },
+    { key: "deuTank", label: "DEU tank s", min: 60, max: 900, step: 10 },
+    { key: "boostSpool", label: "boost spool s", min: 1, max: 15, step: 0.5 },
+    { key: "overSpool", label: "over spool s", min: 0.5, max: 10, step: 0.25 },
+    { key: "colonyDist", label: "ring dist km", min: 60, max: 450, step: 5, layout: true },
+    { key: "colonyVert", label: "ring height km", min: -80, max: 80, step: 2, layout: true },
+    { key: "colonyJitter", label: "ring jitter", min: 0, max: 1, step: 0.05, layout: true },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -91,11 +125,12 @@
     for (const s of SLIDERS) {
       cfg[s.key] = clamp(Number(cfg[s.key]) || DEFAULTS[s.key], s.min, s.max);
     }
-    // the space is not tunable (v38) — saved cfgs and old presets may still
-    // carry spread values; they lose
-    cfg.spreadX = SPACE_X;
-    cfg.spreadZ = SPACE_Z;
-    cfg.spreadY = SPACE_Y;
+    // the space is not tunable (v38, reaffirmed v49) — saved cfgs and old
+    // presets may still carry spread values; they lose. The spreads are the
+    // CORE size now: the flyable SPACE_* bounds are constants, not cfg.
+    cfg.spreadX = CORE_X;
+    cfg.spreadZ = CORE_Z;
+    cfg.spreadY = CORE_Y;
     if (!["scatter", "clusters", "strata", "river"].includes(cfg.grouping)) {
       cfg.grouping = "scatter";
     }
@@ -159,7 +194,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v48.6";
+    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v49.2";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -292,7 +327,7 @@
 
   const VS = `#version 300 es
 layout(location=0) in vec2 aQuad;
-layout(location=1) in vec4 i0; // world pos, radius
+layout(location=1) in vec4 i0; // SHIP-RELATIVE pos (v49), radius
 layout(location=2) in vec4 i1; // h1, h2, sat, fadeDur
 layout(location=3) in vec4 i2; // fadePhase, spin, variant, halo
 layout(location=4) in vec4 i3; // seed, portal, veil, quadScale
@@ -300,7 +335,6 @@ layout(location=5) in vec4 i4; // kind, p0, p1, activity (v47)
 uniform mat4 uVP;
 uniform vec3 uRight;
 uniform vec3 uUp;
-uniform vec3 uCamPos;
 out vec2 vUv;
 flat out vec4 vA;
 flat out vec4 vB;
@@ -308,7 +342,9 @@ flat out vec4 vC; // seed, portal, dist, radius
 flat out vec2 vMisc; // veil flag, quad scale
 flat out vec4 vD; // kind, p0, p1, activity
 void main() {
-  float d = distance(i0.xyz, uCamPos);
+  // v49 camera-relative: i0.xyz arrives already relative to the ship
+  // (float64 subtraction in JS), so distance is just its length
+  float d = length(i0.xyz);
   float radius = i0.w;
   // the heart never shrinks below a star's size on screen
   if (i3.y > 1.5) radius = max(radius, d * 0.004);
@@ -377,6 +413,13 @@ void main() {
   float fogF = exp(-dist * uFog);
   if (portal > 1.5) fogF = 1.0;
   else if (portal > 0.5) fogF = mix(fogF, 1.0, 0.6);
+  // v49.2: veils get SCALED fog, not exemption. Their whole dim-mottling look
+  // was designed under v38 fog (they rendered at 0.14-0.66 of authored
+  // brightness); full exemption turned the walls into a ball pit of bright
+  // spheres (James's report, confirmed on screen). The walls moved ~21x
+  // farther out, so fog at 1/21 strength reproduces the v38 rendered look
+  // at the same viewing angles. 0.05 ~= 1/21.
+  if (vMisc.x > 0.5) fogF = exp(-dist * uFog * 0.05);
   float nearF = vMisc.x > 0.5 ? 1.0 : smoothstep(radius * 0.7, radius * 1.8, dist);
 
   // the three states (v47): act 0 = a vague glowing nothing from far away,
@@ -835,13 +878,22 @@ void main() {
   vec3 outP = shell.rgb + coreP * (1.0 - shell.a);
   float outA = shell.a + coreA * (1.0 - shell.a);
 
-  // halo: the orb lighting the air around it. Falloff is normalized to THIS
-  // instance's quad size so the glow reaches zero before the card's edge —
-  // otherwise the billboard shows as a hard-edged translucent square
+  // halo: v49.1 — a LONG-RANGE effect now (James: the near-field version
+  // read as ghost balls, and this is space, not the old cave — no medium to
+  // scatter up close). The gate fades the halo in with distance-in-radii:
+  // within ~40 radii you see only glass and light; by ~140 radii the halo is
+  // fully on, doing its real job — making a far orb read as a glow at all.
+  // Heart-flagged things (beacons, the Lantern sun) ride the never-shrink
+  // radius, so their gate ratio is constant and they stay lit across the
+  // map. Veils exempt: they ARE scattered wash on far rock. Falloff is
+  // normalized to THIS instance's quad size so the glow reaches zero before
+  // the card's edge, and steeper than before (pow 4) so what remains reads
+  // as radiance, not a second shell.
+  float haloGate = vMisc.x > 0.5 ? 1.0 : smoothstep(40.0, 140.0, dist / max(radius, 0.001));
   float breath = 0.75 + 0.25 * sin(uTime * 0.5 + seed * 7.0);
   float haloSpan = max(vMisc.y - 0.85, 0.2);
-  float haloA = vB.w * uGlow * 0.32 * breath *
-    pow(clamp(1.0 - (r - 0.85) / haloSpan, 0.0, 1.0), 2.2);
+  float haloA = vB.w * uGlow * 0.32 * breath * haloGate *
+    pow(clamp(1.0 - (r - 0.85) / haloSpan, 0.0, 1.0), 4.0);
   outP += mix(c1, c2, 1.0 - k) * haloA * 0.8;
   outA = min(1.0, outA + haloA * 0.55);
 
@@ -867,7 +919,7 @@ void main() {
   }
   gl.useProgram(prog);
   const U = {};
-  for (const name of ["uVP", "uRight", "uUp", "uCamPos", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uFadeScale", "uArt", "uGlyphs"]) {
+  for (const name of ["uVP", "uRight", "uUp", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uFadeScale", "uArt", "uGlyphs"]) {
     U[name] = gl.getUniformLocation(prog, name);
   }
 
@@ -1244,7 +1296,10 @@ void main() {
     });
   }
   // ---- the Reef ---------------------------------------------------------------
-  // A bioluminescent orb colony ~8.5km out from the skull: nine branching
+  // v49: the colonies moved OUT — they ring the core at ~250km (colonyLayout
+  // above; James's spec: 3 reefs, 50% out, roughly mid-plane, seeded jitter),
+  // the primary mid-space destinations of the dimension. Originally (v34-v48)
+  // a colony ~8.5km from the skull: nine branching
   // mineral growths crusted with pulsing polyps, a drifting haze of spores,
   // and one pale orb nested inside — a hidden bonus exit (the three near home
   // stay the canonical drift choices). Geometry comes from a seeded PRNG:
@@ -1255,13 +1310,6 @@ void main() {
   // (grown ~30%) plus two outlying patches. Every colony checked against the
   // skull buffer, sight corridor, and flight bounds by reef-sim.mjs. The
   // hidden exit lives only in the flagship. NAV's REEF row reads the nearest.
-  const REEF_COLONIES = [
-    { c: [6600, -900, -5200], trees: 12, len: [200, 380], rad: [140, 560], spores: 380, shell: 780 },
-    { c: [-8200, 600, 3400], trees: 6, len: [120, 240], rad: [100, 340], spores: 160, shell: 520 },
-    { c: [-2600, -1500, -8600], trees: 5, len: [110, 220], rad: [90, 300], spores: 140, shell: 470 },
-  ];
-  const REEF_CENTER = REEF_COLONIES[0].c; // flagship: exit seat + legacy refs
-  const REEF_SEED = 0x5eaf00d;
   function mulberry32(a) {
     return function () {
       a |= 0; a = (a + 0x6d2b79f5) | 0;
@@ -1270,6 +1318,37 @@ void main() {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+  // ---- community layout (v49) -----------------------------------------------
+  // The colonies ring the center as a regular polygon — count sets the shape
+  // (2 opposed, 3 triangle, 4 square, ...), distance/vertical set where the
+  // ring sits, jitter scatters position and height organically (James's
+  // layout spec, expansion-spec.md). Seeded and DETERMINISTIC: same dials in,
+  // same layout out, every visit — reef-sim extracts and asserts this block.
+  // The first vertex starts off-axis so no colony can sit in the +Z spawn
+  // sight corridor.
+  const LAYOUT_SEED = 0xb17a5e;
+  function colonyLayout(n, distKm, vertKm, jitter) {
+    const R = mulberry32(LAYOUT_SEED);
+    const out = [];
+    const base = TAU * 0.125;
+    for (let i = 0; i < n; i++) {
+      const ang = base + (i / n) * TAU + (R() - 0.5) * jitter * (TAU / n) * 0.5;
+      const d = distKm * 1000 * (1 + (R() - 0.5) * jitter * 0.24);
+      const y = vertKm * 1000 + (R() - 0.5) * jitter * 36000;
+      out.push([Math.cos(ang) * d, y, Math.sin(ang) * d]);
+    }
+    return out;
+  }
+  const REEF_COLONIES = [
+    { c: null, trees: 12, len: [200, 380], rad: [140, 560], spores: 380, shell: 780 },
+    { c: null, trees: 6, len: [120, 240], rad: [100, 340], spores: 160, shell: 520 },
+    { c: null, trees: 5, len: [110, 220], rad: [90, 300], spores: 140, shell: 470 },
+  ];
+  function applyColonyLayout(distKm, vertKm, jitter) {
+    const ring = colonyLayout(REEF_COLONIES.length, distKm, vertKm, jitter);
+    for (let i = 0; i < REEF_COLONIES.length; i++) REEF_COLONIES[i].c = ring[i];
+  }
+  const REEF_SEED = 0x5eaf00d;
   // pure geometry from the seed: {p, r, kind 0 mineral | 1 polyp | 2 spore, fam}
   // (copied verbatim into sim.mjs — keep the two in sync)
   function reefGeometry() {
@@ -1383,12 +1462,33 @@ void main() {
       }
       return o;
     });
-    // the hidden exit, nested at the colony's heart among the trunks
+    // the hidden exit, nested at the flagship's heart among the trunks
+    const RC = REEF_COLONIES[0].c;
     const p = baseOrb([0, 0, 0], true, false);
     p.reef = true;
-    p.fix = [REEF_CENTER[0] + 40, REEF_CENTER[1] + 130, REEF_CENTER[2] - 25];
+    p.fix = [RC[0] + 40, RC[1] + 130, RC[2] - 25];
     p.fixedR = 26;
     out.push(p);
+    // v49 beacons: one heart-flagged glow per colony — fog-proof and never
+    // smaller than a star, so from anywhere in the 1,000km gulf each colony
+    // reads as a distant smudge of its own family color. Diegetic long-range
+    // visibility; the NAV knows the rest.
+    for (let ci = 0; ci < REEF_COLONIES.length; ci++) {
+      const [h1, h2] = REEF_FAMS[ci % 5];
+      const b = baseOrb([0, 0, 0], false, false);
+      b.reef = true;
+      b.heart = true;
+      b.fix = [REEF_COLONIES[ci].c[0], REEF_COLONIES[ci].c[1] + 260, REEF_COLONIES[ci].c[2]];
+      b.fixedR = 110;
+      b.h1 = rand(h1, h2);
+      b.h2 = rand(h1, h2);
+      b.sat = 70;
+      b.fadeDur = 8 + ci * 2.3;
+      b.halo = 2.2;
+      b.spin = 0;
+      b.variant = 0;
+      out.push(b);
+    }
     return out;
   }
 
@@ -1425,10 +1525,24 @@ void main() {
     };
     place(out.h2o, 4, 4, 4); // 64
     place(out.deu, 3, 4, 3); // 36
+    // v49: each ring colony gets a doorstep cluster — two water globes and a
+    // deuterium depot a short hop out from its heart (outside the reef shell,
+    // inside a minute of impulse). The destinations have gas; the full
+    // guaranteed-find gulf grid is a later phase (expansion-spec.md).
+    for (const col of REEF_COLONIES) {
+      const cc = col.c;
+      const a0 = R() * TAU;
+      const dh = col.shell + 1600 + R() * 1400;
+      out.h2o.push([cc[0] + Math.cos(a0) * dh, cc[1] + (R() - 0.5) * 900, cc[2] + Math.sin(a0) * dh]);
+      out.h2o.push([cc[0] + Math.cos(a0 + Math.PI) * dh, cc[1] + (R() - 0.5) * 900, cc[2] + Math.sin(a0 + Math.PI) * dh]);
+      const dd = col.shell + 2400 + R() * 1800;
+      out.deu.push([cc[0] + Math.cos(a0 + Math.PI / 2) * dd, cc[1] + (R() - 0.5) * 900, cc[2] + Math.sin(a0 + Math.PI / 2) * dd]);
+    }
     return out;
   }
   // station hues: water blues; deuterium's hot amber-green
-  const STATIONS = stationGeometry();
+  applyColonyLayout(cfg.colonyDist, cfg.colonyVert, cfg.colonyJitter);
+  let STATIONS = stationGeometry();
 
   function makeStations() {
     const out = [];
@@ -1600,9 +1714,11 @@ void main() {
       }
     }
 
-    // -- the service fleet: robots spawn scattered among the stations
+    // -- the service fleet: robots spawn scattered among the stations —
+    // which include the colony doorstep clusters now (v49), so a few work
+    // the ring communities. The two Lantern caretakers spawn at their post.
     for (let i = 0; i < 14; i++) {
-      const home = i % 2 ? pick(STATIONS.h2o) : pick(STATIONS.deu);
+      const home = i < 2 ? LANTERN.nav : i % 2 ? pick(STATIONS.h2o) : pick(STATIONS.deu);
       const glow = actorBase(0, 0, 190, 200);
       glow.sat = 90;
       glow.halo = 1.8;
@@ -1648,24 +1764,42 @@ void main() {
       const a = rand(0, TAU);
       return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(120, 500), LANTERN.pos[1] + rand(150, 900), LANTERN.pos[2] + Math.sin(a) * rand(120, 500)], stand: 30 };
     }
+    // v49: robots are LOCAL workers — nothing they pick may be more than a
+    // commute away (the colonies are 250km out now; a robot cruising 110 m/s
+    // must never sign up for a three-day haul). Too-far picks fall through
+    // to the nearest station.
+    const LOCAL = 40000;
+    const near = (p) => Math.hypot(p[0] - rb.pos[0], p[1] - rb.pos[1], p[2] - rb.pos[2]) < LOCAL;
     const roll = Math.random();
     if (roll < 0.45) {
       if (!robotFleet.nodes || !robotFleet.nodes.length) {
         robotFleet.nodes = orbs.filter((o) => o.kind && o.kind < 60 && !o.actor && !o.veil);
       }
       const o = pick(robotFleet.nodes);
-      if (o) return { kind: "orb", o, stand: 0 };
-    }
-    if (roll < 0.7) {
-      const arr = Math.random() < 0.6 ? STATIONS.h2o : STATIONS.deu;
-      return { kind: "point", p: pick(arr), stand: 40, isStation: true };
+      if (o && near(orbWorldPos(o, 0))) return { kind: "orb", o, stand: 0 };
     }
     if (roll < 0.9) {
-      const col = pick(REEF_COLONIES);
-      return { kind: "point", p: [col.c[0] + rand(-200, 200), col.c[1] + rand(0, 160), col.c[2] + rand(-200, 200)], stand: 60 };
+      const col = REEF_COLONIES.find((c) => near(c.c));
+      if (roll >= 0.7 && col) {
+        return { kind: "point", p: [col.c[0] + rand(-200, 200), col.c[1] + rand(0, 160), col.c[2] + rand(-200, 200)], stand: 60 };
+      }
+      const arr = Math.random() < 0.6 ? STATIONS.h2o : STATIONS.deu;
+      const local = arr.filter(near);
+      if (local.length) return { kind: "point", p: pick(local), stand: 40, isStation: true };
     }
-    const a = rand(0, TAU);
-    return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(200, 700), LANTERN.pos[1] + rand(200, 800), LANTERN.pos[2] + Math.sin(a) * rand(200, 700)], stand: 40 };
+    if (near(LANTERN.pos)) {
+      const a = rand(0, TAU);
+      return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(200, 700), LANTERN.pos[1] + rand(200, 800), LANTERN.pos[2] + Math.sin(a) * rand(200, 700)], stand: 40 };
+    }
+    // fallback: the nearest station of any kind — always local by definition
+    let best = null, bd = Infinity;
+    for (const arr of [STATIONS.h2o, STATIONS.deu]) {
+      for (const c of arr) {
+        const d = Math.hypot(c[0] - rb.pos[0], c[1] - rb.pos[1], c[2] - rb.pos[2]);
+        if (d < bd) { bd = d; best = c; }
+      }
+    }
+    return { kind: "point", p: best, stand: 40, isStation: true };
   }
 
   function updateActors(t, dt, bb) {
@@ -1884,12 +2018,17 @@ void main() {
   // floor, and walls, just past the flyable bounds — the faint mottling of
   // rock surfaces miles away. A deterministic grid, so EVERY view direction
   // meets at least one; no look is ever pure black.
+  // v49: the walls moved to the REAL bounds (500km out) — veils are fixed
+  // world coords now (not spread-scaled; the spreads are the core), scaled
+  // ~21x so the angular cover from the middle of the space matches v38.
+  // They're fog-exempt in the shader: rock 600km away still reads as rock.
   function makeVeils() {
     const veils = [];
     const patch = (nx, ny, nz) => {
-      const o = baseOrb([nx, ny, nz], false, false);
+      const o = baseOrb([0, 0, 0], false, false);
       o.veil = true;
-      o.fixedR = rand(3200, 5200); // v38: doubled with the space — same angular cover
+      o.fix = [nx * SPACE_X, ny * SPACE_Y, nz * SPACE_Z];
+      o.fixedR = rand(67000, 109000);
       o.halo = 0.4;
       o.sat = rand(18, 32);
       o.fadeDur = rand(30, 70);
@@ -1931,9 +2070,9 @@ void main() {
     const fieldNeed = Math.max(0, cfg.count - ringUsed);
     while (fieldPool.length < fieldNeed) fieldPool.push(fieldOrb(fieldPool.length));
     while (dustPool.length < cfg.dust) {
-      // ember dust: tiny motes filling the volume AND spilling 30% past the
-      // flyable bounds, so no direction — even looking out from the edge — is
-      // ever truly empty, and flying always has parallax to read speed against
+      // ember dust (v49): tiny motes in a CAMERA-LOCAL recycled box — the
+      // frame loop wraps them around the ship, so flying always has parallax
+      // to read speed against, anywhere in the 1,000km. o.n seeds the seat.
       dustPool.push(baseOrb([rand(-1.3, 1.3), rand(-1.3, 1.3), rand(-1.3, 1.3)], false, true));
     }
     // (the Heart orb retired 2026-07-18 — the Skull took over as home; the
@@ -1990,6 +2129,17 @@ void main() {
     gl.bufferData(gl.ARRAY_BUFFER, instData.byteLength, gl.STREAM_DRAW);
   }
 
+  // v49: relayout re-seats the ring (colonies, their doorstep stations, the
+  // actors that live around them) WITHOUT re-rolling the field pools — the
+  // never-re-roll rule holds while James drags the ring sliders.
+  function relayout() {
+    applyColonyLayout(cfg.colonyDist, cfg.colonyVert, cfg.colonyJitter);
+    STATIONS = stationGeometry();
+    reefOrbs = makeReef();
+    stationOrbs = makeStations();
+    makeActors(); // after makeReef — the colony life needs the polyp lists
+    assemble();
+  }
   function rebuildAll() {
     groupCtx = newGroupCtx();
     fieldPool = [];
@@ -1997,11 +2147,8 @@ void main() {
     ringOrbs = makeRing();
     portalOrbs = makePortals();
     eyeOrbs = makeEyes();
-    reefOrbs = makeReef();
-    stationOrbs = makeStations();
-    makeActors(); // after makeReef — the colony life needs the polyp lists
     veilOrbs = makeVeils();
-    assemble();
+    relayout(); // colonies + stations + actors, then assemble
   }
   rebuildAll();
 
@@ -2225,7 +2372,10 @@ void main() {
 
   function setProj(aspect) {
     const f = 1 / Math.tan(FOV / 2);
-    const near = 2, far = 80000;
+    // v49: the far plane covers the whole big dimension (corner-to-corner
+    // ~1,436km). Depth precision is spent up close where the meshes live;
+    // orbs don't write depth, so far conflicts can't artifact.
+    const near = 2, far = 1600000;
     proj.fill(0);
     proj[0] = f / aspect;
     proj[5] = f;
@@ -2234,14 +2384,18 @@ void main() {
     proj[14] = (2 * far * near) / (near - far);
   }
   function setView(b) {
-    const p = cam.pos;
+    // v49 CAMERA-RELATIVE: everything renders in SHIP space. Positions are
+    // subtracted against cam.pos in JS (float64) before they reach the GPU,
+    // so the view matrix is rotation-only — zero translation. This is what
+    // kills float32 jitter at 250km+ from the origin; do not reintroduce a
+    // world-space translation here.
     view[0] = b.r[0]; view[4] = b.r[1]; view[8] = b.r[2];
     view[1] = b.u[0]; view[5] = b.u[1]; view[9] = b.u[2];
     view[2] = -b.f[0]; view[6] = -b.f[1]; view[10] = -b.f[2];
     view[3] = 0; view[7] = 0; view[11] = 0;
-    view[12] = -(b.r[0] * p[0] + b.r[1] * p[1] + b.r[2] * p[2]);
-    view[13] = -(b.u[0] * p[0] + b.u[1] * p[1] + b.u[2] * p[2]);
-    view[14] = b.f[0] * p[0] + b.f[1] * p[1] + b.f[2] * p[2];
+    view[12] = 0;
+    view[13] = 0;
+    view[14] = 0;
     view[15] = 1;
   }
   function mulVP() {
@@ -2333,8 +2487,12 @@ void main() {
   vN = aNorm;
   vUV = aUV;
   vP = aPos;
-  vDist = distance(aPos, uCamPos);
-  gl_Position = uVP * vec4(aPos, 1.0);
+  // v49 camera-relative: uVP carries rotation only; subtract the camera here.
+  // The skull's own coords are small (it lives at the origin), so this
+  // subtraction is exact where it matters — up close.
+  vec3 rp = aPos - uCamPos;
+  vDist = length(rp);
+  gl_Position = uVP * vec4(rp, 1.0);
 }`;
       const sfs = `#version 300 es
 precision highp float;
@@ -2640,9 +2798,11 @@ void main() {
     robotMat[0] = rgt[0]; robotMat[1] = rgt[1]; robotMat[2] = rgt[2]; robotMat[3] = 0;
     robotMat[4] = up[0]; robotMat[5] = up[1]; robotMat[6] = up[2]; robotMat[7] = 0;
     robotMat[8] = f[0]; robotMat[9] = f[1]; robotMat[10] = f[2]; robotMat[11] = 0;
-    robotMat[12] = rb.pos[0];
-    robotMat[13] = rb.pos[1] + Math.sin(t * 1.1 + rb.seed) * 0.5; // hover bob
-    robotMat[14] = rb.pos[2];
+    // v49 camera-relative: the model matrix seats the robot in SHIP space
+    // (float64 subtraction here) — its shader gets uCamPos = 0
+    robotMat[12] = rb.pos[0] - cam.pos[0];
+    robotMat[13] = rb.pos[1] - cam.pos[1] + Math.sin(t * 1.1 + rb.seed) * 0.5; // hover bob
+    robotMat[14] = rb.pos[2] - cam.pos[2];
     robotMat[15] = 1;
   }
 
@@ -2715,18 +2875,20 @@ void main() {
       else if (frameCost < 18 && resScale < 1) resScale = Math.min(1, resScale + 0.005);
     }
 
-    // -- the thruster: hold shift to burn toward full speed over a few
-    // seconds; release and you coast down to a stop over a few more. Velocity
-    // always follows the gaze, so steering with the mouse curves the flight.
-    // Space toggles OVERDRIVE: ramp to 800 and hold there until tapped again.
-    const VMAX = 400, VOVER = 1200; // m/s (overdrive 800 → 1200, v38)
+    // -- the thruster: hold shift to burn toward full speed; release and you
+    // coast down over a few seconds. Velocity always follows the gaze, so
+    // steering with the mouse curves the flight. Space toggles OVERDRIVE.
+    // v49 GOD MODE: tops, tanks and spools all live in cfg (flat ladder,
+    // expansion-spec.md — defaults 240 / 1,200 / 3,600, tanks 240s / 360s,
+    // spools 5s / 3s). The booster BUILDS, overdrive SLAMS.
+    const VMAX = cfg.boostTop, VOVER = cfg.overTop;
     // the booster drinks water; overdrive burns deuterium (v38). Tanks are
-    // generous (180s / 120s of continuous burn) and impulse is always free —
-    // a dry tank means limping, never stranding.
+    // generous and impulse is always free — a dry tank means limping (a long
+    // limp, out in the gulf), never stranding.
     const burning = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && fuel.h2o > 0;
-    if (burning && !overdrive) fuel.h2o = Math.max(0, fuel.h2o - dt / 180);
+    if (burning && !overdrive) fuel.h2o = Math.max(0, fuel.h2o - dt / cfg.h2oTank);
     if (overdrive) {
-      fuel.deu = Math.max(0, fuel.deu - dt / 120);
+      fuel.deu = Math.max(0, fuel.deu - dt / cfg.deuTank);
       if (fuel.deu === 0) {
         overdrive = false; // the pulse drive sputters out
         odThump(false);
@@ -2754,7 +2916,10 @@ void main() {
       if (dist <= autoNav.standoff + (Math.abs(thrust) + Math.abs(impulse)) * 3.2 + 40) {
         autoNav = null; // release — the coast carries you to the doorstep
       } else {
-        const cruise = clamp(dist / 8, 140, 900);
+        // v49: the autopilot cruises at up to overdrive speed for the long
+        // hauls — lock a colony 250km out, go get a drink (the #57 loop).
+        // Nav-assist thrust stays free; fuel is for flying it yourself.
+        const cruise = clamp(dist / 8, 140, cfg.overTop);
         thrust += (cruise - thrust) * (1 - Math.exp(-dt / 1.2));
       }
     } else if (allStop) {
@@ -2763,7 +2928,11 @@ void main() {
       thrust *= Math.exp(-dt / 0.35);
       if (Math.abs(thrust) < 4) { thrust = 0; allStop = false; }
     } else if (target !== 0) {
-      thrust += (target - thrust) * (1 - Math.exp(-dt / 1.2));
+      // v49 spools: 0-to-full in cfg.boostSpool / cfg.overSpool seconds
+      // (exponential family — tau = spool/3.9 puts ~98% of top at the mark).
+      // Overdrive's 3s is a SLAM; the dampeners are canonically excellent.
+      const tau = (overdrive ? cfg.overSpool : cfg.boostSpool) / 3.9;
+      thrust += (target - thrust) * (1 - Math.exp(-dt / tau));
     } else {
       // free coast (v37: 1.6 → 3.2 per James — the drift after a burn should
       // carry you a good while; X is there when you want to stop)
@@ -2772,10 +2941,10 @@ void main() {
     }
 
     // -- IMPULSE (v38 name, was "the dolly"): hold W to glide forward along
-    // your gaze, S to back out. Burns nothing. Composes with the thruster.
+    // your gaze, S to back out. Burns nothing.
     // v44: releasing the key COASTS (same 3.2s constant as the thruster —
-    // it's space, 120 m/s doesn't just vanish); X still brakes everything.
-    const IMPULSE = 120; // m/s (80 → 120, v38)
+    // it's space, this speed doesn't just vanish); X still brakes everything.
+    const IMPULSE = cfg.impTop; // m/s (80 → 120 v38; 240 + GOD MODE v49)
     const dolly = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
     if (dolly !== 0) {
       impulse += (dolly * IMPULSE - impulse) * (1 - Math.exp(-dt / 0.5));
@@ -2786,11 +2955,17 @@ void main() {
       impulse *= Math.exp(-dt / 3.2);
       if (Math.abs(impulse) < 2) impulse = 0;
     }
-    const speed = impulse + thrust;
+    // v49 FLAT ladder (James: "each mode should have a flat top speed.
+    // easier."): the dominant drive carries the ship — never a sum. Engaging
+    // a bigger drive mid-glide only ever adds speed; nothing stacks past the
+    // mode's top. Continuous at the crossover (both sides equal there).
+    const speed = Math.abs(thrust) >= Math.abs(impulse) ? thrust : impulse;
     if (sound.on && sound.engine) updateEngine(thrust, dolly !== 0);
     if (speed !== 0) {
       const bd = camBasis();
-      const bounds = [cfg.spreadX * 0.95, cfg.spreadY * 0.95, cfg.spreadZ * 0.95];
+      // flight bounds are the REAL space now (v49) — the core spreads only
+      // size the neighborhood, not the cage
+      const bounds = [SPACE_X * 0.95, SPACE_Y * 0.95, SPACE_Z * 0.95];
       for (let i = 0; i < 3; i++) {
         cam.pos[i] = clamp(cam.pos[i] + bd.f[i] * speed * dt, -bounds[i], bounds[i]);
       }
@@ -2979,8 +3154,20 @@ void main() {
           y += wander(o.wy, t) * o.fixAmp * 0.6;
           z += wander(o.wz, t) * o.fixAmp;
         }
+      } else if (o.dust) {
+        // v49 CAMERA-LOCAL DUST: the mote field rides with the ship. Each
+        // mote holds a world-fixed seat until it leaves a box around the
+        // camera, then recycles to the far side — honest parallax at any
+        // speed, anywhere in the 1,000km, and no direction is ever empty.
+        // At 3,600 m/s the recycling is what makes speed READ at all.
+        x = o.n[0] * 4000 + wander(o.wx, t) * 30;
+        y = o.n[1] * 2000 + wander(o.wy, t) * 18;
+        z = o.n[2] * 4000 + wander(o.wz, t) * 30;
+        x = cam.pos[0] + (((x - cam.pos[0]) % 8000) + 12000) % 8000 - 4000;
+        y = cam.pos[1] + (((y - cam.pos[1]) % 4000) + 6000) % 4000 - 2000;
+        z = cam.pos[2] + (((z - cam.pos[2]) % 8000) + 12000) % 8000 - 4000;
       } else {
-        const amp = o.heart || o.veil ? 0 : o.dust ? 30 : o.portal ? 15 : 60;
+        const amp = o.heart || o.veil ? 0 : o.portal ? 15 : 60;
         x = o.n[0] * sx + wander(o.wx, t) * amp;
         y = o.n[1] * sy + wander(o.wy, t) * amp * 0.6;
         z = o.n[2] * sz + wander(o.wz, t) * amp;
@@ -3071,9 +3258,11 @@ void main() {
       if (!o.veil && dists[i] < radius * radius * 0.49) continue;
       const off = m * FLOATS;
       m++;
-      instData[off] = wp[i * 3];
-      instData[off + 1] = wp[i * 3 + 1];
-      instData[off + 2] = wp[i * 3 + 2];
+      // v49 camera-relative: subtract the ship in float64 HERE — near things
+      // land on the GPU at millimeter precision wherever we are in the 1,000km
+      instData[off] = wp[i * 3] - cam.pos[0];
+      instData[off + 1] = wp[i * 3 + 1] - cam.pos[1];
+      instData[off + 2] = wp[i * 3 + 2] - cam.pos[2];
       instData[off + 3] = radius;
       instData[off + 4] = o.h1;
       instData[off + 5] = o.h2;
@@ -3133,7 +3322,7 @@ void main() {
         gl.useProgram(robotMesh.prog.p);
         gl.bindVertexArray(robotMesh.vao);
         gl.uniformMatrix4fv(robotMesh.prog.U.uVP, false, vp);
-        gl.uniform3fv(robotMesh.prog.U.uCamPos, cam.pos);
+        gl.uniform3fv(robotMesh.prog.U.uCamPos, [0, 0, 0]); // v49: ship space
         gl.uniform1f(robotMesh.prog.U.uFog, cfg.haze / 18000);
         for (const rb of robotFleet.list) {
           const rdx = rb.pos[0] - cam.pos[0], rdy = rb.pos[1] - cam.pos[1], rdz = rb.pos[2] - cam.pos[2];
@@ -3150,9 +3339,13 @@ void main() {
         gl.useProgram(pyr.prog.p);
         gl.bindVertexArray(pyr.vao);
         gl.uniformMatrix4fv(pyr.prog.U.uVP, false, vp);
-        gl.uniform3fv(pyr.prog.U.uOrigin, LANTERN.pos);
-        gl.uniform3fv(pyr.prog.U.uCamPos, cam.pos);
-        gl.uniform3fv(pyr.prog.U.uLight, LANTERN.light);
+        // v49 camera-relative: the Lantern's seat and inner sun arrive in
+        // ship space (float64 subtraction), uCamPos pins to the origin
+        gl.uniform3fv(pyr.prog.U.uOrigin, [
+          LANTERN.pos[0] - cam.pos[0], LANTERN.pos[1] - cam.pos[1], LANTERN.pos[2] - cam.pos[2]]);
+        gl.uniform3fv(pyr.prog.U.uCamPos, [0, 0, 0]);
+        gl.uniform3fv(pyr.prog.U.uLight, [
+          LANTERN.light[0] - cam.pos[0], LANTERN.light[1] - cam.pos[1], LANTERN.light[2] - cam.pos[2]]);
         gl.uniform1f(pyr.prog.U.uTime, t);
         gl.uniform1f(pyr.prog.U.uFog, cfg.haze / 18000);
         gl.drawElements(gl.TRIANGLES, pyr.count, gl.UNSIGNED_INT, 0);
@@ -3168,7 +3361,6 @@ void main() {
       gl.uniformMatrix4fv(U.uVP, false, vp);
       gl.uniform3fv(U.uRight, bb.r);
       gl.uniform3fv(U.uUp, bb.u);
-      gl.uniform3fv(U.uCamPos, cam.pos);
       gl.uniform1f(U.uTime, t);
       gl.uniform1f(U.uFog, cfg.haze / 18000);
       gl.uniform1f(U.uGlow, cfg.glow);
@@ -3331,6 +3523,8 @@ void main() {
       if (s.pool) assemble();
       saveCfg();
     });
+    // v49 layout sliders re-seat the whole ring — heavy, so only on release
+    if (s.layout) input.addEventListener("change", () => relayout());
     out.value = String(cfg[s.key]);
     wrap.append(label, input);
     tunerInputs[s.key] = { input, out };
@@ -3384,11 +3578,17 @@ void main() {
   const sliderByKey = {};
   for (const s of SLIDERS) sliderByKey[s.key] = s;
   const GROUPS = [
-    // ("the space" group removed v38 — the volume is static at 24×24×6 km)
+    // ("the space" group removed v38 — the volume is static; v49 made it
+    // 1,000×1,000×250km and it is STILL not a slider. Geography is law.)
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "fadeSpeed"] },
     { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickYawMax", "stickPitchMax", "stickCurve"] },
+    // v49 GOD MODE (James's tally: top speed + tank length are the key
+    // ones) — physics/feel knobs, forever tunable. The ring dials freeze
+    // with the geography when the layout finalizes.
+    { label: "GOD MODE · drive", keys: ["impTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
+    { label: "GOD MODE · the ring", keys: ["colonyDist", "colonyVert", "colonyJitter"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
@@ -3491,8 +3691,9 @@ void main() {
     Object.assign(cfg, p);
     sanitizeCfg();
     reflectAll();
+    // v49: relayout instead of bare assemble — a preset may carry ring dials
     if (cfg.grouping !== prevGrouping) rebuildAll();
-    else assemble();
+    else relayout();
     saveCfg();
   });
   const startP = presetButton("set as start", () => {
@@ -3534,9 +3735,9 @@ void main() {
         and pull: the farther from center, the harder the turn, maxing out
         at "reach" px. Park the cursor to hold a turn; release to fly
         straight. TUNE → "the stick" adjusts the feel</dd>
-      <dt>W / S</dt><dd>impulse — glide forward / back (120 m/s, free)</dd>
-      <dt>shift</dt><dd>booster — hold to burn (400 m/s, drinks H2O)</dd>
-      <dt>space</dt><dd>overdrive on / off (1200 m/s, burns deuterium)</dd>
+      <dt>W / S</dt><dd>impulse — glide forward / back (240 m/s, free)</dd>
+      <dt>shift</dt><dd>booster — hold to burn (1,200 m/s, drinks H2O, full in 5s)</dd>
+      <dt>space</dt><dd>overdrive on / off (3,600 m/s, burns deuterium, slams in 3s — the crossing tier; TUNE → GOD MODE retunes the whole ladder)</dd>
       <dt>S + shift</dt><dd>reverse booster</dd>
       <dt>X</dt><dd>all-stop — brake to a halt</dd>
       <dt>A / D</dt><dd>roll — a pure spin around the nose, like a pencil
@@ -3580,10 +3781,10 @@ void main() {
     <h3>the monument</h3>
     <button type="button" class="nav-row" data-nav="head">Korrudan <em>the Head · center of space</em></button>
     <button type="button" class="nav-row" data-nav="pyr">Vess-Karai <em>the glass lantern · on the floor</em></button>
-    <h3>globe-thread communities</h3>
-    <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship colony</em></button>
-    <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>outlying patch</em></button>
-    <button type="button" class="nav-row" data-nav="c2">${NAV_NAMES[2]} <em>deep patch</em></button>
+    <h3>globe-thread communities · the ring</h3>
+    <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship reef · ~250 km out</em></button>
+    <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>ring reef</em></button>
+    <button type="button" class="nav-row" data-nav="c2">${NAV_NAMES[2]} <em>ring reef</em></button>
     <h3>resources</h3>
     <button type="button" class="nav-row" data-nav="h2o">Water globes <em>nearest — refills H2O</em></button>
     <button type="button" class="nav-row" data-nav="deu">Deuterium depot <em>nearest — refills DEU</em></button>`;
@@ -3892,15 +4093,17 @@ void main() {
     const mag = Math.abs(thrust);
     const rv = thrust < -1 ? 0.82 : 1; // reverse burn: everything detunes down
     set(e.thGain.gain, dollyActive ? 0.05 : 0, 0.12);
-    const bo = !overdrive && mag > 6 ? clamp(mag / 400, 0, 1) : 0;
+    // v49: the voices normalize to the GOD MODE tops — same sound envelope
+    // at full burn whatever the ladder is tuned to
+    const bo = !overdrive && mag > 6 ? clamp(mag / cfg.boostTop, 0, 1) : 0;
     set(e.boGroup.gain, bo * 0.55, 0.22);
     // the rush brightens with speed but stays a rush — cutoff only, no pitch.
     // Reverse burn darkens it instead of dropping a tone.
-    set(e.boRushLp.frequency, (180 + 300 * clamp(mag / 400, 0, 1)) * rv, 0.25);
-    const od = overdrive ? clamp(mag / 1200, 0.25, 1) : 0; // VOVER 1200, v38
+    set(e.boRushLp.frequency, (180 + 300 * clamp(mag / cfg.boostTop, 0, 1)) * rv, 0.25);
+    const od = overdrive ? clamp(mag / cfg.overTop, 0.25, 1) : 0;
     set(e.odGain.gain, od * 0.4, 0.3);
-    set(e.odSaw1.frequency, (66 + 28 * clamp(mag / 1200, 0, 1)) * rv, 0.3);
-    set(e.odSaw2.frequency, (66.5 + 28.2 * clamp(mag / 1200, 0, 1)) * rv, 0.3);
+    set(e.odSaw1.frequency, (66 + 28 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
+    set(e.odSaw2.frequency, (66.5 + 28.2 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
   }
 
   // success chime: two quick rising notes through the cave's echo chain —

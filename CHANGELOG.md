@@ -56,6 +56,25 @@ this file tracks project-level activity.
 - Gotcha found: `npm run registry` includes draft worlds — registry reverted so drafts
   stay out of the drift pool until ship (rule added to CLAUDE.md).
 
+## 2026-07-24 (Orb Dimension: THE BIG DIMENSION built — v49/.1/.2)
+
+- Phase 1 of the expansion built with James's go, same night as the spec:
+  1,000×1,000×250 km space (core keeps its 48×48×12 neighborhood), camera-relative
+  renderer (rotation-only view matrix, float64 subtraction at upload — the 250km
+  float32-jitter fix), flat speed ladder 240 / 1,200 (240s, 5s) / 3,600 (360s, 3s),
+  reef colonies ringed at 250km (seeded triangle layout, beacons, doorstep fuel),
+  camera-local recycled dust, GOD MODE tuner groups (drive + ring).
+- v49.1: orb halos gated to long range (the cave-era "ghost ball" envelope now fades
+  out within ~40 radii). v49.2: the REAL ghost-ball fix — veils (wall mottling) got
+  scaled fog restored; v49 had fog-exempted them into a "McDonald's ball pit" (James).
+  Confirmed by browser screenshot — James explicitly invited pane use for visual QA.
+- Sims: reef-sim rebuilt for the new layout block + v49 bounds/counts/doorstep tests
+  + ring determinism; NEW ladder-sim.mjs (flat-ladder source guards + spec math);
+  all four sims pass. James on v49.2: "looks way better. amazing progress tonight."
+- Spec status updated in expansion-spec.md; expansion remainder (stargates, gulf depot
+  grid, grown reefs, hub society, luminous region) still spec-only, each needs its own
+  discussion. Awaiting full flight-feel verdicts (distance, dust, beacons, the slam).
+
 ## 2026-07-23 (Orb Dimension: expansion spec recorded — planning only, no code)
 
 - "The big dimension" phase spec settled with James and recorded in

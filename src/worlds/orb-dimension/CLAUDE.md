@@ -6,8 +6,10 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
 
 - `changelog.md` — session history, newest first (long flight-model history; the spaceship arc was retired).
 - `expansion-spec.md` — "the big dimension" phase spec (2026-07-23, James's numbers):
-  1,000×1,000×250 km, flat speed ladder, stargates, depot grid. Spec only — the build
-  plan still needs drafting, discussion, and James's go before any code.
+  1,000×1,000×250 km, flat speed ladder, stargates, depot grid. PHASE 1 (flight-feel
+  expansion: space + ladder + ring colonies + GOD MODE) BUILT 2026-07-23 as v49 with
+  James's go — awaiting his first flight. Stargates, depot grid, grown reefs, hub
+  society, luminous region: still spec-only, still need discussion.
 
 ## World-specific rules
 
@@ -21,15 +23,42 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
 - Fuel stations (v38) are the same discipline: `stationGeometry()` (stratified jittered
   grid, STATION_SEED) with markers `const STATION_SEED =` … `// station hues` — the sim
   extracts and asserts determinism, exclusion zones, and the forgiveness bars (TEST 9).
-- The space is STATIC as of v38: 48 × 48 × 12 km (SPACE_X/Z/Y consts = the old slider
-  maxes). There are no spread sliders; sanitizeCfg() force-restores the constants against
-  stale saved presets. Don't reintroduce space tuning without James asking.
+- The space is 1,000 × 1,000 × 250 km as of v49 ("the big dimension", per
+  `expansion-spec.md` — read it before touching any of this). SPACE_X/Z/Y are the flight
+  bounds (half-extents 500k/500k/125k m); CORE_X/Z/Y keep the old 48×48×12 as the
+  populated core (field, station grid, skull, Lantern — all unchanged). Still no space
+  sliders; sanitizeCfg() force-restores the CORE spreads. Geography finalizes and
+  freezes — never put SPACE_* on a slider.
+- CAMERA-RELATIVE RENDERING (v49): everything renders in ship space — instance positions
+  subtract cam.pos in JS (float64) at upload, the view matrix is rotation-only
+  (view[12..14] = 0), meshes get relative uniforms. NEVER reintroduce a world-space view
+  translation or world-coord instance uploads: float32 jitter at 250km+ was the reason.
+  ladder-sim source-guards both lines.
+- Flight is a FLAT ladder as of v49 (James: never a sum — max-magnitude of impulse vs
+  thrust). Tops/tanks/spools live in cfg (GOD MODE tuner group): defaults 240 / 1,200
+  (240s H2O, 5s spool) / 3,600 (360s DEU, 3s spool). `tmp/orb-dimension/ladder-sim.mjs`
+  guards the shipped lines and the spec math — run it after touching flight or fuel.
+- Dust is CAMERA-LOCAL as of v49: motes recycle through a box around the ship (wrap
+  math in the frame loop) so speed reads at 3,600 anywhere in the gulf. Don't move dust
+  back to world-fixed scatter.
+- Veils are fogged at 0.05 strength (v49.2), NEVER fog-exempt: their dim-mottling look
+  only exists under fog — exemption rendered them as a ball pit of giant spheres
+  (James's report, confirmed by screenshot). Halos are long-range only (v49.1 gate,
+  40→140 radii). If wall/glow brightness reads wrong, those are the tune points.
+- The reef colonies ring the core at ~250 km (v49): colonyLayout(LAYOUT_SEED) computes
+  seats from the GOD MODE ring dials (colonyDist/Vert/Jitter, defaults 250/0/0.5);
+  applyColonyLayout() writes REEF_COLONIES[i].c; relayout() re-seats colonies + doorstep
+  stations + actors without re-rolling the field pools. Ring dials are tuning-phase
+  only — they freeze with the geography. Each colony has a heart-flagged beacon (fog-proof
+  smudge across the map) and a doorstep station cluster (2 H2O + 1 DEU).
 - Named places (v38, James-approved): the skull is Korrudan; the reef colonies are
   Yth-Alune (flagship), Sorrek Bloom, Vhal-Imir — NAV_NAMES in world.js, order matches
   REEF_COLONIES.
-- Fuel is deliberately forgiving: impulse (W/S) never burns fuel; H2O feeds the booster
-  (180s tank), deuterium feeds overdrive (120s tank); stations refill to FULL on a
-  150m flyover. Don't add drain to impulse or partial refills without discussion.
+- Fuel is deliberately forgiving IN THE CORE and at colony doorsteps: impulse (W/S)
+  never burns fuel; H2O feeds the booster, deuterium feeds overdrive (tank seconds in
+  cfg since v49); stations refill to FULL on a 150m flyover. The gulf between core and
+  ring is honestly empty in phase 1 (guaranteed-find grid is a later phase). Don't add
+  drain to impulse or partial refills without discussion.
 - Lock-on autopilot (v43): nose on the nav ring 3s → armed → click inside = AUTO. Any
   control input (except N) releases it instantly — never make the autopilot fight the
   pilot. Coast release point = standoff + (|thrust|+|impulse|)·3.2s.

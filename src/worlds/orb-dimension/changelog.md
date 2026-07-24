@@ -3,6 +3,97 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-24 — claude-fable (v49.2 — the ball pit was the veils: scaled fog restored)
+
+The ghost balls survived v49.1 ("a ball pit at the McDonald's" — James). He
+invited a browser look ("if you wanna load a browser and take a look, you
+should") and one screenshot settled it: the halos were innocent this round —
+the VEILS were the balls. v49 had moved them to the 500km walls and made them
+fog-EXEMPT; their entire dim-mottling character had only ever existed under
+v38 fog (they rendered at 0.14–0.66 of authored brightness), so exemption
+lit 84 giant spheres at full alpha.
+
+- Fix: veils get fog at 0.05 strength (walls moved ~21x out, so 1/21 fog
+  reproduces the v38 rendered brightness at the same viewing angles) instead
+  of exemption. One shader line. James: "looks way better."
+- Halo long-range gate (v49.1) stands — the two layers were separate crimes.
+- Stamp v49.2; all four sims pass.
+
+Where things stand: James has SEEN the big dimension (looks right now);
+full flight-feel verdicts (250km distance, dust density, beacon brightness,
+overdrive slam) still to come. Tune points if the walls read wrong: the 0.05
+veil-fog scale in the FS, or delete the veil layer if space should have no
+walls at all.
+
+## 2026-07-23 — claude-fable (v49.1 — the halo becomes long-range only)
+
+James finally asked what the "ghost balls" were: the halo layer — the cave-era
+scattered-light envelope around every orb, controlled by the glow slider. His
+read was right: up close it's just a second translucent ball, and the world is
+space now, not a cave. Fix (his go, "give 'er a whirl"):
+
+- DISTANCE GATE: halo fades in from 40 to 140 radii of distance — within ~40
+  radii you see only glass and light; far away the halo still does its real
+  job (a distant orb reads as a glow at all). Heart-flagged beacons/sun keep a
+  constant gate ratio via the never-shrink radius — still lit across the map.
+  Veils exempt (they are scattered wash on far rock, the one place the cave
+  logic still holds).
+- TIGHTENED: falloff pow 2.2 → 4.0 — what remains at range reads as radiance,
+  not a shell with an edge. The breathing pulse survives (distant twinkle).
+- Glow slider now means "long-range luminance." Stamp v49.1; all four sims pass.
+
+Where things stand: still awaiting James's first big-dimension flight — now
+without the ghost balls. If the far-field reads too dim with halos gated, the
+40/140 radii thresholds are the tune points (in the FS halo block).
+
+## 2026-07-23 — claude-fable (v49 — THE BIG DIMENSION, phase 1: the flight-feel expansion)
+
+James's go, same session as the spec. Scope was deliberately "prove the bones":
+size, ladder, ring — nothing decorative.
+
+- SPACE: flight bounds are 1,000 × 1,000 × 250 km (SPACE_X/Z/Y half-extents
+  500k/500k/125k). The populated core keeps the old 48×48×12 as CORE_X/Z/Y —
+  field, station grid, skull, Lantern all exactly where they were. Far plane
+  80km → 1,600km. Veils moved to the REAL walls (fixed coords at ±SPACE, ~21×
+  radius, fog-exempt in the shader — rock 600km away still reads).
+- CAMERA-RELATIVE RENDERING: the whole scene renders in ship space. Orb
+  instances subtract cam.pos in float64 at upload; the view matrix is
+  rotation-only; skull subtracts uCamPos in its VS; robots seat their model
+  matrix relative; the Lantern gets relative origin/light uniforms. This is
+  the float32-jitter fix that makes 250km colonies renderable up close.
+- FLAT SPEED LADDER (never a sum — max-magnitude of impulse vs thrust):
+  impulse 240 free · booster 1,200, 240s H2O, full in 5s · overdrive 3,600,
+  360s DEU, slams in 3s. All cfg-driven (GOD MODE). Engine audio and HUD
+  normalize to the cfg tops. Autopilot cruises up to overdrive speed for the
+  long hauls (the "grab a drink" loop).
+- THE RING (James's layout spec): the three reef colonies moved out to a
+  jittered triangle ~250km from center, mid-plane — colonyLayout(LAYOUT_SEED),
+  dials colonyDist/Vert/Jitter in the tuner, applyColonyLayout() → relayout()
+  re-seats colonies/stations/actors without re-rolling the field. Names kept
+  (Yth-Alune flagship + hidden exit, Sorrek Bloom, Vhal-Imir). Each colony:
+  a heart-flagged BEACON (fog-proof family-color smudge visible across the
+  map) and a doorstep cluster (2 water + 1 deuterium, outside the shell).
+- CAMERA-LOCAL DUST: motes recycle through a ±4km/±2km box around the ship
+  (wrap in the frame loop) — honest parallax at 3,600 m/s anywhere in the gulf.
+- GOD MODE tuner groups: "drive" (3 tops, 2 tanks, 2 spools) + "the ring"
+  (3 layout dials, rebuild-on-release). Tuner panel got a max-height scroll.
+- Robots became explicitly LOCAL workers (40km leash, nearest-station
+  fallback) so nobody signs up for a three-day haul; Lantern caretakers spawn
+  at their post; colony-doorstep stations mean some robots work the ring.
+- VERIFIED: reef-sim updated (new extraction incl. layout block, v49 bounds,
+  station counts 70/39, colony-doorstep forgiveness, new TEST 10 ring
+  determinism/spec) + NEW ladder-sim.mjs (source-guards the flat-speed and
+  camera-relative lines; asserts spec math: 1,000km = 77% of a DEU tank,
+  diagonal 1,436km > 1,296km range, spools hit 98% on the mark) + v47-sim
+  (floor const) — all four sims PASS. Build stamp v49.
+
+Where things stand: awaiting James's first flight — this whole phase exists so
+he can feel the size before anything else gets built. Everything else in
+expansion-spec.md (stargates, depot grid, grown reefs, hub society, luminous
+region) remains spec-only. Watch for: dust density at rest (box is ±4km,
+tunable), beacon brightness, whether 3,600 needs more speed-reading than dust
+alone, HUD POS pod width at 6-figure coords.
+
 ## 2026-07-23 — claude-fable (expansion spec recorded — no code changes)
 
 Planning session for "the big dimension." James riffed the numbers live and settled a
