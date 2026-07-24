@@ -881,7 +881,84 @@ function layoutGlobalName(slug) {
   return `${slug.toUpperCase().replace(/-/g, "_")}_LAYOUT`;
 }
 
+const faceLabDir = join(rootDir, "src", "labs", "face-lab");
+
+async function readFaceLabPresets() {
+  try {
+    const raw = await readFile(join(faceLabDir, "assets", "presets.json"), "utf8");
+    const data = JSON.parse(raw);
+    return Array.isArray(data.presets) ? data.presets : [];
+  } catch {
+    return [];
+  }
+}
+
+async function listFaceLabClips() {
+  const clipDirs = [
+    { dir: join(worldsDir, "dead-letter-office", "assets", "speech-clips"), url: "/src/worlds/dead-letter-office/assets/speech-clips" },
+    { dir: join(worldsDir, "dead-letter-office", "assets", "audio"), url: "/src/worlds/dead-letter-office/assets/audio" },
+    { dir: join(faceLabDir, "assets", "audio"), url: "/src/labs/face-lab/assets/audio" },
+  ];
+  const clips = [];
+  for (const { dir, url } of clipDirs) {
+    let entries = [];
+    try {
+      entries = await readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const name of entries) {
+      if (!/\.(wav|mp3|ogg)$/i.test(name)) continue;
+      const base = name.replace(/\.(wav|mp3|ogg)$/i, "");
+      const visemeFile = `${base}.visemes.json`;
+      clips.push({
+        name,
+        url: `${url}/${name}`,
+        visemes: entries.includes(visemeFile) ? `${url}/${visemeFile}` : null,
+      });
+    }
+  }
+  return clips;
+}
+
 async function handleApi(request, response, pathname) {
+  if (pathname === "/api/face-lab/state" && request.method === "GET") {
+    sendJson(response, 200, {
+      presets: await readFaceLabPresets(),
+      clips: await listFaceLabClips(),
+    });
+    return true;
+  }
+
+  if (pathname === "/api/face-lab/presets" && request.method === "PUT") {
+    const payload = await readBody(request);
+    if (!payload || !Array.isArray(payload.presets)) {
+      sendJson(response, 400, { error: "Body must be { presets: [...] }." });
+      return true;
+    }
+    for (const preset of payload.presets) {
+      if (typeof preset?.name !== "string" || !preset.name.trim() ||
+          typeof preset?.weights !== "object" || preset.weights === null ||
+          Object.values(preset.weights).some((v) => typeof v !== "number" || v < 0 || v > 3)) {
+        // identity dials may overdrive past 1 (caricature range); 3 is the sanity ceiling
+        sendJson(response, 400, { error: "Each preset needs a name and weights of 0..3 numbers." });
+        return true;
+      }
+    }
+    const file = join(faceLabDir, "assets", "presets.json");
+    try {
+      const backupDir = join(rootDir, "tmp", "face-lab", "preset-backups");
+      await mkdir(backupDir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      await writeFile(join(backupDir, `presets-${stamp}.json`), await readFile(file, "utf8"));
+    } catch {
+      // No previous presets file to back up — fine.
+    }
+    await writeFile(file, `${JSON.stringify({ version: 1, presets: payload.presets }, null, 2)}\n`);
+    sendJson(response, 200, { saved: payload.presets.length });
+    return true;
+  }
+
   if (pathname === "/api/worlds" && request.method === "GET") {
     const worlds = await listWorldsDetailed();
     sendJson(response, 200, worlds.map(summarizeWorld));

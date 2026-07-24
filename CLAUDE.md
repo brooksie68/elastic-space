@@ -8,24 +8,44 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
-0. ORB DIMENSION "the big dimension": SPEC RECORDED 2026-07-23 in
-   `src/worlds/orb-dimension/expansion-spec.md` (read it first) — 1,000×1,000×250 km,
-   flat non-additive speed ladder 240 / 1,200 (240s tank, 5s spool) / 3,600 (360s tank,
-   3s spool), 5–6 stargates, guaranteed-find depot grid. Explicitly NOT one-shot.
-   Next step: draft the build plan from the spec's open questions, discuss it, and get
-   James's explicit go before ANY code. Related: World Ideas #57 (The Solar System)
-   inherits this tech; stargate-linked rich communities idea lives there too.
-   DISCUSS → PLAN → his go → build (spec done; now at PLAN).
+0. ORB DIMENSION "the big dimension": PHASE 1 BUILT 2026-07-23 (v49, James's go) —
+   space 1,000×1,000×250 km, camera-relative renderer, flat ladder 240/1,200/3,600
+   (GOD MODE tuner), 3 reef colonies ringed at 250km with beacons + doorstep fuel,
+   camera-local dust. All 4 sims pass. AWAITING JAMES'S FIRST FLIGHT — he wants to
+   feel size/distances before anything else gets built. Spec:
+   `src/worlds/orb-dimension/expansion-spec.md` (read it first). Still spec-only:
+   stargates, gulf depot grid, grown reefs, hub society, luminous region — each needs
+   its own discussion. Related: World Ideas #57 (The Solar System) inherits this tech.
+0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
+   VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
+   Face Lab live (James delighted; skin/eye pickers, protected presets). The house
+   technique: Meshy characters keep their mesh/texture and learn the 52+15 morphs via
+   wrap transfer (tmp/face-lab/wrap_transfer4.py, state in wrap-transferred.blend —
+   v4 renders approved direction). MPFB2 realism REJECTED as visible character
+   ("mutant serial killer") — donor machinery only. PIVOT 2026-07-24 late: Meshy mesh
+   quality is the ceiling (polygon soup) — postmaster head REBUILT on clean MPFB2
+   topology via identity dials: `assets/sculpt.glb` (140 MakeHuman modeling targets as
+   browser sliders + 67 expression morphs) in Face Lab's model picker. Claude
+   dial-sculpted the gnome skull (preset "postmaster-head", overdrive >1 needed —
+   sliders ±2, server allows weights 0..3). NEXT: James nudges the sculpt by eye →
+   bake recipe to production build → storybook texture bake from Meshy model
+   (wrap_transfer4.py raycast machinery) → white/bushier brows, beard/chops mass →
+   cap+glasses rigid props → Mixamo body re-animation (James drives browser, needs
+   walkthrough) → DLO integration + ElevenLabs voice.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
    in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
 3. ARACHNO-WARS: tank-color tuner panel (Chrome Rift tuner pattern) — two color pickers
    driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
-4. ARACHNO-WARS: "me against the world" horde direction — James discovered rapid-fire
-   free-shooting in practice mode is the fun; wants massive blasting vs many enemies, not
-   1v1. Open questions posed 2026-07-19 (replace duel or third mode? enemy types? fire-rate
-   governor?) — discuss before building. Prototype instinct: third menu entry, keep duel.
+4. ARACHNO-WARS 2500: the spider-vision side-scroller, forked from AW2000 on 2026-07-24
+   (James: fork, keep 2000 as the intact duel archive). Graybox movement prototype BUILT
+   same day — polygon terrain, cling-anywhere walking, web-pull, rocket, whip-leg IK, all
+   27 sim assertions pass (`node tmp/arachno-wars-2500/movement-sim.mjs`). AWAITING
+   James's first look 2026-07-24: "successful test. A long way to go yet" — continuing
+   next session. Feel questions + agreed pillars (tech tree, earned tricks, both health
+   models, boss levels) in `src/worlds/arachno-wars-2500/CLAUDE.md`. Draft: no
+   drift/registry/sound yet.
 5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
@@ -161,7 +181,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - Load `../../core/world-registry.js` and then `../../core/drift.js` in each world that offers drift links.
 - Direct links are allowed only when the user explicitly wants a fixed route, such as an authored sequence. Fixed links do not use `data-drift`.
 - Drift avoids worlds already seen in the current cycle. Do not implement separate destination memory inside a world.
-- After adding, removing, or renaming a world, run `npm run registry`.
+- After adding, removing, or renaming a world, run `npm run registry`. **Gotcha (found
+  2026-07-24): the generator includes draft-status worlds.** Drafts must stay OUT of the
+  drift pool until ship — if the repo has drafts, restore the registry after regenerating
+  (`git checkout -- src/core/world-registry.js`) or hand-check the diff.
 - The root `index.html` is an intentional named directory and may use direct links.
 
 ## Per-world instructions

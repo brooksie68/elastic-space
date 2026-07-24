@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "name": "happy",
+      "builtin": true,
+      "weights": {
+        "mouthSmileLeft": 0.75,
+        "mouthSmileRight": 0.75,
+        "cheekSquintLeft": 0.4,
+        "cheekSquintRight": 0.4,
+        "eyeSquintLeft": 0.25,
+        "eyeSquintRight": 0.25,
+        "browInnerUp": 0.1
+      }
+    },
+    {
+      "name": "sad",
+      "weights": {
+        "mouthFrownLeft": 0.7,
+        "mouthFrownRight": 0.7,
+        "browInnerUp": 0.85,
+        "mouthShrugLower": 0.3,
+        "eyeSquintLeft": 0.15,
+        "eyeSquintRight": 0.15
+      },
+      "builtin": true
+    },
+    {
+      "name": "angry",
+      "weights": {
+        "browDownLeft": 0.9,
+        "browDownRight": 0.9,
+        "noseSneerLeft": 0.5,
+        "noseSneerRight": 0.5,
+        "mouthPressLeft": 0.5,
+        "mouthPressRight": 0.5,
+        "eyeSquintLeft": 0.4,
+        "eyeSquintRight": 0.4,
+        "jawForward": 0.2
+      },
+      "builtin": true
+    },
+    {
+      "name": "surprised",
+      "weights": {
+        "browInnerUp": 0.9,
+        "browOuterUpLeft": 0.8,
+        "browOuterUpRight": 0.8,
+        "eyeWideLeft": 0.9,
+        "eyeWideRight": 0.9,
+        "jawOpen": 0.45
+      },
+      "builtin": true
+    },
+    {
+      "name": "disgusted",
+      "weights": {
+        "noseSneerLeft": 0.9,
+        "noseSneerRight": 0.9,
+        "mouthUpperUpLeft": 0.6,
+        "mouthUpperUpRight": 0.6,
+        "browDownLeft": 0.5,
+        "browDownRight": 0.5,
+        "eyeSquintLeft": 0.5,
+        "eyeSquintRight": 0.5,
+        "mouthFrownLeft": 0.3,
+        "mouthFrownRight": 0.3
+      },
+      "builtin": true
+    },
+    {
+      "name": "skeptical",
+      "weights": {
+        "browDownLeft": 0.7,
+        "browOuterUpRight": 0.85,
+        "mouthPressLeft": 0.5,
+        "mouthLeft": 0.3,
+        "eyeSquintLeft": 0.3
+      },
+      "builtin": true
+    },
+    {
+      "name": "postmaster-head",
+      "weights": {
+        "head-scale-horiz-incr": 1.2,
+        "head-round": 1.0,
+        "head-fat-incr": 0.35,
+        "head-scale-depth-incr": 0.25,
+        "head-age-incr": 0.6,
+        "forehead-scale-vert-decr": 0.55,
+        "forehead-temple-incr": 0.4,
+        "nose-volume-incr": 1.6,
+        "nose-scale-vert-incr": 0.1,
+        "nose-point-down": 0.15,
+        "nose-point-width-incr": 1.5,
+        "nose-width2-incr": 0.7,
+        "nose-width3-incr": 1.2,
+        "nose-base-down": 0.1,
+        "nose-compression-uncompress": 0.3,
+        "cheek-volume-incr": 1.2,
+        "cheek-bones-incr": 0.5,
+        "cheek-trans-up": 0.6,
+        "cheek-inner-incr": 0.25,
+        "chin-height-decr": 0.35,
+        "chin-prominent-decr": 0.2,
+        "chin-width-incr": 0.5,
+        "mouth-scale-horiz-incr": 0.35,
+        "mouth-angles-up": 0.35,
+        "mouth-lowerlip-volume-incr": 0.4,
+        "eye-scale-incr": 0.6,
+        "eye-bag-incr": 0.4,
+        "eye-corner1-down": 0.3,
+        "eye-trans-down": 0.1
+      }
+    }
+  ]
+}

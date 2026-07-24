@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face Lab — Elastic Space</title>
+<style>
+  html { font-size: 16px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #14161c; color: #cfd3dd;
+    font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.85rem;
+  }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 0.75rem 1rem; }
+  header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
+  header h1 { font-size: 1.1rem; margin: 0; color: #e8eaf0; letter-spacing: 0.04em; }
+  header .sub { color: #8a8fa3; font-size: 0.8rem; }
+  main { display: flex; gap: 0.9rem; align-items: stretch; }
+  #stage-panel { flex: 1 1 auto; min-width: 0; position: relative; }
+  #stage {
+    width: 100%; height: calc(100vh - 6rem); min-height: 420px;
+    background: #1b1e27; border: 1px solid #2a2e3c; border-radius: 4px; display: block;
+  }
+  #stage-hint { position: absolute; left: 0.6rem; bottom: 0.5rem; color: #666c80; font-size: 0.72rem; }
+  #controls {
+    flex: 0 0 24rem; max-width: 24rem; height: calc(100vh - 6rem); min-height: 420px;
+    overflow-y: auto; border: 1px solid #2a2e3c; border-radius: 4px;
+    background: #191c24; padding: 0.7rem;
+  }
+  #controls h2 {
+    font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #9aa0b5; margin: 1rem 0 0.4rem; border-bottom: 1px solid #2a2e3c; padding-bottom: 0.25rem;
+  }
+  #controls h2:first-child { margin-top: 0; }
+  .group-title {
+    cursor: pointer; user-select: none; color: #b9bed0; font-size: 0.8rem;
+    margin: 0.5rem 0 0.2rem; font-weight: 600;
+  }
+  .group-title::before { content: "▸ "; color: #5b6178; }
+  .group-title.open::before { content: "▾ "; }
+  .group-body { display: none; }
+  .group-body.open { display: block; }
+  .sl { display: flex; align-items: center; gap: 0.45rem; margin: 0.12rem 0; }
+  .sl label { flex: 0 0 10.5rem; font-size: 0.74rem; color: #a9aec2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sl input[type=range] { flex: 1 1 auto; accent-color: #7a86ff; height: 1rem; }
+  .sl .v { flex: 0 0 2.2rem; text-align: right; font-size: 0.72rem; color: #7c8299; font-variant-numeric: tabular-nums; }
+  .row { display: flex; align-items: center; gap: 0.45rem; margin: 0.3rem 0; flex-wrap: wrap; }
+  button {
+    background: #262b3a; color: #cfd3dd; border: 1px solid #363c50; border-radius: 3px;
+    padding: 0.28rem 0.65rem; font-size: 0.78rem; cursor: pointer;
+  }
+  button:hover { background: #2e3448; }
+  button.primary { background: #3b4470; border-color: #4a548c; }
+  button.primary:hover { background: #454f82; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  select, input[type=text] {
+    background: #20242f; color: #cfd3dd; border: 1px solid #363c50; border-radius: 3px;
+    padding: 0.26rem 0.4rem; font-size: 0.78rem;
+  }
+  input[type=text] { width: 9rem; }
+  .preset-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.18rem 0; }
+  .preset-row .name { flex: 1 1 auto; font-size: 0.78rem; color: #c6cbdd; }
+  .preset-row button { padding: 0.15rem 0.5rem; font-size: 0.72rem; }
+  .checks { display: flex; gap: 0.9rem; flex-wrap: wrap; font-size: 0.76rem; color: #a9aec2; }
+  .checks label { display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+  #status { font-size: 0.74rem; color: #7c8299; margin-top: 0.8rem; min-height: 1.1em; }
+  #status.err { color: #d98080; }
+  footer { color: #565c72; font-size: 0.7rem; margin-top: 0.4rem; }
+  .num { width: 3.6rem; background: #20242f; color: #cfd3dd; border: 1px solid #363c50; border-radius: 3px; padding: 0.22rem 0.3rem; font-size: 0.76rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FACE LAB</h1>
+    <span class="sub">expression &amp; lip-sync workbench — drag to orbit, wheel to zoom</span>
+  </header>
+  <main>
+    <div id="stage-panel">
+      <canvas id="stage"></canvas>
+      <div id="stage-hint">bust: mpfb2 · 52 arkit units + 15 visemes</div>
+    </div>
+    <div id="controls">
+      <h2>Life layer</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="ck-blink" checked> blink</label>
+        <label><input type="checkbox" id="ck-saccades" checked> saccades</label>
+        <label><input type="checkbox" id="ck-idle" checked> idle motion</label>
+      </div>
+
+      <h2>Character</h2>
+      <div class="row">
+        <label style="font-size:0.74rem;color:#a9aec2">model</label>
+        <select id="model-select"></select>
+      </div>
+      <div class="row">
+        <label style="font-size:0.74rem;color:#a9aec2">skin</label>
+        <select id="skin-select"></select>
+      </div>
+      <div class="row">
+        <label style="font-size:0.74rem;color:#a9aec2">eyes</label>
+        <select id="eye-select"></select>
+      </div>
+
+      <h2>Expression presets</h2>
+      <div class="row">
+        <button id="preset-neutral" class="primary">neutral — clear the face</button>
+      </div>
+      <div id="preset-list"></div>
+      <div class="row">
+        <input type="text" id="preset-name" placeholder="preset name">
+        <button id="preset-save" class="primary">save current</button>
+      </div>
+
+      <h2>Transition bench</h2>
+      <div class="row">
+        <select id="tr-a"></select>
+        <span>→</span>
+        <select id="tr-b"></select>
+      </div>
+      <div class="row">
+        <label style="font-size:0.74rem;color:#a9aec2">duration</label>
+        <input type="number" id="tr-dur" class="num" value="0.45" min="0.05" max="5" step="0.05">
+        <select id="tr-ease">
+          <option value="easeInOut">easeInOut</option>
+          <option value="easeOut">easeOut</option>
+          <option value="linear">linear</option>
+        </select>
+        <button id="tr-play" class="primary">play</button>
+        <label style="font-size:0.74rem;color:#a9aec2"><input type="checkbox" id="tr-loop"> loop</label>
+      </div>
+
+      <h2>Dialog bench</h2>
+      <div class="row">
+        <select id="clip-select"><option value="">— no clips found —</option></select>
+      </div>
+      <div class="row">
+        <button id="clip-play" class="primary" disabled>play</button>
+        <button id="clip-stop" disabled>stop</button>
+        <label style="font-size:0.74rem;color:#a9aec2"><input type="checkbox" id="clip-loop"> loop</label>
+        <span id="clip-info" style="font-size:0.72rem;color:#7c8299"></span>
+      </div>
+
+      <h2>Morph sliders</h2>
+      <div class="row">
+        <button id="sliders-zero">reset all to 0</button>
+      </div>
+      <div id="slider-groups"></div>
+
+      <div id="status"></div>
+      <footer id="build-stamp"></footer>
+    </div>
+  </main>
+</div>
+
+<script type="importmap">
+  { "imports": { "three": "../../lib/three/three.module.js" } }
+</script>
+<script src="../../core/dashboard-control.js" defer></script>
+<script type="module" src="lab.js"></script>
+</body>
+</html>

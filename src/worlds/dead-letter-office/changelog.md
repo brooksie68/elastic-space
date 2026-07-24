@@ -3,6 +3,15 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-23 — claude-fable (speech clips gain viseme bakes)
+
+- James dropped the first voice clip into the new `assets/speech-clips/` folder
+  (`test-speech.mp3`); baked its Rhubarb mouth-cue timeline
+  (`test-speech.visemes.json`) with the new `tools/lipsync-bake.mjs`. The clip
+  is playable with lip sync in the Face Lab dialog bench (`src/labs/face-lab/`).
+  No world code touched. This feeds the future postmaster-speech decision — see
+  the Face Lab CLAUDE.md for the pipeline.
+
 ## 2026-07-23 — claude-fable (radio music lands)
 
 - First two Suno tracks for the office's future AM radio (James authored:

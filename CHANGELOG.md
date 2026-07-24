@@ -8,6 +8,27 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Face Lab: expressive-character pipeline, postmaster head rebuild begins)
+
+- New lab `src/labs/face-lab/` (admin panel gets a "Labs" section): three.js workbench
+  with morph sliders, savable expression presets, A→B transition bench, dialog bench
+  playing voice clips with baked lip sync. James: "exactly what I was hoping for."
+- `src/core/face-life.js` — shared runtime: expression crossfade, auto-blink, saccades,
+  Rhubarb viseme playback, idle head motion. Simulation-tested in Node.
+- `tools/lipsync-bake.mjs` — Rhubarb Lip Sync wrapper (binary gitignored under
+  tools/rhubarb/); handles mp3 via Blender's bundled ffmpeg. First DLO speech clip baked.
+- MPFB2 asset packs installed (system assets, faceunits01, visemes02 — all CC0):
+  bust generator with 52 ARKit + 15 viseme morphs; skin/eye-color variant pickers.
+- Postmaster: Meshy anim arms-out diagnosed (tracks, not fixable offset) → James chose
+  full rebuild; MPFB2 realism rejected on sight → pivot to identity dials: `sculpt.glb`
+  carries 140 MakeHuman modeling targets as browser sliders; Claude dial-sculpted the
+  gnome skull (3 render rounds, overdrive past 1.0) → preset "postmaster-head".
+- Wrap-transfer R&D validated then superseded for the head (kept as texture-bake
+  machinery): tmp/face-lab/wrap_transfer4.py — raycast delta transfer onto the Meshy
+  mesh with rigid glasses/cap detection.
+- Next: James tunes the gnome by eye; storybook texture bake; brows/beard/cap/glasses;
+  Mixamo body re-animation; then DLO integration and his voice.
+
 ## 2026-07-24 (Arachno-Wars 2500: fork + graybox movement prototype)
 
 - New world `src/worlds/arachno-wars-2500/` — the spider-vision side-scroller, forked from

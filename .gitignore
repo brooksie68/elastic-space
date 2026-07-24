@@ -17,5 +17,9 @@ Thumbs.db
 # Local scratch
 tmp/
 
+# Rhubarb Lip Sync binary (downloaded, not committed) — tools/lipsync-bake.mjs
+# prints fetch instructions if it is missing.
+tools/rhubarb/
+
 # Obsolete browser-saved page; retain locally, do not publish.
 assets/the plasma pool — pixi.html

@@ -1,0 +1,78 @@
+{
+ "skins": [
+  {
+   "label": "young african",
+   "file": "skins/young_african_male.jpg"
+  },
+  {
+   "label": "young asian",
+   "file": "skins/young_asian_male.jpg"
+  },
+  {
+   "label": "young caucasian",
+   "file": "skins/young_caucasian_male.jpg"
+  },
+  {
+   "label": "middleage african",
+   "file": "skins/middleage_african_male.jpg"
+  },
+  {
+   "label": "middleage asian",
+   "file": "skins/middleage_asian_male.jpg"
+  },
+  {
+   "label": "middleage caucasian",
+   "file": "skins/middleage_caucasian_male.jpg"
+  },
+  {
+   "label": "old african",
+   "file": "skins/old_african_male.jpg"
+  },
+  {
+   "label": "old asian",
+   "file": "skins/old_asian_male.jpg"
+  },
+  {
+   "label": "old caucasian",
+   "file": "skins/old_caucasian_male.jpg"
+  }
+ ],
+ "eyes": [
+  {
+   "label": "blue",
+   "file": "eyes/blue.png"
+  },
+  {
+   "label": "bluegreen",
+   "file": "eyes/bluegreen.png"
+  },
+  {
+   "label": "brown",
+   "file": "eyes/brown.png"
+  },
+  {
+   "label": "brownlight",
+   "file": "eyes/brownlight.png"
+  },
+  {
+   "label": "deepblue",
+   "file": "eyes/deepblue.png"
+  },
+  {
+   "label": "green",
+   "file": "eyes/green.png"
+  },
+  {
+   "label": "grey",
+   "file": "eyes/grey.png"
+  },
+  {
+   "label": "ice",
+   "file": "eyes/ice.png"
+  },
+  {
+   "label": "lightblue",
+   "file": "eyes/lightblue.png"
+  }
+ ]
+}
