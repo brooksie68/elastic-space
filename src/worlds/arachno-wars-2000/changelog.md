@@ -3,6 +3,14 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-24 — Claude (with James) — the fork: side-scroller moves to Arachno-Wars 2500
+
+No code changes here. The "me against the world" direction (logged 2026-07-19 below)
+grew in discussion into the full spider-vision side-scroller, and James chose to fork
+rather than transform: this world is now the intact archive of the artillery duel, and
+the side-scroller lives at `src/worlds/arachno-wars-2500/` (graybox movement prototype
+built today). The tank-color tuner panel todo still belongs to this world.
+
 ## 2026-07-19 — Claude (with James) — HUD line-weight pass + clean practice range
 
 Direction discovery, logged for the next session: James found that unrestricted rapid-fire

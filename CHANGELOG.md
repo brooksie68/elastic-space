@@ -8,6 +8,17 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Arachno-Wars 2500: fork + graybox movement prototype)
+
+- New world `src/worlds/arachno-wars-2500/` — the spider-vision side-scroller, forked from
+  AW2000 (which stays intact as the artillery duel archive). James's go after direction
+  discussion; verdict on first look: "successful test. A long way to go yet."
+- Graybox b1: polygon terrain with cling-anywhere walking (walls/ceilings/undersides),
+  web-pull, fuel rocket, whip-leg IK, dead-zone never-rotating camera, gauntlet level.
+- Physics is a pure shared module; 27-assertion Node sim (tmp/arachno-wars-2500/) passes.
+- Gotcha found: `npm run registry` includes draft worlds — registry reverted so drafts
+  stay out of the drift pool until ship (rule added to CLAUDE.md).
+
 ## 2026-07-23 (Orb Dimension: expansion spec recorded — planning only, no code)
 
 - "The big dimension" phase spec settled with James and recorded in

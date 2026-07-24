@@ -190,6 +190,10 @@ Shipped 2026-07-12 by unarchiving **Arachno-Wars 2000**, the original vanilla-Ca
 untouched; audio routed through the shared sound control; drift exits are faint cobwebs in three
 page corners. Fancier framing (arcade cabinet, web between trees) still open if wanted.
 
+Forked 2026-07-24: the spider-vision side-scroller (`spider-vision.md`'s "someday" game)
+became **Arachno-Wars 2500** → `src/worlds/arachno-wars-2500/` (draft; graybox movement
+prototype). AW2000 stays live as the artillery duel.
+
 ### 53. The Picture House — *an evening to start* — `idea`
 Somewhere a video is playing — a movie screen in an empty theater, a TV glowing in a furnished room. You can sit and watch it. Then you can leave. Or you can leave whenever you want; nothing holds you. The world is just the permission to watch, and the door. What's playing is a separate question, and can change.
 
