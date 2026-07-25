@@ -8,6 +8,22 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (The Valence Lab: new world, phase A — the atom bench)
+
+- New draft world `src/worlds/the-valence-lab/` (James's brief + name): the most
+  realistic molecule visualizer — planned as four gated phases (atoms → bonding →
+  narrated scale-journey chapters → showcase reactions).
+- Phase A built: future lab bench + coherence-scope ring, six specimen vials
+  (H C N O Ne Ar), measurement-swarm electrons where every dot is a true sample of
+  |ψ|² (hydrogen-like orbitals, Slater Zeff, Hund occupancy), fog view, measure
+  collapse, nucleus with honest magnification footnote, valence readout, 10-slider
+  tuner.
+- Physics verified: `node tmp/the-valence-lab/atom-sim.mjs` — 129 assertions
+  (mean radii vs analytic, ⟨cos²α⟩ = 3/5, 2s radial node, isotropy) all pass;
+  in-browser render checked (shaders compile, frame pixel-sampled).
+- Integration: admin panel row (In progress), World Ideas #58, repo todo 0.7.
+  Draft status — no drift/registry/sound until ship. Awaiting James's eyes.
+
 ## 2026-07-24 (Relaaax: music reactivity + Visual DJ Claude + the full expansion)
 
 - Music reactivity: 3 Suno tracks (assets/sound-tracks/), Web Audio analyser ahead

@@ -221,6 +221,18 @@ the 100×100×40 km Orb Dimension expansion, parked on the CLAUDE.md Todo pendin
 planning conversation. Depends on the same tech (depth strategy at long range, camera-local
 dust, clumped population seeding) — build the tech once in Orb Dimension, inherit it here.
 
+### 58. The Valence Lab — *several sessions* — `in progress` → `src/worlds/the-valence-lab/`
+James's brief (2026-07-24): the most realistic molecule visualizer possible — pick
+individual atoms, bring them together, watch valences and electron counts decide what
+forms (two hydrogens + one oxygen → water), electron clouds rendered with their true
+quantum ambiguity, then the story of how one molecule becomes a drop. Chemistry
+playtime: noble-gas refusals, elephant toothpaste, polymers. Setting: stylized-literal
+future lab bench with a "coherence scope" (tech as MacGuffin). Four agreed phases —
+A atom bench / B bonding / C narrated scale-journey chapters / D showcase reactions —
+each gated on James's go. Phase A built 2026-07-24 (draft): six vials (H C N O Ne Ar),
+measurement-swarm electrons sampled from the real |ψ|² (129-assertion sim), valence
+readout, tuner. Physics honesty contract in the world's CLAUDE.md.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
