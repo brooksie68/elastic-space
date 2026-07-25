@@ -54,6 +54,23 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
 - Named places (v38, James-approved): the skull is Korrudan; the reef colonies are
   Yth-Alune (flagship), Sorrek Bloom, Vhal-Imir — NAV_NAMES in world.js, order matches
   REEF_COLONIES.
+- THE COOPERATIVE SOCIETIES (v50, Phase A): the SAELYRI (light-beings) + the CADENCE
+  (machines; named itself in the common tongue). Four communities in COMMUNITIES[]:
+  capital Tonic at CAPITAL_POS in the core, satellites Mediant/Dominant/Subdominant on
+  the anti-colony points of the hexagram (colony ideal angles +60°, radius =
+  colonyDist/2 — DERIVED, never a dial). `communityLayout`/`communityGeometry` are
+  fixed seeded geometry; markers `const SOCIETY_SEED =` … `// society hues` — run
+  `tmp/orb-dimension/society-sim.mjs` after ANY society change (reef-sim also
+  evaluates the block for stations). Rules: bridges never pass within 0.45×shellR of
+  center; node hearts are the long-range read (beacon discipline); detail culls at
+  300km with fade feather — don't fog-exempt society geometry. Stations: capital
+  airspace = radial push (CAPITAL_KEEP, no RNG — never switch it to rejection, that
+  re-rolls the whole forgiving-fuel grid); satellites carry doorstep clusters
+  (counts 76 H2O / 42 DEU since v50). Chord-degree settlement names shipped
+  provisionally — James may veto. Phases B (peoples/acknowledgment), C (resources:
+  crystalline tritium + oxygen/lithium asteroids, harvest verbs), D (reef expansion:
+  4× size, 3 new creatures, gestaltic glyphs, neuronal bodies) each need their own
+  James checkpoint — see changelog v50 + expansion-spec.md.
 - Fuel is deliberately forgiving IN THE CORE and at colony doorsteps: impulse (W/S)
   never burns fuel; H2O feeds the booster, deuterium feeds overdrive (tank seconds in
   cfg since v49); stations refill to FULL on a 150m flyover. The gulf between core and
@@ -109,3 +126,12 @@ Free flight through cave-black space among drifting glowing orbs — and the mil
   reports the fleet flying backwards — glTF says +Z front, unverified by eye.
 - Meshy spend 2026-07-21: 81 credits (5 planet maps, 3 interior paintings, robot
   preview+refine) — James pre-authorized 100.
+- Tuner presets are FILE-BACKED as of v49.4: `assets/presets.json` is the source
+  of truth when served ({ presets: {name: snapshot}, default }), synced via
+  `GET/PUT /api/worlds/:slug/presets` (server.mjs, generic — timestamped backups
+  in tmp/<slug>/preset-backups/). Saving a preset in the tuner writes the file;
+  to see what James saved, just read it. Sessions may also edit it (his picker
+  updates on reload; a changed start preset applies next reload, never
+  mid-flight). localStorage is only the boot cache and file:// fallback — an
+  empty/absent file gets seeded from the browser store on load, so never ship a
+  placeholder presets.json.

@@ -8,6 +8,25 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Orb Dimension v50: the cooperative societies, phase A)
+
+- The Saelyri (light-beings) + the Cadence (machines) — four communities: capital
+  Tonic in the Korrudan core, satellites Mediant/Dominant/Subdominant on the
+  anti-colony hexagram points at ~125 km (derived from colonyDist/2, not a dial).
+- Fully procedural community anatomy: lopsided Cadence cores (iridescent/data
+  glass, slabs, pulse webbing, tesseract frames), 7–9 Saelyri mini-sun nodes on
+  jittered d12 seats, light bridges with two-way pulses (never through the middle).
+- Node hearts ride the beacon system (constellations across the map); satellites
+  got doorstep fuel (stations now 76/42); NAV + GOD MODE grew society sections.
+- New `tmp/orb-dimension/society-sim.mjs` (10 tests) + reef-sim updated — all five
+  sims pass; the four new shaders compile/link-verified. Stamp v50, James approved
+  the first look. Phases B (peoples) / C (resources) / D (reef expansion) each
+  await their own go.
+- Also this session (v49.3→v49.4): tuner presets became file-backed —
+  `assets/presets.json` via generic `GET/PUT /api/worlds/:slug/presets`
+  (server.mjs), localStorage demoted to boot cache / file:// fallback; saving a
+  named preset IS telling Claude. james-prefs-01 set as the start preset.
+
 ## 2026-07-24 (The Valence Lab: new world, phase A — the atom bench)
 
 - New draft world `src/worlds/the-valence-lab/` (James's brief + name): the most

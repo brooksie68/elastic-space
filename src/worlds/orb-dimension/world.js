@@ -63,6 +63,17 @@
     colonyDist: 250,
     colonyVert: 0,
     colonyJitter: 0.5,
+    // v50 the societies — the Cadence + the Saelyri. Satellite distance is
+    // NOT a dial: it derives from colonyDist/2 (James's hexagram spec), so
+    // the six-pointed star survives any ring tuning. Scale/height/jitter
+    // ride sliders during the shaping phase, then freeze with the geography;
+    // nodeGlow and pulseTempo are permanent feel knobs.
+    commVert: 0,
+    commJitter: 0.5,
+    commScale: 8,
+    commSat: 0.66,
+    nodeGlow: 1,
+    pulseTempo: 1,
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -114,6 +125,12 @@
     { key: "colonyDist", label: "ring dist km", min: 60, max: 450, step: 5, layout: true },
     { key: "colonyVert", label: "ring height km", min: -80, max: 80, step: 2, layout: true },
     { key: "colonyJitter", label: "ring jitter", min: 0, max: 1, step: 0.05, layout: true },
+    { key: "commScale", label: "capital size km", min: 3, max: 14, step: 0.5, layout: true },
+    { key: "commSat", label: "satellite scale", min: 0.3, max: 1, step: 0.02, layout: true },
+    { key: "commVert", label: "societies height km", min: -60, max: 60, step: 2, layout: true },
+    { key: "commJitter", label: "societies jitter", min: 0, max: 1, step: 0.05, layout: true },
+    { key: "nodeGlow", label: "node glow", min: 0, max: 2, step: 0.05 },
+    { key: "pulseTempo", label: "pulse tempo", min: 0.2, max: 3, step: 0.05 },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -159,11 +176,42 @@
       presetStore = { presets: raw.presets, default: raw.default || null };
     }
   } catch {}
+  // v49.4: when served, the preset FILE is the source of truth —
+  // assets/presets.json via the dev server — so saving a named preset is
+  // already "telling Claude". localStorage stays as the boot cache and the
+  // file:// fallback; every change mirrors to both. A change to the file's
+  // start preset applies on the next reload, never mid-flight.
+  const PRESET_API = "/api/worlds/orb-dimension/presets";
+  let onPresetStoreReplaced = null; // the tuner hooks its picker refresh here
+  function pushPresetFile() {
+    fetch(PRESET_API, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(presetStore),
+    }).catch(() => {}); // file:// or server down — localStorage still has it
+  }
   function savePresetStore() {
     try {
       localStorage.setItem(PRESET_KEY, JSON.stringify(presetStore));
     } catch {}
+    pushPresetFile();
   }
+  fetch(PRESET_API)
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((file) => {
+      if (!file || typeof file.presets !== "object" || file.presets === null) return;
+      const fileEmpty = Object.keys(file.presets).length === 0;
+      if (fileEmpty && Object.keys(presetStore.presets).length > 0) {
+        pushPresetFile(); // fresh file, presets in this browser: seed it
+        return;
+      }
+      presetStore = { presets: file.presets, default: file.default || null };
+      try {
+        localStorage.setItem(PRESET_KEY, JSON.stringify(presetStore));
+      } catch {}
+      if (onPresetStoreReplaced) onPresetStoreReplaced();
+    })
+    .catch(() => {}); // file:// — localStorage rules
   function cfgSnapshot() {
     const snap = { grouping: cfg.grouping, stickMode: cfg.stickMode };
     for (const s of SLIDERS) snap[s.key] = cfg[s.key];
@@ -194,7 +242,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v49.2";
+    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v50";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -1492,6 +1540,298 @@ void main() {
     return out;
   }
 
+  // ---- the cooperative societies (v50): the Cadence + the Saelyri -----------
+  // Four communities of the robot / energy-being cooperative. The capital sits
+  // in the Korrudan core in its own precinct; three satellites take the
+  // OPPOSITE points of a six-pointed star against the reef colonies (James's
+  // hexagram spec): colony ideal angles + 60°, at HALF the ring radius, with
+  // their own seeded jitter and height. Each community: a lopsided mechanical
+  // intelligence core (the Cadence) ringed by 7–9 sun-like energy nodes (the
+  // Saelyri) on a jittered dodeca-face shell, joined by light bridges that
+  // never cross the middle. Deterministic like everything here — society-sim
+  // extracts this block verbatim. Markers: `const SOCIETY_SEED` … `// society hues`.
+  const SOCIETY_SEED = 0xcade05ae;
+  const CAPITAL_POS = [-15000, 2600, -12000]; // precinct: off-corridor, far from the Lantern
+  const CAPITAL_KEEP = 5200; // station-grid exclusion around the capital's core (m)
+  const COMMUNITIES = [
+    // Names are the Cadence's own — machines name themselves in the common
+    // tongue, and a society that thinks in clock cycles names its settlements
+    // for the degrees of its home chord. scale is filled by applyCommunityLayout.
+    { name: "Tonic", c: null, scale: 1, shellR: 0, coreR: 0 },
+    { name: "Mediant", c: null, scale: 0, shellR: 0, coreR: 0 },
+    { name: "Dominant", c: null, scale: 0, shellR: 0, coreR: 0 },
+    { name: "Subdominant", c: null, scale: 0, shellR: 0, coreR: 0 },
+  ];
+  function communityLayout(colonyDistKm, vertKm, jitter) {
+    const R = mulberry32(SOCIETY_SEED);
+    const seats = [CAPITAL_POS.slice()];
+    const base = TAU * 0.125 + TAU / 6; // the colonies' ideal angles, rotated 60°
+    for (let i = 0; i < 3; i++) {
+      const ang = base + (i / 3) * TAU + (R() - 0.5) * jitter * (TAU / 3) * 0.5;
+      const d = colonyDistKm * 500 * (1 + (R() - 0.5) * jitter * 0.24); // half the ring
+      const y = vertKm * 1000 + (R() - 0.5) * jitter * 24000;
+      seats.push([Math.cos(ang) * d, y, Math.sin(ang) * d]);
+    }
+    return seats;
+  }
+  function applyCommunityLayout(colonyDistKm, vertKm, jitter, satScale) {
+    const seats = communityLayout(colonyDistKm, vertKm, jitter);
+    for (let i = 0; i < COMMUNITIES.length; i++) {
+      COMMUNITIES[i].c = seats[i];
+      COMMUNITIES[i].scale = i === 0 ? 1 : satScale;
+    }
+  }
+  // pure geometry from the seed: per community, interleaved vertex arrays for
+  // the three passes (15 floats: pos3 norm3 uv2 aux4 center3; aux = kind,
+  // phase, extra, fam) plus the node list for beacons/actors. Solid = metal
+  // slabs, struts, hypercube frames; glass = iridescent planes, data planes,
+  // node crystals; bridge = pulse ribbons between neighbor nodes.
+  function communityGeometry(coreKm) {
+    const R = mulberry32(SOCIETY_SEED ^ 0x51ee7);
+    const rr = (a, b) => a + R() * (b - a);
+    const cross3 = (a, b) => [
+      a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const norm3 = (a) => {
+      const l = Math.hypot(a[0], a[1], a[2]) || 1;
+      return [a[0] / l, a[1] / l, a[2] / l];
+    };
+    const rdir = () => {
+      const u = rr(-1, 1), th = rr(0, TAU), s = Math.sqrt(Math.max(0, 1 - u * u));
+      return [Math.cos(th) * s, u, Math.sin(th) * s];
+    };
+    // the 12 face centers of a dodecahedron (= icosahedron vertices): the
+    // "d12" seats James described for the node shell
+    const PHI = (1 + Math.sqrt(5)) / 2;
+    const D12 = [];
+    for (const s1 of [-1, 1]) for (const s2 of [-1, 1]) {
+      D12.push(norm3([0, s1, s2 * PHI]), norm3([s1, s2 * PHI, 0]), norm3([s2 * PHI, 0, s1]));
+    }
+    const out = [];
+    for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+      const com = COMMUNITIES[ci];
+      const S = coreKm * 1000 * com.scale;
+      const shellR = S * 1.25;
+      const ex = [S * 0.55, S * 0.4, S * 0.45];
+      const lop = [rr(0.55, 1), rr(0.55, 1), rr(0.55, 1)]; // squashed negative octants → lopsided
+      const solid = { v: [], i: [] }, glass = { v: [], i: [] }, bridge = { v: [], i: [] };
+      const vert = (m, p, n, u, v, aux, ec) => {
+        m.v.push(p[0], p[1], p[2], n[0], n[1], n[2], u, v, aux[0], aux[1], aux[2], aux[3], ec[0], ec[1], ec[2]);
+      };
+      const quad = (m, c, eu, ev, aux, ec) => {
+        const b = m.v.length / 15;
+        const n = norm3(cross3(eu, ev));
+        vert(m, [c[0] - eu[0] - ev[0], c[1] - eu[1] - ev[1], c[2] - eu[2] - ev[2]], n, 0, 0, aux, ec);
+        vert(m, [c[0] + eu[0] - ev[0], c[1] + eu[1] - ev[1], c[2] + eu[2] - ev[2]], n, 1, 0, aux, ec);
+        vert(m, [c[0] + eu[0] + ev[0], c[1] + eu[1] + ev[1], c[2] + eu[2] + ev[2]], n, 1, 1, aux, ec);
+        vert(m, [c[0] - eu[0] + ev[0], c[1] - eu[1] + ev[1], c[2] - eu[2] + ev[2]], n, 0, 1, aux, ec);
+        m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+      };
+      const frame3 = (d) => {
+        const a = norm3(d);
+        const ref = Math.abs(a[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+        const b = norm3(cross3(ref, a));
+        return [a, b, cross3(a, b)];
+      };
+      // strut: a thin box from p to q; uv.x runs 0→1 along it (the pulse path)
+      const strut = (m, p, q, w, aux) => {
+        const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        const [a, b, c2] = frame3(d);
+        const ec = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+        for (const [e1, e2] of [[b, c2], [c2, b]]) {
+          for (const sgn of [-1, 1]) {
+            const off = [e1[0] * w * sgn, e1[1] * w * sgn, e1[2] * w * sgn];
+            const bI = m.v.length / 15;
+            const n = sgn < 0 ? [-e1[0], -e1[1], -e1[2]] : e1;
+            vert(m, [p[0] + off[0] - e2[0] * w, p[1] + off[1] - e2[1] * w, p[2] + off[2] - e2[2] * w], n, 0, 0, aux, ec);
+            vert(m, [q[0] + off[0] - e2[0] * w, q[1] + off[1] - e2[1] * w, q[2] + off[2] - e2[2] * w], n, 1, 0, aux, ec);
+            vert(m, [q[0] + off[0] + e2[0] * w, q[1] + off[1] + e2[1] * w, q[2] + off[2] + e2[2] * w], n, 1, 1, aux, ec);
+            vert(m, [p[0] + off[0] + e2[0] * w, p[1] + off[1] + e2[1] * w, p[2] + off[2] + e2[2] * w], n, 0, 1, aux, ec);
+            m.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+          }
+        }
+      };
+      const envPoint = (f) => {
+        const p = [rr(-1, 1), rr(-1, 1), rr(-1, 1)];
+        for (let a = 0; a < 3; a++) p[a] *= ex[a] * f * (p[a] < 0 ? lop[a] : 1);
+        return p;
+      };
+      const famHere = ci === 0 ? -1 : (ci * 2) % 5; // the capital speaks in every color
+      const pickFam = () => (famHere < 0 || R() < 0.3 ? (R() * 5) | 0 : famHere);
+      // -- the Cadence core: glass planes, data planes, slabs, webbing, frames
+      for (let i = 0; i < 78; i++) {
+        const [a, b] = [rdir(), rdir()];
+        const eu = norm3(cross3(a, b));
+        const ev = norm3(cross3(a, eu));
+        const h1 = rr(0.05, 0.22) * S, h2 = rr(0.05, 0.22) * S;
+        quad(glass, envPoint(0.95), [eu[0] * h1, eu[1] * h1, eu[2] * h1],
+          [ev[0] * h2, ev[1] * h2, ev[2] * h2], [0, rr(0, TAU), 0, pickFam()], [0, 0, 0]);
+      }
+      for (let i = 0; i < 24; i++) {
+        const [a, , ] = frame3(rdir());
+        const eu = norm3(cross3(Math.abs(a[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0], a));
+        const ev = cross3(a, eu); // data planes lean upright — readable rain
+        const h1 = rr(0.06, 0.18) * S, h2 = rr(0.09, 0.24) * S;
+        quad(glass, envPoint(0.85), [eu[0] * h1, eu[1] * h1, eu[2] * h1],
+          [ev[0] * h2, ev[1] * h2, ev[2] * h2], [1, rr(0, TAU), 0, pickFam()], [0, 0, 0]);
+      }
+      for (let i = 0; i < 40; i++) {
+        const c = envPoint(0.88);
+        const ax = frame3(rdir());
+        const h = [rr(0.04, 0.16) * S, rr(0.012, 0.034) * S, rr(0.04, 0.14) * S];
+        const aux = [0, rr(0, TAU), 0, pickFam()];
+        for (let f = 0; f < 3; f++) {
+          const e = ax[f], e1 = ax[(f + 1) % 3], e2 = ax[(f + 2) % 3];
+          const he = h[f], s1 = h[(f + 1) % 3], s2 = h[(f + 2) % 3];
+          for (const sgn of [-1, 1]) {
+            quad(solid,
+              [c[0] + e[0] * he * sgn, c[1] + e[1] * he * sgn, c[2] + e[2] * he * sgn],
+              [e1[0] * s1, e1[1] * s1, e1[2] * s1],
+              [e2[0] * s2 * sgn, e2[1] * s2 * sgn, e2[2] * s2 * sgn],
+              aux, c);
+          }
+        }
+      }
+      for (let i = 0; i < 110; i++) {
+        const p = envPoint(1), q = envPoint(1);
+        if (Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < S * 0.18) continue;
+        strut(solid, p, q, rr(0.0022, 0.0048) * S, [1, rr(0, TAU), 0, pickFam()]);
+      }
+      for (let i = 0; i < 8; i++) {
+        const c = envPoint(0.7);
+        const [a, b, c2] = frame3(rdir());
+        const h = rr(0.06, 0.17) * S;
+        const aux = [1, rr(0, TAU), 0, pickFam()];
+        for (const s of [1, 0.55]) {
+          const corners = [];
+          for (const s1 of [-1, 1]) for (const s2 of [-1, 1]) for (const s3 of [-1, 1]) {
+            corners.push([
+              c[0] + (a[0] * s1 + b[0] * s2 + c2[0] * s3) * h * s,
+              c[1] + (a[1] * s1 + b[1] * s2 + c2[1] * s3) * h * s,
+              c[2] + (a[2] * s1 + b[2] * s2 + c2[2] * s3) * h * s]);
+          }
+          const E = [[0, 1], [0, 2], [1, 3], [2, 3], [4, 5], [4, 6], [5, 7], [6, 7], [0, 4], [1, 5], [2, 6], [3, 7]];
+          for (const [ea, eb] of E) strut(solid, corners[ea], corners[eb], 0.0022 * S, aux);
+        }
+        // the tesseract gesture: outer corner to inner corner, four of them
+        for (const k of [0, 3, 5, 6]) {
+          const s1 = [(k & 1) ? 1 : -1, (k & 2) ? 1 : -1, (k & 4) ? 1 : -1];
+          const pOut = [
+            c[0] + (a[0] * s1[0] + b[0] * s1[1] + c2[0] * s1[2]) * h,
+            c[1] + (a[1] * s1[0] + b[1] * s1[1] + c2[1] * s1[2]) * h,
+            c[2] + (a[2] * s1[0] + b[2] * s1[1] + c2[2] * s1[2]) * h];
+          const pIn = [
+            c[0] + (a[0] * s1[0] + b[0] * s1[1] + c2[0] * s1[2]) * h * 0.55,
+            c[1] + (a[1] * s1[0] + b[1] * s1[1] + c2[1] * s1[2]) * h * 0.55,
+            c[2] + (a[2] * s1[0] + b[2] * s1[1] + c2[2] * s1[2]) * h * 0.55];
+          strut(solid, pOut, pIn, 0.0018 * S, aux);
+        }
+      }
+      // -- the Saelyri shell: 7–9 nodes on jittered d12 seats, flattened a
+      // touch so the community reads as a place, not a cage
+      const nNodes = 7 + ((R() * 3) | 0);
+      const order12 = D12.map((d, i) => i);
+      for (let i = order12.length - 1; i > 0; i--) {
+        const j = (R() * (i + 1)) | 0;
+        [order12[i], order12[j]] = [order12[j], order12[i]];
+      }
+      const nodes = [];
+      for (let i = 0; i < nNodes; i++) {
+        const d = D12[order12[i]];
+        const rad = shellR * (1 + (R() - 0.5) * 0.28);
+        const p = [
+          d[0] * rad + (R() - 0.5) * 0.22 * shellR,
+          (d[1] * rad + (R() - 0.5) * 0.22 * shellR) * 0.78,
+          d[2] * rad + (R() - 0.5) * 0.22 * shellR];
+        nodes.push({ p, r: shellR * rr(0.055, 0.115), fam: pickFam(), phase: rr(0, TAU) });
+      }
+      // node crystals: intersecting glass planes inside each little sun
+      for (const nd of nodes) {
+        for (let i = 0; i < 11; i++) {
+          const [a, b] = [rdir(), rdir()];
+          const eu = norm3(cross3(a, b));
+          const ev = norm3(cross3(a, eu));
+          const h1 = rr(0.35, 0.8) * nd.r, h2 = rr(0.35, 0.8) * nd.r;
+          const c = [
+            nd.p[0] + (R() - 0.5) * nd.r * 1.1,
+            nd.p[1] + (R() - 0.5) * nd.r * 1.1,
+            nd.p[2] + (R() - 0.5) * nd.r * 1.1];
+          quad(glass, c, [eu[0] * h1, eu[1] * h1, eu[2] * h1],
+            [ev[0] * h2, ev[1] * h2, ev[2] * h2], [2, nd.phase, nd.r, nd.fam], nd.p);
+        }
+      }
+      // -- bridges: each node to its 2 nearest neighbors AROUND the shell —
+      // never through the middle (James's rule; the sim asserts it)
+      const edges = [];
+      const hasEdge = (a, b) => edges.some((e) => (e[0] === a && e[1] === b) || (e[0] === b && e[1] === a));
+      const midClear = (a, b) => {
+        // distance from the community center to the a→b segment
+        const p = nodes[a].p, q = nodes[b].p;
+        const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        const L2 = d[0] * d[0] + d[1] * d[1] + d[2] * d[2] || 1;
+        const t = Math.max(0, Math.min(1, -(p[0] * d[0] + p[1] * d[1] + p[2] * d[2]) / L2));
+        return Math.hypot(p[0] + d[0] * t, p[1] + d[1] * t, p[2] + d[2] * t) > shellR * 0.45;
+      };
+      const byDist = (a) => nodes.map((nd, i) => i).filter((i) => i !== a).sort((i, j) => {
+        const di = Math.hypot(nodes[i].p[0] - nodes[a].p[0], nodes[i].p[1] - nodes[a].p[1], nodes[i].p[2] - nodes[a].p[2]);
+        const dj = Math.hypot(nodes[j].p[0] - nodes[a].p[0], nodes[j].p[1] - nodes[a].p[1], nodes[j].p[2] - nodes[a].p[2]);
+        return di - dj;
+      });
+      for (let a = 0; a < nodes.length; a++) {
+        let deg = edges.filter((e) => e[0] === a || e[1] === a).length;
+        for (const b of byDist(a)) {
+          if (deg >= 2) break;
+          if (!hasEdge(a, b) && midClear(a, b)) { edges.push([a, b]); deg++; }
+        }
+      }
+      // stitch any separated islands to their closest neighbor island
+      const comp = nodes.map((nd, i) => i);
+      const find = (x) => (comp[x] === x ? x : (comp[x] = find(comp[x])));
+      for (const [a, b] of edges) comp[find(a)] = find(b);
+      for (let guard = 0; guard < 12; guard++) {
+        const roots = new Set(nodes.map((nd, i) => find(i)));
+        if (roots.size < 2) break;
+        let best = null, bd = Infinity;
+        for (let a = 0; a < nodes.length; a++) for (let b = a + 1; b < nodes.length; b++) {
+          if (find(a) === find(b) || !midClear(a, b)) continue;
+          const d = Math.hypot(nodes[a].p[0] - nodes[b].p[0], nodes[a].p[1] - nodes[b].p[1], nodes[a].p[2] - nodes[b].p[2]);
+          if (d < bd) { bd = d; best = [a, b]; }
+        }
+        if (!best) break;
+        edges.push(best);
+        comp[find(best[0])] = find(best[1]);
+      }
+      // ribbons: two crossed long quads per bridge, trimmed to the node skins;
+      // uv.x is the pulse path, aux carries both endpoint families
+      for (const [a, b] of edges) {
+        const p0 = nodes[a].p, q0 = nodes[b].p;
+        const d = norm3([q0[0] - p0[0], q0[1] - p0[1], q0[2] - p0[2]]);
+        const p = [p0[0] + d[0] * nodes[a].r, p0[1] + d[1] * nodes[a].r, p0[2] + d[2] * nodes[a].r];
+        const q = [q0[0] - d[0] * nodes[b].r, q0[1] - d[1] * nodes[b].r, q0[2] - d[2] * nodes[b].r];
+        const w = Math.max(24, Math.min(nodes[a].r, nodes[b].r) * 0.1);
+        const [, e1, e2] = frame3(d);
+        const mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+        const aux = [nodes[a].fam, nodes[b].fam, rr(0, TAU), 0];
+        for (const e of [e1, e2]) {
+          const bI = bridge.v.length / 15;
+          const n = e === e1 ? e2 : e1;
+          vert(bridge, [p[0] - e[0] * w, p[1] - e[1] * w, p[2] - e[2] * w], n, 0, 0, aux, mid);
+          vert(bridge, [q[0] - e[0] * w, q[1] - e[1] * w, q[2] - e[2] * w], n, 1, 0, aux, mid);
+          vert(bridge, [q[0] + e[0] * w, q[1] + e[1] * w, q[2] + e[2] * w], n, 1, 1, aux, mid);
+          vert(bridge, [p[0] + e[0] * w, p[1] + e[1] * w, p[2] + e[2] * w], n, 0, 1, aux, mid);
+          bridge.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+        }
+      }
+      com.shellR = shellR;
+      com.coreR = Math.max(ex[0], ex[1], ex[2]);
+      out.push({ solid, glass, bridge, nodes, edges, shellR, coreR: com.coreR });
+    }
+    return out;
+  }
+  // society hues: the same five families the reefs speak — one dimension, one
+  // language of light. (Shared deliberately: the Saelyri and the reef life
+  // are relatives; the plan's later phases lean on that.)
+  const SOC_FAMS = REEF_FAMS;
+
   // ---- fuel stations (v38) --------------------------------------------------
   // 64 water globes + 36 deuterium depots at fixed seeded positions — fuel is
   // "quite forgiving": from anywhere in the volume the nearest water is a
@@ -1525,6 +1865,23 @@ void main() {
     };
     place(out.h2o, 4, 4, 4); // 64
     place(out.deu, 3, 4, 3); // 36
+    // v50: the capital's airspace — any grid station inside CAPITAL_KEEP gets
+    // pushed radially to just outside it (the assemble() skull-KEEP pattern,
+    // no RNG consumed), so the v38 forgiving-fuel distribution survives the
+    // society untouched. Constant radius, not the commScale dial: the
+    // generator stays pure; the geography freeze settles any tuning overlap.
+    for (const arr of [out.h2o, out.deu]) {
+      for (const s of arr) {
+        const dx = s[0] - CAPITAL_POS[0], dy = s[1] - CAPITAL_POS[1], dz = s[2] - CAPITAL_POS[2];
+        const d = Math.hypot(dx, dy, dz);
+        if (d < CAPITAL_KEEP) {
+          const f = (CAPITAL_KEEP * 1.06) / Math.max(d, 1);
+          s[0] = CAPITAL_POS[0] + dx * f;
+          s[1] = CAPITAL_POS[1] + dy * f;
+          s[2] = CAPITAL_POS[2] + dz * f;
+        }
+      }
+    }
     // v49: each ring colony gets a doorstep cluster — two water globes and a
     // deuterium depot a short hop out from its heart (outside the reef shell,
     // inside a minute of impulse). The destinations have gas; the full
@@ -1538,10 +1895,28 @@ void main() {
       const dd = col.shell + 2400 + R() * 1800;
       out.deu.push([cc[0] + Math.cos(a0 + Math.PI / 2) * dd, cc[1] + (R() - 0.5) * 900, cc[2] + Math.sin(a0 + Math.PI / 2) * dd]);
     }
+    // v50: the satellite societies get doorstep fuel too — they sit far
+    // outside the core grid, and a cooperative society's welcome is a full
+    // tank. Two water + one deuterium just outside each node shell. The
+    // capital skips this: it lives IN the grid already.
+    for (let i = 1; i < COMMUNITIES.length; i++) {
+      const cc = COMMUNITIES[i].c;
+      const sh = COMMUNITIES[i].shellR || 8000;
+      const a0 = R() * TAU;
+      const dh = sh + 2200 + R() * 1600;
+      out.h2o.push([cc[0] + Math.cos(a0) * dh, cc[1] + (R() - 0.5) * 1200, cc[2] + Math.sin(a0) * dh]);
+      out.h2o.push([cc[0] + Math.cos(a0 + Math.PI) * dh, cc[1] + (R() - 0.5) * 1200, cc[2] + Math.sin(a0 + Math.PI) * dh]);
+      const dd = sh + 3000 + R() * 2000;
+      out.deu.push([cc[0] + Math.cos(a0 + Math.PI / 2) * dd, cc[1] + (R() - 0.5) * 1200, cc[2] + Math.sin(a0 + Math.PI / 2) * dd]);
+    }
     return out;
   }
   // station hues: water blues; deuterium's hot amber-green
   applyColonyLayout(cfg.colonyDist, cfg.colonyVert, cfg.colonyJitter);
+  // v50 order matters: community geometry fills each society's shellR, which
+  // stationGeometry needs for the satellite doorstep clusters.
+  applyCommunityLayout(cfg.colonyDist, cfg.commVert, cfg.commJitter, cfg.commSat);
+  let COMM_GEO = communityGeometry(cfg.commScale);
   let STATIONS = stationGeometry();
 
   function makeStations() {
@@ -1950,8 +2325,40 @@ void main() {
   let eyeOrbs = [];
   let reefOrbs = [];
   let stationOrbs = [];
+  let commOrbs = [];
   let fieldPool = [];
   let dustPool = [];
+  // v50 society GPU state — filled by the program section further down;
+  // uploadCommunities() no-ops until then (relayout runs once before GL init).
+  const commGL = { inited: false, solid: null, glass: null, bridge: null, meshes: [] };
+
+  // v50: each Saelyri node carries a heart-flagged glow — the beacon trick
+  // (fog-proof, never smaller than a star), so every society reads from
+  // across the 1,000 km as a small constellation in its family colors.
+  function makeCommunityOrbs() {
+    const out = [];
+    for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+      const com = COMMUNITIES[ci];
+      const geo = COMM_GEO[ci];
+      if (!com.c || !geo) continue;
+      for (const nd of geo.nodes) {
+        const [h1, h2] = SOC_FAMS[nd.fam];
+        const b = baseOrb([0, 0, 0], false, false);
+        b.heart = true;
+        b.fix = [com.c[0] + nd.p[0], com.c[1] + nd.p[1], com.c[2] + nd.p[2]];
+        b.fixedR = nd.r * 0.5;
+        b.h1 = rand(h1, h2);
+        b.h2 = rand(h1, h2);
+        b.sat = 72;
+        b.fadeDur = 6 + (nd.phase / TAU) * 6; // each sun breathes its own tempo
+        b.halo = 2.2;
+        b.spin = 0;
+        b.variant = 0;
+        out.push(b);
+      }
+    }
+    return out;
+  }
 
   function newGroupCtx() {
     return {
@@ -2083,6 +2490,7 @@ void main() {
       eyeOrbs,
       reefOrbs,
       stationOrbs,
+      commOrbs,
       actorOrbs,
       veilOrbs,
       dustPool.slice(0, cfg.dust),
@@ -2134,9 +2542,13 @@ void main() {
   // never-re-roll rule holds while James drags the ring sliders.
   function relayout() {
     applyColonyLayout(cfg.colonyDist, cfg.colonyVert, cfg.colonyJitter);
+    applyCommunityLayout(cfg.colonyDist, cfg.commVert, cfg.commJitter, cfg.commSat);
+    COMM_GEO = communityGeometry(cfg.commScale); // before stations: shellR feeds doorsteps
+    uploadCommunities();
     STATIONS = stationGeometry();
     reefOrbs = makeReef();
     stationOrbs = makeStations();
+    commOrbs = makeCommunityOrbs();
     makeActors(); // after makeReef — the colony life needs the polyp lists
     assemble();
   }
@@ -2713,6 +3125,189 @@ void main() {
       // no pyramid on file:// — the floor keeps its dark
     }
   })();
+
+  // ---- the societies' bodies (v50): fully procedural — no fetch, no Meshy,
+  // so the Cadence stands even on file://. Three programs share one vertex
+  // layout (15 floats: pos3 norm3 uv2 aux4 center3; aux = kind, phase, extra,
+  // fam). Vertices are community-local; uOrigin arrives in ship space per
+  // community (v49 camera-relative discipline — never world coords).
+  const COMM_VS = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=2) in vec2 aUV;
+layout(location=3) in vec4 aAux;
+layout(location=4) in vec3 aCenter;
+uniform mat4 uVP;
+uniform vec3 uOrigin;
+out vec3 vP;
+out vec3 vN;
+out vec2 vUV;
+out vec4 vAux;
+out vec3 vC;
+void main() {
+  vP = aPos + uOrigin;
+  vN = aNorm;
+  vUV = aUV;
+  vAux = aAux;
+  vC = aCenter + uOrigin;
+  gl_Position = uVP * vec4(vP, 1.0);
+}`;
+  const COMM_HUE = `
+vec3 hueCol(float h) {
+  float x = h / 360.0;
+  return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+}`;
+  // the Cadence's metal: gunmetal slabs and webbing, readability over realism
+  // (partial self-light like the robots); struts run a data pulse end to end
+  const COMM_FS_SOLID = `#version 300 es
+precision highp float;
+uniform vec3 uCamPos;
+uniform float uFog;
+uniform float uTime;
+uniform float uTempo;
+uniform float uFade;
+uniform float uFams[5];
+in vec3 vP;
+in vec3 vN;
+in vec2 vUV;
+in vec4 vAux;
+in vec3 vC;
+out vec4 oC;
+${COMM_HUE}
+void main() {
+  vec3 N = normalize(vN);
+  float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
+  float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
+  vec3 col = vec3(0.30, 0.33, 0.38) *
+    (vec3(0.22, 0.23, 0.26) + key * vec3(0.85, 0.9, 1.0) * 0.85 + rim * vec3(0.35, 0.42, 0.55) * 0.3);
+  if (vAux.x > 0.5) {
+    vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
+    float p = fract(vUV.x - uTime * uTempo * 0.22 + vAux.y);
+    col += famc * (exp(-60.0 * abs(p - 0.5)) * 1.6 + 0.05);
+  }
+  col *= exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
+  oC = vec4(col, 1.0);
+}`;
+  // the glass: iridescent planes (thin-film shimmer riding the fresnel),
+  // data planes raining bright dashes, and the node crystals — each little
+  // sun glows from within, throbbing on its own phase
+  const COMM_FS_GLASS = `#version 300 es
+precision highp float;
+uniform vec3 uCamPos;
+uniform float uFog;
+uniform float uTime;
+uniform float uTempo;
+uniform float uFade;
+uniform float uGlow;
+uniform float uFams[5];
+in vec3 vP;
+in vec3 vN;
+in vec2 vUV;
+in vec4 vAux;
+in vec3 vC;
+out vec4 oC;
+${COMM_HUE}
+void main() {
+  vec3 N = normalize(vN);
+  vec3 V = normalize(uCamPos - vP);
+  float fres = pow(1.0 - abs(dot(N, V)), 2.4);
+  vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
+  vec3 col;
+  float a;
+  if (vAux.x < 0.5) {
+    vec3 iri = 0.5 + 0.5 * cos(6.2832 * (fres * 3.0 + vAux.y) + vec3(0.0, 2.1, 4.2));
+    col = vec3(0.45, 0.6, 0.8) * (0.05 + fres * 0.5) + iri * fres * 0.4;
+    a = 0.05 + fres * 0.5;
+  } else if (vAux.x < 1.5) {
+    float colX = floor(vUV.x * 22.0);
+    float sp = 0.3 + fract(sin(colX * 12.9898 + vAux.y) * 43758.5453) * 0.9;
+    float ph = fract(sin(colX * 78.233 + vAux.y) * 12543.853);
+    float yy = fract(vUV.y * 3.0 + uTime * uTempo * sp * 0.22 + ph);
+    float dash = step(0.82, fract(yy * 9.0));
+    col = vec3(0.4, 0.55, 0.75) * (0.04 + fres * 0.35) + famc * dash * (0.5 + fres);
+    a = 0.06 + fres * 0.4 + dash * 0.25;
+  } else {
+    float d = distance(vP, vC) / max(vAux.z, 1.0);
+    float sun = uGlow * (0.55 + 0.45 * sin(uTime * (0.5 + vAux.y * 0.13) + vAux.y)) * 1.6 / (d * d * 9.0 + 0.35);
+    col = famc * (0.05 + fres * 0.5) + mix(famc, vec3(1.0), 0.35) * sun;
+    a = clamp(0.10 + fres * 0.5 + sun * 0.35, 0.0, 0.9);
+  }
+  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
+  oC = vec4(col * a * fogF, a * fogF);
+}`;
+  // the bridges: a hot center line between two suns, pulse packets running
+  // both directions, each carrying its home node's color across the gap
+  const COMM_FS_BRIDGE = `#version 300 es
+precision highp float;
+uniform vec3 uCamPos;
+uniform float uFog;
+uniform float uTime;
+uniform float uTempo;
+uniform float uFade;
+uniform float uFams[5];
+in vec3 vP;
+in vec3 vN;
+in vec2 vUV;
+in vec4 vAux;
+in vec3 vC;
+out vec4 oC;
+${COMM_HUE}
+void main() {
+  float acc = exp(-14.0 * abs(vUV.y - 0.5));
+  vec3 grad = mix(hueCol(uFams[int(vAux.x + 0.5)]), hueCol(uFams[int(vAux.y + 0.5)]), vUV.x);
+  float p1 = fract(vUV.x - uTime * uTempo * 0.11 + vAux.z);
+  float p2 = fract(-vUV.x - uTime * uTempo * 0.085 + vAux.z * 1.7);
+  float pk = exp(-90.0 * abs(p1 - 0.5)) + exp(-90.0 * abs(p2 - 0.5));
+  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
+  oC = vec4(grad * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
+}`;
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]"];
+  function makeCommVao(mesh) {
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.v), gl.STATIC_DRAW);
+    const attr = (loc, n, off) => {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 60, off);
+    };
+    attr(0, 3, 0); attr(1, 3, 12); attr(2, 2, 24); attr(3, 4, 32); attr(4, 3, 48);
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(mesh.i), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, vb, ib, count: mesh.i.length };
+  }
+  function uploadCommunities() {
+    if (!commGL.inited) return; // first relayout runs before GL init; init re-calls
+    for (const m of commGL.meshes) {
+      for (const part of [m.solid, m.glass, m.bridge]) {
+        gl.deleteVertexArray(part.vao);
+        gl.deleteBuffer(part.vb);
+        gl.deleteBuffer(part.ib);
+      }
+    }
+    commGL.meshes = COMM_GEO.map((g) => ({
+      solid: makeCommVao(g.solid),
+      glass: makeCommVao(g.glass),
+      bridge: makeCommVao(g.bridge),
+    }));
+  }
+  {
+    const fams = new Float32Array(SOC_FAMS.map(([a, b]) => (a + b) / 2));
+    commGL.solid = makeProg(COMM_VS, COMM_FS_SOLID, COMM_US);
+    commGL.glass = makeProg(COMM_VS, COMM_FS_GLASS, COMM_US);
+    commGL.bridge = makeProg(COMM_VS, COMM_FS_BRIDGE, COMM_US);
+    for (const pr of [commGL.solid, commGL.glass, commGL.bridge]) {
+      gl.useProgram(pr.p);
+      gl.uniform1fv(pr.U["uFams[0]"], fams);
+      gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]); // v49: ship space, forever
+    }
+    gl.useProgram(prog);
+    commGL.inited = true;
+    uploadCommunities();
+  }
 
   // ---- the fleet's body (v47): James's Meshy service robot, prepped by
   // tmp/orb-dimension/robot_prep.py into robot.bin + a 1K basecolor.
@@ -3299,11 +3894,29 @@ void main() {
     gl.depthMask(true); // clear respects the mask — re-arm it every frame
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // v50: which societies are in range this frame (far→near for blending).
+    // Beyond ~300km the detail is culled — fog has long eaten it, and the
+    // node hearts carry the long-range read; uFade feathers the boundary so
+    // a zero-haze tuner setting never sees a pop.
+    const commDraw = [];
+    if (commGL.inited) {
+      for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+        const c = COMMUNITIES[ci].c;
+        if (!c || !commGL.meshes[ci]) continue;
+        const ox = c[0] - cam.pos[0], oy = c[1] - cam.pos[1], oz = c[2] - cam.pos[2];
+        const d = Math.hypot(ox, oy, oz);
+        const cut = 300000 + COMM_GEO[ci].shellR;
+        if (d > cut) continue;
+        commDraw.push({ ci, o: [ox, oy, oz], d, fade: clamp((cut - d) / 50000, 0, 1) });
+      }
+      commDraw.sort((a, b) => b.d - a.d);
+    }
+
     // -- mesh passes first (v47 order): opaque bone + robots write depth,
     // then the Lantern's glass blends over them (no depth write), then the
     // orbs draw with depth TEST on but writes off — soft sprites clipped
     // behind solids, shining past their edges, glowing through the glass.
-    const anyMesh = skull.ready || robotMesh.ready || pyr.ready;
+    const anyMesh = skull.ready || robotMesh.ready || pyr.ready || commDraw.length > 0;
     if (anyMesh) {
       gl.disable(gl.BLEND);
       gl.enable(gl.DEPTH_TEST);
@@ -3333,6 +3946,21 @@ void main() {
         }
         gl.bindVertexArray(null);
       }
+      if (commDraw.length) {
+        // the Cadence cores: opaque metal + webbing write depth like the bone
+        gl.useProgram(commGL.solid.p);
+        gl.uniformMatrix4fv(commGL.solid.U.uVP, false, vp);
+        gl.uniform1f(commGL.solid.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(commGL.solid.U.uTime, t);
+        gl.uniform1f(commGL.solid.U.uTempo, cfg.pulseTempo);
+        for (const cd of commDraw) {
+          gl.uniform3fv(commGL.solid.U.uOrigin, cd.o);
+          gl.uniform1f(commGL.solid.U.uFade, cd.fade);
+          gl.bindVertexArray(commGL.meshes[cd.ci].solid.vao);
+          gl.drawElements(gl.TRIANGLES, commGL.meshes[cd.ci].solid.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.bindVertexArray(null);
+      }
       if (pyr.ready) {
         gl.enable(gl.BLEND);
         gl.depthMask(false);
@@ -3349,6 +3977,28 @@ void main() {
         gl.uniform1f(pyr.prog.U.uTime, t);
         gl.uniform1f(pyr.prog.U.uFog, cfg.haze / 18000);
         gl.drawElements(gl.TRIANGLES, pyr.count, gl.UNSIGNED_INT, 0);
+        gl.bindVertexArray(null);
+      }
+      if (commDraw.length) {
+        // society glass + bridges: blended over the metal, no depth write —
+        // orbs and stars shine through the crystal like they do the Lantern
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        for (const pass of ["glass", "bridge"]) {
+          const pr = commGL[pass];
+          gl.useProgram(pr.p);
+          gl.uniformMatrix4fv(pr.U.uVP, false, vp);
+          gl.uniform1f(pr.U.uFog, cfg.haze / 18000);
+          gl.uniform1f(pr.U.uTime, t);
+          gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
+          if (pass === "glass") gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
+          for (const cd of commDraw) {
+            gl.uniform3fv(pr.U.uOrigin, cd.o);
+            gl.uniform1f(pr.U.uFade, cd.fade);
+            gl.bindVertexArray(commGL.meshes[cd.ci][pass].vao);
+            gl.drawElements(gl.TRIANGLES, commGL.meshes[cd.ci][pass].count, gl.UNSIGNED_INT, 0);
+          }
+        }
         gl.bindVertexArray(null);
       }
       gl.depthMask(false);
@@ -3589,6 +4239,10 @@ void main() {
     // with the geography when the layout finalizes.
     { label: "GOD MODE · drive", keys: ["impTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
     { label: "GOD MODE · the ring", keys: ["colonyDist", "colonyVert", "colonyJitter"] },
+    // v50: society dials — scale/height/jitter freeze with the geography;
+    // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
+    // is deliberately absent: it derives from colonyDist/2 (the hexagram).
+    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
@@ -3716,6 +4370,7 @@ void main() {
       setTimeout(() => { copyP.textContent = "copy settings"; }, 1400);
     }).catch(() => {});
   });
+  onPresetStoreReplaced = refreshPresets; // presets.json arrived — repaint the picker
 
   presetRow.append(presetSel, nameInput, saveP, applyP, startP, deleteP, copyP);
   panel.appendChild(presetRow);
@@ -3785,6 +4440,11 @@ void main() {
     <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship reef · ~250 km out</em></button>
     <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>ring reef</em></button>
     <button type="button" class="nav-row" data-nav="c2">${NAV_NAMES[2]} <em>ring reef</em></button>
+    <h3>the cooperative societies</h3>
+    <button type="button" class="nav-row" data-nav="s0">${COMMUNITIES[0].name} <em>the capital · Korrudan core</em></button>
+    <button type="button" class="nav-row" data-nav="s1">${COMMUNITIES[1].name} <em>satellite society · ~125 km</em></button>
+    <button type="button" class="nav-row" data-nav="s2">${COMMUNITIES[2].name} <em>satellite society · ~125 km</em></button>
+    <button type="button" class="nav-row" data-nav="s3">${COMMUNITIES[3].name} <em>satellite society · ~125 km</em></button>
     <h3>resources</h3>
     <button type="button" class="nav-row" data-nav="h2o">Water globes <em>nearest — refills H2O</em></button>
     <button type="button" class="nav-row" data-nav="deu">Deuterium depot <em>nearest — refills DEU</em></button>`;
@@ -3805,6 +4465,14 @@ void main() {
     if (key[0] === "c") {
       const i = Number(key[1]);
       return { key, name: NAV_NAMES[i].toUpperCase(), pos: REEF_COLONIES[i].c, standoff: 700 };
+    }
+    if (key[0] === "s") {
+      // park outside the node shell — the whole society in the window
+      const i = Number(key[1]);
+      return {
+        key, name: COMMUNITIES[i].name.toUpperCase(), pos: COMMUNITIES[i].c,
+        standoff: (COMM_GEO[i] ? COMM_GEO[i].shellR : 8000) * 1.35 + 1200,
+      };
     }
     const arr = key === "h2o" ? STATIONS.h2o : STATIONS.deu;
     let best = arr[0], bd = Infinity;

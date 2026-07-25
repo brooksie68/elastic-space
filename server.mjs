@@ -796,6 +796,44 @@ async function serveStatic(request, pathname, response) {
 }
 
 const artFileExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+// Shape check for a world tuner preset store: named flat cfg snapshots plus an
+// optional start-preset name. Returns a problem string or null.
+function validateWorldPresets(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return "Preset store must be an object.";
+  }
+  if (
+    typeof payload.presets !== "object" ||
+    payload.presets === null ||
+    Array.isArray(payload.presets)
+  ) {
+    return "presets must be an object of named snapshots.";
+  }
+  const names = Object.keys(payload.presets);
+  if (names.length > 64) {
+    return "Too many presets (max 64).";
+  }
+  for (const name of names) {
+    if (!name.trim() || name.length > 24) {
+      return "Preset names are 1-24 characters.";
+    }
+    const snap = payload.presets[name];
+    if (!snap || typeof snap !== "object" || Array.isArray(snap)) {
+      return `Preset "${name}" must be an object.`;
+    }
+    for (const [key, value] of Object.entries(snap)) {
+      const kind = typeof value;
+      if (kind !== "number" && kind !== "string" && kind !== "boolean") {
+        return `Preset "${name}".${key} must be a number, string, or boolean.`;
+      }
+    }
+  }
+  if (payload.default != null && typeof payload.default !== "string") {
+    return "default must be a preset name or null.";
+  }
+  return null;
+}
+
 const layoutSlotKinds = new Set(["wall", "cord", "easel", "lean"]);
 
 // Shape check for a curator-mode layout save. Returns a problem string or null.
@@ -1248,6 +1286,56 @@ async function handleApi(request, response, pathname) {
       slots: payload.slots.length,
       backup: `tmp/${layoutSlug}/layout-backups/${backupName}`,
     });
+    return true;
+  }
+
+  const presetsMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/presets$/i);
+  if (presetsMatch) {
+    const presetsSlug = slugify(presetsMatch[1]);
+    if (!isValidSlug(presetsSlug) || !(await pathExists(join(worldsDir, presetsSlug)))) {
+      sendJson(response, 404, { error: "World not found." });
+      return true;
+    }
+    const presetsPath = join(worldsDir, presetsSlug, "assets", "presets.json");
+
+    if (request.method === "GET") {
+      try {
+        sendJson(response, 200, JSON.parse(await readFile(presetsPath, "utf8")));
+      } catch {
+        // No presets file yet — an empty store, so the world knows to seed it.
+        sendJson(response, 200, { presets: {}, default: null });
+      }
+      return true;
+    }
+
+    if (request.method !== "PUT") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const payload = await readBody(request);
+    const problem = validateWorldPresets(payload);
+    if (problem) {
+      sendJson(response, 400, { error: problem });
+      return true;
+    }
+
+    // Timestamped backup of the current file before every save; tmp/ is gitignored.
+    try {
+      const backupDir = join(rootDir, "tmp", presetsSlug, "preset-backups");
+      await mkdir(backupDir, { recursive: true });
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+      await writeFile(join(backupDir, `presets-${stamp}.json`), await readFile(presetsPath));
+    } catch {
+      // No previous presets file to back up — fine.
+    }
+    await mkdir(join(worldsDir, presetsSlug, "assets"), { recursive: true });
+    await writeFile(
+      presetsPath,
+      `${JSON.stringify({ presets: payload.presets, default: payload.default || null }, null, 2)}\n`,
+      "utf8",
+    );
+    sendJson(response, 200, { saved: true, count: Object.keys(payload.presets).length });
     return true;
   }
 

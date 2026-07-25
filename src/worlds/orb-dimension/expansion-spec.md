@@ -9,6 +9,44 @@ changelog. Everything NOT in that list (stargates, gulf depot grid, grown reefs,
 society, luminous region) is still spec-only and still needs its own DISCUSS → PLAN →
 go before code.
 
+STATUS 2026-07-24: THE COOPERATIVE SOCIETIES Phase A BUILT as v50 after full plan
+consensus (see "The cooperative societies" section below + world changelog v50).
+Phases B/C/D agreed in outline, each still needs its own go. Stargates, gulf depot
+grid, luminous region: still spec-only.
+
+## The cooperative societies (consensus 2026-07-24, Phase A built v50)
+
+- The peoples: the SAELYRI (vaguely humanoid flowy light-forms, brighter centers,
+  morphing at whim through cube / pyramid / mandala / dodecahedron / torus /
+  particle cloud) and the CADENCE (the machine society — self-named in the common
+  tongue for its own heartbeat; alien-melodic vs plain-precise naming is the two
+  cultures in miniature). Settlements carry chord degrees: capital TONIC, satellites
+  MEDIANT / DOMINANT / SUBDOMINANT (provisional, James may rename).
+- Community anatomy (every community, one generator): a humongous lopsided
+  amorphous-cuboid mechanical intelligence core — intersecting iridescent glass
+  planes, data-rain planes, metal slabs, fine strut webbing, nested tesseract
+  frames, pulses racing everything — ringed by 7–9 Saelyri nodes (mini-suns with
+  visible internal crystal-plane structure, deep throb, family colors) on jittered
+  dodecahedron-face seats, joined by light bridges (nearest neighbors around the
+  shell, NEVER through the middle) with two-way pulse packets.
+- Placement: capital in the Korrudan core precinct; three satellites on the
+  OPPOSITE points of a six-pointed star vs the reef colonies, at HALF the ring
+  radius (~125 km), derived from colonyDist so the hexagram survives tuning.
+  Satellites at ~2/3 capital scale (James-approved).
+- Procedural, not Meshy (consensus): scale-crisp at any range, data can FLOW
+  through the structure, zero credits. Meshy stays an option for hero accents.
+- PHASE B (needs go): the peoples in motion — Saelyri as SDF-morphing light-form
+  actors with proximity acknowledgment (turn, brighten, greeting glyph); Cadence
+  fleet community routes; society sound.
+- PHASE C (needs go): resources + harvest verbs — crystalline tritium (Saelyri
+  drink it; raw tritium is poison to the Cadence) + oxygen/lithium asteroids
+  (Cadence tractor/mining beams — brute force at distance); fields concentrated
+  near communities, sparse in the wilds. Trading with the player comes later still.
+- PHASE D (needs go): the reef expansion — quadruple colony size, three new
+  creature types, the gestaltic glyph language (dense multi-color 3D glyph-orbs),
+  citizen body upgrade (neuronal cores visibly cogitating, longer tendrils, fine
+  woven titanium filaments — no beams, no girders).
+
 ## Space
 
 - 1,000 × 1,000 × 250 km (current: 48 × 48 × 12).

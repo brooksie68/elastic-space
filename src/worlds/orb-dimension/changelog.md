@@ -3,6 +3,102 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-24 — claude-fable (v50 — THE COOPERATIVE SOCIETIES, Phase A: the bones)
+
+James's go after full plan consensus (names, procedural-vs-Meshy, scale,
+hexagram placement, satellite sizing). The peoples: the SAELYRI (beings of
+light) and the CADENCE (the machine society — it named itself in the common
+tongue, for its own heartbeat). Four communities: the capital TONIC in the
+Korrudan core precinct at [-15000, 2600, -12000], satellites MEDIANT /
+DOMINANT / SUBDOMINANT on the opposite points of a six-pointed star against
+the reef colonies — colony ideal angles +60°, at HALF the ring radius
+(~125 km), own seeded jitter/height. Chord-degree settlement names: flag for
+James's veto.
+
+- COMMUNITY GENERATOR (`communityLayout` / `communityGeometry`, SOCIETY_SEED,
+  sim-extracted markers `const SOCIETY_SEED =` … `// society hues`): per
+  community a lopsided Cadence core (iridescent glass planes, data-rain
+  planes, gunmetal slabs, strut webbing with racing data pulses, nested
+  tesseract frames) and 7–9 Saelyri nodes — mini-suns with internal crystal
+  planes — on jittered dodeca-face seats, flattened 0.78, joined by
+  light bridges (nearest neighbors AROUND the shell, never through the
+  middle) carrying two-way pulse packets in the endpoint node colors.
+- FULLY PROCEDURAL (the consensus call): three new GL programs (solid /
+  glass / bridge) on one 15-float vertex layout, community-local verts +
+  ship-space uOrigin (v49 camera-relative discipline). Works on file://.
+  ~3.6k tris per community. Detail culls at 300km with a 50km fade feather
+  (fog owns it long before); node HEARTS (beacon trick) carry the
+  long-range read — every society is a small constellation across the map.
+- STATIONS: capital airspace via radial push (assemble()'s skull-KEEP
+  pattern, no RNG consumed — the v38/v49 forgiving-fuel numbers survive
+  exactly); satellites get doorstep clusters (2 H2O + 1 DEU outside the
+  shell). Counts now 76 water / 42 deuterium.
+- NAV: "the cooperative societies" section (Tonic/Mediant/Dominant/
+  Subdominant), standoff parks outside the node shell. GOD MODE group
+  "the societies": commScale / commSat (0.66 default, James-approved) /
+  commVert / commJitter (freeze with geography) + nodeGlow / pulseTempo
+  (permanent). Satellite DISTANCE is deliberately not a dial — derives from
+  colonyDist/2 so the hexagram survives ring tuning.
+- VERIFIED: new `tmp/orb-dimension/society-sim.mjs` (10 tests: determinism,
+  hexagram, precinct clearances, shells, bridge graph, mesh sanity,
+  separations, station respect, glass overdraw 5.0 screens vs bar 15,
+  bounds). reef-sim updated (station chain now evaluates the society block;
+  counts 76/42) — all 10 pass with the ORIGINAL fuel distribution. ladder,
+  stick, v47 sims pass. All four community shaders compile+link verified in
+  a no-audio harness (tmp/orb-dimension/shader-check.html). Stamp v50.
+
+Where things stand: Phase A bones await James's eyes (his preset james-prefs-01
+is the start preset — file-backed as of v49.4). Phases agreed and pending, each
+with its own checkpoint: B = the peoples (Saelyri SDF light-forms with the
+geometric morph set, fleet community routes, acknowledgment), C = resources +
+harvest verbs (crystalline tritium / oxygen + lithium asteroids), D = the reef
+expansion (quadruple size, 3 new creatures, gestaltic glyphs, neuronal bodies,
+titanium filaments). Sound for the societies: deferred to B deliberately.
+
+## 2026-07-24 — claude-fable (v49.4 — presets become a file: saving IS telling Claude)
+
+James's better idea, minutes after v49.3: don't add a send step — make saving
+a named preset just write a file. Done; the "→ claude" button lived one
+version.
+
+- Preset store is now `assets/presets.json` (committed, sessions read AND
+  write it). Server: `GET/PUT /api/worlds/:slug/presets` (generic, any world;
+  shape-validated, timestamped backups to tmp/<slug>/preset-backups/).
+- World: every preset save/delete/set-as-start PUTs the whole store; on boot
+  (served) the file is fetched and wins — picker repaints via the
+  onPresetStoreReplaced hook. localStorage stays as boot cache + file://
+  fallback. First served load with browser presets and an empty/absent file
+  SEEDS the file (so james-prefs-01 migrates itself on next reload).
+- A start-preset change made in the file applies on next reload, never
+  mid-flight. Smoke-tested GET/PUT round trip + validation rejection; all
+  four sims pass; stamp v49.4.
+
+Where things stand: still awaiting the first big-dimension flight verdicts.
+James reloads → his presets appear in assets/presets.json → any session just
+reads the file. Claude edits to the file show up in the picker on his next
+reload.
+
+## 2026-07-24 — claude-fable (v49.3 — "→ claude": tuner presets get a channel to the session)
+
+James saved a preset (james-prefs-01) and asked how to "tell" Claude his
+settings — localStorage is browser-side, invisible to the session. Built the
+channel he asked for:
+
+- New tuner button "→ claude" in the presets row: prompts for a one-line note,
+  then POSTs the live cfg snapshot + ALL named presets (+ which is default) to
+  the dev server. Served-only; under file:// it reports "no server ✗".
+- New server endpoint `POST /api/worlds/:slug/prefs` (generic, any world):
+  writes a timestamped JSON dump to `tmp/<slug>/prefs/prefs-<stamp>.json`
+  with { saved, world, note, cfg, presets, default }. tmp/ is gitignored —
+  it's a message to the session, not shipped data.
+- Flow: James clicks → types a note → tells Claude "sent" → Claude reads the
+  newest file in tmp/orb-dimension/prefs/. Endpoint smoke-tested; all four
+  sims pass; stamp v49.3.
+
+Where things stand: still awaiting the first big-dimension flight verdicts.
+When James sends a dump he wants kept, bake those values into cfg defaults
+(or the presets story of a later phase) — the dump file itself is ephemeral.
+
 ## 2026-07-24 — claude-fable (v49.2 — the ball pit was the veils: scaled fog restored)
 
 The ghost balls survived v49.1 ("a ball pit at the McDonald's" — James). He
