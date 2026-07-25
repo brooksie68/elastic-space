@@ -43,6 +43,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    (wrap_transfer4.py raycast machinery) → white/bushier brows, beard/chops mass →
    cap+glasses rigid props → Mixamo body re-animation (James drives browser, needs
    walkthrough) → DLO integration + ElevenLabs voice.
+0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
+   2026-07-24). PHASE A BUILT same day (draft, awaiting James's eyes): atom bench,
+   six vials (H C N O Ne Ar), measurement-swarm electrons sampled from the true
+   |ψ|² (sim: `node tmp/the-valence-lab/atom-sim.mjs`, 129 assertions), valence
+   readout, fog/measure modes, tuner. Read the world's CLAUDE.md first — it holds
+   the physics honesty contract and the four-phase plan (B bonding with real
+   precomputed molecular densities, C narrated scale-journey chapters (Claude
+   scripts, James produces voice), D elephant toothpaste + polymers). Each phase
+   needs its own go.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
@@ -51,11 +60,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
    driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
 4. ARACHNO-WARS 2500: the spider-vision side-scroller, forked from AW2000 on 2026-07-24
    (James: fork, keep 2000 as the intact duel archive). Graybox movement prototype BUILT
-   same day — polygon terrain, cling-anywhere walking, web-pull, rocket, whip-leg IK, all
-   27 sim assertions pass (`node tmp/arachno-wars-2500/movement-sim.mjs`). AWAITING
-   James's first look 2026-07-24: "successful test. A long way to go yet" — continuing
-   next session. Feel questions + agreed pillars (tech tree, earned tricks, both health
-   models, boss levels) in `src/worlds/arachno-wars-2500/CLAUDE.md`. Draft: no
+   2026-07-24, then LEG-LOOK ITERATION b2–b12 same night with James driving by eye:
+   light-sky recolor + camera-zoom sizing, 8 legs per AW2000 reference art (tapered
+   segments, knee bulbs, needle tips), perimeter-walk foot targets, LIQUID-METAL leg
+   identity (stretch across gulfs — core lore, see world CLAUDE.md), asymmetric gait
+   (front legs pull, rear legs dig in + power-stroke, anti-realism per James), per-pair
+   leg lengths, +30% barrel. All 27 sim assertions still pass
+   (`node tmp/arachno-wars-2500/movement-sim.mjs`). James engaged and happy with
+   direction. NEXT: more feel passes, then tuner panel → first enemy (pillbox) + firing.
+   Feel questions + agreed pillars in `src/worlds/arachno-wars-2500/CLAUDE.md` (READ
+   IT — it has protected behaviors + hard-won gait lessons). Draft: no
    drift/registry/sound yet.
 5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
