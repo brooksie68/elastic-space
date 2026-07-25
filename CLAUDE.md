@@ -39,10 +39,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
    preset "postmaster-head" = the fitted head, all dials live. Read the lab
    CLAUDE.md auto-fit section before touching. Wardrobe framework agreed (fitted
    hair/beard assets, rigid props, texture layers, morph territory) — not built.
-   NEXT: James eyeballs the fitted head → storybook texture bake from Meshy model
-   (wrap_transfer4.py raycast machinery) → white/bushier brows, beard/chops mass →
-   cap+glasses rigid props → Mixamo body re-animation (James drives browser, needs
-   walkthrough) → DLO integration + ElevenLabs voice.
+   VERDICT 2026-07-24 late: auto-fit head REJECTED by James ("very disturbing") —
+   standing direction is Carl-from-Up friendly exaggeration, accessories carry the
+   likeness (memory postmaster-face-direction). MakeHuman community model gallery
+   scraped to a local searchable page (tmp/mh-models/index.html, 82 models) — dud
+   for our need, mostly pinups. BASE-FACE CANDIDATE ROUND 1 same night: 4 dialed
+   candidates A-carl/B-santa/C-toby/D-gnome2 (tmp/face-lab/candidates.json +
+   render_candidates.py, sheet sent) — James: "getting better, not quite ready,
+   keep working at it." Lesson: default dark eyelashes read as mascara on male
+   characters — hide/swap them. NEXT: more candidate rounds until the under-face
+   lands → chops/mustache/hat/glasses dressing pass → storybook texture bake →
+   Mixamo body re-animation (James drives browser) → DLO integration + voice.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT same day (draft, awaiting James's eyes): atom bench,
    six vials (H C N O Ne Ar), measurement-swarm electrons sampled from the true

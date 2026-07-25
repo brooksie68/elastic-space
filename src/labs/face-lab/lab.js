@@ -104,6 +104,7 @@ const PAIR_SUFFIXES = [
 const MODELS = [
   { id: 'bust', label: 'mannequin', file: 'assets/bust.glb' },
   { id: 'sculpt', label: 'sculpt head (identity dials)', file: 'assets/sculpt.glb' },
+  { id: 'postmaster-fit', label: 'postmaster (auto-fit)', file: 'assets/postmaster-fit.glb' },
 ];
 const activeModel = MODELS.find((m) => m.id === localStorage.getItem('face-lab-model')) || MODELS[0];
 
@@ -578,7 +579,7 @@ async function initVariants() {
     }
   };
   fill('skin-select', variants.skins, 'face-lab-skin', () => bodyMesh,
-    activeModel.id === 'sculpt' ? 'skins/old_caucasian_male.jpg' : 'skins/middleage_african_male.jpg');
+    activeModel.id === 'bust' ? 'skins/middleage_african_male.jpg' : 'skins/old_caucasian_male.jpg');
   fill('eye-select', variants.eyes, 'face-lab-eyes', () => eyesMesh, 'eyes/brown.png');
 }
 initVariants();

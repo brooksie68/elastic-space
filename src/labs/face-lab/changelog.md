@@ -1,5 +1,68 @@
 # Face Lab changelog
 
+## 2026-07-24 — Claude (base-face candidate round 1, same night)
+
+After the auto-fit verdict, James browsed the MakeHuman community model
+gallery via a local scrape (tmp/mh-models/scrape.mjs -> index.html, all 82
+models, thumbnails + text filter; site itself is 2 pages, no search) — dud
+for our need ("about sixty percent attempt to see boobies"). Fallback ran:
+four dialed base-face candidates to the Carl-from-Up brief
+(tmp/face-lab/candidates.json + render_candidates.py): A-carl (square
+friendly), B-santa (round jolly), C-toby (jowly heavyset), D-gnome2 (approved
+gnome recipe warmed). Contact sheet sent (candidates_sheet.jpg).
+
+- Big uncanny lesson: the default dark eyelashes read as mascara on an old
+  man — hidden for all male renders (hide/swap eyelashes04 in any male
+  character build).
+- James's verdict: "getting better, but not quite ready — keep working at
+  it." No candidate picked yet; more rounds next session (noses can
+  overdrive to 3.0, mix-and-match between candidates is cheap).
+
+## 2026-07-24 — Claude (auto-fit pipeline: artwork -> character, phase 1)
+
+James asked for automation: approved artwork to animatable character without
+hours of hand-sliding. Built the auto-fit pipeline in tmp/face-lab/
+(autofit.py + autofit_finish.py), validated on the Meshy postmaster:
+
+- Measured alignment (no hand constants): glasses shells found by
+  brown-texture detection give eye height AND interpupillary distance
+  (scale); ear centroids give depth. Hand-me-down landmark constants from
+  wrap_align were 36mm off — measurement is the law now.
+- Skin masking: cap/glasses/beard/chops/back-hair excluded via geometric
+  zones + a confident-skin texture test (warm r>>b and lit — a naive
+  "white hair" test kept hair shadows and pale skin fooled it both ways).
+  Mask dilation, outward-first raycast correspondence (v4 machinery),
+  excluded-face hit rejection.
+- Bounded ridge least-squares over the 140 identity-dial deltas (numpy
+  coordinate descent, no scipy in Blender), column-normalized, opposing-pair
+  + head-shape-family pruning, support filter (dials with no data in their
+  region stay neutral).
+- HONEST FINDING: on this character, geometry alone is data-starved — cap +
+  glasses + beard cover ~85% of the head; clean skin = ~81 points (and ear
+  rays are garbage — excluded). The working architecture is hybrid:
+  geometric fit where skin is visible + Claude render-compare rounds against
+  the concept art (the loop that built gnome_dials.json) where it is not.
+- Ship: dials land on James's approved "postmaster-head" recipe; the
+  geometric residual (smoothed, outlier-rejected) is baked into basis+keys
+  of a new export so expression morphs survive — verified by smile/jaw
+  renders (render_final_*.png).
+- assets/postmaster-fit.glb (13.2MB, 207 morphs, Human.rig) + model picker
+  entry "postmaster (auto-fit)". Flow: pick that model, apply the
+  "postmaster-head" preset -> fitted head, every dial live at its value.
+  Gotcha fixed on the way: export grabbed the Meshy armature (24 joints +
+  walk animation) instead of Human.rig — select the modifier's armature.
+
+Next: James's by-eye pass on the fitted head; storybook texture bake from
+the Meshy model; wardrobe framework (fitted hair/beard assets, rigid props,
+texture layers — plan agreed 2026-07-24).
+
+VERDICT (James, same night): the fitted head is "very disturbing, did not
+look like the character." Standing direction: Carl-from-Up friendly
+exaggeration (big bulbous nose, wide chin, warmth over statue-accuracy),
+accessories carry the likeness — chops/mustache/hat/glasses before more
+under-face work. James is browsing the MakeHuman community model gallery
+(makehumancommunity.org/models.html, http only) for a better base face.
+
 ## 2026-07-24 — Claude (first gnome sculpt, by request)
 
 James asked Claude to sculpt the gnome. Three dial-render-compare rounds

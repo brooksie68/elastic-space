@@ -61,8 +61,37 @@ face-unit morphs + 15 Meta viseme morphs) driven by the shared runtime engine
    asset — `low-poly` is a flat alpha card, useless in real 3D. Iris color
    (`eyes/materials/*.mhmat`) is still an open tuning item.
 
-## Status (2026-07-23)
+## Auto-fit pipeline (artwork → character, added 2026-07-24)
 
-Built this session (Phases 1–4 of the expressive-character plan). Not yet
-looked at by James in a browser — first-light feedback pending. The postmaster
-rebuild decision (this technique on a Meshy-style character) is still open.
+`tmp/face-lab/autofit.py` (align + solve) and `autofit_finish.py` (residual +
+export) fit the sculpt head's identity dials to a Meshy statue of the
+character automatically. Key facts:
+
+1. Alignment is MEASURED, never assumed: glasses shells (brown-texture
+   detection) → eye height + IPD scale; ear centroids → depth. Hand-me-down
+   landmark constants were 36mm off.
+2. Only confident skin is fit data: hair-suspect zones (beard/back/cap
+   fringe) keep only warm-and-lit texture verts; ears are always excluded
+   (radial rays through ears produce 100mm+ garbage).
+3. Architecture is hybrid by design: geometric solve where skin is visible;
+   Claude render-compare rounds against the concept art where it isn't
+   (accessory-heavy characters like the postmaster leave only ~81 clean
+   points). Final dials for the postmaster = James's "postmaster-head"
+   preset; the geometric residual bakes into basis+all keys so morphs
+   survive.
+4. Export gotcha: select the armature from the Human's modifier — the scene
+   also contains the Meshy armature and "first armature" exports the wrong
+   one (wrong skin + stray walk animation).
+
+`assets/postmaster-fit.glb` is the fitted head in the model picker
+("postmaster (auto-fit)"); apply preset "postmaster-head" on it. The wardrobe
+plan (fitted hair/beard assets, rigid props on the head bone, texture layers,
+morph territory) was agreed 2026-07-24 — pickers modeled on the skin/eye
+pattern when built.
+
+## Status (2026-07-24)
+
+Lab live and James-approved (skin/eye pickers, protected presets, sculpt head
+with identity dials, postmaster auto-fit model). Next: James's by-eye pass on
+the fitted head, storybook texture bake from the Meshy model, dressing
+(brows/beard/cap/glasses), Mixamo body, DLO integration + voice.

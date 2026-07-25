@@ -8,6 +8,25 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Face Lab: auto-fit pipeline + base-face candidates)
+
+- Auto-fit artwork→character pipeline built (tmp/face-lab/autofit.py +
+  autofit_finish.py): measured alignment from the Meshy postmaster's own
+  accessories (glasses = eye height + IPD scale, ears = depth), confident-skin
+  masking, bounded ridge least-squares over all 140 identity dials, smoothed
+  residual baked into basis+keys so expression morphs survive.
+- src/labs/face-lab/assets/postmaster-fit.glb shipped + "postmaster (auto-fit)"
+  model picker entry; pairs with the existing "postmaster-head" preset, every
+  dial live for fine-tuning.
+- Honest finding: accessory-heavy characters starve geometry (~81 clean skin
+  points) — pipeline is hybrid: geometric fit + Claude render-compare rounds.
+- James rejected the fitted head ("disturbing"); standing direction is
+  Carl-from-Up friendly exaggeration, accessories carry likeness.
+- MakeHuman community model gallery scraped to a local searchable page
+  (tmp/mh-models/, 82 models) — nothing usable for the postmaster.
+- Base-face candidate round 1 (4 dialed candidates, contact sheet sent):
+  closer, not landed; eyelashes-read-as-mascara lesson captured.
+
 ## 2026-07-24 (Orb Dimension v50: the cooperative societies, phase A)
 
 - The Saelyri (light-beings) + the Cadence (machines) — four communities: capital
