@@ -3,6 +3,136 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-24 (latest) — Claude (Fable 5)
+
+- **The full expansion** — James: "I want every single thing you just described.
+  Do all of them." Twelve structural features, twelve FX-rack effects, a two-tab
+  control surface, and a detachable controller window; the three DJ sets
+  re-choreographed with the new powers.
+- **Structure (relaaax-field.js v2):** tile shapes (11 silhouettes via
+  clip-path/mask), layouts (grid / brick / hex / radial rings-and-spokes /
+  phyllotaxis spiral — patterns get synthetic (ring, spoke) coords so all 24
+  keep meaning), Mondrian merges (hash-chosen 2×2 slabs), per-tile
+  rotate/spin/displace/size-pulse (composited transforms, only written when
+  active), waveform morphs (triangle/sine/square/saw in oscValue), multi-stop
+  palettes + hueShift (256-entry LUT, duo = the original pickers exactly),
+  counter layer (phase-inverted difference-blend twins), nested tiles (0–2
+  levels, counter-phased). Grid layout keeps the ORIGINAL flex DOM path —
+  defaults still render pork 2002 verbatim (regression-asserted in the sim).
+- **FX rack (fx.js):** WebGL chain — trails, feedback zoom + rotation,
+  pixelate, RGB split, turbulence warp, slit-scan, kaleidoscope (2–12 way),
+  bloom, grain, CRT (scanlines/barrel/beat-synced sync tear), shutter, iris.
+  All 13 knobs are ordinary field config keys (fx*), so sliders, matrix
+  targets, and compositions drive them for free. When any is nonzero the field
+  hides its DOM and hands fx.js an analytic display list per frame (works for
+  every layout); rack off = DOM path untouched. 1600px fill-rate cap,
+  graceful bypass without WebGL. Shaders compile/link verified in-browser.
+- **Mod matrix expansion (music-dsp.js):** 20 new targets — the structure
+  params + the whole FX rack. beat→fx rgb, bass→fx bloom, beat→displace etc.
+- **Control surface rebuild (tuner.js + tuner.css):** the panel is now built
+  by a standalone module with two tabs — **visual** (presets, main sliders,
+  structure, pattern, grid, margins, corners, FX rack, colors, frame) and
+  **audio** (player + DJ, reactivity envelopes + beat, mod matrix, react
+  presets + per-track). world.js became the host: owns clean state, routes
+  commands, serves snapshots. music.js registers its command handler/snapshot
+  part and mounts the tuner.
+- **Detachable controller (tuner.html + tuner-remote.js):** "detach ⧉" in the
+  panel header pops the same surface into its own window over
+  BroadcastChannel("relaaax-ctl") — drag it to the laptop screen, visualization
+  stays clean on the big screen. The in-page panel hides while detached; the
+  tuner toggle reclaims. Same-origin (served) only.
+- **DJ sets v2 (assets/compositions.js):** same measured anchors, new
+  choreography — Angular: diamond fire rite, circle-white inversion with
+  pixel-crunch hits, spinning-triangle feedback tunnel, brick CRT furnace,
+  radial ring shrine, square-wave Mondrian consumption, white shutter hammer
+  with RGB tearing, iris out. Jungle: acid palette, phyllotaxis spore burst,
+  hex-packed sparkle body, ocean-palette liquid breakdown, star-shaped spiral
+  frenzy, kaleidoscope daylight, slit-shaped moog worm, radial night ride.
+  Timber: sine bar-slat sea, ocean-palette squall with beat-kicked
+  displacement, one-bar sheet lightning, bioluminescent counter-interference
+  spiral, slit rain, trails as the storm passes, iris shut in the harbor.
+- Verified: composition-sim grew to 58 assertions (new key ranges + select
+  whitelists, per-set FX/alt-layout usage, field-v2 unit checks: pork-2002
+  default regression, layoutTiles counts + pattern-coord ranges, LUT
+  endpoints, waveform bounds); music-sim 14/14; all scripts syntax-checked;
+  shaders compiled/linked in-browser. rAF paths can't run in the preview pane
+  (frozen timeline) — James's first live run is the visual verification.
+- Status: BUILT. James raves, then we tune sets/effects by name and by ear.
+
+## 2026-07-24 (later) — Claude (Fable 5)
+
+- **Visual DJ Claude** — per James ("blow my mind... giant crowd raving"): each
+  track now has a Claude-authored, structure-synced light-show composition, with
+  a "visual dj" toggle in the music section (claude's set / free play, persisted).
+- Groundwork: `tmp/relaaax/track-analyze.mjs` decodes the MP3s in Node
+  (audio-decode devDep) and measures BPM, beat grid + first downbeat, band-energy
+  profile, section boundaries, drops, and quiet stretches (ASCII energy strips in
+  the console). JSON per track in `tmp/relaaax/analysis/`. All event times in the
+  sets are these measured moments.
+- New files: `composition.js` (DOM-free timeline engine — timed events, numeric
+  ramps, hex-color crossfades, string/boolean snaps, seek-safe replay) and
+  `assets/compositions.js` (the three authored sets, ~70 labelled events total).
+  Each set opens with a complete field base so it plays identically regardless
+  of slider state, and swaps the mod matrix per section.
+- The sets: **Angular Ritual** (temple gloom → fire rite at the measured 25s
+  drop → full white/black inversion at 59s → furnace/tunnel middle → 45s
+  "consumption" morph → void → white strobe hammer at 178s → embers out);
+  **Jungle Moog Ritual** (canopy greens → scatter frenzy → cyan liquid
+  breakdown at 121s → daylight-inversion drop at 210s → circle "organism" →
+  60s snake-coil morph → long night ride out over the 8-minute tail);
+  **Timber at Sea** (black sea swells → squall at 47s → sheet-lightning
+  one-bar inversion at 80s → bioluminescent rings → storm passes → last wave
+  at 158s → harbor, true black out).
+- Engine integration in `music.js`: with the DJ on, the composition supplies
+  BOTH the field base and the reactivity settings; live beat detection still
+  rides on top (composed macro, reactive micro). Free play restores James's
+  sliders and settings completely. Track switches rebuild the engine.
+- Verified: `node tmp/relaaax/composition-sim.mjs` — 39 assertions (event
+  legality vs field ranges/patterns/matrix shapes, sampled playback in bounds,
+  incremental == fresh replay, backward seek, ramp midpoints, drop snaps, and
+  each set's authored blackout + inversion moments). All pass; music-sim still
+  14/14.
+- Status: BUILT, awaiting James at the rave. Tuning the sets is conversational —
+  events carry labels ("the 59s inversion") so he can name moments to change.
+
+## 2026-07-24 — Claude (Fable 5)
+
+- **Music reactivity, phase 1** — the field now dances to James's Suno tracks.
+  Three MP3s live in `assets/sound-tracks/` (Angular Ritual, Jungle Moog Ritual,
+  Timber at Sea); new tracks are dropped there and added to the `TRACKS` list at
+  the top of `music.js`.
+- New files: `music-dsp.js` (band energies, per-band auto-gain + envelope
+  followers, bass-flux beat detector, mod-matrix math — deliberately DOM-free so
+  the sim runs the shipping code) and `music.js` (Web Audio graph, track player,
+  reactivity tuner UI, the per-frame modulation loop). The field renderer stays
+  music-blind; audio taps the analyser BEFORE the volume gain so reactivity is
+  independent of listening level.
+- Tuner grew a **music** section: play/prev/next/track/shuffle (auto-advance on
+  end), react master (×0–×2), attack/release envelope sliders, beat sense (with a
+  dot that flashes on every detected hit) + beat decay, and a six-row **mod
+  matrix** — each row wires a source (bass / low mid / mid / high / level / beat)
+  to a field knob (speed, size, blur, spread, twist, desync, holds, ease) with a
+  bipolar amount. Defaults are the aggressive set James asked for: beat→size,
+  bass→blur, beat→twist, mid→spread, high→desync, level→speed.
+- Reactivity has its own presets (localStorage `relaaax-music-presets`, factory
+  "stock aggressive" protected) plus a **per track** checkbox that remembers and
+  recalls settings for whichever song is playing. Player/settings persist under
+  `relaaax-music`.
+- Plumbing: `world.js` now keeps an authoritative CLEAN `state` (what the sliders
+  say) and exposes it as `globalThis.relaaaxTuner` — music modulation writes over
+  the live field every frame but never contaminates saves, presets, or readouts.
+  `relaaax-field.js` `setConfig` refreshes selectively by key (colors/geometry/
+  fit only when touched) so per-frame modulation does zero layout work; tuner
+  behavior unchanged.
+- Sound control wired per all-world rules (`core/sound-control.js`, custom
+  start/stop/setVolume onto the gain node; one autoplay attempt).
+- Verified by sim: `node tmp/relaaax/music-sim.mjs` — 14 assertions on the beat
+  detector (pulse train hit rate, no beats on constant signal or silence,
+  auto-gain finds beats in a quiet mix), envelope bounds, mod clamping/master/
+  off-rows/negative amounts, and FFT band-bin math. All pass.
+- Status: BUILT, awaiting James's first listen + tune. Next: he reacts, we
+  iterate mappings/ranges by ear; live audio input is the "maybe later" phase 2.
+
 ## 2026-07-23 — Claude (Fable 5)
 
 - Big tuner expansion, all per James's spec. The field generalizes from the fixed

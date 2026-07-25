@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relaaax — controls</title>
+  <link rel="stylesheet" href="./tuner.css" />
+</head>
+<body class="rlx-tuner-page">
+  <!-- The detached controller: the same control surface as the in-page panel,
+       driving the visualization page over BroadcastChannel("relaaax-ctl").
+       Open this via the panel's detach button (or directly in a second
+       window), drag it to another screen, and play. -->
+  <section id="rlx-tuner" class="rlx-tuner" role="group" aria-label="Relaaax controls"></section>
+
+  <script src="./relaaax-field.js"></script>
+  <script src="./music-dsp.js"></script>
+  <script src="./tuner.js"></script>
+  <script src="./tuner-remote.js"></script>
+</body>
+</html>

@@ -8,6 +8,28 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-24 (Relaaax: music reactivity + Visual DJ Claude + the full expansion)
+
+- Music reactivity: 3 Suno tracks (assets/sound-tracks/), Web Audio analyser ahead
+  of the volume gain, band envelope followers + auto-gain + bass-flux beat detector
+  (music-dsp.js, DOM-free), 6-row mod matrix, reactivity presets + per-track recall,
+  shared sound control wiring.
+- Visual DJ Claude: offline track analysis in Node (BPM/beat grid/sections/drops via
+  tmp/relaaax/track-analyze.mjs), per-track authored light-show compositions with
+  labelled events on measured moments (assets/compositions.js), DOM-free timeline
+  engine with ramps + color crossfades (composition.js), claude's set / free play.
+- The full expansion (James: "every single thing… go nuts"): 12 structure features
+  (11 tile shapes, brick/hex/radial/spiral layouts, Mondrian merges, rotate/spin/
+  displace/size-pulse, waveform morphs, 8 palettes + hue, counter layer, nests) +
+  12-effect WebGL FX rack (fx.js: trails, feedback zoom, pixelate, RGB split, warp,
+  slit-scan, kaleidoscope, bloom, grain, CRT, shutter, iris) + 20 new matrix targets.
+- Control surface rebuilt (tuner.js): two tabs (visual | audio), detachable into its
+  own window (tuner.html, BroadcastChannel) for big-screen + laptop-controller use.
+  world.js became the state host; music.js the audio engine; DJ sets re-choreographed.
+- Verified: 58 + 14 sim assertions pass, shaders compiled/linked in-browser,
+  pork-2002 default regression-asserted. Next: James's first rave, tune by event
+  label; five "hard direction" ideas parked in the world CLAUDE.md.
+
 ## 2026-07-24 (Relaaax: tuner mega-expansion — patterns, presets, chaos)
 
 - Field renderer generalized from the fixed pork layout to an N×M grid (1–24 each)

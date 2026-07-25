@@ -8,14 +8,18 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
-0. ORB DIMENSION "the big dimension": PHASE 1 BUILT 2026-07-23 (v49, James's go) —
-   space 1,000×1,000×250 km, camera-relative renderer, flat ladder 240/1,200/3,600
-   (GOD MODE tuner), 3 reef colonies ringed at 250km with beacons + doorstep fuel,
-   camera-local dust. All 4 sims pass. AWAITING JAMES'S FIRST FLIGHT — he wants to
-   feel size/distances before anything else gets built. Spec:
-   `src/worlds/orb-dimension/expansion-spec.md` (read it first). Still spec-only:
-   stargates, gulf depot grid, grown reefs, hub society, luminous region — each needs
-   its own discussion. Related: World Ideas #57 (The Solar System) inherits this tech.
+0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
+   (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
+   communities (capital Tonic in the core + Mediant/Dominant/Subdominant on the
+   hexagram at ~125km), procedural cores/node-shells/light-bridges, new
+   society-sim (all 5 sims pass, shaders compile-verified). AWAITING JAMES'S EYES
+   on the capital. Presets file-backed since v49.4 (james-prefs-01 is start
+   preset). NEXT, each with its own go: Phase B peoples (SDF Saelyri actors,
+   acknowledgment, sound), Phase C resources (tritium + 2 asteroid types, harvest
+   verbs), Phase D reef expansion (4× size, glyphs, new creatures). Spec:
+   `src/worlds/orb-dimension/expansion-spec.md` "The cooperative societies"
+   section (read it first). Still spec-only: stargates, gulf depot grid, luminous
+   region. Related: World Ideas #57 (The Solar System) inherits this tech.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
@@ -27,8 +31,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    topology via identity dials: `assets/sculpt.glb` (140 MakeHuman modeling targets as
    browser sliders + 67 expression morphs) in Face Lab's model picker. Claude
    dial-sculpted the gnome skull (preset "postmaster-head", overdrive >1 needed —
-   sliders ±2, server allows weights 0..3). NEXT: James nudges the sculpt by eye →
-   bake recipe to production build → storybook texture bake from Meshy model
+   sliders ±2, server allows weights 0..3). AUTO-FIT PIPELINE BUILT 2026-07-24 late
+   (James's ask: artwork→character without slider-digging): tmp/face-lab/autofit.py
+   + autofit_finish.py — measured alignment (glasses shells = eye height + IPD
+   scale), confident-skin masking, bounded ridge dial solve, residual bake, export.
+   `assets/postmaster-fit.glb` in the lab model picker ("postmaster (auto-fit)") +
+   preset "postmaster-head" = the fitted head, all dials live. Read the lab
+   CLAUDE.md auto-fit section before touching. Wardrobe framework agreed (fitted
+   hair/beard assets, rigid props, texture layers, morph territory) — not built.
+   NEXT: James eyeballs the fitted head → storybook texture bake from Meshy model
    (wrap_transfer4.py raycast machinery) → white/bushier brows, beard/chops mass →
    cap+glasses rigid props → Mixamo body re-animation (James drives browser, needs
    walkthrough) → DLO integration + ElevenLabs voice.
@@ -64,10 +75,21 @@ consistent. `npm run check-worlds` audits every world against the contract.
    then ship wiring. scary_corndog not started — read that world's CLAUDE.md first.
    UPDATE 2026-07-24: tuner massively expanded per James (grid, margins, corners, tile
    size/overlap, blur, 24 patterns, presets system, frame snaps — see world changelog).
-   James delighted ("way beyond what I expected"). NEXT SESSION: music reactivity —
-   James imports 5–6 tracks, track player chooses, field reacts rhythmically, its own
-   many-slider tuner section; maybe live input later. Plan at session start — details
-   in the world's CLAUDE.md "Next session" section.
+   James delighted ("way beyond what I expected"). UPDATE 2026-07-24 late: music
+   reactivity phase 1 BUILT (his go) — 3 Suno tracks in assets/sound-tracks/, player +
+   shuffle, band/beat analysis, 6-row mod matrix with its own presets + per-track
+   recall, sim passes (tmp/relaaax/music-sim.mjs). SAME SESSION, James's "go nuts":
+   VISUAL DJ CLAUDE built — offline track analysis (tmp/relaaax/track-analyze.mjs)
+   + per-track authored light-show compositions (assets/compositions.js, labelled
+   events on measured drops/sections) + DOM-free timeline engine (composition.js),
+   "claude's set"/"free play" toggle. THEN the full expansion (James: "every single
+   thing... go nuts"): 12 structure features (shapes/layouts/merges/palettes/
+   waveforms/etc), 12-effect WebGL FX rack (fx.js), 20 new matrix targets, two-tab
+   control surface (tuner.js) with DETACHABLE controller window (tuner.html,
+   BroadcastChannel), DJ sets re-choreographed v2. Sims 58+14 pass, shaders
+   verified; pork-2002 default regression-asserted. AWAITING James's first rave —
+   set tuning is conversational by event label. Architecture map in the world's
+   CLAUDE.md.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 

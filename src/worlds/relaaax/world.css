@@ -1,4 +1,5 @@
-/* Relaaax — page shell, field geometry, tuner panel. */
+/* Relaaax — page shell + field geometry. The control-surface styles live in
+   tuner.css (shared with the detached controller window tuner.html). */
 
 html,
 body {
@@ -19,6 +20,7 @@ body {
   aspect-ratio: 4 / 3;
   outline: 1px solid #26262c;
   overflow: hidden;
+  position: relative; /* anchors the FX canvas overlay */
   width: min(1024px, 100vw, calc(100vh * 4 / 3));
 }
 
@@ -62,6 +64,7 @@ body {
   flex: none;
   height: calc(var(--uy, 1px) * var(--rlx-cellh, 72));
   justify-content: center;
+  position: relative;
   width: calc(var(--ux, 1px) * var(--rlx-cellw, 100));
 }
 
@@ -78,7 +81,73 @@ body {
   width: calc(var(--ux, 1px) * var(--rlx-tile, 32));
 }
 
-/* --- tuner (Chrome Rift pattern) ------------------------------------------- */
+/* --- v2 structure: positioned layouts, counter layer, nests, shapes -------- */
+
+/* Non-grid layouts: the outer sizes itself from the layout footprint
+   (--rlx-lw/--rlx-lh, set by place()) and cells sit at absolute design
+   coords, centered on their point. */
+.rlx-field[data-layout="brick"] .rlx-outer,
+.rlx-field[data-layout="hex"] .rlx-outer,
+.rlx-field[data-layout="radial"] .rlx-outer,
+.rlx-field[data-layout="spiral"] .rlx-outer {
+  box-sizing: content-box;
+  height: calc(var(--uy, 1px) * var(--rlx-lh, 420));
+  position: relative;
+  width: calc(var(--ux, 1px) * var(--rlx-lw, 540));
+}
+
+.rlx-cell--free {
+  height: 0;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 0;
+}
+
+/* Counter layer: a phase-inverted twin stacked on each tile, difference-
+   blended. Opacity is driven per frame from cfg.counter. */
+.rlx-counter {
+  left: 50%;
+  mix-blend-mode: difference;
+  opacity: 0;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Nested tiles: counter-phased children inset inside the tile; they inherit
+   the tile's clip shape by containment. */
+.rlx-nest {
+  border-radius: inherit;
+  position: absolute;
+}
+
+/* Tile silhouettes. Borders render before clipping, so shaped tiles trade
+   their frame for the cut — that's the deal. */
+.rlx-field[data-shape="circle"] .rlx-tile { clip-path: circle(50%); }
+.rlx-field[data-shape="triangle"] .rlx-tile { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.rlx-field[data-shape="diamond"] .rlx-tile { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.rlx-field[data-shape="hexagon"] .rlx-tile { clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
+.rlx-field[data-shape="chevron"] .rlx-tile { clip-path: polygon(0 0, 50% 30%, 100% 0, 100% 70%, 50% 100%, 0 70%); }
+.rlx-field[data-shape="star"] .rlx-tile { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.rlx-field[data-shape="cross"] .rlx-tile { clip-path: polygon(33% 0, 67% 0, 67% 33%, 100% 33%, 100% 67%, 67% 67%, 67% 100%, 33% 100%, 33% 67%, 0 67%, 0 33%, 33% 33%); }
+.rlx-field[data-shape="bar"] .rlx-tile { clip-path: inset(36% 0); }
+.rlx-field[data-shape="slit"] .rlx-tile { clip-path: inset(0 42%); }
+.rlx-field[data-shape="ring"] .rlx-tile {
+  -webkit-mask-image: radial-gradient(closest-side, transparent 54%, #000 56%);
+  mask-image: radial-gradient(closest-side, transparent 54%, #000 56%);
+}
+
+/* The FX canvas (fx.js) sits over the frame; blur rides it like the DOM. */
+.rlx-fx-canvas {
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+/* --- tuner toggle (the panel itself is styled in tuner.css) ----------------- */
 
 .rlx-tuner-toggle {
   align-items: center;
@@ -109,316 +178,4 @@ body {
 .rlx-tuner-toggle svg {
   height: 1.15rem;
   width: 1.15rem;
-}
-
-.rlx-tuner {
-  backdrop-filter: blur(10px);
-  background: rgba(8, 8, 8, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 1rem;
-  bottom: 1rem;
-  display: grid;
-  gap: 0.85rem;
-  left: 50%;
-  max-height: calc(100vh - 6rem);
-  overflow-y: auto;
-  padding: 1rem 1.3rem;
-  position: fixed;
-  transform: translateX(-50%);
-  width: min(70rem, calc(100vw - 8rem));
-  z-index: 10;
-}
-
-.rlx-tuner[hidden] {
-  display: none;
-}
-
-.tuner-speed {
-  align-items: center;
-  display: flex;
-  gap: 0.85rem;
-}
-
-.tuner-speed label,
-.tuner-label {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-
-.rlx-tuner input[type="range"] {
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-  flex: 1;
-  height: 1.4rem;
-  margin: 0;
-}
-
-.rlx-tuner input[type="range"]::-webkit-slider-runnable-track {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
-  border-radius: 999px;
-  height: 4px;
-}
-
-.rlx-tuner input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  background: #f5f5f5;
-  border-radius: 50%;
-  height: 1rem;
-  margin-top: -6px;
-  width: 1rem;
-}
-
-.rlx-tuner input[type="range"]::-moz-range-track {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
-  border-radius: 999px;
-  height: 4px;
-}
-
-.rlx-tuner input[type="range"]::-moz-range-thumb {
-  background: #f5f5f5;
-  border: none;
-  border-radius: 50%;
-  height: 1rem;
-  width: 1rem;
-}
-
-.rlx-tuner output {
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  min-width: 4.5ch;
-  text-align: right;
-}
-
-.tuner-minis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem 1.4rem;
-}
-
-.tuner-mini {
-  align-items: center;
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  min-width: 13rem;
-}
-
-.tuner-desc {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.68rem;
-  letter-spacing: 0.03em;
-  line-height: 1.35;
-  margin: -0.2rem 0 0;
-  width: 100%;
-}
-
-.tuner-mini label {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-
-.tuner-mini output {
-  min-width: 3.5ch;
-}
-
-.tuner-frame {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-}
-
-.tuner-frame input[type="number"] {
-  appearance: textfield;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  padding: 0.3rem 0.5rem;
-  text-align: center;
-  width: 5.2rem;
-}
-
-.tuner-frame input[type="number"]:focus-visible {
-  border-color: rgba(255, 255, 255, 0.8);
-  outline: none;
-}
-
-.tuner-x {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.8rem;
-}
-
-.tuner-frame .tuner-desc {
-  margin: 0;
-  width: auto;
-}
-
-.tuner-colors {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-}
-
-.tuner-colors input[type="color"] {
-  appearance: none;
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
-  cursor: pointer;
-  height: 1.9rem;
-  padding: 2px;
-  width: 2.6rem;
-}
-
-.tuner-colors input[type="color"]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.tuner-colors input[type="color"]::-webkit-color-swatch {
-  border: none;
-  border-radius: 0.3rem;
-}
-
-.tuner-colors input[type="color"]::-moz-color-swatch {
-  border: none;
-  border-radius: 0.3rem;
-}
-
-.tuner-reset {
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font-size: 0.72rem;
-  letter-spacing: 0.22em;
-  margin-left: auto;
-  padding: 0.35rem 0.85rem 0.35rem 1.05rem;
-  text-transform: uppercase;
-  transition: border-color 120ms ease, color 120ms ease;
-}
-
-.tuner-reset:hover,
-.tuner-reset:focus-visible {
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-}
-
-/* --- expanded tuner: sections, pattern picker, selects, toggle -------------- */
-
-.tuner-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.66rem;
-  letter-spacing: 0.28em;
-  margin: 0.15rem 0 -0.35rem;
-  padding-top: 0.7rem;
-  text-transform: uppercase;
-}
-
-.tuner-pattern {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-}
-
-.rlx-tuner select {
-  appearance: none;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
-  color: rgba(255, 255, 255, 0.85);
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
-}
-
-.rlx-tuner select:focus-visible {
-  border-color: rgba(255, 255, 255, 0.8);
-  outline: none;
-}
-
-.rlx-tuner select option {
-  background: #141418;
-}
-
-.tuner-step {
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font-size: 0.8rem;
-  line-height: 1;
-  padding: 0.32rem 0.55rem;
-  transition: border-color 120ms ease, color 120ms ease;
-}
-
-.tuner-step:hover,
-.tuner-step:focus-visible {
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-}
-
-.tuner-pattern .tuner-desc {
-  margin: 0;
-  width: 100%;
-}
-
-.tuner-check {
-  align-items: center;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  display: flex;
-  flex: none;
-  font-size: 0.72rem;
-  gap: 0.45rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-}
-
-.tuner-check input[type="checkbox"] {
-  accent-color: #f5f5f5;
-  cursor: pointer;
-  height: 1rem;
-  width: 1rem;
-}
-
-.tuner-btn {
-  appearance: none;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  padding: 0.35rem 0.85rem;
-  text-transform: uppercase;
-  transition: border-color 120ms ease, color 120ms ease;
-}
-
-.tuner-btn:hover:not(:disabled),
-.tuner-btn:focus-visible {
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-}
-
-.tuner-btn:disabled {
-  cursor: default;
-  opacity: 0.35;
 }

@@ -11,6 +11,47 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
   decoded GIF timing table, framing, era notes. The timing constants in
   `relaaax-field.js` come straight from it.
 
+## Next session (2026-07-24 wrap)
+
+- James has NOT yet had his first real run of the full expansion + v2 DJ sets —
+  start there; expect by-ear tuning of sets (by event label) and effects.
+- Five "hard direction" ideas pitched and well received, NONE chosen yet — his
+  pick pending: (1) GPU fluid sim under the field, (2) 3D fly-through lattice,
+  (3) waveform-as-matter (Lissajous ribbons / spectral terrain), (4) Electric
+  Sheep-style evolutionary preset breeding + auto-DJ, (5) diegetic 3D rave venue
+  with the field on the big screen (extends his TV-in-a-scene setting idea).
+  Discuss before building — these are co-build scale.
+- Still open: more Suno tracks coming (add to TRACKS in music.js + analyze +
+  compose), live audio input phase 2, final setting decision, ship wiring
+  (drift/registry/admin link — world is still draft).
+
+## Architecture map (v2, 2026-07-24)
+
+- `relaaax-field.js` — the renderer/instrument. v2 adds structure (layouts,
+  shapes, waveforms, palettes/hueShift, merge/rotate/spin/displace/sizePulse,
+  counter, nest) and the fx* config keys. Grid layout keeps the ORIGINAL flex
+  DOM path; defaults render pork 2002 verbatim (sim-asserted — keep it that
+  way). Non-grid layouts + FX read positions from `layoutTiles()` /
+  `displayList()` (analytic, design coords).
+- `fx.js` — WebGL post chain (13 effects). Consumes the field's display list
+  via `field.setFrameHook`; active iff any fx* key > 0; DOM path untouched
+  when off. FX knobs are field config keys — never invent a side channel.
+- `tuner.js` + `tuner.css` — the whole control surface (two tabs: visual |
+  audio), bus-driven, no state of its own. Runs embedded (index.html shell
+  `#rlx-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
+  BroadcastChannel "relaaax-ctl"). New field/music params get their control
+  HERE, in the right tab.
+- `world.js` — host: clean state authority, command router
+  (`RelaaaxHost`), field presets, frame, detach handshake.
+- `music.js` — audio graph, player, reactivity loop, DJ playback; registers
+  with the host and mounts the tuner. `music-dsp.js` — DOM-free DSP + the
+  TARGETS table (new modulatable params get an entry there).
+- Script order in index.html matters: field → presets → dsp → composition →
+  compositions → fx → tuner → world → music.
+- Sims: `node tmp/relaaax/composition-sim.mjs` (58 asserts — engine, sets,
+  field-v2 units) and `node tmp/relaaax/music-sim.mjs` (14) after ANY change
+  to the field math, DSP, engine, or sets.
+
 ## World-specific rules
 
 - **Architecture is deliberate:** `relaaax-field.js` is a standalone renderer
@@ -44,14 +85,47 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
 - Open idea (unbuilt): a "steps" option quantizing the ramp to the GIFs' 21 discrete
   levels for the authentic stepped flicker.
 
-## Next session (James, 2026-07-24)
+## Music reactivity (built 2026-07-24, phase 1)
 
-- **Music reactivity.** James will import 5–6 tracks (likely his Suno MP3s →
-  `assets/audio/`, the Chrome Rift pattern); a track player in the page chooses
-  the song; the field reacts RHYTHMICALLY to the playing music. "With sliders, of
-  course. Many sliders, many, many sliders" — reactivity gets its own tuner
-  section, as tunable as everything else. Likely shape: Web Audio AnalyserNode
-  driving field params (speed/phase/tile size/blur/etc.), routed through the
-  shared sound control per all-world rules. "Maybe some other something more
-  later" — probably live audio input; ahead-of-time tracks first. Plan with him
-  at session start before building.
+- Tracks are James's Suno MP3s in `assets/sound-tracks/` — a new track is
+  dropped there AND added to the `TRACKS` list at the top of `music.js`
+  (no directory listing: file:// must keep working).
+- Architecture mirrors the field/world split: `music-dsp.js` is the DOM-free
+  math (bands, auto-gain, envelopes, beat detector, mod matrix) so
+  `tmp/relaaax/music-sim.mjs` runs the exact shipping code — run it after any
+  DSP change (14 assertions). `music.js` is page glue: audio graph, player,
+  reactivity UI, modulation loop.
+- **The modulation contract:** `world.js` owns the clean base config (`state`,
+  exposed as `globalThis.relaaaxTuner`); music writes modulated values onto the
+  live field per frame and restores base on stop/master-0. Never save, reflect,
+  or preset from `field.getConfig()` while music can be playing — always the
+  clean state. `relaaax-field.js#setConfig` refreshes selectively by key so
+  these per-frame writes do no layout work; keep new config keys sorted into
+  FIT_KEYS/GEO_KEYS/COLOR_KEYS or they won't refresh.
+- The analyser taps BEFORE the volume gain — reactivity must never depend on
+  listening level. Element volume stays 1; the gain node is the volume.
+- Reactivity presets (`relaaax-music-presets`, factory "stock aggressive"
+  protected like field presets) and per-track recall (`relaaax-music`
+  store) follow the field-preset rules: bake earned ones into code only on
+  James's say-so.
+- Phase 2 ideas (unbuilt, James's "maybe some other something more later"):
+  live audio input (mic), possibly tempo-locked pattern advances.
+
+## Visual DJ (built 2026-07-24, same session, James's "go nuts")
+
+- Each track has a Claude-authored composition in `assets/compositions.js`:
+  timed events (labelled!) placed on MEASURED musical moments — re-run
+  `node tmp/relaaax/track-analyze.mjs` for the analysis (BPM, downbeat, sections,
+  drops, quiets; JSON in `tmp/relaaax/analysis/`). When a track is added or
+  replaced, analyze first, then compose; never place events by guesswork.
+- `composition.js` is the DOM-free engine (ramps lerp numerics + hex colors,
+  strings/booleans snap, backward seek replays). `music.js` holds the toggle
+  (`store.dj`: "claude" default / "free") and the tick-loop merge: composition
+  supplies field base + reactivity settings; live modulation rides on top;
+  free play/pause restores the tuner's clean base entirely.
+- Tuning the sets is conversational — James names a labelled moment ("the 59s
+  inversion"), Claude edits that event. After ANY edit to compositions.js or
+  composition.js, run `node tmp/relaaax/composition-sim.mjs` (39 assertions:
+  ranges, patterns, replay determinism, authored blackout/inversion moments).
+- Sets deliberately open with a full field base at t=0 so they play identically
+  regardless of slider state — keep that invariant for new sets.
