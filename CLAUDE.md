@@ -155,13 +155,29 @@ consistent. `npm run check-worlds` audits every world against the contract.
    shader programs compile-verified; FLAME FARM overnight genome search running
    (tmp/relaaax/flame-farm, gallery.html = morning cull). AWAITING James's first
    rave of the whole stack.
-6. SURROUND: player-vs-computer neon recreation of Atari's Surround (1977), BUILT
+6. SURROUND: player-vs-computer recreation of Atari's Surround (1977), BUILT
    2026-07-25 as a draft on James's direct ask ("slick and modern looking, 2026
    appropriate") — `src/worlds/surround/` (read its CLAUDE.md first). Pure sim-tested
    core (`node tmp/surround/sim.mjs`, 7139 assertions), three AI tiers (ORACLE =
    Voronoi + separated-mode space-fill), tuner, synthesized sound via shared control.
-   AWAITING JAMES'S FIRST PLAY. Next: feel pass (speed/glow/AI defaults), then ship
-   wiring (drift exits, registry — mind the drafts-in-registry gotcha).
+   REBUILT IN 3D 2026-07-26 (James, before playing it: "one of the most boring
+   looking things I've ever seen... spruce it up massively, 3D effects, a neat HUD,
+   cool lighting"): three.js `render3d.js` — light-walls that rise behind each rider
+   and cool down the tail, under-glass reflections, glass floor + void grid with
+   rider light pools, BFS territory wash (`territory.js`) + HUD meter, containment
+   field that brightens on approach, crash power-down wave, custom bloom/ACES post
+   chain; new HUD; tuner split PLAY/LOOK with 14 live render knobs and file-backed
+   presets. game-core.js untouched. Silent look-dev harness at
+   `tmp/surround/lookdev.html` (KEEP IT) + `tmp/surround/smoke.html` (sound-stubbed
+   twin of the real page, `node tmp/surround/make-smoke.mjs`). Same night on his
+   two looks: canvas sizing fixed (a canvas is a REPLACED element — `inset: 0`
+   leaves it 300x150 in the corner), PAUSE (P/Esc, auto-pause on blur, 800ms GO
+   beat on resume) + two-step FORFEIT added, camera framing rewritten as a real
+   corner-projection solve (was filling 56% of the frame), and the grid presets
+   deepened to ~1.5:1 (34x23/44x30/58x39) because a 16:9 grid projects far wider
+   than the window once tilted. James: "surprisingly cool and fun." Next: feel
+   pass (speed, tilt, default AI), then ship wiring (world.json, drift exits,
+   registry — mind the drafts-in-registry gotcha).
 7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one
    tank, one CPU, six symmetric mazes — BUILT 2026-07-25 as a draft on James's ask,
    same night as Surround (its sibling world: shared styling + architecture) —

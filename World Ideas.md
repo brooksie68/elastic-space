@@ -246,6 +246,11 @@ trails on a glass-dark arena, glass HUD with score pips, three AI tiers (DRIFTER
 HUNTER / ORACLE — the top one plays Voronoi territory), synthesized hums and crashes,
 tuner panel. Draft built same day; core sim-tested (7139 assertions). Combat remains
 an open idea from the same conversation.
+REBUILT IN 3D 2026-07-26 on James's ask ("spruce it up massively... 3D effects, a neat
+HUD, cool lighting"): three.js arena with light-walls rising behind each rider,
+under-glass reflections, a territory wash showing who owns which ground, a containment
+field, and a bloom/ACES post chain — plus pause and forfeit. James: "surprisingly cool
+and fun." Still a draft; feel pass and ship wiring remain.
 
 ### 60. Combat — *an evening* — `in progress (draft)` → `src/worlds/combat/`
 James's pick (2026-07-25), same night Surround landed ("the game was pretty cool"):

@@ -8,6 +8,32 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-26 (Surround rebuilt in 3D)
+
+- James, before ever playing the 2D draft: "one of the most boring looking things
+  I've ever seen... spruce it up massively, 3D effects, a neat HUD, cool lighting."
+- Surround's renderer replaced with a three.js arena (`src/worlds/surround/render3d.js`):
+  light-walls that rise behind each rider and cool down the tail, under-glass
+  reflections, glass floor + void grid with rider light pools and headlight cones,
+  a containment field that brightens on approach, crash shockwaves and a wall
+  power-down wave, custom bright-pass/bloom/ACES post chain, ambient dust.
+- New `territory.js` — BFS ownership of every empty cell, driving a floor colour
+  wash and a HUD meter. `game-core.js` untouched; sim still green (7139 assertions).
+- New HUD (scores, pips, round, live speed, opponent, territory), two-tab tuner
+  (PLAY + 14 live LOOK knobs) with file-backed presets.
+- Pause (P/Esc, auto-pause on window blur, GO beat on resume) and a two-step
+  forfeit, both on James's ask.
+- Fixes worth remembering: `half` is a reserved GLSL word; `pow()` with a negative
+  base returns NaN and the bloom blur smears it over the whole frame; a `<canvas>`
+  is a replaced element so `inset: 0` leaves it at 300x150 in the corner; a
+  zero-size window put NaN through the camera aspect and killed the render loop.
+- Camera framing rewritten as a real corner-projection solve (was filling 56% of
+  the frame), and the grid presets deepened to ~1.5:1 so a tilted view fills a
+  16:9 window.
+- Two harnesses kept in `tmp/surround/`: `lookdev.html` (silent AI-vs-AI look dev)
+  and `smoke.html` (sound-stubbed twin of the real page, via `make-smoke.mjs`).
+- Status: still a draft — awaiting a feel pass, then ship wiring.
+
 ## 2026-07-26 (Relaaax: the scene layer, bred flames, and getting on the beat)
 
 - **Scene layer** — four GPU backdrops under the tile field (`scenes.js`): ink
