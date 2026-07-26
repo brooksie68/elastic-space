@@ -504,6 +504,16 @@ tunerToggle.addEventListener("click", () => {
   positionGuide();
 });
 
+// Click anywhere off the panel dismisses it (house rule 2026-07-25).
+// pointerdown, not click: a slider drag released off-panel is not "away".
+document.addEventListener("pointerdown", (e) => {
+  if (tuner.hidden) return;
+  if (tuner.contains(e.target) || tunerToggle.contains(e.target)) return;
+  tuner.hidden = true;
+  tunerToggle.setAttribute("aria-expanded", "false");
+  positionGuide();
+});
+
 // The guide opens non-modally: no backdrop, no focus trap — the scene keeps
 // running and every tuner control stays live so you can try things while reading.
 const guide = document.getElementById("rift-guide");

@@ -3,6 +3,12 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
+
+- New house rule from James: every control panel dismisses on click-away, no
+  exceptions. Added the standard `pointerdown`-outside handler to the tuner
+  (closes + re-docks the guide). Rule documented in `docs/building-a-world.md` §9.1.
+
 ## 2026-07-16 — claude-fable (dashboard-link sweep)
 
 - Removed the `.home-link` house-icon anchor (HTML + CSS) — it was a temporary testing shortcut

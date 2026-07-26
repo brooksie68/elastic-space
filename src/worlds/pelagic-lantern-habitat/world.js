@@ -628,6 +628,13 @@ function buildJerryTuner() {
   });
   panel.append(reset);
   toggle.addEventListener("click", () => panel.classList.toggle("open"));
+  // Click anywhere off the panel dismisses it (house rule 2026-07-25).
+  // pointerdown, not click: a slider drag released off-panel is not "away".
+  document.addEventListener("pointerdown", (e) => {
+    if (!panel.classList.contains("open")) return;
+    if (panel.contains(e.target) || toggle.contains(e.target)) return;
+    panel.classList.remove("open");
+  });
   document.body.append(toggle, panel);
 }
 buildJerryTuner();

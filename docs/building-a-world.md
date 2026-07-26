@@ -151,6 +151,12 @@ These are the only edits a new world makes elsewhere, and all of them are requir
    opening a bottom panel of sliders, persisted to localStorage. Chrome Rift
    (`src/worlds/chrome-rift/`) is the reference implementation. Offer one when a world
    has tunable qualities.
+   **Every control panel MUST dismiss on click-away (James, 2026-07-25 — no
+   exceptions):** a `document` `pointerdown` listener that closes the panel unless
+   the press lands inside the panel or on its toggle. Use `pointerdown`, not
+   `click`, so a slider drag released off-panel doesn't count as "away" and the
+   toggle doesn't close-then-reopen in one press. Relaaax `world.js` has the
+   reference snippet; all shipped panels were retrofitted 2026-07-25.
 2. **Curator mode:** gallery worlds (worlds that hang swappable art) load
    `src/core/curator.js` via dynamic import when `?curate=1` is present and the page is
    served. Mandala Shop's `world.js` is the reference adapter. Layout files

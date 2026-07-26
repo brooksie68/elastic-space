@@ -3,6 +3,11 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
+
+- New house rule from James: every control panel dismisses on click-away. Added
+  the standard `pointerdown`-outside handler to the "tune the office" panel.
+
 ## 2026-07-23 — claude-fable (speech clips gain viseme bakes)
 
 - James dropped the first voice clip into the new `assets/speech-clips/` folder

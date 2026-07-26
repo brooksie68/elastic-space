@@ -293,6 +293,14 @@
     panel.hidden = !open;
     labelCard.setAttribute("aria-expanded", String(open));
   });
+  // Click anywhere off the panel dismisses it (house rule 2026-07-25).
+  // pointerdown, not click: a slider drag released off-panel is not "away".
+  document.addEventListener("pointerdown", (e) => {
+    if (panel.hidden) return;
+    if (panel.contains(e.target) || labelCard.contains(e.target)) return;
+    panel.hidden = true;
+    labelCard.setAttribute("aria-expanded", "false");
+  });
 
   function setRadio(group, attr, value) {
     for (const btn of group.querySelectorAll("button")) {

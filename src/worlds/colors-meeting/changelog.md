@@ -3,6 +3,12 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
+
+- New house rule from James: every control panel dismisses on click-away. The
+  conservator's panel now closes on a `pointerdown` outside it or the wall label
+  (clicking the painting dismisses the notes).
+
 ## 2026-07-13 — claude-fable (with James)
 
 - Changed the default (dusk) palette's first two pigments to #eb6145 (top) and #20346b (bottom) —

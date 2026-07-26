@@ -2943,6 +2943,14 @@ for (const [key, min, max] of TUNER_SPEC) {
     panel.classList.toggle('open');
     btn.classList.toggle('open', panel.classList.contains('open'));
   });
+  // Click anywhere off the panel dismisses it (house rule 2026-07-25).
+  // pointerdown, not click: a slider drag released off-panel is not "away".
+  document.addEventListener('pointerdown', (e) => {
+    if (!panel.classList.contains('open')) return;
+    if (panel.contains(e.target) || btn.contains(e.target)) return;
+    panel.classList.remove('open');
+    btn.classList.remove('open');
+  });
   refresh();
 }
 
