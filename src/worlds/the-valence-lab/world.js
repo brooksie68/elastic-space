@@ -12,7 +12,7 @@ import { MOLECULES_DATA } from './assets/molecules-data.js';
 import { makeMoleculeSampler, buildIsoMesh } from './density.js';
 import { tryAdd, hintText, displayFormula, accountingLines, RECIPES } from './valence.js';
 
-const BUILD = 'v3.1 · phase B · 2026-07-25';
+const BUILD = 'v3.2 · phase B · 2026-07-26';
 console.log(`[valence-lab] ${BUILD}`);
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,8 @@ const DEFAULTS = {
   swarmOpacity: 1.0,  // swarm visibility 0..1 — A/B lever against the shells
   shellS: 1,          // staged-atom s-sphere shells on/off
   shellP: 1,          // staged-atom p-dumbbell shells on/off
+  textScale: 1.25,    // console type size multiplier (world.css --ui-scale;
+                      // its CSS fallback must match this — it paints first)
 };
 let tuner = { ...DEFAULTS };
 try {
@@ -1188,12 +1190,23 @@ const CONTROL_GROUPS = [
     ['orbitSpeed', 'idle orbit speed', 0, 0.3, 0.005],
     ['ringGlow', 'ring glow', 0, 3, 0.05],
   ]],
+  ['this console', [
+    ['textScale', 'text size', 0.9, 2, 0.05],
+  ]],
 ];
+
+// The console sizes itself off one em base in world.css; everything in it —
+// type, panel width, pips — scales with this.
+function applyTextScale() {
+  readout.style.setProperty('--ui-scale', String(tuner.textScale));
+}
+applyTextScale();
 
 function onControlChanged(key, before) {
   saveTuner();
   if (key === 'points' && tuner.points !== before) reseedAll(false);
   if (key === 'shellS' || key === 'shellP') rebuildGhosts();
+  if (key === 'textScale') applyTextScale();
 }
 
 function buildControls() {
@@ -1247,6 +1260,7 @@ function buildControls() {
     for (const k of Object.keys(inputs)) inputs[k].sync();
     reseedAll(false);
     rebuildGhosts();
+    applyTextScale();
   });
   host.appendChild(reset);
   const stamp = document.createElement('p');

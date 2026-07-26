@@ -101,11 +101,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
    all nine molecules' true densities into 24 KB (`assets/molecules-data.js`);
    swarm dots are Metropolis samples of that density; ghost shells are its
    runtime-carved isosurface; valence engine with completion hints + O₂-trap
-   sequencing (H,O,O,H for peroxide). Sims: atom-sim 129 + molecule-sim 324
-   assertions, all green. Read the world's CLAUDE.md first — honesty contract
-   (incl. the N₂ dual-guess SCF rule) and remaining phases: C narrated
-   scale-journey chapters (Claude scripts, James produces voice), D elephant
-   toothpaste + polymers. Each phase needs its own go.
+   sequencing (H,O,O,H for peroxide). Sims: atom-sim 129 + molecule-sim 404
+   assertions, all green. v3.2 2026-07-26: the scope console got a TEXT SIZE
+   control and a bigger default (whole panel sized in em off one base —
+   `--ui-base` × `--ui-scale`, tuner key `textScale`, default 1.25; James
+   found the 12px panel too small). Read the world's CLAUDE.md first — honesty
+   contract (incl. the N₂ dual-guess SCF rule and the new item 8, the three
+   labeled views of a molecule) and remaining phases: **B.5 the orbital
+   viewer** (PROPOSED 2026-07-26, needs a go — James expected orbitals
+   snapping together and got the total-density blob; the fix is to ship the MO
+   coefficients we already compute and discard, plus a bond-length scan for an
+   honest formation animation), C narrated scale-journey chapters (Claude
+   scripts, James produces voice), D elephant toothpaste + polymers. Each
+   phase needs its own go.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out

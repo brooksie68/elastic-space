@@ -30,11 +30,27 @@ unexplained. Name is James's.
    the ρ = 0.004 e/a₀³ isosurface of the true density (marching tets at
    runtime in `density.js`); staged atoms show analytic s-sphere/p-dumbbell
    subshell silhouettes from the same orbitals the swarm samples.
-3. **Phase C — the scale journey**: staged chapters (James chose chapters over
+3. **Phase B.5 — the orbital viewer** (PROPOSED 2026-07-26, needs its own go).
+   James, after flying v3.2: he expected to see orbitals "snapping together"
+   and got an amorphous blob. He is right to be disappointed and the blob is
+   not a bug — molecule mode shows the TOTAL density (sum over all occupied
+   MOs), which really is smooth. The structure lives in the individual
+   molecular orbitals, and we already compute them and throw them away:
+   `rhf`/`uhf` return the MO coefficient matrix `C` and orbital energies
+   `eps`, but `bake.mjs` only ships `D`. The plan, in two steps:
+   (a) ship `C` + `eps` per molecule (small — 49 floats for water), teach
+   `density.js` to sample a single MO's |ψ|² and colour by the sign of ψ, add
+   an orbital picker + energy ladder to the console;
+   (b) the honest "snap": re-run the SCF at a series of bond lengths and play
+   the converged solutions back in order — at long range the MOs genuinely
+   look like separate atomic orbitals and they genuinely merge into a σ. That
+   is a quasi-static geometry scan, not an interpolation, and it must be
+   labeled as such (no time-dependent claim).
+4. **Phase C — the scale journey**: staged chapters (James chose chapters over
    continuous zoom), narrated — Claude writes scripts, James produces the voice
    audio (he wants to drive sample generation). One water molecule → hydrogen
    bonding → cluster → droplet-as-field. Temperature slider (ice ↔ steam).
-4. **Phase D — showcases**: elephant toothpaste (H₂O₂ decomposition),
+5. **Phase D — showcases**: elephant toothpaste (H₂O₂ decomposition),
    polymerization (ethylene → polyethylene).
 
 ## The honesty contract (protected)
@@ -46,7 +62,7 @@ unexplained. Name is James's.
    "art-direct" a distribution — display scaling lives in world.js only.
 2. **Any change to the physics runs the sims before it ships:**
    `node tmp/the-valence-lab/atom-sim.mjs` (129 assertions) and
-   `node tmp/the-valence-lab/molecule-sim.mjs` (324 assertions: solver vs
+   `node tmp/the-valence-lab/molecule-sim.mjs` (404 assertions: solver vs
    published STO-3G anchors, bake freshness, sampler vs analytic moments,
    isosurface-on-density, valence engine). Add assertions when adding
    physics; never delete one to make a change pass.
@@ -75,6 +91,29 @@ unexplained. Name is James's.
    on a wrong-occupation saddle ~0.7 Ha high that would render N₂ unbound.
    molecule-sim asserts every molecule is bound and N₂'s π degeneracy; do not
    simplify the dual-guess logic away.
+8. **Three views, always labeled (settled 2026-07-26 by measurement, not by
+   textbook).** James asked whether water's "rabbit ear" lone pairs are real.
+   Measured from our own RHF/STO-3G water — scripts were scratch, so the
+   numbers are recorded here rather than recomputed:
+   - Canonical MOs are what the SCF returns and what spectroscopy sees. The
+     in-plane 3a₁ peaks 0.0° off the H–O–H bisector on the far side from the
+     H's; the HOMO 1b₁ is 1.0000 pure O 2p, 100% of its coefficient norm,
+     90° out of the molecular plane. Two different shapes, Koopmans 12.33 and
+     10.65 eV (experiment 14.74 / 12.62 — minimal basis underbinds, ordering
+     and the ~2 eV split are right).
+   - The two equivalent "ears" are (3a₁ ± 1b₁)/√2: equivalent to machine
+     precision, peaks 102.0° apart, each 51° out of plane. The rotation
+     changes the total density matrix by 4.4e-16 — so they are a legitimate
+     re-description, NOT a rival claim. But they are not eigenstates: the
+     off-diagonal Fock element between them is 0.84 eV, so an ear has no
+     binding energy and nothing in a spectrum corresponds to one. If the
+     orbital viewer ever offers localized orbitals, that caveat ships with
+     them.
+   - The observable density has no ears at all. In the x = 0 plane (the plane
+     ⊥ to H–H through O, exactly where the ears would live) the ρ = 0.004
+     contour is a near-circle: radius 2.489–2.698 a₀, 8.4% total variation,
+     maximum on the away-from-H bisector, no bump on either ear direction.
+     One smooth bulge on the far side — that is what a hydrogen bond sees.
 
 ## Rendering / interaction notes
 
@@ -85,8 +124,8 @@ unexplained. Name is James's.
    gets motion sick — never add snap moves or shake.
 3. Controls: since v3 there is NO ⚙ tuner — every lever lives in the right
    panel's scope console, "controls" tab, grouped by science (the cloud /
-   the shells / the scope). James's framing: "it's not a config, it's the
-   scope controls." Persistence is still localStorage key
+   the shells / the scope / this console). James's framing: "it's not a
+   config, it's the scope controls." Persistence is still localStorage key
    `valence-lab-tuner-v1`; the build stamp sits at the bottom of the
    controls tab (bump it every session — it catches stale tabs). The
    "recipes" tab is the recipe book: every entry shows its TRAP-SAFE feeding
@@ -113,6 +152,14 @@ unexplained. Name is James's.
    crossfade envelopes; `swarmOpacity` + `ghostOpacity` tuner keys are the
    per-layer 0–100% visibility sliders. Both layers are views of the same
    density — never let one become decorative.
+7. **Console type scale (v3.2).** Everything inside `.readout` is sized in
+   `em` off one base: `--ui-base` (12px, 10.5px under 900px wide) times
+   `--ui-scale`, which `applyTextScale()` writes from tuner `textScale`
+   (default 1.25 — James found the original 12px panel too small). Never add
+   a px font-size inside the console; the CSS `var(--ui-scale, 1.25)`
+   fallback must be kept equal to DEFAULTS.textScale, since it is what paints
+   before the module runs. The lockup and the bottom hint are outside this
+   and stay px.
 
 ## Where things stand
 

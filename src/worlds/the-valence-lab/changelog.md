@@ -2,6 +2,58 @@
 
 Newest entries first.
 
+## 2026-07-26 — Claude (Opus 5) — the blob question (no code changed)
+
+James flew v3.2 and asked why molecules look like "an amorphous blob" when he
+expected to see orbitals snapping together, then followed up on whether
+water's rabbit-ear lone pairs are the real shape. Answered by measurement off
+our own solver, not from a textbook — full numbers are now in this world's
+CLAUDE.md (honesty contract item 8), the short version:
+
+1. Molecule mode draws the TOTAL density, the sum over all five occupied MOs,
+   and that genuinely is smooth. The structure is in the individual MOs, which
+   the solver computes (`C`, `eps`) and `bake.mjs` discards. Not a bug, but
+   the least informative honest view we could have shipped.
+2. Water's canonical lone-pair orbitals are not a matched pair: 3a₁ is one
+   in-plane lobe 0.0° off the away-from-H bisector, 1b₁ is 1.0000 pure O 2p at
+   90° out of plane, and they ionize ~2 eV apart (two photoelectron bands).
+3. The rabbit ears are (3a₁ ± 1b₁)/√2 — equivalent to machine precision,
+   102.0° apart, and they change the density matrix by 4.4e-16. Legitimate
+   bookkeeping, but not eigenstates (0.84 eV off-diagonal Fock element).
+4. The observable density has no ears: in the very plane where they'd live,
+   the ρ = 0.004 contour varies 8.4% in radius and peaks on the bisector.
+
+Outcome: **Phase B.5, the orbital viewer**, is written up in CLAUDE.md as a
+proposal awaiting James's go — ship `C`/`eps`, per-MO sampling with phase
+colour, orbital picker; then the bond-length scan for an honest formation
+animation (converged solutions played in order, never an interpolation).
+
+## 2026-07-26 — Claude (Opus 5) — v3.2: console text size
+
+James: "add the text sizing option to the control panel and start it on a
+larger size than it is now before you even add the panel. It's too small."
+
+1. The scope console is now sized off ONE em base. `.readout` carries
+   `--ui-base: 12px` and `font-size: calc(var(--ui-base) * var(--ui-scale))`;
+   every descendant font-size, the panel width (22em), its padding, the
+   subshell dots, the valence pips, the recipe formula column and the flash
+   row's min-height are all `em`. Nothing inside the console is a hard px
+   font-size any more. The `max-width: 900px` media query now just lowers
+   `--ui-base` to 10.5px instead of fighting the base with its own width and
+   font-size.
+2. **Default is bigger, out of the box**: `textScale` defaults to **1.25** —
+   base type 12 → 15px, specimen symbol 26 → 32.5px, panel 298 → 372px wide.
+   The CSS `var(--ui-scale, 1.25)` fallback matches DEFAULTS.textScale so the
+   first paint is already at the new size (comment in both files says so).
+3. New controls group **"this console"** with a `text size` slider
+   (0.9–2.0, step 0.05), persisted in the existing `valence-lab-tuner-v1`
+   key and applied via `applyTextScale()` — also called on load and by
+   "reset to defaults". Verified in-browser: slider → 1.70 gives a 20.4px
+   base and stores; reset returns to 15px.
+4. Lockup, bottom hint and the 3D scene are untouched — this is the console's
+   own type only. No physics touched; both sims re-run green (129 + 404).
+   Build stamp v3.2.
+
 ## 2026-07-25 — Claude (Fable 5) — v3: the scope console + the recipe book
 
 James's reframing: the sliders aren't a config, they're the instrument

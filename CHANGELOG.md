@@ -8,6 +8,23 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-26 (Valence Lab v3.2: console text size, and what a molecule's shape really is)
+
+- The scope console is now sized in `em` off a single base, so one "text size" control
+  scales its type, width, pips and dots together. Default raised to 1.25 (base 12 → 15px)
+  because James found the panel too small; slider 0.9–2.0 in the new "this console" group,
+  persisted with the rest of the tuner. No physics touched; both sims green (129 + 404).
+- James asked why bonded molecules render as "an amorphous blob" instead of orbitals
+  snapping together. Answer: molecule mode draws the total electron density, which really
+  is smooth — the structure lives in the individual molecular orbitals, which our solver
+  computes and the bake discards.
+- Follow-up settled by measuring our own water rather than quoting a textbook: the "rabbit
+  ear" lone pairs are a legitimate rotation of the canonical pair (density matrix changes
+  by 4.4e-16) but are not eigenstates, and the observable density has no ear structure at
+  all — 8.4% radius variation in the very plane where they'd appear. Numbers recorded in
+  the world's CLAUDE.md so they never need recomputing.
+- Phase B.5, the orbital viewer, written up as a proposal awaiting James's go.
+
 ## 2026-07-26 (Face Lab: the postmaster gets a real face — KeenTools pipeline)
 
 - James rejected the dressed MPFB candidates as "an imitation... made in Blender by

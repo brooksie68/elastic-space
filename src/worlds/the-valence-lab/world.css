@@ -43,20 +43,25 @@ html, body {
 
 /* ---- coherence scope readout ---------------------------------------- */
 
+/* Everything inside the console is sized in em off this one base, so the
+   "text size" control (tuner key `textScale`) scales type, panel width and
+   the little pips/dots together. Keep the --ui-scale fallback in step with
+   DEFAULTS.textScale in world.js — it is what paints before the module runs. */
 .readout {
+  --ui-base: 12px;
   position: fixed;
   top: 64px;
   right: 18px;
-  width: 264px;
+  width: 22em;
   max-height: calc(100vh - 92px);
   overflow-y: auto;
-  padding: 14px 16px 12px;
+  padding: 1.17em 1.34em 1em;
   background: linear-gradient(160deg, rgba(8, 18, 26, 0.86), rgba(5, 10, 16, 0.86));
   border: 1px solid rgba(95, 200, 228, 0.28);
   border-radius: 6px;
   box-shadow: 0 0 30px rgba(40, 140, 180, 0.12), inset 0 0 26px rgba(50, 150, 190, 0.06);
   backdrop-filter: blur(3px);
-  font-size: 12px;
+  font-size: calc(var(--ui-base) * var(--ui-scale, 1.25));
   line-height: 1.5;
 }
 
@@ -64,13 +69,13 @@ html, body {
 .readout .rtabs {
   display: flex;
   gap: 6px;
-  margin: 0 0 12px;
+  margin: 0 0 1em;
 }
 .readout .rtabs button {
   flex: 1;
-  padding: 5px 0;
+  padding: 0.53em 0;
   font: inherit;
-  font-size: 9.5px;
+  font-size: 0.79em;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #6f97a6;
@@ -87,15 +92,15 @@ html, body {
 
 /* Controls tab */
 .readout .ctl-h {
-  margin: 12px 0 6px;
-  font-size: 9.5px;
+  margin: 1.26em 0 0.63em;
+  font-size: 0.79em;
   font-weight: 600;
   letter-spacing: 0.26em;
   text-transform: uppercase;
   color: #4d6b78;
 }
 .readout .ctl-h:first-child { margin-top: 0; }
-.readout .ctl-row { margin: 0 0 8px; font-size: 11px; }
+.readout .ctl-row { margin: 0 0 0.73em; font-size: 0.92em; }
 .readout .ctl-row label {
   display: flex;
   justify-content: space-between;
@@ -117,10 +122,10 @@ html, body {
 .readout .ctl-row input[type="checkbox"] { accent-color: #58c8e8; }
 .readout .reset {
   width: 100%;
-  margin-top: 6px;
-  padding: 6px 0;
+  margin-top: 0.6em;
+  padding: 0.6em 0;
   font: inherit;
-  font-size: 10px;
+  font-size: 0.83em;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #a8dcec;
@@ -130,29 +135,29 @@ html, body {
   cursor: pointer;
 }
 .readout .stamp {
-  margin: 8px 0 0;
-  font-size: 9px;
+  margin: 0.89em 0 0;
+  font-size: 0.75em;
   color: #46606c;
   letter-spacing: 0.12em;
 }
 
 /* Recipes tab */
 .readout .recipe-note {
-  margin: 0 0 10px;
-  font-size: 10px;
+  margin: 0 0 1em;
+  font-size: 0.83em;
   line-height: 1.55;
   color: #6f97a6;
 }
 .readout .recipe {
   display: grid;
-  grid-template-columns: 52px 1fr auto;
+  grid-template-columns: 4.34em 1fr auto;
   grid-template-areas: "rf rn rb" "rf ri rb";
   align-items: center;
-  column-gap: 10px;
+  column-gap: 0.84em;
   width: 100%;
   box-sizing: border-box;
-  margin: 0 0 6px;
-  padding: 7px 10px;
+  margin: 0 0 0.5em;
+  padding: 0.59em 0.84em;
   text-align: left;
   font: inherit;
   color: #cfe6ee;
@@ -163,9 +168,9 @@ html, body {
 .readout .recipe .rbrew {
   grid-area: rb;
   align-self: center;
-  padding: 3px 7px;
+  padding: 0.25em 0.59em;
   font: inherit;
-  font-size: 8.5px;
+  font-size: 0.71em;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #6f97a6;
@@ -183,90 +188,90 @@ html, body {
 }
 .readout .recipe .rf {
   grid-area: rf;
-  font-size: 17px;
+  font-size: 1.42em;
   font-weight: 700;
   color: #eafaff;
   text-shadow: 0 0 10px rgba(120, 220, 250, 0.4);
 }
 .readout .recipe .rn {
   grid-area: rn;
-  font-size: 10px;
+  font-size: 0.83em;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #9fc3d0;
 }
 .readout .recipe .ri {
   grid-area: ri;
-  font-size: 10px;
+  font-size: 0.83em;
   color: #6f97a6;
 }
 .readout .scope-tag {
-  font-size: 9.5px;
+  font-size: 0.79em;
   letter-spacing: 0.28em;
   color: #4d6b78;
   text-transform: uppercase;
-  margin: 0 0 8px;
+  margin: 0 0 0.84em;
 }
 .readout .specimen {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin: 0 0 2px;
+  gap: 0.84em;
+  margin: 0 0 0.17em;
 }
 .readout .specimen .sym {
-  font-size: 26px;
+  font-size: 2.17em;
   font-weight: 700;
   color: #eafaff;
   text-shadow: 0 0 14px rgba(120, 220, 250, 0.5);
 }
 .readout .specimen .name {
-  font-size: 13px;
+  font-size: 1.09em;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #9fc3d0;
 }
 .readout .zna {
   color: #5f8291;
-  font-size: 11px;
-  margin: 0 0 10px;
+  font-size: 0.92em;
+  margin: 0 0 0.84em;
 }
 .readout .cfg {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
-  margin: 0 0 10px;
+  gap: 0.5em 1em;
+  margin: 0 0 0.84em;
 }
 .readout .cfg .sub {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 13px;
+  gap: 0.39em;
+  font-size: 1.09em;
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 .readout.loaded .cfg .sub { opacity: 1; transform: none; }
 .readout .cfg .dot {
-  width: 7px;
-  height: 7px;
+  width: 0.54em;
+  height: 0.54em;
   border-radius: 50%;
   box-shadow: 0 0 8px currentColor;
 }
 .readout .valence-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin: 0 0 4px;
+  gap: 0.34em;
+  margin: 0 0 0.34em;
 }
 .readout .valence-row .lbl {
   color: #5f8291;
-  font-size: 10.5px;
+  font-size: 0.875em;
   letter-spacing: 0.12em;
-  margin-right: 4px;
+  margin-right: 0.34em;
 }
 .readout .pip {
-  width: 8px;
-  height: 8px;
+  width: 0.67em;
+  height: 0.67em;
   border-radius: 50%;
   border: 1px solid rgba(140, 220, 245, 0.5);
 }
@@ -277,23 +282,23 @@ html, body {
   50% { border-color: rgba(255, 190, 120, 0.9); box-shadow: 0 0 7px rgba(255, 180, 100, 0.5); }
 }
 .readout .status {
-  font-size: 11px;
+  font-size: 0.92em;
   letter-spacing: 0.12em;
-  margin: 6px 0 12px;
+  margin: 0.5em 0 1em;
 }
 .readout .status.reactive { color: #ffca8f; text-shadow: 0 0 10px rgba(255, 170, 80, 0.35); }
 .readout .status.inert { color: #8ff0c8; text-shadow: 0 0 10px rgba(90, 230, 180, 0.35); }
 .readout .btns {
   display: flex;
   flex-wrap: wrap; /* four buttons -> 2x2 */
-  gap: 8px;
-  margin: 0 0 10px;
+  gap: 0.67em;
+  margin: 0 0 0.84em;
 }
 .readout button {
   flex: 1 1 42%;
-  padding: 6px 0;
+  padding: 0.57em 0;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 0.875em;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #a8dcec;
@@ -306,14 +311,14 @@ html, body {
 .readout button.active { background: rgba(80, 180, 215, 0.3); color: #ffffff; }
 .readout .foot {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 0.79em;
   line-height: 1.45;
   color: #46606c;
 }
 .readout .flash {
-  min-height: 15px;
-  margin: 0 0 6px;
-  font-size: 10.5px;
+  min-height: 1.25em;
+  margin: 0 0 0.5em;
+  font-size: 0.875em;
   letter-spacing: 0.1em;
   color: #ffe3b0;
   opacity: 0;
@@ -327,8 +332,8 @@ html, body {
 
 /* Completion hints while atoms are staged ("+H → water · ...") */
 .readout .hints {
-  margin: 0 0 8px;
-  font-size: 10px;
+  margin: 0 0 0.67em;
+  font-size: 0.83em;
   letter-spacing: 0.1em;
   line-height: 1.6;
   color: #7fb2c4;
@@ -352,5 +357,5 @@ html, body {
    console's "controls" tab now) */
 
 @media (max-width: 900px) {
-  .readout { width: 220px; font-size: 11px; }
+  .readout { --ui-base: 10.5px; }
 }
