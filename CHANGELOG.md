@@ -8,6 +8,23 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-25 (Surround + Combat drafts, click-away rule site-wide)
+
+- SURROUND built as a draft (James's ask after an effort chat on early console
+  recreations): neon player-vs-CPU Atari 1977 recreation, pure sim-tested core,
+  three AI tiers (ORACLE = Voronoi territory + separated-mode space-fill),
+  synthesized sound, tuner. 7139 sim assertions.
+- COMBAT built as a draft the same night: tank duel level one, one CPU opponent,
+  six symmetric mazes — mazes 1-2 decoded from the actual Combat ROM disassembly's
+  playfield bitmaps (kept at tmp/combat/combat-disassembly.asm); three AI tiers
+  with BFS hunting, padded-LOS aiming, shell dodging; point resets to corners
+  (James's call); bounce-shots toggle; 546k sim assertions.
+- New house rule from James: EVERY control panel dismisses on pointerdown
+  click-away. Retrofitted Chrome Rift, Valence Lab, Pelagic, DLO, Colors Meeting,
+  Orb Dimension (all three HUD panels), Surround, Combat; rule written into
+  docs/building-a-world.md §9.1 (Relaaax, Jerry's Pool, admin kebab already
+  conformed).
+
 ## 2026-07-24 (Face Lab: auto-fit pipeline + base-face candidates)
 
 - Auto-fit artwork→character pipeline built (tmp/face-lab/autofit.py +

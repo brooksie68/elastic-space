@@ -233,6 +233,24 @@ each gated on James's go. Phase A built 2026-07-24 (draft): six vials (H C N O N
 measurement-swarm electrons sampled from the real |ψ|² (129-assertion sim), valence
 readout, tuner. Physics honesty contract in the world's CLAUDE.md.
 
+### 59. Surround — *an evening* — `in progress (draft)` → `src/worlds/surround/`
+James's pick (2026-07-25) after a level-of-effort chat about early console recreations
+(Combat, Surround, Galcon, Pit Fighter, Super Off Road). The 1977 Atari blocking game,
+player vs computer, rebuilt "slick and modern looking, 2026 appropriate": neon glowing
+trails on a glass-dark arena, glass HUD with score pips, three AI tiers (DRIFTER /
+HUNTER / ORACLE — the top one plays Voronoi territory), synthesized hums and crashes,
+tuner panel. Draft built same day; core sim-tested (7139 assertions). Combat remains
+an open idea from the same conversation.
+
+### 60. Combat — *an evening* — `in progress (draft)` → `src/worlds/combat/`
+James's pick (2026-07-25), same night Surround landed ("the game was pretty cool"):
+Atari's Combat (1977), level one only — one tank vs one computer player, six maze
+variations to sneak around and move behind. Built as Surround's sibling: same neon
+2026 treatment, glass HUD, tuner (speed/glow/arena/opponent/match/bounce shots),
+2:16 timed matches, three AI tiers (ROOKIE/VETERAN/ACE — BFS hunting + padded-LOS
+aiming + shell dodging). Draft built same day; core sim-tested (556k assertions).
+Biplanes/jets and the full 27-mode matrix remain unbuilt ideas.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy
