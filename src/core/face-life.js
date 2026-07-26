@@ -24,7 +24,7 @@ const EASINGS = {
   easeInOut: (t) => t * t * (3 - 2 * t),
 };
 
-// Rhubarb extended mouth shapes -> viseme morph weights.
+// Rhubarb extended mouth shapes -> viseme morph weights (Meta viseme models).
 const RHUBARB_SHAPES = {
   A: { viseme_PP: 1.0 },                    // closed (P, B, M)
   B: { viseme_kk: 0.7, viseme_SS: 0.3 },    // slightly open, teeth together
@@ -35,6 +35,20 @@ const RHUBARB_SHAPES = {
   G: { viseme_FF: 1.0 },                    // teeth on lower lip (F, V)
   H: { viseme_nn: 0.9 },                    // tongue up (L)
   X: {},                                    // rest
+};
+
+// Same Rhubarb shapes spoken in pure-ARKit vocabulary (KeenTools heads etc.
+// carry the 51 ARKit units but no viseme_* targets).
+const RHUBARB_SHAPES_ARKIT = {
+  A: { mouthPressLeft: 0.45, mouthPressRight: 0.45 },
+  B: { jawOpen: 0.14, mouthStretchLeft: 0.15, mouthStretchRight: 0.15 },
+  C: { jawOpen: 0.36 },
+  D: { jawOpen: 0.68 },
+  E: { jawOpen: 0.32, mouthFunnel: 0.65 },
+  F: { mouthPucker: 0.9, jawOpen: 0.1 },
+  G: { mouthRollLower: 0.7, mouthShrugUpper: 0.2 },
+  H: { jawOpen: 0.24, mouthRollUpper: 0.15 },
+  X: {},
 };
 
 const EYELOOK = {
@@ -59,6 +73,10 @@ export function createFaceLife({ meshes = [], headBone = null } = {}) {
   }
 
   const headRest = headBone ? headBone.rotation.clone() : null;
+
+  // pick the mouth vocabulary this model actually speaks
+  const mouthTable = allNames.has('viseme_PP') ? RHUBARB_SHAPES
+    : RHUBARB_SHAPES_ARKIT;
 
   const state = {
     autoBlink: true,
@@ -112,7 +130,7 @@ export function createFaceLife({ meshes = [], headBone = null } = {}) {
         break;
       }
     }
-    const targets = RHUBARB_SHAPES[shape] || {};
+    const targets = mouthTable[shape] || {};
     // smooth viseme weights toward targets (fast attack, slightly slower release)
     const cur = sp.current;
     const visKeys = new Set([...Object.keys(cur), ...Object.keys(targets)]);

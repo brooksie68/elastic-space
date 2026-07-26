@@ -20,9 +20,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
    crustGeometry: window-grid shanties, gantry masts, warm refinery jaw, eye-socket
    iris rings, face kept bare), SKULL_EL ellipsoid keeps + Korrudan doorstep fuel
    ring, spawn 27km, gaze/eyes rescaled. VESS-KARAI REMOVED (James: "another
-   format later" — assets archived, hum → city hum). All 6 sims + init-smoke +
-   shaders green; new crust-sim. AWAITING JAMES'S FLIGHT (scale read from the
-   approach, window density, spawn pitch).
+   format later" — assets archived, hum → city hum). James flew it: "a genuine
+   improvement."
+   v53 2026-07-26 (James's nebula brief + his go after 7 look-dev rounds):
+   THE NEBULAE — five banks of glowing gas (one over home, four in the gulf),
+   five palettes, own identity, visuals only. Look developed in
+   tmp/orb-dimension/nebula-lab.html (KEEP IT — that is where gas gets judged
+   before it flies); noise BAKED to a 6-variant atlas at init because
+   per-fragment fbm was 48 sines; near-fade + density-ceiling cap hold
+   interior overdraw at 13 screens (the v33 veil-bomb discipline). New
+   nebula-sim + wisp-atlas-check; shader-check caught a runtime-killer;
+   reef-sim de-flaked (seeded probes). All 9 sims green twice over.
+   AWAITING JAMES'S FLIGHT (the gas in-world for the first time; also still
+   open from v52: scale read on approach, window density, spawn pitch).
    Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
    with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef
@@ -152,9 +162,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    from his tmp/relaaax/viz-examples folder), 9 scene* keys as sliders/matrix
    targets/composition params; analyzer v2 (bar grid + Foote novelty →
    phrase/sectionsV2); sets re-woven phrase-aware v3; sims 76+14 green, all 6
-   shader programs compile-verified; FLAME FARM overnight genome search running
-   (tmp/relaaax/flame-farm, gallery.html = morning cull). AWAITING James's first
-   rave of the whole stack.
+   shader programs compile-verified; FLAME FARM overnight genome search ran
+   (12k renders → James culled 20 via a checkbox gallery; they are live as
+   flame-genomes.js and the flame scene plays them). v6 2026-07-26 (James
+   heard that Angular is 115 BPM, not the 76 the analyzer claimed — a 2/3
+   metrical error): tempo detection REWRITTEN (superflux onsets, comb
+   proposes / binomial-likelihood alignment disposes, BPM_OVERRIDE for his
+   ear), punch detection (drops/break-returns/groove changes/builds), a
+   grid-locked BEAT CLOCK with lag-free pulse/bar/phrase/swing mod sources +
+   10 accent patterns + syncBeats, and sets rebuilt as LOOK VOCABULARY +
+   VARIATIONS + a bar-indexed SCORE. Manual 🎲 dice shipped (James loves it).
+   Sims 123 + 42 + clock-test. VERDICT: "definitely major improvement."
+   NEXT, each with its own go — see the world CLAUDE.md "NEXT UP" section:
+   (1) time-varying beat detection that admits when there is NO beat (Timber's
+   first minute is arrhythmic), (2) splitting audio into registers/instruments
+   so different parameters follow different players, (3) per-parameter
+   re-rolling locked to the grid. An auto-dice build was reverted at his
+   instruction — good idea, not ready to drop in.
 6. SURROUND: player-vs-computer recreation of Atari's Surround (1977), BUILT
    2026-07-25 as a draft on James's direct ask ("slick and modern looking, 2026
    appropriate") — `src/worlds/surround/` (read its CLAUDE.md first). Pure sim-tested

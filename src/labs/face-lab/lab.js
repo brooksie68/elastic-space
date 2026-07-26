@@ -50,7 +50,10 @@ function resize() {
 window.addEventListener('resize', resize);
 
 // ------------------------------------------------------------- orbit controls
-const orbit = { yaw: 0.18, pitch: 0.02, radius: 0.52, target: new THREE.Vector3(0, 1.55, 0) };
+const orbit = {
+  yaw: 0.18, pitch: 0.02, radius: 0.52, target: new THREE.Vector3(0, 1.55, 0),
+  minRadius: 0.22, maxRadius: 1.6,   // reset per model from its eye spacing
+};
 function applyOrbit() {
   const cp = Math.cos(orbit.pitch);
   camera.position.set(
@@ -80,7 +83,8 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerup', () => { dragging = false; });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  orbit.radius = Math.min(1.6, Math.max(0.22, orbit.radius * (1 + Math.sign(e.deltaY) * 0.09)));
+  orbit.radius = Math.min(orbit.maxRadius,
+    Math.max(orbit.minRadius, orbit.radius * (1 + Math.sign(e.deltaY) * 0.09)));
   applyOrbit();
 }, { passive: false });
 
@@ -104,7 +108,9 @@ const PAIR_SUFFIXES = [
 const MODELS = [
   { id: 'bust', label: 'mannequin', file: 'assets/bust.glb' },
   { id: 'sculpt', label: 'sculpt head (identity dials)', file: 'assets/sculpt.glb' },
-  { id: 'postmaster-fit', label: 'postmaster (auto-fit)', file: 'assets/postmaster-fit.glb' },
+  { id: 'postmaster-kt', label: 'postmaster (KeenTools)', file: 'assets/postmaster-kt.glb' },
+  { id: 'postmaster-scan', label: 'postmaster (scan, road B)', file: 'assets/postmaster-scan.glb' },
+  { id: 'postmaster-scan-noeyes', label: 'postmaster (scan, no eyeballs)', file: 'assets/postmaster-scan-noeyes.glb' },
 ];
 const activeModel = MODELS.find((m) => m.id === localStorage.getItem('face-lab-model')) || MODELS[0];
 
@@ -144,10 +150,12 @@ new GLTFLoader().load(activeModel.file, (gltf) => {
   fixMaterials(root);
 
   const morphMeshes = [];
+  const meshes = [];
   let headBone = null;
   root.traverse((node) => {
     if (node.isMesh) {
       node.frustumCulled = false;
+      meshes.push(node);
       if (node.morphTargetDictionary) morphMeshes.push(node);
       const n = (node.name || '').toLowerCase();
       if (n === 'human' || n.endsWith('.body') || n === 'base') bodyMesh = node;
@@ -156,10 +164,48 @@ new GLTFLoader().load(activeModel.file, (gltf) => {
     if (node.isBone && node.name === 'head') headBone = node;
   });
 
-  // frame the head
-  const box = new THREE.Box3().setFromObject(root);
-  const eyeY = box.max.y - (box.max.y - box.min.y) * 0.27;
-  orbit.target.set(0, eyeY, 0);
+  // Framing is anchored to interpupillary distance, the one landmark that
+  // means the same thing on every head. Model scales differ wildly (MPFB
+  // bust vs KeenTools head) and bounding boxes include arbitrary amounts of
+  // neck/shoulders, so both are useless as a size reference.
+  const boxes = meshes.map((m) => ({ m, b: new THREE.Box3().setFromObject(m) }));
+  let ipd = 0;
+  let eyeMid = null;
+  // multi-primitive heads (KeenTools): eyes are a small mirrored pair
+  const cands = boxes
+    .map(({ m, b }) => ({ m, b, c: b.getCenter(new THREE.Vector3()), s: b.getSize(new THREE.Vector3()) }))
+    .filter((o) => o.s.length() > 0);
+  const biggest = Math.max(...cands.map((o) => o.s.length()));
+  for (const a of cands) {
+    for (const z of cands) {
+      if (a === z || a.c.x <= 0 || z.c.x >= 0) continue;
+      const span = a.c.x - z.c.x;
+      const sym = Math.abs(a.c.x + z.c.x);
+      const small = a.s.length() < biggest * 0.35 && z.s.length() < biggest * 0.35;
+      if (small && span > 0 && sym < span * 0.15 && span > ipd) {
+        ipd = span;
+        eyeMid = a.c.clone().add(z.c).multiplyScalar(0.5);
+      }
+    }
+  }
+  if (!ipd && eyesMesh) {
+    // single mesh holding both eyeballs (MPFB): width ~= ipd + one eyeball
+    const b = new THREE.Box3().setFromObject(eyesMesh);
+    const s = b.getSize(new THREE.Vector3());
+    ipd = s.x * 0.62;
+    eyeMid = b.getCenter(new THREE.Vector3());
+  }
+  if (!ipd) {
+    const box = new THREE.Box3().setFromObject(root);
+    const h = box.max.y - box.min.y;
+    ipd = h * 0.107;                       // last resort: bust-derived ratio
+    eyeMid = new THREE.Vector3(0, box.max.y - h * 0.27 + 0.45 * ipd, 0);
+  }
+  // ratios calibrated so the MPFB bust keeps exactly its previous framing
+  orbit.target.set(0, eyeMid.y - 0.45 * ipd, 0);
+  orbit.radius = 9.3 * ipd;
+  orbit.minRadius = 4 * ipd;
+  orbit.maxRadius = 28 * ipd;
   applyOrbit();
 
   life = createFaceLife({ meshes: morphMeshes, headBone });

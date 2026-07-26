@@ -83,8 +83,9 @@ character automatically. Key facts:
    also contains the Meshy armature and "first armature" exports the wrong
    one (wrong skin + stray walk animation).
 
-`assets/postmaster-fit.glb` is the fitted head in the model picker
-("postmaster (auto-fit)"); apply preset "postmaster-head" on it. The wardrobe
+`assets/postmaster-fit.glb` was the fitted head in the model picker —
+DELETED at James's request 2026-07-26 ("don't like looking at it"; the glb
+is in git history pre-deletion if ever needed). The wardrobe
 plan (fitted hair/beard assets, rigid props on the head bone, texture layers,
 morph territory) was agreed 2026-07-24 — pickers modeled on the skin/eye
 pattern when built.

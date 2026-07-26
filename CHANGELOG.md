@@ -8,6 +8,32 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-26 (Face Lab: the postmaster gets a real face — KeenTools pipeline)
+
+- James rejected the dressed MPFB candidates as "an imitation... made in Blender by
+  someone who just learned Blender" and asked for the full repeatable pipeline
+  instead of another shortcut: movable face, separated props, lip-sync, wardrobe.
+- Night 1: the original Meshy postmaster dissected into separate pieces
+  (`tmp/face-lab/dissect.py`). Verdict: useful as reference/rendering source, NOT as
+  assets — the accessories are fused into the same polygon soup as the face.
+- Night 2: de-dressed 2D face + 3D face scan generated (Meshy, ~39cr). Three
+  chassis→scan registration attempts failed; James picked "road B" (the scan mesh IS
+  the head) and 66 morphs were transferred onto it — then rejected the socket surgery
+  as hacking ("raw meat + golf balls").
+- **The pivot that worked:** James bought KeenTools Cloud; `tools/keentools.mjs` is the
+  durable client. His face on professional topology with a real opening mouth, teeth,
+  working eyelids and 55 ARKit blendshapes — first try once the input spec was right
+  (front + 40° left + 40° right; profiles fail). Live in the Face Lab picker.
+- `src/core/face-life.js` gained an ARKit mouth vocabulary so existing Rhubarb-baked
+  voice clips drive the new head; lab framing rewritten to anchor on interpupillary
+  distance so any model scale frames correctly.
+- Procedural wire spectacles built and fitted by measurement; postal cap generated in
+  Meshy (30cr) and mounted; beard remains unsolved.
+- **The beard lab** (James's idea): `tmp/face-lab/beard-lab/` — a self-scoring sweep
+  harness, 425 variants over three rounds across four techniques. Each round improved
+  the judge, not the knobs. Conclusion: procedural facial hair was the wrong problem;
+  next pass feeds KeenTools the *bearded* views instead.
+
 ## 2026-07-26 (Surround rebuilt in 3D)
 
 - James, before ever playing the 2D draft: "one of the most boring looking things
