@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Combat</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305060c'/%3E%3Cg fill='%2340f2ff'%3E%3Crect x='4' y='12' width='9' height='8' rx='2'/%3E%3Crect x='12' y='14.6' width='7' height='2.8' rx='1.4'/%3E%3C/g%3E%3Crect x='22' y='10' width='6' height='12' rx='2' fill='%23ff4fd8'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --p1: #40f2ff;
+      --p2: #ff4fd8;
+      --bg: #04050a;
+      --ink: rgba(235, 240, 255, 0.92);
+      --ink-dim: rgba(235, 240, 255, 0.45);
+      --glass: rgba(16, 20, 34, 0.55);
+      --glass-edge: rgba(255, 255, 255, 0.08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      overflow: hidden;
+      font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
+      color: var(--ink);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    #field { display: block; position: absolute; inset: 0; }
+
+    /* ---- HUD ---- */
+    #hud {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: baseline;
+      gap: 1.1rem;
+      padding: 0.5rem 1.4rem 0.6rem;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      z-index: 10;
+    }
+    .hud-name {
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+    }
+    .hud-name.you { color: var(--p1); }
+    .hud-name.cpu { color: var(--p2); }
+    .hud-score {
+      font-size: 1.35rem;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      transition: transform 200ms ease;
+    }
+    .hud-score.you { color: var(--p1); }
+    .hud-score.cpu { color: var(--p2); }
+    .hud-score.pop { transform: scale(1.5); }
+    #clock {
+      font-size: 0.95rem;
+      font-weight: 400;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.1em;
+      color: var(--ink-dim);
+      min-width: 3.2em;
+      text-align: center;
+    }
+    #clock.late { color: #ffb14f; }
+
+    /* ---- center overlays ---- */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 9;
+    }
+    #countdown {
+      font-size: clamp(5rem, 18vh, 10rem);
+      font-weight: 200;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+      text-shadow: 0 0 40px rgba(120, 200, 255, 0.35);
+      opacity: 0;
+    }
+    #countdown.tick { animation: cd 620ms ease-out; }
+    @keyframes cd {
+      0% { opacity: 0; transform: scale(1.35); filter: blur(6px); }
+      25% { opacity: 1; transform: scale(1); filter: blur(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: scale(0.92); }
+    }
+    #banner {
+      font-size: clamp(1.6rem, 5vh, 2.6rem);
+      font-weight: 250;
+      letter-spacing: 0.34em;
+      text-indent: 0.34em;
+      opacity: 0;
+      transition: opacity 400ms ease;
+      text-align: center;
+    }
+    #banner.show { opacity: 1; }
+    #banner .sub {
+      display: block;
+      margin-top: 0.9rem;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      color: var(--ink-dim);
+    }
+    #banner.you { color: var(--p1); text-shadow: 0 0 34px rgba(64, 242, 255, 0.5); }
+    #banner.cpu { color: var(--p2); text-shadow: 0 0 34px rgba(255, 79, 216, 0.5); }
+    #banner.draw { color: var(--ink); }
+
+    /* ---- title / hint ---- */
+    #title {
+      position: fixed;
+      bottom: 1.1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.5em;
+      text-indent: 0.5em;
+      color: var(--ink-dim);
+      z-index: 10;
+      transition: opacity 1s ease;
+    }
+    #hint {
+      position: fixed;
+      bottom: 2.6rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      color: var(--ink-dim);
+      z-index: 10;
+      transition: opacity 800ms ease;
+      white-space: nowrap;
+    }
+    .faded { opacity: 0 !important; }
+
+    /* ---- tuner ---- */
+    #tuner-toggle {
+      position: fixed;
+      bottom: 1rem;
+      left: 1rem;
+      z-index: 12;
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 999px;
+      color: var(--ink-dim);
+      font: 600 0.62rem/1 "Segoe UI", Inter, system-ui, sans-serif;
+      letter-spacing: 0.18em;
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    #tuner-toggle:hover { color: var(--ink); }
+    #tuner {
+      position: fixed;
+      bottom: 3.4rem;
+      left: 1rem;
+      z-index: 12;
+      width: min(300px, calc(100vw - 2rem));
+      background: rgba(10, 13, 24, 0.82);
+      border: 1px solid var(--glass-edge);
+      border-radius: 14px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      padding: 0.9rem 1rem 0.8rem;
+      display: none;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+    }
+    #tuner.open { display: block; }
+    .t-row { margin-bottom: 0.7rem; }
+    .t-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      color: var(--ink-dim);
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+    }
+    .t-label span:last-child { color: var(--ink); }
+    .t-row input[type="range"] { width: 100%; accent-color: #6ea8ff; }
+    .t-seg { display: flex; gap: 0.3rem; }
+    .t-seg button {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--ink-dim);
+      font: 600 0.62rem/1 "Segoe UI", Inter, system-ui, sans-serif;
+      letter-spacing: 0.08em;
+      padding: 0.45rem 0;
+      cursor: pointer;
+    }
+    .t-seg button.on {
+      background: rgba(110, 168, 255, 0.16);
+      border-color: rgba(110, 168, 255, 0.5);
+      color: var(--ink);
+    }
+    #t-reset {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--glass-edge);
+      border-radius: 8px;
+      color: var(--ink-dim);
+      font: 600 0.6rem/1 "Segoe UI", Inter, system-ui, sans-serif;
+      letter-spacing: 0.16em;
+      padding: 0.45rem 0;
+      cursor: pointer;
+      margin-top: 0.1rem;
+    }
+    #t-reset:hover { color: var(--ink); }
+    .t-note {
+      font-size: 0.56rem;
+      letter-spacing: 0.08em;
+      color: rgba(235, 240, 255, 0.3);
+      margin-top: 0.55rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="field"></canvas>
+
+  <div id="hud">
+    <span class="hud-name you">YOU</span>
+    <span class="hud-score you" id="score-you">0</span>
+    <span id="clock">2:16</span>
+    <span class="hud-score cpu" id="score-cpu">0</span>
+    <span class="hud-name cpu">CPU</span>
+  </div>
+
+  <div id="overlay">
+    <div id="countdown"></div>
+    <div id="banner"></div>
+  </div>
+
+  <div id="hint">ARROWS / WASD DRIVE &nbsp;·&nbsp; SPACE FIRES</div>
+  <div id="title">COMBAT</div>
+
+  <button id="tuner-toggle" type="button">TUNE</button>
+  <div id="tuner">
+    <div class="t-row">
+      <div class="t-label"><span>Speed</span><span id="t-speed-val">1×</span></div>
+      <input id="t-speed" type="range" min="0.6" max="1.6" step="0.05" />
+    </div>
+    <div class="t-row">
+      <div class="t-label"><span>Glow</span><span id="t-glow-val">1.0</span></div>
+      <input id="t-glow" type="range" min="0" max="2" step="0.1" />
+    </div>
+    <div class="t-row">
+      <div class="t-label"><span>Arena</span><span id="t-maze-name"></span></div>
+      <div class="t-seg" id="t-maze">
+        <button data-v="0" type="button">1</button>
+        <button data-v="1" type="button">2</button>
+        <button data-v="2" type="button">3</button>
+        <button data-v="3" type="button">4</button>
+        <button data-v="4" type="button">5</button>
+        <button data-v="5" type="button">6</button>
+        <button data-v="rnd" type="button">RND</button>
+      </div>
+    </div>
+    <div class="t-row">
+      <div class="t-label"><span>Opponent</span><span></span></div>
+      <div class="t-seg" id="t-ai">
+        <button data-v="1" type="button">ROOKIE</button>
+        <button data-v="2" type="button">VETERAN</button>
+        <button data-v="3" type="button">ACE</button>
+      </div>
+    </div>
+    <div class="t-row">
+      <div class="t-label"><span>Match</span><span></span></div>
+      <div class="t-seg" id="t-match">
+        <button data-v="60" type="button">1:00</button>
+        <button data-v="136" type="button">2:16</button>
+        <button data-v="240" type="button">4:00</button>
+      </div>
+    </div>
+    <div class="t-row">
+      <div class="t-label"><span>Bounce shots</span><span></span></div>
+      <div class="t-seg" id="t-bounce">
+        <button data-v="off" type="button">OFF</button>
+        <button data-v="on" type="button">ON</button>
+      </div>
+    </div>
+    <button id="t-reset" type="button">RESET DEFAULTS</button>
+    <div class="t-note">arena · opponent · match restart the game</div>
+  </div>
+
+  <!-- draft world: no drift wiring yet; exits arrive at ship time -->
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="game-core.js?v=1"></script>
+  <script src="game.js?v=1"></script>
+</body>
+</html>
