@@ -5,6 +5,10 @@
 //
 // James's saved presets live in localStorage ("yours" group in the tuner);
 // when one earns a spot on the permanent list, it gets baked in here.
+//
+// This file also holds the DICE (RelaaaxRandom.roll) at the bottom — it lives
+// here rather than in world.js so the sim can roll it thousands of times and
+// check every result is a legal, non-blank field state.
 globalThis.RELAAAX_PRESETS = [
   {
     id: "pork-2002",
@@ -78,6 +82,86 @@ globalThis.RELAAAX_PRESETS = [
     },
   },
   {
+    id: "inkwell",
+    label: "inkwell",
+    config: {
+      scene: "ink", scenePalette: "ocean", sceneMix: 1, sceneTiles: 0.35,
+      sceneSpeed: 0.8, sceneScale: 0.55, sceneDrive: 0.6, sceneWarp: 0.65,
+      pattern: "ripple", rows: 4, cols: 5, tileSize: 26, border: 0,
+      radiusTile: 0.5, gapX: 60, gapY: 46, inset: 0, ease: 1, holdScale: 0,
+      speed: 0.6, spread: 1.2, fill: true,
+      marginTop: 30, marginRight: 30, marginBottom: 30, marginLeft: 30,
+      low: "#02131f", high: "#9fe8ff", bg: "#010912",
+    },
+  },
+  {
+    id: "flame-shrine",
+    label: "flame shrine",
+    config: {
+      scene: "flame", scenePalette: "genome", sceneGenome: "gold phoenix",
+      sceneMix: 1, sceneTiles: 0,
+      sceneSpeed: 0.7, sceneScale: 0.5, sceneDrive: 0.6, sceneWarp: 0.35,
+      fxBloom: 0.3, fxGrain: 0.12, bg: "#000000", fill: true,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+    },
+  },
+  {
+    id: "amber-globe",
+    label: "amber globe (bred)",
+    config: {
+      scene: "flame", scenePalette: "genome", sceneGenome: "amber globe",
+      sceneMix: 1, sceneTiles: 0, sceneSpeed: 0.5, sceneScale: 0.55,
+      sceneDrive: 0.55, sceneWarp: 0.3,
+      fxBloom: 0.25, bg: "#000000", fill: true,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+    },
+  },
+  {
+    id: "violet-veil",
+    label: "violet veil (bred)",
+    config: {
+      scene: "flame", scenePalette: "genome", sceneGenome: "violet veil",
+      sceneMix: 1, sceneTiles: 0, sceneSpeed: 0.6, sceneScale: 0.5,
+      sceneDrive: 0.6, sceneWarp: 0.4,
+      fxBloom: 0.3, fxGrain: 0.1, bg: "#000000", fill: true,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+    },
+  },
+  {
+    id: "green-triskelion",
+    label: "green triskelion (bred)",
+    config: {
+      scene: "flame", scenePalette: "genome", sceneGenome: "green triskelion",
+      sceneMix: 1, sceneTiles: 0, sceneSpeed: 0.55, sceneScale: 0.5,
+      sceneDrive: 0.55, sceneWarp: 0.3,
+      fxBloom: 0.28, bg: "#000000", fill: true,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+    },
+  },
+  {
+    id: "star-tunnel",
+    label: "star tunnel",
+    config: {
+      scene: "nebula", scenePalette: "neon", sceneMix: 1, sceneTiles: 0.25,
+      sceneSpeed: 1, sceneScale: 0.5, sceneDrive: 0.55, sceneWarp: 0.4,
+      pattern: "pinwheel", rows: 3, cols: 8, layout: "radial", tileSize: 16,
+      radiusTile: 0.5, border: 0, ease: 1, holdScale: 0, speed: 0.9,
+      spread: 1.4, fill: true, fxBloom: 0.2,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+      low: "#1a0430", high: "#ff9de8", bg: "#05010c",
+    },
+  },
+  {
+    id: "neon-membrane",
+    label: "neon membrane",
+    config: {
+      scene: "ridge", scenePalette: "acid", sceneMix: 1, sceneTiles: 0,
+      sceneSpeed: 0.9, sceneScale: 0.45, sceneDrive: 0.65, sceneWarp: 0.55,
+      bg: "#000000", fill: true, fxBloom: 0.25,
+      marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0,
+    },
+  },
+  {
     id: "lounge",
     label: "lounge",
     config: {
@@ -90,3 +174,87 @@ globalThis.RELAAAX_PRESETS = [
     },
   },
 ];
+
+// --- the dice (James, 2026-07-26) -------------------------------------------
+// A completely random visual state: layout, shape, pattern, waveform, palette,
+// colors, geometry, the scene layer, and a random handful of FX. The ONLY
+// guard is against a dead frame — if nothing would be visible at all, the
+// roll is nudged until something is. Everything else ugly is fair game.
+globalThis.RelaaaxRandom = (function () {
+  "use strict";
+
+  function roll(rand) {
+    const R = rand || Math.random;
+    const F = globalThis.RelaaaxField;
+    const S = globalThis.RelaaaxScenes;
+    const pick = (arr) => arr[Math.floor(R() * arr.length)];
+    const rnd = (a, b) => a + R() * (b - a);
+    const odds = (p) => R() < p;
+    const hex = () => `#${[0, 0, 0].map(() => Math.floor(R() * 256).toString(16).padStart(2, "0")).join("")}`;
+    const genomes = (S && S.GENOMES) || [];
+    const palettes = Object.keys(F.PALETTES);
+
+    const cfg = {
+      speed: rnd(0.15, 6), holdScale: rnd(0, 2.4), desync: R(),
+      ease: R(), border: odds(0.5) ? rnd(0, 4) : 0,
+      low: hex(), high: hex(), bg: odds(0.6) ? "#000000" : hex(),
+      rows: 1 + Math.floor(R() * 16),
+      cols: 1 + Math.floor(R() * 16),
+      tileSize: rnd(6, 220),
+      pattern: pick(F.PATTERNS).id, spread: rnd(0, 2), twist: R(),
+      blur: odds(0.35) ? rnd(0, 70) : 0,
+      marginTop: rnd(0, 90), marginRight: rnd(0, 90),
+      marginBottom: rnd(0, 90), marginLeft: rnd(0, 90),
+      gapX: rnd(0, 130), gapY: rnd(0, 130), inset: rnd(0, 60),
+      radiusTile: R() * 0.5, radiusRow: rnd(0, 40), radiusOuter: rnd(0, 80),
+      fill: odds(0.6),
+      layout: pick(F.LAYOUTS), shape: pick(F.SHAPES), waveform: pick(F.WAVEFORMS),
+      palette: pick(palettes), hueShift: R(),
+      merge: odds(0.4) ? R() : 0,
+      rotate: odds(0.5) ? R() : 0,
+      spin: odds(0.4) ? R() : 0,
+      displace: odds(0.4) ? R() : 0,
+      sizePulse: odds(0.5) ? R() : 0,
+      counter: odds(0.35) ? R() : 0,
+      nest: Math.floor(R() * 3),
+      scene: pick(S ? S.LIST : ["none"]),
+      scenePalette: odds(0.4) && genomes.length ? "genome" : pick(palettes),
+      sceneGenome: genomes.length ? pick(genomes).name : F.DEFAULTS.sceneGenome,
+      sceneMix: rnd(0.35, 1), sceneTiles: R(), sceneSpeed: rnd(0.2, 2),
+      sceneScale: R(), sceneDrive: R(), sceneWarp: R(), sceneHue: R(),
+      accent: pick((globalThis.RelaaaxMusicDSP && globalThis.RelaaaxMusicDSP.ACCENT_NAMES) || ["four"]),
+      syncBeats: pick([0, 0, 1, 2, 2, 4, 4, 8, 16]),
+    };
+
+    // Every FX off, then switch a random two-to-four of them on.
+    F.FX_KEYS.forEach((k) => { cfg[k] = 0; });
+    const rack = F.FX_KEYS.slice();
+    for (let i = rack.length - 1; i > 0; i--) {
+      const j = Math.floor(R() * (i + 1));
+      [rack[i], rack[j]] = [rack[j], rack[i]];
+    }
+    rack.slice(0, 2 + Math.floor(R() * 3)).forEach((k) => { cfg[k] = rnd(0.15, 0.9); });
+
+    // Anti-blackout. A roll must always show SOMETHING.
+    if (cfg.scene === "none") {
+      cfg.sceneTiles = 1;
+      if (cfg.tileSize < 10) cfg.tileSize = rnd(20, 90);
+      if (cfg.blur > 45) cfg.blur = 12;
+      if (cfg.fxIris > 0.85) cfg.fxIris = 0.5;
+      if (cfg.fxShutter > 0.9) cfg.fxShutter = 0.5;
+      // A duo ramp of two near-blacks on a black background is an empty frame.
+      const lum = (h) => {
+        const n = parseInt(h.slice(1), 16);
+        return (((n >> 16) & 255) * 0.2126 + ((n >> 8) & 255) * 0.7152 + (n & 255) * 0.0722) / 255;
+      };
+      if (cfg.palette === "duo" && lum(cfg.low) < 0.12 && lum(cfg.high) < 0.12) {
+        cfg.high = "#ffffff";
+      }
+    } else if (cfg.sceneMix < 0.45 && cfg.sceneTiles < 0.25) {
+      cfg.sceneTiles = 0.8;
+    }
+    return cfg;
+  }
+
+  return { roll };
+})();

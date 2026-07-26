@@ -1,297 +1,485 @@
-// Relaaax — Claude's visual DJ sets, one per Suno track. v2 2026-07-24: re-
-// choreographed with the full expansion — shapes, layouts (radial/spiral/
-// brick/hex), Mondrian merges, palettes + hue, waveform morphs, displacement,
-// size-pulse, counter/nest layers, and the WebGL FX rack (trails, feedback
-// zoom, pixelate, RGB split, warp, slit-scan, kaleidoscope, bloom, grain,
-// CRT, shutter, iris). Event times are MEASURED moments from
-// tmp/relaaax/track-analyze.mjs (BPM, drops, sections, quiets) — not guesses.
-// Played by composition.js; toggled in the audio tab ("claude's set").
+// Relaaax — Claude's visual DJ sets. v6 2026-07-26, rebuilt on James's brief:
+// "more composition in the variety — one setting for 4 beats, then another,
+// then the 1st one again but varied; when there's a breakdown or a big
+// rhythmic shift, PUNCH it to a new look."
 //
-// Event shape: { at: seconds, label, base: {field params}, ramp: seconds,
-// react: {reactivity partial, rows replaces the whole matrix} }. Numerics and
-// hex colors ramp; strings/booleans snap. Each set opens with a full base so
-// it plays identically no matter where James left his sliders.
+// WHAT CHANGED ARCHITECTURALLY
+// ----------------------------
+// Sets are no longer a flat list of hand-timed parameter blobs. Each track
+// now has:
+//   1. a LOOK VOCABULARY — a handful of complete, named states (A, B, C…).
+//      This is the creative part: each look is a whole identity.
+//   2. VARIATIONS — operators that bend a look without destroying it, so a
+//      return to A reads as "A again, but different" rather than a new thing.
+//   3. a SCORE in BARS, not seconds. Call-and-response phrases (A B A' B'),
+//      returns with variation, and NEW looks reserved for the moments the
+//      analyzer actually found: drops, break-returns, groove changes, builds.
+//
+// Times are computed from the measured grid (assets/track-grid.js) at load,
+// so if the analyzer re-measures a track the whole set re-times itself. The
+// old sets were authored in seconds against a WRONG tempo (Angular was read
+// as 76 BPM when it is 115 — James caught it by ear) and every event sat off
+// the beat; authoring in bars makes that class of error impossible.
+//
+// Beat sync: looks set `accent` (which sixteenths the grid-locked pulse fires
+// on) and `syncBeats` (one flash cycle = N beats exactly), and their matrices
+// wire the lag-free clock sources — pulse / bar / phrase / swing — straight
+// at the visuals. See music-dsp.js CLOCK_SOURCES.
 (function () {
   "use strict";
 
   const D = globalThis.RelaaaxField.DEFAULTS;
-  const full = (over) => Object.assign({}, D, over);
+  const GRID = globalThis.RELAAAX_TRACK_GRID || {};
   const R = (src, tgt, amt) => ({ src, tgt, amt });
   const OFF = R("off", "ease", 0);
 
+  // --- variation operators ---------------------------------------------------
+  // Each takes a look's config and returns a PARTIAL that bends it. They must
+  // keep the look recognizable — this is "the same idea, said differently".
+  const VARY = {
+    none: () => ({}),
+    // Flip the ramp: the same structure, inverted tonality.
+    invert: (c) => ({ low: c.high, high: c.low, palette: "duo" }),
+    // Rotate the colour wheel a third of the way round.
+    hue: (c) => ({ hueShift: (c.hueShift + 0.33) % 1, sceneHue: (c.sceneHue + 0.28) % 1 }),
+    // Same geometry, different silhouette + a static angle scatter.
+    shape: (c) => ({
+      shape: c.shape === "square" ? "diamond" : c.shape === "circle" ? "star" : "circle",
+      rotate: c.rotate > 0.3 ? 0 : 0.55,
+    }),
+    // Double-time the flashing and open the mirror.
+    fast: (c) => ({ syncBeats: c.syncBeats >= 2 ? c.syncBeats / 2 : 1, fxKaleido: 0.85 }),
+    // Half-time, softer, wider.
+    slow: (c) => ({ syncBeats: (c.syncBeats || 2) * 2, spread: Math.min(2, c.spread + 0.7), ease: 1 }),
+    // Push the tiles back and let the scene carry it.
+    scene: (c) => ({ sceneTiles: 0.15, sceneMix: 1, sceneDrive: Math.min(1, c.sceneDrive + 0.35), sceneWarp: Math.min(1, c.sceneWarp + 0.4) }),
+    // Pull the scene back and let the lattice carry it — at slab scale.
+    tiles: (c) => ({ sceneTiles: 1, sceneMix: 0.25, tileSize: Math.min(300, Math.max(200, c.tileSize * 1.8)), merge: 0.95 }),
+    // Blow the geometry apart without touching colour.
+    burst: (c) => ({ displace: 0.95, desync: 0.95, sizePulse: 0.85, spread: Math.min(2, c.spread + 0.6) }),
+    // Everything at once — the "almost break it" operator.
+    blast: (c) => ({ blur: 95, fxShutter: 0.8, counter: 0.95, merge: 0.95, speed: Math.min(8, Math.max(4.6, c.speed * 3)) }),
+    // Squeeze it: tiny, tight, fast.
+    tight: (c) => ({ tileSize: Math.max(6, c.tileSize * 0.35), spread: 0.25, blur: 0 }),
+    // Accent swap — same look, different rhythm of flashing.
+    offbeat: () => ({ accent: "offbeat" }),
+    gallop: () => ({ accent: "gallop" }),
+    stutter: () => ({ accent: "stutter" }),
+  };
+
+  // Build the event list for one track from a look vocabulary + a bar score.
+  //   score entry: [bar, lookName, varyName?, extraPartial?, reactOverride?]
+  // The first entry MUST be at bar 1 and supplies the complete base.
+  function build(file, looks, score) {
+    const grid = GRID[file];
+    const barTime = (bar) => (grid
+      ? +(grid.firstDownbeat + (bar - 1) * grid.barLen).toFixed(3)
+      : (bar - 1) * 2);
+    const events = [];
+    for (let i = 0; i < score.length; i++) {
+      const [bar, lookName, varyName, extra, reactOver] = score[i];
+      const look = looks[lookName];
+      if (!look) continue;
+      const cfg = Object.assign({}, look.base);
+      const vary = VARY[varyName || "none"] || VARY.none;
+      const bent = vary(cfg);
+      // The set must cover the track from the very first sample, so the
+      // opening look starts at 0 even though bar 1 begins a moment later.
+      const at = i === 0 ? 0 : barTime(bar);
+      if (at > (grid ? grid.duration : Infinity)) continue;
+      const base = i === 0
+        ? Object.assign({}, D, cfg, bent, extra || {})   // opener: complete state
+        : Object.assign({}, cfg, bent, extra || {});
+      const react = reactOver || look.react;
+      const ev = { at, label: `b${bar} ${lookName}${varyName && varyName !== "none" ? "/" + varyName : ""}`, base };
+      if (react) ev.react = react;
+      if (extra && extra.__ramp) {
+        ev.ramp = extra.__ramp;
+        delete base.__ramp;
+      }
+      events.push(ev);
+    }
+    events.sort((a, b) => a.at - b.at);
+    return { events };
+  }
+
+  // Expand a call-and-response phrase: alternate looks every `every` bars from
+  // `from` up to (not including) `to`, cycling the variation list so each
+  // return is a variation rather than a repeat. This is the "A B A' B'" shape.
+  function call(from, to, every, pairs, varies) {
+    const out = [];
+    let i = 0;
+    for (let bar = from; bar < to; bar += every, i++) {
+      const [name, extra] = pairs[i % pairs.length];
+      const v = varies ? varies[Math.floor(i / pairs.length) % varies.length] : "none";
+      out.push([bar, name, i < pairs.length ? "none" : v, extra]);
+    }
+    return out;
+  }
+
   // ==========================================================================
-  // ANGULAR RITUAL — 207s, 76 BPM (bar 3.157s). Occult machinery in ember and
-  // bone: drops measured at 25s / 59s / 178s, breath-holds at 18–24s and
-  // 174–177s. Arc: iris-dark temple -> diamond fire rite -> circle-white
-  // inversion with pixel-crunch hits -> spinning triangle tunnel -> brick CRT
-  // furnace -> radial ring shrine -> square-wave consumption -> void ->
-  // white shutter hammer with RGB tearing -> sine afterglow, iris out.
+  // ANGULAR RITUAL — 115 BPM (James's ear), bar 2.087s, 99 bars, phrase 8.
+  // Punches: b2/b6 break-returns, b10 build, b12 drop, b37 drop, b45 drop,
+  // b53 groove change, b59 break-return, b62 build, b78 break-return, b86 drop.
+  // Four identities: the ember temple (A), the bone lattice (B), the flame
+  // rite (C), the white room (D). A and B trade every two bars; C and D are
+  // reserved for the punches.
   // ==========================================================================
-  const angularBar = 240 / 76.01;
-  const ANGULAR = [
-    { at: 0, label: "ember temple", base: full({
+  const ANGULAR_LOOKS = {
+    A: { // ember temple — ridge scene breathing under a slow ring lattice
+      base: {
         rows: 5, cols: 5, tileSize: 18, gapX: 30, gapY: 30,
-        speed: 0.5, holdScale: 1.4, desync: 0.05, ease: 0.55, border: 0.5,
-        low: "#000000", high: "#3d0a08", bg: "#000000",
-        pattern: "rings", spread: 0.8, blur: 10,
-        fxBloom: 0.15, fxIris: 0.35, fxGrain: 0.15,
-      }),
-      react: { master: 0.7, attack: 0.05, release: 0.4, beatSense: 0.6, beatDecay: 0.45,
-        rows: [R("bass", "fxBloom", 0.3), R("beat", "tileSize", 0.25), R("level", "speed", 0.15), R("mid", "spread", 0.2), OFF, OFF] } },
-    { at: 12, label: "first pulse", ramp: 6, base: { high: "#6e120c", fxBloom: 0.25 } },
-    { at: 18, label: "held breath", ramp: 3, base: { speed: 0.28, blur: 26, high: "#200404", fxIris: 0.65 } },
-    { at: 25 - angularBar / 2, label: "coil", ramp: 1.4, base: { spread: 0.2, tileSize: 10, fxIris: 0.8 } },
-    { at: 25, label: "drop I — the rite", base: {
-        low: "#000000", high: "#ff2f10", bg: "#120202", palette: "lava",
-        pattern: "x-cross", shape: "diamond", spread: 1.2, speed: 1.6, tileSize: 62,
-        rows: 7, cols: 7, gapX: 26, gapY: 26, blur: 0, holdScale: 0.6, ease: 0.2,
-        fill: true, border: 1.5, fxIris: 0, fxBloom: 0.3, fxGrain: 0.2,
+        speed: 0.5, holdScale: 1.2, desync: 0.05, ease: 0.55, border: 0.5,
+        low: "#000000", high: "#4a0d0a", bg: "#000000", palette: "duo",
+        layout: "grid", shape: "square", waveform: "triangle",
+        pattern: "rings", spread: 0.8, blur: 6, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0, merge: 0, counter: 0, nest: 0,
+        fill: false, radiusTile: 0, fxBloom: 0.2, fxIris: 0.25, fxGrain: 0.15,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "ridge", scenePalette: "lava", sceneMix: 0.75, sceneTiles: 0.6,
+        sceneSpeed: 0.45, sceneScale: 0.4, sceneDrive: 0.35, sceneWarp: 0.5,
+        sceneGenome: "amber globe", accent: "four", syncBeats: 4,
       },
-      react: { master: 1.15, attack: 0.02, release: 0.18, beatSense: 0.7, beatDecay: 0.3,
-        rows: [R("beat", "tileSize", 0.7), R("beat", "fxRgb", 0.5), R("bass", "fxBloom", 0.4), R("beat", "twist", 0.5), R("high", "desync", 0.3), R("level", "speed", 0.25)] } },
-    { at: 33, label: "ember shift", ramp: 5, base: { hueShift: 0.06 } },
-    { at: 41, label: "grate", ramp: 10, base: { pattern: "checkerboard", shape: "cross", twist: 0.55, spread: 1.0, merge: 0.35 } },
-    { at: 50, label: "winding", ramp: 7, base: { speed: 2.4, spread: 1.8, blur: 6, fxZoom: 0.25, fxZoomRot: 0.2, hueShift: 0.12 } },
-    { at: 59, label: "drop II — inversion", base: {
-        palette: "duo", low: "#ffffff", high: "#0a0a0a", bg: "#efe7da", hueShift: 0,
-        pattern: "quarters", shape: "circle", tileSize: 92, radiusTile: 0.5,
-        rows: 6, cols: 6, gapX: 40, gapY: 40, speed: 1.4, blur: 0, spread: 0.9,
-        twist: 0.2, holdScale: 0.8, fill: true, merge: 0,
-        fxZoom: 0, fxZoomRot: 0, fxShutter: 0.3, fxBloom: 0.2,
+      react: { master: 1.0, attack: 0.02, release: 0.25, beatSense: 0.65, beatDecay: 0.3, accentDecay: 0.14,
+        rows: [R("pulse", "tileSize", 0.5), R("pulse", "fxBloom", 0.35), R("bar", "sceneHue", 0.15),
+          R("bass", "sceneDrive", 0.35), R("phrase", "spread", 0.3), OFF] },
+    },
+    B: { // bone lattice — tiles forward, hard edges, crt bite
+      base: {
+        rows: 9, cols: 9, tileSize: 40, gapX: 14, gapY: 14,
+        speed: 1, holdScale: 0, desync: 0.15, ease: 0, border: 1,
+        low: "#0a0603", high: "#e8d9b8", bg: "#050302", palette: "duo",
+        layout: "brick", shape: "cross", waveform: "square",
+        pattern: "checkerboard", spread: 1.1, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.3, merge: 0.3, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.15, fxIris: 0, fxGrain: 0.25,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0.2, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0.45,
+        scene: "none", scenePalette: "crt", sceneMix: 0.3, sceneTiles: 1,
+        sceneSpeed: 0.8, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+        sceneGenome: "amber globe", accent: "backbeat", syncBeats: 2,
       },
-      react: { master: 1.1, beatSense: 0.7, beatDecay: 0.28,
-        rows: [R("beat", "twist", 0.8), R("beat", "fxPixel", 0.45), R("bass", "tileSize", 0.5), R("beat", "blur", 0.4), R("high", "desync", 0.25), R("level", "speed", 0.2)] } },
-    { at: 73, label: "back to black", base: {
-        palette: "lava", low: "#000000", high: "#d81f1f", bg: "#0a0000",
-        pattern: "pinwheel", shape: "triangle", spread: 1.4, twist: 0.35,
-        tileSize: 44, rows: 8, cols: 8, radiusTile: 0, fill: true, speed: 1.7,
-        blur: 0, spin: 0.12, fxShutter: 0, fxZoom: 0.35, fxZoomRot: 0.3, fxBloom: 0.35, fxPixel: 0,
-      } },
-    { at: 88, label: "brick furnace", base: {
-        layout: "brick", pattern: "tempo-rows", shape: "square", spin: 0,
-        hueShift: 0.08, twist: 0.5, rows: 9, cols: 9, tileSize: 36, blur: 2,
-        merge: 0.25, fxZoom: 0, fxZoomRot: 0, fxCrt: 0.45, fxGrain: 0.3,
-      } },
-    { at: 108, label: "chevron creed", base: {
-        layout: "grid", pattern: "diagonal", shape: "chevron", spread: 1.6,
-        tileSize: 54, ease: 0.4, displace: 0.12, merge: 0,
-        fxCrt: 0, fxSlit: 0.25, fxGrain: 0.2,
-      } },
-    { at: 121, label: "ring shrine", base: {
-        layout: "radial", pattern: "rings", shape: "ring", rows: 6, cols: 14,
-        tileSize: 30, gapX: 18, gapY: 18, spread: 2, speed: 1.9, blur: 0,
-        twist: 0, displace: 0, fxSlit: 0, fxZoom: 0.45, fxZoomRot: 0.15, fxBloom: 0.4,
+      react: { master: 1.2, attack: 0.015, release: 0.14, beatSense: 0.75, beatDecay: 0.18, accentDecay: 0.09,
+        rows: [R("pulse", "tileSize", 0.8), R("pulse", "fxRgb", 0.5), R("swing", "twist", 0.4),
+          R("bar", "merge", -0.3), R("beat", "displace", 0.35), R("high", "desync", 0.3)] },
+    },
+    C: { // the flame rite — the scene takes the whole frame
+      base: {
+        rows: 7, cols: 7, tileSize: 52, gapX: 30, gapY: 30,
+        speed: 1.6, holdScale: 0.4, desync: 0.2, ease: 0.2, border: 1.2,
+        low: "#000000", high: "#ff2f10", bg: "#0a0101", palette: "lava",
+        layout: "grid", shape: "diamond", waveform: "triangle",
+        pattern: "x-cross", spread: 1.2, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.4, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.35, fxIris: 0, fxGrain: 0.2,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0.3, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "flame", scenePalette: "genome", sceneGenome: "gold phoenix",
+        sceneMix: 1, sceneTiles: 0.3, sceneSpeed: 1, sceneScale: 0.55,
+        sceneDrive: 0.75, sceneWarp: 0.4, accent: "four", syncBeats: 1,
       },
-      react: { rows: [R("beat", "tileSize", 0.6), R("mid", "spread", 0.5), R("bass", "fxBloom", 0.4), R("beat", "fxZoomRot", 0.4), R("level", "speed", 0.3), R("high", "desync", 0.35)] } },
-    { at: 134, label: "cross returns", base: {
-        layout: "grid", pattern: "x-cross", shape: "cross", rows: 8, cols: 8,
-        speed: 2.1, hueShift: 0.03, rotate: 0.15, fxZoom: 0, fxZoomRot: 0, fxKaleido: 0.35,
-      } },
-    { at: 146, label: "consumption", ramp: 45, base: {
-        pattern: "quarters", shape: "square", waveform: "square", twist: 1,
-        spread: 1.3, tileSize: 70, blur: 3, merge: 0.8, rotate: 0, fxKaleido: 0, fxPixel: 0.3,
-      } },
-    { at: 168, label: "narrowing", ramp: 7, base: { speed: 1.2, hueShift: 0.14, fxIris: 0.5 } },
-    { at: 174, label: "void", ramp: 2.4, base: { blur: 55, speed: 0.3, fxIris: 0.9, fxBloom: 0 } },
-    { at: 178, label: "drop III — white hammer", base: {
-        palette: "duo", low: "#000000", high: "#ffffff", bg: "#000000", hueShift: 0,
-        pattern: "unison", shape: "square", waveform: "square", holdScale: 0,
-        speed: 3.2, blur: 0, tileSize: 130, rows: 4, cols: 4, gapX: 60, gapY: 60,
-        fill: true, spread: 0, ease: 0, border: 0, merge: 0, fxPixel: 0,
-        fxIris: 0, fxShutter: 0.6, fxRgb: 0.3, fxBloom: 0.5, fxGrain: 0.35,
+      react: { master: 1.5, attack: 0.012, release: 0.12, beatSense: 0.8, beatDecay: 0.16, accentDecay: 0.1,
+        rows: [R("pulse", "sceneDrive", 0.7), R("pulse", "tileSize", 0.7), R("pulse", "fxBloom", 0.5),
+          R("bar", "sceneHue", 0.25), R("bass", "sceneWarp", 0.4), R("phrase", "sceneScale", 0.3)] },
+    },
+    D: { // the white room — everything inverted, scene cut dead
+      base: {
+        rows: 6, cols: 6, tileSize: 96, gapX: 40, gapY: 40,
+        speed: 1.4, holdScale: 0.5, desync: 0, ease: 0, border: 0,
+        low: "#ffffff", high: "#0a0a0a", bg: "#efe7da", palette: "duo",
+        layout: "grid", shape: "circle", waveform: "square",
+        pattern: "quarters", spread: 0.9, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0.5, fxBloom: 0.2, fxIris: 0, fxGrain: 0,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0.35, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "none", scenePalette: "duo", sceneMix: 1, sceneTiles: 1,
+        sceneSpeed: 1, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+        sceneGenome: "amber globe", accent: "downbeat", syncBeats: 1,
       },
-      react: { master: 1.3, attack: 0.015, release: 0.12, beatSense: 0.75, beatDecay: 0.18,
-        rows: [R("beat", "fxRgb", 0.7), R("beat", "tileSize", 0.9), R("beat", "displace", 0.5), R("beat", "blur", 0.6), R("level", "speed", 0.3), R("high", "desync", 0.2)] } },
-    { at: 190, label: "afterglow", ramp: 8, base: {
-        palette: "lava", waveform: "sine", high: "#ff7a1a", speed: 1.0,
-        holdScale: 1.2, blur: 12, fill: false, tileSize: 60, hueShift: 0.05,
-        fxShutter: 0, fxRgb: 0, fxTrails: 0.45, fxBloom: 0.35, fxGrain: 0.2,
-      } },
-    { at: 199, label: "cooling", ramp: 7, base: { hueShift: 0.12, speed: 0.5, fxTrails: 0.6 } },
-    { at: 204, label: "out", ramp: 3, base: { palette: "duo", low: "#000000", high: "#000000", blur: 30, speed: 0.25, fxIris: 0.95, fxTrails: 0.3 } },
+      react: { master: 1.6, attack: 0.01, release: 0.1, beatSense: 0.85, beatDecay: 0.12, accentDecay: 0.07,
+        rows: [R("pulse", "tileSize", 1), R("pulse", "blur", 0.6), R("pulse", "fxPixel", 0.5),
+          R("swing", "twist", 0.5), R("bar", "spread", -0.4), R("beat", "displace", 0.5)] },
+    },
+  };
+
+  const ANGULAR_SCORE = [
+    [1, "A"],                                   // state the theme
+    ...call(3, 12, 2, [["B"], ["A"]], ["hue", "shape", "offbeat"]),
+    [12, "C"],                                  // PUNCH — measured drop
+    ...call(14, 22, 2, [["A", { sceneTiles: 0.35 }], ["C"]], ["hue", "fast"]),
+    [22, "B", "invert"],
+    ...call(24, 37, 2, [["A"], ["B"]], ["gallop", "hue", "tight"]),
+    [37, "C", "burst"],                         // PUNCH — drop
+    ...call(39, 45, 2, [["B", { fxCrt: 0.7 }], ["C"]], ["stutter"]),
+    [45, "D", "blast"],                         // PUNCH — drop into the white room
+    [47, "D", "hue"],
+    [49, "B", "tight"],
+    [51, "A", "scene", { scene: "nebula", scenePalette: "neon", sceneSpeed: 1.4 }],
+    [53, "C", "shape"],                         // PUNCH — groove change
+    ...call(55, 59, 2, [["A"], ["B"]], ["offbeat"]),
+    [59, "D", "invert"],                        // PUNCH — break returns
+    [61, "B", "fast"],
+    [62, "C"],                                  // PUNCH — build
+    ...call(64, 78, 2, [["A", { sceneGenome: "ember cathedral" }], ["C", { sceneGenome: "violet veil" }]], ["hue", "burst", "slow"]),
+    [78, "B", "burst"],                         // PUNCH — break returns
+    ...call(80, 86, 2, [["A"], ["B"]], ["stutter"]),
+    [86, "C", "fast"],                          // PUNCH — final drop
+    [88, "D"],
+    [90, "C", "scene", { sceneGenome: "firebird" }],
+    [92, "A", "hue"],
+    [94, "A", "slow", { __ramp: 4, fxTrails: 0.6, sceneMix: 0.4 }],
+    [97, "A", "none", { __ramp: 4, speed: 0.25, blur: 60, fxIris: 0.95, sceneMix: 0, low: "#000000", high: "#000000", palette: "duo" }],
   ];
 
   // ==========================================================================
-  // JUNGLE MOOG RITUAL — 479s, 128 BPM (bar 1.877s). Eight minutes of broken
-  // jungle on the acid palette: sine circles under an iris, a phyllotaxis
-  // burst at the 15s drop, hex-packed sparkle body, an ocean-palette liquid
-  // breakdown at 121s, star-shaped spiral frenzy from 149s, a kaleidoscope
-  // daylight inversion at 210s, a slit-shaped moog worm, and a radial-ring
-  // night ride down the long tail.
+  // JUNGLE MOOG RITUAL — 129.1 BPM, bar 1.859s, 257 bars, phrase 12.
+  // Sections A1-8 / B9-24 / C25-257. A dense punch map (33) — the set trades
+  // every 4 bars and hits the big ones. Three identities plus a bare one.
   // ==========================================================================
-  const JUNGLE = [
-    { at: 0, label: "under canopy", base: full({
-        rows: 8, cols: 8, tileSize: 14, gapX: 40, gapY: 40,
-        speed: 0.6, holdScale: 1.2, desync: 0.3, border: 0.5,
-        palette: "acid", pattern: "drops", spread: 1.1, twist: 0.2, blur: 16,
-        shape: "circle", waveform: "sine", nest: 1,
-        fxGrain: 0.2, fxIris: 0.4,
-      }),
-      react: { master: 0.8, attack: 0.04, release: 0.35, beatSense: 0.6, beatDecay: 0.4,
-        rows: [R("bass", "blur", 0.3), R("beat", "tileSize", 0.3), R("high", "desync", 0.3), R("level", "speed", 0.15), OFF, OFF] } },
-    { at: 8, label: "eyes open", ramp: 5, base: { fxIris: 0.25, hueShift: 0.04 } },
-    { at: 15, label: "drop — spore burst", base: {
-        layout: "spiral", pattern: "scatter", shape: "circle", desync: 0.5,
-        speed: 1.4, tileSize: 30, rows: 10, cols: 10, gapX: 26, gapY: 26,
-        blur: 0, holdScale: 0.8, fill: true, sizePulse: 0.5, nest: 0,
-        fxIris: 0, fxBloom: 0.3, hueShift: 0,
+  const JUNGLE_LOOKS = {
+    A: { // undergrowth — acid ink, soft circles
+      base: {
+        rows: 8, cols: 8, tileSize: 16, gapX: 40, gapY: 40,
+        speed: 0.6, holdScale: 1.2, desync: 0.3, ease: 0.5, border: 0.5,
+        low: "#000000", high: "#35f07f", bg: "#030a05", palette: "acid",
+        layout: "grid", shape: "circle", waveform: "sine",
+        pattern: "drops", spread: 1.1, blur: 10, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.2, merge: 0, counter: 0, nest: 1,
+        fill: false, radiusTile: 0.5, fxBloom: 0.2, fxIris: 0.3, fxGrain: 0.2,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "ink", scenePalette: "acid", sceneMix: 0.7, sceneTiles: 0.75,
+        sceneSpeed: 0.5, sceneScale: 0.5, sceneDrive: 0.4, sceneWarp: 0.6,
+        sceneGenome: "green triskelion", accent: "four", syncBeats: 4,
       },
-      react: { master: 1.1, attack: 0.02, release: 0.2, beatSense: 0.7, beatDecay: 0.3,
-        rows: [R("beat", "sizePulse", 0.6), R("high", "desync", 0.5), R("bass", "fxBloom", 0.4), R("mid", "spread", 0.35), R("level", "speed", 0.25), R("beat", "twist", 0.4)] } },
-    { at: 34, label: "fern shadow", ramp: 2, base: { speed: 0.8, blur: 9, fxIris: 0.3 } },
-    { at: 45, label: "snake in", base: {
-        layout: "grid", pattern: "snake", shape: "chevron", twist: 0.4,
-        speed: 1.5, blur: 0, spread: 1.2, sizePulse: 0, displace: 0.1,
-        fxIris: 0, fxWarp: 0.2,
-      } },
-    { at: 68, label: "hex body", base: {
-        layout: "hex", pattern: "sparkle", shape: "hexagon", rows: 12, cols: 12,
-        tileSize: 24, gapX: 20, gapY: 20, spread: 1.2, twist: 0.3, speed: 1.6,
-        displace: 0, fxWarp: 0.15, fxBloom: 0.3,
-      } },
-    { at: 90, label: "acid lime", ramp: 4, base: { hueShift: 0.1, desync: 0.55 } },
-    { at: 105, label: "venom", ramp: 4, base: { hueShift: 0.16, speed: 1.9, fxRgb: 0.2 } },
-    { at: 121, label: "liquid breakdown", ramp: 3, base: {
-        palette: "ocean", pattern: "ripple", waveform: "sine", blur: 42,
-        speed: 0.55, spread: 1.7, ease: 0.9, hueShift: 0,
-        fxWarp: 0.5, fxTrails: 0.5, fxRgb: 0, fxBloom: 0.25, fxIris: 0.2,
+      react: { master: 1.05, attack: 0.02, release: 0.24, beatSense: 0.7, beatDecay: 0.26, accentDecay: 0.13,
+        rows: [R("pulse", "tileSize", 0.55), R("pulse", "sceneDrive", 0.4), R("bar", "hueShift", 0.2),
+          R("bass", "blur", -0.3), R("phrase", "sceneScale", 0.3), R("high", "desync", 0.25)] },
+    },
+    B: { // the machine — hex lattice, square wave, hard
+      base: {
+        rows: 12, cols: 12, tileSize: 26, gapX: 18, gapY: 18,
+        speed: 1.2, holdScale: 0, desync: 0.2, ease: 0, border: 0.6,
+        low: "#02120a", high: "#c8ff1e", bg: "#000000", palette: "acid",
+        layout: "hex", shape: "hexagon", waveform: "square",
+        pattern: "sparkle", spread: 1.3, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0.2, spin: 0, displace: 0, sizePulse: 0.4, merge: 0.2, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.25, fxIris: 0, fxGrain: 0.3,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0.15, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0.15, fxSlit: 0, fxCrt: 0.3,
+        scene: "ridge", scenePalette: "acid", sceneMix: 0.5, sceneTiles: 0.9,
+        sceneSpeed: 0.9, sceneScale: 0.45, sceneDrive: 0.6, sceneWarp: 0.6,
+        sceneGenome: "emerald ring", accent: "eighths", syncBeats: 1,
       },
-      react: { master: 0.9, release: 0.5,
-        rows: [R("bass", "fxWarp", 0.35), R("level", "tileSize", 0.3), R("mid", "spread", 0.3), OFF, OFF, OFF] } },
-    { at: 135, label: "re-entry", ramp: 2, base: {
-        palette: "acid", pattern: "drops", waveform: "triangle", blur: 8,
-        speed: 1.1, ease: 0.4, fxWarp: 0.2, fxTrails: 0.2, fxIris: 0,
-      } },
-    { at: 141, label: "the climb", ramp: 8, base: { speed: 2.1, spread: 1.9, blur: 0, twist: 0.8, fxZoom: 0.3 } },
-    { at: 149, label: "star frenzy", base: {
-        layout: "spiral", pattern: "scatter", shape: "star", desync: 0.7,
-        holdScale: 0.5, tileSize: 34, sizePulse: 0.6, spin: 0.2,
-        fxZoom: 0.2, fxZoomRot: 0.1, fxBloom: 0.4, fxGrain: 0.25, fxTrails: 0,
+      react: { master: 1.35, attack: 0.012, release: 0.12, beatSense: 0.8, beatDecay: 0.15, accentDecay: 0.08,
+        rows: [R("pulse", "tileSize", 0.8), R("pulse", "fxRgb", 0.5), R("pulse", "displace", 0.4),
+          R("swing", "rotate", 0.4), R("bar", "twist", 0.4), R("high", "desync", 0.35)] },
+    },
+    C: { // spore burst — flame scene, spiral scatter
+      base: {
+        rows: 10, cols: 10, tileSize: 26, gapX: 26, gapY: 26,
+        speed: 1.4, holdScale: 0.4, desync: 0.55, ease: 0.2, border: 0,
+        low: "#000000", high: "#c8ff1e", bg: "#000000", palette: "acid",
+        layout: "spiral", shape: "circle", waveform: "triangle",
+        pattern: "scatter", spread: 1.2, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0.15, displace: 0, sizePulse: 0.7, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0.5, fxBloom: 0.35, fxIris: 0, fxGrain: 0.2,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "flame", scenePalette: "genome", sceneGenome: "lime vortex",
+        sceneMix: 0.95, sceneTiles: 0.35, sceneSpeed: 1.2, sceneScale: 0.55,
+        sceneDrive: 0.8, sceneWarp: 0.5, accent: "four", syncBeats: 2,
       },
-      react: { master: 1.3, attack: 0.015, release: 0.14, beatSense: 0.75, beatDecay: 0.22,
-        rows: [R("beat", "sizePulse", 0.8), R("beat", "twist", 0.7), R("bass", "fxBloom", 0.45), R("high", "desync", 0.5), R("level", "speed", 0.3), R("beat", "fxRgb", 0.5)] } },
-    { at: 173, label: "hex plateau", base: {
-        layout: "hex", pattern: "sparkle", shape: "triangle", rows: 14, cols: 14,
-        tileSize: 20, gapX: 16, gapY: 16, spread: 1.6, speed: 1.7, twist: 0.5,
-        rotate: 0.3, merge: 0.2, spin: 0, sizePulse: 0.2, fxZoom: 0, fxZoomRot: 0,
-      } },
-    { at: 190, label: "organism", ramp: 8, base: {
-        shape: "circle", tileSize: 72, gapX: 30, gapY: 30, blur: 2,
-        counter: 0.5, nest: 1, rotate: 0, merge: 0, fxBloom: 0.35,
-      } },
-    { at: 210, label: "drop — daylight", base: {
-        palette: "duo", low: "#eaffea", high: "#063d16", bg: "#dfffdf", hueShift: 0,
-        layout: "spiral", pattern: "scatter", shape: "circle", tileSize: 80,
-        desync: 0.6, speed: 1.8, blur: 0, counter: 0, nest: 0,
-        fxKaleido: 0.5, fxShutter: 0.25, fxBloom: 0.3,
+      react: { master: 1.45, attack: 0.012, release: 0.13, beatSense: 0.8, beatDecay: 0.16, accentDecay: 0.09,
+        rows: [R("pulse", "sceneDrive", 0.75), R("pulse", "sizePulse", 0.7), R("pulse", "fxBloom", 0.4),
+          R("bar", "sceneHue", 0.3), R("phrase", "sceneScale", 0.35), R("bass", "sceneWarp", 0.35)] },
+    },
+    E: { // night ride — nebula tunnel, radial rings
+      base: {
+        rows: 7, cols: 16, tileSize: 26, gapX: 26, gapY: 26,
+        speed: 1.3, holdScale: 0.6, desync: 0.3, ease: 0.6, border: 0,
+        low: "#0a0014", high: "#ff9de8", bg: "#05010c", palette: "neon",
+        layout: "radial", shape: "ring", waveform: "sine",
+        pattern: "tempo-rows", spread: 1.8, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.3, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.3, fxIris: 0, fxGrain: 0.15,
+        fxKaleido: 0, fxTrails: 0.35, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0.2,
+        scene: "nebula", scenePalette: "neon", sceneMix: 0.9, sceneTiles: 0.5,
+        sceneSpeed: 1, sceneScale: 0.55, sceneDrive: 0.6, sceneWarp: 0.4,
+        sceneGenome: "violet veil", accent: "backbeat", syncBeats: 4,
       },
-      react: { master: 1.25,
-        rows: [R("beat", "fxKaleido", 0.5), R("beat", "tileSize", 0.7), R("high", "desync", 0.4), R("level", "speed", 0.25), R("mid", "spread", 0.3), R("beat", "twist", 0.5)] } },
-    { at: 224, label: "dusk returns", ramp: 5, base: {
-        palette: "acid", low: "#000000", high: "#35f07f", bg: "#030a05",
-        tileSize: 40, hueShift: 0.05, fxKaleido: 0, fxShutter: 0, fxBloom: 0.25,
-      } },
-    { at: 234, label: "moog worm", ramp: 60, base: {
-        layout: "grid", pattern: "snake", shape: "slit", twist: 1, rows: 12, cols: 12,
-        tileSize: 30, gapX: 22, gapY: 22, spread: 1.4, speed: 1.5,
-        fxSlit: 0.3, fxWarp: 0.25,
-      } },
-    { at: 257, label: "low tide", ramp: 5, base: { speed: 1.1, blur: 6, hueShift: 0.02 } },
-    { at: 265, label: "dusk hollow", ramp: 3, base: { speed: 0.6, blur: 26, fxIris: 0.5 } },
-    { at: 269, label: "night ride", base: {
-        layout: "radial", pattern: "tempo-rows", shape: "ring", rows: 7, cols: 16,
-        tileSize: 30, gapX: 26, gapY: 26, spread: 2, speed: 1.3, blur: 0,
-        twist: 0.4, fxIris: 0, fxSlit: 0, fxWarp: 0, fxTrails: 0.35, fxBloom: 0.3, fxCrt: 0.2,
-      },
-      react: { master: 1.0, beatSense: 0.68, beatDecay: 0.3,
-        rows: [R("beat", "tileSize", 0.5), R("bass", "fxBloom", 0.35), R("mid", "spread", 0.4), R("high", "desync", 0.35), R("level", "speed", 0.25), R("beat", "twist", 0.3)] } },
-    { at: 300, label: "pinwheel haze", base: { pattern: "pinwheel", twist: 0.5, spread: 1.5, spin: 0.1, hueShift: 0.08, fxWarp: 0.2 } },
-    { at: 330, label: "rings of it", base: { pattern: "rings", spread: 1.8, spin: 0, counter: 0.35, fxKaleido: 0.3 } },
-    { at: 360, label: "checker pulse", base: {
-        layout: "grid", pattern: "checkerboard", shape: "diamond", waveform: "square",
-        twist: 0.3, tileSize: 46, speed: 1.6, merge: 0.3, counter: 0,
-        fxKaleido: 0, fxCrt: 0.35,
-      } },
-    { at: 390, label: "scatter night", ramp: 8, base: {
-        pattern: "scatter", shape: "circle", waveform: "sine", desync: 0.6,
-        tileSize: 34, hueShift: 0.12, merge: 0, fxCrt: 0, fxTrails: 0.45,
-      } },
-    { at: 420, label: "wind-down", ramp: 25, base: { speed: 0.8, blur: 18, spread: 1.2, hueShift: 0.16, fxTrails: 0.6, fxIris: 0.35, fxWarp: 0.3 } },
-    { at: 455, label: "embers", ramp: 12, base: { hueShift: 0.2, speed: 0.45, blur: 30, fxIris: 0.6, fxGrain: 0.3 } },
-    { at: 473, label: "out", ramp: 5, base: { speed: 0.2, fxIris: 0.95, bg: "#000000" } },
+      react: { master: 1.15, attack: 0.02, release: 0.2, beatSense: 0.72, beatDecay: 0.22, accentDecay: 0.12,
+        rows: [R("pulse", "tileSize", 0.6), R("pulse", "sceneDrive", 0.45), R("bar", "sceneHue", 0.35),
+          R("phrase", "sceneSpeed", 0.3), R("swing", "spread", 0.3), R("bass", "fxBloom", 0.3)] },
+    },
+  };
+
+  const JUNGLE_SCORE = [
+    [1, "A"],
+    [5, "B"],                                    // PUNCH — drop
+    [9, "C"],                                    // PUNCH — drop
+    ...call(13, 25, 4, [["A", { sceneTiles: 0.5 }], ["B"]], ["hue", "offbeat"]),
+    [25, "C", "burst"],                          // PUNCH — section C
+    ...call(29, 49, 4, [["B"], ["A"], ["C"]], ["hue", "shape", "gallop"]),
+    [49, "B", "invert"],                         // PUNCH — groove change
+    ...call(53, 62, 4, [["A"], ["C"]], ["fast", "scene"]),
+    [62, "C", "shape"],                          // PUNCH — groove change
+    [66, "A", "tiles"],
+    [69, "B", "blast"],                          // PUNCH — drop
+    [73, "C"],                                   // PUNCH — drop
+    [77, "E"],                                   // PUNCH — groove change: new world
+    ...call(81, 94, 4, [["E"], ["B", { fxCrt: 0.6 }]], ["hue", "stutter"]),
+    [94, "C", "fast"],                           // PUNCH — drop
+    ...call(98, 108, 4, [["A"], ["E"]], ["hue"]),
+    [108, "B", "tight"],                         // PUNCH — groove change
+    ...call(112, 118, 4, [["C"], ["A"]], ["offbeat"]),
+    [118, "E", "burst"],                         // PUNCH — drop
+    ...call(122, 133, 4, [["E"], ["C"]], ["hue", "slow"]),
+    [133, "A", "scene"],                         // PUNCH — break returns
+    ...call(137, 146, 4, [["B"], ["A"]], ["gallop"]),
+    [146, "C", "blast"],                         // PUNCH — drop
+    ...call(150, 160, 4, [["E"], ["C"]], ["hue"]),
+    [160, "B", "fast"],                          // PUNCH — groove change
+    ...call(164, 173, 4, [["A"], ["E"]], ["shape"]),
+    [173, "E", "hue"],                           // PUNCH — break returns
+    [177, "C", "scene", { sceneGenome: "firebird" }],
+    ...call(181, 195, 4, [["E"], ["B"], ["A"]], ["hue", "offbeat"]),
+    [195, "C", "burst"],                         // PUNCH — groove change
+    ...call(199, 211, 4, [["E"], ["A"]], ["slow", "hue"]),
+    [211, "B", "invert"],                        // PUNCH — break returns
+    ...call(215, 227, 4, [["E"], ["C"]], ["hue", "scene"]),
+    [227, "E", "hue"],                           // PUNCH — break returns
+    ...call(231, 243, 4, [["A"], ["E"]], ["slow"]),
+    [243, "E", "slow", { __ramp: 6, fxTrails: 0.6, fxIris: 0.35 }],
+    [249, "E", "slow", { __ramp: 8, speed: 0.5, blur: 30, sceneMix: 0.3, fxIris: 0.6 }],
+    [255, "E", "none", { __ramp: 4, speed: 0.2, sceneMix: 0, fxIris: 0.95, bg: "#000000", palette: "duo", low: "#000000", high: "#000000" }],
   ];
 
   // ==========================================================================
-  // TIMBER AT SEA — 181s, 122 BPM (bar 1.963s). Water, not machinery: sine
-  // waveform and bar-slat tiles on deep blues, warp haze throughout. Squall
-  // measured at 47s (ocean palette, diamond spray, beat-kicked displacement),
-  // sheet-lightning inversion for one bar at 80s, bioluminescent spiral with
-  // counter-interference at 95s, slit-shaped rain at 108s, storm passes at
-  // 134s into trails, one last circle wave at 158s, iris shut in the harbor.
+  // TIMBER AT SEA — 123.95 BPM, bar 1.936s, 92 bars, phrase 16.
+  // Sections A1-12 / A13-48 / B49-68 / A69-80 / C81-92. Water, not machinery:
+  // ink and nebula carry it, the lattice is bars and slits.
   // ==========================================================================
-  const timberBar = 240 / 122.28;
-  const TIMBER = [
-    { at: 0, label: "black sea", base: full({
+  const TIMBER_LOOKS = {
+    A: { // black sea — ink under slow bars
+      base: {
         rows: 5, cols: 9, tileSize: 40, gapX: 18, gapY: 46,
         marginTop: 60, marginRight: 60, marginBottom: 60, marginLeft: 60,
         speed: 0.5, holdScale: 1.3, desync: 0.15, ease: 1, border: 0.4,
-        low: "#000407", high: "#0c2b40", bg: "#01050a",
-        pattern: "bounce-x", spread: 1.3, blur: 14,
-        shape: "bar", waveform: "sine",
-        fxWarp: 0.15, fxGrain: 0.15, fxIris: 0.3,
-      }),
-      react: { master: 0.75, attack: 0.06, release: 0.5, beatSense: 0.62, beatDecay: 0.5,
-        rows: [R("bass", "blur", 0.3), R("level", "tileSize", 0.25), R("mid", "spread", 0.25), R("beat", "tileSize", 0.2), OFF, OFF] } },
-    { at: 8, label: "moonlight", ramp: 6, base: { high: "#17537a", fxBloom: 0.2 } },
-    { at: 23, label: "current", ramp: 4, base: { pattern: "sweep-right", spread: 1.6, speed: 0.7, high: "#1e88b8", blur: 8, fxSlit: 0.2 } },
-    { at: 39, label: "held breath", ramp: 5, base: { speed: 0.35, blur: 32, high: "#0a2333", spread: 2, fxIris: 0.55, fxSlit: 0 } },
-    { at: 46, label: "gather", ramp: 1, base: { tileSize: 16, spread: 0.3 } },
-    { at: 47, label: "squall", base: {
-        palette: "ocean", pattern: "ripple", shape: "diamond", waveform: "triangle",
-        spread: 1.8, twist: 0, speed: 1.7, blur: 2, tileSize: 55,
-        rows: 9, cols: 9, gapX: 26, gapY: 26, holdScale: 0.7, ease: 0.6,
-        fill: true, border: 0.8, displace: 0.2,
-        fxIris: 0, fxWarp: 0.3, fxBloom: 0.35, fxGrain: 0.2,
+        low: "#000407", high: "#1e88b8", bg: "#01050a", palette: "duo",
+        layout: "grid", shape: "bar", waveform: "sine",
+        pattern: "bounce-x", spread: 1.3, blur: 10, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.2, merge: 0, counter: 0, nest: 0,
+        fill: false, radiusTile: 0, fxBloom: 0.2, fxIris: 0.3, fxGrain: 0.15,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0.15, fxSlit: 0, fxCrt: 0,
+        scene: "ink", scenePalette: "ocean", sceneMix: 0.7, sceneTiles: 0.8,
+        sceneSpeed: 0.4, sceneScale: 0.55, sceneDrive: 0.35, sceneWarp: 0.6,
+        sceneGenome: "mint smoke", accent: "four", syncBeats: 8,
       },
-      react: { master: 1.15, attack: 0.02, release: 0.2, beatSense: 0.7, beatDecay: 0.32,
-        rows: [R("beat", "tileSize", 0.6), R("bass", "fxWarp", 0.4), R("beat", "displace", 0.45), R("high", "desync", 0.3), R("level", "speed", 0.25), R("mid", "spread", 0.3)] } },
-    { at: 65, label: "pitching deck", base: { pattern: "bounce-y", twist: 0.35, speed: 1.8, rotate: 0.2, fxSlit: 0.25 } },
-    { at: 80, label: "sheet lightning", base: { palette: "duo", low: "#dfeef5", high: "#06283d", bg: "#cfe4ee", fxBloom: 0.6, fxShutter: 0.2 } },
-    { at: 80 + timberBar, label: "thunder-back", base: { palette: "ocean", bg: "#04121c", fxBloom: 0.35, fxShutter: 0 } },
-    { at: 95, label: "bioluminescence", ramp: 3, base: {
-        layout: "spiral", pattern: "rings", shape: "circle", spread: 1.2,
-        tileSize: 62, blur: 1, rotate: 0, hueShift: 0.12,
-        counter: 0.4, nest: 1, fxSlit: 0, fxBloom: 0.45, fxTrails: 0.3,
-      } },
-    { at: 108, label: "rain", base: {
-        layout: "grid", pattern: "sweep-down", shape: "slit", speed: 2.1,
-        desync: 0.3, tileSize: 48, spread: 1.4, twist: 0.2, hueShift: 0,
-        counter: 0, nest: 0, displace: 0.1, fxWarp: 0.2, fxTrails: 0,
-      } },
-    { at: 120, label: "swells", ramp: 6, base: { spread: 1.9, blur: 4, sizePulse: 0.4 } },
-    { at: 134, label: "storm passes", ramp: 8, base: {
-        pattern: "ripple", waveform: "sine", speed: 0.6, blur: 22, ease: 1,
-        displace: 0, sizePulse: 0, fxWarp: 0.3, fxTrails: 0.45, fxIris: 0.3,
+      react: { master: 1.0, attack: 0.03, release: 0.35, beatSense: 0.68, beatDecay: 0.3, accentDecay: 0.16,
+        rows: [R("pulse", "tileSize", 0.5), R("pulse", "sceneDrive", 0.35), R("bar", "spread", 0.3),
+          R("bass", "blur", 0.3), R("phrase", "sceneScale", 0.3), OFF] },
+    },
+    B: { // the squall — ink churning, diamonds, displaced
+      base: {
+        rows: 9, cols: 9, tileSize: 50, gapX: 26, gapY: 26,
+        speed: 1.7, holdScale: 0.5, desync: 0.35, ease: 0.6, border: 0.8,
+        low: "#000913", high: "#eafcff", bg: "#01070f", palette: "ocean",
+        layout: "grid", shape: "diamond", waveform: "triangle",
+        pattern: "ripple", spread: 1.8, blur: 2, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0.4, sizePulse: 0.5, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.4, fxIris: 0, fxGrain: 0.2,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0.5, fxSlit: 0, fxCrt: 0,
+        scene: "ink", scenePalette: "ocean", sceneMix: 0.95, sceneTiles: 0.5,
+        sceneSpeed: 1.4, sceneScale: 0.5, sceneDrive: 0.9, sceneWarp: 1,
+        sceneGenome: "mint blade", accent: "eighths", syncBeats: 2,
       },
-      react: { master: 0.85, release: 0.5,
-        rows: [R("bass", "blur", 0.35), R("level", "tileSize", 0.25), R("mid", "spread", 0.3), R("beat", "tileSize", 0.2), OFF, OFF] } },
-    { at: 143, label: "unfill", base: { fill: false, rows: 5, cols: 9, tileSize: 40, gapX: 18, gapY: 46, shape: "bar" } },
-    { at: 149, label: "adrift", ramp: 6, base: { pattern: "bounce-x", spread: 2, speed: 0.4, blur: 16, fxIris: 0.5, fxTrails: 0.55 } },
-    { at: 156.5, label: "swell gathers", ramp: 1.2, base: { tileSize: 14, spread: 0.5 } },
-    { at: 158, label: "last wave", base: {
-        pattern: "ripple", shape: "circle", speed: 1.4, tileSize: 74, blur: 5,
-        spread: 1.6, fill: true, rows: 7, cols: 7, sizePulse: 0.5,
-        fxIris: 0, fxBloom: 0.5, fxWarp: 0.25, fxTrails: 0.2,
+      react: { master: 1.5, attack: 0.012, release: 0.13, beatSense: 0.8, beatDecay: 0.16, accentDecay: 0.09,
+        rows: [R("pulse", "tileSize", 0.8), R("pulse", "displace", 0.6), R("pulse", "sceneDrive", 0.5),
+          R("bar", "sceneWarp", 0.3), R("swing", "twist", 0.4), R("high", "desync", 0.3)] },
+    },
+    C: { // bioluminescence — nebula, counter-phased rings
+      base: {
+        rows: 8, cols: 8, tileSize: 62, gapX: 24, gapY: 24,
+        speed: 1, holdScale: 0.8, desync: 0.2, ease: 0.9, border: 0,
+        low: "#000913", high: "#7fd4ff", bg: "#01060d", palette: "ocean",
+        layout: "spiral", shape: "circle", waveform: "sine",
+        pattern: "rings", spread: 1.2, blur: 1, hueShift: 0.12, sceneHue: 0.05,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.3, merge: 0, counter: 0.7, nest: 2,
+        fill: true, radiusTile: 0.5, fxBloom: 0.5, fxIris: 0, fxGrain: 0.1,
+        fxKaleido: 0, fxTrails: 0.35, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "nebula", scenePalette: "ocean", sceneMix: 0.9, sceneTiles: 0.45,
+        sceneSpeed: 0.6, sceneScale: 0.65, sceneDrive: 0.65, sceneWarp: 0.55,
+        sceneGenome: "green orb", accent: "backbeat", syncBeats: 4,
       },
-      react: { master: 1.0,
-        rows: [R("beat", "sizePulse", 0.5), R("bass", "fxBloom", 0.45), R("level", "speed", 0.2), R("mid", "spread", 0.3), R("beat", "displace", 0.4), OFF] } },
-    { at: 169, label: "harbor", ramp: 6, base: { speed: 0.3, blur: 20, fill: false, tileSize: 44, sizePulse: 0, fxIris: 0.6, fxTrails: 0.4, fxBloom: 0.2 } },
-    { at: 176, label: "out", ramp: 4, base: { palette: "duo", low: "#000000", high: "#000407", bg: "#000000", blur: 28, fxIris: 0.9 } },
+      react: { master: 1.2, attack: 0.02, release: 0.25, beatSense: 0.72, beatDecay: 0.24, accentDecay: 0.13,
+        rows: [R("pulse", "counter", 0.6), R("pulse", "sceneDrive", 0.5), R("bar", "sceneHue", 0.3),
+          R("phrase", "sceneScale", 0.35), R("swing", "spread", 0.3), R("bass", "fxBloom", 0.35)] },
+    },
+    D: { // lightning — one bar of inverted daylight
+      base: {
+        rows: 4, cols: 6, tileSize: 150, gapX: 40, gapY: 40,
+        speed: 4.2, holdScale: 0, desync: 0, ease: 0, border: 0,
+        low: "#dfeef5", high: "#06283d", bg: "#cfe4ee", palette: "duo",
+        layout: "grid", shape: "square", waveform: "square",
+        pattern: "unison", spread: 0.2, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0, fxBloom: 0.7, fxIris: 0, fxGrain: 0,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0.6, fxRgb: 0.25, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "none", scenePalette: "duo", sceneMix: 0.1, sceneTiles: 1,
+        sceneSpeed: 1, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+        sceneGenome: "mint smoke", accent: "sixteenths", syncBeats: 1,
+      },
+      react: { master: 1.7, attack: 0.008, release: 0.09, beatSense: 0.88, beatDecay: 0.1, accentDecay: 0.06,
+        rows: [R("pulse", "tileSize", 1), R("pulse", "fxRgb", 0.7), R("pulse", "blur", 0.5),
+          R("bar", "spread", 0.4), R("beat", "displace", 0.6), OFF] },
+    },
+  };
+
+  const TIMBER_SCORE = [
+    [1, "A"],
+    [3, "B", "tight"],                            // PUNCH — drop
+    [7, "A", "hue"],                              // PUNCH — drop
+    ...call(9, 20, 4, [["A"], ["C", { sceneTiles: 0.6 }]], ["shape", "offbeat"]),
+    [20, "B"],                                    // PUNCH — drop
+    ...call(24, 29, 4, [["A", { fxSlit: 0.3 }], ["B"]], ["hue"]),
+    [29, "B", "burst"],                           // PUNCH — drop
+    [33, "C"],                                    // PUNCH — drop
+    [37, "D"],                                    // PUNCH — drop: lightning
+    [38, "C", "hue"],
+    [40, "A", "scene"],                           // PUNCH — groove change
+    ...call(43, 49, 3, [["B"], ["A"]], ["gallop"]),
+    [49, "C", "burst"],                           // section B — bioluminescence
+    ...call(52, 60, 4, [["C"], ["A"]], ["hue", "slow"]),
+    [60, "B", "fast"],                            // PUNCH — groove change
+    [63, "C", "shape"],                           // PUNCH — groove change
+    [65, "A", "tiles", { scene: "ridge", scenePalette: "crt", sceneMix: 0.5 }], // PUNCH — groove change
+    [67, "D", "hue"],                             // PUNCH — groove change
+    [69, "C"],                                    // section A' returns
+    ...call(71, 79, 4, [["A"], ["C"]], ["slow", "hue"]),
+    [79, "B", "burst"],                           // PUNCH — break returns
+    [82, "D", "blast"],                           // PUNCH — drop
+    [83, "B", "fast"],
+    [85, "C", "scene"],                           // PUNCH — groove change
+    [88, "A", "slow", { __ramp: 4, fxTrails: 0.5, fxIris: 0.4, sceneMix: 0.4 }],
+    [91, "A", "none", { __ramp: 3, speed: 0.2, blur: 50, fxIris: 0.95, sceneMix: 0, low: "#000000", high: "#000407" }],
   ];
 
   globalThis.RELAAAX_COMPOSITIONS = {
-    "Angular Ritual.mp3": { events: ANGULAR },
-    "Jungle Moog Ritual.mp3": { events: JUNGLE },
-    "Timber at Sea.mp3": { events: TIMBER },
+    "Angular Ritual.mp3": build("Angular Ritual.mp3", ANGULAR_LOOKS, ANGULAR_SCORE),
+    "Jungle Moog Ritual.mp3": build("Jungle Moog Ritual.mp3", JUNGLE_LOOKS, JUNGLE_SCORE),
+    "Timber at Sea.mp3": build("Timber at Sea.mp3", TIMBER_LOOKS, TIMBER_SCORE),
+  };
+  globalThis.RELAAAX_LOOKS = {
+    "Angular Ritual.mp3": ANGULAR_LOOKS,
+    "Jungle Moog Ritual.mp3": JUNGLE_LOOKS,
+    "Timber at Sea.mp3": TIMBER_LOOKS,
   };
 })();

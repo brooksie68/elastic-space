@@ -107,6 +107,13 @@ body.rlx-tuner-page .rlx-tuner {
   text-transform: uppercase;
 }
 
+/* The dice: bigger glyph than the text buttons next to it. */
+.tuner-dice {
+  font-size: 1.05rem;
+  line-height: 1;
+  padding-inline: 0.5rem;
+}
+
 .rlx-tuner input[type="range"] {
   appearance: none;
   background: transparent;
@@ -386,6 +393,25 @@ body.rlx-tuner-page .rlx-tuner {
 .tuner-btn:disabled {
   cursor: default;
   opacity: 0.35;
+}
+
+/* --- player transport ------------------------------------------------------- */
+
+.tuner-transport {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.tuner-transport .tuner-time {
+  min-width: 11ch;
+}
+
+.rlx-tuner input[type="range"].tuner-vol {
+  flex: none;
+  min-width: 0;
+  width: 7rem;
 }
 
 /* --- mod matrix + beat indicator ------------------------------------------- */

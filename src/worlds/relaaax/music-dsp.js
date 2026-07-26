@@ -14,7 +14,33 @@
     high: [2400, 12000],
   };
   const BAND_NAMES = Object.keys(BANDS);
-  const SOURCES = BAND_NAMES.concat(["level", "beat"]);
+
+  // Clock sources (v6, 2026-07-26). Everything above listens to the audio and
+  // is therefore LATE — an envelope follower has to hear a hit before it can
+  // react. These four are computed from the measured beat grid instead, so
+  // they land exactly on the beat with zero detection lag:
+  //   pulse  — accent impulse fired by the bar's accent pattern, fast decay
+  //   bar    — 0→1 ramp across each bar (resets on the downbeat)
+  //   phrase — 0→1 ramp across the phrase (8/16/32 bars)
+  //   swing  — alternates 0 and 1 every bar, for call-and-response looks
+  const CLOCK_SOURCES = ["pulse", "bar", "phrase", "swing"];
+  const SOURCES = BAND_NAMES.concat(["level", "beat"]).concat(CLOCK_SOURCES);
+
+  // Accent patterns over the sixteen sixteenths of a bar. Weights, not flags:
+  // a strong downbeat and a light 'and' read very differently.
+  const ACCENTS = {
+    downbeat:   [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    four:       [1, 0, 0, 0, .7, 0, 0, 0, .85, 0, 0, 0, .7, 0, 0, 0],
+    backbeat:   [.4, 0, 0, 0, 1, 0, 0, 0, .4, 0, 0, 0, 1, 0, 0, 0],
+    eighths:    [1, 0, .5, 0, .7, 0, .5, 0, .85, 0, .5, 0, .7, 0, .5, 0],
+    offbeat:    [0, 0, 1, 0, 0, 0, .8, 0, 0, 0, 1, 0, 0, 0, .8, 0],
+    sixteenths: [1, .35, .5, .35, .7, .35, .5, .35, .85, .35, .5, .35, .7, .35, .5, .35],
+    gallop:     [1, 0, 0, .6, .8, 0, 0, .6, .9, 0, 0, .6, .8, 0, 0, .6],
+    clave:      [1, 0, 0, .8, 0, 0, .9, 0, 0, 0, .85, 0, 0, .8, 0, 0],
+    stutter:    [1, 0, 0, 0, 0, 0, 0, 0, .6, 0, .7, 0, .8, 0, .9, 1],
+    none:       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  };
+  const ACCENT_NAMES = Object.keys(ACCENTS);
 
   // Modulation span per target: how far a full-strength source at amount ±100%
   // (master ×1) can push the param from its tuner base, in the param's units.
@@ -51,6 +77,14 @@
     fxCrt:     { label: "fx crt",     span: 1,   min: 0, max: 1 },
     fxShutter: { label: "fx shutter", span: 1,   min: 0, max: 1 },
     fxIris:    { label: "fx iris",    span: 1,   min: 0, max: 1 },
+    // v3 scene layer (scene/scenePalette are strings — not modulatable)
+    sceneMix:   { label: "scene mix",   span: 1,   min: 0, max: 1 },
+    sceneTiles: { label: "scene tiles", span: 1,   min: 0, max: 1 },
+    sceneSpeed: { label: "scene speed", span: 1.5, min: 0, max: 2 },
+    sceneScale: { label: "scene scale", span: 1,   min: 0, max: 1 },
+    sceneDrive: { label: "scene drive", span: 1,   min: 0, max: 1 },
+    sceneWarp:  { label: "scene warp",  span: 1,   min: 0, max: 1 },
+    sceneHue:   { label: "scene hue",   span: 1,   min: 0, max: 1 },
   };
 
   // Auto-gain: each band normalizes against its own slow-decaying peak, so a
@@ -69,6 +103,7 @@
     release: 0.25,   // band envelope fall, seconds
     beatSense: 0.65, // 0..1, higher fires on smaller spikes
     beatDecay: 0.35, // beat impulse fall, seconds
+    accentDecay: 0.13, // grid-locked accent impulse fall, seconds
     rows: [
       { src: "beat",  tgt: "tileSize", amt: 0.55 },
       { src: "bass",  tgt: "blur",     amt: 0.45 },
@@ -155,6 +190,57 @@
     return { step };
   }
 
+  // --- the beat clock --------------------------------------------------------
+  // Pure: track time + measured grid -> musical position. No audio analysis,
+  // no lag. `grid` is one entry of RELAAAX_TRACK_GRID.
+  function clockAt(grid, time) {
+    if (!grid) return null;
+    const beats = (time - grid.firstDownbeat) / grid.beatLen;
+    const bars = beats / 4;
+    const phraseBars = grid.phraseBars || 8;
+    const barIndex = Math.floor(bars);
+    const step16 = ((bars - Math.floor(bars)) * 16);
+    return {
+      beats,
+      beat: Math.floor(beats),
+      beatPhase: beats - Math.floor(beats),
+      bar: barIndex + 1,               // 1-based, matching the analyzer
+      barPhase: bars - Math.floor(bars),
+      step: Math.floor(step16),        // which sixteenth of the bar
+      stepPhase: step16 - Math.floor(step16),
+      phrasePhase: ((bars % phraseBars) + phraseBars) % phraseBars / phraseBars,
+      swing: ((barIndex % 2) + 2) % 2, // 0,1,0,1 … per bar
+    };
+  }
+
+  // Stateful accent generator: fires an impulse whenever the clock crosses a
+  // sixteenth that the pattern marks, then decays. Because the crossing is
+  // computed from the grid, the flash is ON the beat, not after it.
+  function createAccents() {
+    let lastStepKey = null;
+    let env = 0;
+    let level = 0;
+    function step(clock, patternName, decay, dt) {
+      const pattern = ACCENTS[patternName] || ACCENTS.four;
+      // Before the first downbeat there is no grid to be on — a track's
+      // count-in shouldn't flash against a phantom one.
+      if (clock && clock.beats >= 0) {
+        const key = `${clock.bar}:${clock.step}`;
+        if (key !== lastStepKey) {
+          lastStepKey = key;
+          const w = pattern[((clock.step % 16) + 16) % 16] || 0;
+          if (w > 0) {
+            env = 1;
+            level = w;
+          }
+        }
+      }
+      env *= Math.exp(-dt / Math.max(decay || 0.12, 0.02));
+      return env * level;
+    }
+    return { step };
+  }
+
   // Pure: base config + source values + settings -> the modulated partial.
   // Every configured target appears in the result even when its sources are
   // silent — the page uses the key set to know what to restore on stop.
@@ -178,9 +264,14 @@
     create,
     modulate,
     bandsFromSpectrum,
+    clockAt,
+    createAccents,
     DEFAULTS,
     TARGETS,
     SOURCES,
+    CLOCK_SOURCES,
+    ACCENTS,
+    ACCENT_NAMES,
     BANDS,
   };
 })();

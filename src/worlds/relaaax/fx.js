@@ -21,13 +21,17 @@
       gl_Position = vec4(aPos, 0.0, 1.0);
     }`;
 
-  // Pass 1 — feedback: trails decay + the zoom/rotate video-feedback tunnel.
+  // Pass 1 — compose + feedback: the scene backdrop under the tile layer,
+  // then trails decay + the zoom/rotate video-feedback tunnel over the mix.
+  // With no scene the uniforms collapse to the original math exactly
+  // (uSceneMix 0, uTileAlpha 1, opaque tile canvas).
   const FS_FEED = `
     precision mediump float;
     varying vec2 vUv;
     uniform sampler2D uSrc;
     uniform sampler2D uPrev;
-    uniform float uTrails, uZoom, uZoomRot;
+    uniform sampler2D uScene;
+    uniform float uTrails, uZoom, uZoomRot, uSceneMix, uTileAlpha, uSceneTone;
     void main() {
       vec2 c = vUv - 0.5;
       float ang = uZoomRot * 0.35;
@@ -35,11 +39,15 @@
       c = mat2(co, -s, s, co) * c;
       c *= 1.0 - uZoom * 0.06;
       vec3 prev = texture2D(uPrev, c + 0.5).rgb;
-      vec3 src = texture2D(uSrc, vUv).rgb;
+      vec4 tile = texture2D(uSrc, vUv);
+      vec3 scene = texture2D(uScene, vUv).rgb;
+      scene = scene / (scene * uSceneTone + (1.0 - uSceneTone));
+      vec3 src = mix(scene * uSceneMix, tile.rgb, tile.a * uTileAlpha);
       float zoomHold = uZoom > 0.001 ? 0.86 + uZoom * 0.12 : 0.0;
       float decay = clamp(max(uTrails * 0.985, zoomHold), 0.0, 0.985);
       gl_FragColor = vec4(max(src, prev * decay), 1.0);
     }`;
+
 
   // Pass 2 — geometry + color: kaleido, CRT barrel/tear, warp, slit-scan,
   // pixelate, RGB split, bloom, grain, scanlines, iris, shutter.
@@ -196,6 +204,99 @@
     let beatPulse = 0;
     let ok = true;
 
+    // --- scene layer state (scenes.js programs, rendered under the tiles) ---
+    const SCENES = globalThis.RelaaaxScenes || null;
+    const sceneProgs = {};   // id -> compiled program (false = failed, skip)
+    let sceneFbo = null;     // { tex, fb } the scene renders into
+    let texBlack = null;     // 1×1 black — bound when no scene is active
+    let flameBuf = null;     // seed attribute buffer for the flame splat
+    let sceneTime = 0;       // scene clock: advances by dt * sceneSpeed
+    let palKey = "";
+    let palStops = new Float32Array(18);
+
+    function sceneProgram(id) {
+      if (!SCENES) return null;
+      if (id in sceneProgs) return sceneProgs[id] || null;
+      let prog = null;
+      try {
+        if (id === "flame") {
+          prog = compile(gl, SCENES.FLAME.vs, SCENES.FLAME.fs);
+          const seeds = new Float32Array(SCENES.FLAME.points * 3);
+          let s = 1234567;
+          const rnd = () => {
+            // Deterministic LCG — the splat looks the same every visit.
+            s = (s * 1664525 + 1013904223) >>> 0;
+            return s / 4294967296;
+          };
+          for (let i = 0; i < seeds.length; i++) seeds[i] = rnd();
+          flameBuf = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, flameBuf);
+          gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+        } else if (SCENES.FRAG[id]) {
+          prog = compile(gl, VS, SCENES.FRAG[id]);
+        }
+      } catch (err) {
+        console.warn(String(err));
+        prog = null;
+      }
+      sceneProgs[id] = prog || false;
+      return prog;
+    }
+
+    function scenePalette(cfg, genome) {
+      const key = [cfg.scenePalette, cfg.low, cfg.high, cfg.sceneHue, genome && genome.id].join("|");
+      if (key !== palKey) {
+        palKey = key;
+        palStops = SCENES.paletteStops(globalThis.RelaaaxField.buildLut, cfg, genome);
+      }
+      return palStops;
+    }
+
+    function renderScene(id, cfg, w, h, dt) {
+      const prog = sceneProgram(id);
+      if (!prog) return false;
+      sceneTime += dt * cfg.sceneSpeed;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo.fb);
+      gl.viewport(0, 0, w, h);
+      gl.clearColor(0, 0, 0, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(prog);
+      const genome = id === "flame" ? SCENES.genomeByName(cfg.sceneGenome) : null;
+      const pal = scenePalette(cfg, genome);
+      gl.uniform3fv(gl.getUniformLocation(prog, "uPal"), pal);
+      u(prog, "uTime", sceneTime);
+      u(prog, "uScale", cfg.sceneScale);
+      u(prog, "uDrive", cfg.sceneDrive);
+      u(prog, "uWarp", cfg.sceneWarp);
+      u(prog, "uBeat", beatPulse);
+      if (id === "flame") {
+        if (!genome) return false; // no genomes loaded — nothing to draw
+        const gu = SCENES.flameUniforms(genome);
+        gl.uniform3fv(gl.getUniformLocation(prog, "uAff1"), gu.aff1);
+        gl.uniform3fv(gl.getUniformLocation(prog, "uAff2"), gu.aff2);
+        gl.uniform3fv(gl.getUniformLocation(prog, "uMeta"), gu.meta);
+        gl.uniform2f(gl.getUniformLocation(prog, "uCenter"), gu.frame.cx, gu.frame.cy);
+        gl.uniform1i(gl.getUniformLocation(prog, "uCount"), gu.count);
+        u(prog, "uFrameScale", gu.frame.scale);
+        u(prog, "uAspect", w / h);
+        // Per-genome gain equalizes diffuse vs concentrated attractors — a
+        // spread-out genome needs more gain to read at the same brightness.
+        u(prog, "uGain", (0.05 + cfg.sceneDrive * 0.045) * (gu.frame.gain || 1));
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        const loc = gl.getAttribLocation(prog, "aSeed");
+        gl.bindBuffer(gl.ARRAY_BUFFER, flameBuf);
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
+        gl.drawArrays(gl.POINTS, 0, SCENES.FLAME.points);
+        gl.disable(gl.BLEND);
+      } else {
+        gl.uniform2f(gl.getUniformLocation(prog, "uRes"), w, h);
+        drawQuad(prog);
+      }
+      return true;
+    }
+
     function makeTex(w, h) {
       const tex = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -245,6 +346,19 @@
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
         return { tex, fb };
       });
+      {
+        const tex = makeTex(w, h);
+        const fb = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        sceneFbo = { tex, fb };
+      }
+      if (!texBlack) {
+        texBlack = makeTex(1, 1);
+        gl.bindTexture(gl.TEXTURE_2D, texBlack);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+          new Uint8Array([0, 0, 0, 255]));
+      }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
@@ -256,13 +370,18 @@
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     }
 
-    function paintSource(dl, cfg) {
+    function paintSource(dl, cfg, sceneOn) {
       const w = src.width, h = src.height;
       sctx.setTransform(1, 0, 0, 1, 0, 0);
       sctx.globalCompositeOperation = "source-over";
       sctx.globalAlpha = 1;
-      sctx.fillStyle = dl.bg;
-      sctx.fillRect(0, 0, w, h);
+      if (sceneOn) {
+        // The scene is the background — tiles paint over transparency.
+        sctx.clearRect(0, 0, w, h);
+      } else {
+        sctx.fillStyle = dl.bg;
+        sctx.fillRect(0, 0, w, h);
+      }
       let sx, sy, ox, oy;
       if (cfg.fill) {
         sx = w / dl.w;
@@ -274,10 +393,12 @@
         ox = (w - dl.w * sx) / 2;
         oy = (h - dl.h * sy) / 2;
       }
+      const backdropAlpha = sceneOn ? Math.max(0, 1 - cfg.sceneMix) : 1;
       for (const item of dl.items) {
+        if (item.kind === "backdrop" && backdropAlpha <= 0.003) continue;
         sctx.setTransform(sx, 0, 0, sy, ox + item.x * sx, oy + item.y * sy);
         if (item.rot) sctx.rotate((item.rot * Math.PI) / 180);
-        sctx.globalAlpha = item.alpha;
+        sctx.globalAlpha = item.kind === "backdrop" ? item.alpha * backdropAlpha : item.alpha;
         sctx.globalCompositeOperation = item.blend;
         sctx.fillStyle = item.color;
         tracePath(sctx, item);
@@ -314,7 +435,11 @@
       }
       size(w, h);
 
-      paintSource(dl, cfg);
+      // Pass 0: the scene backdrop (scenes.js), into its own framebuffer.
+      const wantScene = SCENES && cfg.scene && cfg.scene !== "none";
+      const sceneOn = wantScene ? renderScene(cfg.scene, cfg, w, h, dt) : false;
+
+      paintSource(dl, cfg, sceneOn);
       canvas.style.filter = dl.blur > 0 ? `blur(${(dl.blur * (rect.width / dl.w) / (cfg.fill ? 1 : 1)).toFixed(1)}px)` : "none";
 
       gl.viewport(0, 0, w, h);
@@ -323,7 +448,7 @@
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
 
-      // Pass 1: feedback into the ping-pong target.
+      // Pass 1: compose scene + tiles, then feedback into the ping-pong target.
       const prev = fbos[flip], next = fbos[1 - flip];
       flip = 1 - flip;
       gl.bindFramebuffer(gl.FRAMEBUFFER, next.fb);
@@ -332,9 +457,15 @@
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, prev.tex);
       gl.uniform1i(gl.getUniformLocation(progFeed, "uPrev"), 1);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, sceneOn ? sceneFbo.tex : texBlack);
+      gl.uniform1i(gl.getUniformLocation(progFeed, "uScene"), 2);
       u(progFeed, "uTrails", cfg.fxTrails);
       u(progFeed, "uZoom", cfg.fxZoom);
       u(progFeed, "uZoomRot", cfg.fxZoomRot);
+      u(progFeed, "uSceneMix", sceneOn ? cfg.sceneMix : 0);
+      u(progFeed, "uTileAlpha", sceneOn ? cfg.sceneTiles : 1);
+      u(progFeed, "uSceneTone", sceneOn && cfg.scene === "flame" ? 0.62 : 0);
       drawQuad(progFeed);
 
       // Pass 2: geometry + color to the screen.
@@ -372,6 +503,6 @@
     return api;
   }
 
-  const api = { attach, beat: () => {} };
+  const api = { attach, beat: () => {}, SOURCES: { VS, FS_FEED, FS_POST } };
   globalThis.RelaaaxFX = api;
 })();

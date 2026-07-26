@@ -17,31 +17,35 @@
   let marginLink = "linked";
   let presetSelected = "";
 
-  function loadConfig() {
+  // The page always OPENS on pure DEFAULTS — the basic 2002 animation (James,
+  // 2026-07-25). Tuning still writes to localStorage on every change, but the
+  // stored state is only reachable as the "last session" entry in the preset
+  // menu — never applied silently on load.
+  function loadLast() {
     try {
-      const raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return Object.assign({}, DEFAULTS);
-      const stored = JSON.parse(raw);
-      if (stored.marginLink) marginLink = stored.marginLink;
+      const stored = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (!stored) return null;
       // radiusTile changed meaning 2026-07-23 (px → fraction of tile size);
       // anything above 0.5 can only be an old px value.
       if (stored.radiusTile > 0.5) stored.radiusTile = Math.min(0.5, stored.radiusTile / 32);
-      return Object.assign({}, DEFAULTS, stored);
+      return stored;
     } catch (err) {
-      return Object.assign({}, DEFAULTS);
+      return null;
     }
   }
+  let hasLast = !!loadLast();
 
   function saveConfig() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(Object.assign({}, state, { marginLink })));
+      hasLast = true;
     } catch (err) {
       /* storage unavailable (private mode etc.) — tuning just won't persist */
     }
   }
 
   // `state` is the authoritative CLEAN config — what the sliders say.
-  let state = loadConfig();
+  let state = Object.assign({}, DEFAULTS);
   const frame = document.getElementById("relaaax-frame");
   const field = RelaaaxField.mount(frame, Object.assign({}, state));
   if (globalThis.RelaaaxFX) RelaaaxFX.attach(field, frame);
@@ -152,6 +156,7 @@
         factory: FACTORY.map((p) => ({ id: p.id, label: p.label })),
         user: Object.keys(userPresets).sort((a, b) => a.localeCompare(b)),
         selected: presetSelected,
+        hasLast,
       },
       music: music ? music.snapshotPart() : null,
     };
@@ -197,6 +202,10 @@
         }
         break;
       }
+      case "randomize":
+        applyPreset(globalThis.RelaaaxRandom.roll());
+        presetSelected = "";
+        break;
       case "patternStep": {
         const i = PATTERNS.findIndex((p) => p.id === state.pattern);
         const next = PATTERNS[(i + cmd.dir + PATTERNS.length) % PATTERNS.length];
@@ -211,6 +220,9 @@
         } else if (v.startsWith("u:") && userPresets[v.slice(2)]) {
           applyPreset(userPresets[v.slice(2)]);
           presetSelected = v;
+        } else if (v === "last") {
+          const stored = loadLast();
+          if (stored) { applyPreset(stored); presetSelected = "last"; }
         }
         break;
       }
@@ -270,6 +282,13 @@
   const toggle = document.getElementById("rlx-tuner-toggle");
   const tuner = document.getElementById("rlx-tuner");
 
+  // Docked single-screen mode: the open panel docks right and the stage
+  // shifts left (world.css body.rlx-docked rules) so viz + controls share
+  // one laptop screen (James, 2026-07-25).
+  function syncDock() {
+    document.body.classList.toggle("rlx-docked", !tuner.hidden);
+  }
+
   function setDetached(on) {
     detached = on;
     if (on) {
@@ -279,6 +298,7 @@
     } else {
       toggle.title = "Tune the field";
     }
+    syncDock();
   }
 
   if (channel) {
@@ -305,12 +325,14 @@
       setDetached(false);
       tuner.hidden = false;
       toggle.setAttribute("aria-expanded", "true");
+      syncDock();
       emit();
       return;
     }
     const open = tuner.hidden;
     tuner.hidden = !open;
     toggle.setAttribute("aria-expanded", String(open));
+    syncDock();
   });
 
   // Click anywhere off the panel to close it. pointerdown, not click: a slider
@@ -319,7 +341,9 @@
   document.addEventListener("pointerdown", (e) => {
     if (tuner.hidden) return;
     if (tuner.contains(e.target) || toggle.contains(e.target)) return;
+    if (e.target.closest && e.target.closest(".rlx-transport-bar")) return;
     tuner.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
+    syncDock();
   });
 })();

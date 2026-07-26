@@ -10,6 +10,11 @@
 
   const HEX = /^#[0-9a-f]{6}$/i;
 
+  // Keys that are numbers but NOT continuous — interpolating them is
+  // meaningless (a 4.07-beat sync, 1.5 nest levels). These snap even inside a
+  // ramp; everything else numeric interpolates as usual.
+  const SNAP_KEYS = new Set(["syncBeats", "nest", "rows", "cols"]);
+
   function hexToRgb(hex) {
     const n = parseInt(hex.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -59,8 +64,8 @@
       if (e.base) {
         for (const key of Object.keys(e.base)) {
           const v = e.base[key];
-          const rampable =
-            typeof v === "number" || (typeof v === "string" && HEX.test(v) && HEX.test(String(valueAt(key, e.at) ?? "")));
+          const rampable = !SNAP_KEYS.has(key) &&
+            (typeof v === "number" || (typeof v === "string" && HEX.test(v) && HEX.test(String(valueAt(key, e.at) ?? ""))));
           if (e.ramp > 0 && rampable && base[key] !== undefined) {
             ramps[key] = {
               from: valueAt(key, e.at),

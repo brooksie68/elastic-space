@@ -997,6 +997,51 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
+  // Dev snapshots: a local test page posts a canvas dataURL here and the file
+  // lands in tmp/snapshots/ for Claude to look at. This exists because the
+  // agent Browser pane can't screenshot unless it's on screen — WebGL test
+  // pages need a way to hand back what they actually drew.
+  if (pathname === "/api/dev-snapshot" && request.method === "POST") {
+    const payload = await readBody(request);
+    const name = String(payload?.name || "");
+    const dataUrl = String(payload?.dataUrl || "");
+    const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
+    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(name) || !match) {
+      sendJson(response, 400, { error: "Body must be { name: \"safe-name\", dataUrl: \"data:image/png|jpeg;base64,...\" }." });
+      return true;
+    }
+    const buffer = Buffer.from(match[2], "base64");
+    if (buffer.length > 24 * 1024 * 1024) {
+      sendJson(response, 413, { error: "Snapshot too large." });
+      return true;
+    }
+    const dir = join(rootDir, "tmp", "snapshots");
+    await mkdir(dir, { recursive: true });
+    const file = join(dir, `${name}.${match[1] === "jpeg" ? "jpg" : "png"}`);
+    await writeFile(file, buffer);
+    sendJson(response, 200, { saved: file.replace(rootDir, "").replace(/\\/g, "/"), bytes: buffer.length });
+    return true;
+  }
+
+  // Flame-farm cull: the gallery page (tmp/relaaax/flame-farm/gallery.html)
+  // posts James's checked picks here so Claude can read them back.
+  if (pathname === "/api/flame-picks" && request.method === "POST") {
+    const payload = await readBody(request);
+    if (!payload || !Array.isArray(payload.picks) ||
+        payload.picks.some((id) => typeof id !== "string" || !/^[a-z0-9]{1,16}$/.test(id))) {
+      sendJson(response, 400, { error: "Body must be { picks: [\"<id>\", ...] }." });
+      return true;
+    }
+    const dir = join(rootDir, "tmp", "relaaax", "flame-farm");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, "picks.json"),
+      `${JSON.stringify({ saved: new Date().toISOString(), picks: payload.picks }, null, 2)}\n`
+    );
+    sendJson(response, 200, { saved: payload.picks.length });
+    return true;
+  }
+
   if (pathname === "/api/worlds" && request.method === "GET") {
     const worlds = await listWorldsDetailed();
     sendJson(response, 200, worlds.map(summarizeWorld));
@@ -1400,6 +1445,19 @@ const server = createServer(async (request, response) => {
       host,
       port,
     });
+    return;
+  }
+
+  // CORS preflight: pages opened straight from disk (file://, Origin "null")
+  // post JSON to these APIs — e.g. the flame-farm gallery's save button.
+  if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    response.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "600",
+    });
+    response.end();
     return;
   }
 

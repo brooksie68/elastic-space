@@ -8,6 +8,38 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-26 (Relaaax: the scene layer, bred flames, and getting on the beat)
+
+- **Scene layer** — four GPU backdrops under the tile field (`scenes.js`): ink
+  turbulence, ridged neon flow, a real fractal-flame chaos game, and a star
+  tunnel. Nine new `scene*` knobs, all tuner sliders / mod targets / set params.
+- **Flame farm** — an overnight evolutionary genome search (12,000 renders,
+  7,307 keepers). James culled 20 through a new checkbox gallery that saves via
+  `POST /api/flame-picks`; those genomes are live in the flame scene, which is
+  now genome-driven rather than hardcoded.
+- **The clock was wrong, and it was the root cause.** James heard that Angular
+  Ritual is 115 BPM; the analyzer had it at 76 — exactly two-thirds, a
+  metrical-level error, so every event in every set sat off the beat. Tempo
+  detection rewritten: superflux onsets, comb filter proposes candidates,
+  binomial-likelihood 8th-grid alignment disposes, plus a BPM override so his
+  ear always wins. All three tracks now lock to ~16ms.
+- **Beat lock** — a grid-derived clock replaces envelope-chasing for anything
+  that should land on the beat: `pulse`/`bar`/`phrase`/`swing` mod sources, ten
+  accent patterns, and `syncBeats` to lock a flash cycle to N beats.
+- **Structure detection** — drops, break-returns, builds, and groove changes
+  (the rhythm fingerprint changing even when the level doesn't).
+- **Sets rebuilt as composition** — per-track look vocabularies, variation
+  operators, and scores written in BARS, so re-measuring a track re-times the
+  whole set. New looks are reserved for measured punches.
+- **Laptop UX** — always-visible transport bar with a real stop, free play as
+  the default (composed sets are opt-in), and a docked panel so one screen fits
+  the visuals and the controls.
+- **🎲 dice** — one click randomizes every visual parameter. James's favourite
+  thing in the build.
+- Sims: composition 123, music 42, plus new clock and genome test harnesses.
+- Server: `/api/flame-picks`, `/api/dev-snapshot` (test pages hand back what
+  they drew, since the agent browser pane can't screenshot), CORS preflight.
+
 ## 2026-07-25 (The Valence Lab phase B: real molecules on the bench)
 
 - THE VALENCE LAB PHASE B built on James's go — the bonding bench, draft v3.1.

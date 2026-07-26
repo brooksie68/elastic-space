@@ -79,6 +79,17 @@
     fxTrails: pct, fxZoom: pct, fxZoomRot: pct, fxPixel: pct, fxRgb: pct, fxWarp: pct,
     fxSlit: pct, fxKaleido: { toSlider: (v) => Math.round(v * 1000), fromSlider: (p) => p / 1000, format: (v) => (v <= 0 ? "off" : `${2 + Math.round(v * 10)} way`) },
     fxBloom: pct, fxGrain: pct, fxCrt: pct, fxShutter: pct, fxIris: pct,
+    sceneMix: pct, sceneTiles: pct,
+    sceneSpeed: times(2),
+    sceneScale: pct, sceneDrive: pct, sceneWarp: pct,
+    sceneHue: { toSlider: (v) => Math.round(v * 1000), fromSlider: (p) => p / 1000, format: (v) => `${Math.round(v * 360)}°` },
+    // 0, 1, 2, 4, 8, 16 beats per flash cycle — snapped, not continuous.
+    syncBeats: {
+      toSlider: (v) => [0, 1, 2, 4, 8, 16].indexOf(v) < 0 ? 0 : [0, 1, 2, 4, 8, 16].indexOf(v),
+      fromSlider: (p) => [0, 1, 2, 4, 8, 16][Math.max(0, Math.min(5, Math.round(p)))],
+      format: (v) => (v === 0 ? "free" : `${v} beat${v === 1 ? "" : "s"}`),
+      min: 0, max: 5,
+    },
   };
 
   const MUSIC_SLIDERS = {
@@ -87,11 +98,14 @@
     release: { toSlider: (v) => Math.round((v / 1.5) * 1000), fromSlider: (p) => (p / 1000) * 1.5, format: ms },
     beatSense: pct,
     beatDecay: { toSlider: (v) => Math.round(1000 * Math.sqrt(Math.max(0, v - 0.02) / 1.48)), fromSlider: (p) => 0.02 + 1.48 * (p / 1000) * (p / 1000), format: ms },
+    accentDecay: { toSlider: (v) => Math.round(1000 * Math.sqrt(Math.max(0, v - 0.02) / 0.58)), fromSlider: (p) => 0.02 + 0.58 * (p / 1000) * (p / 1000), format: ms },
   };
 
   const SRC_LABELS = {
     off: "—", bass: "bass", lowmid: "low mid", mid: "mid",
     high: "high", level: "level", beat: "beat",
+    // Grid-locked (no detection lag) — see music-dsp.js CLOCK_SOURCES.
+    pulse: "▸ pulse", bar: "▸ bar", phrase: "▸ phrase", swing: "▸ swing",
   };
 
   function el(tag, cls, text) {
@@ -238,34 +252,50 @@
         }
       });
       del.disabled = true;
-      row.append(save, del);
-      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list"));
+      const dice = button("🎲", "Roll the dice — randomize every visual parameter at once", () => send({ scope: "field", type: "randomize" }), "tuner-btn tuner-dice");
+      row.append(save, del, dice);
+      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list. the page always opens on pork 2002 — “last session” brings back wherever the sliders were when you left. 🎲 rolls a completely random look — keep rolling, save the keepers"));
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "field", type: "preset", value: sel.value });
       });
+      // Options rebuild only when the preset LIST changes — snapshots stream
+      // continuously during playback and a rebuild closes an open dropdown.
+      let listSig = "";
       onReflect(() => {
-        sel.textContent = "";
-        const custom = el("option", null, "— custom —");
-        custom.value = "";
-        sel.appendChild(custom);
-        const fg = el("optgroup");
-        fg.label = "built in";
-        snap.fieldPresets.factory.forEach((p) => {
-          const option = el("option", null, p.label);
-          option.value = `f:${p.id}`;
-          fg.appendChild(option);
-        });
-        sel.appendChild(fg);
-        if (snap.fieldPresets.user.length) {
-          const ug = el("optgroup");
-          ug.label = "yours";
-          snap.fieldPresets.user.forEach((name) => {
-            const option = el("option", null, name);
-            option.value = `u:${name}`;
-            ug.appendChild(option);
+        const sig = JSON.stringify([snap.fieldPresets.factory.map((p) => p.id), snap.fieldPresets.user, !!snap.fieldPresets.hasLast]);
+        if (sig !== listSig) {
+          listSig = sig;
+          sel.textContent = "";
+          const custom = el("option", null, "— custom —");
+          custom.value = "";
+          sel.appendChild(custom);
+          const fg = el("optgroup");
+          fg.label = "built in";
+          snap.fieldPresets.factory.forEach((p) => {
+            const option = el("option", null, p.label);
+            option.value = `f:${p.id}`;
+            fg.appendChild(option);
           });
-          sel.appendChild(ug);
+          sel.appendChild(fg);
+          if (snap.fieldPresets.user.length) {
+            const ug = el("optgroup");
+            ug.label = "yours";
+            snap.fieldPresets.user.forEach((name) => {
+              const option = el("option", null, name);
+              option.value = `u:${name}`;
+              ug.appendChild(option);
+            });
+            sel.appendChild(ug);
+          }
+          if (snap.fieldPresets.hasLast) {
+            const lg = el("optgroup");
+            lg.label = "auto";
+            const option = el("option", null, "last session");
+            option.value = "last";
+            lg.appendChild(option);
+            sel.appendChild(lg);
+          }
         }
         safeSet(sel, snap.fieldPresets.selected || "");
         del.disabled = !(snap.fieldPresets.selected || "").startsWith("u:");
@@ -303,6 +333,39 @@
       slider("field", "counter", "counter", FIELD_SLIDERS.counter, { desc: "a phase-inverted twin layer, difference-blended — interference" }),
       slider("field", "nest", "nest", FIELD_SLIDERS.nest, { desc: "tiles inside tiles, counter-phased — 0, 1, or 2 levels deep" }),
     ]);
+
+    section(V, "scene");
+    {
+      const sceneIds = (globalThis.RelaaaxScenes && globalThis.RelaaaxScenes.LIST) ||
+        ["none", "ink", "ridge", "flame", "nebula"];
+      const genomeNames = ((globalThis.RelaaaxScenes && globalThis.RelaaaxScenes.GENOMES) || []).map((g) => [g.name, g.name]);
+      minis(V, [
+        select("field", "scene", "scene", sceneIds.map((s) => [s, s]), { desc: "a GPU backdrop painted UNDER the tiles — ink turbulence, neon ridge flow, fractal flame, star tunnel. none = the classic field" }),
+        select("field", "scenePalette", "scene palette", Object.keys(FIELD.PALETTES).concat("genome").map((p) => [p, p]), { desc: "the scene's own color ramp, separate from the tiles' — duo borrows the two pickers, genome uses the flame's own bred colors" }),
+        slider("field", "sceneMix", "scene mix", FIELD_SLIDERS.sceneMix, { desc: "scene brightness — also fades the breathing boxes out as the scene takes over the background" }),
+        slider("field", "sceneTiles", "tiles over", FIELD_SLIDERS.sceneTiles, { desc: "tile-layer opacity over the scene — 0 is scene only" }),
+      ]);
+      minis(V, [
+        slider("field", "sceneSpeed", "scene speed", FIELD_SLIDERS.sceneSpeed, { desc: "the scene's own clock — independent of the field's tempo" }),
+        slider("field", "sceneScale", "scene scale", FIELD_SLIDERS.sceneScale, { desc: "zoom / spread of the scene structure" }),
+        slider("field", "sceneDrive", "scene drive", FIELD_SLIDERS.sceneDrive, { desc: "energy — glow, density, agitation; a favorite matrix target" }),
+        slider("field", "sceneWarp", "scene warp", FIELD_SLIDERS.sceneWarp, { desc: "each scene's character knob: ink warp depth, ridge churn, flame genome bend, tunnel swirl" }),
+      ]);
+      minis(V, [
+        slider("field", "sceneHue", "scene hue", FIELD_SLIDERS.sceneHue, { desc: "rotates the scene palette around the wheel" }),
+      ].concat(genomeNames.length ? [
+        select("field", "sceneGenome", "flame genome", genomeNames, { desc: "which bred flame the flame scene plays — your 20 picks from the farm. set scene palette to \"genome\" for the colors they were bred with" }),
+      ] : []));
+    }
+
+    section(V, "beat lock");
+    {
+      const accents = (DSP.ACCENT_NAMES || ["four"]).map((a) => [a, a]);
+      minis(V, [
+        select("field", "accent", "accent", accents, { desc: "which sixteenths the grid-locked pulse fires on — wire pulse→anything in the audio tab's matrix. only active while a track with a known tempo plays" }),
+        slider("field", "syncBeats", "sync", FIELD_SLIDERS.syncBeats, { desc: "lock one flash cycle to an exact number of beats — free lets the field run at its own speed, 1/2/4/8 make it breathe with the track" }),
+      ]);
+    }
 
     section(V, "pattern");
     {
@@ -456,6 +519,7 @@
     {
       const row = el("div", "tuner-pattern");
       const play = button("play", "Play / pause — same switch as the speaker on the visual page", () => send({ scope: "music", type: "player", cmd: "toggle" }));
+      const stopBtn = button("stop", "Stop — pause and rewind to the top of the track", () => send({ scope: "music", type: "player", cmd: "stop" }));
       const prev = button("◀", "Previous track", () => send({ scope: "music", type: "player", cmd: "prev" }), "tuner-step");
       const sel = el("select");
       const next = button("▶", "Next track", () => send({ scope: "music", type: "player", cmd: "next" }), "tuner-step");
@@ -471,7 +535,7 @@
         dj.appendChild(option);
       });
       dj.title = "claude's set plays a composed light show authored for each track; free play hands the field back to your sliders";
-      row.append(play, prev, sel, next, shuffleWrap, djLabel, dj);
+      row.append(play, stopBtn, prev, sel, next, shuffleWrap, djLabel, dj);
       row.appendChild(el("p", "tuner-desc", "tracks auto-advance when one ends. claude's set drives the field AND the reactivity per track — flip to free play to take the sliders back"));
       sel.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "select", index: Number(sel.value) }));
       shuffle.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "shuffle", value: shuffle.checked }));
@@ -491,6 +555,43 @@
         safeSet(dj, snap.music.dj);
       });
       A.appendChild(row);
+
+      // Transport: playhead scrubber, time readout, listening volume.
+      const transport = el("div", "tuner-transport");
+      const seek = el("input");
+      seek.type = "range";
+      seek.min = "0";
+      seek.max = "1000";
+      seek.step = "1";
+      seek.title = "Scrub through the track — double-click rewinds to the top";
+      const time = el("output", "tuner-time", "0:00 / 0:00");
+      const volLab = el("label", "tuner-label", "vol");
+      const vol = el("input", "tuner-vol");
+      vol.type = "range";
+      vol.min = "0";
+      vol.max = "1000";
+      vol.step = "1";
+      vol.title = "Listening volume — same knob as the speaker's hover slider. Double-click restores full";
+      transport.append(seek, time, volLab, vol);
+      seek.addEventListener("input", () => {
+        if (snap && snap.music.duration) {
+          send({ scope: "music", type: "player", cmd: "seek", value: (Number(seek.value) / 1000) * snap.music.duration });
+        }
+      });
+      // Release focus after a scrub so the playhead resumes following playback
+      // (reflect skips whichever control is focused).
+      seek.addEventListener("change", () => seek.blur());
+      seek.addEventListener("dblclick", () => send({ scope: "music", type: "player", cmd: "seek", value: 0 }));
+      vol.addEventListener("input", () => send({ scope: "music", type: "player", cmd: "volume", value: Number(vol.value) / 1000 }));
+      vol.addEventListener("dblclick", () => send({ scope: "music", type: "player", cmd: "volume", value: 1 }));
+      const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+      onReflect(() => {
+        const d = snap.music.duration || 0;
+        safeSet(seek, d ? String(Math.round(((snap.music.time || 0) / d) * 1000)) : "0");
+        time.textContent = `${fmtTime(snap.music.time || 0)} / ${fmtTime(d)}`;
+        if (snap.music.volume !== undefined) safeSet(vol, String(Math.round(snap.music.volume * 1000)));
+      });
+      A.appendChild(transport);
     }
 
     section(A, "reactivity");
@@ -502,6 +603,7 @@
       slider("music", "release", "release", MUSIC_SLIDERS.release, { desc: "how fast they let go" }),
       slider("music", "beatSense", "beat sense", MUSIC_SLIDERS.beatSense, { desc: "beat detector sensitivity — the dot flashes on every hit it hears", extra: beatDot }),
       slider("music", "beatDecay", "beat decay", MUSIC_SLIDERS.beatDecay, { desc: "how long each beat impulse rings" }),
+      slider("music", "accentDecay", "accent decay", MUSIC_SLIDERS.accentDecay, { desc: "how long the grid-locked pulse rings — short is a flash, long is a swell" }),
     ]);
 
     // Mod matrix.
@@ -577,34 +679,42 @@
       ptWrap.append(perTrack, document.createTextNode("per track"));
       ptWrap.title = "Remember these reactivity settings for the current track and recall them whenever it plays";
       row.append(save, del, ptWrap);
+      row.appendChild(button("reset", "Reset the audio tab — reactivity, matrix, shuffle, per-track, DJ mode — back to stock", () => send({ scope: "music", type: "resetAll" }), "tuner-reset"));
       row.appendChild(el("p", "tuner-desc", "reactivity has its own presets, separate from the field's; per track remembers the current settings for whichever song is playing"));
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "music", type: "preset", value: sel.value });
       });
       perTrack.addEventListener("change", () => send({ scope: "music", type: "perTrack", value: perTrack.checked }));
+      // Same rebuild guard as the field presets: only rebuild when the list
+      // itself changes, so streaming snapshots can't close an open dropdown.
+      let listSig = "";
       onReflect(() => {
-        sel.textContent = "";
-        const custom = el("option", null, "— custom —");
-        custom.value = "";
-        sel.appendChild(custom);
-        const fg = el("optgroup");
-        fg.label = "built in";
-        snap.music.presets.factory.forEach((p) => {
-          const option = el("option", null, p.label);
-          option.value = `f:${p.id}`;
-          fg.appendChild(option);
-        });
-        sel.appendChild(fg);
-        if (snap.music.presets.user.length) {
-          const ug = el("optgroup");
-          ug.label = "yours";
-          snap.music.presets.user.forEach((name) => {
-            const option = el("option", null, name);
-            option.value = `u:${name}`;
-            ug.appendChild(option);
+        const sig = JSON.stringify([snap.music.presets.factory.map((p) => p.id), snap.music.presets.user]);
+        if (sig !== listSig) {
+          listSig = sig;
+          sel.textContent = "";
+          const custom = el("option", null, "— custom —");
+          custom.value = "";
+          sel.appendChild(custom);
+          const fg = el("optgroup");
+          fg.label = "built in";
+          snap.music.presets.factory.forEach((p) => {
+            const option = el("option", null, p.label);
+            option.value = `f:${p.id}`;
+            fg.appendChild(option);
           });
-          sel.appendChild(ug);
+          sel.appendChild(fg);
+          if (snap.music.presets.user.length) {
+            const ug = el("optgroup");
+            ug.label = "yours";
+            snap.music.presets.user.forEach((name) => {
+              const option = el("option", null, name);
+              option.value = `u:${name}`;
+              ug.appendChild(option);
+            });
+            sel.appendChild(ug);
+          }
         }
         safeSet(sel, snap.music.presets.selected || "");
         del.disabled = !(snap.music.presets.selected || "").startsWith("u:");

@@ -12,6 +12,8 @@
   const bridge = globalThis.relaaaxTuner;
   const host = globalThis.RelaaaxHost;
   if (!DSP || !bridge || !host || !globalThis.relaaaxField) return;
+  const GRID = globalThis.RELAAAX_TRACK_GRID || {};
+  const RAMP = globalThis.RelaaaxField.RAMP;
 
   // James's Suno tracks — new MP3s dropped into assets/sound-tracks/ get a
   // line here (no fetch/directory listing: file:// must keep working).
@@ -50,7 +52,9 @@
   }
   const store = loadStore();
   store.pertrack = store.pertrack || {};
-  if (store.dj !== "free" && store.dj !== "claude") store.dj = "claude";
+  // Free play is the DEFAULT (James, 2026-07-25): entering the world never
+  // hands the field to a composed set — claude's set is an explicit opt-in.
+  if (store.dj !== "free" && store.dj !== "claude") store.dj = "free";
   let settings = mergeSettings(store.settings);
   let presetSelected = "";
 
@@ -201,6 +205,9 @@
         dj: store.dj,
         trackIndex,
         playing: !audio.paused,
+        time: audio.currentTime || 0,
+        duration: (isFinite(audio.duration) && audio.duration) || 0,
+        volume,
         tracks: TRACKS.map((t) => t.label),
         presets: {
           factory: FACTORY.map((p) => ({ id: p.id, label: p.label })),
@@ -237,6 +244,18 @@
             case "toggle":
               if (audio.paused) start().catch(() => {});
               else stop();
+              break;
+            case "stop":
+              stop();
+              audio.currentTime = 0;
+              break;
+            case "seek": {
+              const dur = (isFinite(audio.duration) && audio.duration) || 0;
+              audio.currentTime = Math.max(0, Math.min(Number(cmd.value) || 0, dur));
+              break;
+            }
+            case "volume":
+              soundUI.setVolume(Math.max(0, Math.min(1, Number(cmd.value) || 0)));
               break;
             case "prev":
               loadTrack(trackIndex - 1, !audio.paused);
@@ -285,6 +304,17 @@
           if (store.perTrack) store.pertrack[TRACKS[trackIndex].file] = clone(settings);
           saveStore();
           break;
+        case "resetAll":
+          // The audio tab's reset: reactivity + matrix back to stock, player
+          // toggles back to defaults. Playback and volume are left alone.
+          settings = mergeSettings(null);
+          presetSelected = "";
+          store.shuffle = false;
+          store.perTrack = false;
+          store.dj = "free";
+          saveStore();
+          resetComposition();
+          break;
       }
     },
   });
@@ -300,6 +330,7 @@
     setVolume: (v) => {
       volume = v;
       if (gainNode) gainNode.gain.value = v;
+      host.emit(); // keep the tuner's volume slider in step with the speaker's
     },
   });
   audio.addEventListener("play", () => {
@@ -310,11 +341,16 @@
     soundUI.setOn(false);
     host.emit();
   });
+  // Drives the tuner's playhead + time readout (~4 Hz while playing).
+  audio.addEventListener("timeupdate", () => host.emit());
+  audio.addEventListener("loadedmetadata", () => host.emit());
 
   // --- the reactive loop ----------------------------------------------------
 
   const engine = DSP.create();
+  const accents = DSP.createAccents();
   let lastNow = performance.now();
+  let lastBeatFired = -1;
 
   function tick(now) {
     requestAnimationFrame(tick);
@@ -334,10 +370,38 @@
     const effSettings = djState ? djState.react : settings;
 
     const { sources, beat } = engine.step(raw, dt, effSettings);
-    if (beat) {
-      host.beat();
-      if (globalThis.RelaaaxFX) RelaaaxFX.beat();
+
+    // --- the beat clock: musical position straight from the measured grid ---
+    const grid = GRID[TRACKS[trackIndex].file];
+    const clock = DSP.clockAt(grid, audio.currentTime);
+    if (clock) {
+      sources.pulse = accents.step(clock, effBase.accent, effSettings.accentDecay, dt);
+      sources.bar = clock.barPhase;
+      sources.phrase = clock.phrasePhase;
+      sources.swing = clock.swing;
+      // Tempo-locked flashing: one full oscillator cycle = N beats exactly, so
+      // the field breathes WITH the track instead of drifting against it.
+      if (effBase.syncBeats > 0) {
+        effBase.speed = RAMP / (effBase.syncBeats * grid.beatLen);
+      }
+      // The beat indicator follows the grid, not the detector, while a set
+      // with a known tempo is playing.
+      if (clock.beat !== lastBeatFired && clock.beatPhase < 0.5) {
+        lastBeatFired = clock.beat;
+        host.beat();
+        if (globalThis.RelaaaxFX) RelaaaxFX.beat();
+      }
+    } else {
+      sources.pulse = 0;
+      sources.bar = 0;
+      sources.phrase = 0;
+      sources.swing = 0;
+      if (beat) {
+        host.beat();
+        if (globalThis.RelaaaxFX) RelaaaxFX.beat();
+      }
     }
+
     const mods = DSP.modulate(effBase, sources, effSettings);
     const touched = Object.keys(mods);
 
@@ -369,5 +433,48 @@
       bus: host.localBus(),
       embedded: true,
     });
+  }
+
+  // --- always-visible transport bar ----------------------------------------
+  // James (2026-07-25, laptop-only sessions): player control must be present
+  // without opening the tuner — track, play/pause, a REAL stop, and the
+  // free-play/claude's-set switch, always on screen.
+  {
+    const barEl = document.createElement("div");
+    barEl.className = "rlx-transport-bar";
+    const btn = (label, title, cmd) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.title = title;
+      b.addEventListener("click", () => host.command({ scope: "music", type: "player", cmd }));
+      barEl.appendChild(b);
+      return b;
+    };
+    btn("◀", "Previous track", "prev");
+    const playBtn = btn("play", "Play / pause", "toggle");
+    btn("■", "Stop — rewind to the top; the field goes back to your sliders", "stop");
+    btn("▶", "Next track", "next");
+    const trackEl = document.createElement("span");
+    trackEl.className = "rlx-transport-track";
+    barEl.appendChild(trackEl);
+    const mode = document.createElement("select");
+    mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track";
+    [["free", "free play"], ["claude", "claude's set"]].forEach(([v, t]) => {
+      const o = document.createElement("option");
+      o.value = v;
+      o.textContent = t;
+      mode.appendChild(o);
+    });
+    mode.addEventListener("change", () => host.command({ scope: "music", type: "player", cmd: "dj", value: mode.value }));
+    barEl.appendChild(mode);
+    document.body.appendChild(barEl);
+    host.subscribe((snap) => {
+      if (!snap || !snap.music) return;
+      playBtn.textContent = snap.music.playing ? "pause" : "play";
+      trackEl.textContent = snap.music.tracks[snap.music.trackIndex] || "";
+      if (document.activeElement !== mode) mode.value = snap.music.dj;
+    });
+    host.emit();
   }
 })();

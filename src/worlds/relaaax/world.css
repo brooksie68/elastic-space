@@ -147,6 +147,86 @@ body {
   width: 100%;
 }
 
+/* --- docked tuning (single-screen sessions, James 2026-07-25) ---------------
+   When the in-page panel is open, it docks to the right edge full-height and
+   the stage shifts left so the visualization stays fully visible while
+   tuning. The detached window (tuner.html) is unaffected. */
+
+body.rlx-docked .rlx-stage {
+  padding-right: min(36rem, 46vw);
+}
+
+body.rlx-docked .rlx-frame {
+  width: min(1024px, calc(100vw - min(36rem, 46vw) - 1.5rem), calc(100vh * 4 / 3));
+}
+
+body.rlx-docked .rlx-tuner {
+  bottom: 0.75rem;
+  left: auto;
+  max-height: none;
+  right: 0.75rem;
+  top: 0.75rem;
+  transform: none;
+  width: min(34rem, 44vw);
+}
+
+/* --- transport bar (music.js) — always visible, tuner open or not ---------- */
+
+.rlx-transport-bar {
+  align-items: center;
+  backdrop-filter: blur(6px);
+  background: rgba(14, 14, 20, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.6rem;
+  bottom: 1rem;
+  color: #dfe3ee;
+  display: flex;
+  font: 13px system-ui, sans-serif;
+  gap: 0.35rem;
+  left: 1rem;
+  padding: 0.4rem 0.55rem;
+  position: fixed;
+  z-index: 10;
+}
+
+.rlx-transport-bar button {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.35rem;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-width: 2.2rem;
+  padding: 0.28rem 0.5rem;
+}
+
+.rlx-transport-bar button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.rlx-transport-bar select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.35rem;
+  color: inherit;
+  font: inherit;
+  padding: 0.24rem 0.3rem;
+}
+
+.rlx-transport-bar select option {
+  background: #14141c;
+}
+
+.rlx-transport-track {
+  max-width: 13rem;
+  opacity: 0.75;
+  overflow: hidden;
+  padding: 0 0.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- tuner toggle (the panel itself is styled in tuner.css) ----------------- */
 
 .rlx-tuner-toggle {

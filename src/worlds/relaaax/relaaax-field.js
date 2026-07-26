@@ -124,6 +124,20 @@
     fxCrt: 0,      // scanlines + barrel + sync tear
     fxShutter: 0,  // strobing frame gate
     fxIris: 0,     // breathing vignette
+    // --- v3 scene layer (rendered under the tiles by fx.js + scenes.js) ---
+    scene: "none",       // none | ink | ridge | flame | nebula
+    sceneMix: 1,         // scene brightness (0 hides it without leaving GL)
+    sceneTiles: 1,       // tile-layer opacity over the scene
+    sceneSpeed: 1,       // scene clock multiplier (own clock — never snaps)
+    sceneScale: 0.5,     // zoom / spread
+    sceneDrive: 0.5,     // energy: glow, density, agitation
+    sceneWarp: 0.5,      // per-scene character: warp, swirl, genome bend
+    sceneHue: 0,         // scene palette hue rotation, 0..1 → 0..360°
+    scenePalette: "ocean", // named ramp, duo = the pickers, genome = the flame's own colors
+    // --- v6 beat lock (only meaningful while a track with a known grid plays)
+    accent: "four",      // which sixteenths the grid-locked "pulse" fires on
+    syncBeats: 0,        // 0 = free-run; else one flash cycle = N beats exactly
+    sceneGenome: "amber globe", // which bred flame genome the flame scene plays
   };
 
   const FX_KEYS = ["fxTrails", "fxZoom", "fxZoomRot", "fxPixel", "fxRgb", "fxWarp",
@@ -806,7 +820,7 @@
       }
       applyMerge(false);
 
-      const fxOn = FX_KEYS.some((k) => cfg[k] > 0);
+      const fxOn = FX_KEYS.some((k) => cfg[k] > 0) || (cfg.scene && cfg.scene !== "none");
       if (fxOn !== domHidden) {
         domHidden = fxOn;
         outer.style.visibility = fxOn ? "hidden" : "";
@@ -858,7 +872,7 @@
       const compH = cfg.fill || positioned ? dh : dh - 44;
       const ox = (dw - compW) / 2;
       const oy = (dh - compH) / 2;
-      items.push({ x: ox + compW / 2, y: oy + compH / 2, w: compW, h: compH, rot: 0, color: color(outerOsc.v), shape: "square", radius: cfg.radiusOuter, alpha: 1, blend: "source-over" });
+      items.push({ x: ox + compW / 2, y: oy + compH / 2, w: compW, h: compH, rot: 0, color: color(outerOsc.v), shape: "square", radius: cfg.radiusOuter, alpha: 1, blend: "source-over", kind: "backdrop" });
 
       if (!positioned) {
         const rowH = 2 * cfg.inset + cellH;
@@ -866,7 +880,7 @@
         const gx = ox + cfg.marginLeft;
         const gy = oy + cfg.marginTop;
         boxes.forEach((box, r) => {
-          items.push({ x: gx + rowW / 2, y: gy + r * rowH + rowH / 2, w: rowW, h: rowH, rot: 0, color: color(box.osc.v), shape: "square", radius: cfg.radiusRow, alpha: 1, blend: "source-over" });
+          items.push({ x: gx + rowW / 2, y: gy + r * rowH + rowH / 2, w: rowW, h: rowH, rot: 0, color: color(box.osc.v), shape: "square", radius: cfg.radiusRow, alpha: 1, blend: "source-over", kind: "backdrop" });
         });
         tiles.forEach((tile) => {
           if (tile.hidden) return;

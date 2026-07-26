@@ -3,7 +3,267 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
-## 2026-07-24 (latest) — Claude (Fable 5)
+## 2026-07-26 wrap — Claude (Opus 5)
+
+James's verdict on v6: *"Definitely major improvement… you're making really
+good progress."* Remaining gripes, both fair: there are still places where the
+beat or the A/B/A/C structure is read wrong. Plus a key piece of information —
+**Timber at Sea is atonal and arrhythmic for its first minute with no beat at
+all**, which is exactly why its lock is the weakest of the three and why a
+single global tempo is the wrong model for it.
+
+- The real find of the night was his, not mine: **hitting the manual 🎲 every
+  four bars** — *"quite incredible… one of the better visualizations I've
+  actually seen, and we barely started."*
+- I over-read that as a spec and built an automatic version (roll every N
+  bars / on detected punches, with a partial-roll depth so the look mutates
+  instead of jumping). **Reverted at his instruction** — the idea is good, it
+  just isn't ready to drop in. Verified clean: no traces left, sims still
+  123 + 42.
+- **Three directions recorded for next session** (see the world CLAUDE.md
+  "NEXT UP" section): time-varying beat detection that admits when there is no
+  beat; splitting the audio into registers/instruments so different parameters
+  follow different players; and per-parameter re-rolling locked to the grid.
+  All approved as direction, none approved to build — each gets its own go.
+
+## 2026-07-26 night — Claude (Opus 5)
+
+James: "Angular Ritual is 115 BPM… you're not doing a good job detecting the
+logical sections or switching at the breaks… I'd like more composition in the
+variety — one setting for 4 beats then another, then the 1st again but
+varied… when there's a breakdown or significant rhythmic shift that's when
+you PUNCH it… and get the visualization reacting in time, pulsing and moving
+along with the beat." Plus: add a dice.
+
+- **THE CLOCK WAS WRONG, and it was the root cause.** He called Angular at
+  115; the analyzer said 76.01 — exactly 2/3, a metrical-level error. Measured
+  independently: 115 explains 2.55× as many onsets as chance, 76 barely 1.35×.
+  Jungle and Timber were ~1% off, which is seconds of drift by the end.
+  Every event in every set had been placed on a grid that wasn't the music's.
+- **Tempo detection rewritten** (three failed scoring schemes before one held):
+  superflux onsets (log-magnitude flux, max-filter across bins, adaptive
+  whitening) → comb filter PROPOSES candidates plus their metrical relatives →
+  8th-grid alignment DISPOSES via a binomial likelihood ratio. A plain hit
+  ratio favours sparse grids (gave Timber 82.6 = 124×⅔); hits-minus-chance
+  favours dense ones (gave 186.2 = 124×3/2); the likelihood test plus a
+  log-normal dance-tempo prior settles it. `BPM_OVERRIDE` lets James's ear win
+  outright. Result: Angular 115 (99 bars), Jungle 129.1, Timber 123.95, all
+  with ~16ms on-grid error.
+- **Structure detection** now finds what a VJ actually hits: break-returns
+  (percussion drops out, then lands), builds (energy climbing 4+ bars), drops
+  (hard energy jumps), and GROOVE CHANGES (the 16-step rhythm fingerprint of
+  the bar changes even when the level doesn't) — the last of which the old
+  analyzer was completely blind to. 11 punches in Angular, 33 each in Jungle
+  and Timber.
+- **The beat clock (`assets/track-grid.js` + DSP `clockAt`/`createAccents`).**
+  The visuals no longer chase the audio through envelope followers. Track time
+  converts straight to beat/bar/phrase position, and four new lag-free mod
+  sources join the matrix: **pulse** (accent impulse), **bar**, **phrase**,
+  **swing**. Ten accent patterns (downbeat, backbeat, offbeat, eighths,
+  gallop, clave, stutter…) decide which sixteenths fire. `syncBeats` locks one
+  flash cycle to an exact number of beats so the field breathes WITH the track
+  instead of drifting against it. Verified: the impulse lands on the exact
+  frame its sixteenth begins, on all three tracks.
+- **Sets rebuilt as composition, not a list (v6).** Each track now has a LOOK
+  VOCABULARY (3–4 complete identities), VARIATION operators (invert, hue,
+  shape, fast, slow, scene, tiles, burst, tight, blast, accent swaps) and a
+  SCORE WRITTEN IN BARS. Phrases trade call-and-response (A B A' B'), returns
+  are varied rather than repeated, and new looks are reserved for measured
+  punches. Angular 50 events (median 2-bar gap), Jungle 69 (4-bar), Timber 32
+  (3-bar); they land 8/11, 26/33 and 21/33 of the detected punches. Because
+  the score is in bars, re-measuring a track re-times the whole set — the
+  class of error that started this session is now structurally impossible.
+- **The dice** (James's ask): 🎲 in the visual tab rolls every visual
+  parameter at once — layout, shape, pattern, palette, colours, scene, genome
+  and a random handful of FX. Lives in presets.js so it is testable; the only
+  guard is anti-blackout.
+- **Verification**: composition-sim 123, music-sim 42, plus a new
+  `tmp/relaaax/clock-test.html`. Bugs caught by tests, not by eye: the dice
+  didn't know about two new keys; `nest` was wired as a mod target (it isn't
+  one); `syncBeats` was being interpolated by ramps (4.07 beats per cycle);
+  accents fired against a phantom grid before the first downbeat.
+
+## 2026-07-26 later — Claude (Opus 5)
+
+James on the v4 sets: "be considerably more active — never more than eight
+bars without changing dramatically, a lot more on the beat, a lot more color
+schemes, very extreme sliders, almost break it."
+
+- **All three sets recut from scratch (v5).** Angular changes every TWO bars
+  (35 events), Jungle every four with an eight-bar floor in the tail (48
+  events), Timber every four (23 events). Measured worst-case gap: 2.3 bars
+  (Angular), 8.0 (Jungle), 4.4 (Timber).
+- **Color churn is now structural:** 40–45 distinct color states per set,
+  cycling all eight field ramps plus "genome", with hueShift walking on top.
+  No set sits in one scheme for more than a couple of bars.
+- **Scene + genome rotation:** 4–5 distinct scene states per set; Jungle alone
+  visits 15 of the 20 bred flame genomes, Angular 8.
+- **Extremes on purpose:** speed to 6.4, tileSize to 280, blur to 190, and
+  full-range desync / displace / counter / merge / kaleido / shutter, plus
+  deliberately absurd combinations (three 280px tiles; saw wave at speed 6.2;
+  nest 2 under counter 0.85; nebula at sceneSpeed 2 inside a feedback tunnel).
+  Matrix rows now include NEGATIVE amounts so sources pull knobs down.
+- **Four new sim rules enforce the brief** (108 assertions total, up from 90):
+  max 8 bars between events + an active tail, ≥12 distinct color states,
+  ≥4 scene states and ≥2 genomes per set, and ≥7 of 12 tracked sliders driven
+  to their extreme band. Two real bugs caught: `nest` was wired as a matrix
+  target (it isn't one — it rebuilds DOM), and Timber wasn't actually extreme
+  enough to pass its own bar.
+
+## 2026-07-26 — Claude (Opus 5)
+
+James culled the flame farm (20 of 7,307) using a new checkbox gallery, and
+those picks are now the flame scene's actual content.
+
+- **Picking gallery + save path:** gallery.html rebuilt as a picking tool
+  (click to check, sticky Save bar, localStorage so a closed tab loses
+  nothing). Saving POSTs to a new `POST /api/flame-picks`, which writes
+  `tmp/relaaax/flame-farm/picks.json`; if the server is off it downloads the
+  same JSON instead. Also added `OPTIONS /api/*` CORS preflight — pages opened
+  straight from disk (Origin "null") could not POST JSON before this.
+- **Genomes are live (`assets/flame-genomes.js`):** export-genomes.mjs turns
+  picks into GPU-ready IFS rows (affine pairs, weight CDF, variation id,
+  color coord) plus each genome's own 6-stop bred palette, a precomputed
+  framing (center/scale from 2nd–98th percentiles), and a per-genome GAIN.
+- **The flame shader is genome-driven** (was a hardcoded 3-branch IFS): up to
+  5 transforms from uniforms, all 8 classic variations, 24 chaos-game
+  iterations, 120k points. `sceneGenome` (tuner select) picks which one;
+  `scenePalette: "genome"` uses the colors it was bred with. sceneWarp now
+  drives a gentle per-transform wobble — at 0 the genome renders exactly as
+  it was judged. Four presets: flame shrine (gold phoenix), amber globe,
+  violet veil, green triskelion.
+- **Two real bugs caught by testing, not by eye:**
+  (1) the per-iteration branch choice used an additive sequence, so every
+  point followed the same branch order and the whole cloud collapsed to a dot
+  — 13 of 20 genomes rendered as specks until it was replaced with a properly
+  mixed hash; (2) diffuse genomes arrived washed out because the offline
+  renderer accumulates 1.8M iterations while the scene has ~120k one-shot
+  samples — fixed with the baked per-genome gain (coverage-derived).
+- **New verification tooling:** `tmp/relaaax/genome-test.html` renders every
+  genome through the LIVE shader, flags bad fill ratios, and posts a contact
+  sheet to `tmp/snapshots/` via a new `POST /api/dev-snapshot` — the agent's
+  browser pane can't screenshot unless it's on screen, so test pages now hand
+  their output back as files. Sims: composition 90/90 (10 new genome
+  assertions), music 14/14, all six shader programs compile.
+- Note: the dev server was restarted three times this session to pick up the
+  new endpoints; it runs in its own window as usual.
+
+## 2026-07-25 night — Claude (Fable 5)
+
+James's first look at v3 from a hotel laptop, and the feedback was direct:
+controls too buried, no real stop, the sets looked like the same program
+(fair — v3 kept the v2 skeleton), and "show me that you understand the music."
+
+- **Transport bar (music.js + world.css):** always-visible bottom-left strip —
+  prev / play-pause / STOP (rewinds, hands the field back to the sliders) /
+  next, track name, and the free-play ↔ claude's-set switch. No tuner digging.
+- **Free play is the default now** (was claude's set): entering the world =
+  the baseline animation; audio playing = baseline + reactivity; the composed
+  sets are an explicit opt-in on the transport bar. resetAll matches.
+- **Docked single-screen mode:** opening the in-page panel now docks it
+  full-height on the right and shifts the stage left (body.rlx-docked) —
+  visualization and controls share one laptop screen. The detached window
+  path is unchanged for two-screen sessions. Transport bar is excluded from
+  the click-away dismissal.
+- **DJ sets v4 — the real re-cut** (compositions.js rewritten from scratch):
+  every event is now `B(n)` — the exact start of bar n from the analyzer's
+  downbeat + bar length — or a measured drop/quiet; labels carry their bar
+  numbers. Scene swaps ONLY on section boundaries and drops, with the scene
+  as the lead voice (mix 0.8–1, tiles pulled down to 0.3–0.6 so it reads);
+  8/16-bar phrase mutations between. Jungle's b9 flame burst lands dead on
+  its measured 15.31s drop; its nebula night ride enters on the bar-145
+  section and steps hue every 16 bars; Timber's nebula bioluminescence
+  enters exactly on the bar-45 B section and the last wave on the bar-81 C
+  section; Angular's white room (59s) and hammer (178s) hard-cut the scene
+  to none for contrast.
+- **The counting is now sim-enforced:** composition-sim gained a per-set
+  assertion that every event sits within 90ms of a bar boundary or on a
+  measured drop/quiet edge — 79/79 pass (music-sim 14/14).
+- Next: James drives it — baseline first, then sliders, then audio, then the
+  sets. Set tuning stays conversational by bar-numbered label ("b41
+  lightning"). Flame-farm gallery still filling overnight for the cull.
+
+## 2026-07-25 late — Claude (Fable 5)
+
+James's "push the envelope" session: he shared 37 reference frames
+(tmp/relaaax/viz-examples — Electric Sheep flames, Mandelbrot zooms, neon
+kaleidoscopes, ink turbulence, nebula tunnels) and asked for real musical
+structure intelligence. Plan discussed, two ideas explicitly shelved (true
+fluid sim, 3D rave venue), everything else greenlit ("do all that other
+stuff").
+
+- **Scene layer (new `scenes.js` + fx.js pass 0):** full-frame GPU backdrops
+  rendered UNDER the tile layer inside the existing rack — `ink` (double
+  domain-warped fbm filaments), `ridge` (ridged-multifractal neon energy
+  walls), `flame` (real fractal-flame chaos game: 90k seeded points iterated
+  16 rounds through an animated 3-branch IFS in the vertex shader, additive
+  splat + Reinhard tone map), `nebula` (polar star-tunnel with depth-scrolled
+  fbm and streaking stars). Composited in the feedback pass, so trails /
+  tunnel / kaleido / the whole post chain fold scenes and tiles together.
+- **New config keys** (all tuner sliders + mod-matrix targets + composition
+  params): `scene`, `scenePalette`, `sceneMix` (also crossfades the breathing
+  boxes out — display-list items are tagged `backdrop`), `sceneTiles`,
+  `sceneSpeed` (own clock, never snaps), `sceneScale`, `sceneDrive`,
+  `sceneWarp`, `sceneHue`. Scene palettes ride the field's LUT pipeline
+  (named ramps / duo pickers / hue rotation) as 6 GLSL stops. Defaults keep
+  `scene: "none"` — pork 2002 untouched (sim-asserted). Four new factory
+  presets: inkwell, flame shrine, star tunnel, neon membrane.
+- **Phrase/section intelligence (track-analyze.mjs):** bar-level fingerprints
+  → Foote checkerboard novelty (adaptive kernel) → boundary peaks quantized to
+  the 4-bar grid → phrase-length vote (8/12/16/24/32) → lettered sections with
+  energy. Emitted as `totalBars` / `phrase` / `sectionsV2` in the analysis
+  JSON. Validation: Angular's first boundary lands on its measured bar-9 drop;
+  Timber reads A-A-B-A-C; Jungle's night-ride boundary (bar 145 → 270.6s)
+  matches the v2 set's hand-placed 269s event within a bar.
+- **DJ sets v3:** the v2 choreography kept as the skeleton (James hasn't seen
+  it yet), scenes woven in on the measured boundaries — Angular runs
+  ridge-temple → flame drop → hard white cut (scene off) → furnace ridge →
+  flame afterglow; Jungle runs acid ink → ocean-ink liquid breakdown → acid
+  flame frenzy → bare hex plateau → neon nebula night ride with slow hue
+  drift; Timber runs ocean ink → squall churn → ocean nebula bioluminescence →
+  rain ink → fade to harbor. Several events snapped to exact analyzer times
+  (45.35, 133.58, 270.63…); scene mod-matrix rows (bass→sceneDrive etc.)
+  swapped into the high-energy sections.
+- **Verification:** fx-test.html rebuilt — it now compiles ALL programs
+  synchronously against a real GL context (authoritative even when the
+  preview pane isn't compositing) and reports per-program status: all six
+  compile+link OK. composition-sim extended to 76 assertions (scene ranges,
+  shader uniform contract + brace balance, palette-stop math, per-set
+  scene usage + fade-out, pork-2002 default regression); music-sim 14/14.
+- **Flame farm (tmp/relaaax/flame-farm/):** overnight genome search approved —
+  headless renderer + scorer + gallery page; see that folder's README for
+  status/results.
+- Still standing: James's first real run (now of v3), setting decision, ship
+  wiring, live-input phase 2. Shelved by James this session: true GPU fluid
+  sim (revisit if curl-noise ink leaves him wanting), 3D rave venue (maybe,
+  undecided).
+
+## 2026-07-25 — Claude (Fable 5)
+
+James's three asks: a fuller player, reset on both panels, and the default back
+to the basic animation.
+
+- **Player transport (audio tab):** stop button (pause + rewind to top) next to
+  play/pause, seek scrubber with elapsed/total time readout, and a volume
+  slider wired through the shared sound control (`soundUI.setVolume`) so it and
+  the speaker's hover slider always agree. `timeupdate`/`loadedmetadata` now
+  stream host snapshots (~4 Hz while playing) to drive the playhead; both
+  preset dropdowns got sig-guarded option rebuilds so the streaming snapshots
+  can't close an open dropdown.
+- **Reset on both panels:** visual already had its reset (field + frame); the
+  audio tab now has a matching one — reactivity, matrix, shuffle, per-track,
+  and DJ mode back to stock (playback and volume untouched), via a new
+  music-scope `resetAll` command.
+- **Default is pork 2002 again:** the page always opens on pure DEFAULTS — the
+  basic 2002 animation. Tuner changes still save to localStorage on every move,
+  but the saved state is no longer applied on load; it lives in the field
+  preset menu as "last session" (auto group), so a reload never loses a
+  tuning session.
+- Sims: composition 58/58, music 14/14 pass. Standing next steps unchanged
+  (James's first real run of the expansion + v2 sets, hard-direction pick,
+  setting decision, ship wiring).
+
+## 2026-07-24 — Claude (Fable 5)
 
 - **The full expansion** — James: "I want every single thing you just described.
   Do all of them." Twelve structural features, twelve FX-rack effects, a two-tab
