@@ -8,6 +8,26 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-25 (The Valence Lab phase B: real molecules on the bench)
+
+- THE VALENCE LAB PHASE B built on James's go — the bonding bench, draft v3.1.
+  Wrote an in-house Hartree-Fock solver for the world (tmp/the-valence-lab/hf/:
+  McMurchie-Davidson integrals, Boys function, Jacobi eigensolver, RHF + UHF with
+  DIIS, STO-3G): hits published anchors (H₂O −74.9629 Ha, CH₄ −39.7268) and
+  catches the N₂ wrong-occupation saddle that would render the triple bond
+  unbound (fixed with a dual GWH/core guess). Nine molecules baked to 24 KB.
+- Runtime: swarm dots are Metropolis samples of the baked density; ghost shells
+  are its isosurface carved by marching tets in the browser; valence engine with
+  honest refusals, completion hints and the O₂ trap. 404-assertion molecule sim
+  (+ atom-sim's 129) covering solver anchors, bake freshness, sampler moments vs
+  analytic integrals, isosurface-on-density, and every recipe path.
+- Same night on James's feedback: auto-orbit off by default (v1.1), layer A/B
+  toggle + per-layer visibility sliders (v2.1), sliders moved above the fold
+  (v2.2), then the SCOPE CONSOLE — ⚙ tuner retired, all controls into the right
+  panel as specimen/controls/recipes tabs, "it's not a config, it's the scope
+  controls" — plus the recipe book (v3), demoted to read-first with a small
+  "run ▸" tag per card (v3.1).
+
 ## 2026-07-25 (Surround + Combat drafts, click-away rule site-wide)
 
 - SURROUND built as a draft (James's ask after an effort chat on early console

@@ -231,7 +231,12 @@ future lab bench with a "coherence scope" (tech as MacGuffin). Four agreed phase
 A atom bench / B bonding / C narrated scale-journey chapters / D showcase reactions —
 each gated on James's go. Phase A built 2026-07-24 (draft): six vials (H C N O Ne Ar),
 measurement-swarm electrons sampled from the real |ψ|² (129-assertion sim), valence
-readout, tuner. Physics honesty contract in the world's CLAUDE.md.
+readout, tuner. Phase B built 2026-07-25 (draft v3.1): vials feed the scope and bond
+instantly on a match — nine molecules with REAL densities from an in-house RHF/UHF
+STO-3G Hartree-Fock solver written for this world, ghost isodensity shells, honest
+refusals, layer A/B toggle, a scope console (specimen/controls/recipes) and a
+read-first recipe book with trap-safe feeding orders. 404-assertion molecule sim.
+Physics honesty contract in the world's CLAUDE.md.
 
 ### 59. Surround — *an evening* — `in progress (draft)` → `src/worlds/surround/`
 James's pick (2026-07-25) after a level-of-effort chat about early console recreations

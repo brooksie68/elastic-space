@@ -48,6 +48,8 @@ html, body {
   top: 64px;
   right: 18px;
   width: 264px;
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
   padding: 14px 16px 12px;
   background: linear-gradient(160deg, rgba(8, 18, 26, 0.86), rgba(5, 10, 16, 0.86));
   border: 1px solid rgba(95, 200, 228, 0.28);
@@ -56,6 +58,147 @@ html, body {
   backdrop-filter: blur(3px);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* Console tabs: specimen | controls | recipes */
+.readout .rtabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.readout .rtabs button {
+  flex: 1;
+  padding: 5px 0;
+  font: inherit;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6f97a6;
+  background: rgba(20, 45, 60, 0.25);
+  border: 1px solid rgba(95, 200, 228, 0.2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.readout .rtabs button.active {
+  color: #eafaff;
+  background: rgba(60, 130, 160, 0.32);
+  border-color: rgba(95, 200, 228, 0.5);
+}
+
+/* Controls tab */
+.readout .ctl-h {
+  margin: 12px 0 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #4d6b78;
+}
+.readout .ctl-h:first-child { margin-top: 0; }
+.readout .ctl-row { margin: 0 0 8px; font-size: 11px; }
+.readout .ctl-row label {
+  display: flex;
+  justify-content: space-between;
+  color: #7fa4b2;
+  margin-bottom: 2px;
+}
+.readout .ctl-row label .val { color: #cfe6ee; }
+.readout .ctl-row input[type="range"] {
+  width: 100%;
+  accent-color: #58c8e8;
+}
+.readout .ctl-row .ctl-check {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+.readout .ctl-row input[type="checkbox"] { accent-color: #58c8e8; }
+.readout .reset {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 0;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a8dcec;
+  background: rgba(40, 90, 110, 0.22);
+  border: 1px solid rgba(95, 200, 228, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.readout .stamp {
+  margin: 8px 0 0;
+  font-size: 9px;
+  color: #46606c;
+  letter-spacing: 0.12em;
+}
+
+/* Recipes tab */
+.readout .recipe-note {
+  margin: 0 0 10px;
+  font-size: 10px;
+  line-height: 1.55;
+  color: #6f97a6;
+}
+.readout .recipe {
+  display: grid;
+  grid-template-columns: 52px 1fr auto;
+  grid-template-areas: "rf rn rb" "rf ri rb";
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 6px;
+  padding: 7px 10px;
+  text-align: left;
+  font: inherit;
+  color: #cfe6ee;
+  background: rgba(20, 45, 60, 0.18);
+  border: 1px solid rgba(95, 200, 228, 0.16);
+  border-radius: 4px;
+}
+.readout .recipe .rbrew {
+  grid-area: rb;
+  align-self: center;
+  padding: 3px 7px;
+  font: inherit;
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6f97a6;
+  background: transparent;
+  border: 1px solid rgba(95, 200, 228, 0.22);
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.readout .recipe .rbrew:hover {
+  color: #eafaff;
+  border-color: rgba(95, 200, 228, 0.55);
+  background: rgba(60, 130, 160, 0.25);
+  opacity: 1;
+}
+.readout .recipe .rf {
+  grid-area: rf;
+  font-size: 17px;
+  font-weight: 700;
+  color: #eafaff;
+  text-shadow: 0 0 10px rgba(120, 220, 250, 0.4);
+}
+.readout .recipe .rn {
+  grid-area: rn;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #9fc3d0;
+}
+.readout .recipe .ri {
+  grid-area: ri;
+  font-size: 10px;
+  color: #6f97a6;
 }
 .readout .scope-tag {
   font-size: 9.5px;
@@ -142,11 +285,12 @@ html, body {
 .readout .status.inert { color: #8ff0c8; text-shadow: 0 0 10px rgba(90, 230, 180, 0.35); }
 .readout .btns {
   display: flex;
+  flex-wrap: wrap; /* four buttons -> 2x2 */
   gap: 8px;
   margin: 0 0 10px;
 }
 .readout button {
-  flex: 1;
+  flex: 1 1 42%;
   padding: 6px 0;
   font: inherit;
   font-size: 10.5px;
@@ -176,6 +320,19 @@ html, body {
   transition: opacity 0.4s ease;
 }
 .readout .flash.show { opacity: 1; }
+.readout .flash.bad {
+  color: #ff9c8a;
+  text-shadow: 0 0 10px rgba(255, 90, 60, 0.4);
+}
+
+/* Completion hints while atoms are staged ("+H → water · ...") */
+.readout .hints {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  line-height: 1.6;
+  color: #7fb2c4;
+}
 
 .hint {
   position: fixed;
@@ -191,79 +348,8 @@ html, body {
 }
 .hint.gone { opacity: 0; }
 
-/* ---- tuner ------------------------------------------------------------ */
-
-.tuner-toggle {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid rgba(95, 200, 228, 0.35);
-  background: rgba(8, 18, 26, 0.85);
-  color: #9fdcec;
-  font-size: 17px;
-  cursor: pointer;
-  z-index: 30;
-}
-.tuner-toggle:hover { background: rgba(30, 70, 90, 0.9); }
-
-.tuner {
-  position: fixed;
-  bottom: 64px;
-  left: 16px;
-  width: 300px;
-  max-height: 68vh;
-  overflow-y: auto;
-  padding: 12px 14px;
-  background: rgba(6, 13, 20, 0.92);
-  border: 1px solid rgba(95, 200, 228, 0.3);
-  border-radius: 6px;
-  font-size: 11px;
-  z-index: 29;
-  display: none;
-}
-.tuner.open { display: block; }
-.tuner h2 {
-  margin: 0 0 2px;
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: #9fdcec;
-}
-.tuner .stamp {
-  margin: 0 0 10px;
-  font-size: 9px;
-  color: #46606c;
-  letter-spacing: 0.12em;
-}
-.tuner .row { margin: 0 0 8px; }
-.tuner label {
-  display: flex;
-  justify-content: space-between;
-  color: #7fa4b2;
-  margin-bottom: 2px;
-}
-.tuner label .val { color: #cfe6ee; }
-.tuner input[type="range"] {
-  width: 100%;
-  accent-color: #58c8e8;
-}
-.tuner .reset {
-  width: 100%;
-  margin-top: 4px;
-  padding: 6px 0;
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #a8dcec;
-  background: rgba(40, 90, 110, 0.22);
-  border: 1px solid rgba(95, 200, 228, 0.35);
-  border-radius: 4px;
-  cursor: pointer;
-}
+/* (the bottom-left ⚙ tuner retired in v3 — controls live in the scope
+   console's "controls" tab now) */
 
 @media (max-width: 900px) {
   .readout { width: 220px; font-size: 11px; }

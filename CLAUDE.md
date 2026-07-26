@@ -10,13 +10,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
-   communities (capital Tonic in the core + Mediant/Dominant/Subdominant on the
-   hexagram at ~125km), procedural cores/node-shells/light-bridges, new
-   society-sim (all 5 sims pass, shaders compile-verified). AWAITING JAMES'S EYES
-   on the capital. Presets file-backed since v49.4 (james-prefs-01 is start
-   preset). NEXT, each with its own go: Phase B peoples (SDF Saelyri actors,
-   acknowledgment, sound), Phase C resources (tritium + 2 asteroid types, harvest
-   verbs), Phase D reef expansion (4× size, glyphs, new creatures). Spec:
+   communities (capital Tonic + Mediant/Dominant/Subdominant on the hexagram at
+   ~125km), procedural cores/node-shells/light-bridges, new society-sim.
+   v51 2026-07-25: capital wrapped Korrudan + SIX CADENCE CASTES (Blender citizen
+   robots, tmp/orb-dimension/cadence_robots.py) in all 4 hybrid towns.
+   v52 2026-07-25 (James's Knowhere brief after flying v51 — "the head should BE
+   the station"): KORRUDAN STATION — skull ×20 → 12km, capital machine cloud
+   deleted, city CRUST grown from the real bone surface (crust_points.mjs +
+   crustGeometry: window-grid shanties, gantry masts, warm refinery jaw, eye-socket
+   iris rings, face kept bare), SKULL_EL ellipsoid keeps + Korrudan doorstep fuel
+   ring, spawn 27km, gaze/eyes rescaled. VESS-KARAI REMOVED (James: "another
+   format later" — assets archived, hum → city hum). All 6 sims + init-smoke +
+   shaders green; new crust-sim. AWAITING JAMES'S FLIGHT (scale read from the
+   approach, window density, spawn pitch).
+   Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
+   with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
+   Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef
+   expansion (4× size, glyphs, new creatures). Spec:
    `src/worlds/orb-dimension/expansion-spec.md` "The cooperative societies"
    section (read it first). Still spec-only: stargates, gulf depot grid, luminous
    region. Related: World Ideas #57 (The Solar System) inherits this tech.
@@ -47,18 +57,45 @@ consistent. `npm run check-worlds` audits every world against the contract.
    candidates A-carl/B-santa/C-toby/D-gnome2 (tmp/face-lab/candidates.json +
    render_candidates.py, sheet sent) — James: "getting better, not quite ready,
    keep working at it." Lesson: default dark eyelashes read as mascara on male
-   characters — hide/swap them. NEXT: more candidate rounds until the under-face
-   lands → chops/mustache/hat/glasses dressing pass → storybook texture bake →
-   Mixamo body re-animation (James drives browser) → DLO integration + voice.
+   characters — hide/swap them. PIVOT 2026-07-25 (candidate round 2 dressed sheet
+   rejected as "Blender-beginner imitation"): James wants the ORIGINAL character +
+   the full repeatable pipeline, no compromises. New architecture: MPFB chassis for
+   animation; ALL likeness from the original Meshy model — texture bake, region-cut
+   props (DONE night 1: tmp/face-lab/pieces/, dissect.py), face geometry via WRAP
+   onto a high-res scan. NIGHT 2 (2026-07-25/26, ~39cr spent of approved ~50):
+   de-dressed 2D faces + the 3D face scan LANDED (tmp/face-lab/scan/head-scan.glb,
+   gorgeous, James approved spend); chassis→scan registration failed 3 ways, then
+   ROAD B LANDED on James's pick: the scan mesh IS the head — 66 morphs
+   kernel-transferred from an MPFB donor + real eyeballs in recessed sockets
+   (transfer_morphs.py, scan-morphed.blend; neutral/smile/jaw good, sheet sent).
+   Read the lab changelog FIRST. Road B socket surgery then REJECTED by James as
+   hacking ("raw meat + golf balls") → PROFESSIONAL PIVOT 2026-07-26: James bought
+   KeenTools Cloud (key in .env, tools/keentools.mjs) — head.glb LANDED first try
+   once inputs were right (front+40°L+40°R renders of the painted scan; profiles
+   fail; painted style fine): his face, real opening mouth+teeth, real closing
+   eyelids, 55 ARKit keys (tmp/face-lab/keentools/head.glb, sheet sent). Agreed
+   stack: FaceTracker (James performs, ElevenLabs speech-to-speech re-timbres),
+   Audio2Face/Rhubarb→ARKit for NPC lines, prompt-language performance scripts.
+   NEXT: KT head into lab picker for James's judgment, props mounting, viseme
+   adapter. Future characters: same pipeline (concept→de-dress→scan→40°
+   renders→KeenTools). Then DLO integration + voice.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
-   2026-07-24). PHASE A BUILT same day (draft, awaiting James's eyes): atom bench,
-   six vials (H C N O Ne Ar), measurement-swarm electrons sampled from the true
-   |ψ|² (sim: `node tmp/the-valence-lab/atom-sim.mjs`, 129 assertions), valence
-   readout, fog/measure modes, tuner. Read the world's CLAUDE.md first — it holds
-   the physics honesty contract and the four-phase plan (B bonding with real
-   precomputed molecular densities, C narrated scale-journey chapters (Claude
-   scripts, James produces voice), D elephant toothpaste + polymers). Each phase
-   needs its own go.
+   2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
+   on James's go + his three calls (instant bonding, loud honest refusals, ~10%
+   ghost shells) — draft v3, AWAITING JAMES'S EYES. Same-night on his feedback:
+   layer A/B toggle + per-layer visibility sliders, then the SCOPE CONSOLE
+   (right panel tabs specimen/controls/recipes — ⚙ tuner retired, "it's not a
+   config") and the click-to-brew RECIPE BOOK with sim-asserted trap-safe feed
+   orders. Real physics throughout: an
+   in-house RHF/UHF STO-3G Hartree-Fock solver (`tmp/the-valence-lab/hf/`) bakes
+   all nine molecules' true densities into 24 KB (`assets/molecules-data.js`);
+   swarm dots are Metropolis samples of that density; ghost shells are its
+   runtime-carved isosurface; valence engine with completion hints + O₂-trap
+   sequencing (H,O,O,H for peroxide). Sims: atom-sim 129 + molecule-sim 324
+   assertions, all green. Read the world's CLAUDE.md first — honesty contract
+   (incl. the N₂ dual-guess SCF rule) and remaining phases: C narrated
+   scale-journey chapters (Claude scripts, James produces voice), D elephant
+   toothpaste + polymers. Each phase needs its own go.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
@@ -107,10 +144,33 @@ consistent. `npm run check-worlds` audits every world against the contract.
    thing... go nuts"): 12 structure features (shapes/layouts/merges/palettes/
    waveforms/etc), 12-effect WebGL FX rack (fx.js), 20 new matrix targets, two-tab
    control surface (tuner.js) with DETACHABLE controller window (tuner.html,
-   BroadcastChannel), DJ sets re-choreographed v2. Sims 58+14 pass, shaders
-   verified; pork-2002 default regression-asserted. AWAITING James's first rave —
-   set tuning is conversational by event label. Architecture map in the world's
-   CLAUDE.md.
+   BroadcastChannel), DJ sets re-choreographed v2. Sims pass; pork-2002 default
+   regression-asserted. Set tuning is conversational by event label. Architecture
+   map in the world's CLAUDE.md. v3 2026-07-25 late ("push the envelope", James's
+   go after recap; true-fluid-sim + 3D-venue SHELVED by him): SCENE LAYER —
+   4 GPU backdrops under the tiles (ink/ridge/flame/nebula, scenes.js, distilled
+   from his tmp/relaaax/viz-examples folder), 9 scene* keys as sliders/matrix
+   targets/composition params; analyzer v2 (bar grid + Foote novelty →
+   phrase/sectionsV2); sets re-woven phrase-aware v3; sims 76+14 green, all 6
+   shader programs compile-verified; FLAME FARM overnight genome search running
+   (tmp/relaaax/flame-farm, gallery.html = morning cull). AWAITING James's first
+   rave of the whole stack.
+6. SURROUND: player-vs-computer neon recreation of Atari's Surround (1977), BUILT
+   2026-07-25 as a draft on James's direct ask ("slick and modern looking, 2026
+   appropriate") — `src/worlds/surround/` (read its CLAUDE.md first). Pure sim-tested
+   core (`node tmp/surround/sim.mjs`, 7139 assertions), three AI tiers (ORACLE =
+   Voronoi + separated-mode space-fill), tuner, synthesized sound via shared control.
+   AWAITING JAMES'S FIRST PLAY. Next: feel pass (speed/glow/AI defaults), then ship
+   wiring (drift exits, registry — mind the drafts-in-registry gotcha).
+7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one
+   tank, one CPU, six symmetric mazes — BUILT 2026-07-25 as a draft on James's ask,
+   same night as Surround (its sibling world: shared styling + architecture) —
+   `src/worlds/combat/` (read its CLAUDE.md first; it has the padded-LOS and
+   dodge-without-muting-guns AI lessons). Pure sim-tested core
+   (`node tmp/combat/sim.mjs`, 556k assertions), 3 AI tiers, 2:16 timed matches,
+   bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
+   Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
+   27-mode matrix, touch controls (World Ideas #60).
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 
