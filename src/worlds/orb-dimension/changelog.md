@@ -3,6 +3,238 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
+
+- New house rule from James: every control panel dismisses on click-away. One
+  `pointerdown`-outside handler now closes whichever of NAV/TUNE/CTRL is open
+  (via `setOpen("none")`); presses inside the open panel or on its own button
+  are exempt, and pressing another panel's button still opens that panel.
+  Grabbing the stick/canvas drops the panel immediately — that's the intent.
+
+## 2026-07-26 — claude-fable (v53.2 — the console was eating its bottom rows)
+
+James: "Some of the controls are going off the bottom of the screen... I can't
+read the z position. I can't read the bank rate. I can't read the bottom
+system parameter." Real bug, and it had been there a while — not a v53
+regression.
+
+- CAUSE: `.vs-rows p` sized its type at `clamp(13px, 1.75vh, 20px)` — a 13px
+  FLOOR — while the console box is `clamp(80px, 9.5vh, 150px)`. Below ~1440px
+  of viewport height the box keeps shrinking and the type doesn't, so the rows
+  outgrow the glass and `.vs-screen{overflow:hidden}` silently eats the last
+  one. Exactly the three readouts he named: BNK, Z, SHD.
+- MEASURED, not guessed: `tmp/orb-dimension/console-fit.html` renders the
+  console markup against the real world.css inside iframes at seven viewport
+  heights (each iframe is its own viewport, which is what makes vh testable)
+  and reports overflow per pod. Before: clipped at every height below 1440
+  (worst 24px, NAV at 1080 — 4K at 200% Windows scaling, James's likely case).
+  After: 0px at all seven.
+- FIX: new `--readout-h` custom property = the actual usable height inside a
+  screen (console height minus pod padding, stencil label, screen padding and
+  border). Row type is now `min(old clamp, --readout-h / 3.75)` at 1.22
+  line-height, so it can never exceed what the glass holds. NAV, which carries
+  four rows to everyone else's three, gets `/4.6` at 1.1 leading — the extra
+  row costs size instead of legibility.
+- Nothing changes at 1440px and above: still 20px / 17px, pixel-identical to
+  before. At 1080 the rows land at 16.3px and NAV at 13.3px — smaller than the
+  old nominal, but visible, which they were not.
+
+## 2026-07-26 — claude-fable (v53.1 — spawn moved twice as far back)
+
+James: "I think I need to be, like, twice as far back." Spawn 27km → 54km
+(pitch stays 0°, still dead on the face). The 12km station now subtends
+~13° instead of ~25° — it reads as a place you fly TO rather than one you
+are already parked at.
+
+- The spawn now sits IN the nebulae's gulf band (52–82km), so the move
+  needed a clearance check before it was safe: nearest bank #1 clears the
+  spawn by 13km and the whole approach line by 12.3km. nebula-sim TEST 9
+  now guards both — a reseed can never drop gas on the player's first frame
+  or on the run home.
+- Sight-corridor bounds extended 27600 → 54600 in the orb-field push and
+  the station-grid bad() (plus the sims that mirror them). No station or
+  orb actually changes — both populations bottom out around 24km, well
+  inside the old bound — so the fuel grid does not re-roll; the constant is
+  updated to keep the invariant honest for whatever expands next.
+- All 9 sims green.
+
+## 2026-07-26 — claude-fable (v53 — THE NEBULAE: gas in the gulf)
+
+James's brief ("the word I was looking for is nebula") → 7 look-dev rounds in
+`tmp/orb-dimension/nebula-lab.html` with his notes each round → his go to
+move it in. Five banks of glowing gas: one over home in the spawn sky, four
+in the gulf band (52–82km), each speaking ONE palette from a five-scheme
+deck (mutara / ember / verdant / ice / rose — his call: nebulae get their
+own identity, not the reef hue families). Visuals only, no sensor fuzz.
+
+- THE LOOK, from the lab: strands of stretched wisps in 4 size octaves,
+  torn alpha (no radial discs), directional shading off the noise gradient,
+  dark dust lanes drifting to the lit side, buried furnace knots. Rounds
+  fixed: cotton-candy pink → deep field + lit cores; quilted noise →
+  features ride puff size; GREEN DRIFT under heavy overlap (premultiplied
+  alpha over low coverage races the channels to the 8-bit ceiling — cured
+  by keeping color near alpha scale, and the same discipline is now in the
+  world shader); fibers → gas (4 gentle octaves, wider shading taps).
+- THE SOMERSAULT (James, r7): wisps pirouetted when a strand pointed at the
+  camera — its screen projection collapses and the axis direction swings.
+  Cure: the stretch RELAXES TO ROUND as the projection degenerates, so a
+  degenerate axis has nothing to swing. Quantified, not eyeballed —
+  nebula-sim TEST 7 bounds the worst visible axis swing per orbit step
+  (6.3° at bar 6.5; the lab's validated build measured 4.8°).
+- THE FILL-RATE GUARD (the part that isn't visible): the lab shader
+  evaluated 3 fbm — 48 sines — PER FRAGMENT, across ~13 screens of blended
+  gas. At 4K that is unshippable, and v33's veil bomb already TDR-crashed
+  James's rig once. Two fixes: (1) the identical alpha+gradient field is
+  BAKED ONCE at init into a 6-variant atlas (`bakeWispAtlas`, 51ms, no
+  fetch — the gas still blows on file://), so a fragment is now one texture
+  fetch; (2) an aggressive near-fade (a wisp is gone below 4 of its own
+  radii, full at 9) plus smaller size octaves. nebula-sim TEST 6 bars
+  interior overdraw at 13.0 screens AT THE DENSITY SLIDER'S CEILING, not
+  just the default — the tuner cannot outrun the GPU (slider max capped
+  1.2 for exactly this reason).
+- Atlas coarse family re-tuned 3.2 → 4.8 after eyeballing the bake: at 3.2
+  the radial body term dominates and big wisps read as DISCS — James's
+  ball-pit failure mode, caught by the preview before it ever flew.
+- Fog: nebulae take haze at 0.08 strength — the veil rule, never
+  fog-exempt. Drawn blended after the meshes, before the orb field, depth
+  tested (a bank behind Korrudan stays behind it), no depth write.
+- GOD MODE group "the nebulae": nebGlow (permanent feel), nebDensity
+  (layout — rebuilds on change).
+- NEW SIMS: `nebula-sim.mjs` (8 tests: determinism, placement, home-bank
+  clearances, puff integrity, palette variety, overdraw, somersault bound,
+  flight bounds) and `wisp-atlas-check.mjs` (runs the SHIPPED bake against
+  a stubbed GL: cost, upload wiring, per-variant gas statistics, border
+  vanishing for mipmap bleed, gradient signal — plus a PNG preview at
+  `tmp/orb-dimension/wisp-atlas.png`).
+- shader-check.html now compiles NEB_VS/FS too — and immediately earned it:
+  it caught an undeclared `r` left behind when the fbm block was swapped
+  for the texture fetch, which would have silently killed the entire
+  nebula pass at runtime.
+- reef-sim TEST 9 DE-FLAKED: it sampled 20k fuel probes with unseeded
+  Math.random against bars close to the real distribution, so it failed on
+  unlucky rolls (caught in a full-suite run). Probes are seeded now — same
+  coverage, same numbers every run. A guard sim that cries wolf gets
+  ignored.
+- All 9 sims + init-smoke + shader check green, twice over. Build stamp v53.
+- AWAITING JAMES'S FLIGHT: the look in-world (this is the first time the
+  gas has been seen anywhere but the lab), bank placement, glow/density by
+  eye, and whether the interior thins too much on entry — the near-fade is
+  the knob, and it's the one holding the frame rate, so we tune it against
+  TEST 6 rather than freely.
+
+## 2026-07-25 — claude-fable (v52 — KORRUDAN STATION: the Knowhere pass)
+
+James's brief after flying v51: the head read 20× his ship, not 2000×, and
+the v51 machine cloud obscured it. Reference study: Knowhere (GotG) — bone
+dominant, machinery in crusted districts, scale sold by thousands of tiny
+lights. His calls: 12km skull, keep the Meshy mesh, halfway window glow,
+REMOVE Vess-Karai ("cool experiment, another format later").
+
+- VESS-KARAI RETIRED: pyramid loader/draw/nav row/caretaker beat/courtesies
+  all removed; assets/pyramid/ + pyramid_build.py archived on disk. Its hum
+  synth survives as the CITY HUM — gain now steered by distance to the
+  crust (sound.cityHum). v47-sim TEST 1 now asserts the retirement is clean.
+- SKULL ×20 (SKULL_SCALE 3 → 20): 12km tall, spanning the core's full
+  height. Everything re-derived: eyes (fix ±1800/32.7/3811.3, r 1067), gaze
+  (clamp 48→320, engage 6→18km — seated rule holds, clearance scales to
+  ~353m), spawn [0,0,27000] with SPAWN_PITCH reset to 0 (James recalibrates
+  by eye), skull fog softened 1.6→1.05 so the monument reads at 27km.
+- SKULL_EL [4600,7100,6700]: the station keep is an ELLIPSOID now (a 12km
+  head is not a sphere). Used by: station-grid bad(), the orb-field push
+  (assemble), capital sun push, the city hum. Sight corridor stretched to
+  z 27600, radius 2100–2300.
+- CAPITAL DE-CLOUDED: Tonic's machine core is GONE — Korrudan is the body.
+  Satellites keep their full v51 cores. Capital keeps: suns (pushed outside
+  the ellipsoid), bridges, 3 cranium feeds (targets rescaled), 10 orbital
+  hoops (6.4–9.2km) and 26 through-the-bone threads at station scale.
+  capital coreR = 7400 (crust envelope) for orbits/standoffs.
+- THE CRUST — the city ON the bone: tmp/orb-dimension/crust_points.mjs
+  samples the real skull surface (area-weighted, interior/mouth/socket
+  filtered, region-tagged jaw/crown/side/back/face, 22 districts) into
+  assets/skull/crust.bin; crustGeometry() in world.js (CRUST_SEED marked
+  block) grows shanty stacks with LIT WINDOW GRIDS (the scale ruler — new
+  aux-kind-2 branch in the solid shader, windows resist fog pow 0.55),
+  gantry masts, tank farms, a warm refinery jaw (positional warmth — the
+  whole chin is one furnace), and a two-ring mechanical IRIS in each eye
+  socket (the red eyes stay). Face region ~bare (sim-asserted <35% of jaw
+  density). ~19k tris, drawn in the capital's commDraw slot, served-only.
+- FUEL: the ellipsoid carves the grid's center, so Korrudan seeds its own
+  doorstep ring (6 H2O + 3 DEU just off the crust, sightline-guarded).
+  Forgiveness bars hold (p95 6.7/8.2km, max 10.3/13.0km — reef-sim TEST 9).
+- Capital castes rework: archivists orbit OUTSIDE the bone (1.06–1.3 ×
+  coreR), wrights hop crust-point to crust-point near their bearing (no
+  chords through the skull). NAV: KORRUDAN standoff 2600→8800.
+- NEW SIM crust-sim.mjs (7 tests: atlas sanity, determinism, anchorage,
+  face-readability, budget, iris rings, warm jaw). All sims + init-smoke +
+  shader check green. reef-sim gaze/station/corridor tests updated to v52
+  numbers; society-sim TESTs 3/8/11 rewritten for the ellipsoid contract.
+- AWAITING JAMES'S FLIGHT: the 27km approach (scale read!), window-glow
+  density (halfway setting), hoop presence, refinery warmth, spawn pitch.
+
+## 2026-07-25 — claude-fable (v51.1 — hotfix: world would not load)
+
+James's report: only the ship chrome loaded. Cause: the v51 caste-spawn code
+called `vnorm` inside makeActors — but `vnorm` is a flight-section const
+declared AFTER the init-time rebuildAll() call. TDZ ReferenceError at init;
+the IIFE died before the renderer started. The extraction sims can never see
+this class of bug (they only evaluate the society block). Fixes:
+- spawn normalizes by hand (no flight-section helpers at init time).
+- NEW SIM: `tmp/orb-dimension/init-smoke.mjs` — runs the whole world.js IIFE
+  in Node under a stubbed DOM/WebGL2 (init + two rAF ticks). Verified it
+  fails on the exact v51 bug and passes on the fix. Run it after ANY world.js
+  change, alongside the extraction sims.
+
+## 2026-07-25 — claude-fable (v51 — THE CAPITAL WRAPS KORRUDAN + the Cadence castes)
+
+James's directives, built same session: the capital moves ONTO the skull,
+robotic complexity doubles, and six new Blender-built robot kinds populate
+all four hybrid towns.
+
+- CAPITAL_POS → [0, 0, 0]: Tonic is now built around and through the
+  god-skull itself. New capital-only geometry: 8 wrap hoops banding the bone
+  at 950–2450m (leaning axes — never a face-on cap), 26 long threads passing
+  clean THROUGH the head (depth test hides the middles inside the bone).
+  Element-center discipline (`faceClear`): big planes/slabs resample off a
+  face cylinder (z 700–4800, r 1250) and out of the bone (r 1500) — the red
+  eyes stay readable from spawn; only thin webbing crosses the view.
+- THE SKULL FEEDS: three capital suns — picked greedy-farthest-apart —
+  drive wide ribbons from sun skin to deep inside the cranium. Bridge shader
+  aux.w=1 marks a feed: three packets streaming INWARD only over a hotter
+  carrier (no return traffic; the god gets fed, it does not answer). Stored
+  in `GEO[0].feeds`; society-sim TEST 11 asserts 3 feeds, distinct suns,
+  termination inside the cranium, satellites feed-free.
+- CAPITAL SUN COURTESIES (deterministic pushes, no RNG): suns clear the
+  spawn sightline cylinder and keep 3.2km off Vess-Karai (literal Lantern
+  coords inside the block — it must stand alone in the sim).
+- ROBOTIC ELEMENTS DOUBLED (all four towns): data planes 24→48, slabs
+  40→80, webbing struts 110→220, tesseract frames 8→16. New mechanical
+  kinds: 6 gear-band rings girdling each core, 18 elbowed conduit runs,
+  10 antenna masts with cross-arms. ~8.3–9.6k tris per community (bars
+  20k/60k hold); glass overdraw worst probe 7.9 screens (bar 15).
+- THE CADENCE CASTES: six citizen robot kinds, built from primitives in
+  headless Blender (`tmp/orb-dimension/cadence_robots.py` →
+  `assets/robot/cadence-01..06.bin`, magic CBOT, same layout as robot.bin,
+  + shared 256px flat-color `cadence-palette.jpg`, UVs pinned to swatch
+  centers — the Jerry's Pool denizen spirit in 3D). Kinds: chanter
+  (tuning-fork monk, sings to its sun), lattice-wright (open cube frame +
+  tool arms, works the webbing), archivist (gyro sphere, circles the core),
+  ferry (cargo barge, shuttles the light bridges sun-skin to sun-skin),
+  warden (broad sentinel, walks the shell perimeter), gardener (hanging-arm
+  pod, tends sun crystals). Spawn: 3 of each at the capital, 2 at each
+  satellite (54 total), each with an under-hull work glow (fleet trick).
+  Served-only like the fleet; file:// towns just have no citizens out.
+  Shared ROBOT_VS/ROBOT_FS hoisted (fleet + castes, one shader; palette on
+  its own texture unit); one VAO bind per kind per frame, 14km cull.
+- Society-sim rewritten where the contract flipped: TEST 3 now asserts the
+  capital IS seated on Korrudan (plus sun clearances), TEST 11 added for
+  feeds. All 11 pass; reef/v47/ladder/stick sims green; all shaders
+  (incl. new bridge feed branch + hoisted robot pair) compile-verified.
+- Nav row: "the capital · wrapped around Korrudan". Help panel documents
+  the castes. Build stamp v51.
+- Preview sheet for James: `tmp/orb-dimension/cadence-preview.png`.
+- AWAITING JAMES'S EYES: the wrapped capital from spawn, feed read,
+  element density, caste silhouettes/scales (all tunable by eye next pass).
+
 ## 2026-07-24 — claude-fable (v50 — THE COOPERATIVE SOCIETIES, Phase A: the bones)
 
 James's go after full plan consensus (names, procedural-vs-Meshy, scale,

@@ -74,6 +74,9 @@
     commSat: 0.66,
     nodeGlow: 1,
     pulseTempo: 1,
+    // v53 the nebulae — glow is the permanent feel knob; density rebuilds
+    nebGlow: 1,
+    nebDensity: 1,
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -131,6 +134,10 @@
     { key: "commJitter", label: "societies jitter", min: 0, max: 1, step: 0.05, layout: true },
     { key: "nodeGlow", label: "node glow", min: 0, max: 2, step: 0.05 },
     { key: "pulseTempo", label: "pulse tempo", min: 0.2, max: 3, step: 0.05 },
+    { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
+    // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
+    // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
+    { key: "nebDensity", label: "nebula density", min: 0.3, max: 1.2, step: 0.05, layout: true },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -242,7 +249,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v50";
+    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v53";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -1321,18 +1328,18 @@ void main() {
   // skull's mouth-glow pulse in the skull shader carries the Heart's soul)
 
   // the skull's eyes: two bright red orbs seated in the eye sockets. Socket
-  // centers measured from skull.bin (canonical 600m frame: x ±60, y −15,
-  // z +190 — recessed into the openings) × SKULL_SCALE 3. Fixed world
-  // positions (o.fix), immune to spread sliders and wander; flag 3 in the
-  // instance data gives them the heart's never-smaller-than-a-star clause
-  // and a red-tinted branch in the fragment shader.
+  // centers measured from skull.bin (canonical 600m frame, recessed into the
+  // openings) × SKULL_SCALE — v52: scale 3 → 20, all numbers × 20/3. Fixed
+  // world positions (o.fix), immune to spread sliders and wander; flag 3 in
+  // the instance data gives them the heart's never-smaller-than-a-star
+  // clause and a red-tinted branch in the fragment shader.
   function makeEyes() {
     return [-1, 1].map((side) => {
       const o = baseOrb([0, 0, 0], false, false);
       o.eye = true;
-      // (±270, −45, 570) put through the skull's 5° back-tilt (see loader)
-      o.fix = [side * 270, 4.9, 571.7];
-      o.fixedR = 160;
+      // (±1800, −300, 3800) put through the skull's 5° back-tilt (see loader)
+      o.fix = [side * 1800, 32.7, 3811.3];
+      o.fixedR = 1067;
       o.h1 = 2;
       o.h2 = 357;
       o.sat = 100;
@@ -1540,19 +1547,27 @@ void main() {
     return out;
   }
 
-  // ---- the cooperative societies (v50): the Cadence + the Saelyri -----------
-  // Four communities of the robot / energy-being cooperative. The capital sits
-  // in the Korrudan core in its own precinct; three satellites take the
-  // OPPOSITE points of a six-pointed star against the reef colonies (James's
-  // hexagram spec): colony ideal angles + 60°, at HALF the ring radius, with
-  // their own seeded jitter and height. Each community: a lopsided mechanical
-  // intelligence core (the Cadence) ringed by 7–9 sun-like energy nodes (the
-  // Saelyri) on a jittered dodeca-face shell, joined by light bridges that
-  // never cross the middle. Deterministic like everything here — society-sim
-  // extracts this block verbatim. Markers: `const SOCIETY_SEED` … `// society hues`.
+  // ---- the cooperative societies (v50, capital rebuilt v51): the Cadence +
+  // the Saelyri. Four communities of the robot / energy-being cooperative.
+  // The capital wraps KORRUDAN ITSELF (James, v51): the intelligence core is
+  // built around and through the god-skull at the origin — wrap rings, bone
+  // threads, machinery cocoon — with the Saelyri suns on the outer shell and
+  // THREE of them feeding energy straight down into the cranium. Three
+  // satellites take the OPPOSITE points of a six-pointed star against the
+  // reef colonies (James's hexagram spec): colony ideal angles + 60°, at
+  // HALF the ring radius, with their own seeded jitter and height. Each
+  // community: a lopsided mechanical intelligence core (the Cadence) ringed
+  // by 7–9 sun-like energy nodes (the Saelyri) on a jittered dodeca-face
+  // shell, joined by light bridges that never cross the middle.
+  // Deterministic like everything here — society-sim extracts this block
+  // verbatim. Markers: `const SOCIETY_SEED` … `// society hues`.
   const SOCIETY_SEED = 0xcade05ae;
-  const CAPITAL_POS = [-15000, 2600, -12000]; // precinct: off-corridor, far from the Lantern
-  const CAPITAL_KEEP = 5200; // station-grid exclusion around the capital's core (m)
+  const CAPITAL_POS = [0, 0, 0]; // v51: the capital IS Korrudan — the skull is its heart
+  // v52: the skull is 12km tall (SKULL_SCALE 20). SKULL_EL is the keep
+  // ellipsoid — bone extents (canonical ±200.6/±300/±278.9 × 20, 5° tilt)
+  // plus crust headroom. Everything that must clear the station uses it:
+  // the station grid, capital suns, orb pushes, the city hum.
+  const SKULL_EL = [4600, 7100, 6700];
   const COMMUNITIES = [
     // Names are the Cadence's own — machines name themselves in the common
     // tongue, and a society that thinks in clock cycles names its settlements
@@ -1650,14 +1665,35 @@ void main() {
           }
         }
       };
+      const isCap = ci === 0;
       const envPoint = (f) => {
         const p = [rr(-1, 1), rr(-1, 1), rr(-1, 1)];
         for (let a = 0; a < 3; a++) p[a] *= ex[a] * f * (p[a] < 0 ? lop[a] : 1);
         return p;
       };
+      // ring: a strut band — the wrap gesture (v51). segs short struts around
+      // an axis; used for core gear-bands everywhere and skull hoops at home.
+      const ring = (m, c, ax, rad, segs, w, aux) => {
+        const [, b, c2] = frame3(ax);
+        let prev = null;
+        for (let s = 0; s <= segs; s++) {
+          const th = (s / segs) * TAU;
+          const p = [
+            c[0] + (b[0] * Math.cos(th) + c2[0] * Math.sin(th)) * rad,
+            c[1] + (b[1] * Math.cos(th) + c2[1] * Math.sin(th)) * rad,
+            c[2] + (b[2] * Math.cos(th) + c2[2] * Math.sin(th)) * rad];
+          if (prev) strut(m, prev, p, w, aux);
+          prev = p;
+        }
+      };
       const famHere = ci === 0 ? -1 : (ci * 2) % 5; // the capital speaks in every color
       const pickFam = () => (famHere < 0 || R() < 0.3 ? (R() * 5) | 0 : famHere);
-      // -- the Cadence core: glass planes, data planes, slabs, webbing, frames
+      // -- the Cadence core: glass planes, data planes, slabs, webbing,
+      // frames. v52: SATELLITES ONLY — the capital has no machine cloud
+      // anymore; Korrudan itself is the capital's body and the crust pass
+      // (crustGeometry below) carries its machinery. (Braces guard, inner
+      // indentation deliberately untouched — the sim extracts verbatim.)
+      if (!isCap) {
       for (let i = 0; i < 78; i++) {
         const [a, b] = [rdir(), rdir()];
         const eu = norm3(cross3(a, b));
@@ -1666,7 +1702,7 @@ void main() {
         quad(glass, envPoint(0.95), [eu[0] * h1, eu[1] * h1, eu[2] * h1],
           [ev[0] * h2, ev[1] * h2, ev[2] * h2], [0, rr(0, TAU), 0, pickFam()], [0, 0, 0]);
       }
-      for (let i = 0; i < 24; i++) {
+      for (let i = 0; i < 48; i++) {
         const [a, , ] = frame3(rdir());
         const eu = norm3(cross3(Math.abs(a[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0], a));
         const ev = cross3(a, eu); // data planes lean upright — readable rain
@@ -1674,7 +1710,7 @@ void main() {
         quad(glass, envPoint(0.85), [eu[0] * h1, eu[1] * h1, eu[2] * h1],
           [ev[0] * h2, ev[1] * h2, ev[2] * h2], [1, rr(0, TAU), 0, pickFam()], [0, 0, 0]);
       }
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 80; i++) {
         const c = envPoint(0.88);
         const ax = frame3(rdir());
         const h = [rr(0.04, 0.16) * S, rr(0.012, 0.034) * S, rr(0.04, 0.14) * S];
@@ -1691,12 +1727,12 @@ void main() {
           }
         }
       }
-      for (let i = 0; i < 110; i++) {
+      for (let i = 0; i < 220; i++) {
         const p = envPoint(1), q = envPoint(1);
         if (Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < S * 0.18) continue;
         strut(solid, p, q, rr(0.0022, 0.0048) * S, [1, rr(0, TAU), 0, pickFam()]);
       }
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 16; i++) {
         const c = envPoint(0.7);
         const [a, b, c2] = frame3(rdir());
         const h = rr(0.06, 0.17) * S;
@@ -1726,6 +1762,62 @@ void main() {
           strut(solid, pOut, pIn, 0.0018 * S, aux);
         }
       }
+      // -- v51 mechanical complexity pass: gear-bands girdle the core,
+      // conduit runs elbow through it, antenna masts bristle off it
+      for (let i = 0; i < 6; i++) {
+        const c = envPoint(0.35);
+        ring(solid, c, rdir(), rr(0.28, 0.6) * S, 14, rr(0.0016, 0.003) * S,
+          [1, rr(0, TAU), 0, pickFam()]);
+      }
+      for (let i = 0; i < 18; i++) {
+        let p = envPoint(0.9);
+        const ax = frame3(rdir());
+        const aux = [1, rr(0, TAU), 0, pickFam()];
+        const segs = 3 + ((R() * 3) | 0);
+        for (let s = 0; s < segs; s++) {
+          const e = ax[(s + ((R() * 3) | 0)) % 3];
+          const L = rr(0.05, 0.16) * S * (R() < 0.5 ? -1 : 1);
+          const q = [p[0] + e[0] * L, p[1] + e[1] * L, p[2] + e[2] * L];
+          strut(solid, p, q, 0.0022 * S, aux);
+          p = q;
+        }
+      }
+      for (let i = 0; i < 10; i++) {
+        const c = envPoint(0.85);
+        const d = norm3(c[0] || c[1] || c[2] ? c : [0, 1, 0]);
+        const L = rr(0.1, 0.22) * S;
+        const tip = [c[0] + d[0] * L, c[1] + d[1] * L, c[2] + d[2] * L];
+        const aux = [1, rr(0, TAU), 0, pickFam()];
+        strut(solid, c, tip, 0.0018 * S, aux);
+        const [, e1, e2] = frame3(d);
+        for (const [u, e] of [[0.45, e1], [0.65, e2], [0.85, e1]]) {
+          const b = [c[0] + d[0] * L * u, c[1] + d[1] * L * u, c[2] + d[2] * L * u];
+          const arm = rr(0.02, 0.05) * S;
+          strut(solid, [b[0] - e[0] * arm, b[1] - e[1] * arm, b[2] - e[2] * arm],
+            [b[0] + e[0] * arm, b[1] + e[1] * arm, b[2] + e[2] * arm], 0.0012 * S, aux);
+        }
+      }
+      } // end !isCap — the satellites' machine cores
+      // -- v51/v52 the Korrudan wrap (capital only): hoops banding the
+      // god-skull at bone-hugging radii (now 12km-bone radii), and long
+      // threads that pass clean THROUGH the head — the machine grew around
+      // its dead heart, then into it. Widths are absolute meters.
+      if (isCap) {
+        for (let i = 0; i < 10; i++) {
+          const ax = norm3([rr(-1, 1), rr(-0.35, 0.35), rr(-1, 1)]); // leaning hoops, never face-on caps
+          ring(solid, [0, 0, 0], ax, rr(6400, 9200), 26, rr(24, 44),
+            [1, rr(0, TAU), 0, pickFam()]);
+        }
+        for (let i = 0; i < 26; i++) {
+          const d = rdir();
+          const off = [rr(-2600, 2600), rr(-2600, 2600), rr(-2600, 2600)];
+          const L1 = rr(8000, 15000), L2 = rr(8000, 15000);
+          strut(solid,
+            [off[0] + d[0] * L1, off[1] + d[1] * L1, off[2] + d[2] * L1],
+            [off[0] - d[0] * L2, off[1] - d[1] * L2, off[2] - d[2] * L2],
+            rr(26, 48), [1, rr(0, TAU), 0, pickFam()]);
+        }
+      }
       // -- the Saelyri shell: 7–9 nodes on jittered d12 seats, flattened a
       // touch so the community reads as a place, not a cage
       const nNodes = 7 + ((R() * 3) | 0);
@@ -1743,6 +1835,29 @@ void main() {
           (d[1] * rad + (R() - 0.5) * 0.22 * shellR) * 0.78,
           d[2] * rad + (R() - 0.5) * 0.22 * shellR];
         nodes.push({ p, r: shellR * rr(0.055, 0.115), fam: pickFam(), phase: rr(0, TAU) });
+      }
+      // v52: capital suns hold two courtesies (deterministic pushes, no RNG —
+      // the assemble() skull-KEEP pattern): never sink into the station
+      // (radial push out of the SKULL_EL ellipsoid, sun radius included),
+      // never park between spawn and the face (sightline cylinder along +Z).
+      // (The v51 Vess-Karai courtesy retired with the Lantern.)
+      if (isCap) {
+        for (const nd of nodes) {
+          const en = Math.hypot(
+            nd.p[0] / (SKULL_EL[0] + nd.r), nd.p[1] / (SKULL_EL[1] + nd.r), nd.p[2] / (SKULL_EL[2] + nd.r));
+          if (en < 1.05) {
+            const f = 1.05 / Math.max(en, 1e-6);
+            nd.p[0] *= f;
+            nd.p[1] *= f;
+            nd.p[2] *= f;
+          }
+          const rxy = Math.hypot(nd.p[0], nd.p[1]);
+          if (nd.p[2] > 0 && rxy < 2400 + nd.r) {
+            const f = ((2400 + nd.r) * 1.15) / Math.max(rxy, 1);
+            nd.p[0] *= f;
+            nd.p[1] *= f;
+          }
+        }
       }
       // node crystals: intersecting glass planes inside each little sun
       for (const nd of nodes) {
@@ -1821,9 +1936,55 @@ void main() {
           bridge.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
         }
       }
+      // -- v51 the feeds (capital only): THREE of the suns send energy
+      // straight into the head — wide one-way ribbons from sun skin to deep
+      // inside the cranium (depth test swallows the tip in the bone).
+      // aux.w = 1 marks a feed; the bridge shader streams packets INWARD
+      // only. Suns picked greedy-farthest-apart so the beams cage the skull.
+      const feeds = [];
+      if (isCap && nodes.length >= 3) {
+        const pickIdx = [0];
+        while (pickIdx.length < 3) {
+          let best = -1, bs = -Infinity;
+          for (let i = 0; i < nodes.length; i++) {
+            if (pickIdx.includes(i)) continue;
+            let s = Infinity;
+            for (const j of pickIdx) {
+              const a = norm3(nodes[i].p), b = norm3(nodes[j].p);
+              const dot = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+              s = Math.min(s, Math.acos(dot));
+            }
+            if (s > bs) { bs = s; best = i; }
+          }
+          pickIdx.push(best);
+        }
+        for (const ni of pickIdx) {
+          const nd = nodes[ni];
+          const tgt = [rr(-900, 900), rr(-400, 1600), rr(-1000, 1000)]; // in the cranium (v52 12km bone)
+          const d = norm3([tgt[0] - nd.p[0], tgt[1] - nd.p[1], tgt[2] - nd.p[2]]);
+          const p = [nd.p[0] + d[0] * nd.r, nd.p[1] + d[1] * nd.r, nd.p[2] + d[2] * nd.r];
+          const w = Math.max(30, nd.r * 0.16);
+          const [, e1, e2] = frame3(d);
+          const mid = [(p[0] + tgt[0]) / 2, (p[1] + tgt[1]) / 2, (p[2] + tgt[2]) / 2];
+          const aux = [nd.fam, nd.fam, rr(0, TAU), 1];
+          for (const e of [e1, e2]) {
+            const bI = bridge.v.length / 15;
+            const n = e === e1 ? e2 : e1;
+            vert(bridge, [p[0] - e[0] * w, p[1] - e[1] * w, p[2] - e[2] * w], n, 0, 0, aux, mid);
+            vert(bridge, [tgt[0] - e[0] * w, tgt[1] - e[1] * w, tgt[2] - e[2] * w], n, 1, 0, aux, mid);
+            vert(bridge, [tgt[0] + e[0] * w, tgt[1] + e[1] * w, tgt[2] + e[2] * w], n, 1, 1, aux, mid);
+            vert(bridge, [p[0] + e[0] * w, p[1] + e[1] * w, p[2] + e[2] * w], n, 0, 1, aux, mid);
+            bridge.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+          }
+          feeds.push({ node: ni, from: nd.p.slice(), to: tgt });
+        }
+      }
       com.shellR = shellR;
-      com.coreR = Math.max(ex[0], ex[1], ex[2]);
-      out.push({ solid, glass, bridge, nodes, edges, shellR, coreR: com.coreR });
+      // v52: the capital's "core" is Korrudan + crust — coreR is the crust
+      // envelope radius (orbits and standoffs key off it), not the (absent)
+      // machine cloud's envelope
+      com.coreR = isCap ? 7400 : Math.max(ex[0], ex[1], ex[2]);
+      out.push({ solid, glass, bridge, nodes, edges, feeds, shellR, coreR: com.coreR });
     }
     return out;
   }
@@ -1831,6 +1992,302 @@ void main() {
   // language of light. (Shared deliberately: the Saelyri and the reef life
   // are relatives; the plan's later phases lean on that.)
   const SOC_FAMS = REEF_FAMS;
+
+  // ---- the Korrudan crust (v52): the city ON the bone -----------------------
+  // James's Knowhere brief: the head is so large it is itself the station —
+  // machinery knitted INTO it, grown over thousands of years, the bone
+  // always dominant. tmp/orb-dimension/crust_points.mjs samples the actual
+  // skull surface into assets/skull/crust.bin (canonical points + normals +
+  // region/district tags); crustGeometry() grows the city from those
+  // anchors: shanty stacks with lit windows (the scale ruler), gantry
+  // masts, tank farms, the jaw refinery glowing warm between the teeth,
+  // and a mechanical iris ring set into each eye socket. Deterministic —
+  // crust-sim extracts this block verbatim, from the CRUST_SEED declaration
+  // to the crust-hues comment (do not repeat those literal markers here).
+  const CRUST_SEED = 0x0c1791ce;
+  // the same transform the skull loader applies (SKULL_SCALE 20, 5° back
+  // tilt) — restated here so the block stands alone in the sim. If the
+  // loader's numbers change, change these.
+  const CRUST_SCALE = 20;
+  const CRUST_TILT = (-5 * Math.PI) / 180;
+  function crustGeometry(points) {
+    const R = mulberry32(CRUST_SEED);
+    const rr = (a, b) => a + R() * (b - a);
+    const ct = Math.cos(CRUST_TILT), st = Math.sin(CRUST_TILT);
+    const xf = (p) => {
+      const x = p[0] * CRUST_SCALE, y = p[1] * CRUST_SCALE, z = p[2] * CRUST_SCALE;
+      return [x, y * ct - z * st, y * st + z * ct];
+    };
+    const xfn = (n) => [n[0], n[1] * ct - n[2] * st, n[1] * st + n[2] * ct];
+    const m = { v: [], i: [] };
+    const vert = (p, n, u, v, aux) => {
+      m.v.push(p[0], p[1], p[2], n[0], n[1], n[2], u, v, aux[0], aux[1], aux[2], aux[3], 0, 0, 0);
+    };
+    const quad = (c, eu, ev, n, aux) => {
+      const b = m.v.length / 15;
+      vert([c[0] - eu[0] - ev[0], c[1] - eu[1] - ev[1], c[2] - eu[2] - ev[2]], n, 0, 0, aux);
+      vert([c[0] + eu[0] - ev[0], c[1] + eu[1] - ev[1], c[2] + eu[2] - ev[2]], n, 1, 0, aux);
+      vert([c[0] + eu[0] + ev[0], c[1] + eu[1] + ev[1], c[2] + eu[2] + ev[2]], n, 1, 1, aux);
+      vert([c[0] - eu[0] + ev[0], c[1] - eu[1] + ev[1], c[2] - eu[2] + ev[2]], n, 0, 1, aux);
+      m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    };
+    const nrm = (a) => {
+      const l = Math.hypot(a[0], a[1], a[2]) || 1;
+      return [a[0] / l, a[1] / l, a[2] / l];
+    };
+    const crs = (a, b) => [
+      a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    // an axis-aligned-to-frame box: c center, half sizes h along frame axes
+    const box = (c, f1, f2, f3, h, aux) => {
+      const axes = [[f1, f2, f3], [f2, f3, f1], [f3, f1, f2]];
+      for (let a = 0; a < 3; a++) {
+        const [e, e1, e2] = axes[a];
+        const he = h[a], s1 = h[(a + 1) % 3], s2 = h[(a + 2) % 3];
+        for (const sgn of [-1, 1]) {
+          quad(
+            [c[0] + e[0] * he * sgn, c[1] + e[1] * he * sgn, c[2] + e[2] * he * sgn],
+            [e1[0] * s1, e1[1] * s1, e1[2] * s1],
+            [e2[0] * s2 * sgn, e2[1] * s2 * sgn, e2[2] * s2 * sgn],
+            sgn < 0 ? [-e[0], -e[1], -e[2]] : e, aux);
+        }
+      }
+    };
+    const strutC = (p, q, w, aux) => {
+      const d = nrm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);
+      const ref = Math.abs(d[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+      const e1 = nrm(crs(ref, d));
+      const e2 = crs(d, e1);
+      const mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+      const L = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) / 2;
+      box(mid, d, e1, e2, [L, w, w], aux);
+    };
+    // build probability per region: the face stays almost bare, the jaw is
+    // the industrial heart, districts read denser than the wilds
+    const BUILD_P = [0.6, 0.95, 0.55, 0.6, 0.12]; // side jaw crown back face
+    for (const pt of points) {
+      const p = R(); // one roll per point, always — density stays decoupled
+      const inDistrict = pt.cluster < 200;
+      const prob = BUILD_P[pt.region] * (inDistrict ? 1 : 0.3);
+      if (p > prob) continue;
+      const W = xf(pt.p);
+      const n = nrm(xfn(pt.n));
+      const ref = Math.abs(n[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+      const t1 = nrm(crs(ref, n));
+      const t2 = crs(n, t1);
+      const jaw = pt.region === 1;
+      const fam = (R() * 5) | 0;
+      const kindRoll = R();
+      if (kindRoll < 0.14) {
+        // gantry mast: a spine standing off the bone, pulse running it
+        const h = rr(260, 620) * (jaw ? 1.2 : 1);
+        const tip = [W[0] + n[0] * h, W[1] + n[1] * h, W[2] + n[2] * h];
+        const aux = [1, rr(0, TAU), 0, fam];
+        strutC([W[0] - n[0] * 40, W[1] - n[1] * 40, W[2] - n[2] * 40], tip, rr(9, 16), aux);
+        for (const u of [0.55, 0.8]) {
+          const bpt = [W[0] + n[0] * h * u, W[1] + n[1] * h * u, W[2] + n[2] * h * u];
+          const arm = rr(50, 130);
+          strutC(
+            [bpt[0] - t1[0] * arm, bpt[1] - t1[1] * arm, bpt[2] - t1[2] * arm],
+            [bpt[0] + t1[0] * arm, bpt[1] + t1[1] * arm, bpt[2] + t1[2] * arm], rr(5, 9), aux);
+        }
+      } else if (kindRoll < 0.24) {
+        // tank farm: low fat blocks hugging the surface, unlit
+        const naux = [0, rr(0, TAU), 0, fam];
+        for (let k = 0, nk = 2 + ((R() * 3) | 0); k < nk; k++) {
+          const off = rr(-90, 90);
+          box([W[0] + t1[0] * off + n[0] * 26, W[1] + t1[1] * off + n[1] * 26, W[2] + t1[2] * off + n[2] * 26],
+            n, t1, t2, [rr(22, 44), rr(34, 62), rr(34, 62)], naux);
+        }
+      } else {
+        // shanty stack: boxes stepping up the normal — lit windows are the
+        // ruler that makes 12km read as 12km. Roots sink into the bone.
+        const nBox = 2 + ((R() * (jaw ? 4 : 3)) | 0);
+        let base = -50;
+        let wx = rr(70, 170) * (jaw ? 1.35 : 1);
+        let wz = rr(70, 170) * (jaw ? 1.35 : 1);
+        for (let k = 0; k < nBox; k++) {
+          const bh = rr(45, 110);
+          const jx = rr(-26, 26), jz = rr(-26, 26);
+          const c = [
+            W[0] + n[0] * (base + bh) + t1[0] * jx + t2[0] * jz,
+            W[1] + n[1] * (base + bh) + t1[1] * jx + t2[1] * jz,
+            W[2] + n[2] * (base + bh) + t1[2] * jx + t2[2] * jz];
+          const lit = wx > 55 && R() < 0.8;
+          // aux for windows: [2, phase, warmth, fam]. Warmth is positional,
+          // not region-tagged: everything low-and-forward (the whole chin /
+          // jaw underside) glows refinery-warm so the mouth reads as one
+          // furnace; elsewhere it's the halfway mix of homes and works.
+          const warmHere = (W[1] < -2000 && W[2] > 200) || jaw;
+          const aux = lit
+            ? [2, rr(0, TAU), warmHere ? 1 : (R() < 0.6 ? 1 : 0), fam]
+            : [0, rr(0, TAU), 0, fam];
+          box(c, n, t1, t2, [bh, wx, wz], aux);
+          base += bh * 2 * rr(0.82, 0.98);
+          wx *= rr(0.62, 0.85);
+          wz *= rr(0.62, 0.85);
+        }
+      }
+    }
+    // the iris rings: machined into each eye socket — the Knowhere gesture.
+    // Socket centers in canonical coords, ring plane facing out the socket.
+    for (const side of [-1, 1]) {
+      const c0 = xf([side * 90, -15, 190]);
+      const ax = nrm(xfn([side * 0.18, -0.05, 1]));
+      const ref = [0, 1, 0];
+      const e1 = nrm(crs(ref, ax));
+      const e2 = crs(ax, e1);
+      for (const [rad, w] of [[880, 42], [1230, 26]]) {
+        const segs = 30;
+        let prev = null;
+        const aux = [1, rr(0, TAU), 0, (R() * 5) | 0];
+        for (let s = 0; s <= segs; s++) {
+          const th = (s / segs) * TAU;
+          const q = [
+            c0[0] + (e1[0] * Math.cos(th) + e2[0] * Math.sin(th)) * rad,
+            c0[1] + (e1[1] * Math.cos(th) + e2[1] * Math.sin(th)) * rad,
+            c0[2] + (e1[2] * Math.cos(th) + e2[2] * Math.sin(th)) * rad];
+          if (prev) strutC(prev, q, w, aux);
+          prev = q;
+        }
+      }
+    }
+    return m;
+  }
+  // crust hues: the windows speak for themselves — warm homes, cool works
+
+  // ---- the nebulae (v53): sci-fi weather for the gulf ----------------------
+  // James's brief: Star Trek nebulae — glowing gas, streaks and swirls,
+  // ship-scale weather, because endless blackness is boring and this is not
+  // The Expanse. Look developed in tmp/orb-dimension/nebula-lab.html over 7
+  // rounds with his notes (no ball-pit, no sprite somersaults, gas not
+  // fibers, one palette per bank + variety across the map). Five banks:
+  // one near home in the spawn sky (off the Korrudan sightline) and four in
+  // the gulf band between the core and the satellite ring (55–95km — bands,
+  // not checks, keep this block standalone for the sim). Deterministic —
+  // nebula-sim extracts this block verbatim, from the NEBULA_SEED
+  // declaration to the nebula-hues comment.
+  const NEBULA_SEED = 0x9eb31a5;
+  const NEB_PALETTES = [
+    // name is documentation; field carries the mass, core the lit billows
+    { name: "mutara", field: [0.030, 0.062, 0.200], core: [0.90, 0.22, 0.55] },
+    { name: "ember", field: [0.150, 0.048, 0.028], core: [1.00, 0.52, 0.16] },
+    { name: "verdant", field: [0.018, 0.105, 0.075], core: [0.34, 0.95, 0.55] },
+    { name: "ice", field: [0.040, 0.100, 0.210], core: [0.46, 0.86, 1.00] },
+    { name: "rose", field: [0.130, 0.055, 0.095], core: [1.00, 0.58, 0.75] },
+  ];
+  function nebulaGeometry(density) {
+    const R = mulberry32(NEBULA_SEED);
+    const rr = (a, b) => a + R() * (b - a);
+    const nrm = (a) => {
+      const l = Math.hypot(a[0], a[1], a[2]) || 1;
+      return [a[0] / l, a[1] / l, a[2] / l];
+    };
+    const banks = [];
+    // seats: the home bank fixed in the spawn sky; four gulf banks on
+    // seeded bearings in the 52–82km band, ±22km height, min 50km apart.
+    // Radii stay small enough that no bank reaches the satellite ring.
+    const seats = [{ c: [30000, 9000, -18000], radius: 14000 }];
+    let guard = 0;
+    while (seats.length < 5 && guard++ < 60) {
+      const ang = rr(0, TAU);
+      const d = rr(52000, 82000);
+      const c = [Math.cos(ang) * d, rr(-22000, 22000), Math.sin(ang) * d];
+      if (seats.every((s) => Math.hypot(c[0] - s.c[0], c[1] - s.c[1], c[2] - s.c[2]) > 50000)) {
+        seats.push({ c, radius: rr(14000, 24000) });
+      }
+    }
+    // palettes: a seeded shuffle of the deck, so the banks between them
+    // speak nearly every scheme in the dimension (sim bars variety at 4/5)
+    const deck = NEB_PALETTES.map((_, i) => i);
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = (R() * (i + 1)) | 0;
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    for (let bi = 0; bi < seats.length; bi++) {
+      const seat = seats[bi];
+      const S = seat.radius;
+      const pal = deck[bi % deck.length];
+      const light = nrm([rr(-1, 1), rr(-0.6, 0.6), rr(-1, 1)]);
+      // flow strands: quadratic beziers in a flattened box around the seat
+      const nS = 3 + ((R() * 2) | 0);
+      const strands = [];
+      for (let s = 0; s < nS; s++) {
+        const p0 = [rr(-0.9, 0.9) * S, rr(-0.35, 0.35) * S, rr(-0.9, 0.9) * S];
+        const p2 = [rr(-0.9, 0.9) * S, rr(-0.35, 0.35) * S, rr(-0.9, 0.9) * S];
+        const p1 = [
+          (p0[0] + p2[0]) / 2 + rr(-0.6, 0.6) * S,
+          (p0[1] + p2[1]) / 2 + rr(-0.35, 0.35) * S,
+          (p0[2] + p2[2]) / 2 + rr(-0.6, 0.6) * S];
+        strands.push([p0, p1, p2]);
+      }
+      const bez = (S2, t, i) => (1 - t) * (1 - t) * S2[0][i] + 2 * t * (1 - t) * S2[1][i] + t * t * S2[2][i];
+      const bezT = (S2, t, i) => 2 * (1 - t) * (S2[1][i] - S2[0][i]) + 2 * t * (S2[2][i] - S2[1][i]);
+      const strandBright = strands.map(() => rr(0.5, 1.25));
+      const strandHot = strands.map(() => rr(0.2, 1));
+      const cnt = Math.round(220 * density);
+      // size octaves as fractions of the bank radius. Smaller than the lab's
+      // (which had no 4K fill-rate budget): the near-fade below dissolves a
+      // wisp before it can blanket the screen, and nebula-sim TEST 6 bars
+      // interior overdraw — the v33 veil bomb is not repeating here.
+      const octs = [
+        { n: Math.round(cnt * 0.05), size: [0.20, 0.30], jit: 0.09 },
+        { n: Math.round(cnt * 0.2), size: [0.10, 0.18], jit: 0.14 },
+        { n: Math.round(cnt * 0.45), size: [0.048, 0.098], jit: 0.18, wispy: true },
+        { n: Math.round(cnt * 0.3), size: [0.022, 0.048], jit: 0.24, wispy: true },
+      ];
+      const puffs = [];
+      for (const o of octs) {
+        for (let i = 0; i < o.n; i++) {
+          const si = (R() * strands.length) | 0;
+          const S2 = strands[si];
+          const t = R();
+          const g = () => (R() + R() + R() - 1.5) * 0.8 * S;
+          const isDust = R() < 0.18;
+          const p = [
+            seat.c[0] + bez(S2, t, 0) + g() * o.jit,
+            seat.c[1] + bez(S2, t, 1) + g() * o.jit * 0.5,
+            seat.c[2] + bez(S2, t, 2) + g() * o.jit];
+          if (isDust) {
+            for (let k = 0; k < 3; k++) p[k] += light[k] * rr(0.03, 0.12) * S;
+          }
+          const tan = nrm([bezT(S2, t, 0), bezT(S2, t, 1), bezT(S2, t, 2)]);
+          const size = rr(o.size[0], o.size[1]) * S * (isDust ? 0.9 : 1);
+          puffs.push({
+            p, size, tan,
+            stretch: (1.4 + 2.4 * rr(0.6, 1)) * (o.wispy ? 1.5 : 1),
+            rot: rr(-0.4, 0.4),
+            dust: isDust ? 1 : 0,
+            core: Math.min(1, strandHot[si] * rr(0.5, 1.4)),
+            // atlas variant: big anchors take the coarse-billow family,
+            // small filler the fine rags — features ride puff size, as in
+            // the lab, but baked instead of evaluated per fragment
+            variant: (o.wispy ? 3 : 0) + ((R() * 3) | 0),
+            bright: strandBright[si] * rr(0.75, 1.25),
+          });
+        }
+      }
+      // furnace knots: buried glints along the strands
+      for (let i = 0; i < 8; i++) {
+        const si = (R() * strands.length) | 0;
+        const S2 = strands[si];
+        const t = rr(0.2, 0.8);
+        puffs.push({
+          p: [seat.c[0] + bez(S2, t, 0), seat.c[1] + bez(S2, t, 1), seat.c[2] + bez(S2, t, 2)],
+          size: rr(0.023, 0.043) * S,
+          tan: [1, 0, 0],
+          stretch: 1,
+          rot: rr(0, TAU),
+          dust: 0,
+          core: 1,
+          variant: 3 + ((R() * 3) | 0),
+          bright: rr(2.4, 3.6),
+        });
+      }
+      banks.push({ c: seat.c, radius: S, pal, light, puffs });
+    }
+    return banks;
+  }
+  // nebula hues: five schemes, one per bank — every nebula speaks one color
 
   // ---- fuel stations (v38) --------------------------------------------------
   // 64 water globes + 36 deuterium depots at fixed seeded positions — fuel is
@@ -1844,8 +2301,11 @@ void main() {
     // stratified, not random: one station per grid cell, jittered inside 80%
     // of it — pure random left 14km deuterium voids (sim TEST 9 caught it).
     // Cells re-roll until they clear the skull buffer and sight corridor.
+    // v52: the buffer is the SKULL_EL ellipsoid (the 12km station), the
+    // corridor stretches to the 27km spawn and widens for the bigger face.
     const bad = (x, y, z) =>
-      Math.hypot(x, y, z) < 2600 || (z > 0 && z < 20600 && Math.hypot(x, y) < 1100);
+      Math.hypot(x / SKULL_EL[0], y / SKULL_EL[1], z / SKULL_EL[2]) < 1 ||
+      (z > 0 && z < 54600 && Math.hypot(x, y) < 2300); // to the v53.1 spawn
     const place = (arr, nx, ny, nz) => {
       const XR = 21500, YR = 4600, ZR = 21500;
       const cw = [(2 * XR) / nx, (2 * YR) / ny, (2 * ZR) / nz];
@@ -1865,23 +2325,30 @@ void main() {
     };
     place(out.h2o, 4, 4, 4); // 64
     place(out.deu, 3, 4, 3); // 36
-    // v50: the capital's airspace — any grid station inside CAPITAL_KEEP gets
-    // pushed radially to just outside it (the assemble() skull-KEEP pattern,
-    // no RNG consumed), so the v38 forgiving-fuel distribution survives the
-    // society untouched. Constant radius, not the commScale dial: the
-    // generator stays pure; the geography freeze settles any tuning overlap.
-    for (const arr of [out.h2o, out.deu]) {
-      for (const s of arr) {
-        const dx = s[0] - CAPITAL_POS[0], dy = s[1] - CAPITAL_POS[1], dz = s[2] - CAPITAL_POS[2];
-        const d = Math.hypot(dx, dy, dz);
-        if (d < CAPITAL_KEEP) {
-          const f = (CAPITAL_KEEP * 1.06) / Math.max(d, 1);
-          s[0] = CAPITAL_POS[0] + dx * f;
-          s[1] = CAPITAL_POS[1] + dy * f;
-          s[2] = CAPITAL_POS[2] + dz * f;
+    // v52: the station's own doorstep ring — the bad() ellipsoid carves a
+    // 12km hole in the middle of the grid, so Korrudan supplies its own
+    // fuel: six water globes and three deuterium depots seeded just off the
+    // crust at varied bearings and heights. The capital's welcome is a full
+    // tank. (Replaces the v50 CAPITAL_KEEP push — the ellipsoid IS the keep.)
+    const doorstep = (a, f) => {
+      const yy = (R() - 0.5) * 1.4;
+      const cs = Math.cos(a), sn = Math.sin(a);
+      const nl = Math.hypot(cs, yy, sn) || 1;
+      const p = [
+        (cs / nl) * SKULL_EL[0] * f, (yy / nl) * SKULL_EL[1] * f, (sn / nl) * SKULL_EL[2] * f];
+      // stay out of the spawn sightline (same corridor bad() protects)
+      if (p[2] > 0) {
+        const rxy = Math.hypot(p[0], p[1]);
+        if (rxy < 2600) {
+          const g = 2600 / Math.max(rxy, 1);
+          if (rxy < 1) p[0] = 2600;
+          else { p[0] *= g; p[1] *= g; }
         }
       }
-    }
+      return p;
+    };
+    for (let i = 0; i < 6; i++) out.h2o.push(doorstep((i / 6) * TAU + R() * 0.8, 1.16 + R() * 0.22));
+    for (let i = 0; i < 3; i++) out.deu.push(doorstep((i / 3) * TAU + 0.7 + R() * 0.9, 1.24 + R() * 0.26));
     // v49: each ring colony gets a doorstep cluster — two water globes and a
     // deuterium depot a short hop out from its heart (outside the reef shell,
     // inside a minute of impulse). The destinations have gas; the full
@@ -1918,6 +2385,7 @@ void main() {
   applyCommunityLayout(cfg.colonyDist, cfg.commVert, cfg.commJitter, cfg.commSat);
   let COMM_GEO = communityGeometry(cfg.commScale);
   let STATIONS = stationGeometry();
+  let NEBULAE = nebulaGeometry(cfg.nebDensity); // v53: the five banks
 
   function makeStations() {
     const out = [];
@@ -1964,23 +2432,16 @@ void main() {
     return out;
   }
 
-  // ---- Vess-Karai, the Lantern (v47) ----------------------------------------
-  // A kilometer of beveled glass standing on the cave floor, far out at
-  // [9500, ·, 6500] — base seated at y −5850 (buried a little toward the
-  // floor veils), apex at −4850, a white-gold sun pulsing inside. The mesh
-  // comes from Blender (tmp/orb-dimension/pyramid_build.py → pyramid.bin);
-  // the glass is a fresnel pass in this file. Fixed geometry like the skull.
-  const LANTERN = {
-    pos: [9500, -5850, 6500],           // base center, world coords
-    light: [9500, -5450, 6500],         // the sun inside, 400m up the axis
-    nav: [9500, -5300, 6500],           // NAV ring target (mid-height)
-  };
+  // ---- Vess-Karai, the Lantern: RETIRED v52 (James, 2026-07-25) -------------
+  // The glass pyramid stood at [9500, −5850, 6500] from v47 to v51. It came
+  // out when Korrudan grew into the station (it would have sat against the
+  // jaw). "A cool experiment — we'll bring it back in another format later":
+  // assets/pyramid/ and tmp/orb-dimension/pyramid_build.py stay on disk.
 
   // ---- actors (v47): everything that moves on its own -----------------------
   // Colony exchange motes, glyph messages, three species of energy creature,
-  // the Lantern's lights, robot engine glows and cargo. All are orb
-  // instances whose o.fix arrays get rewritten every frame — the renderer
-  // never knows the difference.
+  // robot engine glows and cargo. All are orb instances whose o.fix arrays
+  // get rewritten every frame — the renderer never knows the difference.
   function actorBase(kind, r, h1, h2) {
     const o = baseOrb([0, 0, 0], false, false);
     o.actor = true;
@@ -2001,6 +2462,7 @@ void main() {
   let actorOrbs = [];
   const colonyLife = []; // update records, one per animated actor
   const robotFleet = { list: [], nodes: null };
+  const cadenceBots = []; // v51: the citizen castes, re-seated by makeActors
 
   function makeActors() {
     actorOrbs = [];
@@ -2062,38 +2524,11 @@ void main() {
       }
     }
 
-    // -- the Lantern's own light
-    {
-      const sun = actorBase(0, 90, 46, 52);
-      sun.heart = true; // fog-proof, never smaller than a star — a lit window across the whole space
-      sun.sat = 65;
-      sun.fadeDur = 9;
-      sun.halo = 2.2;
-      sun.fix = LANTERN.light.slice();
-      actorOrbs.push(sun);
-      const washy = actorBase(0, 800, 40, 46);
-      washy.veil = true;
-      washy.sat = 55;
-      washy.halo = 0.4;
-      washy.fadeDur = 40;
-      washy.quadScale = 1.05;
-      washy.fix = [LANTERN.pos[0], LANTERN.pos[1] - 100, LANTERN.pos[2]];
-      actorOrbs.push(washy);
-      for (let i = 0; i < 6; i++) {
-        const o = actorBase(0, 6, 42, 50);
-        o.sat = 80;
-        o.halo = 1.5;
-        o.fadeDur = rand(3, 6);
-        actorOrbs.push(o);
-        colonyLife.push({ type: "ringlight", o, i });
-      }
-    }
-
     // -- the service fleet: robots spawn scattered among the stations —
     // which include the colony doorstep clusters now (v49), so a few work
-    // the ring communities. The two Lantern caretakers spawn at their post.
+    // the ring communities. (The two Lantern caretakers retired with it, v52.)
     for (let i = 0; i < 14; i++) {
-      const home = i < 2 ? LANTERN.nav : i % 2 ? pick(STATIONS.h2o) : pick(STATIONS.deu);
+      const home = i % 2 ? pick(STATIONS.h2o) : pick(STATIONS.deu);
       const glow = actorBase(0, 0, 190, 200);
       glow.sat = 90;
       glow.halo = 1.8;
@@ -2117,6 +2552,59 @@ void main() {
         seed: rand(0, 100),
       });
     }
+
+    // -- the Cadence citizens (v51): six castes at work in every hybrid
+    // town. Chanters hold vigil beside the suns, lattice-wrights patrol the
+    // webbing, archivists circle the core reading it, ferries run the light
+    // bridges, wardens walk the shell perimeter, gardeners tend the sun
+    // crystals. The capital fields three of each caste, satellites two.
+    cadenceBots.length = 0;
+    for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+      const com = COMMUNITIES[ci];
+      const geo = COMM_GEO[ci];
+      if (!com.c || !geo || !geo.nodes.length) continue;
+      const per = ci === 0 ? 3 : 2;
+      for (let kind = 0; kind < 6; kind++) {
+        for (let n = 0; n < per; n++) {
+          const ndI = (Math.random() * geo.nodes.length) | 0;
+          const nd = geo.nodes[ndI];
+          const glow = actorBase(0, 0, 190, 200);
+          glow.sat = 88;
+          glow.halo = 1.6;
+          glow.fadeDur = 1.6;
+          actorOrbs.push(glow);
+          // (vnorm lives in the flight section — a TDZ trap at init time;
+          // makeActors runs before it exists, so normalize by hand here)
+          const ax = [rand(-1, 1), rand(-0.6, 0.6), rand(-1, 1)];
+          const al = Math.hypot(ax[0], ax[1], ax[2]) || 1;
+          const axis = [ax[0] / al, ax[1] / al, ax[2] / al];
+          const bot = {
+            kind, ci, ndI, glow, axis,
+            pos: [com.c[0] + nd.p[0] + rand(-80, 80), com.c[1] + nd.p[1] + rand(-40, 40), com.c[2] + nd.p[2] + rand(-80, 80)],
+            f: [0, 0, -1],
+            vel: [0, 0, 0],
+            seed: rand(0, 100),
+            a0: rand(0, TAU),
+            w: rand(0.5, 1.5),
+            rad: 1,
+            target: null,
+            u: Math.random(),
+            dir: Math.random() < 0.5 ? -1 : 1,
+            edge: geo.edges.length ? (Math.random() * geo.edges.length) | 0 : -1,
+          };
+          if (kind === 0) { bot.rad = nd.r * rand(1.5, 2.2); bot.w = rand(0.04, 0.09); }
+          // v52: capital archivists circle OUTSIDE the bone — coreR is the
+          // crust envelope there, so the orbit sphere must clear it
+          if (kind === 2) {
+            bot.rad = geo.coreR * (ci === 0 ? rand(1.06, 1.3) : rand(0.55, 0.95));
+            bot.w = rand(0.01, 0.022);
+          }
+          if (kind === 4) { bot.rad = geo.shellR * rand(1.02, 1.12); bot.w = rand(0.005, 0.01); }
+          if (kind === 5) { bot.rad = nd.r * rand(1.2, 1.55); bot.w = rand(0.14, 0.28); }
+          cadenceBots.push(bot);
+        }
+      }
+    }
   }
 
   // world position of a free orb right now (same math as the frame loop) —
@@ -2131,14 +2619,9 @@ void main() {
     ];
   }
 
-  // pick the fleet's next stop: inhabited orbs mostly, else depots, the
-  // colonies, and the Lantern (two robots keep it as their whole beat)
+  // pick the fleet's next stop: inhabited orbs mostly, else depots and the
+  // colonies (the Lantern beat retired with the Lantern, v52)
   function robotNextNode(rb, idx) {
-    if (idx < 2) {
-      // Lantern caretakers circle between its corners and the sun
-      const a = rand(0, TAU);
-      return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(120, 500), LANTERN.pos[1] + rand(150, 900), LANTERN.pos[2] + Math.sin(a) * rand(120, 500)], stand: 30 };
-    }
     // v49: robots are LOCAL workers — nothing they pick may be more than a
     // commute away (the colonies are 250km out now; a robot cruising 110 m/s
     // must never sign up for a three-day haul). Too-far picks fall through
@@ -2162,10 +2645,6 @@ void main() {
       const local = arr.filter(near);
       if (local.length) return { kind: "point", p: pick(local), stand: 40, isStation: true };
     }
-    if (near(LANTERN.pos)) {
-      const a = rand(0, TAU);
-      return { kind: "point", p: [LANTERN.pos[0] + Math.cos(a) * rand(200, 700), LANTERN.pos[1] + rand(200, 800), LANTERN.pos[2] + Math.sin(a) * rand(200, 700)], stand: 40 };
-    }
     // fallback: the nearest station of any kind — always local by definition
     let best = null, bd = Infinity;
     for (const arr of [STATIONS.h2o, STATIONS.deu]) {
@@ -2178,7 +2657,7 @@ void main() {
   }
 
   function updateActors(t, dt, bb) {
-    // colony life + lantern ring
+    // colony life
     for (const a of colonyLife) {
       if (a.type === "mote") {
         a.u += dt / a.dur;
@@ -2246,11 +2725,114 @@ void main() {
         a.o.fix[0] = a.anchor[0] + Math.sin(th) * a.A;
         a.o.fix[1] = a.anchor[1] + Math.sin(th * 2) * a.A * 0.4;
         a.o.fix[2] = a.anchor[2] + Math.cos(th) * a.A;
-      } else if (a.type === "ringlight") {
-        const th = t * 0.05 + (a.i / 6) * TAU;
-        a.o.fix[0] = LANTERN.pos[0] + Math.cos(th) * 700;
-        a.o.fix[1] = LANTERN.pos[1] + 120 + Math.sin(t * 0.3 + a.i) * 25;
-        a.o.fix[2] = LANTERN.pos[2] + Math.sin(th) * 700;
+      }
+    }
+
+    // the Cadence citizens (v51): cheap closed-form work loops per caste —
+    // only once their bodies exist (their glows stay dark on file://)
+    if (cadenceMesh.ready) {
+      const circle = (c, axis, rad, th) => {
+        const ref = Math.abs(axis[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+        const e1 = vnorm(vcross(ref, axis));
+        const e2 = vcross(axis, e1);
+        return [
+          c[0] + (e1[0] * Math.cos(th) + e2[0] * Math.sin(th)) * rad,
+          c[1] + (e1[1] * Math.cos(th) + e2[1] * Math.sin(th)) * rad,
+          c[2] + (e1[2] * Math.cos(th) + e2[2] * Math.sin(th)) * rad,
+        ];
+      };
+      for (const rb of cadenceBots) {
+        const com = COMMUNITIES[rb.ci];
+        const geo = COMM_GEO[rb.ci];
+        if (!com.c || !geo || !geo.nodes.length) continue;
+        const nd = geo.nodes[rb.ndI % geo.nodes.length];
+        const ndW = [com.c[0] + nd.p[0], com.c[1] + nd.p[1], com.c[2] + nd.p[2]];
+        const prev = [rb.pos[0], rb.pos[1], rb.pos[2]];
+        let look = null;
+        if (rb.kind === 1) {
+          // lattice-wright: servo-travels point to point through the webbing.
+          // v52 at the capital: crust worker — hops between nearby points
+          // just off the bone surface (near the current bearing, so the
+          // straight leg never chords through the skull).
+          if (!rb.target || Math.hypot(rb.target[0] - rb.pos[0], rb.target[1] - rb.pos[1], rb.target[2] - rb.pos[2]) < 60) {
+            if (rb.ci === 0) {
+              const cur = vnorm([rb.pos[0] || 1, rb.pos[1], rb.pos[2]]);
+              const d = vnorm([
+                cur[0] + rand(-0.5, 0.5), cur[1] + rand(-0.5, 0.5), cur[2] + rand(-0.5, 0.5)]);
+              const f = rand(1.05, 1.22);
+              rb.target = [d[0] * SKULL_EL[0] * f, d[1] * SKULL_EL[1] * f, d[2] * SKULL_EL[2] * f];
+            } else {
+              const d = vnorm([rand(-1, 1), rand(-1, 1), rand(-1, 1)]);
+              const r = geo.coreR * rand(0.15, 0.95);
+              rb.target = [com.c[0] + d[0] * r, com.c[1] + d[1] * r * 0.8, com.c[2] + d[2] * r];
+            }
+          }
+          const dx = rb.target[0] - rb.pos[0], dy = rb.target[1] - rb.pos[1], dz = rb.target[2] - rb.pos[2];
+          const d = Math.hypot(dx, dy, dz) || 1;
+          const cruise = clamp(d / 8, 14, 60);
+          const k = 1 - Math.exp(-dt / 1.6);
+          rb.vel[0] += ((dx / d) * cruise - rb.vel[0]) * k;
+          rb.vel[1] += ((dy / d) * cruise - rb.vel[1]) * k;
+          rb.vel[2] += ((dz / d) * cruise - rb.vel[2]) * k;
+          rb.pos[0] += rb.vel[0] * dt;
+          rb.pos[1] += rb.vel[1] * dt;
+          rb.pos[2] += rb.vel[2] * dt;
+        } else if (rb.kind === 3 && rb.edge >= 0 && geo.edges.length) {
+          // ferry: shuttles a light bridge end to end, sun skin to sun skin
+          const [ea, eb] = geo.edges[rb.edge % geo.edges.length];
+          const na = geo.nodes[ea], nb = geo.nodes[eb];
+          const p0 = [com.c[0] + na.p[0], com.c[1] + na.p[1], com.c[2] + na.p[2]];
+          const q0 = [com.c[0] + nb.p[0], com.c[1] + nb.p[1], com.c[2] + nb.p[2]];
+          const dd = vnorm([q0[0] - p0[0], q0[1] - p0[1], q0[2] - p0[2]]);
+          const p = [p0[0] + dd[0] * na.r, p0[1] + dd[1] * na.r, p0[2] + dd[2] * na.r];
+          const q = [q0[0] - dd[0] * nb.r, q0[1] - dd[1] * nb.r, q0[2] - dd[2] * nb.r];
+          const len = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) || 1;
+          rb.u += (dt * rb.dir * (120 + rb.w * 60)) / len;
+          if (rb.u >= 1) {
+            rb.u = 1;
+            rb.dir = -1;
+            if (Math.random() < 0.35) rb.edge = (Math.random() * geo.edges.length) | 0;
+          } else if (rb.u <= 0) {
+            rb.u = 0;
+            rb.dir = 1;
+            if (Math.random() < 0.35) rb.edge = (Math.random() * geo.edges.length) | 0;
+          }
+          const e = rb.u * rb.u * (3 - 2 * rb.u);
+          for (let i = 0; i < 3; i++) rb.pos[i] = p[i] + (q[i] - p[i]) * e;
+          rb.pos[1] += Math.sin(t * 0.8 + rb.seed) * 3 - 26; // rides just under its bridge
+        } else {
+          // the orbital castes: chanter (its sun), archivist (the core),
+          // warden (the shell), gardener (tight around its sun's crystals)
+          const center = rb.kind === 0 || rb.kind === 5 ? ndW : com.c;
+          const th = t * rb.w * (rb.kind === 2 || rb.kind === 4 ? rb.dir : 1) + rb.a0;
+          const want = circle(center, rb.axis, rb.rad, th);
+          if (rb.kind === 0) {
+            want[1] += Math.sin(t * 0.5 + rb.seed) * nd.r * 0.08;
+            look = ndW; // the chanter always faces the light it sings to
+          }
+          if (rb.kind === 5) look = ndW;
+          rb.pos[0] = want[0];
+          rb.pos[1] = want[1];
+          rb.pos[2] = want[2];
+        }
+        // facing: along travel, unless the caste has something to behold
+        const mv = [rb.pos[0] - prev[0], rb.pos[1] - prev[1], rb.pos[2] - prev[2]];
+        const sp = Math.hypot(mv[0], mv[1], mv[2]);
+        let ft = null;
+        if (look) {
+          ft = vnorm([look[0] - rb.pos[0], look[1] - rb.pos[1], look[2] - rb.pos[2]]);
+        } else if (sp > 0.01) {
+          ft = [mv[0] / sp, mv[1] / sp, mv[2] / sp];
+        }
+        if (ft) {
+          const k2 = 1 - Math.exp(-dt * 3);
+          rb.f = vnorm(vlerp(rb.f, ft, k2));
+        }
+        // work-light under the hull, same trick as the fleet
+        rb.glow.fix[0] = rb.pos[0];
+        rb.glow.fix[1] = rb.pos[1] - 3.2 + Math.sin(t * 1.2 + rb.seed) * 0.4;
+        rb.glow.fix[2] = rb.pos[2];
+        rb.glow.fixedR = 0.9 + Math.min(sp / Math.max(dt, 1e-3) / 120, 1) * 1.4;
       }
     }
 
@@ -2331,6 +2913,9 @@ void main() {
   // v50 society GPU state — filled by the program section further down;
   // uploadCommunities() no-ops until then (relayout runs once before GL init).
   const commGL = { inited: false, solid: null, glass: null, bridge: null, meshes: [] };
+  // v52 the Korrudan crust: static world-fixed mesh, served-only (crust.bin);
+  // rides the society solid program. On file:// the bone stands bare.
+  const crustGL = { ready: false, mesh: null };
 
   // v50: each Saelyri node carries a heart-flagged glow — the beacon trick
   // (fog-proof, never smaller than a star), so every society reads from
@@ -2497,34 +3082,34 @@ void main() {
     );
     robotFleet.nodes = null; // the fleet re-learns its clients after a reshuffle
 
-    // the monument stands alone: any orb inside KEEP meters of the origin is
-    // pushed radially out to a shell just beyond the skull (corner radius
-    // ~1370m at 3x scale, +wander margin). Eyes exempt (they live in the
-    // sockets), dust exempt (ember atmosphere), veils are outside anyway.
-    // Radial push in world space = scaling the normalized coords, since
-    // world = n * spread componentwise. Soft clamp keeps pushed orbs from
-    // leaving the field entirely at extreme tuner spreads.
-    const KEEP = 2400; // v33: widened from 1560 — "give the skull a nice buffer"
+    // the monument stands alone: any orb inside the station's keep is pushed
+    // radially out just beyond it. v52: the keep is the SKULL_EL ellipsoid
+    // (+wander margin) — a 12km station needs an ellipsoid, not a sphere,
+    // or the push either strands orbs in the bone or empties half the core.
+    // Eyes exempt (they live in the sockets), dust exempt (ember
+    // atmosphere), veils are outside anyway. Radial push in world space =
+    // scaling the normalized coords, since world = n * spread componentwise.
+    // Soft clamp keeps pushed orbs from leaving the field at extreme spreads.
     for (const o of orbs) {
       if (o.veil || o.dust || o.eye || o.fix) continue; // fixed monuments hold their ground
       const wx = o.n[0] * cfg.spreadX, wy = o.n[1] * cfg.spreadY, wz = o.n[2] * cfg.spreadZ;
-      const r = Math.hypot(wx, wy, wz);
-      if (r < KEEP) {
-        const f = (KEEP * (1 + Math.random() * 0.18)) / Math.max(r, 1);
+      const en = Math.hypot(wx / (SKULL_EL[0] + 220), wy / (SKULL_EL[1] + 220), wz / (SKULL_EL[2] + 220));
+      if (en < 1) {
+        const f = (1 + Math.random() * 0.15) / Math.max(en, 0.02);
         o.n[0] = clamp(o.n[0] * f, -1.35, 1.35);
         o.n[1] = clamp(o.n[1] * f, -1.35, 1.35);
         o.n[2] = clamp(o.n[2] * f, -1.35, 1.35);
       }
       // v33: the load-in sightline stays clear — a cylinder along +Z from the
-      // buffer edge to just past spawn (radius 950 around the view axis;
-      // v41: stretched to z 20600 with the new spawn). Anything drifting
-      // into frame between you and the face gets pushed sideways out.
+      // buffer edge to just past spawn. v52: stretched to the 27km spawn and
+      // widened to 2100 for the station-sized face. Anything drifting into
+      // frame between you and the face gets pushed sideways out.
       const wz2 = o.n[2] * cfg.spreadZ;
-      if (wz2 > 0 && wz2 < 20600) {
+      if (wz2 > 0 && wz2 < 54600) {
         const wx2 = o.n[0] * cfg.spreadX, wy2 = o.n[1] * cfg.spreadY;
         const rr = Math.hypot(wx2, wy2);
-        if (rr < 950) {
-          const f2 = (950 * (1 + Math.random() * 0.2)) / Math.max(rr, 1);
+        if (rr < 2100) {
+          const f2 = (2100 * (1 + Math.random() * 0.2)) / Math.max(rr, 1);
           o.n[0] = clamp(o.n[0] * f2, -1.35, 1.35);
           o.n[1] = clamp(o.n[1] * f2, -1.35, 1.35);
         }
@@ -2546,6 +3131,7 @@ void main() {
     COMM_GEO = communityGeometry(cfg.commScale); // before stations: shellR feeds doorsteps
     uploadCommunities();
     STATIONS = stationGeometry();
+    NEBULAE = nebulaGeometry(cfg.nebDensity); // v53: density is a layout dial
     reefOrbs = makeReef();
     stationOrbs = makeStations();
     commOrbs = makeCommunityOrbs();
@@ -2573,16 +3159,20 @@ void main() {
   // orthonormal basis — f forward, r right, u up — rotated incrementally in
   // its OWN frame. Roll persists until R glides you back to the ecliptic.
   // v42: spawn aims between Korrudan's eyes — James measured the dead-on
-  // pitch at −3° from the spawn point by eye. Position stays [0,0,20000];
-  // only the nose dips. R still levels to the true horizon.
-  const SPAWN_PITCH = (-3 * Math.PI) / 180;
+  // pitch at −3° by eye (at the 1.8km skull). v52: the skull is 12km and the
+  // eyes sit near y 0 from a 27km spawn — pitch resets to 0, James recalibrates.
+  const SPAWN_PITCH = 0;
   const spawnBasis = () => ({
     f: [0, Math.sin(SPAWN_PITCH), -Math.cos(SPAWN_PITCH)],
     r: [1, 0, 0],
     u: [0, Math.cos(SPAWN_PITCH), Math.sin(SPAWN_PITCH)],
   });
   const cam = {
-    pos: [0, 0, 20000], // v22: 2600; v29: 3600; v30: 5600; v41: 20000 — a long approach across the static space
+    // v22: 2600; v29: 3600; v30: 5600; v41: 20000; v52: 27000; v53.1: 54000 —
+    // James wanted "twice as far back": the 12km station subtends ~13° from
+    // here instead of 25°, so it reads as a place you fly TO. Nebula bank #1
+    // hangs off to port with 13km of clearance (nebula-sim TEST 9 guards it).
+    pos: [0, 0, 54000],
     ...spawnBasis(),
   };
   let pendingYaw = 0;   // eased look input awaiting application
@@ -2662,7 +3252,7 @@ void main() {
   }
 
   function goHome() {
-    cam.pos = [0, 0, 20000];
+    cam.pos = [0, 0, 54000];
     const b = spawnBasis();
     cam.f = b.f;
     cam.r = b.r;
@@ -2866,12 +3456,15 @@ void main() {
       const idx = new Uint32Array(buf, 12 + nv * 32, ni);
 
       // the binary is canonical at 600m tall; the world wants a monument.
-      // v28 after James's first look ("not even bigger than the orbs"):
-      // 3x → 1800m tall, subtending ~38° from spawn. Tune here.
+      // v28 after James's first look ("not even bigger than the orbs"): 3x.
+      // v52 (James, the Knowhere brief): 20x → 12km tall — Korrudan is the
+      // station now, spanning the core's full height. Everything that hangs
+      // off this number (eyes, gaze, KEEP ellipsoids, spawn, crust) is
+      // scaled in its own place — grep v52 before touching.
       // v32: head tilted back 5° (rotation about X; face lifts skyward).
       // The eye orbs in makeEyes() carry the same rotation baked into their
       // fixed positions — retilt them if this angle changes.
-      const SKULL_SCALE = 3.0;
+      const SKULL_SCALE = 20.0;
       const SKULL_TILT = (-5 * Math.PI) / 180;
       const ct = Math.cos(SKULL_TILT), st = Math.sin(SKULL_TILT);
       for (let i = 0; i < nv; i++) {
@@ -2948,8 +3541,9 @@ void main() {
     + key * vec3(0.88, 0.95, 1.10) * 0.95
     + fill * vec3(0.30, 0.38, 0.55) * 0.22
     + up * vec3(1.00, 0.62, 0.28) * 0.55 * pulse);
-  // aerial haze, same knob as the orbs
-  col *= exp(-vDist * uFog * 1.6);
+  // aerial haze, same knob as the orbs — softened v52 (1.6 → 1.05): the
+  // station must still read from the 27km spawn; fog owns the gulf, not home
+  col *= exp(-vDist * uFog * 1.05);
   oC = vec4(col, 1.0);
 }`;
       const mk = (type, src) => {
@@ -3030,7 +3624,7 @@ void main() {
     }
   })();
 
-  // ---- generic mesh plumbing (v47): the Lantern + the fleet ride the
+  // ---- generic mesh plumbing (v47): the robots + castes ride the
   // skull's binary format (magic / nv / ni / interleaved pos-norm-uv / u32
   // idx). Served-only like the skull — on file:// these simply don't exist.
   async function loadMeshBin(url, magic) {
@@ -3072,59 +3666,8 @@ void main() {
     return { p, U: Us };
   }
 
-  // ---- Vess-Karai's glass (v47): fresnel panes over a warm inner sun.
-  // Drawn blended after the opaque meshes, no depth write — orbs behind it
-  // shine through the glass, which is what glass full of light should do.
-  const pyr = { ready: false, count: 0, vao: null, prog: null };
-  (async () => {
-    try {
-      const mesh = await loadMeshBin("assets/pyramid/pyramid.bin", 0x50595241); // "PYRA"
-      const vs = `#version 300 es
-layout(location=0) in vec3 aPos;
-layout(location=1) in vec3 aNorm;
-layout(location=2) in vec2 aUV;
-uniform mat4 uVP;
-uniform vec3 uOrigin;
-out vec3 vN;
-out vec3 vP;
-void main() {
-  vP = aPos + uOrigin;
-  vN = aNorm;
-  gl_Position = uVP * vec4(vP, 1.0);
-}`;
-      const fs = `#version 300 es
-precision highp float;
-uniform vec3 uCamPos;
-uniform vec3 uLight;
-uniform float uTime;
-uniform float uFog;
-in vec3 vN;
-in vec3 vP;
-out vec4 oC;
-void main() {
-  vec3 N = normalize(vN);
-  vec3 V = normalize(uCamPos - vP);
-  // faceted crystal: flat panes stay quiet, the beveled ribs catch rim light
-  float fres = pow(1.0 - abs(dot(N, V)), 2.2);
-  float pulse = 0.75 + 0.25 * sin(uTime * 0.7);
-  // the sun inside — glass nearer the light glows warm from within
-  float ld = distance(vP, uLight);
-  float glow = 260000.0 / (ld * ld + 30000.0);
-  vec3 glass = vec3(0.5, 0.8, 1.0) * (0.06 + fres * (0.5 + 0.3 * pulse));
-  vec3 warm = vec3(1.0, 0.78, 0.42) * glow * (0.5 + 0.5 * pulse);
-  float a = clamp(0.08 + fres * 0.75 + glow * 0.2, 0.0, 0.85);
-  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2);
-  oC = vec4((glass + warm) * a * fogF, a * fogF);
-}`;
-      const pr = makeProg(vs, fs, ["uVP", "uOrigin", "uCamPos", "uLight", "uTime", "uFog"]);
-      pyr.prog = pr;
-      pyr.vao = mesh.vao;
-      pyr.count = mesh.count;
-      pyr.ready = true;
-    } catch (e) {
-      // no pyramid on file:// — the floor keeps its dark
-    }
-  })();
+  // (Vess-Karai's glass pass lived here v47–v51 — retired v52 with the
+  // Lantern itself; see the note at its old seat above makeActors.)
 
   // ---- the societies' bodies (v50): fully procedural — no fetch, no Meshy,
   // so the Cadence stands even on file://. Three programs share one vertex
@@ -3180,13 +3723,29 @@ void main() {
   float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
   vec3 col = vec3(0.30, 0.33, 0.38) *
     (vec3(0.22, 0.23, 0.26) + key * vec3(0.85, 0.9, 1.0) * 0.85 + rim * vec3(0.35, 0.42, 0.55) * 0.3);
-  if (vAux.x > 0.5) {
+  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2);
+  if (vAux.x > 0.5 && vAux.x < 1.5) {
     vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
     float p = fract(vUV.x - uTime * uTempo * 0.22 + vAux.y);
     col += famc * (exp(-60.0 * abs(p - 0.5)) * 1.6 + 0.05);
   }
-  col *= exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
-  oC = vec4(col, 1.0);
+  if (vAux.x > 1.5) {
+    // v52 crust windows: the lit grid is the station's ruler — thousands of
+    // small lights against the bone are what make 12km READ as 12km.
+    // vAux.z picks warm homes vs cool works; windows resist fog harder than
+    // metal so the city glow reaches the spawn approach.
+    vec2 g = vUV * vec2(7.0, 5.0);
+    vec2 cell = floor(g);
+    float h = fract(sin(dot(cell, vec2(127.1, 311.7)) + vAux.y * 13.7) * 43758.5453);
+    float lit = step(h, 0.34);
+    vec2 f = fract(g);
+    float pane = step(0.2, f.x) * step(f.x, 0.8) * step(0.24, f.y) * step(f.y, 0.76);
+    vec3 wcol = mix(vec3(0.45, 0.85, 1.0), vec3(1.0, 0.72, 0.38), step(0.5, vAux.z));
+    float flicker = 0.85 + 0.15 * sin(uTime * (0.4 + h * 1.3) + h * 40.0);
+    oC = vec4((col * fogF + wcol * lit * pane * 1.9 * flicker * pow(fogF, 0.55)) * uFade, 1.0);
+    return;
+  }
+  oC = vec4(col * fogF * uFade, 1.0);
 }`;
   // the glass: iridescent planes (thin-film shimmer riding the fresnel),
   // data planes raining bright dashes, and the node crystals — each little
@@ -3258,6 +3817,15 @@ void main() {
   float p1 = fract(vUV.x - uTime * uTempo * 0.11 + vAux.z);
   float p2 = fract(-vUV.x - uTime * uTempo * 0.085 + vAux.z * 1.7);
   float pk = exp(-90.0 * abs(p1 - 0.5)) + exp(-90.0 * abs(p2 - 0.5));
+  if (vAux.w > 0.5) {
+    // a skull feed (v51): no return traffic — three packets streaming into
+    // the bone, a hotter carrier line under them
+    float pf = fract(vUV.x - uTime * uTempo * 0.16 + vAux.z);
+    pk = exp(-70.0 * abs(pf - 0.5))
+       + exp(-70.0 * abs(fract(pf + 0.333) - 0.5))
+       + exp(-70.0 * abs(fract(pf + 0.667) - 0.5));
+    pk = pk * 1.3 + 0.10;
+  }
   float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
   oC = vec4(grad * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
 }`;
@@ -3309,24 +3877,310 @@ void main() {
     uploadCommunities();
   }
 
+  // the crust arrives like the skull does — fetched, parsed, grown once
+  (async () => {
+    try {
+      const buf = await fetch("assets/skull/crust.bin").then((r) => {
+        if (!r.ok) throw new Error("crust.bin " + r.status);
+        return r.arrayBuffer();
+      });
+      const dv = new DataView(buf);
+      if (dv.getUint32(0, false) !== 0x43525350) throw new Error("bad crust magic"); // "CRSP"
+      const count = dv.getUint32(4, true);
+      const f = new Float32Array(buf, 8, count * 8);
+      const points = [];
+      for (let i = 0; i < count; i++) {
+        const o = i * 8;
+        points.push({
+          p: [f[o], f[o + 1], f[o + 2]],
+          n: [f[o + 3], f[o + 4], f[o + 5]],
+          region: f[o + 6] | 0,
+          cluster: f[o + 7] | 0,
+        });
+      }
+      crustGL.mesh = makeCommVao(crustGeometry(points));
+      crustGL.ready = true;
+    } catch (e) {
+      // file:// or missing atlas: the bone stands bare, the towns still shine
+    }
+  })();
+
+  // ---- the nebulae, GPU side (v53): the lab shader, verbatim in spirit ----
+  // Camera-facing stretched wisps; the stretch axis is the strand tangent
+  // projected to the screen and RELAXES TO ROUND as the projection
+  // degenerates (the somersault cure — nebula-sim bounds the residual swing).
+  // Fully procedural, works on file://; premultiplied like everything here.
+  const NEB_VS = `#version 300 es
+layout(location=0) in vec2 aCorner;
+layout(location=1) in vec3 iPos;
+layout(location=2) in vec4 iA; // size, stretch, rot, seed
+layout(location=3) in vec4 iB; // dust, core, nk, bright
+layout(location=4) in vec3 iC; // tanScreenX, tanScreenY, fade
+uniform mat4 uVP;
+uniform vec3 uCamR;
+uniform vec3 uCamU;
+out vec2 vUV;
+out vec4 vA;
+out vec4 vB;
+out float vFade;
+out vec3 vP;
+void main() {
+  vUV = aCorner * 0.5 + 0.5;
+  vA = iA; vB = iB; vFade = iC.z;
+  vec2 ts = iC.xy;
+  float tl = length(ts);
+  vec2 tdir = tl > 1e-4 ? ts / tl : vec2(1.0, 0.0);
+  float k = smoothstep(0.25, 0.70, tl);
+  float eff = mix(1.0, iA.y, k);
+  vec2 axis1 = tdir, axis2 = vec2(-tdir.y, tdir.x);
+  vec2 c = aCorner;
+  float cr = cos(iA.z), sr = sin(iA.z);
+  c = mat2(cr, -sr, sr, cr) * c;
+  vec2 off2 = axis1 * c.x * iA.x * eff + axis2 * c.y * iA.x;
+  vec3 wp = iPos + uCamR * off2.x + uCamU * off2.y;
+  vP = wp;
+  gl_Position = uVP * vec4(wp, 1.0);
+}`;
+  const NEB_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uWisp; // baked atlas: A = torn alpha, RG = noise gradient
+uniform float uGlow;
+uniform float uFog;
+uniform vec2 uLight; // bank light axis, sprite space
+uniform vec3 uField; // per-bank palette: the mass
+uniform vec3 uCore;  // per-bank palette: the lit billows
+in vec2 vUV;
+in vec4 vA;
+in vec4 vB;
+in float vFade;
+in vec3 vP;
+out vec4 oC;
+void main() {
+  vec2 q = vUV - 0.5;
+  float r = length(q) * 2.0; // the furnace-knot heart needs it below
+  // the lab evaluated 3 fbm (48 sines) PER FRAGMENT — unshippable at 4K
+  // across a dozen screens of blended gas. The identical field is baked
+  // once into a 6-variant atlas at init (bakeWispAtlas), so a fragment is
+  // now one texture fetch. vA.w carries the variant; per-puff rotation and
+  // stretch still make every wisp unique.
+  vec4 t = texture(uWisp, vec2((vUV.x + vA.w) * ${(1 / 6).toFixed(8)}, vUV.y));
+  float a = t.a;
+  if (a < 0.004) discard;
+  vec2 g = (t.rg - 0.5) * ${(1 / 3).toFixed(8)};
+  float lit = clamp(0.5 - 2.1 * dot(g, uLight) - 0.4 * dot(normalize(q + 1e-5), uLight), 0.0, 1.0);
+  vec3 core = mix(uCore * 0.45, uCore, vB.y);
+  float coreAmt = lit * lit * vB.y;
+  vec3 col = uField + core * coreAmt * 0.9;
+  col += mix(uCore, vec3(1.0), 0.45) * pow(lit, 5.0) * 0.5 * vB.y;
+  col *= 0.38 + 0.62 * lit;
+  // the nebulae ARE weather: they take fog at 0.08 strength (the veil rule —
+  // never fog-exempt) so they read across the map but still recede honestly
+  float fogF = exp(-length(vP) * uFog * 0.08);
+  if (vB.x > 0.5) {
+    oC = vec4(vec3(0.008, 0.01, 0.03) * a * fogF, a * 0.9 * vFade * fogF);
+    return;
+  }
+  float b = min(vB.w, 1.35); // channel-race cap (the lab's green-drift lesson)
+  vec3 c2 = col * (0.85 + uGlow * 0.49) * b;
+  float aa = a * 0.30;
+  if (vB.w > 2.0) {
+    float heart = pow(smoothstep(1.0, 0.0, r), 2.6);
+    c2 = mix(uCore, vec3(1.0), 0.62);
+    aa = a * heart * 0.85;
+  }
+  aa *= vFade * fogF;
+  oC = vec4(c2 * aa, aa); // premultiplied
+}`;
+  // bake the wisp atlas: 6 variants (3 coarse-billow, 3 fine-rag) of the
+  // lab's exact alpha field, plus its noise gradient for the directional
+  // shading. Deterministic, CPU-side, ~150ms at init — no fetch, so the gas
+  // still blows on file://. Grid is small on purpose: the shapes are soft.
+  const NEB_TILE = 160, NEB_VARIANTS = 6;
+  function bakeWispAtlas() {
+    const N = NEB_TILE, V = NEB_VARIANTS;
+    const hash = (x, y) => {
+      const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    const vnoise = (x, y) => {
+      const ix = Math.floor(x), iy = Math.floor(y);
+      let fx = x - ix, fy = y - iy;
+      fx = fx * fx * (3 - 2 * fx);
+      fy = fy * fy * (3 - 2 * fy);
+      const a = hash(ix, iy), b = hash(ix + 1, iy);
+      const c = hash(ix, iy + 1), d = hash(ix + 1, iy + 1);
+      const top = a + (b - a) * fx, bot = c + (d - c) * fx;
+      return top + (bot - top) * fy;
+    };
+    const fbm = (x, y) => {
+      let amp = 0.55, s = 0, px = x, py = y;
+      for (let i = 0; i < 4; i++) {
+        s += amp * vnoise(px, py);
+        const nx = px * 1.9 + 7.7, ny = py * 1.9 + 7.7;
+        px = nx; py = ny;
+        amp *= 0.52;
+      }
+      return s;
+    };
+    const sstep = (e0, e1, x) => {
+      const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+    const data = new Uint8Array(N * V * N * 4);
+    const nf = new Float32Array(N * N);
+    for (let v = 0; v < V; v++) {
+      // coarse billows for the anchors, fine rags for the filler. The coarse
+      // family sits at 4.8, not the lab's 3.2: at 3.2 the radial body term
+      // dominates the low-frequency noise and the sprite reads as a DISC —
+      // James's ball-pit failure mode. Verified in the atlas preview.
+      const K = v < 3 ? 4.8 : 8.5;
+      const ox = v * 13.37, oy = v * 7.11;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          nf[y * N + x] = fbm(((x + 0.5) / N) * K + ox, ((y + 0.5) / N) * K + oy);
+        }
+      }
+      // gradient by finite difference ON the baked field — the shader's
+      // e = 0.11 in noise space is this many pixels at this frequency
+      const step = Math.max(1, Math.round((0.11 / K) * N));
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const u = (x + 0.5) / N, w = (y + 0.5) / N;
+          const qx = u - 0.5, qy = w - 0.5;
+          const r = Math.hypot(qx, qy) * 2;
+          const body = sstep(1.0, 0.2, r);
+          const alpha = sstep(0.28, 0.95, nf[y * N + x] * body + body * 0.20);
+          const cl = (i) => Math.min(N - 1, Math.max(0, i));
+          const gx = nf[y * N + cl(x + step)] - nf[y * N + cl(x - step)];
+          const gy = nf[cl(y + step) * N + x] - nf[cl(y - step) * N + x];
+          const o = ((y * (N * V)) + v * N + x) * 4;
+          data[o] = Math.min(255, Math.max(0, Math.round((gx * 3 + 0.5) * 255)));
+          data[o + 1] = Math.min(255, Math.max(0, Math.round((gy * 3 + 0.5) * 255)));
+          data[o + 2] = 0;
+          data[o + 3] = Math.round(alpha * 255);
+        }
+      }
+    }
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE7);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N * V, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.activeTexture(gl.TEXTURE0);
+    return tex;
+  }
+  const nebGL = { inited: false, prog: null, vao: null, inst: null, buf: null, order: [] };
+  {
+    const pr = makeProg(NEB_VS, NEB_FS, ["uVP", "uCamR", "uCamU", "uGlow", "uFog", "uLight", "uField", "uCore", "uWisp"]);
+    bakeWispAtlas();
+    gl.useProgram(pr.p);
+    gl.uniform1i(pr.U.uWisp, 7);
+    gl.useProgram(prog);
+    const quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW);
+    const inst = gl.createBuffer();
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+    for (const [loc, n, off] of [[1, 3, 0], [2, 4, 12], [3, 4, 28], [4, 3, 44]]) {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 56, off);
+      gl.vertexAttribDivisor(loc, 1);
+    }
+    gl.bindVertexArray(null);
+    nebGL.prog = pr;
+    nebGL.vao = vao;
+    nebGL.inst = inst;
+    nebGL.inited = true;
+  }
+  // one bank per draw: banks sorted far→near, puffs depth-sorted within.
+  // CPU does the f64 camera-relative subtraction (v49 discipline).
+  function drawNebulae(vp, bb) {
+    if (!nebGL.inited || !NEBULAE.length) return;
+    const pr = nebGL.prog;
+    gl.useProgram(pr.p);
+    gl.uniformMatrix4fv(pr.U.uVP, false, vp);
+    gl.uniform3fv(pr.U.uCamR, bb.r);
+    gl.uniform3fv(pr.U.uCamU, bb.u);
+    gl.uniform1f(pr.U.uGlow, cfg.nebGlow);
+    gl.uniform1f(pr.U.uFog, cfg.haze / 18000);
+    gl.bindVertexArray(nebGL.vao);
+    const visible = [];
+    for (const bank of NEBULAE) {
+      const dx = bank.c[0] - cam.pos[0], dy = bank.c[1] - cam.pos[1], dz = bank.c[2] - cam.pos[2];
+      const d = Math.hypot(dx, dy, dz);
+      if (d > 600000 + bank.radius) continue; // beyond the long read
+      visible.push({ bank, d });
+    }
+    visible.sort((a, b) => b.d - a.d);
+    for (const { bank, d } of visible) {
+      const bankFade = clamp((600000 + bank.radius - d) / 120000, 0, 1);
+      if (bankFade <= 0) continue;
+      const P = bank.puffs;
+      if (!nebGL.buf || nebGL.buf.length < P.length * 14) {
+        nebGL.buf = new Float32Array(P.length * 14);
+        nebGL.order = new Array(P.length);
+      }
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i];
+        nebGL.order[i] = [
+          (p.p[0] - cam.pos[0]) * bb.f[0] + (p.p[1] - cam.pos[1]) * bb.f[1] + (p.p[2] - cam.pos[2]) * bb.f[2], i];
+      }
+      nebGL.order.sort((a, b2) => b2[0] - a[0]);
+      let m = 0;
+      for (const [, i] of nebGL.order) {
+        const p = P[i];
+        const rx = p.p[0] - cam.pos[0], ry = p.p[1] - cam.pos[1], rz = p.p[2] - cam.pos[2];
+        const pd = Math.hypot(rx, ry, rz);
+        // NEAR-FADE — the fill-rate guard (v33's veil bomb TDR-crashed
+        // James's 4K rig; this is the discipline that keeps it from
+        // repeating): a wisp is GONE below 4 of its own radii and only
+        // reaches full strength at 9, so no sprite ever blankets the view.
+        // Flying in dissolves the near gas and reveals the finer structure
+        // instead of hitting a wall. nebula-sim TEST 6 mirrors this curve
+        // exactly and bars interior overdraw across the whole density
+        // slider — change one, change both.
+        const fade = clamp((pd - 4 * p.size) / (5 * p.size), 0, 1) * bankFade;
+        if (fade <= 0.002) continue;
+        const o = m * 14;
+        m++;
+        nebGL.buf[o] = rx; nebGL.buf[o + 1] = ry; nebGL.buf[o + 2] = rz;
+        nebGL.buf[o + 3] = p.size; nebGL.buf[o + 4] = p.stretch; nebGL.buf[o + 5] = p.rot; nebGL.buf[o + 6] = p.variant;
+        nebGL.buf[o + 7] = p.dust; nebGL.buf[o + 8] = p.core; nebGL.buf[o + 9] = 0; nebGL.buf[o + 10] = p.bright;
+        nebGL.buf[o + 11] = p.tan[0] * bb.r[0] + p.tan[1] * bb.r[1] + p.tan[2] * bb.r[2];
+        nebGL.buf[o + 12] = p.tan[0] * bb.u[0] + p.tan[1] * bb.u[1] + p.tan[2] * bb.u[2];
+        nebGL.buf[o + 13] = fade;
+      }
+      if (!m) continue;
+      const pal = NEB_PALETTES[bank.pal];
+      gl.uniform3fv(pr.U.uField, pal.field);
+      gl.uniform3fv(pr.U.uCore, pal.core);
+      const lx = bank.light[0] * bb.r[0] + bank.light[1] * bb.r[1] + bank.light[2] * bb.r[2];
+      const ly = bank.light[0] * bb.u[0] + bank.light[1] * bb.u[1] + bank.light[2] * bb.u[2];
+      const ll = Math.hypot(lx, ly) || 1;
+      gl.uniform2fv(pr.U.uLight, [lx / ll, ly / ll]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, nebGL.inst);
+      gl.bufferData(gl.ARRAY_BUFFER, nebGL.buf.subarray(0, m * 14), gl.STREAM_DRAW);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, m);
+    }
+    gl.bindVertexArray(null);
+  }
+
   // ---- the fleet's body (v47): James's Meshy service robot, prepped by
   // tmp/orb-dimension/robot_prep.py into robot.bin + a 1K basecolor.
   // ROBOT_FACING flips the nose if the model turns out to fly backwards —
   // one-number tune, can't be judged without James's eyes.
   const ROBOT_FACING = 1;
-  const robotMesh = { ready: false, count: 0, vao: null, prog: null };
-  (async () => {
-    try {
-      const [mesh, img] = await Promise.all([
-        loadMeshBin("assets/robot/robot.bin", 0x52424f54), // "RBOT"
-        new Promise((res, rej) => {
-          const im = new Image();
-          im.onload = () => res(im);
-          im.onerror = rej;
-          im.src = "assets/robot/robot-basecolor.jpg";
-        }),
-      ]);
-      const vs = `#version 300 es
+  // one shader serves every robot body in the dimension — the Meshy fleet
+  // and the Blender-built Cadence castes (v51) differ only in mesh + texture
+  const ROBOT_VS = `#version 300 es
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aNorm;
 layout(location=2) in vec2 aUV;
@@ -3342,7 +4196,7 @@ void main() {
   vUV = aUV;
   gl_Position = uVP * wp;
 }`;
-      const fs = `#version 300 es
+  const ROBOT_FS = `#version 300 es
 precision highp float;
 uniform sampler2D uTex;
 uniform vec3 uCamPos;
@@ -3364,23 +4218,61 @@ void main() {
   col *= exp(-distance(vP, uCamPos) * uFog * 1.4);
   oC = vec4(col, 1.0);
 }`;
-      const pr = makeProg(vs, fs, ["uVP", "uModel", "uCamPos", "uFog", "uTex"]);
-      const tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE5);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, img);
-      gl.generateMipmap(gl.TEXTURE_2D);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.useProgram(pr.p);
-      gl.uniform1i(pr.U.uTex, 5);
-      gl.useProgram(prog);
-      robotMesh.prog = pr;
+  const loadImg = (src) => new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = src;
+  });
+  // build one robot program: its own texture parked on a dedicated unit
+  function makeRobotProg(img, unit) {
+    const pr = makeProg(ROBOT_VS, ROBOT_FS, ["uVP", "uModel", "uCamPos", "uFog", "uTex"]);
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, img);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.useProgram(pr.p);
+    gl.uniform1i(pr.U.uTex, unit);
+    gl.useProgram(prog);
+    return pr;
+  }
+  const robotMesh = { ready: false, count: 0, vao: null, prog: null };
+  (async () => {
+    try {
+      const [mesh, img] = await Promise.all([
+        loadMeshBin("assets/robot/robot.bin", 0x52424f54), // "RBOT"
+        loadImg("assets/robot/robot-basecolor.jpg"),
+      ]);
+      robotMesh.prog = makeRobotProg(img, 5);
       robotMesh.vao = mesh.vao;
       robotMesh.count = mesh.count;
       robotMesh.ready = true;
     } catch (e) {
       // no robot mesh — the fleet stays grounded (its actors stay dark too)
+    }
+  })();
+
+  // ---- the Cadence castes (v51): six citizen robot kinds, Blender-built
+  // from primitives (tmp/orb-dimension/cadence_robots.py → cadence-01..06.bin
+  // + one shared flat-color palette). Served-only like the fleet; on file://
+  // the towns simply have no citizens out. Kinds by index:
+  //   0 chanter, 1 lattice-wright, 2 archivist, 3 ferry, 4 warden, 5 gardener
+  const cadenceMesh = { ready: false, meshes: [], prog: null };
+  (async () => {
+    try {
+      const [meshes, img] = await Promise.all([
+        Promise.all([1, 2, 3, 4, 5, 6].map((k) =>
+          loadMeshBin(`assets/robot/cadence-0${k}.bin`, 0x43424f54))), // "CBOT"
+        loadImg("assets/robot/cadence-palette.jpg"),
+      ]);
+      cadenceMesh.prog = makeRobotProg(img, 6);
+      cadenceMesh.meshes = meshes;
+      cadenceMesh.ready = true;
+    } catch (e) {
+      // no cadence bins — the towns stand, the citizens stay home
     }
   })();
 
@@ -3710,22 +4602,24 @@ void main() {
     }
     orthonormalize();
 
-    // -- THE GAZE (v34): within a few km the dead god's eyes follow you.
+    // -- THE GAZE (v34): near the face the dead god's eyes follow you.
     // Each eye drifts inside its socket toward your direction — clamped so it
     // stays seated (the bone rim partially occludes it at extremes), eased at
     // a deliberately slow time constant so you notice on the third visit,
-    // not the first. Beyond ~6km the gaze relaxes back to dead ahead.
+    // not the first. v52 scale-up: offset clamp 48 → 320 (the v29-measured
+    // 53m socket clearance scales to ~353m at ×20 — the seated rule holds),
+    // engage radius 6 → 18km. Beyond that the gaze relaxes to dead ahead.
     for (const o of eyeOrbs) {
       if (!o.gaze) o.gaze = [0, 0];
       const ex = cam.pos[0] - o.fix[0], ey = cam.pos[1] - o.fix[1], ez = cam.pos[2] - o.fix[2];
       const ed = Math.hypot(ex, ey, ez) || 1;
-      const w = clamp((6000 - ed) / 3500, 0, 1);
+      const w = clamp((18000 - ed) / 10000, 0, 1);
       const k = 1 - Math.exp(-dt * 0.6);
-      o.gaze[0] += ((ex / ed) * 48 * w - o.gaze[0]) * k;
-      o.gaze[1] += ((ey / ed) * 48 * w - o.gaze[1]) * k;
+      o.gaze[0] += ((ex / ed) * 320 * w - o.gaze[0]) * k;
+      o.gaze[1] += ((ey / ed) * 320 * w - o.gaze[1]) * k;
     }
 
-    // -- the living layer (v47): colony life, the Lantern's lights, the fleet
+    // -- the living layer (v47): colony life, the fleet, the castes
     updateActors(t, dt, camBasis());
 
     // -- orb world positions + depth sort (back to front)
@@ -3836,10 +4730,12 @@ void main() {
         vsEls.h2oBar.classList.toggle("low", fuel.h2o < 0.25);
         vsEls.deuBar.classList.toggle("low", fuel.deu < 0.25);
       }
-      // the Lantern hums when you're close to the glass (v47)
-      if (sound.on && sound.lantern && sound.ctx) {
-        const ld = Math.hypot(cam.pos[0] - LANTERN.light[0], cam.pos[1] - LANTERN.light[1], cam.pos[2] - LANTERN.light[2]);
-        sound.lantern.gain.setTargetAtTime(clamp(1 - ld / 2000, 0, 1) * 0.1, sound.ctx.currentTime, 0.4);
+      // the city hums when you're close to Korrudan's crust (v52): distance
+      // to the skull ellipsoid surface, roughly — thousands of small machines
+      if (sound.on && sound.cityHum && sound.ctx) {
+        const en = Math.hypot(cam.pos[0] / SKULL_EL[0], cam.pos[1] / SKULL_EL[1], cam.pos[2] / SKULL_EL[2]);
+        const ld = Math.max(0, (en - 1) * SKULL_EL[1]); // ~meters above the bone
+        sound.cityHum.gain.setTargetAtTime(clamp(1 - ld / 5200, 0, 1) * 0.1, sound.ctx.currentTime, 0.4);
       }
     }
 
@@ -3913,10 +4809,10 @@ void main() {
     }
 
     // -- mesh passes first (v47 order): opaque bone + robots write depth,
-    // then the Lantern's glass blends over them (no depth write), then the
+    // then the society glass blends over them (no depth write), then the
     // orbs draw with depth TEST on but writes off — soft sprites clipped
     // behind solids, shining past their edges, glowing through the glass.
-    const anyMesh = skull.ready || robotMesh.ready || pyr.ready || commDraw.length > 0;
+    const anyMesh = skull.ready || robotMesh.ready || cadenceMesh.ready || commDraw.length > 0;
     if (anyMesh) {
       gl.disable(gl.BLEND);
       gl.enable(gl.DEPTH_TEST);
@@ -3946,6 +4842,30 @@ void main() {
         }
         gl.bindVertexArray(null);
       }
+      if (cadenceMesh.ready && cadenceBots.length) {
+        // the citizen castes (v51): same opaque pass, one VAO bind per kind
+        gl.useProgram(cadenceMesh.prog.p);
+        gl.uniformMatrix4fv(cadenceMesh.prog.U.uVP, false, vp);
+        gl.uniform3fv(cadenceMesh.prog.U.uCamPos, [0, 0, 0]); // ship space
+        gl.uniform1f(cadenceMesh.prog.U.uFog, cfg.haze / 18000);
+        for (let kind = 0; kind < 6; kind++) {
+          const mesh = cadenceMesh.meshes[kind];
+          let bound = false;
+          for (const rb of cadenceBots) {
+            if (rb.kind !== kind) continue;
+            const rdx = rb.pos[0] - cam.pos[0], rdy = rb.pos[1] - cam.pos[1], rdz = rb.pos[2] - cam.pos[2];
+            if (rdx * rdx + rdy * rdy + rdz * rdz > 196000000) continue; // > 14 km: subpixel
+            if (!bound) {
+              gl.bindVertexArray(mesh.vao);
+              bound = true;
+            }
+            robotModel(rb, t);
+            gl.uniformMatrix4fv(cadenceMesh.prog.U.uModel, false, robotMat);
+            gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_INT, 0);
+          }
+        }
+        gl.bindVertexArray(null);
+      }
       if (commDraw.length) {
         // the Cadence cores: opaque metal + webbing write depth like the bone
         gl.useProgram(commGL.solid.p);
@@ -3958,30 +4878,18 @@ void main() {
           gl.uniform1f(commGL.solid.U.uFade, cd.fade);
           gl.bindVertexArray(commGL.meshes[cd.ci].solid.vao);
           gl.drawElements(gl.TRIANGLES, commGL.meshes[cd.ci].solid.count, gl.UNSIGNED_INT, 0);
+          if (cd.ci === 0 && crustGL.ready) {
+            // the Korrudan crust rides the capital's draw slot: same origin
+            // (the capital IS the origin), same fade feather
+            gl.bindVertexArray(crustGL.mesh.vao);
+            gl.drawElements(gl.TRIANGLES, crustGL.mesh.count, gl.UNSIGNED_INT, 0);
+          }
         }
-        gl.bindVertexArray(null);
-      }
-      if (pyr.ready) {
-        gl.enable(gl.BLEND);
-        gl.depthMask(false);
-        gl.useProgram(pyr.prog.p);
-        gl.bindVertexArray(pyr.vao);
-        gl.uniformMatrix4fv(pyr.prog.U.uVP, false, vp);
-        // v49 camera-relative: the Lantern's seat and inner sun arrive in
-        // ship space (float64 subtraction), uCamPos pins to the origin
-        gl.uniform3fv(pyr.prog.U.uOrigin, [
-          LANTERN.pos[0] - cam.pos[0], LANTERN.pos[1] - cam.pos[1], LANTERN.pos[2] - cam.pos[2]]);
-        gl.uniform3fv(pyr.prog.U.uCamPos, [0, 0, 0]);
-        gl.uniform3fv(pyr.prog.U.uLight, [
-          LANTERN.light[0] - cam.pos[0], LANTERN.light[1] - cam.pos[1], LANTERN.light[2] - cam.pos[2]]);
-        gl.uniform1f(pyr.prog.U.uTime, t);
-        gl.uniform1f(pyr.prog.U.uFog, cfg.haze / 18000);
-        gl.drawElements(gl.TRIANGLES, pyr.count, gl.UNSIGNED_INT, 0);
         gl.bindVertexArray(null);
       }
       if (commDraw.length) {
         // society glass + bridges: blended over the metal, no depth write —
-        // orbs and stars shine through the crystal like they do the Lantern
+        // orbs and stars shine through the crystal
         gl.enable(gl.BLEND);
         gl.depthMask(false);
         for (const pass of ["glass", "bridge"]) {
@@ -4007,6 +4915,11 @@ void main() {
     } else {
       gl.disable(gl.DEPTH_TEST);
     }
+    // -- the nebulae (v53): blended weather drawn behind the orb field —
+    // orbs and dust render over the gas, which is what flying through a
+    // luminous cloud full of drifting glass should look like
+    drawNebulae(vp, bb);
+    gl.useProgram(prog);
     if (texReady) {
       gl.uniformMatrix4fv(U.uVP, false, vp);
       gl.uniform3fv(U.uRight, bb.r);
@@ -4243,6 +5156,7 @@ void main() {
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
     { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo"] },
+    { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
@@ -4406,6 +5320,10 @@ void main() {
       <dt>pale orbs</dt><dd>click one to drift onward</dd>
       <dt>the fleet</dt><dd>service robots run supplies between depots,
         inhabited orbs and the communities — what they visit, wakes</dd>
+      <dt>the castes</dt><dd>six kinds of Cadence citizen work every hybrid
+        town — chanters, wrights, archivists, ferries, wardens, gardeners</dd>
+      <dt>the nebulae</dt><dd>five banks of glowing gas — one over home, four
+        out in the gulf; fly into one, it thins around you</dd>
     </dl>
     <h3>console</h3>
     <dl>
@@ -4435,13 +5353,12 @@ void main() {
   navPanel.innerHTML = `
     <h3>the monument</h3>
     <button type="button" class="nav-row" data-nav="head">Korrudan <em>the Head · center of space</em></button>
-    <button type="button" class="nav-row" data-nav="pyr">Vess-Karai <em>the glass lantern · on the floor</em></button>
     <h3>globe-thread communities · the ring</h3>
     <button type="button" class="nav-row" data-nav="c0">${NAV_NAMES[0]} <em>flagship reef · ~250 km out</em></button>
     <button type="button" class="nav-row" data-nav="c1">${NAV_NAMES[1]} <em>ring reef</em></button>
     <button type="button" class="nav-row" data-nav="c2">${NAV_NAMES[2]} <em>ring reef</em></button>
     <h3>the cooperative societies</h3>
-    <button type="button" class="nav-row" data-nav="s0">${COMMUNITIES[0].name} <em>the capital · Korrudan core</em></button>
+    <button type="button" class="nav-row" data-nav="s0">${COMMUNITIES[0].name} <em>the capital · wrapped around Korrudan</em></button>
     <button type="button" class="nav-row" data-nav="s1">${COMMUNITIES[1].name} <em>satellite society · ~125 km</em></button>
     <button type="button" class="nav-row" data-nav="s2">${COMMUNITIES[2].name} <em>satellite society · ~125 km</em></button>
     <button type="button" class="nav-row" data-nav="s3">${COMMUNITIES[3].name} <em>satellite society · ~125 km</em></button>
@@ -4460,8 +5377,7 @@ void main() {
   let autoNav = null;      // { standoff } while the autopilot is flying
   let navScreen = { x: 0, y: 0, r: 0, on: false }; // ring in screen px, for the click test
   function navPick(key) {
-    if (key === "head") return { key, name: "KORRUDAN", pos: [0, 0, 0], standoff: 2600 };
-    if (key === "pyr") return { key, name: "VESS-KARAI", pos: LANTERN.nav, standoff: 1500 };
+    if (key === "head") return { key, name: "KORRUDAN", pos: [0, 0, 0], standoff: 8800 }; // v52: crust doorstep
     if (key[0] === "c") {
       const i = Number(key[1]);
       return { key, name: NAV_NAMES[i].toUpperCase(), pos: REEF_COLONIES[i].c, standoff: 700 };
@@ -4538,6 +5454,20 @@ void main() {
       PANELS[k].btn.blur(); // focus must not eat the space bar (overdrive)
     });
   }
+  // Press anywhere off an open panel dismisses it (house rule 2026-07-25).
+  // pointerdown, not click: grabbing the stick/canvas drops the panel at once,
+  // and a slider drag released off-panel never counts as "away". Pressing
+  // another panel's button still opens that panel (its click fires after this).
+  document.addEventListener("pointerdown", (e) => {
+    let anyOpen = false;
+    for (const k in PANELS) {
+      const P = PANELS[k];
+      if (P.el.hidden) continue;
+      anyOpen = true;
+      if (P.el.contains(e.target) || P.btn.contains(e.target)) return;
+    }
+    if (anyOpen) setOpen("none");
+  });
 
   function reflectTuner(key) {
     const t = tunerInputs[key];
@@ -4703,18 +5633,19 @@ void main() {
     odLfo.start();
     eng.white = white;
 
-    // the Lantern's hum (v47): warm low sines with a slow beat, silent until
-    // you drift near the glass — gain steered from the frame loop
-    sound.lantern = ctx.createGain();
-    sound.lantern.gain.value = 0;
-    sound.lantern.connect(sound.master);
+    // the city's hum (v47 as the Lantern's; retargeted v52): warm low sines
+    // with a slow beat, silent until you drift near Korrudan's crust — gain
+    // steered from the frame loop by distance to the bone
+    sound.cityHum = ctx.createGain();
+    sound.cityHum.gain.value = 0;
+    sound.cityHum.connect(sound.master);
     for (const [f, g] of [[55, 0.45], [55.35, 0.45], [82.6, 0.25]]) {
       const o = ctx.createOscillator();
       o.type = "sine";
       o.frequency.value = f;
       const og = ctx.createGain();
       og.gain.value = g;
-      o.connect(og).connect(sound.lantern);
+      o.connect(og).connect(sound.cityHum);
       o.start();
     }
   }

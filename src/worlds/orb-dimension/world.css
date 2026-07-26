@@ -115,6 +115,14 @@ body::after {
   /* v34 readability pass: a touch taller than v15's 118px cap — still ~7% of
      a 4K screen — but the real change is the type inside, roughly doubled */
   --console-h: clamp(80px, 9.5vh, 150px);
+  /* usable height inside a readout screen, once the pod's padding (10px), the
+     stencil label, and the screen's own padding+border (10px) are taken out.
+     v53.2: the row type is sized against THIS instead of a raw vh guess —
+     the box shrinks with the viewport but the old font floor didn't, so below
+     ~1440px tall the bottom row of ATT/POS/NAV/SYS was being eaten by
+     .vs-screen{overflow:hidden} (James couldn't read BNK, Z, or SHD).
+     tmp/orb-dimension/console-fit.html measures this at every height. */
+  --readout-h: calc(var(--console-h) - clamp(16px, 2vh, 22px) - 20px);
   --vs-line: rgba(130, 185, 235, 0.35);
 }
 
@@ -392,12 +400,16 @@ body::after {
   justify-content: flex-start;
   align-items: baseline;
   gap: 0.55em;
-  font-size: clamp(13px, 1.75vh, 20px);
-  line-height: 1.3;
+  /* never larger than the glass can hold: 3 rows at 1.22 line-height, with a
+     little slack for the baseline box (hence 3.75, not 3.66) */
+  font-size: min(clamp(13px, 1.75vh, 20px), calc(var(--readout-h) / 3.75));
+  line-height: 1.22;
 }
-/* NAV carries four rows to everyone else's three — slightly tighter type */
+/* NAV carries four rows to everyone else's three — tighter type AND tighter
+   leading, so the extra row costs size instead of legibility */
 .pod-nav .vs-rows p {
-  font-size: clamp(12px, 1.5vh, 17px);
+  font-size: min(clamp(12px, 1.5vh, 17px), calc(var(--readout-h) / 4.6));
+  line-height: 1.1;
 }
 .vs-rows span {
   flex: 0 0 4.6ch; /* widest label (HOME/REEF) + its tracking */

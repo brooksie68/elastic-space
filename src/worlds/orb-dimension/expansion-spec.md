@@ -29,7 +29,11 @@ grid, luminous region: still spec-only.
   visible internal crystal-plane structure, deep throb, family colors) on jittered
   dodecahedron-face seats, joined by light bridges (nearest neighbors around the
   shell, NEVER through the middle) with two-way pulse packets.
-- Placement: capital in the Korrudan core precinct; three satellites on the
+- UPDATE v51/v52 (2026-07-25, James): the capital moved ONTO Korrudan, then the
+  skull became the station itself — ×20 to 12km, machine cloud replaced by a
+  surface-grown crust (the Knowhere direction), Vess-Karai removed ("another
+  format later"). The precinct placement below is Phase-A history.
+- Placement (Phase A, superseded v51): capital in the Korrudan core precinct; three satellites on the
   OPPOSITE points of a six-pointed star vs the reef colonies, at HALF the ring
   radius (~125 km), derived from colonyDist so the hexagram survives tuning.
   Satellites at ~2/3 capital scale (James-approved).

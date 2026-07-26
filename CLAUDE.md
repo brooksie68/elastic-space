@@ -30,9 +30,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
    per-fragment fbm was 48 sines; near-fade + density-ceiling cap hold
    interior overdraw at 13 screens (the v33 veil-bomb discipline). New
    nebula-sim + wisp-atlas-check; shader-check caught a runtime-killer;
-   reef-sim de-flaked (seeded probes). All 9 sims green twice over.
-   AWAITING JAMES'S FLIGHT (the gas in-world for the first time; also still
-   open from v52: scale read on approach, window density, spawn pitch).
+   reef-sim de-flaked (seeded probes). v53.1: spawn 27km → 54km on James's
+   "twice as far back" (nebula-sim TEST 9 guards the spawn + approach line
+   from being swallowed by a bank). v53.2: fixed the console eating its
+   bottom readouts (BNK/Z/SHD) below 1440px viewport height — type now sized
+   against --readout-h; tmp/orb-dimension/console-fit.html measures it.
+   All 9 sims green. AWAITING JAMES'S FLIGHT (the gas in-world for the first
+   time, the new spawn distance; also still open from v52: window density).
+   SAELYRI LAB STARTED (tmp/orb-dimension/saelyri-lab.html, James's go for
+   harness-first): one raymarched volumetric shader serving BOTH the beings
+   (7-state morph wheel: humanoid→cube→pyramid→mandala→jewel→torus→cloud) and
+   their homes (his brief: "more complexity, less of a shell on their spheres,
+   more of an energy ball"). First capture read as soft blobs — needs internal
+   structure and a tighter silhouette before a sheet is worth his time.
    Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
    with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef
