@@ -148,13 +148,19 @@ or two ("balls") could be *recreated* with contemporary techniques; and the thre
 most drawn to is abstract rule-based animation — which is exactly the oscillator-field
 insight this spec already documents. The two recreations above are the approved lane.
 
-## Build status (2026-07-19, build session)
+## Build status (2026-07-19, build session; renamed 2026-07-26)
 
-The pork recreation is renamed **Relaaax** (James, folder + title) and its field is
-built: `src/worlds/relaaax/` — standalone renderer (`relaaax-field.js`) + Chrome
-Rift-style tuner, staged in a temporary 1024×768 frame. Draft status, unregistered, no
-drift exits yet; final setting TBD (James is thinking about displaying it on an
-in-scene TV). See that folder's CLAUDE.md and changelog. scary_corndog remains unbuilt.
+The pork recreation lives at `src/worlds/lumina/` — standalone renderer
+(`lumina-field.js`) + Chrome Rift-style tuner, staged in a temporary 1024×768 frame.
+Draft status, unregistered, no drift exits yet; final setting TBD (James is thinking
+about displaying it on an in-scene TV). See that folder's CLAUDE.md and changelog.
+scary_corndog remains unbuilt.
+
+**Named twice.** James renamed the pork recreation **Relaaax** on 2026-07-19 (after the
+original 2002 GIF piece), then **Lumina** on 2026-07-26 once it had grown into a full
+music-reactive visualizer and the old name no longer described it. Pre-07-26 changelog
+entries and the notes above use the old names; the source spec below is unaffected — the
+2002 timing table still drives the defaults.
 
 ## Open questions for James (from the analysis session)
 

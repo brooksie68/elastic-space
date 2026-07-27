@@ -1,4 +1,4 @@
-// Relaaax — Claude's visual DJ sets. v6 2026-07-26, rebuilt on James's brief:
+// Lumina — Claude's visual DJ sets. v6 2026-07-26, rebuilt on James's brief:
 // "more composition in the variety — one setting for 4 beats, then another,
 // then the 1st one again but varied; when there's a breakdown or a big
 // rhythmic shift, PUNCH it to a new look."
@@ -28,8 +28,8 @@
 (function () {
   "use strict";
 
-  const D = globalThis.RelaaaxField.DEFAULTS;
-  const GRID = globalThis.RELAAAX_TRACK_GRID || {};
+  const D = globalThis.LuminaField.DEFAULTS;
+  const GRID = globalThis.LUMINA_TRACK_GRID || {};
   const R = (src, tgt, amt) => ({ src, tgt, amt });
   const OFF = R("off", "ease", 0);
 
@@ -472,12 +472,12 @@
     [91, "A", "none", { __ramp: 3, speed: 0.2, blur: 50, fxIris: 0.95, sceneMix: 0, low: "#000000", high: "#000407" }],
   ];
 
-  globalThis.RELAAAX_COMPOSITIONS = {
+  globalThis.LUMINA_COMPOSITIONS = {
     "Angular Ritual.mp3": build("Angular Ritual.mp3", ANGULAR_LOOKS, ANGULAR_SCORE),
     "Jungle Moog Ritual.mp3": build("Jungle Moog Ritual.mp3", JUNGLE_LOOKS, JUNGLE_SCORE),
     "Timber at Sea.mp3": build("Timber at Sea.mp3", TIMBER_LOOKS, TIMBER_SCORE),
   };
-  globalThis.RELAAAX_LOOKS = {
+  globalThis.LUMINA_LOOKS = {
     "Angular Ritual.mp3": ANGULAR_LOOKS,
     "Jungle Moog Ritual.mp3": JUNGLE_LOOKS,
     "Timber at Sea.mp3": TIMBER_LOOKS,

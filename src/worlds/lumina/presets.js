@@ -1,15 +1,15 @@
-// Relaaax — the permanent preset list. Each config is a PARTIAL over
-// RelaaaxField.DEFAULTS: loading a preset resets every unmentioned knob, so a
+// Lumina — the permanent preset list. Each config is a PARTIAL over
+// LuminaField.DEFAULTS: loading a preset resets every unmentioned knob, so a
 // preset fully determines the look (staging frame size excluded — that's page
 // state, not field state).
 //
 // James's saved presets live in localStorage ("yours" group in the tuner);
 // when one earns a spot on the permanent list, it gets baked in here.
 //
-// This file also holds the DICE (RelaaaxRandom.roll) at the bottom — it lives
+// This file also holds the DICE (LuminaRandom.roll) at the bottom — it lives
 // here rather than in world.js so the sim can roll it thousands of times and
 // check every result is a legal, non-blank field state.
-globalThis.RELAAAX_PRESETS = [
+globalThis.LUMINA_PRESETS = [
   {
     id: "pork-2002",
     label: "pork 2002",
@@ -180,13 +180,13 @@ globalThis.RELAAAX_PRESETS = [
 // colors, geometry, the scene layer, and a random handful of FX. The ONLY
 // guard is against a dead frame — if nothing would be visible at all, the
 // roll is nudged until something is. Everything else ugly is fair game.
-globalThis.RelaaaxRandom = (function () {
+globalThis.LuminaRandom = (function () {
   "use strict";
 
   function roll(rand) {
     const R = rand || Math.random;
-    const F = globalThis.RelaaaxField;
-    const S = globalThis.RelaaaxScenes;
+    const F = globalThis.LuminaField;
+    const S = globalThis.LuminaScenes;
     const pick = (arr) => arr[Math.floor(R() * arr.length)];
     const rnd = (a, b) => a + R() * (b - a);
     const odds = (p) => R() < p;
@@ -222,7 +222,7 @@ globalThis.RelaaaxRandom = (function () {
       sceneGenome: genomes.length ? pick(genomes).name : F.DEFAULTS.sceneGenome,
       sceneMix: rnd(0.35, 1), sceneTiles: R(), sceneSpeed: rnd(0.2, 2),
       sceneScale: R(), sceneDrive: R(), sceneWarp: R(), sceneHue: R(),
-      accent: pick((globalThis.RelaaaxMusicDSP && globalThis.RelaaaxMusicDSP.ACCENT_NAMES) || ["four"]),
+      accent: pick((globalThis.LuminaMusicDSP && globalThis.LuminaMusicDSP.ACCENT_NAMES) || ["four"]),
       syncBeats: pick([0, 0, 1, 2, 2, 4, 4, 8, 16]),
     };
 

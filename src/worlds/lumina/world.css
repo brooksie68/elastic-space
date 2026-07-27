@@ -1,4 +1,4 @@
-/* Relaaax — page shell + field geometry. The control-surface styles live in
+/* Lumina — page shell + field geometry. The control-surface styles live in
    tuner.css (shared with the detached controller window tuner.html). */
 
 html,
@@ -9,14 +9,14 @@ body {
 }
 
 /* Stage: centers the temporary 1024×768 frame. */
-.rlx-stage {
+.lum-stage {
   align-items: center;
   display: flex;
   height: 100%;
   justify-content: center;
 }
 
-.rlx-frame {
+.lum-frame {
   aspect-ratio: 4 / 3;
   outline: 1px solid #26262c;
   overflow: hidden;
@@ -30,7 +30,7 @@ body {
    and the numeric knobs (margins, gaps, radii…) land as unitless vars on the
    root. The composition scales to any box. */
 
-.rlx-field {
+.lum-field {
   align-items: center;
   display: flex;
   flex-direction: column;
@@ -39,64 +39,64 @@ body {
   width: 100%;
 }
 
-.rlx-outer {
-  border-radius: calc(var(--umin, 1px) * var(--rlx-r-outer, 0));
-  padding: calc(var(--uy, 1px) * var(--rlx-mt, 50))
-           calc(var(--ux, 1px) * var(--rlx-mr, 50))
-           calc(var(--uy, 1px) * var(--rlx-mb, 50))
-           calc(var(--ux, 1px) * var(--rlx-ml, 50));
+.lum-outer {
+  border-radius: calc(var(--umin, 1px) * var(--lum-r-outer, 0));
+  padding: calc(var(--uy, 1px) * var(--lum-mt, 50))
+           calc(var(--ux, 1px) * var(--lum-mr, 50))
+           calc(var(--uy, 1px) * var(--lum-mb, 50))
+           calc(var(--ux, 1px) * var(--lum-ml, 50));
 }
 
-.rlx-box {
-  border-radius: calc(var(--umin, 1px) * var(--rlx-r-row, 0));
+.lum-box {
+  border-radius: calc(var(--umin, 1px) * var(--lum-r-row, 0));
   display: flex;
-  padding: calc(var(--uy, 1px) * var(--rlx-inset, 10))
-           calc(var(--ux, 1px) * var(--rlx-inset, 10));
+  padding: calc(var(--uy, 1px) * var(--lum-inset, 10))
+           calc(var(--ux, 1px) * var(--lum-inset, 10));
   width: max-content;
 }
 
 /* The cell is the grid pitch: fixed footprint from the 32px base + gaps. The
-   tile inside renders at --rlx-tile and is free to outgrow it — flex: none and
+   tile inside renders at --lum-tile and is free to outgrow it — flex: none and
    no clipping anywhere, so oversized tiles butt up, overlap, and spill. */
-.rlx-cell {
+.lum-cell {
   align-items: center;
   display: flex;
   flex: none;
-  height: calc(var(--uy, 1px) * var(--rlx-cellh, 72));
+  height: calc(var(--uy, 1px) * var(--lum-cellh, 72));
   justify-content: center;
   position: relative;
-  width: calc(var(--ux, 1px) * var(--rlx-cellw, 100));
+  width: calc(var(--ux, 1px) * var(--lum-cellw, 100));
 }
 
 /* position: relative lifts every tile into the positioned paint phase, above
    ALL row backgrounds — without it, tiles spilling downward would be buried
    under the next row's opaque flashing box. */
-.rlx-tile {
-  border: calc(var(--umin, 1px) * var(--rlx-bw, 1)) solid #fff;
-  border-radius: calc(var(--umin, 1px) * var(--rlx-tile, 32) * var(--rlx-r-tile, 0));
+.lum-tile {
+  border: calc(var(--umin, 1px) * var(--lum-bw, 1)) solid #fff;
+  border-radius: calc(var(--umin, 1px) * var(--lum-tile, 32) * var(--lum-r-tile, 0));
   box-sizing: content-box;
   flex: none;
-  height: calc(var(--uy, 1px) * var(--rlx-tile, 32));
+  height: calc(var(--uy, 1px) * var(--lum-tile, 32));
   position: relative;
-  width: calc(var(--ux, 1px) * var(--rlx-tile, 32));
+  width: calc(var(--ux, 1px) * var(--lum-tile, 32));
 }
 
 /* --- v2 structure: positioned layouts, counter layer, nests, shapes -------- */
 
 /* Non-grid layouts: the outer sizes itself from the layout footprint
-   (--rlx-lw/--rlx-lh, set by place()) and cells sit at absolute design
+   (--lum-lw/--lum-lh, set by place()) and cells sit at absolute design
    coords, centered on their point. */
-.rlx-field[data-layout="brick"] .rlx-outer,
-.rlx-field[data-layout="hex"] .rlx-outer,
-.rlx-field[data-layout="radial"] .rlx-outer,
-.rlx-field[data-layout="spiral"] .rlx-outer {
+.lum-field[data-layout="brick"] .lum-outer,
+.lum-field[data-layout="hex"] .lum-outer,
+.lum-field[data-layout="radial"] .lum-outer,
+.lum-field[data-layout="spiral"] .lum-outer {
   box-sizing: content-box;
-  height: calc(var(--uy, 1px) * var(--rlx-lh, 420));
+  height: calc(var(--uy, 1px) * var(--lum-lh, 420));
   position: relative;
-  width: calc(var(--ux, 1px) * var(--rlx-lw, 540));
+  width: calc(var(--ux, 1px) * var(--lum-lw, 540));
 }
 
-.rlx-cell--free {
+.lum-cell--free {
   height: 0;
   position: absolute;
   transform: translate(-50%, -50%);
@@ -105,7 +105,7 @@ body {
 
 /* Counter layer: a phase-inverted twin stacked on each tile, difference-
    blended. Opacity is driven per frame from cfg.counter. */
-.rlx-counter {
+.lum-counter {
   left: 50%;
   mix-blend-mode: difference;
   opacity: 0;
@@ -116,29 +116,29 @@ body {
 
 /* Nested tiles: counter-phased children inset inside the tile; they inherit
    the tile's clip shape by containment. */
-.rlx-nest {
+.lum-nest {
   border-radius: inherit;
   position: absolute;
 }
 
 /* Tile silhouettes. Borders render before clipping, so shaped tiles trade
    their frame for the cut — that's the deal. */
-.rlx-field[data-shape="circle"] .rlx-tile { clip-path: circle(50%); }
-.rlx-field[data-shape="triangle"] .rlx-tile { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
-.rlx-field[data-shape="diamond"] .rlx-tile { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
-.rlx-field[data-shape="hexagon"] .rlx-tile { clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
-.rlx-field[data-shape="chevron"] .rlx-tile { clip-path: polygon(0 0, 50% 30%, 100% 0, 100% 70%, 50% 100%, 0 70%); }
-.rlx-field[data-shape="star"] .rlx-tile { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-.rlx-field[data-shape="cross"] .rlx-tile { clip-path: polygon(33% 0, 67% 0, 67% 33%, 100% 33%, 100% 67%, 67% 67%, 67% 100%, 33% 100%, 33% 67%, 0 67%, 0 33%, 33% 33%); }
-.rlx-field[data-shape="bar"] .rlx-tile { clip-path: inset(36% 0); }
-.rlx-field[data-shape="slit"] .rlx-tile { clip-path: inset(0 42%); }
-.rlx-field[data-shape="ring"] .rlx-tile {
+.lum-field[data-shape="circle"] .lum-tile { clip-path: circle(50%); }
+.lum-field[data-shape="triangle"] .lum-tile { clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.lum-field[data-shape="diamond"] .lum-tile { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.lum-field[data-shape="hexagon"] .lum-tile { clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%); }
+.lum-field[data-shape="chevron"] .lum-tile { clip-path: polygon(0 0, 50% 30%, 100% 0, 100% 70%, 50% 100%, 0 70%); }
+.lum-field[data-shape="star"] .lum-tile { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.lum-field[data-shape="cross"] .lum-tile { clip-path: polygon(33% 0, 67% 0, 67% 33%, 100% 33%, 100% 67%, 67% 67%, 67% 100%, 33% 100%, 33% 67%, 0 67%, 0 33%, 33% 33%); }
+.lum-field[data-shape="bar"] .lum-tile { clip-path: inset(36% 0); }
+.lum-field[data-shape="slit"] .lum-tile { clip-path: inset(0 42%); }
+.lum-field[data-shape="ring"] .lum-tile {
   -webkit-mask-image: radial-gradient(closest-side, transparent 54%, #000 56%);
   mask-image: radial-gradient(closest-side, transparent 54%, #000 56%);
 }
 
 /* The FX canvas (fx.js) sits over the frame; blur rides it like the DOM. */
-.rlx-fx-canvas {
+.lum-fx-canvas {
   height: 100%;
   left: 0;
   pointer-events: none;
@@ -152,15 +152,15 @@ body {
    the stage shifts left so the visualization stays fully visible while
    tuning. The detached window (tuner.html) is unaffected. */
 
-body.rlx-docked .rlx-stage {
+body.lum-docked .lum-stage {
   padding-right: min(36rem, 46vw);
 }
 
-body.rlx-docked .rlx-frame {
+body.lum-docked .lum-frame {
   width: min(1024px, calc(100vw - min(36rem, 46vw) - 1.5rem), calc(100vh * 4 / 3));
 }
 
-body.rlx-docked .rlx-tuner {
+body.lum-docked .lum-tuner {
   bottom: 0.75rem;
   left: auto;
   max-height: none;
@@ -172,7 +172,7 @@ body.rlx-docked .rlx-tuner {
 
 /* --- transport bar (music.js) — always visible, tuner open or not ---------- */
 
-.rlx-transport-bar {
+.lum-transport-bar {
   align-items: center;
   backdrop-filter: blur(6px);
   background: rgba(14, 14, 20, 0.78);
@@ -189,7 +189,7 @@ body.rlx-docked .rlx-tuner {
   z-index: 10;
 }
 
-.rlx-transport-bar button {
+.lum-transport-bar button {
   appearance: none;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.22);
@@ -201,11 +201,11 @@ body.rlx-docked .rlx-tuner {
   padding: 0.28rem 0.5rem;
 }
 
-.rlx-transport-bar button:hover {
+.lum-transport-bar button:hover {
   background: rgba(255, 255, 255, 0.18);
 }
 
-.rlx-transport-bar select {
+.lum-transport-bar select {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 0.35rem;
@@ -214,11 +214,11 @@ body.rlx-docked .rlx-tuner {
   padding: 0.24rem 0.3rem;
 }
 
-.rlx-transport-bar select option {
+.lum-transport-bar select option {
   background: #14141c;
 }
 
-.rlx-transport-track {
+.lum-transport-track {
   max-width: 13rem;
   opacity: 0.75;
   overflow: hidden;
@@ -229,7 +229,7 @@ body.rlx-docked .rlx-tuner {
 
 /* --- tuner toggle (the panel itself is styled in tuner.css) ----------------- */
 
-.rlx-tuner-toggle {
+.lum-tuner-toggle {
   align-items: center;
   appearance: none;
   background: rgba(20, 20, 20, 0.45);
@@ -249,13 +249,13 @@ body.rlx-docked .rlx-tuner {
   z-index: 11;
 }
 
-.rlx-tuner-toggle:hover,
-.rlx-tuner-toggle:focus-visible {
+.lum-tuner-toggle:hover,
+.lum-tuner-toggle:focus-visible {
   background: rgba(20, 20, 20, 0.7);
   color: #fff;
 }
 
-.rlx-tuner-toggle svg {
+.lum-tuner-toggle svg {
   height: 1.15rem;
   width: 1.15rem;
 }

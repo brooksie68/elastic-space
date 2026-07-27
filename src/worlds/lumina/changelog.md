@@ -1,7 +1,117 @@
-# Changelog — Relaaax
+# Changelog — Lumina
 
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
+
+**The world was called Relaaax until 2026-07-26.** Entries below that date use the old
+name — that is deliberate, not drift. See the rename entry immediately following.
+
+## 2026-07-27 panel pass 1 — Claude (Opus 5)
+
+James's brief, first three items built. The rest of it is a plan, not code (below).
+
+- **Roboto.** The panel had no `font-family` at all — it had been rendering in
+  browser-default Times New Roman since it was built, embedded and detached, which
+  nobody had noticed. Now Roboto, bundled locally as
+  `assets/fonts/roboto-latin-var.woff2` (43 KB, latin subset, variable weight, Apache
+  2.0, from Google Fonts) so it survives offline and `file://` — the same approach The
+  Fifteen Sisters uses for Aref Ruqaa. Roboto is not installed on Windows, so a plain
+  font stack would have silently fallen through to Arial.
+- **Slider tracks are capped.** Measured A/B at a 1585px panel: the widest slider went
+  **1470px → 267px**, the full-width rows **1453px → 267px**, and the median small
+  slider **636px → 100px**. Two changes did it — `.tuner-minis` is now a grid
+  (`repeat(auto-fill, minmax(15em, 1fr))`, five uniform columns at that width) instead
+  of `flex: 1`, which let two controls split the whole panel between them; and range
+  inputs are capped at 20em, 7.5em inside a column. Panel got ~8% taller as a result;
+  the column minimum is one value in `tuner.css` if he wants it tuned.
+- **Text size control**, per the standing rule (Valence Lab 2026-07-26, restated here).
+  The whole stylesheet was converted rem→em off a single `--ui-base: 16px` ×
+  `--ui-scale`, so one multiplier moves type, padding, control heights and slider
+  tracks together. Only viewport-anchored chrome (bottom offset, scroll cap, width
+  backstop) stays in rem. The control sits in the sticky tab bar and persists **per
+  window** (`lumina-ui-scale`) — deliberately NOT synced over the channel, because the
+  detached controller usually lives on a different screen than the visuals. Default is
+  100% = the panel exactly as it was; the knob goes 80–220%.
+- **The roll cluster: ↩ back — 🎲 dice — keep.** Back undoes the last whole-look jump
+  (a roll or a preset load, 30 deep, `canUndo` in the snapshot drives the disabled
+  state). Slider drags are deliberately NOT recorded — during live play the stack would
+  fill with micro-steps and "back" would stop meaning "undo that roll". `keep` banks
+  what's on screen under a pre-filled name ("keep 1", "keep 2"…), so freezing a good
+  roll is one keystroke instead of inventing a name mid-set.
+
+Verified: sims 123 + 42 green, JS syntax clean, Roboto confirmed loading and applied in
+the browser, the before/after slider widths above are measured in a live panel, all
+three new controls present and `back` correctly disabled with an empty history. **Not
+click-tested:** the back/keep command round trip is verified by construction only — the
+detached controller has no host to talk to, and the host page plays music, which doesn't
+go in the agent browser pane. Worth James clicking once. A column-width sweep
+(13/15/17/19/21em) was attempted and abandoned when the pane hung; 15em is a guess that
+measures well at 1585px, not an optimum.
+
+**NEXT, and this is the real work (James, 2026-07-27, needs its own session):** the panel
+is "kind of a big jumble of lots of different stuff". He wants it regrouped with short
+clear explanations, and rebuilt to invite live play *while music is running* — you should
+be able to see what you're about to do and use it like a VJ. The dice becomes "a whole
+control function" rather than one button. Treat pass 1 as typography and reach; the
+grouping pass is a design conversation before it is code.
+
+## 2026-07-26 rename — Claude (Opus 5)
+
+**Relaaax → Lumina.** James's call, and overdue by his own reckoning: *"it's now not
+really appropriate or descriptive of what's going on here… we've got a pretty amazing
+full service visualizer that's only just beginning."* Relaaax named a black-and-white
+GIF loop from 2002; this is a music-reactive light instrument. **Lumina** is Thomas
+Wilfred's term for light treated as an art form in its own right — he built the
+Clavilux to play it in 1919.
+
+Naming went through app-style one-worders (Rubato, Onda, Fugu), organ vocabulary
+(Tonewheel, Pipedream, Drawbar) and James's own device-catalog lane (The Brilliantine
+Forge, The Visual Tone Organ) before he landed on Lumina.
+
+What moved:
+
+- **Folder** `src/worlds/relaaax/` → `src/worlds/lumina/`; `relaaax-field.js` →
+  `lumina-field.js`; scratch/sims `tmp/relaaax/` → `tmp/lumina/`.
+- **Globals**: `RelaaaxField`/`RelaaaxFX`/`RelaaaxScenes`/`RelaaaxHost`/
+  `RelaaaxMusicDSP`/`RelaaaxCompositionEngine`/`relaaaxTuner`/`relaaaxField` and the
+  `RELAAAX_*` data globals (`TRACK_GRID`, `COMPOSITIONS`, `LOOKS`, `FLAME_GENOMES`,
+  `PRESETS`) → `Lumina*` / `LUMINA_*`.
+- **CSS prefix** `rlx-` → `lum-` (141 occurrences); DOM ids `relaaax-frame` →
+  `lumina-frame`, `rlx-tuner` → `lum-tuner`.
+- **localStorage keys and BroadcastChannel** `relaaax-*` → `lumina-*`.
+- `world.json` slug + title, and a summary that finally describes the current world
+  rather than the draft field renderer; admin panel link (re-sorted D→L→O).
+- Outside the world: `server.mjs` flame-picks path, `docs/building-a-world.md`,
+  `assets/spastic-space/recreation-notes.md`, arachno-wars-2500's CLAUDE.md, and the
+  project CLAUDE.md todo.
+
+**`migrate-storage.js` is new** — it loads first on both index.html and tuner.html and
+copies James's saved tuner state, field presets, reactivity presets, per-track recall
+and last tab from the old `relaaax-*` keys the first time each page runs. Non-destructive
+(old keys are left alone). Delete the file and its two script tags once he confirms
+everything came across.
+
+Verified: `composition-sim` 123/123, `music-sim` 42/42, `fx-test.html` FX-OK (all six
+shader programs compile), `clock-test.html` CLOCK-OK (20 assertions across all three
+tracks — impulses still land 0 frames late). The detached controller `tuner.html` mounts
+its full 115-control surface with no console errors, all renamed globals present, zero
+stray `rlx-` in the DOM.
+
+fx-test's live-mount half reports `false` in the agent Browser pane, as always — the pane
+doesn't composite, so rAF fires about once every four seconds and fx.js never un-hides
+its canvas (it starts `display:none` and only reveals once the GL path actually draws).
+Pumping the rAF queue by hand proves the live path is fine: canvas un-hides, GL renders
+(mean luma 79, max 255, full frame lit on the flame scene). Worth remembering for any
+future WebGL check here — the frozen-pane `false` is not a failure signal.
+
+**Pre-existing, found while verifying, NOT fixed (needs James's call):** no stylesheet in
+this world declares a `font-family` — not `world.css`, not `tuner.css` — and `tuner.html`
+links only `tuner.css`. So the entire control surface, embedded and detached, renders in
+the browser default serif (Times New Roman). Confirmed against `git show HEAD` that this
+predates the rename. One line of CSS whenever he wants it.
+
+Unchanged on purpose: the `pork-2002` preset id, `PORK_TILES`/`PORK_ROWS` and the
+decoded 2002 timing constants. Those name the source material, not the world.
 
 ## 2026-07-26 wrap — Claude (Opus 5)
 

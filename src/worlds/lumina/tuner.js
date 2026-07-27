@@ -1,9 +1,9 @@
-// Relaaax — the control surface, as a standalone module. Builds the whole
+// Lumina — the control surface, as a standalone module. Builds the whole
 // two-tab panel (VISUAL | AUDIO) into any container and talks to the field
 // only through a bus, so the same UI runs embedded in the world page AND in
 // the detached controller window (tuner.html) over BroadcastChannel.
 //
-//   RelaaaxTuner.mount({ container, bus, embedded });
+//   LuminaTuner.mount({ container, bus, embedded });
 //   bus: { send(cmd), onSnapshot(cb), onBeat(cb), requestSnapshot() }
 //
 // The tuner owns no state — every change is a command to the host
@@ -11,12 +11,21 @@
 (function () {
   "use strict";
 
-  const FIELD = globalThis.RelaaaxField;
-  const DSP = globalThis.RelaaaxMusicDSP;
+  const FIELD = globalThis.LuminaField;
+  const DSP = globalThis.LuminaMusicDSP;
 
   const SPEED_MAX = 8;
   const BLUR_MAX = 300;
   const TILE_MAX = 300;
+
+  // Panel type size. The whole surface is sized in em off one base in
+  // tuner.css, so this one multiplier scales type, pads, control heights and
+  // slider tracks together. 100 = the panel as it was before 2026-07-27; keep
+  // that in step with the --ui-scale fallback in tuner.css.
+  const UI_SCALE_KEY = "lumina-ui-scale";
+  const UI_SCALE_DEFAULT = 100;
+  const UI_SCALE_MIN = 80;
+  const UI_SCALE_MAX = 220;
 
   const pct = {
     toSlider: (v) => Math.round(v * 1000),
@@ -208,10 +217,51 @@
     const header = el("div", "tuner-tabs");
     const tabVisual = button("visual", "The field: structure, patterns, geometry, colors, FX rack", () => setTab("visual"), "tuner-tab");
     const tabAudio = button("audio", "The music: player, DJ sets, reactivity, mod matrix", () => setTab("audio"), "tuner-tab");
-    header.append(tabVisual, tabAudio);
+    // Right side of the tab bar: text size, then detach. Sticky with the tabs,
+    // so it's reachable from either tab.
+    const headRight = el("div", "tuner-headright");
+
+    // Panel type size. NOT a field parameter and deliberately NOT sent over the
+    // channel — the detached controller usually sits on a different screen than
+    // the visualization, so each window remembers its own size.
+    {
+      const wrap = el("div", "tuner-textsize");
+      wrap.appendChild(el("label", "tuner-label", "text"));
+      const input = el("input");
+      input.type = "range";
+      input.className = "tuner-textrange";
+      input.min = String(UI_SCALE_MIN);
+      input.max = String(UI_SCALE_MAX);
+      input.step = "5";
+      input.title = "Size of this panel's type and controls — double-click resets";
+      const out = el("output");
+      const apply = (pct, persist) => {
+        container.style.setProperty("--ui-scale", String(pct / 100));
+        out.textContent = `${pct}%`;
+        if (persist) {
+          try { localStorage.setItem(UI_SCALE_KEY, String(pct)); } catch (err) { /* fine */ }
+        }
+      };
+      let start = UI_SCALE_DEFAULT;
+      try {
+        const stored = Number(localStorage.getItem(UI_SCALE_KEY));
+        if (Number.isFinite(stored) && stored >= UI_SCALE_MIN && stored <= UI_SCALE_MAX) start = stored;
+      } catch (err) { /* fine */ }
+      input.value = String(start);
+      apply(start, false);
+      input.addEventListener("input", () => apply(Number(input.value), true));
+      input.addEventListener("dblclick", () => {
+        input.value = String(UI_SCALE_DEFAULT);
+        apply(UI_SCALE_DEFAULT, true);
+      });
+      wrap.append(input, out);
+      headRight.appendChild(wrap);
+    }
+
+    header.append(tabVisual, tabAudio, headRight);
     if (embedded) {
-      header.appendChild(button("detach ⧉", "Pop the controls out into their own window — drag it to another screen", () => {
-        window.open("./tuner.html", "relaaax-tuner", "width=1060,height=920");
+      headRight.appendChild(button("detach ⧉", "Pop the controls out into their own window — drag it to another screen", () => {
+        window.open("./tuner.html", "lumina-tuner", "width=1060,height=920");
       }, "tuner-btn tuner-detach"));
     }
     container.appendChild(header);
@@ -227,7 +277,7 @@
       panes.audio.hidden = name !== "audio";
       tabVisual.classList.toggle("tuner-tab--on", name === "visual");
       tabAudio.classList.toggle("tuner-tab--on", name === "audio");
-      try { localStorage.setItem("relaaax-tuner-tab", name); } catch (err) { /* fine */ }
+      try { localStorage.setItem("lumina-tuner-tab", name); } catch (err) { /* fine */ }
     }
 
     // ========================================================================
@@ -252,13 +302,30 @@
         }
       });
       del.disabled = true;
+
+      // The roll cluster: back ← dice → keep. Undo what the dice just did, roll
+      // again, or bank what's on screen without breaking stride.
+      const back = button("↩", "Back — undo the last roll or preset load. Whole-look jumps only, not slider tweaks", () => send({ scope: "field", type: "undo" }), "tuner-btn tuner-dice tuner-back");
+      back.disabled = true;
       const dice = button("🎲", "Roll the dice — randomize every visual parameter at once", () => send({ scope: "field", type: "randomize" }), "tuner-btn tuner-dice");
-      row.append(save, del, dice);
-      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list. the page always opens on pork 2002 — “last session” brings back wherever the sliders were when you left. 🎲 rolls a completely random look — keep rolling, save the keepers"));
+      // A name is pre-filled so banking a look is one keystroke (Enter) when
+      // the music is running and you don't want to stop and think of one.
+      const keep = button("keep", "Bank the look that's on screen right now under a name", () => {
+        const taken = new Set((snap && snap.fieldPresets ? snap.fieldPresets.user : []).map((n) => n.toLowerCase()));
+        let suggested = "keep 1";
+        for (let i = 1; i < 999; i++) {
+          if (!taken.has(`keep ${i}`)) { suggested = `keep ${i}`; break; }
+        }
+        const name = (prompt("Name this look:", suggested) || "").trim();
+        if (name) send({ scope: "field", type: "presetSave", name });
+      }, "tuner-btn tuner-keep");
+      row.append(save, del, back, dice, keep);
+      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list. the page always opens on pork 2002 — “last session” brings back wherever the sliders were when you left. 🎲 rolls a completely random look; ↩ takes back the last roll; keep banks what you're looking at under a name"));
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "field", type: "preset", value: sel.value });
       });
+      onReflect(() => { back.disabled = !snap.fieldPresets.canUndo; });
       // Options rebuild only when the preset LIST changes — snapshots stream
       // continuously during playback and a rebuild closes an open dropdown.
       let listSig = "";
@@ -336,9 +403,9 @@
 
     section(V, "scene");
     {
-      const sceneIds = (globalThis.RelaaaxScenes && globalThis.RelaaaxScenes.LIST) ||
+      const sceneIds = (globalThis.LuminaScenes && globalThis.LuminaScenes.LIST) ||
         ["none", "ink", "ridge", "flame", "nebula"];
-      const genomeNames = ((globalThis.RelaaaxScenes && globalThis.RelaaaxScenes.GENOMES) || []).map((g) => [g.name, g.name]);
+      const genomeNames = ((globalThis.LuminaScenes && globalThis.LuminaScenes.GENOMES) || []).map((g) => [g.name, g.name]);
       minis(V, [
         select("field", "scene", "scene", sceneIds.map((s) => [s, s]), { desc: "a GPU backdrop painted UNDER the tiles — ink turbulence, neon ridge flow, fractal flame, star tunnel. none = the classic field" }),
         select("field", "scenePalette", "scene palette", Object.keys(FIELD.PALETTES).concat("genome").map((p) => [p, p]), { desc: "the scene's own color ramp, separate from the tiles' — duo borrows the two pickers, genome uses the flame's own bred colors" }),
@@ -596,7 +663,7 @@
 
     section(A, "reactivity");
     const beatDot = el("span");
-    beatDot.id = "rlx-m-beatdot";
+    beatDot.id = "lum-m-beatdot";
     minis(A, [
       slider("music", "master", "react", MUSIC_SLIDERS.master, { desc: "how hard the music grips the field overall — every mapping below scales through this" }),
       slider("music", "attack", "attack", MUSIC_SLIDERS.attack, { desc: "how fast the band followers rise" }),
@@ -739,10 +806,10 @@
     });
 
     let tab = "visual";
-    try { tab = localStorage.getItem("relaaax-tuner-tab") || "visual"; } catch (err) { /* fine */ }
+    try { tab = localStorage.getItem("lumina-tuner-tab") || "visual"; } catch (err) { /* fine */ }
     setTab(tab === "audio" ? "audio" : "visual");
     bus.requestSnapshot();
   }
 
-  globalThis.RelaaaxTuner = { mount };
+  globalThis.LuminaTuner = { mount };
 })();

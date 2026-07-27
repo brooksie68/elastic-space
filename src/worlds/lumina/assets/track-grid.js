@@ -1,5 +1,5 @@
-// Relaaax — the measured beat grid for each track, written by
-// tmp/relaaax/track-analyze.mjs. DO NOT hand-edit; re-run the analyzer.
+// Lumina — the measured beat grid for each track, written by
+// tmp/lumina/track-analyze.mjs. DO NOT hand-edit; re-run the analyzer.
 //
 // This is what lets the visuals sit ON the beat instead of chasing it: the
 // runtime converts audio.currentTime into beat/bar/phrase position directly,
@@ -10,7 +10,7 @@
 // punches are the moments worth hitting: "drop" (energy jump), "break-return"
 // (percussion comes back after dropping out), "groove" (the rhythm pattern
 // itself changes), "build" (start of a climb into a hit).
-globalThis.RELAAAX_TRACK_GRID = {
+globalThis.LUMINA_TRACK_GRID = {
   "Angular Ritual.mp3": {
     bpm: 115, bpmSource: "james", lockRatio: 2.55,
     beatLen: 0.5217391, barLen: 2.0869565, firstDownbeat: 0.647,

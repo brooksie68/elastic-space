@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Relaaax — controls</title>
+  <title>Lumina — controls</title>
   <link rel="stylesheet" href="./tuner.css" />
 </head>
-<body class="rlx-tuner-page">
+<body class="lum-tuner-page">
   <!-- The detached controller: the same control surface as the in-page panel,
-       driving the visualization page over BroadcastChannel("relaaax-ctl").
+       driving the visualization page over BroadcastChannel("lumina-ctl").
        Open this via the panel's detach button (or directly in a second
        window), drag it to another screen, and play. -->
-  <section id="rlx-tuner" class="rlx-tuner" role="group" aria-label="Relaaax controls"></section>
+  <section id="lum-tuner" class="lum-tuner" role="group" aria-label="Lumina controls"></section>
 
-  <script src="./relaaax-field.js"></script>
+  <script src="./migrate-storage.js"></script>
+  <script src="./lumina-field.js"></script>
   <script src="./assets/flame-genomes.js"></script>
   <script src="./scenes.js"></script>
   <script src="./music-dsp.js"></script>

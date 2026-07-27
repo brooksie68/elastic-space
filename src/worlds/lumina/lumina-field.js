@@ -1,10 +1,10 @@
-// Relaaax — the oscillator field, as an embeddable renderer.
+// Lumina — the oscillator field, as an embeddable renderer.
 // Rebuilt from Spastic Space pork.html (2002). Timing decoded from the original
 // GIFs — see assets/spastic-space/recreation-notes.md. Mounts into any container
 // and fills it; all geometry scales off the container, so size and aspect ratio
 // are the host's business.
 //
-//   const field = RelaaaxField.mount(containerEl, config);
+//   const field = LuminaField.mount(containerEl, config);
 //   field.setConfig({ speed: 2 });   // partial, live, no phase jumps
 //   field.getConfig();
 //   field.destroy();
@@ -520,10 +520,10 @@
     let lutKey = "";
 
     const root = document.createElement("div");
-    root.className = "rlx-field";
+    root.className = "lum-field";
 
     const outer = document.createElement("div");
-    outer.className = "rlx-outer";
+    outer.className = "lum-outer";
     root.appendChild(outer);
 
     // Everything that oscillates: { el, spec, seed, rawPhase, kind }.
@@ -582,7 +582,7 @@
     // Attach counter / nest children to a tile element; register oscillators.
     function decorateTile(tile, seedRef) {
       if (cfg.counter > 0) {
-        const counterEl = makeTileEl("rlx-tile rlx-counter");
+        const counterEl = makeTileEl("lum-tile lum-counter");
         tile.el.parentElement.appendChild(counterEl);
         tile.counterEl = counterEl;
         tile.counterOsc = makeOsc(counterEl, seedRef.i++, "counter");
@@ -590,7 +590,7 @@
       const levels = Math.round(cfg.nest);
       let parent = tile.el;
       for (let l = 0; l < levels; l++) {
-        const nestEl = makeTileEl("rlx-nest");
+        const nestEl = makeTileEl("lum-nest");
         nestEl.style.inset = l === 0 ? "22%" : "30%";
         parent.appendChild(nestEl);
         tile.nestOscs.push(makeOsc(nestEl, seedRef.i++, "nest"));
@@ -621,12 +621,12 @@
       if (!positioned) {
         for (let r = 0; r < cfg.rows; r++) {
           const box = document.createElement("div");
-          box.className = "rlx-box";
+          box.className = "lum-box";
           boxes.push({ el: box, osc: makeOsc(box, seedRef.i++, "box") });
           for (let c = 0; c < cfg.cols; c++) {
             const cell = document.createElement("div");
-            cell.className = "rlx-cell";
-            const tileEl = makeTileEl("rlx-tile");
+            cell.className = "lum-cell";
+            const tileEl = makeTileEl("lum-tile");
             const tile = { el: tileEl, cell, r, c, osc: null, nestOscs: [], x: 0, y: 0, ang: 0 };
             tile.osc = makeOsc(tileEl, seedRef.i++, "tile");
             tiles.push(tile);
@@ -640,8 +640,8 @@
         const placed = layoutTiles(cfg);
         for (const p of placed.tiles) {
           const cell = document.createElement("div");
-          cell.className = "rlx-cell rlx-cell--free";
-          const tileEl = makeTileEl("rlx-tile");
+          cell.className = "lum-cell lum-cell--free";
+          const tileEl = makeTileEl("lum-tile");
           const tile = { el: tileEl, cell, r: p.r, c: p.c, osc: null, nestOscs: [], x: p.x, y: p.y, ang: p.ang };
           tile.osc = makeOsc(tileEl, seedRef.i++, "tile");
           tiles.push(tile);
@@ -660,8 +660,8 @@
     function place() {
       if (!positioned) return;
       const placed = layoutTiles(cfg);
-      outer.style.setProperty("--rlx-lw", placed.w);
-      outer.style.setProperty("--rlx-lh", placed.h);
+      outer.style.setProperty("--lum-lw", placed.w);
+      outer.style.setProperty("--lum-lh", placed.h);
       tiles.forEach((tile, i) => {
         const p = placed.tiles[i];
         if (!p) return;
@@ -741,18 +741,18 @@
     // them by --ux/--uy/--umin so everything keeps scaling off the container.
     function applyGeometry() {
       const s = root.style;
-      s.setProperty("--rlx-mt", cfg.marginTop);
-      s.setProperty("--rlx-mr", cfg.marginRight);
-      s.setProperty("--rlx-mb", cfg.marginBottom);
-      s.setProperty("--rlx-ml", cfg.marginLeft);
-      s.setProperty("--rlx-inset", cfg.inset);
-      s.setProperty("--rlx-cellw", TILE + cfg.gapX);
-      s.setProperty("--rlx-cellh", TILE + cfg.gapY);
-      s.setProperty("--rlx-tile", cfg.tileSize);
-      s.setProperty("--rlx-bw", cfg.border);
-      s.setProperty("--rlx-r-tile", cfg.radiusTile);
-      s.setProperty("--rlx-r-row", cfg.radiusRow);
-      s.setProperty("--rlx-r-outer", cfg.radiusOuter);
+      s.setProperty("--lum-mt", cfg.marginTop);
+      s.setProperty("--lum-mr", cfg.marginRight);
+      s.setProperty("--lum-mb", cfg.marginBottom);
+      s.setProperty("--lum-ml", cfg.marginLeft);
+      s.setProperty("--lum-inset", cfg.inset);
+      s.setProperty("--lum-cellw", TILE + cfg.gapX);
+      s.setProperty("--lum-cellh", TILE + cfg.gapY);
+      s.setProperty("--lum-tile", cfg.tileSize);
+      s.setProperty("--lum-bw", cfg.border);
+      s.setProperty("--lum-r-tile", cfg.radiusTile);
+      s.setProperty("--lum-r-row", cfg.radiusRow);
+      s.setProperty("--lum-r-outer", cfg.radiusOuter);
       root.dataset.shape = cfg.shape;
       outer.style.filter = cfg.blur > 0 ? `blur(calc(var(--umin, 1px) * ${cfg.blur}))` : "none";
     }
@@ -955,7 +955,7 @@
     };
   }
 
-  globalThis.RelaaaxField = {
+  globalThis.LuminaField = {
     mount, DEFAULTS, TIMING, PATTERNS, RAMP, oscValue, seedFor,
     LAYOUTS, SHAPES, WAVEFORMS, PALETTES, FX_KEYS, layoutTiles, buildLut,
   };

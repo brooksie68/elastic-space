@@ -155,8 +155,22 @@ These are the only edits a new world makes elsewhere, and all of them are requir
    exceptions):** a `document` `pointerdown` listener that closes the panel unless
    the press lands inside the panel or on its toggle. Use `pointerdown`, not
    `click`, so a slider drag released off-panel doesn't count as "away" and the
-   toggle doesn't close-then-reopen in one press. Relaaax `world.js` has the
+   toggle doesn't close-then-reopen in one press. Lumina `world.js` has the
    reference snippet; all shipped panels were retrofitted 2026-07-25.
+   **Every control panel MUST carry a text-size control (James, 2026-07-26
+   Valence Lab, restated 2026-07-27 Lumina — "any panels that you make"):**
+   size the WHOLE panel in `em` off one base (`--ui-base` × `--ui-scale`) so a
+   single multiplier moves type, padding, control heights and slider tracks
+   together; a control that only grows the letters leaves the layout behind.
+   Keep the CSS var fallback equal to the JS default so the first paint isn't
+   the wrong size, and leave viewport-anchored chrome (panel offset, scroll cap)
+   in `rem`. Lumina `tuner.css`/`tuner.js` is the reference; persist per window
+   when the panel can be detached to a second screen.
+   **Slider tracks are capped, not fluid:** precision stops improving well
+   before a track reaches the far side of the panel, and past that the extra
+   length is just mouse travel — wrong for live play. Lay control rows out as
+   grid columns (`repeat(auto-fill, minmax(15em, 1fr))`), not `flex: 1`, which
+   stretches two controls across a whole wide panel.
 2. **Curator mode:** gallery worlds (worlds that hang swappable art) load
    `src/core/curator.js` via dynamic import when `?curate=1` is present and the page is
    served. Mandala Shop's `world.js` is the reference adapter. Layout files

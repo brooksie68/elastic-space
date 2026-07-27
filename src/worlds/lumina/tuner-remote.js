@@ -1,5 +1,5 @@
-// Relaaax — detached-controller boot: bridges the control surface (tuner.js)
-// to the visualization page over BroadcastChannel("relaaax-ctl"). The host
+// Lumina — detached-controller boot: bridges the control surface (tuner.js)
+// to the visualization page over BroadcastChannel("lumina-ctl"). The host
 // side lives in world.js. Same-origin only — both windows must come from the
 // same server.
 (function () {
@@ -10,7 +10,7 @@
     return;
   }
 
-  const channel = new BroadcastChannel("relaaax-ctl");
+  const channel = new BroadcastChannel("lumina-ctl");
   const snapCbs = [];
   const beatCbs = [];
 
@@ -31,8 +31,8 @@
 
   window.addEventListener("beforeunload", () => channel.postMessage({ t: "bye" }));
 
-  RelaaaxTuner.mount({
-    container: document.getElementById("rlx-tuner"),
+  LuminaTuner.mount({
+    container: document.getElementById("lum-tuner"),
     bus,
     embedded: false,
   });

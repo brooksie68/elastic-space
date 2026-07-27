@@ -1,7 +1,7 @@
-// Relaaax — music reactivity DSP: band energies, envelope followers, beat
+// Lumina — music reactivity DSP: band energies, envelope followers, beat
 // detection, and the mod-matrix math. Deliberately DOM-free (no audio nodes,
 // no elements) so the exact shipping math runs in a Node sim
-// (tmp/relaaax/music-sim.mjs) as well as the page. music.js owns the Web
+// (tmp/lumina/music-sim.mjs) as well as the page. music.js owns the Web
 // Audio graph and feeds this raw band energies per frame.
 (function () {
   "use strict";
@@ -192,7 +192,7 @@
 
   // --- the beat clock --------------------------------------------------------
   // Pure: track time + measured grid -> musical position. No audio analysis,
-  // no lag. `grid` is one entry of RELAAAX_TRACK_GRID.
+  // no lag. `grid` is one entry of LUMINA_TRACK_GRID.
   function clockAt(grid, time) {
     if (!grid) return null;
     const beats = (time - grid.firstDownbeat) / grid.beatLen;
@@ -260,7 +260,7 @@
     return out;
   }
 
-  globalThis.RelaaaxMusicDSP = {
+  globalThis.LuminaMusicDSP = {
     create,
     modulate,
     bandsFromSpectrum,

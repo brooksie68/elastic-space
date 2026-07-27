@@ -1023,7 +1023,7 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
-  // Flame-farm cull: the gallery page (tmp/relaaax/flame-farm/gallery.html)
+  // Flame-farm cull: the gallery page (tmp/lumina/flame-farm/gallery.html)
   // posts James's checked picks here so Claude can read them back.
   if (pathname === "/api/flame-picks" && request.method === "POST") {
     const payload = await readBody(request);
@@ -1032,7 +1032,7 @@ async function handleApi(request, response, pathname) {
       sendJson(response, 400, { error: "Body must be { picks: [\"<id>\", ...] }." });
       return true;
     }
-    const dir = join(rootDir, "tmp", "relaaax", "flame-farm");
+    const dir = join(rootDir, "tmp", "lumina", "flame-farm");
     await mkdir(dir, { recursive: true });
     await writeFile(
       join(dir, "picks.json"),

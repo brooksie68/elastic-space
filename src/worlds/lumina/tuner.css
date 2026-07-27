@@ -1,35 +1,56 @@
-/* Relaaax — control surface styles, shared by the embedded panel (index.html)
+/* Lumina — control surface styles, shared by the embedded panel (index.html)
    and the detached controller window (tuner.html). */
 
-.rlx-tuner {
+/* Roboto (Apache 2.0), latin subset, variable weight — bundled locally so the
+   panel looks the same offline and under file://. Google serves 400 and 500
+   from this one variable file. */
+@font-face {
+  font-family: "Roboto";
+  src: url("./assets/fonts/roboto-latin-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* THE PANEL IS SIZED IN em OFF ONE BASE. Every type size, pad, gap and control
+   height below is em, so the "text size" control in the tab bar (--ui-scale,
+   persisted per window under `lumina-ui-scale`) scales the whole surface
+   together instead of just the letters. Only viewport-anchored chrome — the
+   bottom offset, the scroll cap, the width backstop — stays in rem.
+   --ui-base 16px x --ui-scale 1 reproduces the pre-2026-07-27 panel exactly;
+   keep that fallback in step with UI_SCALE_DEFAULT in tuner.js. */
+.lum-tuner {
+  --ui-base: 16px;
   backdrop-filter: blur(10px);
   background: rgba(8, 8, 8, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 1rem;
+  border-radius: 1em;
   bottom: 1rem;
   display: grid;
-  gap: 0.85rem;
+  font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: calc(var(--ui-base) * var(--ui-scale, 1));
+  gap: 0.85em;
   left: 50%;
   max-height: calc(100vh - 6rem);
   overflow-y: auto;
-  padding: 1rem 1.3rem;
+  padding: 1em 1.3em;
   position: fixed;
   transform: translateX(-50%);
-  width: min(70rem, calc(100vw - 8rem));
+  width: min(70em, calc(100vw - 8rem));
   z-index: 10;
 }
 
-.rlx-tuner[hidden] {
+.lum-tuner[hidden] {
   display: none;
 }
 
 /* Detached window: the same panel fills the page instead of floating. */
-body.rlx-tuner-page {
+body.lum-tuner-page {
   background: #0b0b0e;
   margin: 0;
 }
 
-body.rlx-tuner-page .rlx-tuner {
+body.lum-tuner-page .lum-tuner {
   border: none;
   border-radius: 0;
   bottom: auto;
@@ -47,8 +68,8 @@ body.rlx-tuner-page .rlx-tuner {
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   display: flex;
-  gap: 0.6rem;
-  padding-bottom: 0.65rem;
+  gap: 0.6em;
+  padding-bottom: 0.65em;
   position: sticky;
   top: 0;
 }
@@ -60,9 +81,9 @@ body.rlx-tuner-page .rlx-tuner {
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.55);
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.78em;
   letter-spacing: 0.28em;
-  padding: 0.42rem 1.4rem;
+  padding: 0.538em 1.795em;
   text-transform: uppercase;
   transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
@@ -78,13 +99,48 @@ body.rlx-tuner-page .rlx-tuner {
   color: #fff;
 }
 
-.tuner-detach {
+/* Right side of the sticky tab bar: text size, then detach. */
+.tuner-headright {
+  align-items: center;
+  display: flex;
+  gap: 0.7em;
   margin-left: auto;
+}
+
+.tuner-headright .tuner-detach {
+  margin-left: 0;
+}
+
+.tuner-textsize {
+  align-items: center;
+  display: flex;
+  gap: 0.5em;
+}
+
+/* Short on purpose — it is chrome, not a performance control. */
+.lum-tuner input[type="range"].tuner-textrange {
+  flex: none;
+  min-width: 0;
+  width: 5.5em;
+}
+
+.tuner-textsize output {
+  min-width: 4ch;
+}
+
+/* Back sits left of the dice and reads quieter than it until there is
+   something to undo. */
+.tuner-back:disabled {
+  opacity: 0.25;
+}
+
+.tuner-keep {
+  letter-spacing: 0.12em;
 }
 
 .tuner-pane {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.85em;
 }
 
 .tuner-pane[hidden] {
@@ -96,98 +152,111 @@ body.rlx-tuner-page .rlx-tuner {
 .tuner-speed {
   align-items: center;
   display: flex;
-  gap: 0.85rem;
+  gap: 0.85em;
 }
 
 .tuner-speed label,
 .tuner-label {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
+  font-size: 0.72em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
 /* The dice: bigger glyph than the text buttons next to it. */
 .tuner-dice {
-  font-size: 1.05rem;
+  font-size: 1.05em;
   line-height: 1;
-  padding-inline: 0.5rem;
+  padding-inline: 0.476em;
 }
 
-.rlx-tuner input[type="range"] {
+/* Track lengths are capped, not fluid. Slider precision stops improving long
+   before the track reaches the far side of the page — past roughly 20em the
+   extra length only costs mouse travel, which is exactly wrong for live play. */
+.lum-tuner input[type="range"] {
   appearance: none;
   background: transparent;
   cursor: pointer;
   flex: 1;
-  height: 1.4rem;
+  height: 1.4em;
   margin: 0;
-  min-width: 4rem;
+  max-width: 20em;
+  min-width: 4em;
 }
 
-.rlx-tuner input[type="range"]::-webkit-slider-runnable-track {
+/* Inside a grid column the track gets what the label leaves, capped shorter. */
+.tuner-mini input[type="range"] {
+  max-width: 7.5em;
+}
+
+.lum-tuner input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
   height: 4px;
 }
 
-.rlx-tuner input[type="range"]::-webkit-slider-thumb {
+.lum-tuner input[type="range"]::-webkit-slider-thumb {
   appearance: none;
   background: #f5f5f5;
   border-radius: 50%;
-  height: 1rem;
+  height: 1em;
   margin-top: -6px;
-  width: 1rem;
+  width: 1em;
 }
 
-.rlx-tuner input[type="range"]::-moz-range-track {
+.lum-tuner input[type="range"]::-moz-range-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
   height: 4px;
 }
 
-.rlx-tuner input[type="range"]::-moz-range-thumb {
+.lum-tuner input[type="range"]::-moz-range-thumb {
   background: #f5f5f5;
   border: none;
   border-radius: 50%;
-  height: 1rem;
-  width: 1rem;
+  height: 1em;
+  width: 1em;
 }
 
-.rlx-tuner output {
+.lum-tuner output {
   color: rgba(255, 255, 255, 0.85);
-  font-size: 0.8rem;
+  font-size: 0.8em;
   font-variant-numeric: tabular-nums;
   min-width: 4.5ch;
   text-align: right;
 }
 
+/* Uniform columns, not stretch-to-fill. The old `flex: 1` let two or three
+   controls on a row split the whole 70em panel between them, so a knob with a
+   short label got a 20em slider it had no use for. A grid gives every control
+   the same width and packs more per row; the slider caps below stop the track
+   from eating whatever the label doesn't. */
 .tuner-minis {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem 1.4rem;
+  display: grid;
+  gap: 0.7em 1.4em;
+  grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
 }
 
 .tuner-mini {
   align-items: center;
   display: flex;
-  flex: 1;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  min-width: 13rem;
+  gap: 0.6em;
+  min-width: 0;
 }
 
 .tuner-desc {
   color: rgba(255, 255, 255, 0.45);
-  font-size: 0.68rem;
+  font-size: 0.68em;
   letter-spacing: 0.03em;
   line-height: 1.35;
-  margin: -0.2rem 0 0;
+  margin: -0.294em 0 0;
   width: 100%;
 }
 
 .tuner-mini label {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 0.72rem;
+  font-size: 0.72em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
@@ -200,20 +269,20 @@ body.rlx-tuner-page .rlx-tuner {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.7em;
 }
 
 .tuner-frame input[type="number"] {
   appearance: textfield;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
+  border-radius: 0.45em;
   color: rgba(255, 255, 255, 0.85);
-  font-size: 0.8rem;
+  font-size: 0.8em;
   font-variant-numeric: tabular-nums;
-  padding: 0.3rem 0.5rem;
+  padding: 0.375em 0.625em;
   text-align: center;
-  width: 5.2rem;
+  width: 6.5em;
 }
 
 .tuner-frame input[type="number"]:focus-visible {
@@ -223,7 +292,7 @@ body.rlx-tuner-page .rlx-tuner {
 
 .tuner-x {
   color: rgba(255, 255, 255, 0.45);
-  font-size: 0.8rem;
+  font-size: 0.8em;
 }
 
 .tuner-frame .tuner-desc {
@@ -235,18 +304,18 @@ body.rlx-tuner-page .rlx-tuner {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.7em;
 }
 
 .tuner-colors input[type="color"] {
   appearance: none;
   background: none;
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
+  border-radius: 0.45em;
   cursor: pointer;
-  height: 1.9rem;
+  height: 1.9em;
   padding: 2px;
-  width: 2.6rem;
+  width: 2.6em;
 }
 
 .tuner-colors input[type="color"]::-webkit-color-swatch-wrapper {
@@ -255,12 +324,12 @@ body.rlx-tuner-page .rlx-tuner {
 
 .tuner-colors input[type="color"]::-webkit-color-swatch {
   border: none;
-  border-radius: 0.3rem;
+  border-radius: 0.3em;
 }
 
 .tuner-colors input[type="color"]::-moz-color-swatch {
   border: none;
-  border-radius: 0.3rem;
+  border-radius: 0.3em;
 }
 
 .tuner-reset {
@@ -270,10 +339,10 @@ body.rlx-tuner-page .rlx-tuner {
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: 0.72em;
   letter-spacing: 0.22em;
   margin-left: auto;
-  padding: 0.35rem 0.85rem 0.35rem 1.05rem;
+  padding: 0.486em 1.181em 0.486em 1.458em;
   text-transform: uppercase;
   transition: border-color 120ms ease, color 120ms ease;
 }
@@ -289,10 +358,10 @@ body.rlx-tuner-page .rlx-tuner {
 .tuner-section {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.4);
-  font-size: 0.66rem;
+  font-size: 0.66em;
   letter-spacing: 0.28em;
-  margin: 0.15rem 0 -0.35rem;
-  padding-top: 0.7rem;
+  margin: 0.227em 0 -0.53em;
+  padding-top: 1.06em;
   text-transform: uppercase;
 }
 
@@ -300,26 +369,26 @@ body.rlx-tuner-page .rlx-tuner {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.7em;
 }
 
-.rlx-tuner select {
+.lum-tuner select {
   appearance: none;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
+  border-radius: 0.45em;
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.6rem;
+  font-size: 0.8em;
+  padding: 0.375em 0.75em;
 }
 
-.rlx-tuner select:focus-visible {
+.lum-tuner select:focus-visible {
   border-color: rgba(255, 255, 255, 0.8);
   outline: none;
 }
 
-.rlx-tuner select option {
+.lum-tuner select option {
   background: #141418;
 }
 
@@ -331,12 +400,12 @@ body.rlx-tuner-page .rlx-tuner {
   appearance: none;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 0.45rem;
+  border-radius: 0.45em;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.8em;
   line-height: 1;
-  padding: 0.32rem 0.55rem;
+  padding: 0.4em 0.688em;
   transition: border-color 120ms ease, color 120ms ease;
 }
 
@@ -357,8 +426,8 @@ body.rlx-tuner-page .rlx-tuner {
   cursor: pointer;
   display: flex;
   flex: none;
-  font-size: 0.72rem;
-  gap: 0.45rem;
+  font-size: 0.72em;
+  gap: 0.625em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
@@ -366,8 +435,8 @@ body.rlx-tuner-page .rlx-tuner {
 .tuner-check input[type="checkbox"] {
   accent-color: #f5f5f5;
   cursor: pointer;
-  height: 1rem;
-  width: 1rem;
+  height: 1em;
+  width: 1em;
 }
 
 .tuner-btn {
@@ -377,9 +446,9 @@ body.rlx-tuner-page .rlx-tuner {
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: 0.72em;
   letter-spacing: 0.12em;
-  padding: 0.35rem 0.85rem;
+  padding: 0.486em 1.181em;
   text-transform: uppercase;
   transition: border-color 120ms ease, color 120ms ease;
 }
@@ -401,31 +470,31 @@ body.rlx-tuner-page .rlx-tuner {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.7rem;
+  gap: 0.7em;
 }
 
 .tuner-transport .tuner-time {
   min-width: 11ch;
 }
 
-.rlx-tuner input[type="range"].tuner-vol {
+.lum-tuner input[type="range"].tuner-vol {
   flex: none;
   min-width: 0;
-  width: 7rem;
+  width: 7em;
 }
 
 /* --- mod matrix + beat indicator ------------------------------------------- */
 
 .tuner-matrix {
   display: grid;
-  gap: 0.45rem 1.4rem;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+  gap: 0.45em 1.4em;
+  grid-template-columns: repeat(auto-fit, minmax(19em, 1fr));
 }
 
 .tuner-modrow {
   align-items: center;
   display: flex;
-  gap: 0.55rem;
+  gap: 0.55em;
 }
 
 .tuner-modrow select {
@@ -434,23 +503,23 @@ body.rlx-tuner-page .rlx-tuner {
 
 .tuner-modarrow {
   color: rgba(255, 255, 255, 0.4);
-  font-size: 0.8rem;
+  font-size: 0.8em;
 }
 
 .tuner-modrow output {
   min-width: 4.5ch;
 }
 
-#rlx-m-beatdot {
+#lum-m-beatdot {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   flex: none;
-  height: 0.55rem;
+  height: 0.55em;
   transition: background 140ms ease;
-  width: 0.55rem;
+  width: 0.55em;
 }
 
-#rlx-m-beatdot.on {
+#lum-m-beatdot.on {
   background: #fff;
   transition: none;
 }

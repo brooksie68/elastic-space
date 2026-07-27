@@ -143,7 +143,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Feel questions + agreed pillars in `src/worlds/arachno-wars-2500/CLAUDE.md` (READ
    IT — it has protected behaviors + hard-won gait lessons). Draft: no
    drift/registry/sound yet.
-5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
+5. **LUMINA PANEL — START THE NEXT LUMINA SESSION HERE (James, 2026-07-27 wrap).**
+   He said it explicitly at wrap: next time we start on optimizing the panel. It is a
+   DESIGN CONVERSATION FIRST, not a build — read the "START HERE" section at the top of
+   `src/worlds/lumina/CLAUDE.md` plus NEXT UP item 4 before saying anything. Short
+   version: the panel is "a big jumble of lots of different stuff", it needs regrouping
+   with shorter clearer explanations (largely a COPY EDIT — every control has a long
+   sentence under it), it must invite live play while the music runs so he can use it
+   like a VJ rig, and the dice becomes "a whole control function" rather than one button.
+   Two loose ends from pass 1: ↩ back and `keep` have never been click-tested, and the
+   grid column minimum (15em) wants a sweep. The rest of the Lumina item is #5.5 below.
+5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
    from the original GIFs with `tools/gif-analyze.mjs`). CSS/JS animation instead of GIFs,
@@ -154,8 +164,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
    See the "Flash status update" section in recreation-notes.md. Embedding is parked;
    recreations proceed as planned.
    Co-build with James — plan first, his go before building.
-   UPDATE 2026-07-19 (build session): the pork half is BUILT as **Relaaax**
-   (`src/worlds/relaaax/`, James's rename) — tunable field renderer staged in a resizable
+   UPDATE 2026-07-19 (build session): the pork half is BUILT — named **Relaaax**
+   then, **LUMINA** since 2026-07-26 (see the rename note at the end of this item)
+   (`src/worlds/lumina/`) — tunable field renderer staged in a resizable
    frame, draft status, no drift/registry yet. Remaining: James tunes by eye; decide the
    setting (his idea: the field playing on a TV in a scene, people watching and drooling);
    then ship wiring. scary_corndog not started — read that world's CLAUDE.md first.
@@ -164,8 +175,8 @@ consistent. `npm run check-worlds` audits every world against the contract.
    James delighted ("way beyond what I expected"). UPDATE 2026-07-24 late: music
    reactivity phase 1 BUILT (his go) — 3 Suno tracks in assets/sound-tracks/, player +
    shuffle, band/beat analysis, 6-row mod matrix with its own presets + per-track
-   recall, sim passes (tmp/relaaax/music-sim.mjs). SAME SESSION, James's "go nuts":
-   VISUAL DJ CLAUDE built — offline track analysis (tmp/relaaax/track-analyze.mjs)
+   recall, sim passes (tmp/lumina/music-sim.mjs). SAME SESSION, James's "go nuts":
+   VISUAL DJ CLAUDE built — offline track analysis (tmp/lumina/track-analyze.mjs)
    + per-track authored light-show compositions (assets/compositions.js, labelled
    events on measured drops/sections) + DOM-free timeline engine (composition.js),
    "claude's set"/"free play" toggle. THEN the full expansion (James: "every single
@@ -177,7 +188,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
    map in the world's CLAUDE.md. v3 2026-07-25 late ("push the envelope", James's
    go after recap; true-fluid-sim + 3D-venue SHELVED by him): SCENE LAYER —
    4 GPU backdrops under the tiles (ink/ridge/flame/nebula, scenes.js, distilled
-   from his tmp/relaaax/viz-examples folder), 9 scene* keys as sliders/matrix
+   from his tmp/lumina/viz-examples folder), 9 scene* keys as sliders/matrix
    targets/composition params; analyzer v2 (bar grid + Foote novelty →
    phrase/sectionsV2); sets re-woven phrase-aware v3; sims 76+14 green, all 6
    shader programs compile-verified; FLAME FARM overnight genome search ran
@@ -197,6 +208,26 @@ consistent. `npm run check-worlds` audits every world against the contract.
    so different parameters follow different players, (3) per-parameter
    re-rolling locked to the grid. An auto-dice build was reverted at his
    instruction — good idea, not ready to drop in.
+   RENAMED 2026-07-26: **Relaaax → LUMINA**, James's call — the old name described
+   the 2002 black-and-white GIF piece, not the full visualizer this became ("it's now
+   not really appropriate or descriptive of what's going on here"). Lumina is Thomas
+   Wilfred's term for light as an art form in its own right. Folder, slug, globals
+   (`LuminaField`/`LuminaFX`/`LUMINA_*`), CSS prefix (`lum-`), localStorage keys,
+   BroadcastChannel and `tmp/lumina/` all moved; `migrate-storage.js` carries James's
+   saved tuner state and presets over from the old keys on first load (delete it once
+   he confirms). Changelog entries before that date keep the old name on purpose.
+   PANEL PASS 1 2026-07-27 (James's brief): Roboto (bundled — the panel had never
+   declared a font and was rendering in Times New Roman), slider tracks capped
+   (widest 1470px → 267px, measured; rows are grid columns now), a text-size
+   control (whole panel sized in em off one base, persisted per window), and the
+   ↩/🎲/keep roll cluster (back undoes whole-look jumps only; keep banks the
+   current look under a pre-filled name). Sims green; back/keep not yet
+   click-tested by anyone. THE REAL WORK IS STILL AHEAD and needs its own
+   session — he calls the panel "a big jumble of lots of different stuff" and
+   wants it regrouped with short clear explanations, built to invite live play
+   while music runs, usable like a VJ rig, with the dice becoming "a whole
+   control function." Design conversation BEFORE code; brief is in the world's
+   CLAUDE.md NEXT UP item 4.
 6. SURROUND: player-vs-computer recreation of Atari's Surround (1977), BUILT
    2026-07-25 as a draft on James's direct ask ("slick and modern looking, 2026
    appropriate") — `src/worlds/surround/` (read its CLAUDE.md first). Pure sim-tested

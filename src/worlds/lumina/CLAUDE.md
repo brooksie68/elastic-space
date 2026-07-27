@@ -1,15 +1,50 @@
-# Relaaax — Claude instructions
+# Lumina — Claude instructions
 
-The Spastic Space pork.html oscillator field (2002), rebuilt as a tunable, embeddable
-renderer. Formerly referred to as the "pork" recreation — James renamed it Relaaax
-(2026-07-19).
+Began as the Spastic Space pork.html oscillator field (2002), rebuilt as a tunable,
+embeddable renderer; it is now a full music-reactive visualizer (scene layer, FX rack,
+beat clock, authored DJ sets).
+
+**Naming history — two renames, don't get them confused.** The build started as the
+"pork" recreation, which James renamed **Relaaax** on 2026-07-19 (after the original
+2002 GIF piece). On 2026-07-26 he renamed it again to **Lumina**, because the old name
+described a black-and-white GIF loop and no longer described this: *"it's now not really
+appropriate or descriptive of what's going on here."* Lumina is Thomas Wilfred's term
+for light treated as an art form in its own right. Everything — folder, slug, globals,
+CSS prefix (`lum-`), localStorage keys, BroadcastChannel — is `lumina` now;
+`migrate-storage.js` copies James's saved state over from the old keys on first load.
+Entries in `changelog.md` from before that date use the old names on purpose.
 
 ## Docs
 
 - `changelog.md` — session history, newest first.
 - `assets/spastic-space/recreation-notes.md` (repo root assets) — the source spec:
   decoded GIF timing table, framing, era notes. The timing constants in
-  `relaaax-field.js` come straight from it.
+  `lumina-field.js` come straight from it.
+
+## START HERE — next session is the panel (James, 2026-07-27 wrap)
+
+He ended the 2026-07-27 session by saying so directly: **the next session starts on
+optimizing the panel.** Don't open with anything else, and don't start by writing panel
+code — his brief is a design problem. Read NEXT UP item 4 below for the full brief in his
+words, then have the conversation.
+
+The three things worth carrying in from the end of that session:
+
+1. **"Shorter, clear explanations" is largely a COPY EDIT.** Every control currently has
+   a long full sentence of `.tuner-desc` under it. Rewriting that copy is cheaper to
+   iterate on than moving boxes, and it may deliver most of what he means by "big jumble"
+   on its own. Consider proposing a copy pass as step one, before any restructuring.
+2. **Two loose ends from pass 1**, both small: the ↩ back and `keep` buttons have never
+   been clicked by anyone (verified by construction only — the detached controller has no
+   host to talk to, and the host page plays music, which doesn't go in the agent browser
+   pane), and the `.tuner-minis` column minimum is 15em, a value that measured well at
+   1585px rather than an optimum. A column-width sweep (13/15/17/19/21em) was attempted
+   and abandoned when the browser pane hung; it would settle the ~8% height increase that
+   capping the sliders introduced.
+3. **The dice is the spine of the redesign,** not a button to relocate. His framing: it
+   "is gonna become a whole control function." The ↩/🎲/keep cluster shipped in pass 1 is
+   the seed of that, and NEXT UP item 3 (per-parameter re-rolling locked to the beat grid)
+   is probably the same feature seen from the other end. Design them together.
 
 ## Next session (2026-07-25 night wrap)
 
@@ -18,7 +53,7 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
   bar; never make a composed set the entry experience again. (2) The
   transport bar (music.js, bottom-left) stays always visible — prev/play/
   STOP/next, track name, set switch. (3) Docked mode: the open in-page panel
-  docks right (body.rlx-docked) so one laptop screen fits viz + controls.
+  docks right (body.lum-docked) so one laptop screen fits viz + controls.
 - **Sets are v4** — fully re-cut on the bar grid; every event is B(n) or a
   measured drop/quiet, labels carry bar numbers ("b41 sheet lightning"), and
   composition-sim ENFORCES the grid (events within 90ms of a bar or on a
@@ -31,7 +66,7 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
   the 3D rave venue (he's unsure he wants it at all — do not pitch again
   unprompted). The other 2026-07-24 direction ideas are absorbed: #3
   waveform-as-matter = a future scene; #4 Electric Sheep breeding = the flame
-  farm (tmp/relaaax/flame-farm) feeding new flame genomes.
+  farm (tmp/lumina/flame-farm) feeding new flame genomes.
 - Flame farm results (if the overnight batch ran) need James's morning cull —
   picks become named genomes/scenes.
 - Still open: more Suno tracks (add to TRACKS + analyze + compose), live audio
@@ -52,10 +87,10 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
   fade with `1 - sceneMix`. Flame gets a Reinhard tone map (uSceneTone).
   With scene "none" every uniform collapses to the pre-v3 math exactly.
 - `scene !== "none"` activates the GL path even with all fx* at 0 (gate in
-  relaaax-field.js frame()).
+  lumina-field.js frame()).
 - The scene clock accumulates dt * sceneSpeed (like the field clock) —
   modulating sceneSpeed never snaps the scene.
-- Scene shader edits are verified by tmp/relaaax/fx-test.html, which compiles
+- Scene shader edits are verified by tmp/lumina/fx-test.html, which compiles
   every program SYNCHRONOUSLY against a real GL context — trust that half
   even when the Browser pane isn't compositing (its live-mount half needs a
   displayed pane). Run composition-sim after any scenes.js/DEFAULTS change.
@@ -67,8 +102,8 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
 
 - The flame scene plays REAL bred genomes from `assets/flame-genomes.js`
   (James's 20 picks of 7,307). Never hand-edit that file — re-run
-  `node tmp/relaaax/flame-farm/export-genomes.mjs` (it reads picks.json +
-  genomes.json). Renders: `tmp/relaaax/flame-farm/renders/<id>.png`.
+  `node tmp/lumina/flame-farm/export-genomes.mjs` (it reads picks.json +
+  genomes.json). Renders: `tmp/lumina/flame-farm/renders/<id>.png`.
 - `sceneGenome` selects by NAME; `scenePalette: "genome"` uses the genome's
   own bred stops. Each genome carries a precomputed frame {cx, cy, scale,
   gain} — gain equalizes diffuse vs concentrated attractors, without it the
@@ -78,7 +113,7 @@ renderer. Formerly referred to as the "pork" recreation — James renamed it Rel
   an additive sequence makes every point follow the same branch order and the
   cloud collapses to a dot; (2) live sample counts are ~15× lower than the
   offline farm's, so brightness must be normalized per genome.
-- Verify with `tmp/relaaax/genome-test.html` (renders all genomes through the
+- Verify with `tmp/lumina/genome-test.html` (renders all genomes through the
   shipping shader, flags fill ratios, posts a contact sheet to
   `tmp/snapshots/flame-genomes-live.jpg` via `POST /api/dev-snapshot` —
   that endpoint exists because the agent browser pane can't screenshot unless
@@ -107,6 +142,18 @@ approved as DIRECTION, none are approved to build — discuss and plan first.
 3. **Per-parameter re-rolling, in time.** The dice, but musical: individual
    knobs re-rolling on their own schedules against the beat grid, rather than
    the whole look changing at once.
+4. **Make the panel a VJ instrument (added 2026-07-27, after panel pass 1).**
+   His words: it is *"kind of a big jumble of lots of different stuff"* and
+   needs *"better grouping with shorter, clear explanations"*; it must
+   *"invite play, and invite live play while music is playing"* — you should
+   *"be able to see what you're gonna do and kind of use it like a VJ."* And
+   the dice *"is gonna become a whole control function"*, not one button.
+   Pass 1 (2026-07-27) only did typography and reach: Roboto, capped slider
+   tracks, a text-size control, and the ↩/🎲/keep roll cluster. The grouping
+   and the live-play affordances are untouched and are a DESIGN CONVERSATION
+   FIRST — plan with him before writing panel code. Bear in mind the descs
+   are currently long sentences under each control; his ask is shorter and
+   clearer, which means editing copy as much as moving boxes.
 
 **Dice status:** the manual 🎲 button SHIPPED and James loves it — *"pressing
 that dice button every four bars is quite incredible, one of the better
@@ -144,7 +191,7 @@ likely as item 3. Don't re-add it unprompted.
 - Accents deliberately do NOT fire before the first downbeat.
 - `syncBeats`/`nest`/`rows`/`cols` are in composition.js SNAP_KEYS — they must
   never be interpolated by a ramp.
-- Verify with `tmp/relaaax/clock-test.html` (asserts the impulse lands on the
+- Verify with `tmp/lumina/clock-test.html` (asserts the impulse lands on the
   exact frame its sixteenth begins).
 
 ## Set composition (v6): looks + variations + a bar score
@@ -169,7 +216,7 @@ likely as item 3. Don't re-add it unprompted.
 
 ## Architecture map (v2, 2026-07-24)
 
-- `relaaax-field.js` — the renderer/instrument. v2 adds structure (layouts,
+- `lumina-field.js` — the renderer/instrument. v2 adds structure (layouts,
   shapes, waveforms, palettes/hueShift, merge/rotate/spin/displace/sizePulse,
   counter, nest) and the fx* config keys. Grid layout keeps the ORIGINAL flex
   DOM path; defaults render pork 2002 verbatim (sim-asserted — keep it that
@@ -180,24 +227,43 @@ likely as item 3. Don't re-add it unprompted.
   when off. FX knobs are field config keys — never invent a side channel.
 - `tuner.js` + `tuner.css` — the whole control surface (two tabs: visual |
   audio), bus-driven, no state of its own. Runs embedded (index.html shell
-  `#rlx-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
-  BroadcastChannel "relaaax-ctl"). New field/music params get their control
+  `#lum-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
+  BroadcastChannel "lumina-ctl"). New field/music params get their control
   HERE, in the right tab.
+- **The panel is sized in `em` off ONE base (2026-07-27).** `.lum-tuner` sets
+  `--ui-base: 16px` and `font-size: calc(var(--ui-base) * var(--ui-scale, 1))`;
+  every type size, pad, gap, control height and slider cap in `tuner.css` is
+  `em` so the text-size control in the tab bar scales the whole surface
+  together. **Do not add `rem` values to this stylesheet** — the only three
+  left are viewport-anchored on purpose (bottom offset, scroll cap, width
+  backstop). Keep the `--ui-scale` fallback in step with `UI_SCALE_DEFAULT` in
+  tuner.js; it is what paints before the module runs. The scale persists PER
+  WINDOW (`lumina-ui-scale`) and is deliberately not sent over the channel —
+  the detached controller is usually on a different screen.
+- **Slider tracks are capped** (20em, 7.5em inside a grid column) and control
+  rows are grid columns, not `flex: 1`. Before this, two controls could split
+  a 1585px panel between them and a knob got a 1470px track. Don't reintroduce
+  fluid track widths — long tracks cost mouse travel and buy no precision.
+- **The roll cluster** (↩ back / 🎲 dice / keep) lives in the preset row.
+  `back` sends `{scope:"field", type:"undo"}`; world.js keeps a 30-deep stack
+  pushed inside `applyPreset`, so it records whole-look JUMPS only — never
+  slider drags. If you ever make hand tweaks undoable, do it as a separate
+  stack; mixing them makes "back" useless during a set.
 - `world.js` — host: clean state authority, command router
-  (`RelaaaxHost`), field presets, frame, detach handshake.
+  (`LuminaHost`), field presets, frame, detach handshake.
 - `music.js` — audio graph, player, reactivity loop, DJ playback; registers
   with the host and mounts the tuner. `music-dsp.js` — DOM-free DSP + the
   TARGETS table (new modulatable params get an entry there).
 - Script order in index.html matters: field → presets → dsp → composition →
   compositions → fx → tuner → world → music.
-- Sims: `node tmp/relaaax/composition-sim.mjs` (58 asserts — engine, sets,
-  field-v2 units) and `node tmp/relaaax/music-sim.mjs` (14) after ANY change
+- Sims: `node tmp/lumina/composition-sim.mjs` (58 asserts — engine, sets,
+  field-v2 units) and `node tmp/lumina/music-sim.mjs` (14) after ANY change
   to the field math, DSP, engine, or sets.
 
 ## World-specific rules
 
-- **Architecture is deliberate:** `relaaax-field.js` is a standalone renderer
-  (`RelaaaxField.mount(container, config)`) that knows nothing about the page, tuner,
+- **Architecture is deliberate:** `lumina-field.js` is a standalone renderer
+  (`LuminaField.mount(container, config)`) that knows nothing about the page, tuner,
   or localStorage. The final setting is undecided (James is thinking a TV in a scene —
   people watching and drooling), so the field must stay droppable into any container.
   Keep page concerns in `world.js`.
@@ -218,7 +284,7 @@ likely as item 3. Don't re-add it unprompted.
   don't retune them in code; the tuner exists so James tunes by eye.
 - **Load behavior (James, 2026-07-25): the page always OPENS on pure DEFAULTS —
   the basic pork 2002 animation.** Tuning still writes to localStorage
-  (`relaaax-tuner`) on every change, but the stored state is never applied
+  (`lumina-tuner`) on every change, but the stored state is never applied
   silently on load — it's reachable as the "last session" entry (value `last`,
   "auto" optgroup) in the field preset menu. Don't reintroduce apply-on-load.
 - Both tuner tabs have a reset: visual's resets field + frame (`resetAll`,
@@ -231,7 +297,7 @@ likely as item 3. Don't re-add it unprompted.
   rebuilt option lists must sig-guard their rebuilds or open dropdowns snap
   shut (see the preset reflectors in tuner.js).
 - `presets.js` is the PERMANENT preset list (each config a partial over DEFAULTS).
-  James's saved presets live in localStorage `relaaax-presets`; when he says one
+  James's saved presets live in localStorage `lumina-presets`; when he says one
   earns a spot, bake it into `presets.js` — never delete or retune existing
   entries there without his say-so.
 - The 1024×768 frame in index.html is TEMPORARY staging, not the design.
@@ -247,20 +313,20 @@ likely as item 3. Don't re-add it unprompted.
   (no directory listing: file:// must keep working).
 - Architecture mirrors the field/world split: `music-dsp.js` is the DOM-free
   math (bands, auto-gain, envelopes, beat detector, mod matrix) so
-  `tmp/relaaax/music-sim.mjs` runs the exact shipping code — run it after any
+  `tmp/lumina/music-sim.mjs` runs the exact shipping code — run it after any
   DSP change (14 assertions). `music.js` is page glue: audio graph, player,
   reactivity UI, modulation loop.
 - **The modulation contract:** `world.js` owns the clean base config (`state`,
-  exposed as `globalThis.relaaaxTuner`); music writes modulated values onto the
+  exposed as `globalThis.luminaTuner`); music writes modulated values onto the
   live field per frame and restores base on stop/master-0. Never save, reflect,
   or preset from `field.getConfig()` while music can be playing — always the
-  clean state. `relaaax-field.js#setConfig` refreshes selectively by key so
+  clean state. `lumina-field.js#setConfig` refreshes selectively by key so
   these per-frame writes do no layout work; keep new config keys sorted into
   FIT_KEYS/GEO_KEYS/COLOR_KEYS or they won't refresh.
 - The analyser taps BEFORE the volume gain — reactivity must never depend on
   listening level. Element volume stays 1; the gain node is the volume.
-- Reactivity presets (`relaaax-music-presets`, factory "stock aggressive"
-  protected like field presets) and per-track recall (`relaaax-music`
+- Reactivity presets (`lumina-music-presets`, factory "stock aggressive"
+  protected like field presets) and per-track recall (`lumina-music`
   store) follow the field-preset rules: bake earned ones into code only on
   James's say-so.
 - Phase 2 ideas (unbuilt, James's "maybe some other something more later"):
@@ -270,8 +336,8 @@ likely as item 3. Don't re-add it unprompted.
 
 - Each track has a Claude-authored composition in `assets/compositions.js`:
   timed events (labelled!) placed on MEASURED musical moments — re-run
-  `node tmp/relaaax/track-analyze.mjs` for the analysis (BPM, downbeat, sections,
-  drops, quiets; JSON in `tmp/relaaax/analysis/`). When a track is added or
+  `node tmp/lumina/track-analyze.mjs` for the analysis (BPM, downbeat, sections,
+  drops, quiets; JSON in `tmp/lumina/analysis/`). When a track is added or
   replaced, analyze first, then compose; never place events by guesswork.
 - `composition.js` is the DOM-free engine (ramps lerp numerics + hex colors,
   strings/booleans snap, backward seek replays). `music.js` holds the toggle
@@ -280,7 +346,7 @@ likely as item 3. Don't re-add it unprompted.
   free play/pause restores the tuner's clean base entirely.
 - Tuning the sets is conversational — James names a labelled moment ("the 59s
   inversion"), Claude edits that event. After ANY edit to compositions.js or
-  composition.js, run `node tmp/relaaax/composition-sim.mjs` (39 assertions:
+  composition.js, run `node tmp/lumina/composition-sim.mjs` (39 assertions:
   ranges, patterns, replay determinism, authored blackout/inversion moments).
 - Sets deliberately open with a full field base at t=0 so they play identically
   regardless of slider state — keep that invariant for new sets.

@@ -8,6 +8,37 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-27 (Lumina panel pass 1)
+
+- Lumina's control panel: **Roboto** (bundled locally, 43 KB latin subset — the panel
+  had never declared a font and had been rendering in Times New Roman), **capped slider
+  tracks** (widest 1470px → 267px, measured A/B; control rows are grid columns now, not
+  `flex: 1`), and a **text-size control** built to the standing pattern — whole panel
+  sized in `em` off one `--ui-base` × `--ui-scale`, persisted per window.
+- New **roll cluster** by the dice: ↩ back (undoes the last whole-look jump, 30 deep,
+  never slider drags) and **keep** (banks the current look under a pre-filled name).
+- The text-size rule is now in the world-building contract (`docs/building-a-world.md`
+  §9.1) alongside click-away dismissal — James restated it as applying to *any* panel.
+- Still to do, and the actual point: regrouping the panel for live VJ use. James's brief
+  is recorded in the world's CLAUDE.md as NEXT UP item 4. Design conversation first.
+
+## 2026-07-26 (Relaaax is now LUMINA)
+
+- James renamed the world: *"it's now not really appropriate or descriptive of what's
+  going on here."* Relaaax named the 2002 black-and-white GIF piece; the world is now a
+  full music-reactive visualizer. **Lumina** is Thomas Wilfred's term for light as an
+  art form in its own right.
+- Full rename, not a label swap: folder, `lumina-field.js`, `tmp/lumina/`, every global
+  (`LuminaField`, `LUMINA_TRACK_GRID`, …), the `lum-` CSS prefix, localStorage keys,
+  BroadcastChannel, world.json (slug/title/summary), admin panel link, `server.mjs`
+  flame-picks path, and doc references across `docs/building-a-world.md`,
+  `assets/spastic-space/recreation-notes.md` and arachno-wars-2500's CLAUDE.md.
+- New `migrate-storage.js` copies James's saved tuner state and presets from the old
+  keys on first load, so the rename costs him nothing. Delete once confirmed.
+- All green: sims 123 + 42, `fx-test.html` FX-OK (six shader programs), `clock-test.html`
+  CLOCK-OK (20 assertions), and the detached controller mounts its 115 controls clean.
+- Pre-rename changelog entries keep the old name deliberately.
+
 ## 2026-07-26 (Valence Lab v3.2: console text size, and what a molecule's shape really is)
 
 - The scope console is now sized in `em` off a single base, so one "text size" control

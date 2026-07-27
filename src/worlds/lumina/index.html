@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Relaaax</title>
+  <title>Lumina</title>
   <link rel="stylesheet" href="./world.css" />
   <link rel="stylesheet" href="./tuner.css" />
 </head>
 <body>
   <!-- Temporary staging: the field lives in a centered 1024×768 frame until
        its final setting is decided. The renderer fills whatever box it's given. -->
-  <main class="rlx-stage">
-    <div id="relaaax-frame" class="rlx-frame"></div>
+  <main class="lum-stage">
+    <div id="lumina-frame" class="lum-frame"></div>
   </main>
 
-  <button id="rlx-tuner-toggle" class="rlx-tuner-toggle" type="button"
-          aria-expanded="false" aria-controls="rlx-tuner"
+  <button id="lum-tuner-toggle" class="lum-tuner-toggle" type="button"
+          aria-expanded="false" aria-controls="lum-tuner"
           title="Tune the field" aria-label="Tune the field">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
          stroke-linecap="round" aria-hidden="true">
@@ -31,11 +31,12 @@
   <!-- The control surface is built into this shell by tuner.js (two tabs:
        visual | audio). The detach button pops the same surface out into
        tuner.html, talking back over BroadcastChannel. -->
-  <section id="rlx-tuner" class="rlx-tuner" role="group" aria-label="Field tuning" hidden></section>
+  <section id="lum-tuner" class="lum-tuner" role="group" aria-label="Field tuning" hidden></section>
 
+  <script src="./migrate-storage.js"></script>
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
-  <script src="./relaaax-field.js"></script>
+  <script src="./lumina-field.js"></script>
   <script src="./presets.js"></script>
   <script src="./music-dsp.js"></script>
   <script src="./composition.js"></script>

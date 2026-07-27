@@ -1,15 +1,15 @@
-// Relaaax — flame genomes: James's picks from the overnight flame farm
-// (2026-07-26 cull, 20 of 7,307 keepers). Bred by tmp/relaaax/flame-farm/,
+// Lumina — flame genomes: James's picks from the overnight flame farm
+// (2026-07-26 cull, 20 of 7,307 keepers). Bred by tmp/lumina/flame-farm/,
 // exported by that folder's export-genomes.mjs — do not hand-edit the numbers;
 // re-run the exporter instead. Renders live at
-// tmp/relaaax/flame-farm/renders/<id>.png.
+// tmp/lumina/flame-farm/renders/<id>.png.
 //
 // Each genome: up to 5 IFS transforms as GPU-ready rows — aff1/aff2 are the
 // affine coefficients (a,b,c / d,e,f), cdf is the cumulative selection weight,
 // variation is the shader's variation id (0 linear, 1 sinusoidal, 2 spherical,
 // 3 swirl, 4 horseshoe, 5 polar, 6 heart, 7 disc), color is the palette
 // coordinate. frame is the precomputed centering (cx, cy, scale).
-globalThis.RELAAAX_FLAME_GENOMES = [
+globalThis.LUMINA_FLAME_GENOMES = [
   {id:"1d6f246",name:"amber globe",palette:"lava",stops:["#000000","#330608","#92150c","#de4913","#ff9f27","#ffe95c"],frame:{cx:0.1515,cy:0.1392,scale:1.1275,"gain":3.2},xforms:[{aff1:[-0.0805,0.4229,0.5606],aff2:[0.5967,-0.1769,0.2917],cdf:0.2873,variation:0,color:0.8718},{aff1:[0.0955,0.3343,0.1785],aff2:[0.545,-0.7208,0.2344],cdf:0.3726,variation:6,color:0.7404},{aff1:[0.0601,-0.751,0.1764],aff2:[-0.4419,-0.3624,0.4335],cdf:0.6812,variation:4,color:0.7894},{aff1:[-0.7495,0.1795,0.5969],aff2:[-0.6961,-0.3766,-0.0721],cdf:0.8172,variation:4,color:0.9863},{aff1:[-0.2735,-0.4627,0.5171],aff2:[0.7252,0.5893,-0.0264],cdf:1,variation:3,color:0.5491}]},
   {id:"1h6mhqd",name:"ember cathedral",palette:"lava",stops:["#000000","#330608","#92150c","#de4913","#ff9f27","#ffe95c"],frame:{cx:0.0319,cy:-0.1435,scale:1.0083,"gain":2.845},xforms:[{aff1:[0.5695,-0.3063,0.4724],aff2:[-0.4606,0.6679,-0.1603],cdf:0.1056,variation:5,color:0.4924},{aff1:[0.3138,-0.6208,-0.311],aff2:[0.0285,0.2183,0.1169],cdf:0.3326,variation:5,color:0.1925},{aff1:[-0.0747,-0.5544,-0.2023],aff2:[-0.4009,-0.7679,0.0465],cdf:0.6289,variation:7,color:0.2326},{aff1:[-0.5356,-0.4572,0.1629],aff2:[0.7501,-0.5647,-0.3714],cdf:0.9366,variation:5,color:0.9952},{aff1:[0.074,0.2001,-0.1852],aff2:[-0.3189,-0.0172,-0.3834],cdf:1,variation:7,color:0.9824}]},
   {id:"1uo1ibb",name:"green triskelion",palette:"acid",stops:["#02120a","#094520","#25b15b","#71f658","#d1ff42","#f6ffd0"],frame:{cx:-0.1389,cy:0.0068,scale:0.991,"gain":2.329},xforms:[{aff1:[0.0885,-0.7204,-0.1764],aff2:[0.203,-0.0083,0.4661],cdf:0.1822,variation:7,color:0.899},{aff1:[0.1121,0.6512,-0.276],aff2:[0.2357,0.4563,-0.2832],cdf:0.4345,variation:3,color:0.7513},{aff1:[0.4009,-0.0698,-0.4297],aff2:[0.1369,-0.721,0.2712],cdf:0.5019,variation:6,color:0.0576},{aff1:[-0.153,0.391,0.3792],aff2:[-0.6966,0.4809,-0.5336],cdf:0.7202,variation:6,color:0.9404},{aff1:[0.5533,-0.0335,0.3155],aff2:[-0.0399,0.5275,0.5546],cdf:1,variation:3,color:0.4806}]},

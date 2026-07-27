@@ -1,10 +1,10 @@
-// Relaaax — composition engine: plays a Claude-authored visual DJ set against
+// Lumina — composition engine: plays a Claude-authored visual DJ set against
 // a track's clock. A composition is a sorted list of timed events; each event
 // can set field params (snapped, or ramped over seconds — numerics
 // interpolate, hex colors crossfade, strings/booleans snap) and swap the
 // reactivity settings (matrix rows, envelopes, beat tuning). The engine is
 // DOM-free — music.js feeds it audio.currentTime and writes the result — so
-// tmp/relaaax/composition-sim.mjs runs the exact shipping code.
+// tmp/lumina/composition-sim.mjs runs the exact shipping code.
 (function () {
   "use strict";
 
@@ -100,5 +100,5 @@
     };
   }
 
-  globalThis.RelaaaxCompositionEngine = { create, lerpHex };
+  globalThis.LuminaCompositionEngine = { create, lerpHex };
 })();

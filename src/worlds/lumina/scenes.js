@@ -1,7 +1,7 @@
-// Relaaax — scene programs: full-frame GPU backdrops rendered UNDER the tile
+// Lumina — scene programs: full-frame GPU backdrops rendered UNDER the tile
 // layer by fx.js. Each scene is a shader with the same small uniform contract,
 // driven entirely by ordinary field config keys (scene*, see DEFAULTS in
-// relaaax-field.js) — so tuner sliders, mod-matrix rows, and composition
+// lumina-field.js) — so tuner sliders, mod-matrix rows, and composition
 // events drive scenes exactly like any other knob.
 //
 // The four launch scenes, distilled from James's viz-examples folder:
@@ -273,10 +273,10 @@
     return { aff1, aff2, meta, count: xf.length, frame: genome.frame };
   }
 
-  const GENOMES = globalThis.RELAAAX_FLAME_GENOMES || [];
+  const GENOMES = globalThis.LUMINA_FLAME_GENOMES || [];
   const genomeByName = (name) => GENOMES.find((g) => g.name === name) || GENOMES[0] || null;
 
-  globalThis.RelaaaxScenes = {
+  globalThis.LuminaScenes = {
     LIST,
     FRAG: { ink: FS_INK, ridge: FS_RIDGE, nebula: FS_NEBULA },
     FLAME: { vs: VS_FLAME, fs: FS_FLAME, points: FLAME_POINTS, maxXforms: MAX_XFORMS },

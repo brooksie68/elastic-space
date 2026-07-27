@@ -1,19 +1,19 @@
-// Relaaax — music: track player + reactivity engine. Owns the Web Audio graph
+// Lumina — music: track player + reactivity engine. Owns the Web Audio graph
 // (element -> analyser -> gain -> out; the analyser taps BEFORE the volume
 // gain so reactivity never depends on how loud James is listening), runs the
 // DSP from music-dsp.js each frame, plays Claude's composed sets
 // (composition.js + assets/compositions.js), and writes the modulated params
 // over the tuner's clean base. No UI here — it registers command handlers +
-// a snapshot part with RelaaaxHost and mounts the control surface (tuner.js).
+// a snapshot part with LuminaHost and mounts the control surface (tuner.js).
 (function () {
   "use strict";
 
-  const DSP = globalThis.RelaaaxMusicDSP;
-  const bridge = globalThis.relaaaxTuner;
-  const host = globalThis.RelaaaxHost;
-  if (!DSP || !bridge || !host || !globalThis.relaaaxField) return;
-  const GRID = globalThis.RELAAAX_TRACK_GRID || {};
-  const RAMP = globalThis.RelaaaxField.RAMP;
+  const DSP = globalThis.LuminaMusicDSP;
+  const bridge = globalThis.luminaTuner;
+  const host = globalThis.LuminaHost;
+  if (!DSP || !bridge || !host || !globalThis.luminaField) return;
+  const GRID = globalThis.LUMINA_TRACK_GRID || {};
+  const RAMP = globalThis.LuminaField.RAMP;
 
   // James's Suno tracks — new MP3s dropped into assets/sound-tracks/ get a
   // line here (no fetch/directory listing: file:// must keep working).
@@ -24,8 +24,8 @@
     { file: "Timber at Sea.mp3", label: "Timber at Sea" },
   ];
 
-  const STORE_KEY = "relaaax-music";
-  const PRESET_KEY = "relaaax-music-presets";
+  const STORE_KEY = "lumina-music";
+  const PRESET_KEY = "lumina-music-presets";
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
   // Merge stored settings over defaults, keeping the rows array well-formed.
@@ -67,8 +67,8 @@
 
   // --- visual DJ (Claude's composed sets) -----------------------------------
 
-  const ENGINE = globalThis.RelaaaxCompositionEngine;
-  const COMPS = globalThis.RELAAAX_COMPOSITIONS || {};
+  const ENGINE = globalThis.LuminaCompositionEngine;
+  const COMPS = globalThis.LUMINA_COMPOSITIONS || {};
 
   let djEngine = null;
   let lastComp = {};    // comp base keys written to the field last frame
@@ -82,7 +82,7 @@
     if (!keys.size) return;
     const partial = {};
     keys.forEach((k) => { partial[k] = base[k]; });
-    globalThis.relaaaxField.setConfig(partial);
+    globalThis.luminaField.setConfig(partial);
     prevTouched = [];
     lastComp = {};
   }
@@ -389,7 +389,7 @@
       if (clock.beat !== lastBeatFired && clock.beatPhase < 0.5) {
         lastBeatFired = clock.beat;
         host.beat();
-        if (globalThis.RelaaaxFX) RelaaaxFX.beat();
+        if (globalThis.LuminaFX) LuminaFX.beat();
       }
     } else {
       sources.pulse = 0;
@@ -398,7 +398,7 @@
       sources.swing = 0;
       if (beat) {
         host.beat();
-        if (globalThis.RelaaaxFX) RelaaaxFX.beat();
+        if (globalThis.LuminaFX) LuminaFX.beat();
       }
     }
 
@@ -419,7 +419,7 @@
     prevTouched.forEach((k) => {
       if (!(k in partial)) partial[k] = effBase[k];
     });
-    globalThis.relaaaxField.setConfig(partial);
+    globalThis.luminaField.setConfig(partial);
     prevTouched = touched;
   }
   requestAnimationFrame(tick);
@@ -427,9 +427,9 @@
   // --- control surface ------------------------------------------------------
   // Mounted last: the host now has both field and music registered.
 
-  if (globalThis.RelaaaxTuner) {
-    RelaaaxTuner.mount({
-      container: document.getElementById("rlx-tuner"),
+  if (globalThis.LuminaTuner) {
+    LuminaTuner.mount({
+      container: document.getElementById("lum-tuner"),
       bus: host.localBus(),
       embedded: true,
     });
@@ -441,7 +441,7 @@
   // free-play/claude's-set switch, always on screen.
   {
     const barEl = document.createElement("div");
-    barEl.className = "rlx-transport-bar";
+    barEl.className = "lum-transport-bar";
     const btn = (label, title, cmd) => {
       const b = document.createElement("button");
       b.type = "button";
@@ -456,7 +456,7 @@
     btn("■", "Stop — rewind to the top; the field goes back to your sliders", "stop");
     btn("▶", "Next track", "next");
     const trackEl = document.createElement("span");
-    trackEl.className = "rlx-transport-track";
+    trackEl.className = "lum-transport-track";
     barEl.appendChild(trackEl);
     const mode = document.createElement("select");
     mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track";

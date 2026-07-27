@@ -1,4 +1,4 @@
-// Relaaax — the FX rack: a WebGL post-processing chain over the field.
+// Lumina — the FX rack: a WebGL post-processing chain over the field.
 // The field stays the instrument; this is the pedalboard. When any fx* config
 // key is nonzero the field hides its DOM tiles and hands this module an
 // analytic display list each frame (design coords); we paint it to a source
@@ -6,8 +6,8 @@
 // All knobs are ordinary field config keys, so tuner sliders, mod-matrix
 // targets, and compositions drive them like any other parameter.
 //
-//   RelaaaxFX.attach(field, frameEl);   // once, after mount
-//   RelaaaxFX.beat();                   // music.js pings detected beats
+//   LuminaFX.attach(field, frameEl);   // once, after mount
+//   LuminaFX.beat();                   // music.js pings detected beats
 (function () {
   "use strict";
 
@@ -171,7 +171,7 @@
       gl.shaderSource(sh, src);
       gl.compileShader(sh);
       if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
-        throw new Error("Relaaax FX shader: " + gl.getShaderInfoLog(sh));
+        throw new Error("Lumina FX shader: " + gl.getShaderInfoLog(sh));
       }
       return sh;
     };
@@ -180,14 +180,14 @@
     gl.attachShader(prog, make(gl.FRAGMENT_SHADER, fsSrc));
     gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-      throw new Error("Relaaax FX link: " + gl.getProgramInfoLog(prog));
+      throw new Error("Lumina FX link: " + gl.getProgramInfoLog(prog));
     }
     return prog;
   }
 
   function attach(field, frameEl) {
     const canvas = document.createElement("canvas");
-    canvas.className = "rlx-fx-canvas";
+    canvas.className = "lum-fx-canvas";
     frameEl.appendChild(canvas);
     canvas.style.display = "none";
 
@@ -205,7 +205,7 @@
     let ok = true;
 
     // --- scene layer state (scenes.js programs, rendered under the tiles) ---
-    const SCENES = globalThis.RelaaaxScenes || null;
+    const SCENES = globalThis.LuminaScenes || null;
     const sceneProgs = {};   // id -> compiled program (false = failed, skip)
     let sceneFbo = null;     // { tex, fb } the scene renders into
     let texBlack = null;     // 1×1 black — bound when no scene is active
@@ -247,7 +247,7 @@
       const key = [cfg.scenePalette, cfg.low, cfg.high, cfg.sceneHue, genome && genome.id].join("|");
       if (key !== palKey) {
         palKey = key;
-        palStops = SCENES.paletteStops(globalThis.RelaaaxField.buildLut, cfg, genome);
+        palStops = SCENES.paletteStops(globalThis.LuminaField.buildLut, cfg, genome);
       }
       return palStops;
     }
@@ -313,7 +313,7 @@
       gl = canvas.getContext("webgl", { antialias: false, alpha: false, preserveDrawingBuffer: false });
       if (!gl) {
         ok = false;
-        console.warn("Relaaax FX: WebGL unavailable — rack bypassed");
+        console.warn("Lumina FX: WebGL unavailable — rack bypassed");
         return;
       }
       try {
@@ -504,5 +504,5 @@
   }
 
   const api = { attach, beat: () => {}, SOURCES: { VS, FS_FEED, FS_POST } };
-  globalThis.RelaaaxFX = api;
+  globalThis.LuminaFX = api;
 })();

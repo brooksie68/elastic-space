@@ -66,7 +66,7 @@ catch, overall leg speed + fluidity. Don't trade these away while tuning looks.
 Feel questions below still unanswered.
 
 Movement prototype only — no enemies, no art, no sound, no drift wiring (draft, like
-Relaaax was). One gauntlet level exercising every traversal verb.
+Lumina was). One gauntlet level exercising every traversal verb.
 
 - `physics.js` — ALL movement logic, pure module (no DOM/canvas/timers). Shared verbatim
   with the sim; keep it pure or the sim lies.

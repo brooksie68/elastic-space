@@ -1,17 +1,17 @@
-// Relaaax — page host: mounts the field + FX rack, owns the CLEAN tuner state
+// Lumina — page host: mounts the field + FX rack, owns the CLEAN tuner state
 // (what the sliders say — the music layer modulates the live field on top of
 // this and must never contaminate it), routes control commands, and serves
 // state snapshots to the control surface (tuner.js) — embedded in this page
-// or detached into tuner.html over BroadcastChannel("relaaax-ctl").
+// or detached into tuner.html over BroadcastChannel("lumina-ctl").
 // music.js registers its own command handler + snapshot part via
-// RelaaaxHost.registerMusic and then mounts the tuner.
+// LuminaHost.registerMusic and then mounts the tuner.
 (function () {
   "use strict";
 
-  const STORE_KEY = "relaaax-tuner";
-  const PRESET_KEY = "relaaax-presets";
-  const DEFAULTS = RelaaaxField.DEFAULTS;
-  const PATTERNS = RelaaaxField.PATTERNS;
+  const STORE_KEY = "lumina-tuner";
+  const PRESET_KEY = "lumina-presets";
+  const DEFAULTS = LuminaField.DEFAULTS;
+  const PATTERNS = LuminaField.PATTERNS;
   const MARGIN_KEYS = ["marginTop", "marginRight", "marginBottom", "marginLeft"];
 
   let marginLink = "linked";
@@ -46,23 +46,23 @@
 
   // `state` is the authoritative CLEAN config — what the sliders say.
   let state = Object.assign({}, DEFAULTS);
-  const frame = document.getElementById("relaaax-frame");
-  const field = RelaaaxField.mount(frame, Object.assign({}, state));
-  if (globalThis.RelaaaxFX) RelaaaxFX.attach(field, frame);
+  const frame = document.getElementById("lumina-frame");
+  const field = LuminaField.mount(frame, Object.assign({}, state));
+  if (globalThis.LuminaFX) LuminaFX.attach(field, frame);
 
   // Bridge for the music layer: read the clean base, hear about tuner changes.
   const baseListeners = [];
   function notifyBase() {
     baseListeners.forEach((cb) => cb());
   }
-  globalThis.relaaaxTuner = {
+  globalThis.luminaTuner = {
     getBase: () => Object.assign({}, state),
     onBaseChange: (cb) => baseListeners.push(cb),
   };
 
   // --- staging frame size ---------------------------------------------------
 
-  const FRAME_KEY = "relaaax-frame";
+  const FRAME_KEY = "lumina-frame";
   const FRAME_DEFAULTS = { w: 1024, h: 768 };
 
   function loadFrame() {
@@ -91,7 +91,7 @@
 
   // --- field presets --------------------------------------------------------
 
-  const FACTORY = globalThis.RELAAAX_PRESETS || [];
+  const FACTORY = globalThis.LUMINA_PRESETS || [];
 
   function loadUserPresets() {
     try {
@@ -108,9 +108,34 @@
     } catch (err) { /* no persistence */ }
   }
 
+  // --- jump history (the back button next to the dice) ------------------------
+  // Only WHOLE-LOOK jumps are recorded — a dice roll or a preset load. Slider
+  // drags are not: during live play the stack would fill with a hundred
+  // micro-steps and "back" would stop meaning "undo that roll", which is the
+  // one thing it's for.
+  const HISTORY_MAX = 30;
+  const history = [];
+
+  function pushHistory() {
+    history.push({ state: Object.assign({}, state), marginLink, presetSelected });
+    if (history.length > HISTORY_MAX) history.shift();
+  }
+
   function applyPreset(config) {
+    pushHistory();
     marginLink = config.marginLink || "linked";
     state = Object.assign({}, DEFAULTS, config);
+    field.setConfig(Object.assign({}, state));
+    saveConfig();
+    notifyBase();
+  }
+
+  function undoJump() {
+    const prev = history.pop();
+    if (!prev) return;
+    marginLink = prev.marginLink;
+    state = Object.assign({}, prev.state);
+    presetSelected = prev.presetSelected;
     field.setConfig(Object.assign({}, state));
     saveConfig();
     notifyBase();
@@ -145,7 +170,7 @@
   let music = null; // registered by music.js: { command(cmd), snapshotPart() }
   let detached = false;
 
-  const channel = ("BroadcastChannel" in globalThis) ? new BroadcastChannel("relaaax-ctl") : null;
+  const channel = ("BroadcastChannel" in globalThis) ? new BroadcastChannel("lumina-ctl") : null;
 
   function snapshot() {
     return {
@@ -157,6 +182,7 @@
         user: Object.keys(userPresets).sort((a, b) => a.localeCompare(b)),
         selected: presetSelected,
         hasLast,
+        canUndo: history.length > 0,
       },
       music: music ? music.snapshotPart() : null,
     };
@@ -203,8 +229,11 @@
         break;
       }
       case "randomize":
-        applyPreset(globalThis.RelaaaxRandom.roll());
+        applyPreset(globalThis.LuminaRandom.roll());
         presetSelected = "";
+        break;
+      case "undo":
+        undoJump();
         break;
       case "patternStep": {
         const i = PATTERNS.findIndex((p) => p.id === state.pattern);
@@ -275,18 +304,18 @@
       };
     },
   };
-  globalThis.RelaaaxHost = host;
+  globalThis.LuminaHost = host;
 
   // --- detached controller (tuner.html over BroadcastChannel) ---------------
 
-  const toggle = document.getElementById("rlx-tuner-toggle");
-  const tuner = document.getElementById("rlx-tuner");
+  const toggle = document.getElementById("lum-tuner-toggle");
+  const tuner = document.getElementById("lum-tuner");
 
   // Docked single-screen mode: the open panel docks right and the stage
-  // shifts left (world.css body.rlx-docked rules) so viz + controls share
+  // shifts left (world.css body.lum-docked rules) so viz + controls share
   // one laptop screen (James, 2026-07-25).
   function syncDock() {
-    document.body.classList.toggle("rlx-docked", !tuner.hidden);
+    document.body.classList.toggle("lum-docked", !tuner.hidden);
   }
 
   function setDetached(on) {
@@ -317,7 +346,7 @@
   }
 
   // Console access for poking at it live.
-  globalThis.relaaaxField = field;
+  globalThis.luminaField = field;
 
   toggle.addEventListener("click", () => {
     if (detached) {
@@ -341,7 +370,7 @@
   document.addEventListener("pointerdown", (e) => {
     if (tuner.hidden) return;
     if (tuner.contains(e.target) || toggle.contains(e.target)) return;
-    if (e.target.closest && e.target.closest(".rlx-transport-bar")) return;
+    if (e.target.closest && e.target.closest(".lum-transport-bar")) return;
     tuner.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
     syncDock();
