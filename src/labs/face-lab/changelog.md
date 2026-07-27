@@ -1,5 +1,121 @@
 # Face Lab changelog
 
+## 2026-07-26/27 — Claude + James (REBUILD AS ONE FAMILY: new bald head in the lab, beard mounted, fit unresolved)
+
+STANDING RULE SET THIS SESSION — never cut/trim pieces off an existing 3D model
+to use as assets. Every asset is generated individually so its characteristics
+can be controlled. James, after I proposed re-cutting hair off postmaster-v1:
+"everything you've shown me looks like dog shit... these things are all always
+generated as individual assets so that they can be controlled." The record backs
+him — cut glasses, cut hair fringe, cut facial hair and the grown-from-skin beard
+all failed. Worse, the cut `piece_hairfringe.glb` made me tell James this
+character has no real hair; the undissected original clearly shows a thick mass
+round the back and over the ears. The dissection produced a FALSE CONCLUSION
+about the character. Saved to memory as `no-cutting-3d-assets`; note I had
+already written "the dissection is reference, not assets" in this changelog and
+then re-proposed cutting twice anyway.
+
+THE REPLACEMENT PIPELINE (James's framing, and the reason it isn't the banned
+move): the original model is a RENDER SOURCE, never an asset source. We
+photograph it; we never cut it.
+  1. one canonical 3D reference of the whole character (postmaster-v1.glb)
+  2. render it at any angle, free and drift-free — `render_plates.py`
+  3. isolate each asset in 2D via image-to-image off those renders
+  4. Meshy each piece individually, one generation per asset
+  5. assemble: head → KeenTools for ARKit topology, rigid pieces mount, deforming
+     pieces conform + morph-transfer
+Step 3's "now give me the hat, now the glasses" conversation happens in IMAGE
+space, not in Meshy — Meshy makes one object per task and has no notion of
+extracting a piece from a model. Asking it for pieces of a model is cutting again.
+
+`render_plates.py` → 8 plates (plate_body_* 1400², plate_head_* 1024×1280).
+Framing gotcha worth keeping: distance must be derived from the camera FOV, not
+guessed as bbox×k — the first pass put the camera at half the needed distance and
+cropped the head off. Plates + a written brief went to Meshy's agent, which
+crafts prompts and runs generations in James's library; we pull the GLBs after.
+
+JAMES DROPPED THE OLD KT HEAD deliberately: mixing a head from one generation
+family with props from another is the fit problem we kept hitting. Everything
+regenerates together now.
+
+BALD HEAD (Postmaster-Final/..._head_bald..., 93,338 verts, 1 material). The
+prompt note that mattered, James's: the bald head must be the face UNDERNEATH the
+beard, not the bearded silhouette shaved — narrower jaw/chin/cheeks, because the
+beard mounts on top and has to occupy the space between. Also: nothing ever
+covers the nose, so the bare nose is the finished look. James judged the result
+slimmer than the reference and took it deliberately ("that's a really big nose,
+comically large in fact... go with it").
+
+KEENTOOLS → LAB: `export_kt2_lab.py` turns keentools2/head.glb (45.8 MB, four
+2048² PNGs) into `assets/postmaster-kt2.glb` (10.7 MB, 55 keys) — textures
+re-encoded to JPEG, that's nearly all the size. Registered as "postmaster v2
+(KeenTools, slim face)". James: looked great, worked really well.
+  CRITICAL: never join or separate the head's materials. It is one mesh with four
+  materials (head 24408 / eye 802 / eye 802 / teeth 4585) and glTF export writes
+  one primitive per material, which is what keeps the eyes a mirrored PAIR — the
+  lab locates them geometrically to anchor framing on IPD. Separating by material
+  would break camera framing on every load.
+
+EYELID ARTIFACT — DIAGNOSED, PARKED AT JAMES'S REQUEST (`diag_eyelid.py`,
+diag_eye_{with,without}.png). Sclera white along the lower lid and an iris-brown
+spot on it. Hide the eyeball primitives and there is STILL an eye there: KeenTools
+projected the source renders onto its own mesh and the eye pixels landed in the
+socket, so two eyes are stacked and the painted one peeks out at the lid margins.
+FIX IS TEXTURE-ONLY — repaint the socket region of the base colour map, no
+geometry, no morphs, no KeenTools re-run, fully reversible.
+
+FACIAL HAIR (Postmaster-Final/..._facialhair..., 1,492,145 verts). Shape is good:
+pure white, genuinely hollow shell, clean mouth gap, real sideburns, short rather
+than Santa.
+  DECIMATION FINDING (decimate-ladder-sheet.png) — this mesh is thousands of thin
+  disconnected strand shells. Collapse decimation cannot thin a sliver that is
+  already minimal, so it DELETES it: 400k holds, 150k speckles with holes, 60k
+  shatters, and a 25k request bottomed out at 52,742 tris (~17k shells × 3 tris,
+  a hard floor). This mesh erodes, it does not decimate. For remaining pieces set
+  Meshy `should_remesh: true`, `topology: "quad"`, `target_polycount` ~40k — the
+  default on meshy-6 is should_remesh FALSE, which is why we got 1.49M.
+
+`mount_beard.py` — measured placement (NOT a conform). Landmarks: eyeballs→IPD,
+teeth→mouth height, lip surface→forward anchor, ear→depth target, chin→lower
+bound. THREE MEASUREMENT BUGS, all the same species — the obvious extremum is the
+wrong feature on a head that carries a neck:
+  * the model's widest points are the NECK/JAW BASE, not the ears — band by Z
+    between mouth and eye height before taking max |x|, or the "ear" lands at the
+    collar (z −1.713).
+  * the model's lowest points are the NECK STUMP, not the chin — restrict to
+    vertices forward of the teeth centroid.
+  * the teeth centroid is NOT a forward reference. It sits 0.45 IPD (~28 mm)
+    BEHIND the lip surface; anchoring the beard's front on it drove the whole
+    beard back into the face.
+Also: looping horizontal slices over 1.49M verts in pure Python took 25 minutes.
+All geometry reads now go through `foreach_get` into numpy. And numpy 2.0 removed
+`ndarray.ptp` — use `np.ptp(arr)`.
+
+Settled on scale 0.93 / depth 1.24 (uniform scale for width, separate front-to-back
+stretch so the sideburns reach the ear without the beard getting wider). Exported
+`assets/postmaster-kt2-beard.glb` and registered as "postmaster v2 + beard
+(placement preview)" — the beard has NO morph targets yet, so it is static and the
+jaw moves through it.
+
+PROCESS FAILURE, recorded because it cost the session: I removed rendering from
+the mount script to save ~40s per pass, then iterated blind for four passes with
+James as my viewport. He called it: "if you could see it, you'd be able to see
+that right away, and you'd know how to self correct." The script now always
+renders. Don't ever trade away your own eyes for iteration speed.
+
+WHERE IT STANDS — NOT GOOD. James's verdict at session end: mustache coming out
+of the nostrils, beard hair up inside the ear, face reads wrong. Transform-hunting
+has hit its ceiling and more scale/rise/depth passes will not get there. Two
+things should change before the next attempt:
+  1. CONFORM, not transform. Project the beard's inner surface onto the face while
+     preserving its outer silhouette (the R3DS Wrap / shrinkwrap approach). Fit
+     becomes computed instead of searched for. This was deferred three times this
+     session in favour of tweaking numbers; it was the answer the whole time.
+  2. Do placement INTERACTIVELY. This is thirty seconds of dragging in a viewport.
+     Converging on it numerically over chat is the slowest method available.
+James's wider point, which is fair: every character will need this, and the
+workflow has to get cheaper before it's worth doing again.
+
 ## 2026-07-26 — Claude + James (KEENTOOLS CLOUD PIPELINE LANDS — the professional head)
 
 James's verdict on road B's socket surgery: "raw meat blinking past golf

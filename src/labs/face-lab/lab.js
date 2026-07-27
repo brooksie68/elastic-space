@@ -108,6 +108,10 @@ const PAIR_SUFFIXES = [
 const MODELS = [
   { id: 'bust', label: 'mannequin', file: 'assets/bust.glb' },
   { id: 'sculpt', label: 'sculpt head (identity dials)', file: 'assets/sculpt.glb' },
+  { id: 'postmaster-kt2', label: 'postmaster v2 (KeenTools, slim face)', file: 'assets/postmaster-kt2.glb' },
+  // Placement preview only — the beard carries no morph targets yet, so the jaw
+  // moves through it. 52 MB; slow first load.
+  { id: 'postmaster-kt2-beard', label: 'postmaster v2 + beard (placement preview)', file: 'assets/postmaster-kt2-beard.glb' },
   { id: 'postmaster-kt', label: 'postmaster (KeenTools)', file: 'assets/postmaster-kt.glb' },
   { id: 'postmaster-scan', label: 'postmaster (scan, road B)', file: 'assets/postmaster-scan.glb' },
   { id: 'postmaster-scan-noeyes', label: 'postmaster (scan, no eyeballs)', file: 'assets/postmaster-scan-noeyes.glb' },

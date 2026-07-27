@@ -3,6 +3,25 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-26/27 — Claude + James — postmaster speech clip baked; wardrobe work continues in Face Lab
+
+`test-speech-long.mp3` (60.5s, the postmaster's soliloquy) re-baked with a dialog
+transcript. `test-speech-long.txt` now sits beside the clip and
+`tools/lipsync-bake.mjs` picks it up automatically on any future re-bake.
+
+The ElevenLabs script's bracketed audio tags ([thoughtful], [chuckle], [pause])
+are performance directives, NOT spoken words — strip them before Rhubarb sees the
+text or it phonemises "chuckle" as dialogue and drags the alignment off. Effect
+was marginal on this clip (328 → 326 cues, near-identical shape distribution)
+because Rhubarb's audio-only pass already handles a slow, well-enunciated read;
+the transcript version is still the one to keep.
+
+All postmaster character work this session — new bald head, KeenTools pass, facial
+hair generation and mounting — is logged in `src/labs/face-lab/changelog.md`.
+Nothing else in this world changed. The postmaster is NOT ready for in-world
+integration: the beard's fit is unresolved and the rest of the wardrobe (hair,
+brows, cap, glasses) is not generated.
+
 ## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
 
 - New house rule from James: every control panel dismisses on click-away. Added

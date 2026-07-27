@@ -99,6 +99,25 @@ consistent. `npm run check-worlds` audits every world against the contract.
    NEXT: KT head into lab picker for James's judgment, props mounting, viseme
    adapter. Future characters: same pipeline (concept→de-dress→scan→40°
    renders→KeenTools). Then DLO integration + voice.
+   SESSION 2026-07-26/27 — REBUILT AS ONE FAMILY. James dropped the old KT head:
+   mixing a head from one generation family with props from another is the fit
+   problem we kept hitting. STANDING RULE (memory `no-cutting-3d-assets`): never
+   cut pieces off an existing model — generate every asset individually. The
+   original model is a RENDER SOURCE, never an asset source. New pipeline:
+   render_plates.py → 8 plates → written brief to Meshy's AI agent → one
+   generation per piece → conform + mount. LANDED: bald head → KeenTools →
+   `assets/postmaster-kt2.glb` (10.7 MB, 55 keys) in the picker as "postmaster
+   v2", James confirmed it looks and moves well; facial hair generated (1.49M
+   verts, good shape) and measured-mounted as `postmaster-kt2-beard.glb` (static
+   placement preview, no morphs yet). NOT RESOLVED: the beard's fit — mustache at
+   the nostrils, hair inside the ear. Transform-hunting has hit its ceiling; the
+   next attempt must CONFORM (project the inner surface onto the face) and be
+   driven INTERACTIVELY in a viewport, not by numeric passes over chat. Parked:
+   eyelid texture artifact (KeenTools painted an eye into the head's own texture;
+   texture-only repair, diag_eyelid.py). Still to generate: hair, brows, cap,
+   glasses — ask Meshy for should_remesh:true + quad + ~40k, since the meshy-6
+   default is remesh OFF, which is why the beard arrived at 1.49M verts.
+   READ `src/labs/face-lab/changelog.md` before touching any of this.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
