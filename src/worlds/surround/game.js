@@ -11,7 +11,16 @@ const Core = globalThis.SurroundCore;
 // ---- config -------------------------------------------------------------------
 const PLAY_KEY = 'surround-tuner-v1';
 const LOOK_KEY = 'surround-look-v1';
-const PLAY_DEFAULTS = { speed: 1, grid: 'medium', ai: 2, target: 10, hudTerr: 1 };
+const PLAY_DEFAULTS = { speed: 1, grid: 'medium', ai: 2, target: 10, hudTerr: 1, assist: 120 };
+// The specials — each a SPECIALS-tab toggle. Round-structure ones (gaps, zone,
+// overtime, gauntlet, blackout) apply from the next round; the two player
+// verbs (boost, phase) gate their keys live.
+const SPECIAL_DEFAULTS = { gaps: 0, boost: 1, phase: 1, overtime: 1, zone: 0, gauntlet: 1, blackout: 1 };
+Object.assign(PLAY_DEFAULTS, SPECIAL_DEFAULTS);
+const BOOST_DRAIN = 0.9;    // fuel/s while boosting (full tank ≈ 1.1s)
+const BOOST_REGEN = 0.22;   // fuel/s recharge
+const GAUNTLET_EVERY = 5;   // every nth round is 2-v-1, worth 2 pips
+const BLACKOUT_EVERY = 4;   // every nth round goes dark
 // Deeper than they look. These were sized for a flat 2D field at 16:9; seen at
 // a tilt the depth axis foreshortens, so a 16:9 grid projects far wider than
 // the window and leaves bands of dead space top and bottom. ~1.5:1 grids
@@ -22,6 +31,50 @@ const GRIDS = {
   large: { w: 58, h: 39 },
 };
 const AI_NAMES = { 1: 'DRIFTER', 2: 'HUNTER', 3: 'ORACLE' };
+
+// Rider colour pairs — [you, cpu] body colours; hot rails and cold tails are
+// derived in the renderer, the HUD tints itself off --p1/--p2 via color-mix.
+// All bright enough to survive bloom on the dark floor, hue-separated within
+// each pair, rolled fresh every match.
+const COLOR_PAIRS = [
+  ['#2ed9ff', '#ff4fd8'],   // the classic: cyan / magenta
+  ['#ffb32e', '#4f8dff'],   // amber / azure
+  ['#3dffa0', '#b44dff'],   // mint / violet
+  ['#ff5c3d', '#2ee6c8'],   // vermilion / teal
+  ['#ffe93c', '#e04fff'],   // lemon / orchid
+  ['#a8ff35', '#3a6bff'],   // lime / blue
+  ['#ff8a2e', '#6fe0ff'],   // orange / ice
+  ['#ff4f6e', '#ffd23c'],   // rose / gold
+  ['#e8f4ff', '#ff3d5e'],   // white / crimson
+  ['#b8ff2e', '#ff2ea8'],   // chartreuse / pink
+  ['#5c7dff', '#ffce2e'],   // blue / gold
+  ['#35f2d5', '#ff7a5c'],   // aqua / coral
+  ['#a06bff', '#52ff7a'],   // violet / spring green
+  ['#ffa35c', '#6a5cff'],   // apricot / indigo
+  ['#ff4436', '#57c8ff'],   // red / sky
+  ['#3dff5c', '#ff44c8'],   // green / magenta
+  ['#ffc82e', '#8a5cff'],   // gold / violet
+  ['#ff7ac8', '#52ffc8'],   // pink / mint
+  ['#2ef2ff', '#ff9435'],   // cyan / orange
+  ['#c89aff', '#c8ff3d'],   // lavender / lime
+  ['#b3ecff', '#ff5c8a'],   // ice / rose
+  ['#f2ff5c', '#4f6aff'],   // canary / cobalt
+  ['#ff35f2', '#b8ff52'],   // magenta / lime
+  ['#35e2c8', '#c84fff'],   // teal / purple
+];
+const PAIR_KEY = 'surround-pair-v1';
+
+function rollColors() {
+  let last = -1;
+  try { last = parseInt(localStorage.getItem(PAIR_KEY) || '-1', 10); } catch (e) {}
+  let i = Math.floor(Math.random() * COLOR_PAIRS.length);
+  if (i === last) i = (i + 1 + Math.floor(Math.random() * (COLOR_PAIRS.length - 1))) % COLOR_PAIRS.length;
+  try { localStorage.setItem(PAIR_KEY, String(i)); } catch (e) {}
+  const pair = COLOR_PAIRS[i];
+  document.documentElement.style.setProperty('--p1', pair[0]);
+  document.documentElement.style.setProperty('--p2', pair[1]);
+  if (arena) arena.setPalette(pair);
+}
 
 // Every look knob the tuner exposes, with its range.
 const LOOK_RANGES = {
@@ -79,9 +132,17 @@ let countdownStage = -1;
 let inputQueue = [];
 let roundWinner = -2;
 let matchWinner = -1;
+let lastResult = '';
 let hintFadeDone = false;
 let lastHumPitch = 1;
 let prevPos = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+let grace = null;           // pending savable player crash: { t }
+let roundIsGauntlet = false;
+let roundIsBlackout = false;
+let blackoutMix = 0;        // eased 0..1 toward the blackout look
+let boostHeld = false;
+let boostFuel = 1;
+let lastShrink = 0;
 let claim = new Float32Array(state.w * state.h * 2);
 let occ = new Uint8Array(state.w * state.h);
 let balance = 0;
@@ -90,28 +151,90 @@ function ticksPerSec() {
   const ramp = 1 + Math.min(0.9, (roundT / 1000) * 0.035);
   return 8 * cfg.speed * ramp;
 }
-function setMode(m) { mode = m; modeT = 0; }
+function setMode(m) {
+  mode = m;
+  modeT = 0;
+  document.body.classList.toggle('counting', m === 'countdown');
+}
 
 function reallocFields() {
   claim = new Float32Array(state.w * state.h * 2);
   occ = new Uint8Array(state.w * state.h);
 }
 
-function startRound() {
-  Core.resetRound(state);
+// Reset the board and park the riders at their spawns — no countdown, no
+// motion. Attract mode shows this; startRound races from it. Round modifiers
+// (gauntlet, blackout, rules) are decided here, so the state is rebuilt fresh
+// each round.
+// The breach span in cell coords — must mirror render3d's _placeBreach
+// mapping so the hole you see is the hole that lets you out.
+function breachSpan(side, t, w, h) {
+  const along = side === 0 || side === 2 ? w : h;
+  const half = along / 2;
+  const c = Math.round((t * 2 - 1) * half * 0.75 + half - 0.5);
+  return { side, lo: Math.max(0, c - 2), hi: Math.min(along - 1, c + 2) };
+}
+
+function stageRound(idle) {
+  roundIsGauntlet = !idle && !!cfg.gauntlet && round % GAUNTLET_EVERY === 0;
+  roundIsBlackout = !idle && !!cfg.blackout && round % BLACKOUT_EVERY === 0;
+  // The way out tears open somewhere new every round.
+  const breachSide = Math.floor(Math.random() * 4);
+  const breachT = 0.2 + Math.random() * 0.6;
+  const grid = GRIDS[cfg.grid];
+  state = Core.createGame(Object.assign({}, grid, {
+    players: roundIsGauntlet ? 3 : 2,
+    rules: {
+      gapEvery: cfg.gaps ? 4 : 0,
+      zone: !!cfg.zone,
+      overtime: cfg.overtime ? { start: 220, every: 14 } : null,
+      breach: breachSpan(breachSide, breachT, grid.w, grid.h),
+    },
+  }));
+  reallocFields();
   if (arena) {
     arena.reset();
+    arena.setBreach(breachSide, breachT);
     state.players.forEach((p, i) => arena.spawn(i, p.x, p.y, p.dir, 0));
   }
-  state.players.forEach((p, i) => { prevPos[i] = { x: p.x, y: p.y }; });
+  prevPos = state.players.map((p) => ({ x: p.x, y: p.y }));
   inputQueue = [];
+  grace = null;
+  boostFuel = 1;
+  lastShrink = 0;
   roundT = 0;
   tickAcc = 0;
   roundWinner = -2;
+  roundTag.textContent = [
+    roundIsGauntlet ? 'GAUNTLET — 2 v 1, DOUBLE PIP' : '',
+    roundIsBlackout ? 'BLACKOUT' : '',
+  ].filter(Boolean).join(' · ');
   refreshClaim();
+  renderHud();
+}
+
+function startRound() {
+  stageRound();
   setMode('countdown');
   countdownStage = -1;
-  renderHud();
+  syncControls();
+}
+
+// The start gate: nothing ever runs until the button is clicked. Match end and
+// forfeit both land back here.
+function enterAttract(resultText) {
+  paused = false;
+  resumeT = 0;
+  forfeitArmed = 0;
+  restartArmed = 0;
+  document.body.classList.remove('paused');
+  hideBanner();
+  Sfx.humsOff();
+  stageRound(true);
+  setMode('attract');
+  startResult.textContent = resultText || '';
+  startResult.style.display = resultText ? '' : 'none';
+  document.body.classList.add('attract');
   syncControls();
 }
 
@@ -122,8 +245,11 @@ function startMatch() {
   paused = false;
   resumeT = 0;
   forfeitArmed = 0;
+  restartArmed = 0;
   document.body.classList.remove('paused');
+  document.body.classList.remove('attract');
   hideBanner();
+  rollColors();   // fresh pair every match
   startRound();
 }
 
@@ -153,7 +279,14 @@ const ringEl = document.getElementById('ring');
 const bannerEl = document.getElementById('banner');
 const hintEl = document.getElementById('hint');
 const btnPause = document.getElementById('btn-pause');
+const btnRestart = document.getElementById('btn-restart');
 const btnForfeit = document.getElementById('btn-forfeit');
+const btnStart = document.getElementById('btn-start');
+const startResult = document.getElementById('start-result');
+const roundTag = document.getElementById('round-tag');
+const boostWrap = document.getElementById('boost-wrap');
+const boostBar = document.getElementById('boost-bar');
+const phasePip = document.getElementById('phase-pip');
 
 function renderHud() {
   scoreYou.textContent = score[0];
@@ -193,17 +326,23 @@ function hideBanner() { bannerEl.className = ''; }
 let paused = false;
 let resumeT = 0;        // ms left on the count back in
 let forfeitArmed = 0;   // ms left on the "sure?" confirmation
+let restartArmed = 0;   // ms left on restart's own "sure?"
 
 function canPause() {
   return mode === 'countdown' || mode === 'play' || mode === 'roundend';
 }
 
 function syncControls() {
-  const over = mode === 'matchend';
-  btnPause.style.display = over ? 'none' : '';
+  // The in-match buttons only exist mid-match; attract's START is the sole way in.
+  const idle = mode === 'attract' || mode === 'matchend';
+  btnPause.style.display = idle ? 'none' : '';
   btnPause.textContent = paused ? 'RESUME' : 'PAUSE';
-  btnForfeit.textContent = over ? 'NEW MATCH' : (forfeitArmed > 0 ? 'SURE?' : 'FORFEIT');
-  btnForfeit.classList.toggle('armed', forfeitArmed > 0 && !over);
+  btnRestart.style.display = idle ? 'none' : '';
+  btnRestart.textContent = restartArmed > 0 ? 'SURE?' : 'RESTART';
+  btnRestart.classList.toggle('armed', restartArmed > 0 && !idle);
+  btnForfeit.style.display = idle ? 'none' : '';
+  btnForfeit.textContent = forfeitArmed > 0 ? 'SURE?' : 'FORFEIT';
+  btnForfeit.classList.toggle('armed', forfeitArmed > 0 && !idle);
 }
 
 function flashGo() {
@@ -243,13 +382,13 @@ function endMatch(winner, forfeited) {
   setMode('matchend');
   Sfx.fanfare(winner === 0);
   const head = forfeited ? 'FORFEIT' : (winner === 0 ? 'YOU WIN' : 'THE MACHINE WINS');
-  showBanner(head + '<span class="sub">SPACE OR TAP TO GO AGAIN</span>',
-    winner === 0 ? 'you' : 'cpu');
+  showBanner(head, winner === 0 ? 'you' : 'cpu');
+  lastResult = head + ' ' + score[0] + '–' + score[1];
   syncControls();
 }
 
 function forfeit() {
-  if (mode === 'matchend') { startMatch(); return; }
+  if (mode === 'matchend' || mode === 'attract') return;
   if (paused) {
     paused = false;
     document.body.classList.remove('paused');
@@ -268,9 +407,18 @@ function forfeit() {
 }
 
 function armForfeit() {
-  if (mode === 'matchend') { startMatch(); return; }
+  if (mode === 'matchend' || mode === 'attract') return;
   if (forfeitArmed > 0) { forfeitArmed = 0; forfeit(); }
   else forfeitArmed = 3000;
+  syncControls();
+}
+
+// Restart wipes the score without conceding — for the "this sucks, start over"
+// moment. Same two-step arm as forfeit so one stray R can't eat a match.
+function armRestart() {
+  if (mode === 'matchend' || mode === 'attract') return;
+  if (restartArmed > 0) { restartArmed = 0; startMatch(); }
+  else restartArmed = 3000;
   syncControls();
 }
 
@@ -367,8 +515,35 @@ const Sfx = {
   blip(who) { this.env('square', who === 0 ? 880 : 660, 0.05, 0.05); },
   graze() { this.env('sine', 1560, 0.035, 0.028); },
   tickTock(go) { this.env('sine', go ? 940 : 620, go ? 0.35 : 0.12, 0.12); },
-  crash() {
+  // James's produced hit samples (assets/cycle-hits). Media elements, not
+  // fetch+decode — the world must keep working from file://.
+  hitSamples: null,
+  loadHits() {
+    const mk = (f) => {
+      const a = new Audio('assets/cycle-hits/' + f);
+      a.preload = 'auto';
+      return a;
+    };
+    this.hitSamples = { trail: mk('light-trail-hit.mp3'), wall: mk('wall-hit.mp3') };
+  },
+  // Play the produced sample for this kind of death; returns false when it
+  // can't (sound off, file missing) so the caller can fall back to synthesis.
+  hit(kind) {
+    if (!this.running || !this.hitSamples || !this.hitSamples[kind]) return false;
+    const a = this.hitSamples[kind].cloneNode();
+    a.volume = Math.min(1, this.volume);
+    const p = a.play();
+    if (p) p.catch(() => {});
+    return true;
+  },
+  crash(kind) {
     if (!this.ctx || !this.running) return;
+    if (kind && this.hit(kind)) {
+      // The sample carries the character; keep just the low power-down drop
+      // underneath for weight.
+      this.env('sine', 220, 0.5, 0.16, 55);
+      return;
+    }
     const t = this.ctx.currentTime;
     const len = Math.floor(this.ctx.sampleRate * 0.45);
     const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
@@ -396,6 +571,7 @@ const Sfx = {
   },
 };
 
+Sfx.loadHits();
 if (window.ElasticSoundControl) {
   ElasticSoundControl.attach({
     start: () => Sfx.start(),
@@ -419,7 +595,18 @@ function queueDir(dir) {
     hintEl.classList.add('faded');
   }
 }
+function tryPhase() {
+  if (!cfg.phase || mode !== 'play' || paused || grace) return;
+  if (Core.armPhase(state, 0)) Sfx.env('sine', 320, 0.28, 0.09, 1200);
+}
+
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Shift') { boostHeld = true; return; }
+  if (e.key === 'x' || e.key === 'X') {
+    e.preventDefault();
+    tryPhase();
+    return;
+  }
   if (e.key in KEYMAP) {
     e.preventDefault();
     queueDir(KEYMAP[e.key]);
@@ -435,26 +622,39 @@ window.addEventListener('keydown', (e) => {
     armForfeit();
     return;
   }
+  if (e.key === 'r' || e.key === 'R') {
+    e.preventDefault();
+    armRestart();
+    return;
+  }
   if (e.key === ' ' || e.key === 'Enter') {
     if (paused) { e.preventDefault(); resumeGame(); return; }
-    if (mode === 'matchend' && modeT > 600) startMatch();
   }
 });
 
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'Shift') boostHeld = false;
+});
+
 // Losing the window mid-round should not cost a rider.
-window.addEventListener('blur', pauseGame);
+window.addEventListener('blur', () => { boostHeld = false; pauseGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 
 btnPause.addEventListener('click', togglePause);
+btnRestart.addEventListener('click', armRestart);
 btnForfeit.addEventListener('click', armForfeit);
+btnStart.addEventListener('click', () => {
+  if (mode !== 'attract') return;
+  startMatch();
+});
 
 let touchStart = null;
 window.addEventListener('touchstart', (e) => {
   if (e.target.closest('#tuner') || e.target.closest('#tuner-toggle')) return;
   if (e.target.closest('#controls')) return;
+  if (e.target.closest('#start-card')) return;
   if (paused) { resumeGame(); return; }
   touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  if (mode === 'matchend' && modeT > 600) startMatch();
 }, { passive: true });
 window.addEventListener('touchmove', (e) => {
   if (!touchStart) return;
@@ -467,18 +667,43 @@ window.addEventListener('touchmove', (e) => {
 window.addEventListener('touchend', () => { touchStart = null; }, { passive: true });
 
 // ---- tick ------------------------------------------------------------------------------------
+// What did this rider actually die on? Drives which hit sample plays.
+// Out of bounds or the overtime field = the wall; anything else (a trail,
+// another rider) = a light trail. A crashInto equal to the rider's own cell
+// means the closing field consumed them where they stood.
+function hitKind(p) {
+  const c = p.crashInto;
+  if (!c) return 'wall';
+  if (!Core.inBounds(state, c.x, c.y)) return 'wall';
+  if (c.x === p.x && c.y === p.y) return 'wall';
+  return state.cells[c.y * state.w + c.x] === Core.FIELD ? 'wall' : 'trail';
+}
+
+function boostActive() {
+  return !!cfg.boost && boostHeld && boostFuel > 0.03;
+}
+
 function gameTick() {
   if (inputQueue.length) Core.setDirection(state, 0, inputQueue.shift());
-  if (state.players[1].alive) {
-    Core.setDirection(state, 1, Core.aiChoose(state, 1, cfg.ai, Math.random));
+  for (let i = 1; i < state.players.length; i++) {
+    if (!state.players[i].alive) continue;
+    // The gauntlet's second hunter is always a DRIFTER — a pack, not a hive mind.
+    const level = i === 1 ? cfg.ai : 1;
+    Core.setDirection(state, i, Core.aiChoose(state, i, level, Math.random));
   }
   const before = state.players.map((p) => ({ x: p.x, y: p.y, dir: p.dir }));
-  const crashed = Core.step(state);
+  const boosting = boostActive();
+  const crashed = Core.step(state, boosting ? { boost: [true] } : undefined);
 
   state.players.forEach((p, i) => {
     prevPos[i] = { x: before[i].x, y: before[i].y };
     if (!p.alive) return;
-    if (arena) arena.advance(i, p.x, p.y, state.tick);
+    if (arena) {
+      // A skipped cell (gap, interference, phase) breaks the wall instead of
+      // extending it.
+      if (p.lastLaid) arena.advance(i, p.x, p.y, state.tick);
+      else arena.gap(i);
+    }
     if (p.dir !== before[i].dir) {
       if (arena) arena.turn(i);
       if (i === 0) Sfx.blip(0);
@@ -502,23 +727,75 @@ function gameTick() {
     }
   }
 
+  // Overtime: each consumed ring gets its punctuation.
+  if (state.shrink !== lastShrink) {
+    lastShrink = state.shrink;
+    if (arena) arena.pulse(0.45);
+    Sfx.tickTock(false);
+  }
+
   if (crashed.length > 0) {
-    crashed.forEach((i) => {
+    // CPU crashes present immediately — in the gauntlet the round can go on
+    // over a hunter's wreckage.
+    const cpuCrashed = crashed.filter((i) => i !== 0);
+    cpuCrashed.forEach((i) => {
       const p = state.players[i];
       const into = p.crashInto || { x: p.x, y: p.y };
       if (arena) arena.crash(i, p.x, p.y, into.x, into.y);
     });
-    Sfx.humsOff();
-    Sfx.crash();
-    roundWinner = crashed.length === 2 ? -1 : 1 - crashed[0];
-    if (roundWinner >= 0) {
-      score[roundWinner]++;
-      setTimeout(() => Sfx.point(roundWinner), 350);
-      bumpScore(roundWinner);
+    if (cpuCrashed.length) Sfx.crash(hitKind(state.players[cpuCrashed[0]]));
+
+    if (crashed.includes(0)) {
+      // Turn assist: a player crash that a perpendicular turn could still
+      // dodge gets a short grace window before the sparks fly. The whole game
+      // holds its breath (no ticks) while the window runs — see update().
+      const me = state.players[0];
+      const savable = cfg.assist > 0 &&
+        [(me.dir + 1) % 4, (me.dir + 3) % 4].some((d) =>
+          Core.cellFree(state, me.x + Core.DIRS[d].x, me.y + Core.DIRS[d].y));
+      if (savable) grace = { t: cfg.assist };
+      else resolveRound();
     }
-    setMode('roundend');
+  }
+  // Riding out through the breach IS the drift — leave the world mid-match.
+  if (state.players[0].escaped) {
+    escapeThroughBreach();
+    return;
+  }
+  // Round over? Covers crashes AND hunters that fled through the tear.
+  if (mode === 'play' && !grace && !state.players.some((p, i) => i > 0 && p.alive)) {
+    resolveRound();
   }
   refreshClaim();
+}
+
+function escapeThroughBreach() {
+  Sfx.humsOff();
+  // The breach's own anchor carries the drift state — ride it out.
+  const el = document.getElementById('exit-breach');
+  if (el) el.click();
+}
+
+// The round is over — read the survivors and score it. The gauntlet pays
+// double for beating two hunters.
+function resolveRound() {
+  const me = state.players[0];
+  if (!me.alive && arena) {
+    const into = me.crashInto || { x: me.x, y: me.y };
+    arena.crash(0, me.x, me.y, into.x, into.y);
+  }
+  Sfx.humsOff();
+  // The player's own death sounds here; a round won on a CPU crash already
+  // made its noise in gameTick.
+  if (!me.alive) Sfx.crash(hitKind(me));
+  const cpusAlive = state.players.some((p, i) => i > 0 && p.alive);
+  roundWinner = !me.alive && !cpusAlive ? -1 : (me.alive ? 0 : 1);
+  if (roundWinner >= 0) {
+    score[roundWinner] += roundWinner === 0 && roundIsGauntlet ? 2 : 1;
+    setTimeout(() => Sfx.point(roundWinner), 350);
+    bumpScore(roundWinner);
+  }
+  setMode('roundend');
 }
 
 // ---- mode driver -----------------------------------------------------------------------------
@@ -551,18 +828,45 @@ function update(dt) {
       Sfx.humsOn();
     }
   } else if (mode === 'play') {
+    if (grace) {
+      grace.t -= dt;
+      while (inputQueue.length) {
+        const dir = inputQueue.shift();
+        if (Core.reviveAfterCrash(state, 0, dir)) {
+          // Saved. The head juke reads on its own; a full beat before the
+          // next step keeps the recovery from feeling like a teleport.
+          grace = null;
+          tickAcc = 0;
+          if (arena) arena.turn(0);
+          Sfx.blip(0);
+          // If the hunters all died on the same tick, the save wins it.
+          if (!state.players.some((p, i) => i > 0 && p.alive)) resolveRound();
+          break;
+        }
+      }
+      if (grace) {
+        if (grace.t <= 0) { grace = null; resolveRound(); }
+        return;
+      }
+      if (mode !== 'play') return;   // the revive ended the round
+    }
     roundT += dt;
-    const pitch = ticksPerSec() / (8 * cfg.speed);
+    // Boost fuel breathes with the throttle.
+    boostFuel = boostActive()
+      ? Math.max(0, boostFuel - dt / 1000 * BOOST_DRAIN)
+      : Math.min(1, boostFuel + dt / 1000 * BOOST_REGEN);
+    const ramp = ticksPerSec() / (8 * cfg.speed);
+    const pitch = ramp * (boostActive() ? 1.14 : 1);
     if (Math.abs(pitch - lastHumPitch) > 0.02) {
       lastHumPitch = pitch;
       Sfx.humPitch(pitch);
-      speedLabel.textContent = pitch.toFixed(2) + '×';
+      speedLabel.textContent = ramp.toFixed(2) + '×';
     }
     Sfx.humPan((state.players[0].x / state.w - 0.5) * 1.4);
     tickAcc += dt;
     const interval = 1000 / ticksPerSec();
     let guard = 0;
-    while (tickAcc >= interval && mode === 'play' && guard < 6) {
+    while (tickAcc >= interval && mode === 'play' && !grace && guard < 6) {
       tickAcc -= interval;
       gameTick();
       guard++;
@@ -578,16 +882,26 @@ function update(dt) {
     }
   } else if (mode === 'forfeit') {
     if (modeT > 700) endMatch(1, true);
+  } else if (mode === 'matchend') {
+    // The result banner gets its beat, then it's back to the start gate —
+    // nothing runs again until the button is clicked.
+    if (modeT > 2400) enterAttract(lastResult);
   }
 }
 
 // ---- main loop ---------------------------------------------------------------------------------
 function frame(now) {
-  const dt = Math.min(50, now - lastFrame);
+  // Clamped at zero: a clock that steps backwards (harness pumps, suspend
+  // wake) must never run the timers in reverse.
+  const dt = Math.max(0, Math.min(50, now - lastFrame));
   lastFrame = now;
   if (forfeitArmed > 0) {
     forfeitArmed -= dt;
     if (forfeitArmed <= 0) { forfeitArmed = 0; syncControls(); }
+  }
+  if (restartArmed > 0) {
+    restartArmed -= dt;
+    if (restartArmed <= 0) { restartArmed = 0; syncControls(); }
   }
   update(dt);
 
@@ -606,10 +920,74 @@ function frame(now) {
       arena.setHead(i, from.x, from.y, to.x, to.y, t, p.dir, p.alive);
     });
     const visTick = state.tick + (mode === 'play' ? fx : Math.min(2, modeT / interval));
-    arena.setParams(look);
+
+    // Blackout rounds ease the lights down instead of snapping.
+    const blackoutOn = roundIsBlackout && (mode === 'countdown' || mode === 'play' || mode === 'roundend');
+    blackoutMix += ((blackoutOn ? 1 : 0) - blackoutMix) * Math.min(1, dt / 450);
+    const bm = blackoutMix;
+    Object.assign(effLook, look);
+    if (bm > 0.003) {
+      effLook.grid = look.grid * (1 - bm) + 0.04 * bm;
+      effLook.territory = look.territory * (1 - bm);
+      effLook.dust = look.dust * (1 - bm * 0.8);
+      effLook.field = look.field * (1 - bm * 0.45);
+      effLook.glow = look.glow * (1 - bm * 0.12);
+    }
+    arena.setParams(effLook);
+
+    // Specials feeds: the drifting interference zone, the closing field, the
+    // ghosted phase rider.
+    if (state.rules.zone) {
+      const z = Core.zoneAt(state);
+      arena.setZone(z.x, z.y, z.r, 1);
+    }
+    arena.setShrink(state.shrink);
+    arena.setPhasing(0, !!state.players[0].phasing);
+
     arena.render(dt, visTick, balance);
+    positionExits();
   }
+  updateMeters();
   requestAnimationFrame(frame);
+}
+
+// ---- specials HUD meters ------------------------------------------------------------
+const effLook = {};
+function updateMeters() {
+  const inMatch = mode === 'countdown' || mode === 'play' || mode === 'roundend';
+  boostWrap.style.display = cfg.boost && inMatch ? '' : 'none';
+  phasePip.style.display = cfg.phase && inMatch ? '' : 'none';
+  if (cfg.boost) boostBar.style.width = (boostFuel * 100).toFixed(0) + '%';
+  if (cfg.phase) {
+    const me = state.players[0];
+    phasePip.classList.toggle('spent', !me || me.phaseCharges <= 0);
+    phasePip.classList.toggle('hot', !!me && (me.phaseArmed || me.phasing));
+  }
+}
+
+// ---- the ways out --------------------------------------------------------------------
+// Three exits live in the 3D scene; their DOM anchors chase the projected
+// points every frame. The fourth is a stuck pixel in the "CRT" itself.
+const exitEls = {
+  breach: document.getElementById('exit-breach'),
+  hatch: document.getElementById('exit-hatch'),
+  farWall: document.getElementById('exit-farwall'),
+};
+const _proj = {};
+function positionExits() {
+  for (const key in exitEls) {
+    const el = exitEls[key];
+    if (!el) continue;
+    const a = arena.exitAnchors[key];
+    arena.projectToScreen(a.x, a.y, a.z, _proj);
+    const on = _proj.front && _proj.x > -60 && _proj.x < innerWidth + 60 &&
+      _proj.y > -60 && _proj.y < innerHeight + 60;
+    el.style.display = on ? '' : 'none';
+    if (on) {
+      el.style.left = _proj.x + 'px';
+      el.style.top = _proj.y + 'px';
+    }
+  }
 }
 
 // ---- tuner --------------------------------------------------------------------------------------
@@ -633,6 +1011,8 @@ document.querySelectorAll('#tabs button').forEach((b) => {
 
 const speedSlider = document.getElementById('t-speed');
 const speedVal = document.getElementById('t-speed-val');
+const assistSlider = document.getElementById('t-assist');
+const assistVal = document.getElementById('t-assist-val');
 function syncSeg(id, value) {
   document.querySelectorAll('#' + id + ' button').forEach((b) => {
     b.classList.toggle('on', b.dataset.v === String(value));
@@ -641,13 +1021,20 @@ function syncSeg(id, value) {
 function syncPlayUI() {
   speedSlider.value = cfg.speed;
   speedVal.textContent = parseFloat(Number(cfg.speed).toFixed(2)) + '×';
+  assistSlider.value = cfg.assist;
+  assistVal.textContent = cfg.assist > 0 ? cfg.assist + 'ms' : 'OFF';
   syncSeg('t-grid', cfg.grid);
   syncSeg('t-ai', cfg.ai);
   syncSeg('t-target', cfg.target);
   syncSeg('t-hud', cfg.hudTerr);
+  for (const key of Object.keys(SPECIAL_DEFAULTS)) syncSeg('t-' + key, cfg[key]);
 }
 speedSlider.addEventListener('input', () => {
   cfg.speed = parseFloat(speedSlider.value);
+  save(PLAY_KEY, cfg); syncPlayUI();
+});
+assistSlider.addEventListener('input', () => {
+  cfg.assist = parseInt(assistSlider.value, 10);
   save(PLAY_KEY, cfg); syncPlayUI();
 });
 function segHandler(id, key, parse, restart) {
@@ -661,7 +1048,9 @@ function segHandler(id, key, parse, restart) {
         state = Core.createGame(GRIDS[cfg.grid]);
         reallocFields();
         if (arena) arena.setArena(state.w, state.h);
-        startMatch();
+        // From the start gate, re-stage under the card — never auto-start.
+        if (mode === 'attract') enterAttract();
+        else startMatch();
       } else {
         renderHud();
       }
@@ -673,6 +1062,8 @@ segHandler('t-grid', 'grid', null, true);
 segHandler('t-ai', 'ai', int, true);
 segHandler('t-target', 'target', int, true);
 segHandler('t-hud', 'hudTerr', int, false);
+// Specials: no restart — round-structure ones take hold at the next stageRound.
+for (const key of Object.keys(SPECIAL_DEFAULTS)) segHandler('t-' + key, key, int, false);
 
 // look sliders
 const lookRows = document.getElementById('look-rows');
@@ -783,9 +1174,9 @@ window.addEventListener('resize', () => { if (arena) arena.resize(); });
 syncPlayUI();
 syncLookUI();
 loadPresets();
+rollColors();
 renderHud();
-syncControls();
-startRound();
+enterAttract();
 requestAnimationFrame(frame);
 
 setTimeout(() => document.getElementById('title').classList.add('faded'), 12000);

@@ -8,6 +8,22 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-28 (Surround feel pass + specials; Lumina track dropdown)
+
+- Surround, four James briefs across the day: feel pass 1 (extent-fit re-centred
+  camera, turn-assist grace + `reviveAfterCrash`, 24 colour pairs per match,
+  two-step RESTART), the start gate (attract mode, nothing runs until START),
+  then his "do every single one": seven specials (boost/phase/gaps/overtime/
+  zone/gauntlet-2v1/blackout — core generalized to N riders, sim 7220) and four
+  diegetic drift exits. His produced crash samples wired by hit kind. Breach
+  iterated three times on his eye: static ghostly tear, re-rolled per round,
+  and riding through it now genuinely drifts out (core rule, corridor survives
+  overtime). Still draft; awaiting his next flight.
+- Lumina: player track readout is a dropdown; new `GET /api/worlds/:slug/tracks`
+  lists assets/sound-tracks/, served pages auto-discover dropped-in audio
+  (server restart needed to activate the route). Panel-redesign session still
+  queued.
+
 ## 2026-07-27 (Lumina panel pass 1)
 
 - Lumina's control panel: **Roboto** (bundled locally, 43 KB latin subset — the panel

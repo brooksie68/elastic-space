@@ -301,9 +301,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
    7210 — boost/phase/trail-gaps/overtime/interference-zone/gauntlet-2v1/
    blackout (SPECIALS tuner tab; gaps+zone default off) + four diegetic drift
    exits (field breach, void hatch, riderless horizon wall, hidden stuck pixel;
-   drift.js wired, world still NOT in registry). Specials visuals + exit props
-   NOT yet eyeballed by anyone — pane wouldn't composite. AWAITING HIS NEXT
-   FLIGHT. Then ship
+   drift.js wired, world still NOT in registry). SAME DAY on his flights:
+   his crash samples (assets/cycle-hits) wired by hit kind (trail vs wall);
+   breach iterated ×3 to a STATIC ghostly tear (his rule: no flicker — humans
+   lock onto motion), re-rolled to a random wall each round, and RIDING
+   THROUGH IT now drifts out for real (core rule, sim 7220; overtime can't
+   seal the corridor). Verdict so far: samples "really cool"; breach level
+   awaiting his eye at v8. Then ship
    wiring (world.json, drift exits, registry — mind the drafts-in-registry
    gotcha).
 7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one

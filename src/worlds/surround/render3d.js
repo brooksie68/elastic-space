@@ -37,9 +37,11 @@ const MAX_RINGS = 4;
 const MAX_SPARKS = 900;
 
 // How much of the frame the arena is allowed to claim, in NDC. Just shy of the
-// edges: the HUD floats over the top and the title over the bottom.
+// edges: the HUD floats over the top and the title over the bottom. The fit is
+// extent-based and the view is re-centred each frame, so these are real
+// margins on both sides — not "whichever edge sticks out furthest".
 const FIT_X = 0.99;
-const FIT_Y = 0.94;
+const FIT_Y = 0.96;
 
 // ---- shared shader pieces -----------------------------------------------------
 const COMMON = `
@@ -61,6 +63,7 @@ const TRAIL_VERT = `
   attribute float aSide;   // -1 / +1 across a strip
   attribute vec2  aOff;    // unit miter perpendicular, in cells
   attribute float aAge;    // tick index this point was laid at
+  attribute float aCut;    // 1 marks a break in the wall (gap / phase)
 
   uniform float uNow;      // fractional tick index
   uniform float uHeight;
@@ -73,8 +76,10 @@ const TRAIL_VERT = `
   varying float vAge;
   varying float vV;
   varying float vSide;
+  varying float vCut;
 
   void main() {
+    vCut = aCut;
     float age = max(0.0, uNow - aAge);
     float grow = clamp(age / uBirth, 0.0, 1.0);
     grow = grow * grow * (3.0 - 2.0 * grow);
@@ -113,8 +118,11 @@ const TRAIL_FRAG = `
   varying float vAge;
   varying float vV;
   varying float vSide;
+  varying float vCut;
 
   void main() {
+    // A cut segment bridges a gap in the wall — draw none of it.
+    if (vCut > 0.02) discard;
     // Fresh wall runs white-hot right behind the rider and cools into the
     // player colour over the next couple of seconds.
     float fresh = exp(-vAge * 0.09 * uCool);
@@ -177,8 +185,11 @@ const FLOOR_FRAG = `
   uniform float uFlash;
   uniform vec3  uC0;
   uniform vec3  uC1;
+  uniform vec3  uC2;
   uniform vec4  uHead0;        // xz, alive, angle
   uniform vec4  uHead1;
+  uniform vec4  uHead2;
+  uniform vec4  uZone;         // xz, radius, strength — the interference patch
   uniform vec4  uRings[${MAX_RINGS}];   // xz, age(s), strength
   uniform sampler2D uClaim;
   uniform float uGlow;
@@ -241,13 +252,26 @@ const FLOOR_FRAG = `
       // Perimeter band — the arena reads as a lit table, not a cutout.
       float edge = 1.0 - smoothstep(0.0, 2.2, min(-q.x, -q.y));
       col += vec3(0.24, 0.44, 0.85) * edge * (0.10 + uFlash * 0.75);
+
+      // Interference zone: flickering static where trails refuse to lay.
+      if (uZone.w > 0.001) {
+        float zd = length(p - uZone.xy);
+        float inz = (1.0 - smoothstep(uZone.z * 0.8, uZone.z, zd)) * uZone.w;
+        float stat = hash21(floor(p * 3.0) + vec2(floor(uTime * 22.0) * 0.371, 0.0));
+        col = mix(col, col * 0.72, inz * 0.5);
+        col += vec3(0.45, 0.60, 0.85) * stat * stat * inz * 0.14;
+        float rim = exp(-abs(zd - uZone.z) * 1.4) * uZone.w;
+        col += vec3(0.35, 0.5, 0.8) * rim * 0.10;
+      }
     }
 
     // Light pools and headlights under the riders.
     col += uC0 * pool(p, uHead0, 5.5) * 0.34;
     col += uC1 * pool(p, uHead1, 5.5) * 0.34;
+    col += uC2 * pool(p, uHead2, 5.5) * 0.34;
     col += uC0 * beam(p, uHead0, 7.0) * 0.16;
     col += uC1 * beam(p, uHead1, 7.0) * 0.16;
+    col += uC2 * beam(p, uHead2, 7.0) * 0.16;
 
     // Crash shockwaves.
     for (int i = 0; i < ${MAX_RINGS}; i++) {
@@ -285,8 +309,11 @@ const FIELD_FRAG = `
   uniform float uFlash;
   uniform vec3  uC0;
   uniform vec3  uC1;
+  uniform vec3  uC2;
   uniform vec4  uHead0;
   uniform vec4  uHead1;
+  uniform vec4  uHead2;
+  uniform vec4  uBreach;   // world xz of the tear, radius, on
   uniform float uGlow;
   varying vec2 vUvF;
   varying vec3 vWorldPos;
@@ -309,12 +336,32 @@ const FIELD_FRAG = `
     // The field lights up where a rider comes near it.
     float d0 = length(vWorldPos.xz - uHead0.xy) * (uHead0.z > 0.5 ? 1.0 : 99.0);
     float d1 = length(vWorldPos.xz - uHead1.xy) * (uHead1.z > 0.5 ? 1.0 : 99.0);
-    vec3 near = uC0 * exp(-d0 * d0 * 0.03) + uC1 * exp(-d1 * d1 * 0.03);
+    float d2 = length(vWorldPos.xz - uHead2.xy) * (uHead2.z > 0.5 ? 1.0 : 99.0);
+    vec3 near = uC0 * exp(-d0 * d0 * 0.03) + uC1 * exp(-d1 * d1 * 0.03)
+              + uC2 * exp(-d2 * d2 * 0.03);
 
     vec3 col = vec3(0.20, 0.38, 0.78) * body + near * (0.55 + base * 0.6);
     col += vec3(0.7, 0.85, 1.0) * uFlash * 0.5;
 
     float a = (body * 0.85 + length(near) * 0.5 + uFlash * 0.35) * uAmt;
+
+    // The breach: the lattice is genuinely torn open here. The field dies
+    // inside the tear and its edge sputters hot — the way out must be seen.
+    if (uBreach.w > 0.5) {
+      // Static on purpose — humans lock onto flicker and motion; a ghostly
+      // unmoving tear is noticed when scanned, not shouted at (James).
+      vec2 bp = vec2(length(vWorldPos.xz - uBreach.xy) / uBreach.z,
+                     (vWorldPos.y - 1.1) / 2.4);
+      float he = length(bp);
+      float jag = hash21(floor(vec2(atan(bp.y, bp.x) * 5.1, 3.7)));
+      float edge = 1.0 - 0.18 * jag;
+      float hole = 1.0 - smoothstep(0.72 * edge, 1.0 * edge, he);
+      float rim = smoothstep(0.62, 0.95, he) * (1.0 - smoothstep(1.0, 1.35, he));
+      a *= 1.0 - hole * 0.97;
+      col += vec3(0.55, 0.85, 1.0) * rim * 0.30;
+      a += rim * 0.15 * uAmt;
+    }
+
     gl_FragColor = vec4(col * uGlow, clamp(a, 0.0, 1.0));
   }
 `;
@@ -520,6 +567,7 @@ class Trail {
     const aSide = new Float32Array(v);
     const aOff = new Float32Array(v * 2);
     const aAge = new Float32Array(v);
+    const aCut = new Float32Array(v);
     for (let i = 0; i < maxPoints; i++) {
       aV[i * 2] = 0; aV[i * 2 + 1] = 1;
       aSide[i * 2] = -1; aSide[i * 2 + 1] = 1;
@@ -534,14 +582,17 @@ class Trail {
     this.posAttr = new THREE.BufferAttribute(pos, 3);
     this.offAttr = new THREE.BufferAttribute(aOff, 2);
     this.ageAttr = new THREE.BufferAttribute(aAge, 1);
+    this.cutAttr = new THREE.BufferAttribute(aCut, 1);
     this.posAttr.setUsage(THREE.DynamicDrawUsage);
     this.offAttr.setUsage(THREE.DynamicDrawUsage);
     this.ageAttr.setUsage(THREE.DynamicDrawUsage);
+    this.cutAttr.setUsage(THREE.DynamicDrawUsage);
     geo.setAttribute('position', this.posAttr);
     geo.setAttribute('aV', new THREE.BufferAttribute(aV, 1));
     geo.setAttribute('aSide', new THREE.BufferAttribute(aSide, 1));
     geo.setAttribute('aOff', this.offAttr);
     geo.setAttribute('aAge', this.ageAttr);
+    geo.setAttribute('aCut', this.cutAttr);
     geo.setIndex(new THREE.BufferAttribute(idx, 1));
     geo.setDrawRange(0, 0);
     geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
@@ -608,6 +659,7 @@ class Trail {
   clear() {
     this.n = 0;
     this.geo.setDrawRange(0, 0);
+    this.pendingCut = false;
     // Without this the next round's fresh wall inherits the old power-down
     // sweep and renders dead on arrival.
     this.dying = false;
@@ -652,26 +704,47 @@ class Trail {
     this.dirs[i * 2 + 1] = mz * scale;
   }
 
-  push(x, z, tick) {
+  _pushRaw(x, z, tick, cut) {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.pts[i * 2] = x;
     this.pts[i * 2 + 1] = z;
     this.ageAttr.array[i * 2] = tick;
     this.ageAttr.array[i * 2 + 1] = tick;
+    this.cutAttr.array[i * 2] = cut;
+    this.cutAttr.array[i * 2 + 1] = cut;
     this._miter(i);
     this._writeVert(i);
     if (i > 0) { this._miter(i - 1); this._writeVert(i - 1); }
+  }
+
+  push(x, z, tick) {
+    // A pending gap bridges to the new point with two fully-cut points; the
+    // fragment shader discards the cut segment and the flanking segments are
+    // zero-area, so the wall visibly breaks.
+    if (this.pendingCut && this.n > 0) {
+      const lx = this.pts[(this.n - 1) * 2];
+      const lz = this.pts[(this.n - 1) * 2 + 1];
+      this._pushRaw(lx, lz, tick, 1);
+      this._pushRaw(x, z, tick, 1);
+      this.pendingCut = false;
+    }
+    this._pushRaw(x, z, tick, 0);
     this.geo.setDrawRange(0, Math.max(0, (this.n - 1) * 6));
     this.posAttr.needsUpdate = true;
     this.offAttr.needsUpdate = true;
     this.ageAttr.needsUpdate = true;
+    this.cutAttr.needsUpdate = true;
   }
+
+  // The wall stops here (a trail gap or a phased rider) and resumes at the
+  // next push. While the cut is pending the head detaches from the wall.
+  gap() { this.pendingCut = true; }
 
   // The last point rides with the interpolated head so the wall extends
   // continuously instead of popping a cell at a time.
   setHead(x, z) {
-    if (this.n === 0) return;
+    if (this.n === 0 || this.pendingCut) return;
     const i = this.n - 1;
     this.pts[i * 2] = x;
     this.pts[i * 2 + 1] = z;
@@ -705,9 +778,12 @@ class Trail {
 export class Arena3D {
   constructor(canvas, opts = {}) {
     this.params = Object.assign({}, DEFAULT_PARAMS, opts.params || {});
+    // Three slots: player, cpu, and the gauntlet's second hunter (derived from
+    // the cpu colour so the pair still reads as two sides).
     this.palette = opts.palette || [
       { body: '#26d9ff', hot: '#eaffff', cold: '#0d4a63' },
       { body: '#ff4fd8', hot: '#ffeafa', cold: '#5c1147' },
+      { body: '#c93da8', hot: '#ffe3f6', cold: '#470d36' },
     ];
 
     this.renderer = new THREE.WebGLRenderer({
@@ -732,6 +808,7 @@ export class Arena3D {
     this.pullBack = 0;
     this._target = new THREE.Vector3();
     this._fitPts = Array.from({ length: 8 }, () => new THREE.Vector3());
+    this._ext = { xMin: 0, xMax: 0, yMin: 0, yMax: 0 };
 
     this.colors = this.palette.map((p) => ({
       body: new THREE.Color(p.body),
@@ -765,8 +842,11 @@ export class Arena3D {
         uGlow: { value: 1 },
         uC0: { value: this.colors[0].body },
         uC1: { value: this.colors[1].body },
+        uC2: { value: this.colors[2].body },
         uHead0: { value: new THREE.Vector4(0, 0, 0, 0) },
         uHead1: { value: new THREE.Vector4(0, 0, 0, 0) },
+        uHead2: { value: new THREE.Vector4(0, 0, 0, 0) },
+        uZone: { value: new THREE.Vector4(0, 0, 0, 0) },
         uRings: { value: Array.from({ length: MAX_RINGS }, () => new THREE.Vector4()) },
         uClaim: { value: null },
       },
@@ -792,8 +872,11 @@ export class Arena3D {
         uGlow: { value: 1 },
         uC0: { value: this.colors[0].body },
         uC1: { value: this.colors[1].body },
+        uC2: { value: this.colors[2].body },
         uHead0: this.floorMat.uniforms.uHead0,
         uHead1: this.floorMat.uniforms.uHead1,
+        uHead2: this.floorMat.uniforms.uHead2,
+        uBreach: { value: new THREE.Vector4(0, 0, 2.6, 0) },
       },
     });
     this.fieldGroup = new THREE.Group();
@@ -876,6 +959,103 @@ export class Arena3D {
       this.scene.add(g);
       return { group: g, dart, halo, shaft, angle: 0, bank: 0, alive: true };
     });
+
+    // ---- the ways out — diegetic exit props --------------------------------------
+    // The breach marker: jagged sputtering arcs around the hole the field
+    // shader tears open (uBreach). Bright on purpose — James's note: the way
+    // out must be seen. It re-rolls to a new wall every round (setBreach).
+    this.breachMat = new THREE.ShaderMaterial({
+      vertexShader: SHAFT_VERT,
+      fragmentShader: `
+        precision highp float;
+        ${COMMON}
+        uniform float uTime;
+        varying vec2 vUvS;
+        void main() {
+          // A ghostly unmoving ring — no flicker, no pulse. Humans lock onto
+          // motion; the still tear reads on a scan without demanding a look.
+          vec2 c = (vUvS - 0.5) * 2.0;
+          float r = length(c * vec2(1.0, 1.25));
+          float ang = atan(c.y, c.x);
+          float jag = hash21(vec2(floor(ang * 4.0), 3.7));
+          float ring = exp(-abs(r - (0.72 - jag * 0.10)) * 9.0);
+          vec3 col = vec3(0.45, 0.75, 1.0) * ring * 0.09;
+          gl_FragColor = vec4(col, clamp(ring * 0.07, 0.0, 1.0));
+        }
+      `,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      uniforms: { uTime: { value: 0 } },
+    });
+    this.breach = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.5), this.breachMat);
+    this.breach.renderOrder = 10;
+    this.breach.frustumCulled = false;
+    this.scene.add(this.breach);
+    this.breachSide = 3;
+    this.breachT = 0.4;
+
+    // A service hatch down in the void, seen through the glass.
+    this.hatchMat = new THREE.ShaderMaterial({
+      vertexShader: SHAFT_VERT,
+      fragmentShader: `
+        precision highp float;
+        uniform float uTime;
+        varying vec2 vUvS;
+        void main() {
+          vec2 c = abs(vUvS - 0.5);
+          float m = max(c.x, c.y);
+          float frame = smoothstep(0.36, 0.38, m) - smoothstep(0.46, 0.48, m);
+          float stripes = step(0.5, fract((vUvS.x + vUvS.y) * 7.0));
+          float band = (smoothstep(0.28, 0.30, m) - smoothstep(0.36, 0.38, m)) * stripes;
+          float pulse = 0.55 + 0.45 * sin(uTime * 1.4);
+          vec3 col = vec3(0.95, 0.75, 0.25) * band * 0.5;
+          col += vec3(0.45, 0.65, 0.95) * frame * (0.5 + pulse * 0.5);
+          float glow = (1.0 - smoothstep(0.0, 0.30, m)) * 0.10 * pulse;
+          col += vec3(0.3, 0.5, 0.9) * glow;
+          gl_FragColor = vec4(col, (frame + band) * 0.85 + glow);
+        }
+      `,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uTime: { value: 0 } },
+    });
+    this.hatch = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.0), this.hatchMat);
+    this.hatch.rotation.x = -Math.PI / 2;
+    this.hatch.renderOrder = 1;
+    this.hatch.frustumCulled = false;
+    this.scene.add(this.hatch);
+
+    // A riderless light-wall running to the horizon, out in the void. Nobody
+    // is making it. It implies other arenas.
+    this.farWallMat = new THREE.ShaderMaterial({
+      vertexShader: SHAFT_VERT,
+      fragmentShader: `
+        precision highp float;
+        uniform float uTime;
+        varying vec2 vUvS;
+        void main() {
+          float ends = smoothstep(0.0, 0.10, vUvS.x) * smoothstep(1.0, 0.72, vUvS.x);
+          float top = smoothstep(0.55, 1.0, vUvS.y);
+          float body = 0.16 + top * 0.55;
+          float pulse = exp(-abs(fract(vUvS.x * 1.0 - uTime * 0.05) - 0.5) * 26.0);
+          vec3 col = vec3(0.55, 0.9, 1.0) * body + vec3(0.9, 1.0, 1.0) * pulse * 0.65;
+          gl_FragColor = vec4(col * ends, ends * (body * 0.8 + pulse * 0.5));
+        }
+      `,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      uniforms: { uTime: { value: 0 } },
+    });
+    this.farWall = new THREE.Mesh(new THREE.PlaneGeometry(90, 1.2), this.farWallMat);
+    this.farWall.rotation.y = Math.PI / 2;
+    this.farWall.renderOrder = 3;
+    this.farWall.frustumCulled = false;
+    this.scene.add(this.farWall);
+
+    this.exitAnchors = {
+      breach: new THREE.Vector3(),
+      hatch: new THREE.Vector3(),
+      farWall: new THREE.Vector3(),
+    };
 
     // dust
     this.dustMat = new THREE.ShaderMaterial({
@@ -966,7 +1146,8 @@ export class Arena3D {
       this.scene.remove(t.group); this.scene.remove(t.mirror); t.dispose();
     }
     this.trails = this.colors.map((c) => {
-      const t = new Trail(w * h + 8, c, {});
+      // ×2: every trail gap spends two extra bridge points.
+      const t = new Trail(w * h * 2 + 16, c, {});
       this.scene.add(t.group);
       this.scene.add(t.mirror);
       return t;
@@ -992,6 +1173,13 @@ export class Arena3D {
     this.dust.renderOrder = 3;
     this.scene.add(this.dust);
 
+    // Exit props take their places around the new arena (the breach places
+    // itself every frame — it moves and tracks the shrinking field).
+    this.hatch.position.set(w / 2 + 7, -5.5, h / 2 + 4.5);
+    this.farWall.position.set(w / 2 + 16, 0.6, -h / 2 - 52);
+    this.exitAnchors.hatch.copy(this.hatch.position);
+    this.exitAnchors.farWall.set(w / 2 + 16, 1, -h / 2 - 14);
+
     this.reset();
     this.resize();
   }
@@ -1011,7 +1199,10 @@ export class Arena3D {
     this.camIntro = 1;
     this.pullBack = 0;
     if (this.claimField) this.claimField.fill(0);
-    for (const hd of this.heads) { hd.alive = true; hd.bank = 0; }
+    // Dead until spawned — the gauntlet's third rider must not haunt 1v1 rounds.
+    for (const hd of this.heads) { hd.alive = false; hd.bank = 0; hd.phase = false; }
+    this.shrinkRings = 0;
+    this.floorMat.uniforms.uZone.value.set(0, 0, 0, 0);
   }
 
   // ---- the game talks to these ----------------------------------------------------------------
@@ -1024,11 +1215,66 @@ export class Arena3D {
     hd.alive = true;
     hd.angle = Math.atan2(DIR_DX[dir], DIR_DZ[dir]);
     hd.bank = 0;
+    hd.phase = false;
+    hd.dart.material.opacity = 0.95;
     hd.group.position.set(this.cx(x), 0, this.cz(y));
   }
 
   advance(i, x, y, tick) {
     this.trails[i].push(this.cx(x), this.cz(y), tick);
+  }
+
+  // The wall breaks here — a trail gap, an interference cell, a phased rider.
+  gap(i) { this.trails[i].gap(); }
+
+  // Ghost the rider while it runs inside walls.
+  setPhasing(i, on) {
+    const hd = this.heads[i];
+    if (hd.phase === on) return;
+    hd.phase = on;
+    hd.dart.material.opacity = on ? 0.3 : 0.95;
+  }
+
+  // Overtime: the containment field closes in by whole cell-rings.
+  setShrink(rings) { this.shrinkRings = rings; }
+
+  // Move the breach: side 0 far / 1 right / 2 near / 3 left, t 0..1 along it.
+  setBreach(side, t) {
+    this.breachSide = side;
+    this.breachT = t;
+  }
+
+  _placeBreach() {
+    const hw = this.w / 2 * this.fieldGroup.scale.x;
+    const hh = this.h / 2 * this.fieldGroup.scale.z;
+    const t = this.breachT * 2 - 1;
+    let x, z, ry;
+    switch (this.breachSide) {
+      case 0: x = t * hw * 0.75; z = -hh; ry = 0; break;
+      case 1: x = hw; z = t * hh * 0.75; ry = -Math.PI / 2; break;
+      case 2: x = t * hw * 0.75; z = hh; ry = Math.PI; break;
+      default: x = -hw; z = t * hh * 0.75; ry = Math.PI / 2; break;
+    }
+    this.breach.position.set(x, 1.15, z);
+    this.breach.rotation.y = ry;
+    this.exitAnchors.breach.set(x, 1.15, z);
+    this.fieldMat.uniforms.uBreach.value.set(x, z, 2.6, 1);
+  }
+
+  // The interference zone, in grid coords (amt 0 hides it).
+  setZone(gx, gy, r, amt) {
+    this.floorMat.uniforms.uZone.value.set(gx - this.w / 2, gy - this.h / 2, r, amt);
+  }
+
+  // World point -> CSS pixels, using the final (view-offset) projection.
+  // front is false when the point is behind the camera.
+  projectToScreen(wx, wy, wz, out) {
+    _v3.set(wx, wy, wz).project(this.camera);
+    out = out || {};
+    out.x = (_v3.x + 1) / 2 * this.viewW;
+    out.y = (1 - _v3.y) / 2 * this.viewH;
+    out.front = _v3.z < 1;
+    return out;
   }
 
   // fx is the fractional progress of the current tick (0..1)
@@ -1115,6 +1361,25 @@ export class Arena3D {
 
   setParams(p) { Object.assign(this.params, p); }
 
+  // Re-skin both riders in place. Takes two body hex strings; hot and cold are
+  // derived. Every rider-coloured material holds a reference to these
+  // THREE.Color instances, so mutating them restyles walls, rails, floor wash,
+  // field, halos and shafts live — except the dart head, whose constructor
+  // colour was copied by three.js, so it is re-set explicitly.
+  setPalette(bodies) {
+    // Third slot (the gauntlet's second hunter): a darker sibling of the cpu
+    // colour, so the round still reads as two sides.
+    const all = bodies.length >= 3 ? bodies : bodies.concat([bodies[1]]);
+    all.forEach((hex, i) => {
+      const c = this.colors[i];
+      c.body.set(hex);
+      if (i === 2 && bodies.length < 3) c.body.offsetHSL(-0.055, 0, -0.10);
+      c.hot.copy(c.body).lerp(_white, 0.85);
+      c.cold.copy(c.body).multiplyScalar(0.35);
+      if (this.heads && this.heads[i]) this.heads[i].dart.material.color.copy(c.hot);
+    });
+  }
+
   // ---- per-frame -------------------------------------------------------------------------------
   resize() {
     // Size from the window, not clientWidth: this world is always full-bleed,
@@ -1155,10 +1420,28 @@ export class Arena3D {
     this.camera.updateMatrixWorld();
   }
 
+  // Projected NDC bounds of the fit points through the current camera.
+  _projExtents() {
+    const e = this._ext;
+    e.xMin = Infinity; e.xMax = -Infinity;
+    e.yMin = Infinity; e.yMax = -Infinity;
+    for (const p of this._fitPts) {
+      _v3.copy(p).project(this.camera);
+      if (_v3.x < e.xMin) e.xMin = _v3.x;
+      if (_v3.x > e.xMax) e.xMax = _v3.x;
+      if (_v3.y < e.yMin) e.yMin = _v3.y;
+      if (_v3.y > e.yMax) e.yMax = _v3.y;
+    }
+    return e;
+  }
+
   // Solve for the closest distance that still keeps the whole arena — floor
   // corners and the tops of the containment field — inside the frame. Projecting
   // the real corners and scaling by the overshoot converges in a few passes;
   // the old closed-form guess was leaving the arena at 56% of the screen.
+  // Extent-based on purpose: |max| fitting let a one-sided overhang (the tilted
+  // near edge) reserve slack on the far side too, which pooled as a dead band
+  // between the arena and the HUD. The caller re-centres the leftover.
   _fitDistance(pitch, yaw) {
     const fh = this._fieldHeight();
     const hw = this.w / 2;
@@ -1175,14 +1458,8 @@ export class Arena3D {
     let dist = Math.max(this.w, this.h);
     for (let i = 0; i < 6; i++) {
       this._placeCamera(dist, pitch, yaw);
-      let mx = 0;
-      let my = 0;
-      for (const p of pts) {
-        _v3.copy(p).project(this.camera);
-        mx = Math.max(mx, Math.abs(_v3.x));
-        my = Math.max(my, Math.abs(_v3.y));
-      }
-      const scale = Math.max(mx / FIT_X, my / FIT_Y);
+      const e = this._projExtents();
+      const scale = Math.max((e.xMax - e.xMin) / 2 / FIT_X, (e.yMax - e.yMin) / 2 / FIT_Y);
       if (!isFinite(scale) || scale <= 0) break;
       dist = Math.max(floor, dist * scale);
       if (Math.abs(scale - 1) < 0.002) break;
@@ -1203,10 +1480,24 @@ export class Arena3D {
     const yaw = Math.sin(t * 0.11) * dr + Math.sin(t * 0.047) * dr * 0.6;
     const pitch = pitch0 + Math.sin(t * 0.083) * dr * 0.5;
 
+    // The fit projections must run through the raw frustum, not last frame's
+    // centred one, or the offset feeds back into itself.
+    this.camera.clearViewOffset();
     const fit = this._fitDistance(pitch, yaw);
     const ease = this.camIntro * this.camIntro;
     const dist = fit * (1 + ease * 0.14 + this.pullBack * 0.05) / Math.max(0.2, P.zoom);
     this._placeCamera(dist, pitch, yaw);
+
+    // Centre the projected arena: pan the frustum so the leftover margin
+    // splits evenly instead of pooling under the HUD.
+    const e = this._projExtents();
+    const cx = (e.xMax + e.xMin) / 2;
+    const cy = (e.yMax + e.yMin) / 2;
+    if (isFinite(cx) && isFinite(cy)) {
+      const w = Math.max(1, this.viewW || 1);
+      const h = Math.max(1, this.viewH || 1);
+      this.camera.setViewOffset(w, h, cx * w / 2, -cy * h / 2, w, h);
+    }
   }
 
   _updateClaim(dt) {
@@ -1291,10 +1582,11 @@ export class Arena3D {
       hd.group.visible = hd.alive;
       hd.shaft.lookAt(this.camera.position.x, hd.shaft.getWorldPosition(_v3).y, this.camera.position.z);
       hd.halo.quaternion.copy(this.camera.quaternion);
-      const amt = P.glow * (0.85 + 0.15 * Math.sin(this.time * 7 + i));
+      const amt = P.glow * (0.85 + 0.15 * Math.sin(this.time * 7 + i)) * (hd.phase ? 0.35 : 1);
       hd.halo.material.uniforms.uAmt.value = amt;
       hd.shaft.material.uniforms.uAmt.value = amt * 0.55;
-      const hu = i === 0 ? this.floorMat.uniforms.uHead0 : this.floorMat.uniforms.uHead1;
+      const hu = [this.floorMat.uniforms.uHead0, this.floorMat.uniforms.uHead1,
+        this.floorMat.uniforms.uHead2][i];
       hu.value.set(hd.group.position.x, hd.group.position.z, hd.alive ? 1 : 0, hd.angle);
     }
 
@@ -1315,10 +1607,19 @@ export class Arena3D {
       if (this.rings[i].t > 2.6) this.rings.splice(i, 1);
     }
     this.fieldGroup.scale.y = this._fieldHeight();
+    // Overtime: the field closes in ring by ring, easing so it glides.
+    const shrinkX = Math.max(0.2, (this.w - 2 * (this.shrinkRings || 0)) / this.w);
+    const shrinkZ = Math.max(0.2, (this.h - 2 * (this.shrinkRings || 0)) / this.h);
+    this.fieldGroup.scale.x += (shrinkX - this.fieldGroup.scale.x) * Math.min(1, dt * 3);
+    this.fieldGroup.scale.z += (shrinkZ - this.fieldGroup.scale.z) * Math.min(1, dt * 3);
+    this._placeBreach();
     this.fieldMat.uniforms.uTime.value = this.time;
     this.fieldMat.uniforms.uAmt.value = P.field;
     this.fieldMat.uniforms.uFlash.value = this.flash;
     this.fieldMat.uniforms.uGlow.value = P.glow;
+    this.breachMat.uniforms.uTime.value = this.time;
+    this.hatchMat.uniforms.uTime.value = this.time;
+    this.farWallMat.uniforms.uTime.value = this.time;
 
     this.dustMat.uniforms.uTime.value = this.time;
     this.dustMat.uniforms.uAmt.value = P.dust;
@@ -1388,6 +1689,7 @@ export class Arena3D {
 }
 
 const _v3 = new THREE.Vector3();
+const _white = new THREE.Color(1, 1, 1);
 // grid dir 0 up, 1 right, 2 down, 3 left → world
 const DIR_DX = [0, 1, 0, -1];
 const DIR_DZ = [-1, 0, 1, 0];

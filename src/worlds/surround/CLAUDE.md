@@ -44,14 +44,55 @@ editing index.html.**
 
 ## World-specific rules
 
-- Draft status: no drift wiring, no `world.json`, not in the registry yet. Those
-  arrive at ship time (and remember the registry generator includes drafts —
-  hand-check the diff).
+- Draft status: no `world.json`, NOT in the registry yet (ship time; remember
+  the registry generator includes drafts — hand-check the diff). Drift OUT is
+  wired since 2026-07-28: four diegetic exits — the breach (a real torn hole
+  in the containment field, re-rolled to a random wall every round; **riding
+  through it escapes the world** — core rule `rules.breach`, sim-tested, the
+  shell clicks the anchor so drift state carries; the visual is a STATIC
+  ghostly tear by James's direction — never add flicker/pulse to it, humans
+  lock onto motion), the void service hatch, the
+  riderless horizon wall, and a hidden stuck pixel (lower left). The 3D ones
+  are scene props whose DOM anchors chase `arena.projectToScreen(exitAnchors.*)`
+  every frame; all use `data-drift`.
+  Never restyle the anchors into visible controls — the scene props ARE the
+  exits.
 - AI levels are 1 DRIFTER (wobbly wall-avoider), 2 HUNTER (greedy flood-fill
   space), 3 ORACLE (Voronoi territory while contested, wall-hugging space-filler
   once the arena splits — the separated mode is what makes it strong; don't
   remove it). Sim asserts hard > medium > easy; keep that ordering when tuning.
-- Simultaneous crash = draw, no point (classic Surround behavior).
+- Simultaneous crash = draw, no point (classic Surround behavior). Since the
+  specials build (2026-07-28) round resolution reads survivors, not the crash
+  pair: the round ends when the player dies or every CPU is dead
+  (`resolveRound`); in the gauntlet a lone hunter's crash mid-round does NOT
+  end it.
+- **The specials** (2026-07-28, James: "do every single one"): seven, all
+  SPECIALS-tab toggles, all core-rule-backed where they touch play — boost
+  (Shift, extra cell per tick + fuel meter), phase (X, once a round, ≤4 cells
+  deep, never the field), trail gaps (every 4th cell), overtime (field eats a
+  ring per 14 ticks from tick 220), interference zone (drifting no-lay patch,
+  pure `zoneAt`), gauntlet (round 5/10/… is 2-v-1, double pip, second hunter
+  is always a DRIFTER), blackout (round 4/8/… goes dark). Keep new specials in
+  game-core so the sim owns them; the sim has suites for each. Defaults: gaps
+  and zone OFF, the rest ON.
+- Trail breaks in the renderer are aCut bridge points + fragment discard —
+  gaps, zone cells and phasing all share that path (`Trail.gap()`); trail
+  buffers are sized ×2 for the bridge points. Don't lay walls from the shell:
+  `p.lastLaid` decides advance() vs gap().
+- **Turn assist** (2026-07-27, James's "it should turn but instead it crashes"):
+  a solo player crash that a perpendicular turn could dodge is held in a grace
+  window (PLAY slider, default 120 ms, 0 = off) with the game frozen and the
+  crash presentation deferred; `Core.reviveAfterCrash` validates the save (turn
+  only, free cell, immediately-previous step). The revived rider does not move
+  that tick — the lost step is the price of the late turn. Draws get no grace;
+  the CPU gets no assist. Sim asserts revive legality — keep it pure.
+- **Colours roll every match**: `COLOR_PAIRS` (24 curated [you, cpu] pairs) in
+  game.js; `arena.setPalette` re-skins the renderer in place and the HUD tints
+  entirely off `--p1`/`--p2` (color-mix — never hardcode a rider colour in CSS).
+  Never repeats the previous pair (`surround-pair-v1`).
+- **Restart** (R / button) is distinct from forfeit: two-step SURE? arm, wipes
+  the score, fresh match + fresh colours, no loss recorded. Forfeit stays the
+  conceding path.
 - **No screen shake, and the camera never chases a rider** — James gets motion
   sick. Crash feedback is flash + sparks + a floor shockwave + a bloom spike.
   The camera frames the whole arena, always; idle drift defaults to a barely
@@ -59,12 +100,22 @@ editing index.html.**
 - Speed ramps within a round (+3.5%/s, capped +90%); the hum pitch tracks it and
   the engine note pans with the player's x position.
 - Every control panel dismisses on `pointerdown` outside it (all-worlds rule).
+- Sound is Web Audio synthesis EXCEPT the crash hits: James's produced samples
+  in `assets/cycle-hits/` (light-trail vs wall, chosen by `hitKind` in
+  game.js). They're media elements, not fetch+decode — keep it that way for
+  file://. New one-shot samples follow the same pattern inside `Sfx`.
 - Pause: `P` / `Esc` / the button; `Space` resumes; auto-pauses on window blur
   and tab hide. Resuming mid-round always goes through an 800 ms "GO" beat —
   don't remove it, resuming instantly kills a rider that paused mid-corner.
 - Forfeit is deliberately two-step (arm → confirm, arm expires after 3 s) and
-  concedes the whole match, powering down the player's wall first. At match end
-  the same button becomes NEW MATCH and the pause button hides.
+  concedes the whole match, powering down the player's wall first.
+- **The start gate** (2026-07-27, James): the game NEVER runs on its own. Boot
+  lands in `attract` mode — board staged, riders parked, welcome card with the
+  START button — and match end / forfeit return there (result line on the card)
+  after the banner's beat. Only clicking START begins a match; steering keys,
+  Space, taps, R and F are all inert at the gate, and the in-match buttons are
+  hidden. Tuner arena/opponent/first-to changes made at the gate re-stage under
+  the card instead of auto-starting.
 - Tuner has two tabs. PLAY (speed, arena, opponent, first-to, territory read-out)
   — arena/opponent/first-to restart the match by design. LOOK (14 render knobs)
   is live and file-backed: presets go to `assets/presets.json` through
@@ -98,6 +149,13 @@ editing index.html.**
   eight corners and scales the distance by the overshoot until it converges,
   filling `FIT_X`/`FIT_Y` of the frame. Don't replace it with a closed-form
   approximation — the previous one left the arena at 56% of the screen.
+  Since 2026-07-27 the fit is **extent-based and re-centred** every frame
+  (`setViewOffset`): |max| fitting let the near edge's overhang pool slack under
+  the HUD. `clearViewOffset` before fitting is load-bearing — the offset must
+  not feed back into its own projections. Vertical fill saturates ~85% at the
+  default tilt because a tilted ground plane cannot project past its own
+  horizon; more overhead tilt is the only honest way to fill taller. Deeper
+  grids don't help: the near edge grows and width shrinks (measured).
 - Grid presets are ~1.5:1, not 16:9, **on purpose**: at a tilt the depth axis
   foreshortens, so a 16:9 grid projects far wider than the window. If the arena
   ever looks letterboxed again, check the grid aspect before the camera.

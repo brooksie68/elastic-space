@@ -3,6 +3,171 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — Claude (Fable 5) — breach v3: still, quiet, and REAL
+
+- James's two notes on v2.5: the outer ring still flickers ("humans are really
+  good at noticing flickering and movement... what you had before was just a
+  ghostly unmoving ring and it was almost enough") — and flying through the
+  hole didn't drift him out, he "just kept blowing up."
+- **All breach animation removed.** Marker ring and field tear are now fully
+  static — jags hashed without time, no sputter, no pulse — and the marker
+  dropped another ~75% (col 0.09, alpha 0.07). A ghostly unmoving tear.
+- **Riding through the breach now IS the exit.** Core rule (`rules.breach =
+  {side, lo, hi}` mirroring the visual span via game.js `breachSpan`): crossing
+  the boundary inside the span sets `escaped` instead of crashing — no wreck,
+  no point. The shell clicks the breach's own data-drift anchor, so the drift
+  state rides along. CPUs can flee too (a fled hunter counts as gone for round
+  resolution). Overtime's `consumeRing` never seals the breach corridor — the
+  tear stays a way out to the end. Round-over check restructured to read
+  survivors after any step, not just after crashes.
+- Sim 7220 (escape through span / off-span kills / cpu flight / corridor
+  survives overtime). Smoke 6 rounds clean with the anchor intercepted.
+  Tags → ?v=8.
+
+## 2026-07-28 — Claude (Fable 5) — breach v2 toned down
+
+- James on breach v2: "a giant glowing electronic butthole. Tone it down quite
+  a bit... definitely know it's there, but not be like, oh, look at that."
+  The hole in the lattice (the absence) stays as the signal; the marker went
+  from beacon to quiet torn edge: random flashes and inner shimmer removed,
+  ring ~65% dimmer and cooler, sputter slowed (11 Hz → 5 Hz), mesh 5.6×3.0 →
+  4.6×2.5; field-rim brightness 1.6 → 0.45 and its alpha contribution 0.7 →
+  0.22. Tags → ?v=7. His eye judges the new level.
+
+## 2026-07-28 — Claude (Fable 5) — the breach made obvious
+
+- James flew the specials build: crash samples "sound really cool", but he
+  couldn't find the way out of the arena. The breach was a dark patch on a
+  dark void — invisible. Rebuilt:
+  - The FIELD shader now genuinely tears open (`uBreach`): the lattice alpha
+    dies inside an ellipse and the torn edge sputters hot — a visible HOLE in
+    the wall, not a decal over it.
+  - The breach marker mesh is bright jagged arcs + random flashes (additive,
+    bloom-catching, 5.6×3.0) with a faint beckoning shimmer inside.
+  - **It moves**: every round `stageRound` re-rolls the wall (any of the four
+    sides) and the position along it (his idea). `_placeBreach` runs per frame
+    so it also rides the overtime shrink.
+- Verified in lookdev (all four walls, shrink tracking, shader compiles) and
+  smoke (anchor lands at distinct screen spots round to round, no errors).
+  Visual brightness still James's call on next flight. Tags → ?v=6.
+
+## 2026-07-28 — Claude (Fable 5) — crash hit samples
+
+- James dropped two produced samples into `assets/cycle-hits/`
+  (light-trail-hit.mp3, wall-hit.mp3) — wired: every death now picks its sample
+  by what was actually hit (`hitKind`): out of bounds or the overtime field →
+  wall-hit; a trail or another rider → light-trail-hit; consumed where you
+  stood by the closing ring → wall-hit. The sample replaces the synthesized
+  noise burst, keeping the low 220→55 Hz power-down drop underneath for
+  weight. Forfeit keeps the pure synth (self-destruct, nothing hit).
+- Media elements (cloneNode per play), not fetch+decode — file:// keeps
+  working; volume follows the shared sound control.
+- Fixed en route: a round won on the last CPU's crash was sounding twice
+  (gameTick + resolveRound) — resolveRound now only voices the player's own
+  death.
+- Sim untouched (7210 green), smoke clean through 4 rounds. Samples not yet
+  heard in-world by anyone — James's ear judges level and fit. Tags → ?v=5.
+
+## 2026-07-28 — Claude (Fable 5)
+
+- **THE SPECIALS + THE WAYS OUT** — James green-lit the whole suggestion list
+  ("do every single one of those things"). Seven specials and four drift exits
+  in one pass.
+- **Core generalized to N riders** (the gauntlet forced it): `game-core.js`
+  rewritten — players array any length, pairwise collision checks, per-player
+  `travel`/`lastLaid`, cell value 4 = the field itself. All seven specials are
+  core rules where they touch play, so the sim owns them (7210 assertions).
+  `territory.js` now scores *sides*: channel 0 the player, channel 1 all CPUs.
+- **The specials** (SPECIALS tuner tab, all toggles; gaps + zone default OFF,
+  the rest ON):
+  - *Boost* — hold Shift: a second cell per tick, fuel bar in the HUD
+    (drain ~1.1s, slow regen), hum pitches up.
+  - *Phase* — press X, once a round: next wall contact is a pass-through
+    (`armPhase`; ≤4 cells deep, never the field, never head-to-head). Rider
+    ghosts (dart 0.3 opacity, halo dimmed), wall breaks while inside.
+  - *Trail gaps* — every 4th cell of every trail stays open (the 1977 "erase"
+    spirit).
+  - *Overtime* — from tick 220 the containment field eats a ring of cells
+    every 14 ticks (`consumeRing`, riders on the ring die with it); field
+    panels visibly close in, pulse per ring.
+  - *Interference zone* — a drifting Lissajous patch (`zoneAt`, pure in tick)
+    where trails refuse to lay; floor shows flickering static.
+  - *Gauntlet* — every 5th round is 2-v-1: ORACLE/HUNTER plus a DRIFTER
+    wingman, third rider colour derived from the CPU's, round worth 2 pips,
+    round can continue over a dead hunter's wreckage (`resolveRound` replaced
+    the old pairwise finalize).
+  - *Blackout* — every 4th round the grid/territory/dust ease to near-dark,
+    headlights only (eased param override, saved look untouched).
+  - Countdown shows a round tag ("GAUNTLET — 2 v 1, DOUBLE PIP" / "BLACKOUT").
+- **Renderer**: trails support real breaks (aCut bridge points + fragment
+  discard — gaps, zone cells and phasing all share it); third rider slot
+  everywhere (trails/heads/floor pools/field response); `setZone`/`setShrink`/
+  `setPhasing`/`setActive`; exit props (below).
+- **The ways out** (drift wired: world-registry.js + drift.js now load; this
+  world still is NOT in the registry — draft): a flickering torn breach panel
+  on the left containment wall, a warning-striped service hatch down in the
+  void past the far corner, a riderless light-wall running to the horizon out
+  beyond the right side, and a stuck pixel (DOM dot, lower left). Three DOM
+  anchors chase their scene props via `projectToScreen` each frame; all four
+  are `data-drift` with generic labels.
+- Fix en route: frame dt clamped at ≥0 (the smoke harness's backwards clock
+  ran boost regen in reverse; real suspend/wake could too).
+- Verified: sim 7210 green (gaps/boost/phase/zone/overtime/3-rider suites);
+  lookdev numeric checks (shader compiles, gap bridge points, shrink ease,
+  ghost dart, anchor projection); smoke full match — 10 rounds through
+  BLACKOUT (r4/r8) and GAUNTLET (r5/r10) tags to "THE MACHINE WINS 0–10" and
+  back to the gate, then 3 rounds with gaps+zone enabled; zero errors.
+  **Nobody has eyeballed the exit props or specials visuals yet** — pane
+  wouldn't composite; James judges the look on his next flight. Tags at ?v=4.
+
+## 2026-07-27 — Claude (Fable 5)
+
+- **Feel pass 1, from James's first real play session** ("played it a lot of
+  times, and it's pretty fun"). Four asks, four changes:
+- **Bigger arena in the frame.** The camera fit was |max|-based, so the tilted
+  near edge's downward overhang reserved matching slack on the far side too —
+  that slack pooled as the "pretty big gap" between the arena and the HUD.
+  `_fitDistance` now fits projected *extents* and `_updateCamera` re-centres the
+  frustum each frame via `setViewOffset`; `FIT_Y` 0.94 → 0.96. Measured at
+  1920×1080 (medium grid, default tilt): width now binds at 99%, the arena rides
+  ~50px higher, margins split evenly. Vertical fill saturates ~85% at the
+  default tilt — that is the ground plane's own horizon, not slack; a more
+  overhead **tilt** (LOOK slider, lower value) is the lever if James wants
+  taller still. Deeper grids were measured and rejected: the near edge blows up,
+  width shrinks, cells get smaller.
+- **Turn assist** (the "I turned at the last second and it crashed" fix). New
+  core rule `reviveAfterCrash`: a rider whose crash happened on the immediately
+  previous step can be revived by a perpendicular turn into a free cell — they
+  lose the step, which is the honest price. The shell holds a solo player crash
+  in a **grace window** (PLAY tuner slider, default 120 ms, 0 = off) during
+  which the whole game freezes and the sparks are deferred; a saving input
+  revives, expiry finalizes the crash exactly as before. Draws (double crashes)
+  get no grace. Sim grew to 7160 assertions covering revive legality.
+- **24 colour pairs**, rolled fresh every match (never repeating the previous
+  pair, persisted in `surround-pair-v1`). `COLOR_PAIRS` in game.js is the list;
+  the renderer's new `setPalette` re-skins riders in place (hot/cold derived
+  from body), and the HUD/banner/meter CSS all tint off `--p1`/`--p2` via
+  `color-mix` now, so one CSS-var write restyles everything.
+- **Restart** (the "I'm down a lot and this sucks" button): R key or the new
+  button between PAUSE and FORFEIT; same two-step SURE? arm as forfeit, but
+  wipes the score and starts a fresh match (with fresh colours) instead of
+  conceding. No loss recorded.
+- **The start gate** (James, same session: "do not start ever until the person
+  clicks the button"). New `attract` mode: boot lands on a centered welcome
+  card (SURROUND wordmark, controls line, START button, tinted off --p1) over a
+  staged board with both riders parked. Match end and forfeit show their banner
+  for 2.4 s then return to the gate with a result line ("YOU WIN 10–6").
+  Removed every other way in: Space/tap-to-restart and the NEW MATCH button are
+  gone; R/F/steering are inert at the gate; tuner restart-class changes at the
+  gate re-stage under the card. `startRound` split into `stageRound` (board +
+  parked riders, no motion) + countdown; `enterAttract` is the single landing.
+- Verified: sim green, lookdev `LAB` numeric camera checks (centre = 0, extents
+  at fit), long smoke pumps through multiple rounds incl. grace-expiry path,
+  scripted pause/restart/colour-roll, and a scripted gate walk (boot parked 5 s,
+  key mash can't start it, START → countdown, forfeit → banner → gate + result).
+  Cache tags bumped to ?v=3, smoke.html regenerated. Still ahead: James flies
+  this pass, then ship wiring.
+
 ## 2026-07-26 — Claude (Opus 5)
 
 - **The 3D rebuild.** James, before ever playing the 2D draft: "this is gonna be

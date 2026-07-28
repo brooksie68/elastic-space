@@ -836,11 +836,53 @@ function validateWorldPresets(payload) {
 
 const layoutSlotKinds = new Set(["wall", "cord", "easel", "lean"]);
 
+// Furniture layouts (DLO arrange mode, 2026-07-27): a flat list of droppable
+// props in Three.js floor coordinates. A second layout dialect beside the
+// curator art-slot shape below — the endpoint accepts either.
+const furnitureTypes = new Set([
+  "shelf-double", "shelf-single", "shelf-tall", "shelf-sparse",
+  "stack-3", "stack-2", "box", "crate",
+]);
+function validateFurnitureLayout(layout) {
+  if (!Array.isArray(layout.items)) {
+    return "layout.items must be an array.";
+  }
+  if (layout.items.length > 200) {
+    return "Too many items (max 200).";
+  }
+  for (const [i, item] of layout.items.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return `Item ${i} must be an object.`;
+    }
+    if (!furnitureTypes.has(item.type)) {
+      return `Item ${i}: unknown type "${item.type}".`;
+    }
+    for (const key of ["x", "z", "rotY", "scale", "shade"]) {
+      if (typeof item[key] !== "number" || !Number.isFinite(item[key])) {
+        return `Item ${i}: ${key} must be a finite number.`;
+      }
+    }
+    if (item.scale < 0.4 || item.scale > 2) {
+      return `Item ${i}: scale out of range (0.4-2).`;
+    }
+    if (item.shade < 0.4 || item.shade > 1.6) {
+      return `Item ${i}: shade out of range (0.4-1.6).`;
+    }
+    if (item.seed !== undefined && !Number.isInteger(item.seed)) {
+      return `Item ${i}: seed must be an integer.`;
+    }
+  }
+  return null;
+}
+
 // Shape check for a curator-mode layout save. Returns a problem string or null.
 // Geometry stays in Blender Z-up meters — the same shape assets/layout.js ships with.
 function validateLayout(layout) {
   if (!layout || typeof layout !== "object" || Array.isArray(layout)) {
     return "Layout must be an object.";
+  }
+  if (layout.kind === "furniture") {
+    return validateFurnitureLayout(layout);
   }
   if (typeof layout.artDir !== "string" || !layout.artDir) {
     return "layout.artDir must be a non-empty string.";
@@ -1251,6 +1293,39 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
+  // Music track listing: worlds with an assets/sound-tracks folder (Lumina)
+  // discover dropped-in audio at load. file:// pages keep their baked lists.
+  const tracksMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/tracks$/i);
+  if (tracksMatch) {
+    if (request.method !== "GET") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+
+    const trackSlug = slugify(tracksMatch[1]);
+    if (!isValidSlug(trackSlug)) {
+      sendJson(response, 400, { error: "Invalid world slug." });
+      return true;
+    }
+
+    const tracksDir = join(worldsDir, trackSlug, "assets", "sound-tracks");
+    if (!(await pathExists(tracksDir))) {
+      sendJson(response, 404, { error: "That world has no assets/sound-tracks folder." });
+      return true;
+    }
+
+    const trackExtensions = new Set([".mp3", ".m4a", ".ogg", ".wav"]);
+    const entries = await readdir(tracksDir, { withFileTypes: true });
+    const files = sortByName(
+      entries.filter(
+        (entry) =>
+          entry.isFile() && trackExtensions.has(extname(entry.name).toLowerCase()),
+      ),
+    ).map((entry) => entry.name);
+    sendJson(response, 200, { files });
+    return true;
+  }
+
   const artMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/art$/i);
   if (artMatch) {
     if (request.method !== "GET") {
@@ -1314,12 +1389,14 @@ async function handleApi(request, response, pathname) {
     const backupName = `layout-${stamp}.js`;
     await writeFile(join(backupDir, backupName), await readFile(layoutPath));
 
-    const banner =
-      "// Seeded by tmp/" +
-      layoutSlug +
-      "/build.py; maintained by curator mode (src/core/curator.js).\n" +
-      "// Coordinates are Blender Z-up meters; convert to Three.js with " +
-      "(x, y, z)_three = (x, z, -y)_blender. yaw in degrees.\n";
+    const banner = payload.kind === "furniture"
+      ? "// Maintained by the world's arrange mode (?arrange=1, served copy).\n" +
+        "// Three.js floor coordinates: x/z meters, rotY radians. Do not hand-edit casually.\n"
+      : "// Seeded by tmp/" +
+        layoutSlug +
+        "/build.py; maintained by curator mode (src/core/curator.js).\n" +
+        "// Coordinates are Blender Z-up meters; convert to Three.js with " +
+        "(x, y, z)_three = (x, z, -y)_blender. yaw in degrees.\n";
     await writeFile(
       layoutPath,
       `${banner}globalThis.${layoutGlobalName(layoutSlug)} = ${JSON.stringify(payload, null, 1)};\n`,
@@ -1328,7 +1405,7 @@ async function handleApi(request, response, pathname) {
     sendJson(response, 200, {
       saved: true,
       slug: layoutSlug,
-      slots: payload.slots.length,
+      slots: (payload.kind === "furniture" ? payload.items : payload.slots).length,
       backup: `tmp/${layoutSlug}/layout-backups/${backupName}`,
     });
     return true;
