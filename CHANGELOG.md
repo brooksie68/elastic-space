@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-28 (admin panel: "unwired" page-notes)
+
+- Worlds-list "(draft)" note renamed to **unwired** on James's call — it marks
+  "not in the drift registry, no exits", not draft-ness (the whole In-progress
+  section is drafts). Applied to Combat, Lumina, AW-2500 (replacing
+  "(graybox)"); Surround's was removed by James when he completed it.
+- Styling per his spec: right-aligned flush to the kebab, warm-white #ffe9d6,
+  no pill (`.page-note.unwired` in styles/admin.css).
+- The note is manual and travels with row moves by design — never auto-strip
+  (memory `draft-note-is-manual`). Mandala Shop's "curate" pill relabeled
+  "arrange" (same ?curate=1 link).
+
 ## 2026-07-28 (Surround shipped)
 
 - Surround SHIPPED: second field breach (never behind the HUD — `behindHud`

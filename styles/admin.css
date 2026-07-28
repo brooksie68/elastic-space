@@ -687,6 +687,23 @@ h2 {
   font-size: 0.82rem;
 }
 
+/* "unwired" = built but not in the drift registry yet. Sits flush right in the
+   row (just left of the kebab when served), warm-white, no pill. */
+.pages-list a:has(.page-note.unwired) {
+  align-items: baseline;
+  display: flex;
+}
+
+.pages-list .page-row a:first-child:has(.page-note.unwired) {
+  flex: 1 1 auto;
+}
+
+.page-note.unwired {
+  color: #ffe9d6;
+  letter-spacing: 0.04em;
+  margin-left: auto;
+}
+
 .pages-list a:hover,
 .pages-list a:focus-visible {
   background: var(--highlight);

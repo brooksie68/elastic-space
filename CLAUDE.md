@@ -326,6 +326,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
   panel's "show dashboard icons" toggle (localStorage key `elastic-dashboard-icons`) shows/hides
   these icons site-wide; sound icons are unaffected. Every new page must include
   dashboard-control.js.
+- Worlds-list page-notes: unshipped worlds carry `<span class="page-note unwired">unwired</span>`
+  ("not in the drift registry, no exits" — renamed from "(draft)" 2026-07-28; right-aligned
+  next to the kebab, #ffe9d6, no pill). The note is manual: it survives status moves and is
+  NEVER auto-stripped — James removes it himself when he's verified the wiring.
 - The worlds list is two sections since 2026-07-19: "In progress worlds" (Welcome pinned
   on top) and "Completed worlds", each alphabetized ignoring a leading "The". New worlds
   still get a direct link — into "In progress worlds" — as part of shipping. Gallery
