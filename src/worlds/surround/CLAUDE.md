@@ -44,19 +44,36 @@ editing index.html.**
 
 ## World-specific rules
 
-- Draft status: no `world.json`, NOT in the registry yet (ship time; remember
-  the registry generator includes drafts — hand-check the diff). Drift OUT is
-  wired since 2026-07-28: four diegetic exits — the breach (a real torn hole
-  in the containment field, re-rolled to a random wall every round; **riding
-  through it escapes the world** — core rule `rules.breach`, sim-tested, the
-  shell clicks the anchor so drift state carries; the visual is a STATIC
-  ghostly tear by James's direction — never add flicker/pulse to it, humans
-  lock onto motion), the void service hatch, the
-  riderless horizon wall, and a hidden stuck pixel (lower left). The 3D ones
-  are scene props whose DOM anchors chase `arena.projectToScreen(exitAnchors.*)`
-  every frame; all use `data-drift`.
+- **SHIPPED 2026-07-28**: `world.json` status `live`, in the drift registry,
+  listed under Completed worlds on the admin panel. Six diegetic exits —
+  TWO breaches (real torn holes in the containment field, re-rolled to two
+  different walls every round; **riding through either escapes the world** —
+  core rule `rules.breach` takes an array of spans, sim-tested; the shell
+  clicks the anchor so drift state carries; the visual is a STATIC ghostly
+  tear by James's direction — never add flicker/pulse to it, humans lock onto
+  motion), the stray star (a subtle dusty rose-amber blob adrift off the
+  arena's left edge — James: it has a colour but never a bright one), the
+  riderless horizon wall, and a hidden stuck pixel (lower left). (A void
+  service hatch shipped too; James cut it same day — its hazard striping
+  under the glass was distracting. Don't bring it back.) The 3D ones are
+  scene props whose DOM anchors chase
+  `arena.projectToScreen(exitAnchors.*)` every frame; all use `data-drift`.
   Never restyle the anchors into visible controls — the scene props ARE the
   exits.
+- **A breach never spawns behind the scorekeeping panel** (James: an exit you
+  can't see or click is not an exit): `rollBreaches` vetoes candidates whose
+  projection lands in the HUD's rect (`behindHud`), side 0 (the far wall, top
+  of frame) is never used, and the near wall is the always-safe fallback.
+- **Exit props are frame-aware**: how much void the frame shows varies with
+  viewport, tilt, and the per-round camera refit (view offset moves ~100px
+  between rounds — measured), so `_placeBlob` walks the star inward until it
+  projects on-screen and `_placeFarWall` anchors whichever stretch of the
+  wall projects deepest inside the frame, every frame. Don't replace these
+  walks with fixed positions; fixed spots are exactly what left exits
+  invisible or unclickable at ship review. Exits must also clear the
+  pause/restart/forfeit cluster (higher z-index — it steals the click).
+- `globalThis.SURROUND_DEBUG.arena` is the headless checker's read-only
+  handle (the smoke page has no LAB) — keep it.
 - AI levels are 1 DRIFTER (wobbly wall-avoider), 2 HUNTER (greedy flood-fill
   space), 3 ORACLE (Voronoi territory while contested, wall-hugging space-filler
   once the arena splits — the separated mode is what makes it strong; don't
@@ -168,7 +185,6 @@ editing index.html.**
 
 ## Not built yet
 
-James's first look at the 3D rebuild → feel pass (tilt/bloom/wall height/speed
-defaults, AI default level) → possible extras (wrap-around walls variant,
-two-player local) → ship wiring (world.json, drift exits, registry, completed
-move).
+Possible extras if James ever asks: wrap-around walls variant, two-player
+local, touch controls. Shipped 2026-07-28 — anything further is a new
+conversation.

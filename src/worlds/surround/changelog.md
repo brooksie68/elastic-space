@@ -3,6 +3,47 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — Claude (Fable 5) — the service hatch cut (James)
+
+- James, flying the ship build: the warning-striped hatch under the glass is
+  "distracting and shouldn't be there." Removed entirely — mesh, shader,
+  anchor, `_placeHatch`, the DOM anchor. Five exits remain (two breaches,
+  the stray star, the horizon wall, the stuck pixel) — still past the
+  three-exit norm. Tags → ?v=10.
+
+## 2026-07-28 — Claude (Fable 5) — SHIPPED: second breach, the stray star, full wiring
+
+- James's ship brief: two breaches ("broken edge" exits), neither ever behind
+  the scorekeeping panel ("you can't click on it or see it very well, and
+  that's not cool"), plus one star blob floating outside the arena in a
+  subtle off-palette colour ("not like a bright red or a bright pink or lime
+  green"), keep the stuck pixel, then full ship wiring.
+- **Second breach**: `rules.breach` is an array now; `rollBreaches` tears two
+  holes on two different walls every round. Side 0 (far wall, top of frame)
+  never hosts one, and `behindHud` vetoes any candidate whose projection
+  lands in the HUD's rect — the near wall is the always-available fallback.
+  Field shader carves both (`uBreach`/`uBreach2`); sim 7228.
+- **The stray star**: dusty rose-amber camera-facing sprite (a hue the
+  cyan/blue arena never uses, alpha ≤ 0.3), slow Lissajous off the arena's
+  left edge, `data-drift` anchor like the rest.
+- **Ship review found three invisible exits** at default look params: the
+  blob orbited off the left frame edge ~95% of the time, and hatch + farWall
+  projections fell off-frame whenever the per-round camera refit shifted the
+  view offset (~100px round to round — measured via a new
+  `SURROUND_DEBUG.arena` handle in the smoke page). All exit props are
+  frame-aware now: blob and hatch walk inward until they project on-screen
+  (hatch also clears the pause/restart/forfeit cluster, which sits above the
+  exits and stole the click), farWall moved nearer (w/2+9) and its anchor
+  picks the deepest-in-frame stretch of the wall. Verified 20-24/24 samples
+  visible for all six exits at 1920x1080 AND 1280x800 across ten rounds
+  (gauntlet + blackout included), zero HUD overlaps, zero control overlaps,
+  no console errors; blob pixels confirmed non-black by render-target
+  readback.
+- **Ship wiring**: `world.json` (status live), registry regenerated (the four
+  still-draft worlds pruned per the drafts gotcha), admin panel row moved to
+  Completed worlds (unwired tag dropped), World Ideas #59 → SHIPPED,
+  `npm run check-worlds` clean for surround. Tags → ?v=9.
+
 ## 2026-07-28 — Claude (Fable 5) — breach v3: still, quiet, and REAL
 
 - James's two notes on v2.5: the outer ring still flickers ("humans are really

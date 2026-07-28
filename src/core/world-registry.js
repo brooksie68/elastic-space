@@ -10,6 +10,7 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "orb-dimension/index.html",
   "pelagic-lantern-habitat/index.html",
   "singing-plate/index.html",
+  "surround/index.html",
   "the-fifteen-sisters/index.html",
   "wildflowers-at-dusk/index.html"
 ];

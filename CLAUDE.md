@@ -282,8 +282,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
    pixel kept; six diegetic exits total, all frame-aware (ship review found three
    invisible at fixed positions — the walks in render3d.js are load-bearing).
    world.json live, registry (drafts pruned per gotcha), admin panel Completed
-   list, check-worlds clean, sim 7228, tags ?v=9. AWAITING JAMES'S FLIGHT of the
-   ship build (second breach + star are new to his eye; breach v3 level too).
+   list, check-worlds clean, sim 7228. James flew the ship build same day and
+   cut the void service hatch (hazard striping under the glass — "distracting");
+   five exits remain, tags ?v=10. Still awaiting his verdict on the second
+   breach + stray star levels.
 7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one
    tank, one CPU, six symmetric mazes — BUILT 2026-07-25 as a draft on James's ask,
    same night as Surround (its sibling world: shared styling + architecture) —

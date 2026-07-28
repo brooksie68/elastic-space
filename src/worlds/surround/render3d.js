@@ -314,6 +314,7 @@ const FIELD_FRAG = `
   uniform vec4  uHead1;
   uniform vec4  uHead2;
   uniform vec4  uBreach;   // world xz of the tear, radius, on
+  uniform vec4  uBreach2;  // the second tear, same layout
   uniform float uGlow;
   varying vec2 vUvF;
   varying vec3 vWorldPos;
@@ -345,12 +346,14 @@ const FIELD_FRAG = `
 
     float a = (body * 0.85 + length(near) * 0.5 + uFlash * 0.35) * uAmt;
 
-    // The breach: the lattice is genuinely torn open here. The field dies
-    // inside the tear and its edge sputters hot — the way out must be seen.
-    if (uBreach.w > 0.5) {
-      // Static on purpose — humans lock onto flicker and motion; a ghostly
-      // unmoving tear is noticed when scanned, not shouted at (James).
-      vec2 bp = vec2(length(vWorldPos.xz - uBreach.xy) / uBreach.z,
+    // The breaches: the lattice is genuinely torn open here. The field dies
+    // inside each tear and its edge sputters hot — the way out must be seen.
+    // Static on purpose — humans lock onto flicker and motion; a ghostly
+    // unmoving tear is noticed when scanned, not shouted at (James).
+    for (int i = 0; i < 2; i++) {
+      vec4 br = i == 0 ? uBreach : uBreach2;
+      if (br.w < 0.5) continue;
+      vec2 bp = vec2(length(vWorldPos.xz - br.xy) / br.z,
                      (vWorldPos.y - 1.1) / 2.4);
       float he = length(bp);
       float jag = hash21(floor(vec2(atan(bp.y, bp.x) * 5.1, 3.7)));
@@ -877,6 +880,7 @@ export class Arena3D {
         uHead1: this.floorMat.uniforms.uHead1,
         uHead2: this.floorMat.uniforms.uHead2,
         uBreach: { value: new THREE.Vector4(0, 0, 2.6, 0) },
+        uBreach2: { value: new THREE.Vector4(0, 0, 2.6, 0) },
       },
     });
     this.fieldGroup = new THREE.Group();
@@ -991,38 +995,42 @@ export class Arena3D {
     this.breach.renderOrder = 10;
     this.breach.frustumCulled = false;
     this.scene.add(this.breach);
-    this.breachSide = 3;
-    this.breachT = 0.4;
+    this.breach2 = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 2.5), this.breachMat);
+    this.breach2.renderOrder = 10;
+    this.breach2.frustumCulled = false;
+    this.scene.add(this.breach2);
+    // Two tears a round; [{side, t}, ...] — see setBreaches.
+    this.breaches = [{ side: 3, t: 0.4 }, { side: 1, t: 0.6 }];
 
-    // A service hatch down in the void, seen through the glass.
-    this.hatchMat = new THREE.ShaderMaterial({
+    // A stray star adrift out in the void — off the arena's edge, slowly
+    // wandering. Its colour sits a shade warm of everything else: noticeable
+    // to a scanning eye, never shouting (James: subtle, no bright anything).
+    this.blobMat = new THREE.ShaderMaterial({
       vertexShader: SHAFT_VERT,
       fragmentShader: `
         precision highp float;
-        uniform float uTime;
         varying vec2 vUvS;
         void main() {
-          vec2 c = abs(vUvS - 0.5);
-          float m = max(c.x, c.y);
-          float frame = smoothstep(0.36, 0.38, m) - smoothstep(0.46, 0.48, m);
-          float stripes = step(0.5, fract((vUvS.x + vUvS.y) * 7.0));
-          float band = (smoothstep(0.28, 0.30, m) - smoothstep(0.36, 0.38, m)) * stripes;
-          float pulse = 0.55 + 0.45 * sin(uTime * 1.4);
-          vec3 col = vec3(0.95, 0.75, 0.25) * band * 0.5;
-          col += vec3(0.45, 0.65, 0.95) * frame * (0.5 + pulse * 0.5);
-          float glow = (1.0 - smoothstep(0.0, 0.30, m)) * 0.10 * pulse;
-          col += vec3(0.3, 0.5, 0.9) * glow;
-          gl_FragColor = vec4(col, (frame + band) * 0.85 + glow);
+          vec2 c = (vUvS - 0.5) * 2.0;
+          float r = length(c);
+          float core = exp(-r * r * 7.0);
+          float halo = exp(-r * r * 2.2) * 0.35;
+          // Dusty rose-amber — a shade the arena's cyan/blue palette never uses.
+          vec3 col = vec3(0.95, 0.68, 0.52) * core + vec3(0.75, 0.52, 0.48) * halo;
+          gl_FragColor = vec4(col * 0.34, clamp((core + halo) * 0.30, 0.0, 1.0));
         }
       `,
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      uniforms: { uTime: { value: 0 } },
+      side: THREE.DoubleSide,
+      uniforms: {},
     });
-    this.hatch = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.0), this.hatchMat);
-    this.hatch.rotation.x = -Math.PI / 2;
-    this.hatch.renderOrder = 1;
-    this.hatch.frustumCulled = false;
-    this.scene.add(this.hatch);
+    this.blob = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), this.blobMat);
+    this.blob.renderOrder = 3;
+    this.blob.frustumCulled = false;
+    this.scene.add(this.blob);
+
+    // (The void service hatch lived here until 2026-07-28 — James cut it:
+    // the hazard striping under the glass read as distracting.)
 
     // A riderless light-wall running to the horizon, out in the void. Nobody
     // is making it. It implies other arenas.
@@ -1053,8 +1061,9 @@ export class Arena3D {
 
     this.exitAnchors = {
       breach: new THREE.Vector3(),
-      hatch: new THREE.Vector3(),
+      breach2: new THREE.Vector3(),
       farWall: new THREE.Vector3(),
+      blob: new THREE.Vector3(),
     };
 
     // dust
@@ -1175,10 +1184,10 @@ export class Arena3D {
 
     // Exit props take their places around the new arena (the breach places
     // itself every frame — it moves and tracks the shrinking field).
-    this.hatch.position.set(w / 2 + 7, -5.5, h / 2 + 4.5);
-    this.farWall.position.set(w / 2 + 16, 0.6, -h / 2 - 52);
-    this.exitAnchors.hatch.copy(this.hatch.position);
-    this.exitAnchors.farWall.set(w / 2 + 16, 1, -h / 2 - 14);
+    // farWall's anchor is frame-aware, placed per frame (_placeFarWall) —
+    // the camera refit (viewport, tilt, overtime shrink) decides how much
+    // void the frame shows.
+    this.farWall.position.set(w / 2 + 9, 0.6, -h / 2 - 38);
 
     this.reset();
     this.resize();
@@ -1238,27 +1247,82 @@ export class Arena3D {
   // Overtime: the containment field closes in by whole cell-rings.
   setShrink(rings) { this.shrinkRings = rings; }
 
-  // Move the breach: side 0 far / 1 right / 2 near / 3 left, t 0..1 along it.
-  setBreach(side, t) {
-    this.breachSide = side;
-    this.breachT = t;
+  // Move the breaches: [{side, t}, ...] — side 0 far / 1 right / 2 near /
+  // 3 left, t 0..1 along it. Two supported; one hides the second tear.
+  setBreaches(list) {
+    this.breaches = list;
+  }
+
+  // Where a breach sits in world space right now (the field can be shrinking).
+  breachWorldPos(side, t01) {
+    const hw = this.w / 2 * this.fieldGroup.scale.x;
+    const hh = this.h / 2 * this.fieldGroup.scale.z;
+    const t = t01 * 2 - 1;
+    switch (side) {
+      case 0: return { x: t * hw * 0.75, z: -hh, ry: 0 };
+      case 1: return { x: hw, z: t * hh * 0.75, ry: -Math.PI / 2 };
+      case 2: return { x: t * hw * 0.75, z: hh, ry: Math.PI };
+      default: return { x: -hw, z: t * hh * 0.75, ry: Math.PI / 2 };
+    }
   }
 
   _placeBreach() {
-    const hw = this.w / 2 * this.fieldGroup.scale.x;
-    const hh = this.h / 2 * this.fieldGroup.scale.z;
-    const t = this.breachT * 2 - 1;
-    let x, z, ry;
-    switch (this.breachSide) {
-      case 0: x = t * hw * 0.75; z = -hh; ry = 0; break;
-      case 1: x = hw; z = t * hh * 0.75; ry = -Math.PI / 2; break;
-      case 2: x = t * hw * 0.75; z = hh; ry = Math.PI; break;
-      default: x = -hw; z = t * hh * 0.75; ry = Math.PI / 2; break;
+    const meshes = [this.breach, this.breach2];
+    const anchors = [this.exitAnchors.breach, this.exitAnchors.breach2];
+    const unis = [this.fieldMat.uniforms.uBreach, this.fieldMat.uniforms.uBreach2];
+    for (let i = 0; i < 2; i++) {
+      const b = this.breaches[i];
+      if (!b) {
+        meshes[i].visible = false;
+        unis[i].value.w = 0;
+        anchors[i].set(0, -999, 0);
+        continue;
+      }
+      const p = this.breachWorldPos(b.side, b.t);
+      meshes[i].visible = true;
+      meshes[i].position.set(p.x, 1.15, p.z);
+      meshes[i].rotation.y = p.ry;
+      anchors[i].set(p.x, 1.15, p.z);
+      unis[i].value.set(p.x, p.z, 2.6, 1);
     }
-    this.breach.position.set(x, 1.15, z);
-    this.breach.rotation.y = ry;
-    this.exitAnchors.breach.set(x, 1.15, z);
-    this.fieldMat.uniforms.uBreach.value.set(x, z, 2.6, 1);
+  }
+
+  // The stray star wanders the void off the arena's left edge — slow
+  // Lissajous. How much void the frame shows varies with viewport and tilt,
+  // so the star walks itself inward until it projects on-screen: an exit
+  // nobody can see is not an exit.
+  _placeBlob() {
+    const t = this.time;
+    let x = -this.w / 2 - 3.2 - Math.sin(t * 0.071) * 1.3;
+    const z = -this.h * 0.06 + Math.sin(t * 0.053) * this.h * 0.2;
+    const y = 3.3 + Math.sin(t * 0.087) * 1.2;
+    const s = this._scr || (this._scr = {});
+    for (let i = 0; i < 8; i++) {
+      this.projectToScreen(x, y, z, s);
+      if (s.front && s.x > 48) break;
+      if (x >= -this.w / 2 - 1.4) break; // never inside the arena
+      x += 0.7;
+    }
+    this.blob.position.set(x, y, z);
+    this.blob.quaternion.copy(this.camera.quaternion);
+    this.exitAnchors.blob.set(x, y, z);
+  }
+
+  // The riderless wall runs to the horizon; which stretch of it the frame
+  // shows depends on viewport and tilt. Anchor the reachable point wherever
+  // along the wall currently projects deepest inside the frame.
+  _placeFarWall() {
+    const x = this.w / 2 + 9;
+    const s = this._scr2 || (this._scr2 = {});
+    let bestZ = -this.h / 2 - 14, best = -Infinity;
+    for (let i = 0; i < 18; i++) {
+      const z = -this.h / 2 + 7 - i * 2; // stays on the wall's span
+      this.projectToScreen(x, 1, z, s);
+      const margin = Math.min(s.y - 44, s.x - 26, this.viewW - 26 - s.x, this.viewH - 44 - s.y);
+      const score = s.front ? margin : -1e9;
+      if (score > best) { best = score; bestZ = z; }
+    }
+    this.exitAnchors.farWall.set(x, 1, bestZ);
   }
 
   // The interference zone, in grid coords (amt 0 hides it).
@@ -1613,12 +1677,13 @@ export class Arena3D {
     this.fieldGroup.scale.x += (shrinkX - this.fieldGroup.scale.x) * Math.min(1, dt * 3);
     this.fieldGroup.scale.z += (shrinkZ - this.fieldGroup.scale.z) * Math.min(1, dt * 3);
     this._placeBreach();
+    this._placeBlob();
+    this._placeFarWall();
     this.fieldMat.uniforms.uTime.value = this.time;
     this.fieldMat.uniforms.uAmt.value = P.field;
     this.fieldMat.uniforms.uFlash.value = this.flash;
     this.fieldMat.uniforms.uGlow.value = P.glow;
     this.breachMat.uniforms.uTime.value = this.time;
-    this.hatchMat.uniforms.uTime.value = this.time;
     this.farWallMat.uniforms.uTime.value = this.time;
 
     this.dustMat.uniforms.uTime.value = this.time;

@@ -8,6 +8,16 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-28 (Surround shipped)
+
+- Surround SHIPPED: second field breach (never behind the HUD — `behindHud`
+  projection veto + side-0 ban), the stray rose-amber star exit, stuck pixel
+  kept; core multi-breach rules sim-tested (7228 green).
+- Ship wiring: world.json (live), registry regenerated with drafts pruned,
+  admin panel Completed move, check-worlds clean.
+- Same-day flight note from James: void service hatch cut (hazard striping
+  read as distracting) — five exits remain. Tags ?v=10.
+
 ## 2026-07-28 (Orb Dimension v54: nebula scale + the Being Editor)
 
 - Orb Dimension v54 on James's v53 flight notes: `nebScale` GOD MODE dial

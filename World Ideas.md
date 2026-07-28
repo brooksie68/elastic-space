@@ -238,7 +238,7 @@ refusals, layer A/B toggle, a scope console (specimen/controls/recipes) and a
 read-first recipe book with trap-safe feeding orders. 404-assertion molecule sim.
 Physics honesty contract in the world's CLAUDE.md.
 
-### 59. Surround — *an evening* — `in progress (draft)` → `src/worlds/surround/`
+### 59. Surround — *an evening* — `SHIPPED 2026-07-28` → `src/worlds/surround/`
 James's pick (2026-07-25) after a level-of-effort chat about early console recreations
 (Combat, Surround, Galcon, Pit Fighter, Super Off Road). The 1977 Atari blocking game,
 player vs computer, rebuilt "slick and modern looking, 2026 appropriate": neon glowing
@@ -250,7 +250,12 @@ REBUILT IN 3D 2026-07-26 on James's ask ("spruce it up massively... 3D effects, 
 HUD, cool lighting"): three.js arena with light-walls rising behind each rider,
 under-glass reflections, a territory wash showing who owns which ground, a containment
 field, and a bloom/ACES post chain — plus pause and forfeit. James: "surprisingly cool
-and fun." Still a draft; feel pass and ship wiring remain.
+and fun." Feel pass 2026-07-27 (turn assist, camera refit, colour pairs, restart,
+start gate); specials + exits 2026-07-28 ("do every single one" — seven specials,
+sim 7228). SHIPPED 2026-07-28: six diegetic exits (two field breaches that re-roll
+each round and never sit behind the HUD, a stray rose-amber star in the void, the
+service hatch, the riderless horizon wall, a stuck pixel — riding through a breach
+drifts for real), world.json live, registry + admin panel completed list.
 
 ### 60. Combat — *an evening* — `in progress (draft)` → `src/worlds/combat/`
 James's pick (2026-07-25), same night Surround landed ("the game was pretty cool"):

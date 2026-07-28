@@ -115,16 +115,25 @@
     return dx * dx + dy * dy <= z.r * z.r;
   }
 
-  // The breach: rules.breach = { side, lo, hi } — an open span of the arena
-  // boundary. side 0 = y<0, 1 = x>=w, 2 = y>=h, 3 = x<0; lo..hi is the cell
-  // range along that wall. Riding out through it is an escape, not a crash.
-  function crossesBreach(state, from, to) {
+  // The breach: rules.breach = { side, lo, hi } or an array of such spans —
+  // open spans of the arena boundary. side 0 = y<0, 1 = x>=w, 2 = y>=h,
+  // 3 = x<0; lo..hi is the cell range along that wall. Riding out through
+  // one is an escape, not a crash.
+  function breachList(state) {
     const b = state.rules.breach;
-    if (!b) return false;
-    if (b.side === 0 && to.y < 0) return from.x >= b.lo && from.x <= b.hi;
-    if (b.side === 2 && to.y >= state.h) return from.x >= b.lo && from.x <= b.hi;
-    if (b.side === 3 && to.x < 0) return from.y >= b.lo && from.y <= b.hi;
-    if (b.side === 1 && to.x >= state.w) return from.y >= b.lo && from.y <= b.hi;
+    if (!b) return [];
+    return Array.isArray(b) ? b : [b];
+  }
+
+  function crossesBreach(state, from, to) {
+    const list = breachList(state);
+    for (let i = 0; i < list.length; i++) {
+      const b = list[i];
+      if (b.side === 0 && to.y < 0 && from.x >= b.lo && from.x <= b.hi) return true;
+      if (b.side === 2 && to.y >= state.h && from.x >= b.lo && from.x <= b.hi) return true;
+      if (b.side === 3 && to.x < 0 && from.y >= b.lo && from.y <= b.hi) return true;
+      if (b.side === 1 && to.x >= state.w && from.y >= b.lo && from.y <= b.hi) return true;
+    }
     return false;
   }
 
@@ -253,12 +262,16 @@
   }
 
   // Overtime: the containment field eats the arena one ring at a time. The
-  // breach corridor is never sealed — the tear stays an exit to the end.
+  // breach corridors are never sealed — every tear stays an exit to the end.
   function inBreachCorridor(state, x, y) {
-    const b = state.rules.breach;
-    if (!b) return false;
-    if (b.side === 0 || b.side === 2) return x >= b.lo && x <= b.hi;
-    return y >= b.lo && y <= b.hi;
+    const list = breachList(state);
+    for (let i = 0; i < list.length; i++) {
+      const b = list[i];
+      if (b.side === 0 || b.side === 2) {
+        if (x >= b.lo && x <= b.hi) return true;
+      } else if (y >= b.lo && y <= b.hi) return true;
+    }
+    return false;
   }
 
   function consumeRing(state, r, crashed) {

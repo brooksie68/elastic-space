@@ -119,6 +119,11 @@ try {
   document.body.classList.add('nogl');
   console.error('Surround: WebGL unavailable —', e);
 }
+// Headless checkers (the smoke page) read projections through this; the
+// lookdev harness exposes the same arena as LAB.arena.
+Object.defineProperty(globalThis, 'SURROUND_DEBUG', {
+  value: { get arena() { return arena; } }, configurable: true,
+});
 
 // ---- match state ---------------------------------------------------------------------
 let score = [0, 0];
@@ -175,26 +180,65 @@ function breachSpan(side, t, w, h) {
   return { side, lo: Math.max(0, c - 2), hi: Math.min(along - 1, c + 2) };
 }
 
+// A breach candidate is vetoed when its screen point would sit behind the
+// scorekeeping panel — an exit you can't see or click is not an exit (James).
+// Side 0 (the far wall) is never used: it lives at the top of the frame,
+// exactly where the HUD floats. The projection check catches the rest
+// (narrow windows stretch the HUD nearly full-width).
+function behindHud(side, t) {
+  if (!arena) return false;
+  const hud = document.getElementById('hud');
+  if (!hud) return false;
+  const r = hud.getBoundingClientRect();
+  if (!r.width) return false;
+  const p = arena.breachWorldPos(side, t);
+  const s = arena.projectToScreen(p.x, 1.15, p.z, {});
+  const m = 44; // exit anchor radius + breathing room
+  return s.x > r.left - m && s.x < r.right + m && s.y > r.top - m && s.y < r.bottom + m;
+}
+
+// Two ways out tear open somewhere new every round, on two different walls,
+// neither ever behind the HUD.
+function rollBreaches(w, h) {
+  const sides = [1, 2, 3].sort(() => Math.random() - 0.5);
+  const rolled = [];
+  for (const side of sides) {
+    let t = 0.2 + Math.random() * 0.6;
+    let ok = !behindHud(side, t);
+    for (let tries = 0; !ok && tries < 12; tries++) {
+      t = 0.2 + Math.random() * 0.6;
+      ok = !behindHud(side, t);
+    }
+    if (ok) rolled.push({ side, t });
+    if (rolled.length === 2) break;
+  }
+  // Belt and braces: the near wall (side 2, bottom of the frame) can always
+  // host a tear — the HUD never reaches down there.
+  while (rolled.length < 2) rolled.push({ side: 2, t: 0.2 + Math.random() * 0.6 });
+  return {
+    placements: rolled,
+    spans: rolled.map((b) => breachSpan(b.side, b.t, w, h)),
+  };
+}
+
 function stageRound(idle) {
   roundIsGauntlet = !idle && !!cfg.gauntlet && round % GAUNTLET_EVERY === 0;
   roundIsBlackout = !idle && !!cfg.blackout && round % BLACKOUT_EVERY === 0;
-  // The way out tears open somewhere new every round.
-  const breachSide = Math.floor(Math.random() * 4);
-  const breachT = 0.2 + Math.random() * 0.6;
   const grid = GRIDS[cfg.grid];
+  const breaches = rollBreaches(grid.w, grid.h);
   state = Core.createGame(Object.assign({}, grid, {
     players: roundIsGauntlet ? 3 : 2,
     rules: {
       gapEvery: cfg.gaps ? 4 : 0,
       zone: !!cfg.zone,
       overtime: cfg.overtime ? { start: 220, every: 14 } : null,
-      breach: breachSpan(breachSide, breachT, grid.w, grid.h),
+      breach: breaches.spans,
     },
   }));
   reallocFields();
   if (arena) {
     arena.reset();
-    arena.setBreach(breachSide, breachT);
+    arena.setBreaches(breaches.placements);
     state.players.forEach((p, i) => arena.spawn(i, p.x, p.y, p.dir, 0));
   }
   prevPos = state.players.map((p) => ({ x: p.x, y: p.y }));
@@ -966,12 +1010,14 @@ function updateMeters() {
 }
 
 // ---- the ways out --------------------------------------------------------------------
-// Three exits live in the 3D scene; their DOM anchors chase the projected
-// points every frame. The fourth is a stuck pixel in the "CRT" itself.
+// Four exits live in the 3D scene (two breaches, the far wall, the stray
+// star); their DOM anchors chase the projected points every frame.
+// The fifth is a stuck pixel in the "CRT" itself.
 const exitEls = {
   breach: document.getElementById('exit-breach'),
-  hatch: document.getElementById('exit-hatch'),
+  breach2: document.getElementById('exit-breach2'),
   farWall: document.getElementById('exit-farwall'),
+  blob: document.getElementById('exit-blob'),
 };
 const _proj = {};
 function positionExits() {
