@@ -1,5 +1,13 @@
 # The Fifteen Sisters — changelog
 
+## 2026-07-28 — claude-fable (bell fully purged)
+
+- James: the bell is out of tune with the sisters and sours the music — delete it
+  permanently. The playback code was already gone (2026-07-20 entry below); this
+  pass removes the leftovers: the `<audio id="bell">` element in index.html, the
+  `distant-bell.mp3` file itself (git rm), and world.json's "a distant bell"
+  soundtrack line + hour-bell mention in notes. Never bring it back.
+
 ## 2026-07-20 — claude-fable (bell removed, city quieter)
 
 - Removed the unison hour-bell (distant-bell.mp3): James found it clashing with
