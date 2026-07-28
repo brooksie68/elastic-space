@@ -842,6 +842,10 @@ const layoutSlotKinds = new Set(["wall", "cord", "easel", "lean"]);
 const furnitureTypes = new Set([
   "shelf-double", "shelf-single", "shelf-tall", "shelf-sparse",
   "stack-3", "stack-2", "box", "crate",
+  // wall art (2026-07-28): posters are placeable now; they carry an optional
+  // y (hang height in meters) on top of the furniture item shape
+  "art-wesee", "art-calendar", "art-workrules", "art-happiness", "art-wanted",
+  "art-lift", "art-zip", "art-delivery", "art-lost",
 ]);
 function validateFurnitureLayout(layout) {
   if (!Array.isArray(layout.items)) {
@@ -870,6 +874,10 @@ function validateFurnitureLayout(layout) {
     }
     if (item.seed !== undefined && !Number.isInteger(item.seed)) {
       return `Item ${i}: seed must be an integer.`;
+    }
+    if (item.y !== undefined
+      && (typeof item.y !== "number" || !Number.isFinite(item.y) || item.y < 0 || item.y > 5)) {
+      return `Item ${i}: y must be a finite number (0-5).`;
     }
   }
   return null;
