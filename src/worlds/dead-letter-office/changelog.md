@@ -3,6 +3,105 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-27 — Claude (Fable 5) — r11: arrange mode (James's furniture editor)
+
+James's ask after flying r10: drop/move/rotate the shelves, boxes, and crates
+himself — "the layout I would come up with would be much more human designed
+looking." Not full curate mode; a lighter bespoke editor.
+
+- **The layout is a file now**: `assets/layout.js`
+  (`globalThis.DEAD_LETTER_OFFICE_LAYOUT`, kind "furniture") loaded by script
+  tag (file:// safe), seeded from the r10 placements; `DLO_DEFAULT_LAYOUT` in
+  world.js is the fallback. The r1 hardcoded crates became layout items.
+- **Arrange mode** (`arrange.js`, dynamic import at `?arrange=1` on the served
+  copy; "arrange" pill on the admin panel row): 8-item palette (shelf row,
+  wall shelf, tall shelf, half-empty shelf, stacks of 3/2, lone box, crate),
+  click an item to pick it up, drag on the floor, wheel rotates, Del removes,
+  duplicate, size (0.6–1.6) + shade (0.5–1.5) sliders live per item. Save PUTs
+  `/api/worlds/dead-letter-office/layout` — the server validates a new
+  "furniture" layout dialect (server.mjs `validateFurnitureLayout`) and backs
+  up the previous file every save.
+- **Safety stays honest**: camera keep-outs derive from item footprints
+  (`itemKeepOut` — rotated rect → AABB, wall-near faces extended past the
+  wall) and rebuild live as he drags. Overlapping/near-touching ITEM boxes
+  merge into cluster AABBs (`mergeItemBoxes`) — the sim caught two coincident
+  crates burying every push face of each other; static boxes never merge (a
+  blanket union would swallow the floor in front of the pigeonholes). Items
+  whose footprint crosses a postmaster nav edge tint red live ("he will clip
+  through it"). Every save runs a 6k-point in-browser trap fuzz and warns with
+  coordinates if the layout can pinch the camera.
+- **Sim updated** (nav-fuzz-sim.mjs): reads assets/layout.js (or the world.js
+  default), replicates itemKeepOut + mergeItemBoxes verbatim, now prints trap
+  sample coordinates on failure. Caught a real pinch: the east-corner unit's
+  expanded face against the furnace keep-out circle left a sub-body gap
+  (circle↔box pushes limit-cycle) — east unit and stack nudged clear.
+  66/66 green. Endpoint probed live: bad type 400s, real layout round-trips.
+- Deterministic seeds: every item carries a seed (mulberry32) so its exact
+  boxes/labels survive reloads and rebuilds.
+- Where things stand: **built + sim/endpoint-verified, awaiting James's first
+  arrange session.** His eye: palette coverage, drag/rotate feel, slider
+  ranges. Known conservative edge: an L of touching shelves merges into one
+  blocking AABB (the notch closes to the camera) — the save warning reports
+  real traps only.
+
+## 2026-07-27 — Claude (Fable 5) — r10.1: the mail cart and sacks are gone
+
+James flew r10: "radio good. music good. shelves good. will need better
+placement later." Then his screenshot caught the r1 mail cart (bin on caster
+legs) and the three sphere sacks by the south wall — crude primitives he
+couldn't even identify ("a desk looking thing with a sphere on the ground").
+Removed outright, plus the cart's keep-out box; the wooden crates stay (they
+read as crates, and the loose archive stack leans on them — flagged to James
+that they go too on his word). Sim re-run: 66/66. Open from his verdict:
+a shelf-placement pass, on his direction.
+
+## 2026-07-27 — Claude (Fable 5) — r10: the archive stacks + the AM radio plays
+
+James's brief: the room is NOT settled — fill it like a police archive room
+(steel shelving, labeled dated boxes), and put a 1945–1960 radio in the world
+playing his three baked Suno tracks.
+
+- **The archive stacks**: five steel shelving units (posts, slab shelves, X
+  cross-braces) filled with bankers boxes — two freestanding double-sided rows
+  mid-room forming an aisle (the spawn sightline runs straight down it), wall
+  units in the north/south/east-corner gaps, plus five loose floor/cabinet-top
+  stacks. 32 authored label categories on manila cards with typed titles, date
+  ranges (1947–1991, respecting the MARCH 1991 calendar), and red rubber
+  stamps — DIVORCE PAPERS, LETTERS TO SANTA, PATENT APPLICATIONS (REJECTED),
+  DICK PICS (CONFISCATED), SÉANCE REQUESTS, THREATS (VAGUE), MESSAGES IN
+  BOTTLES, and 25 more. Perf: every box face samples ONE 2048px canvas atlas
+  (one material for the whole archive) and each unit's boxes merge into a
+  single geometry — the entire archive is ~12 draw calls, all matrices frozen.
+- **The AM radio** (Meshy, 30cr: meshy-6 preview 20 + refine 10, remeshed at
+  generation to ~30k quads — 58k tris, `assets/props/radio.glb`): a 1950s
+  walnut bakelite set on the file cabinet bank, angled at the room. The only
+  fully textured prop; the PROP_MATERIALS swap passes it by (nothing named
+  prop_radio — keep it that way). Meshy dual-atlas emissive kept ON faintly
+  (the r4 pmGlow lesson) and brightens slightly while playing.
+- **The radio plays**: all three baked tracks (`-radio.mp3` siblings — Moon
+  Over Dry Wash's bake existed but was never logged; nothing new baked, three
+  tracks confirmed). Shuffled order, 1.8–4.4s of dead air between numbers, ON
+  by default when sound starts, click the set to toggle. Its own "radio"
+  channel slider on the shared sound control, and volume falls off with
+  distance from the cabinet corner so it reads as coming from the box.
+- **Constraints**: five new camera keep-out boxes (one per unit; aisle stays
+  walkable at 1.6m). The fuzz sim was scratchpad-only and lost — rebuilt
+  DURABLE at `tmp/dead-letter-office/nav-fuzz-sim.mjs`: it slices ROOM/
+  CIRCLES/BOXES/stations/nav straight from world.js source (no drift), then
+  30k-point fuzz + grid-BFS reachability of all 14 stations + the aisle + nav
+  edge clearance. 66/66 green. Nav graph untouched — no station or edge needed
+  to move.
+- **Look-dev**: `tmp/dead-letter-office/archive-lookdev.html` (silent, KEEP) —
+  evals the live archive section sliced from world.js and renders 3 fixed
+  views (?view=0/1/2); verified the atlas UVs (labels upright, dates + stamps
+  legible) without ever loading the sound world in a pane.
+- Where things stand: **r10 built, sim-verified, lookdev-verified, awaiting
+  James's walk-through.** Judgement calls for his eye: shelf-row placement/
+  height vs the spawn sightline, box label legibility at walking distance,
+  radio scale/angle on the bank, radio level vs ambience, the dead-air gap.
+  Postmaster does NOT interact with the archive or radio yet — that's behavior
+  weekend material (an "archive browse" station sketched but not built).
+
 ## 2026-07-26/27 — Claude + James — postmaster speech clip baked; wardrobe work continues in Face Lab
 
 `test-speech-long.mp3` (60.5s, the postmaster's soliloquy) re-baked with a dialog

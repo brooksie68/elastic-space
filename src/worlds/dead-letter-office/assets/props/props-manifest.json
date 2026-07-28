@@ -6,7 +6,9 @@
     { "name": "chair", "task_id": "019f8784-72e6-783c-985f-ae8def5e268f", "tris_web": 45000 },
     { "name": "basket", "task_id": "019f8784-7dbd-783d-b861-a239bc6ba4e9", "tris_web": 52234, "note": "generated as a tall domed birdcage; lower 39% bisected off in Blender to make the open-top basket" },
     { "name": "furnace", "task_id": "019f8784-8a55-783e-8fad-3750ad7112f3", "tris_web": 50000 },
-    { "name": "plant", "task_id": "019f8784-9661-76a3-9921-b2e013204db2", "tris_web": 90000, "note": "pot/foliage split into prop_plant_pot / prop_plant_leaf material slots by face height" }
+    { "name": "plant", "task_id": "019f8784-9661-76a3-9921-b2e013204db2", "tris_web": 90000, "note": "pot/foliage split into prop_plant_pot / prop_plant_leaf material slots by face height" },
+    { "name": "couch", "task_id": "unrecorded-2026-07-22", "note": "5cr preview, textured in-engine (prop_couch)" },
+    { "name": "radio", "task_id": "019fa6ae-731a-79d4-b959-a05743214140", "refine_task_id": "019fa6b1-377a-7aa2-9d94-617f28a28c51", "tris_web": 58313, "note": "2026-07-27, the only FULLY TEXTURED prop (meshy-6 preview 20cr + refine 10cr, remeshed at generation to ~30k quads): keeps its own Meshy materials, so PROP_MATERIALS must never grow a prop_radio key" }
   ],
   "textures": [
     { "name": "wall", "task_id": "019f8784-13d5-7692-a737-07c3d35b8066" },

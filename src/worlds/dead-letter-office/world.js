@@ -1037,6 +1037,351 @@ function bookRowTex(kind) {
   }
 }
 
+/* ================= the archive stacks (2026-07-27, James's brief) ============ */
+
+// "Like a police archive room" — steel shelving units filled with dated bankers
+// boxes: everything the office ever swallowed, filed and labeled. Every box face
+// samples ONE canvas atlas (a single material for the whole archive) and each
+// unit's boxes merge into one geometry, so five units + floor stacks cost about
+// a dozen draw calls total.
+
+const ARCHIVE_LABELS = [
+  { t: 'DIVORCE PAPERS' }, { t: 'LETTERS TO SANTA' },
+  { t: 'PATENT APPLICATIONS', s: 'REJECTED' }, { t: 'DICK PICS', s: 'CONFISCATED' },
+  { t: 'CHAIN LETTERS', s: 'DO NOT OPEN' }, { t: 'RANSOM NOTES' },
+  { t: 'LOVE LETTERS', sub: 'UNSENT' }, { t: 'SWEEPSTAKES WINNERS', sub: 'UNREACHED' },
+  { t: 'JURY SUMMONS', sub: 'IGNORED' }, { t: 'TAX RETURNS' },
+  { t: 'COMPLAINTS' }, { t: 'WRONG ADDRESSES' },
+  { t: 'POSTAGE DUE' }, { t: 'FINAL NOTICES' },
+  { t: 'WEDDING INVITATIONS', s: 'RETURNED' }, { t: 'PEN PALS', sub: 'LAPSED' },
+  { t: 'BIRTHDAY CARDS', sub: 'LATE' }, { t: 'APOLOGIES' },
+  { t: 'THREATS', sub: 'VAGUE' }, { t: 'CHAIN RECIPES' },
+  { t: 'SÉANCE REQUESTS' }, { t: 'MANIFESTOS' },
+  { t: 'HOMEWORK EXCUSES' }, { t: 'POSTCARDS' },
+  { t: 'PRAYERS', sub: 'MISADDRESSED' }, { t: 'UFO REPORTS', s: 'UNVERIFIED' },
+  { t: 'BILLS', sub: 'DISPUTED' }, { t: 'FAN MAIL', sub: 'NO SUCH STAR' },
+  { t: 'TO WHOM IT MAY', sub: 'CONCERN' }, { t: 'GLITTER', s: 'HAZARD' },
+  { t: 'MESSAGES IN BOTTLES' }, { t: 'RESIGNATION LETTERS' },
+];
+
+const AT_COLS = 8, AT_TW = 256, AT_TH = 192, AT_PX = 2048;
+const N_PLAIN = 4, N_TOP = 4;
+const PLAIN0 = ARCHIVE_LABELS.length, TOP0 = PLAIN0 + N_PLAIN;
+
+function cardboardPatch(g, x, y, w, h, tone) {
+  g.fillStyle = tone;
+  g.fillRect(x, y, w, h);
+  for (let i = 0; i < 14; i++) {                     // corrugation streaks
+    g.fillStyle = `rgba(60,40,20,${0.03 + Math.random() * 0.05})`;
+    g.fillRect(x + Math.random() * (w - 10), y, 2 + Math.random() * 8, h);
+  }
+  g.strokeStyle = 'rgba(50,32,16,0.5)';
+  g.lineWidth = 3;
+  g.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  g.fillStyle = 'rgba(40,26,12,0.25)';               // bottom-edge wear
+  g.fillRect(x, y + h - 5, w, 5);
+}
+
+const boxAtlasTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = AT_PX;
+  const g = c.getContext('2d');
+  g.fillStyle = '#8a6b48';
+  g.fillRect(0, 0, AT_PX, AT_PX);
+  const tileXY = (i) => [(i % AT_COLS) * AT_TW, Math.floor(i / AT_COLS) * AT_TH];
+  ARCHIVE_LABELS.forEach((L, i) => {
+    const [x, y] = tileXY(i);
+    cardboardPatch(g, x, y, AT_TW, AT_TH, jitter('#9a7a52', 0.09));
+    // the label card: manila, typed, slightly crooked — filed in a hurry, kept forever
+    const lw = 190, lh = 96, lx = x + (AT_TW - lw) / 2, ly = y + 26 + Math.random() * 14;
+    g.save();
+    g.translate(lx + lw / 2, ly + lh / 2);
+    g.rotate((Math.random() - 0.5) * 0.05);
+    g.fillStyle = '#ddd2ac';
+    g.fillRect(-lw / 2, -lh / 2, lw, lh);
+    g.strokeStyle = '#6a5a3c';
+    g.lineWidth = 2;
+    g.strokeRect(-lw / 2 + 3, -lh / 2 + 3, lw - 6, lh - 6);
+    g.fillStyle = '#2a241c';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    let fs = 20;
+    g.font = `700 ${fs}px "Courier New", monospace`;
+    while (g.measureText(L.t).width > lw - 18 && fs > 11) {
+      fs -= 1;
+      g.font = `700 ${fs}px "Courier New", monospace`;
+    }
+    const y0 = 1947 + Math.floor(Math.random() * 38);
+    const dates = `${y0}–${Math.min(1991, y0 + 1 + Math.floor(Math.random() * 9))}`;
+    if (L.sub) {
+      g.fillText(L.t, 0, -24);
+      g.font = '700 15px "Courier New", monospace';
+      g.fillText(`(${L.sub})`, 0, -4);
+      g.font = '400 15px "Courier New", monospace';
+      g.fillText(dates, 0, 18);
+    } else {
+      g.fillText(L.t, 0, -16);
+      g.font = '400 16px "Courier New", monospace';
+      g.fillText(dates, 0, 10);
+    }
+    g.restore();
+    if (L.s) {                                       // the red rubber stamp
+      g.save();
+      g.translate(x + AT_TW / 2, y + AT_TH - 30);
+      g.rotate(-0.12 - Math.random() * 0.1);
+      g.font = '700 24px "Courier New", monospace';
+      g.fillStyle = 'rgba(160,40,32,0.78)';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(L.s, 0, 0);
+      const sw = g.measureText(L.s).width;
+      g.strokeStyle = 'rgba(160,40,32,0.6)';
+      g.lineWidth = 2;
+      g.strokeRect(-sw / 2 - 8, -16, sw + 16, 32);
+      g.restore();
+    }
+  });
+  for (let i = 0; i < N_PLAIN; i++) {
+    const [x, y] = tileXY(PLAIN0 + i);
+    cardboardPatch(g, x, y, AT_TW, AT_TH, jitter('#96774f', 0.1));
+  }
+  for (let i = 0; i < N_TOP; i++) {
+    const [x, y] = tileXY(TOP0 + i);
+    cardboardPatch(g, x, y, AT_TW, AT_TH, jitter('#8f7049', 0.1));
+    g.fillStyle = 'rgba(200,180,140,0.35)';          // packing tape over the lid seam
+    g.fillRect(x + AT_TW / 2 - 14, y, 28, AT_TH);
+    g.fillStyle = 'rgba(50,34,18,0.4)';
+    g.fillRect(x + AT_TW / 2 - 2, y, 4, AT_TH);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = maxAniso;
+  return t;
+})();
+const matBoxAtlas = new THREE.MeshLambertMaterial({ map: boxAtlasTex });
+const matShelfSteel = new THREE.MeshStandardMaterial({ color: 0x4a4f46, roughness: 0.5, metalness: 0.6 });
+
+// remap one BoxGeometry face's unit UVs into an atlas tile
+// (face order: +x, -x, +y, -y, +z, -z; 4 uv verts per face)
+function setFaceTile(geo, face, tile) {
+  const uv = geo.attributes.uv;
+  const u0 = (tile % AT_COLS) * (AT_TW / AT_PX);
+  const v1 = 1 - Math.floor(tile / AT_COLS) * (AT_TH / AT_PX);
+  for (let i = face * 4; i < face * 4 + 4; i++) {
+    uv.setXY(i, u0 + uv.getX(i) * (AT_TW / AT_PX), v1 - (1 - uv.getY(i)) * (AT_TH / AT_PX));
+  }
+}
+
+// Deterministic per-item randomness: every layout item carries a seed, so a
+// rebuild (or a reload) keeps the exact same boxes with the exact same labels.
+function mulberry32(a) {
+  return () => {
+    a |= 0; a = a + 0x6d2b79f5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const BOX_W = 0.42, BOX_H = 0.30, BOX_D = 0.36;
+function archiveBoxGeo(rnd) {
+  const plain = () => PLAIN0 + Math.floor(rnd() * N_PLAIN);
+  const g = new THREE.BoxGeometry(
+    BOX_W * (0.94 + rnd() * 0.12), BOX_H * (0.92 + rnd() * 0.12), BOX_D);
+  setFaceTile(g, 0, plain());
+  setFaceTile(g, 1, plain());
+  setFaceTile(g, 2, TOP0 + Math.floor(rnd() * N_TOP));
+  setFaceTile(g, 3, plain());
+  setFaceTile(g, 4, Math.floor(rnd() * ARCHIVE_LABELS.length));   // label faces +z
+  setFaceTile(g, 5, plain());
+  return g;
+}
+
+// The droppable furniture catalog (arrange mode palette). fw/fd are the
+// footprint used for camera keep-outs and the nav-edge warning — plain
+// literals so the Node sim can eval this block straight from source.
+const FURNITURE = {
+  'shelf-double': { label: 'shelf row (2-sided)', len: 3.0, dep: 0.85, h: 2.06, levels: 4, fill: 0.92, double: true, fw: 3.14, fd: 0.99 },
+  'shelf-single': { label: 'wall shelf', len: 1.7, dep: 0.42, h: 2.06, levels: 4, fill: 0.92, double: false, fw: 1.84, fd: 0.56 },
+  'shelf-tall': { label: 'tall shelf', len: 2.2, dep: 0.42, h: 2.62, levels: 5, fill: 0.92, double: false, fw: 2.34, fd: 0.56 },
+  'shelf-sparse': { label: 'half-empty shelf', len: 2.2, dep: 0.42, h: 2.06, levels: 4, fill: 0.45, double: false, fw: 2.34, fd: 0.56 },
+  'stack-3': { label: 'stack of 3 boxes', n: 3, fw: 0.62, fd: 0.56 },
+  'stack-2': { label: 'stack of 2 boxes', n: 2, fw: 0.62, fd: 0.56 },
+  'box': { label: 'lone box', n: 1, fw: 0.56, fd: 0.5 },
+  'crate': { label: 'wooden crate', fw: 1.0, fd: 0.8 },
+};
+
+function buildShelf(def, rnd) {
+  const { len, dep: D, h: H } = def;
+  const LEVELS = [];
+  for (let l = 0; l < def.levels; l++) LEVELS.push(0.12 + l * (H - 0.46) / (def.levels - 1));
+  const frame = [], boxes = [];
+  const nBays = Math.max(1, Math.round(len / 1.0));
+  for (let p = 0; p <= nBays; p++) {                 // posts
+    const px = -len / 2 + (len / nBays) * p;
+    for (const pz of [-D / 2 + 0.02, D / 2 - 0.02]) {
+      const g = new THREE.BoxGeometry(0.045, H, 0.045);
+      g.translate(px, H / 2, pz);
+      frame.push(g);
+    }
+  }
+  for (const ly of [...LEVELS, H - 0.06]) {          // shelf slabs + top rail
+    const g = new THREE.BoxGeometry(len + 0.04, 0.028, D);
+    g.translate(0, ly, 0);
+    frame.push(g);
+  }
+  for (const ex of [-len / 2, len / 2]) {            // X cross-braces on the ends
+    for (const s of [1, -1]) {
+      const g = new THREE.BoxGeometry(0.025, Math.hypot(H - 0.2, D), 0.02);
+      g.rotateX(s * Math.atan2(D, H - 0.2));
+      g.translate(ex, H / 2, 0);
+      frame.push(g);
+    }
+  }
+  const sides = def.double ? [1, -1] : [1];
+  for (const ly of LEVELS) {
+    for (const s of sides) {
+      let bx = -len / 2 + 0.26;
+      while (bx < len / 2 - 0.2) {
+        if (rnd() > def.fill) {                      // a gap: someone took one
+          bx += 0.3 + rnd() * 0.2;
+          continue;
+        }
+        const g = archiveBoxGeo(rnd);
+        const proud = rnd() < 0.12 ? 0.05 : 0;       // pulled out, never pushed back
+        const m = new THREE.Matrix4()
+          .makeRotationY((rnd() - 0.5) * 0.09 + (s === 1 ? 0 : Math.PI));
+        m.setPosition(bx, ly + 0.014 + BOX_H / 2,
+          s * (D / 2 - BOX_D / 2 - 0.02) + s * proud);
+        g.applyMatrix4(m);
+        boxes.push(g);
+        bx += BOX_W + 0.035 + rnd() * 0.05;
+      }
+    }
+  }
+  return [
+    { geo: mergeGeometries(frame), mat: 'steel' },
+    { geo: mergeGeometries(boxes), mat: 'boxes' },
+  ];
+}
+
+function buildStack(def, rnd) {
+  const geos = [];
+  for (let i = 0; i < def.n; i++) {
+    const g = archiveBoxGeo(rnd);
+    const m = new THREE.Matrix4().makeRotationY((rnd() - 0.5) * 0.35);
+    m.setPosition((rnd() - 0.5) * 0.05,
+      0.005 + BOX_H / 2 + i * (BOX_H + 0.008),
+      (rnd() - 0.5) * 0.05);
+    g.applyMatrix4(m);
+    geos.push(g);
+  }
+  return [{ geo: mergeGeometries(geos), mat: 'boxes' }];
+}
+
+function buildCrate(def, rnd) {
+  const w = 0.85 + rnd() * 0.1, h = 0.55 + rnd() * 0.12, d = 0.62 + rnd() * 0.1;
+  const g = uvScale(new THREE.BoxGeometry(w, h, d), w / WOOD_TILE, h / WOOD_TILE);
+  g.translate(0, h / 2, 0);
+  return [{ geo: g, mat: 'wood' }];
+}
+
+// per-item materials (map shared, color owns the shade) so shade is live-tunable
+const SHADE_BASE = { steel: 0x4a4f46, boxes: 0xffffff, wood: 0xffffff };
+function furnitureMaterial(kind) {
+  const m = kind === 'steel'
+    ? new THREE.MeshStandardMaterial({ color: 0x4a4f46, roughness: 0.5, metalness: 0.6 })
+    : kind === 'wood'
+      ? new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.8 })
+      : new THREE.MeshLambertMaterial({ map: boxAtlasTex });
+  m.userData.shadeBase = new THREE.Color(SHADE_BASE[kind]);
+  return m;
+}
+function applyShade(mats, shade) {
+  for (const m of mats) {
+    m.color.copy(m.userData.shadeBase).multiplyScalar(shade);
+    m.emissive?.setScalar(0);                       // clears any nav-warning tint
+  }
+}
+
+const furnitureRecords = [];                        // live {item, group, mats} list
+function buildFurnitureItem(item) {
+  const def = FURNITURE[item.type];
+  if (!def) return null;
+  const rnd = mulberry32((item.seed ?? 1) * 2654435761 >>> 0 || 1);
+  const parts = def.n !== undefined ? buildStack(def, rnd)
+    : item.type === 'crate' ? buildCrate(def, rnd)
+      : buildShelf(def, rnd);
+  const group = new THREE.Group();
+  const mats = [];
+  for (const part of parts) {
+    const mat = furnitureMaterial(part.mat);
+    mats.push(mat);
+    group.add(new THREE.Mesh(part.geo, mat));
+  }
+  group.position.set(item.x, 0, item.z);
+  group.rotation.y = item.rotY;
+  group.scale.setScalar(item.scale);
+  applyShade(mats, item.shade);
+  scene.add(group);
+  group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
+  group.updateMatrixWorld(true);
+  const record = { item, group, mats };
+  furnitureRecords.push(record);
+  return record;
+}
+function removeFurnitureItem(record) {
+  const at = furnitureRecords.indexOf(record);
+  if (at >= 0) furnitureRecords.splice(at, 1);
+  const li = archiveLayout.items.indexOf(record.item);
+  if (li >= 0) archiveLayout.items.splice(li, 1);
+  scene.remove(record.group);
+  for (const m of record.mats) m.dispose();
+}
+
+// The layout: assets/layout.js (script tag — file:// safe) when present and
+// furniture-shaped, else the seed below. Arrange mode (?arrange=1, served)
+// edits it live and saves through PUT /api/worlds/dead-letter-office/layout.
+const DLO_DEFAULT_LAYOUT = {
+  kind: 'furniture',
+  items: [
+    { type: 'shelf-double', x: -2.3, z: 3.05, rotY: 0, scale: 1, shade: 1, seed: 11 },
+    { type: 'shelf-double', x: 2.3, z: 3.05, rotY: 0, scale: 1, shade: 1, seed: 12 },
+    { type: 'shelf-single', x: -1.075, z: -5.72, rotY: 0, scale: 1, shade: 1, seed: 13 },
+    { type: 'shelf-single', x: 0.95, z: 5.72, rotY: Math.PI, scale: 1, shade: 1, seed: 14 },
+    { type: 'shelf-single', x: 8.72, z: 5.35, rotY: -Math.PI / 2, scale: 0.9, shade: 0.92, seed: 15 },
+    { type: 'crate', x: -2.0, z: 5.25, rotY: 0.12, scale: 1, shade: 1, seed: 16 },
+    { type: 'crate', x: -2.05, z: 5.3, rotY: -0.2, scale: 0.9, shade: 0.95, seed: 17 },
+    { type: 'crate', x: -3.3, z: 5.4, rotY: 0.35, scale: 0.85, shade: 1.05, seed: 18 },
+    { type: 'stack-3', x: 8.62, z: 4.85, rotY: -1.4, scale: 1, shade: 1, seed: 19 },
+    { type: 'stack-2', x: -1.7, z: 5.35, rotY: 0.4, scale: 1, shade: 1, seed: 20 },
+    { type: 'stack-2', x: -3.95, z: -5.6, rotY: 1.2, scale: 1, shade: 1, seed: 21 },
+  ],
+};
+const savedLayout = globalThis.DEAD_LETTER_OFFICE_LAYOUT;
+const archiveLayout = (savedLayout && savedLayout.kind === 'furniture'
+  && Array.isArray(savedLayout.items)) ? savedLayout : DLO_DEFAULT_LAYOUT;
+for (const item of archiveLayout.items) buildFurnitureItem(item);
+
+// cabinet-top strays keep the radio company (surface clutter, not floor layout)
+{
+  const rnd = mulberry32(77);
+  for (const [sx, sz, n, ry] of [[8.45, -1.6, 2, 0.5], [7.95, -2.2, 1, -0.4]]) {
+    const geos = [];
+    for (let i = 0; i < n; i++) {
+      const g = archiveBoxGeo(rnd);
+      const m = new THREE.Matrix4().makeRotationY(ry + (rnd() - 0.5) * 0.35);
+      m.setPosition(sx, 1.32 + 0.005 + BOX_H / 2 + i * (BOX_H + 0.008), sz);
+      g.applyMatrix4(m);
+      geos.push(g);
+    }
+    const mesh = new THREE.Mesh(mergeGeometries(geos), matBoxAtlas);
+    mesh.updateMatrix();
+    mesh.matrixAutoUpdate = false;
+    scene.add(mesh);
+  }
+}
+
 /* ================= tables: donut service + the big door table ================ */
 
 function mkTable(x, z, w, d, h, ry) {
@@ -1309,53 +1654,10 @@ addSign(signTexture(512, 400, (g, w, h) => {
   });
 }), 1.05, 0.82, ROOM.x0 + 0.03, 1.72, 0.2, Math.PI / 2);
 
-/* ================= south side clutter: crates, mail cart, sacks ============== */
-
-{
-  const crate = (x, z, w, h, d, ry) => {
-    const m = new THREE.Mesh(uvScale(new THREE.BoxGeometry(w, h, d), w / WOOD_TILE, h / WOOD_TILE), matWood);
-    m.position.set(x, h / 2, z);
-    m.rotation.y = ry;
-    scene.add(m);
-  };
-  crate(-2.0, 5.25, 0.9, 0.62, 0.7, 0.12);
-  crate(-2.05, 5.3, 0.8, 0.55, 0.62, -0.2);   // stacked pair
-  const top = new THREE.Mesh(uvScale(new THREE.BoxGeometry(0.8, 0.55, 0.62), 0.5, 0.35), matWood);
-  top.position.set(-2.05, 0.62 + 0.28, 5.3);
-  top.rotation.y = -0.2;
-  scene.add(top);
-  crate(-3.3, 5.4, 0.72, 0.5, 0.6, 0.35);
-  const sackMat = new THREE.MeshStandardMaterial({ color: 0x6e604a, roughness: 0.98 });
-  for (const [sx, sz, s] of [[-4.2, 5.2, 1], [-4.55, 4.7, 0.85], [3.1, 5.35, 0.9]]) {
-    const sack = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), sackMat);
-    sack.position.set(sx, 0.3 * s, sz);
-    sack.scale.set(s, 0.85 * s, s);
-    scene.add(sack);
-  }
-  // the mail cart — canvas bin on casters
-  const cart = new THREE.Group();
-  const bin = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.62, 0.68),
-    new THREE.MeshStandardMaterial({ color: 0x8a7c5e, roughness: 0.97 }));
-  bin.position.y = 0.62;
-  cart.add(bin);
-  const frameMat2 = new THREE.MeshStandardMaterial({ color: 0x33393a, metalness: 0.7, roughness: 0.45 });
-  for (const [cx, cz] of [[-0.46, -0.28], [0.46, -0.28], [-0.46, 0.28], [0.46, 0.28]]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.32, 6), frameMat2);
-    leg.position.set(cx, 0.16, cz);
-    cart.add(leg);
-    const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), frameMat2);
-    wheel.position.set(cx, 0.05, cz);
-    cart.add(wheel);
-  }
-  const pileGeo = new THREE.BoxGeometry(0.9, 0.1, 0.5);
-  const pile = new THREE.Mesh(pileGeo, matPaper);
-  pile.position.set(0, 0.9, 0);
-  pile.rotation.z = 0.05;
-  cart.add(pile);
-  cart.position.set(4.0, 0, 4.95);
-  cart.rotation.y = -0.35;
-  scene.add(cart);
-}
+// (South-side clutter history: the r1 crates/mail-cart/sacks block lived here.
+// The cart + sphere sacks were cut 2026-07-27 on James's screenshot verdict;
+// the crates became arrange-mode layout items the same night — see the archive
+// stacks section. If a mail cart ever returns it gets built properly.)
 
 /* ================= the rug ================= */
 
@@ -1488,10 +1790,30 @@ const PROPS = [
   // at the basket so he can sit and watch the letters fall
   { file: 'assets/props/couch.glb', height: 0.8, pos: [-5.0, 0, -5.5], rotY: 0 },
   { file: 'assets/props/plant.glb', height: 0.72, pos: [-3.5, 0, -5.25], rotY: 3.6, tint: 0xc9a070 },
+  // the AM radio (2026-07-27, Meshy refine 30cr, James's ask): a 1950s bakelite
+  // set on the cabinet bank, angled at the room. Keeps its own Meshy textures —
+  // no material name starts with prop_, so the swap loop passes it by. Clicking
+  // it toggles the music (wired in the sound section).
+  {
+    file: 'assets/props/radio.glb', height: 0.3, pos: [8.2, 1.32, -3.55], rotY: -1.16,
+    then(wrap) {
+      wrap.traverse((o) => {
+        if (!o.isMesh) return;
+        propClickables.radio.add(o);
+        if (o.material && o.material.emissiveMap) {
+          // Meshy dual-atlas: keep the emissive copy ON faintly (the r4 pmGlow
+          // lesson — it must read in a dim corner); brightens while playing
+          o.material.emissiveIntensity = radioOn ? 0.42 : 0.22;
+          radioGlowMats.push(o.material);
+        }
+      });
+      hoverDirty = true;
+    },
+  },
 ];
 
 const furnaceMouth = new THREE.Vector3(6.8 + Math.sin(-2.05) * 0.55, 0.62, 3.5 + Math.cos(-2.05) * 0.55);
-const propClickables = { furnace: new Set() };
+const propClickables = { furnace: new Set(), radio: new Set() };
 
 let propsLoaded = 0;
 for (const spec of PROPS) {
@@ -2630,6 +2952,59 @@ let soundOn = false;
 let soundVol = 0.8;
 const AMBIENCE_LEVEL = 0.4;
 
+// The AM radio (2026-07-27): three Suno tracks James authored, baked through
+// tools/radio-bake.mjs (the -radio.mp3 siblings ARE the radio — never play the
+// clean sources here). Plays by default when sound comes on; clicking the set
+// toggles it. Volume falls off with distance from the cabinet-bank corner so it
+// reads as coming from the box, plus its own slider on the sound control.
+const RADIO_TRACKS = [
+  'assets/radio-music/High-Chapparal-radio.mp3',
+  'assets/radio-music/Highland-Ghost-Waltz-radio.mp3',
+  'assets/radio-music/Moon Over Dry Wash-radio.mp3',
+];
+const RADIO_POS = new THREE.Vector3(8.2, 1.5, -3.55);
+const RADIO_LEVEL = 0.9;
+const radioGlowMats = [];
+const radioAudio = new Audio();
+radioAudio.preload = 'auto';
+let radioOn = true;                 // the office radio plays unless someone turns it off
+let radioVol = 0.7;
+let radioIdx = Math.floor(Math.random() * RADIO_TRACKS.length);
+let radioGapT = null;
+
+function radioFalloff() {
+  const d = pos.distanceTo(RADIO_POS);
+  return clamp(1 - (d - 2.5) / 14, 0.18, 1);
+}
+function radioApplyVolume() {
+  radioAudio.volume = clamp(soundVol * radioVol * RADIO_LEVEL * radioFalloff(), 0, 1);
+}
+function radioStart() {
+  if (!radioAudio.src) radioAudio.src = RADIO_TRACKS[radioIdx];
+  radioApplyVolume();
+  radioAudio.play().catch(() => {});
+}
+function radioStop() {
+  radioAudio.pause();               // keeps its place in the track for the resume
+  clearTimeout(radioGapT);
+}
+function setRadio(on) {
+  radioOn = on;
+  for (const m of radioGlowMats) m.emissiveIntensity = on ? 0.42 : 0.22;
+  if (on && soundOn) radioStart();
+  else radioStop();
+}
+radioAudio.addEventListener('ended', () => {
+  clearTimeout(radioGapT);
+  radioGapT = setTimeout(() => {    // dead air between numbers, like the real thing
+    if (!soundOn || !radioOn) return;
+    radioIdx = (radioIdx + 1 + Math.floor(Math.random() * (RADIO_TRACKS.length - 1)))
+      % RADIO_TRACKS.length;
+    radioAudio.src = RADIO_TRACKS[radioIdx];
+    radioStart();
+  }, 1800 + Math.random() * 2600);
+});
+
 if (window.ElasticSoundControl) {
   ElasticSoundControl.attach({
     start: () => {
@@ -2637,6 +3012,7 @@ if (window.ElasticSoundControl) {
       ambience.volume = 0;
       return ambience.play().then(() => {
         ambience.volume = soundVol * AMBIENCE_LEVEL;
+        if (radioOn) radioStart();
       }).catch((err) => {
         soundOn = false;
         throw err;
@@ -2645,11 +3021,18 @@ if (window.ElasticSoundControl) {
     stop: () => {
       soundOn = false;
       ambience.pause();
+      radioStop();
     },
     setVolume: (v) => {
       soundVol = v;
       ambience.volume = v * AMBIENCE_LEVEL;
+      radioApplyVolume();
     },
+    channels: [{
+      label: 'radio',
+      value: radioVol,
+      setVolume: (v) => { radioVol = v; radioApplyVolume(); },
+    }],
   });
 }
 
@@ -2678,25 +3061,71 @@ const CIRCLES = [
 // Wall-side faces extend ≥2m past the wall so the least-penetration push always
 // resolves into the room (a face just past the wall loses to the wall clamp and
 // traps the camera — the fuzz sim caught it).
-const BOXES = [
+const STATIC_BOXES = [
   [-0.15, 3.65, -8.0, -4.5],               // desk + donut table (no band behind)
   [4.45, 9.5, -8.0, -5.05],                // pigeonholes + coat-rack corner
   [7.45, 11.5, -5.15, 0.15],               // file cabinet bank (overlaps the
                                            // pigeonhole box so no sliver opens)
   [-11.5, -8.05, -2.8, -1.2],              // radiator
   [-11.5, -7.55, 3.6, 5.2],                // big table by the door
-  [-5.1, -1.35, 4.6, 8.0],                 // crates + sacks
-  [3.25, 4.75, 4.3, 8.0],                  // mail cart
   [-6.1, -3.9, -8.0, -5.2],                // the couch (box face sits behind the
                                            // cushion so his sit station clears it)
   [8.2, 11.5, 0.05, 1.9],                  // bookshelf (overlaps the cabinet bank)
 ];
 
+// Arrange-mode furniture derives its keep-out from the item footprint: rotated
+// rect → AABB + body margin; faces near a wall extend well past it (the r2
+// wall-flush push-face lesson). The Node sim replicates this rule verbatim.
+function itemKeepOut(item) {
+  const def = FURNITURE[item.type];
+  const hw = def.fw * item.scale / 2, hd = def.fd * item.scale / 2;
+  const c = Math.abs(Math.cos(item.rotY)), s = Math.abs(Math.sin(item.rotY));
+  const ex = hw * c + hd * s, ez = hw * s + hd * c;
+  let x0 = item.x - ex, x1 = item.x + ex, z0 = item.z - ez, z1 = item.z + ez;
+  if (x0 < ROOM.x0 + 0.5) x0 = ROOM.x0 - 2.5;
+  if (x1 > ROOM.x1 - 0.5) x1 = ROOM.x1 + 2.5;
+  if (z0 < ROOM.z0 + 0.5) z0 = ROOM.z0 - 2.0;
+  if (z1 > ROOM.z1 - 0.5) z1 = ROOM.z1 + 2.0;
+  return [x0, x1, z0, z1];
+}
+
 // Precomputed push faces per box: a face is only a valid push target if it lies
 // inside the walkable rect AND isn't buried inside a neighboring box — pushing
 // to an invalid face ping-pongs against the wall clamp or the neighbor (both
-// failure modes caught by the fuzz sim).
-const BOX_PUSHES = BOXES.map(([x0, x1, z0, z1], bi) => {
+// failure modes caught by the fuzz sim). Rebuilt whenever arrange mode moves
+// furniture; static furniture + the current layout together.
+// Overlapping (or sub-body-gap) ITEM boxes merge into one cluster AABB — two
+// nearly-coincident crates otherwise bury every push face of each other and
+// trap the camera (the sim caught it the night this shipped). Static boxes are
+// hand-tuned L-shapes and never merge: a blanket AABB union would swallow
+// walkable floor in front of the pigeonholes.
+function mergeItemBoxes(list) {
+  const boxes = list.map((b) => [...b]);
+  const gap = BODY_R * 2;
+  for (let again = true; again;) {
+    again = false;
+    outer: for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], b = boxes[j];
+        if (a[0] < b[1] + gap && a[1] > b[0] - gap && a[2] < b[3] + gap && a[3] > b[2] - gap) {
+          boxes[i] = [Math.min(a[0], b[0]), Math.max(a[1], b[1]),
+            Math.min(a[2], b[2]), Math.max(a[3], b[3])];
+          boxes.splice(j, 1);
+          again = true;
+          break outer;
+        }
+      }
+    }
+  }
+  return boxes;
+}
+
+let BOXES = [];
+let BOX_PUSHES = [];
+function rebuildKeepOuts() {
+  BOXES = [...STATIC_BOXES, ...mergeItemBoxes(
+    archiveLayout.items.filter((i) => FURNITURE[i.type]).map(itemKeepOut))];
+  BOX_PUSHES = BOXES.map(([x0, x1, z0, z1], bi) => {
   const l = x0 - BODY_R, r = x1 + BODY_R, n = z0 - BODY_R, s = z1 + BODY_R;
   const wx0 = ROOM.x0 + INSET, wx1 = ROOM.x1 - INSET;
   const wz0 = ROOM.z0 + INSET, wz1 = ROOM.z1 - INSET;
@@ -2718,7 +3147,26 @@ const BOX_PUSHES = BOXES.map(([x0, x1, z0, z1], bi) => {
     faces.push({ dist: (p) => s - p.z, apply: (p) => { p.z = s; } });
   }
   return { l, r, n, s, faces };
-});
+  });
+}
+rebuildKeepOuts();
+
+// in-browser trap check (arrange mode runs it after every save): constrain a
+// cloud of random points; report any that resolve inside a keep-out
+function fuzzKeepOuts(n = 5000) {
+  const bad = [];
+  for (let k = 0; k < n; k++) {
+    const p = {
+      x: ROOM.x0 + Math.random() * (ROOM.x1 - ROOM.x0),
+      z: ROOM.z0 + Math.random() * (ROOM.z1 - ROOM.z0),
+    };
+    constrain(p);
+    const inside = BOX_PUSHES.some((bp) => p.x > bp.l + 1e-6 && p.x < bp.r - 1e-6 &&
+      p.z > bp.n + 1e-6 && p.z < bp.s - 1e-6);
+    if (inside && bad.length < 5) bad.push([p.x, p.z]);
+  }
+  return bad;
+}
 
 function constrain(p) {
   for (let pass = 0; pass < 3; pass++) {
@@ -2834,7 +3282,8 @@ function rayTargets() {
   if (hoverDirty) {
     hoverDirty = false;
     hoverTargets.length = 0;
-    hoverTargets.push(...envClickables, ...doorMeshes, ...punchClockMeshes, ...propClickables.furnace);
+    hoverTargets.push(...envClickables, ...doorMeshes, ...punchClockMeshes,
+      ...propClickables.furnace, ...propClickables.radio);
     if (pmProxy && !pmAway) hoverTargets.push(pmProxy);   // never the skinned mesh
   }
   return hoverTargets;
@@ -2866,6 +3315,7 @@ function handleClick(e) {
     playSfx(sfxWhoosh, 0.5);
     return;
   }
+  if (propClickables.radio.has(obj)) return setRadio(!radioOn);
   if (obj === pmProxy) postmasterClicked();
 }
 
@@ -3030,6 +3480,9 @@ function tick() {
     stage.style.cursor = hits.length ? 'pointer' : 'grab';
   }
 
+  // radio proximity falloff, throttled (distance only changes at walking speed)
+  if (frame % 15 === 0 && soundOn && radioOn && !radioAudio.paused) radioApplyVolume();
+
   renderer.render(scene, camera);
 }
 tick();
@@ -3065,3 +3518,18 @@ window.setInterval(() => {
   if (!document.hidden) ambientTick(performance.now());
 }, 1000);
 shiftTick();
+
+/* ================= arrange mode (?arrange=1, served copy only) ============== */
+
+// James's furniture editor (2026-07-27): palette of archive props, drag on the
+// floor, wheel rotates, size/shade sliders, saves through the layout endpoint.
+// Dynamic import so visitors never pay for it.
+if (new URLSearchParams(location.search).has('arrange') && location.protocol !== 'file:') {
+  import('./arrange.js').then(({ initArrange }) => initArrange({
+    THREE, scene, camera, stage, ROOM,
+    FURNITURE, layout: archiveLayout, records: furnitureRecords,
+    buildFurnitureItem, removeFurnitureItem, rebuildKeepOuts, fuzzKeepOuts,
+    itemKeepOut, applyShade,
+    nav: { nodes: NAV_NODES, edges: NAV_EDGES },
+  })).catch((err) => console.warn('[dlo] arrange mode failed to load:', err));
+}
