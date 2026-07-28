@@ -11,10 +11,15 @@
 
 export function initArrange(ctx) {
   const {
-    THREE, scene, camera, stage, ROOM, FURNITURE,
-    layout, records, buildFurnitureItem, removeFurnitureItem,
+    THREE, scene, camera, stage, ROOM, FURNITURE, WALL_ART,
+    layout, records, buildFurnitureItem, buildArtItem, removeFurnitureItem,
     rebuildKeepOuts, fuzzKeepOuts, itemKeepOut, applyShade, nav,
   } = ctx;
+
+  const isArt = (item) => Boolean(WALL_ART[item.type]);
+  const ROT_STEP = Math.PI / 4;      // 8 rotations: 4 wall-square + 4 diagonal
+  const snapRot = (r) => Math.round(r / ROT_STEP) * ROT_STEP;
+  const ART_Y_MIN = 0.7, ART_Y_MAX = 3.5;
 
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -63,8 +68,10 @@ export function initArrange(ctx) {
   panel.innerHTML = `
     <h2>arrange the archive</h2>
     <p class="hint">click an item to pick it up &middot; drag on the floor &middot;
-      wheel rotates &middot; Del removes &middot; red = blocking the postmaster's walk</p>
+      wheel rotates (8 stops) &middot; wall art sticks to walls, wheel = height &middot;
+      Del removes &middot; red = blocking the postmaster's walk</p>
     <div class="palette"></div>
+    <div class="palette palette-art"></div>
     <div class="ctl">
       <label>size <span data-v="scale"></span></label>
       <input type="range" data-k="scale" min="0.6" max="1.6" step="0.01">
@@ -107,6 +114,13 @@ export function initArrange(ctx) {
     b.addEventListener('click', () => spawn(type));
     palette.appendChild(b);
   }
+  const paletteArt = panel.querySelector('.palette-art');
+  for (const [type, def] of Object.entries(WALL_ART)) {
+    const b = document.createElement('button');
+    b.textContent = def.label;
+    b.addEventListener('click', () => spawn(type));
+    paletteArt.appendChild(b);
+  }
   panel.querySelector('[data-act=dup]').addEventListener('click', () => {
     if (selected) spawn(selected.item.type, selected.item);
   });
@@ -141,7 +155,10 @@ export function initArrange(ctx) {
       sliders.shade.value = rec.item.shade;
       ctl.classList.remove('disabled');
       showValues();
-      setStatus(`${FURNITURE[rec.item.type].label} — drag to move, wheel to rotate`);
+      const def = FURNITURE[rec.item.type] || WALL_ART[rec.item.type];
+      setStatus(isArt(rec.item)
+        ? `${def.label} — drag along the walls, wheel raises/lowers`
+        : `${def.label} — drag to move, wheel rotates (8 stops)`);
     } else {
       ctl.classList.add('disabled');
       setStatus('nothing selected');
@@ -154,22 +171,50 @@ export function initArrange(ctx) {
     status.classList.toggle('bad', bad);
   }
 
+  // wall art lives ON a wall: snap the item to whichever wall is nearest the
+  // point, facing into the room, with a tiny per-item offset against z-fighting
+  function snapArtToWall(item, p) {
+    const off = 0.025 + ((item.seed ?? 0) % 7) * 0.004;
+    const walls = [
+      [Math.abs(p.x - ROOM.x0), () => { item.x = ROOM.x0 + off; item.z = clampZ(p.z); item.rotY = Math.PI / 2; }],
+      [Math.abs(ROOM.x1 - p.x), () => { item.x = ROOM.x1 - off; item.z = clampZ(p.z); item.rotY = -Math.PI / 2; }],
+      [Math.abs(p.z - ROOM.z0), () => { item.z = ROOM.z0 + off; item.x = clampX(p.x); item.rotY = 0; }],
+      [Math.abs(ROOM.z1 - p.z), () => { item.z = ROOM.z1 - off; item.x = clampX(p.x); item.rotY = Math.PI; }],
+    ];
+    walls.sort((a, b) => a[0] - b[0])[0][1]();
+  }
+
   function spawn(type, from = null) {
+    const art = Boolean(WALL_ART[type]);
     const fwd = new THREE.Vector3();
     camera.getWorldDirection(fwd);
-    const item = from ? {
-      ...from, x: clampX(from.x + 0.6), z: clampZ(from.z + 0.6),
-    } : {
-      type,
-      x: clampX(camera.position.x + fwd.x * 3),
-      z: clampZ(camera.position.z + fwd.z * 3),
-      rotY: Math.atan2(camera.position.x - clampX(camera.position.x + fwd.x * 3),
-        camera.position.z - clampZ(camera.position.z + fwd.z * 3)),
-      scale: 1, shade: 1,
-      seed: 1 + Math.floor(Math.random() * 1e9),
-    };
+    let item;
+    if (from) {
+      item = { ...from, x: clampX(from.x + 0.6), z: clampZ(from.z + 0.6) };
+      if (art) snapArtToWall(item, { x: from.x + 0.6, z: from.z + 0.6 });
+    } else if (art) {
+      item = {
+        type, x: 0, z: 0, y: 2.0, rotY: 0, scale: 1, shade: 1,
+        seed: 1 + Math.floor(Math.random() * 1e9),
+      };
+      // hang it on the wall the camera is looking toward
+      snapArtToWall(item, {
+        x: camera.position.x + fwd.x * 20,
+        z: camera.position.z + fwd.z * 20,
+      });
+    } else {
+      item = {
+        type,
+        x: clampX(camera.position.x + fwd.x * 3),
+        z: clampZ(camera.position.z + fwd.z * 3),
+        rotY: snapRot(Math.atan2(camera.position.x - clampX(camera.position.x + fwd.x * 3),
+          camera.position.z - clampZ(camera.position.z + fwd.z * 3))),
+        scale: 1, shade: 1,
+        seed: 1 + Math.floor(Math.random() * 1e9),
+      };
+    }
     layout.items.push(item);
-    const rec = buildFurnitureItem(item);
+    const rec = art ? buildArtItem(item) : buildFurnitureItem(item);
     rebuildKeepOuts();
     select(rec);
   }
@@ -187,6 +232,7 @@ export function initArrange(ctx) {
   /* ---------------- the nav warning (red = he walks through it) ------------- */
 
   function blocksNav(item) {
+    if (!FURNITURE[item.type]) return false;   // wall art has no footprint
     const [x0, x1, z0, z1] = itemKeepOut(item);
     const inside = (x, z) => x > x0 - PM_R && x < x1 + PM_R && z > z0 - PM_R && z < z1 + PM_R;
     for (const [aKey, bKey] of nav.edges) {
@@ -244,9 +290,15 @@ export function initArrange(ctx) {
     if (!dragging || !selected) return;
     const p = floorPoint(e);
     if (p) {
-      selected.item.x = clampX(p.x + grabOffset.x);
-      selected.item.z = clampZ(p.z + grabOffset.y);
-      selected.group.position.set(selected.item.x, 0, selected.item.z);
+      if (isArt(selected.item)) {
+        snapArtToWall(selected.item, { x: p.x + grabOffset.x, z: p.z + grabOffset.y });
+        selected.group.position.set(selected.item.x, selected.item.y ?? 2.0, selected.item.z);
+        selected.group.rotation.y = selected.item.rotY;
+      } else {
+        selected.item.x = clampX(p.x + grabOffset.x);
+        selected.item.z = clampZ(p.z + grabOffset.y);
+        selected.group.position.set(selected.item.x, 0, selected.item.z);
+      }
       syncTransforms(selected);
       refreshWarn();
     }
@@ -266,8 +318,21 @@ export function initArrange(ctx) {
       return;
     }
     if (!selected) return;              // no selection: the wheel still dollies
-    selected.item.rotY += e.deltaY * 0.0016;
-    selected.group.rotation.y = selected.item.rotY;
+    if (isArt(selected.item)) {
+      // wall art: the wall owns the rotation; the wheel moves it up and down
+      selected.item.y = Math.min(ART_Y_MAX, Math.max(ART_Y_MIN,
+        (selected.item.y ?? 2.0) - e.deltaY * 0.002));
+      selected.group.position.y = selected.item.y;
+    } else {
+      // furniture: 8 stops only — 4 wall-square, 4 diagonal (James 2026-07-28)
+      wheelAcc += e.deltaY;
+      const steps = Math.trunc(wheelAcc / 100);
+      if (steps) {
+        wheelAcc -= steps * 100;
+        selected.item.rotY = snapRot(selected.item.rotY) + steps * ROT_STEP;
+        selected.group.rotation.y = selected.item.rotY;
+      }
+    }
     syncTransforms(selected);
     refreshWarn();
     clearTimeout(wheelSettle);          // settle keep-outs once the wheel rests
@@ -276,6 +341,7 @@ export function initArrange(ctx) {
     e.stopImmediatePropagation();
   }, { capture: true, passive: false });
   let wheelSettle = null;
+  let wheelAcc = 0;
 
   addEventListener('keydown', (e) => {
     if (e.key === 'Delete' || e.key === 'Backspace') {

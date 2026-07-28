@@ -8,10 +8,12 @@
     { "name": "furnace", "task_id": "019f8784-8a55-783e-8fad-3750ad7112f3", "tris_web": 50000 },
     { "name": "plant", "task_id": "019f8784-9661-76a3-9921-b2e013204db2", "tris_web": 90000, "note": "pot/foliage split into prop_plant_pot / prop_plant_leaf material slots by face height" },
     { "name": "couch", "task_id": "unrecorded-2026-07-22", "note": "5cr preview, textured in-engine (prop_couch)" },
-    { "name": "radio", "task_id": "019fa6ae-731a-79d4-b959-a05743214140", "refine_task_id": "019fa6b1-377a-7aa2-9d94-617f28a28c51", "tris_web": 58313, "note": "2026-07-27, the only FULLY TEXTURED prop (meshy-6 preview 20cr + refine 10cr, remeshed at generation to ~30k quads): keeps its own Meshy materials, so PROP_MATERIALS must never grow a prop_radio key" }
+    { "name": "radio", "task_id": "019fa6ae-731a-79d4-b959-a05743214140", "refine_task_id": "019fa6b1-377a-7aa2-9d94-617f28a28c51", "tris_web": 58313, "note": "2026-07-27, the only FULLY TEXTURED prop (meshy-6 preview 20cr + refine 10cr, remeshed at generation to ~30k quads): keeps its own Meshy materials, so PROP_MATERIALS must never grow a prop_radio key" },
+    { "name": "mug", "task_id": "019fa9b6-6390-76b7-8adc-2735ec6e4fb9", "image_task_id": "019fa9b5-f264-714b-ac9c-6cbcd88f6c71", "note": "2026-07-28 desk coffee mug: text-to-image (3cr) -> image-to-3d meshy-5 untextured (5cr) after two direct text-to-3d attempts failed (fused-slab handle, then three handles; 10cr sunk, ids 019fa9af-8367..., 019fa9b2-b1f1...). LESSON: for simple objects with one distinguishing feature, use the image route. Ceramic material applied in-engine (loader inside dressDesk, not PROPS)" }
   ],
   "textures": [
-    { "name": "wall", "task_id": "019f8784-13d5-7692-a737-07c3d35b8066" },
+    { "name": "wall", "task_id": "019fa992-0e4e-7e46-9f83-c8b8ffe8ecef", "note": "2026-07-28 painted cinderblock (nano-banana 3cr), mortar-grid-measured + period-cropped for tiling; replaced the original brick tile 019f8784-13d5-7692-a737-07c3d35b8066" },
+    { "name": "brick", "task_id": "019fa9af-53cc-7fa5-9f8a-3aa8f5fd320a", "note": "2026-07-28 furnace-corner hearth pavers (nano-banana 3cr), horizontal wrap crossfaded 40px, rows natively periodic" },
     { "name": "floor", "task_id": "019f8784-26a3-7106-9e58-bd1354697ac7" },
     { "name": "wood", "task_id": "019f8784-2dbf-71cf-974e-295547b5d641" }
   ]

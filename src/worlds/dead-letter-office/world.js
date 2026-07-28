@@ -482,13 +482,16 @@ function jitter(hex, amt) {
   return `rgb(${Math.round(c.r * 255 * f)},${Math.round(c.g * 255 * f)},${Math.round(c.b * 255 * f)})`;
 }
 
+// painted cinderblock (2026-07-28, James: "low rent but not fully peeling") —
+// Meshy seamless tile over a cinderblock-proportioned fallback (blocks are
+// twice as long as tall, running bond)
 const texWall = tileTex('assets/textures/wall.png', (g, px) => {
-  g.fillStyle = '#5a635c'; g.fillRect(0, 0, px, px);
-  const bw = px / 4, bh = px / 8;
-  for (let r = 0; r < 8; r++) for (let i = -1; i < 5; i++) {
+  g.fillStyle = '#4f5852'; g.fillRect(0, 0, px, px);
+  const bw = px / 3, bh = px / 6;
+  for (let r = 0; r < 6; r++) for (let i = -1; i < 4; i++) {
     const off = (r % 2) * bw / 2;
-    g.fillStyle = jitter('#68726a', 0.08);
-    g.fillRect(i * bw + off + 2, r * bh + 2, bw - 4, bh - 4);
+    g.fillStyle = jitter('#5e6860', 0.07);
+    g.fillRect(i * bw + off + 3, r * bh + 3, bw - 6, bh - 6);
   }
 });
 // Polished concrete (2026-07-22): the paver tile read as dungeon brick (James:
@@ -503,6 +506,16 @@ const texFloor = tileTex('assets/textures/concrete.png', (g, px) => {
       px * (0.05 + Math.random() * 0.2), px * (0.04 + Math.random() * 0.12),
       Math.random() * Math.PI, 0, Math.PI * 2);
     g.fill();
+  }
+});
+// the furnace-corner hearth (r12.1, James): brick pavers under the furnace
+const texBrick = tileTex('assets/textures/brick.png', (g, px) => {
+  g.fillStyle = '#5c3a2c'; g.fillRect(0, 0, px, px);
+  const bw = px / 4, bh = px / 8;
+  for (let r = 0; r < 8; r++) for (let i = -1; i < 5; i++) {
+    const off = (r % 2) * bw / 2;
+    g.fillStyle = jitter('#6e4534', 0.12);
+    g.fillRect(i * bw + off + 2, r * bh + 2, bw - 4, bh - 4);
   }
 });
 const texWood = tileTex('assets/textures/wood.png', (g, px) => {
@@ -541,6 +554,16 @@ const matPaper = new THREE.MeshLambertMaterial({ color: 0xd8cdae });
   const floor = new THREE.Mesh(uvScale(new THREE.PlaneGeometry(W, D), W / FLOOR_TILE, D / FLOOR_TILE), matFloor);
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
+
+  // brick hearth pad in the furnace corner (r12.1): the one patch of floor the
+  // concrete never covered. Sits a hair proud of the slab like the rug does.
+  const BRICK_TILE = 1.15;
+  const hearth = new THREE.Mesh(
+    uvScale(new THREE.PlaneGeometry(3.8, 4.2), 3.8 / BRICK_TILE, 4.2 / BRICK_TILE),
+    new THREE.MeshStandardMaterial({ map: texBrick, roughness: 0.85 }));
+  hearth.rotation.x = -Math.PI / 2;
+  hearth.position.set(ROOM.x1 - 1.9, 0.004, ROOM.z1 - 2.1);
+  scene.add(hearth);
 
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D),
     new THREE.MeshStandardMaterial({ color: 0x211f1c, roughness: 0.95 }));
@@ -647,8 +670,11 @@ addSign(signTexture(256, 256, (g) => {
   g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
 }), 0.66, 0.66, 2.6, 2.9, ROOM.z0 + 0.02, 0);
 
-// tally boards, amber and patient (dead letters count ticks up live)
-let deadLettersTotal = 1427;
+// tally boards — mechanical drum counters (2026-07-28, James: "look mechanical").
+// Each digit lives in its own riveted window on a rolling wheel: brushed housing,
+// drum shading, a flap seam across the middle. DEAD LETTERS ticks up live from
+// deep in the hundreds of thousands; CLAIMED reads 17, forever.
+let deadLettersTotal = 614739;
 const tallyCtx = {};
 function tallyTexture(key, label, value) {
   return signTexture(512, 200, (g, w, h) => {
@@ -657,20 +683,74 @@ function tallyTexture(key, label, value) {
   });
 }
 function drawTally(g, w, h, label, value) {
-  g.fillStyle = '#141210'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#4a4436'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
-  g.fillStyle = '#8a7a56';
-  g.font = '700 46px "Courier New", monospace';
-  g.textAlign = 'left'; g.textBaseline = 'middle';
-  g.fillText(label, 34, 58);
-  g.fillStyle = '#d8a54a';
-  g.font = '700 84px "Courier New", monospace';
-  g.fillText(value, 34, 140);
+  // housing: dark stamped steel with a machined edge
+  g.fillStyle = '#191a17'; g.fillRect(0, 0, w, h);
+  const hg = g.createLinearGradient(0, 0, 0, h);
+  hg.addColorStop(0, '#34362f');
+  hg.addColorStop(0.5, '#23241f');
+  hg.addColorStop(1, '#151612');
+  g.fillStyle = hg; g.fillRect(4, 4, w - 8, h - 8);
+  g.strokeStyle = '#4d4a3c'; g.lineWidth = 5; g.strokeRect(7, 7, w - 14, h - 14);
+  // corner rivets
+  g.fillStyle = '#6a6452';
+  for (const [rx, ry] of [[18, 18], [w - 18, 18], [18, h - 18], [w - 18, h - 18]]) {
+    g.beginPath(); g.arc(rx, ry, 5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#3a362a';
+    g.beginPath(); g.arc(rx + 1, ry + 1, 2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#6a6452';
+  }
+  // engraved label plate
+  g.font = '700 26px "Courier New", monospace';
+  const plateW = g.measureText(label).width + 36;
+  g.fillStyle = '#0f100d';
+  g.fillRect(w / 2 - plateW / 2, 16, plateW, 40);
+  g.strokeStyle = '#5a5442'; g.lineWidth = 2;
+  g.strokeRect(w / 2 - plateW / 2 + 2, 18, plateW - 4, 36);
+  g.fillStyle = '#b09a62';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(label, w / 2, 37);
+  // the digit wheels
+  const digits = String(value);
+  const cellW = 58, cellH = 104, gapX = 6;
+  const rowW = digits.length * cellW + (digits.length - 1) * gapX;
+  let x = w / 2 - rowW / 2;
+  const cy = 66;
+  for (const d of digits) {
+    // window frame
+    g.fillStyle = '#0a0b09';
+    g.fillRect(x - 3, cy - 3, cellW + 6, cellH + 6);
+    // drum: vertical gradient like a curved wheel catching the light
+    const dg = g.createLinearGradient(0, cy, 0, cy + cellH);
+    dg.addColorStop(0, '#101210');
+    dg.addColorStop(0.28, '#2e302a');
+    dg.addColorStop(0.5, '#3a3c34');
+    dg.addColorStop(0.72, '#2e302a');
+    dg.addColorStop(1, '#101210');
+    g.fillStyle = dg;
+    g.fillRect(x, cy, cellW, cellH);
+    // neighbor digits peeking at the drum edges (rolled-wheel depth)
+    g.fillStyle = 'rgba(210,190,140,0.16)';
+    g.font = '700 34px "Courier New", monospace';
+    g.fillText(String((Number(d) + 9) % 10), x + cellW / 2, cy + 10);
+    g.fillText(String((Number(d) + 1) % 10), x + cellW / 2, cy + cellH - 10);
+    // the digit itself
+    g.fillStyle = '#e8cd8a';
+    g.font = '700 74px "Courier New", monospace';
+    g.fillText(d, x + cellW / 2, cy + cellH / 2 + 2);
+    // flap seam across the middle
+    g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(x, cy + cellH / 2); g.lineTo(x + cellW, cy + cellH / 2);
+    g.stroke();
+    g.strokeStyle = '#55503e'; g.lineWidth = 2;
+    g.strokeRect(x + 0.5, cy + 0.5, cellW - 1, cellH - 1);
+    x += cellW + gapX;
+  }
 }
 const texTallyDead = tallyTexture('dead', 'DEAD LETTERS', String(deadLettersTotal).padStart(7, '0'));
-const texTallyUnclaimed = tallyTexture('unclaimed', 'UNCLAIMED', '0000115');
+const texTallyClaimed = tallyTexture('claimed', 'CLAIMED', '0000017');
 addSign(texTallyDead, 1.35, 0.53, -6.9, 3.15, ROOM.z0 + 0.02, 0, { lit: true });
-addSign(texTallyUnclaimed, 1.35, 0.53, -6.9, 2.5, ROOM.z0 + 0.02, 0, { lit: true });
+addSign(texTallyClaimed, 1.35, 0.53, -6.9, 2.5, ROOM.z0 + 0.02, 0, { lit: true });
 function bumpDeadLetters() {
   deadLettersTotal += 1;
   const t = tallyCtx.dead;
@@ -678,24 +758,8 @@ function bumpDeadLetters() {
   texTallyDead.needsUpdate = true;
 }
 
-// LOST? — a poster of a cat nobody is looking for
-addSign(signTexture(256, 340, (g, w, h) => {
-  g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#8a7d60'; g.lineWidth = 4; g.strokeRect(8, 8, w - 16, h - 16);
-  g.fillStyle = '#3a3226';
-  g.textAlign = 'center';
-  g.font = '700 52px "Courier New", monospace';
-  g.fillText('LOST?', w / 2, 64);
-  g.strokeStyle = '#3a3226'; g.lineWidth = 5; g.lineCap = 'round';
-  g.beginPath(); g.arc(w / 2, 170, 52, 0, Math.PI * 2); g.stroke();     // head
-  g.beginPath(); g.moveTo(w / 2 - 44, 140); g.lineTo(w / 2 - 24, 108); g.lineTo(w / 2 - 8, 132); g.stroke();  // ear
-  g.beginPath(); g.moveTo(w / 2 + 44, 140); g.lineTo(w / 2 + 24, 108); g.lineTo(w / 2 + 8, 132); g.stroke();
-  g.fillRect(w / 2 - 22, 160, 8, 8); g.fillRect(w / 2 + 14, 160, 8, 8); // eyes
-  g.beginPath(); g.moveTo(w / 2, 178); g.lineTo(w / 2 - 6, 188); g.lineTo(w / 2 + 6, 188); g.closePath(); g.fill();
-  g.font = '400 26px "Courier New", monospace';
-  g.fillText('answers to nothing', w / 2, 268);
-  g.fillText('reward: none', w / 2, 300);
-}), 0.5, 0.66, -3.6, 1.9, ROOM.z0 + 0.02, 0);
+// (The LOST? cat poster moved into the wall-art catalog, 2026-07-28 — all wall
+// art is arrange-mode placeable now; see the posters section.)
 
 /* ================= west wall: window, radiator, door, punch clock ============ */
 
@@ -715,6 +779,44 @@ const shaftMat = (() => {
     blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
   });
 })();
+// a bit of sky outside the panes (2026-07-28, James): pale overcast blue with
+// slow clouds, drawn once — the world upstairs, seen from below the sidewalk
+const skyTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 160;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 160);
+  grad.addColorStop(0, '#8fb4d4');
+  grad.addColorStop(0.65, '#a8c2d2');
+  grad.addColorStop(1, '#c2ccc8');
+  g.fillStyle = grad; g.fillRect(0, 0, 256, 160);
+  for (let k = 0; k < 9; k++) {                       // soft cloud lumps
+    const cx = Math.random() * 256, cy = 20 + Math.random() * 90;
+    const cr = 18 + Math.random() * 34;
+    const cg = g.createRadialGradient(cx, cy, 2, cx, cy, cr);
+    cg.addColorStop(0, 'rgba(236,240,238,0.5)');
+    cg.addColorStop(1, 'rgba(236,240,238,0)');
+    g.fillStyle = cg;
+    g.beginPath(); g.ellipse(cx, cy, cr * 1.5, cr * 0.55, 0, 0, Math.PI * 2); g.fill();
+  }
+  // sidewalk-level grass along the sill — thin leaning blades, properly green
+  // (James r12.1: the 2px grey spikes read as spikes)
+  g.lineCap = 'round';
+  for (let x = 0; x < 256; x += 2 + Math.random() * 3) {
+    const bh = 5 + Math.random() * 13;
+    const lean = (Math.random() - 0.5) * 7;
+    const gr = 96 + Math.random() * 50;
+    g.strokeStyle = `rgba(${Math.round(gr * 0.45)},${Math.round(gr)},${Math.round(gr * 0.38)},0.9)`;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.moveTo(x, 160);
+    g.quadraticCurveTo(x + lean * 0.3, 160 - bh * 0.6, x + lean, 160 - bh);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
 // window group built facing +z, then rotated onto its wall
 function mkWindow(x, z, ry) {
   const g = new THREE.Group();
@@ -722,7 +824,7 @@ function mkWindow(x, z, ry) {
   g.add(frame);
   const panes = new THREE.Mesh(
     new THREE.PlaneGeometry(1.56, 0.92),
-    new THREE.MeshBasicMaterial({ color: 0x7d98a8 }));
+    new THREE.MeshBasicMaterial({ map: skyTex }));
   panes.position.z = 0.06;
   g.add(panes);
   const barGeos = [];
@@ -1062,6 +1164,28 @@ const ARCHIVE_LABELS = [
   { t: 'BILLS', sub: 'DISPUTED' }, { t: 'FAN MAIL', sub: 'NO SUCH STAR' },
   { t: 'TO WHOM IT MAY', sub: 'CONCERN' }, { t: 'GLITTER', s: 'HAZARD' },
   { t: 'MESSAGES IN BOTTLES' }, { t: 'RESIGNATION LETTERS' },
+  // 2026-07-28 expansion: the pool was 32; the atlas holds 72 with room for the
+  // plain/top tiles, so the archive repeats itself far less often now
+  { t: 'ALIBIS', sub: 'NOTARIZED' }, { t: 'CONFESSIONS', s: 'UNREAD' },
+  { t: 'REBATE FORMS' }, { t: 'PYRAMID SCHEMES', sub: 'FLOOR 2' },
+  { t: 'BABY PHOTOS', sub: 'STRANGERS' }, { t: 'EVICTION NOTICES' },
+  { t: 'HATE MAIL', sub: 'POLITE' }, { t: 'GET WELL SOONS', sub: 'TOO LATE' },
+  { t: 'THANK YOU NOTES', sub: 'INSINCERE' }, { t: 'SUBPOENAS', s: 'DUCKED' },
+  { t: 'HOROSCOPES', sub: 'WRONG' }, { t: 'CATALOG ORDERS', sub: 'DISCONTINUED' },
+  { t: 'LOTTERY TICKETS', sub: 'UNSCRATCHED' }, { t: 'COUPONS', s: 'EXPIRED' },
+  { t: 'SECRET ADMIRERS' }, { t: 'BLACKMAIL', sub: 'AMATEUR' },
+  { t: 'CEASE AND DESIST' }, { t: 'DESIST AND CEASE' },
+  { t: 'RSVPS', sub: 'REGRETS ONLY' }, { t: 'PERMISSION SLIPS', sub: 'UNSIGNED' },
+  { t: 'REFERENCES', sub: 'DO NOT CALL' }, { t: 'CENSUS FORMS', sub: 'FICTIONAL' },
+  { t: 'DIPLOMAS', s: 'SUSPECT' }, { t: 'WARRANTIES', sub: 'VOIDED' },
+  { t: 'TIME CAPSULE MAIL', sub: 'EARLY' }, { t: 'GHOST WRITING', sub: 'LITERAL' },
+  { t: 'SMELLS', s: 'CONTAINED' }, { t: 'CROSSWORD ANSWERS', sub: 'GLOATING' },
+  { t: 'PIGEON RECEIPTS' }, { t: 'MOTHS', s: 'DO NOT FEED' },
+  { t: 'FRUITCAKE', sub: 'CIRCULATING' }, { t: 'BAD NEWS', sub: 'ASSORTED' },
+  { t: 'GOOD NEWS', sub: 'SEE BAD NEWS' }, { t: 'ULTIMATUMS', sub: 'SOFTENED' },
+  { t: 'MAPS TO NOWHERE' }, { t: 'KEYS', sub: 'NO LOCKS' },
+  { t: 'LOCKS', sub: 'NO KEYS' }, { t: 'IOUS', sub: 'INTEREST WAIVED' },
+  { t: 'DREAMS', sub: 'FORM 8-D' }, { t: 'STATIC', s: 'SEALED' },
 ];
 
 const AT_COLS = 8, AT_TW = 256, AT_TH = 192, AT_PX = 2048;
@@ -1436,10 +1560,8 @@ function parcel(x, y, z, w, h, d, ry) {
   box.position.set(0.78, h + 0.025, -5.0);
   box.rotation.y = 0.15;
   scene.add(box);
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.3), matParcel);
-  lid.position.set(0.94, h + 0.16, -5.22);
-  lid.rotation.set(-1.15, 0.15, 0);
-  scene.add(lid);
+  // (the propped-open cardboard lid is gone — James r12.3: it read as a stray
+  // box balancing on its side behind the donuts)
   const icings = [0xc98a9a, 0x8a5a38, 0xd8c9a0, 0xc98a9a, 0x8a5a38, 0xd8c9a0];
   for (let i = 0; i < 6; i++) {
     const donut = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.02, 8, 14),
@@ -1505,7 +1627,11 @@ function parcel(x, y, z, w, h, d, ry) {
   scene.add(ink);
 }
 
-// more boxes generally (James): parcels wherever a surface holds still
+// the couch corner (r12.1, James): a low coffee table in front of the couch,
+// small plant on it, two beat-up chairs flanking — the office's break nook.
+// The chairs reuse chair.glb via PROPS below; camera keep-out is one box in
+// STATIC_BOXES and the couch nav edge routes around it through H8.
+mkTable(-5.2, -4.3, 1.1, 0.5, 0.42, 0.05);
 parcel(8.55, 1.32, -3.6, 0.4, 0.26, 0.34, 0.3);     // on the file bank
 parcel(8.5, 1.32, -3.1, 0.32, 0.2, 0.28, -0.4);
 parcel(8.52, 1.58, -3.45, 0.26, 0.18, 0.24, 0.8);   // stacked
@@ -1517,41 +1643,16 @@ parcel(-5.9, 0, 5.55, 0.38, 0.26, 0.32, 0.9);
 
 /* ================= posters, calendar, pin-ups, corkboard ================ */
 
-// aged-paper poster helper: draws content on cream stock, pins it slightly askew
-function paperPoster(wM, hM, x, y, z, ry, draw) {
-  const sign = addSign(signTexture(256, Math.round(256 * hM / wM), (g, w, h) => {
-    g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#8a7d60'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12);
-    g.fillStyle = '#3a3226';
-    g.textAlign = 'center';
-    draw(g, w, h);
-  }), wM, hM, x, y, z, ry);
-  sign.rotation.z = (Math.random() - 0.5) * 0.06;
-  return sign;
-}
+/* ---- the wall-art catalog (2026-07-28, James: "add all wall art to the
+   placeables") — every poster is an arrange-mode item now. Image posters are
+   James's GPT art (assets/posters/*.jpg; source PNGs in repo assets/Dead Letter
+   Layers/posters); drawn posters render onto cream stock. Positions live in the
+   layout (DLO_DEFAULT_ART seeds when the saved layout has no art yet). The
+   fixtures — house sign, clock, tallies, corkboard, STAIRS plate — stay put. */
 
-// James's GPT posters (2026-07-22, assets/posters/*.jpg; source PNGs in repo
-// assets/Dead Letter Layers/posters). Plane sized from each image's true
-// aspect; offsets staggered so nothing z-fights the DEAD LETTER OFFICE sign.
 const posterLoader = new THREE.TextureLoader();
-function imagePoster(file, wM, aspect, x, y, z, ry) {
-  const tex = posterLoader.load(`assets/posters/${file}`);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(wM, wM * aspect),
-    new THREE.MeshLambertMaterial({ map: tex }));
-  mesh.position.set(x, y, z);
-  mesh.rotation.y = ry;
-  mesh.rotation.z = (Math.random() - 0.5) * 0.04;
-  scene.add(mesh);
-}
-// north wall: the eye of the office, and the egret calendar
-imagePoster('poster-wesee.jpg', 1.32, 1.333, -2.75, 1.78, ROOM.z0 + 0.035, 0);
-imagePoster('poster-calendar.jpg', 1.44, 0.8, 0.85, 1.98, ROOM.z0 + 0.03, 0);
 
-// south wall: safety, zip chart, and productivity
-paperPoster(0.66, 0.84, -6.8, 2.25, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
+function drawLiftPoster(g, w, h) {
   g.font = '700 26px "Courier New", monospace';
   g.fillText('LIFT WITH', w / 2, 46);
   g.fillText('YOUR KNEES', w / 2, 78);
@@ -1568,8 +1669,9 @@ paperPoster(0.66, 0.84, -6.8, 2.25, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
   g.beginPath(); g.moveTo(w / 2 - 38, h * 0.72); g.lineTo(w / 2 + 38, h * 0.44); g.stroke();
   g.font = '700 22px "Courier New", monospace';
   g.fillText('SORT WITH YOUR HEART', w / 2, h - 26);
-});
-paperPoster(0.56, 0.74, 2.2, 2.3, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
+}
+
+function drawZipPoster(g, w) {
   g.font = '700 24px "Courier New", monospace';
   g.fillText('ZIP DIRECTORY', w / 2, 40);
   g.font = '400 16px "Courier New", monospace';
@@ -1579,16 +1681,9 @@ paperPoster(0.56, 0.74, 2.2, 2.3, ROOM.z1 - 0.02, Math.PI, (g, w, h) => {
     '66601  the canyon', '75910  the dusk field', '88088  below the shelf',
     '99999  see 00000'];
   rows.forEach((r, i) => g.fillText(r, 24, 72 + i * 24));
-});
-// the management's rules, starring the management's only employee
-imagePoster('poster-workrules.jpg', 1.36, 1.333, -0.9, 2.4, ROOM.z1 - 0.02, Math.PI);
+}
 
-// east wall: the pin-up, done properly now (Miss Par Avion's line-art era is
-// over — James's painted girl says happiness can't be addressed)
-imagePoster('poster-happiness.jpg', 1.24, 1.5, ROOM.x1 - 0.02, 2.35, -2.9, -Math.PI / 2);
-// and by the door table, the office's most wanted
-imagePoster('poster-wanted.jpg', 1.36, 1.333, ROOM.x0 + 0.03, 2.3, 4.5, Math.PI / 2);
-paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, 1.4, -Math.PI / 2, (g, w, h) => {
+function drawDeliveryPoster(g, w, h) {
   // Mr. Special Delivery — flexing with a parcel
   g.font = '700 22px "Courier New", monospace';
   g.fillText('MR. SPECIAL', w / 2, 38);
@@ -1612,7 +1707,98 @@ paperPoster(0.5, 0.7, ROOM.x1 - 0.02, 2.35, 1.4, -Math.PI / 2, (g, w, h) => {
   g.font = '400 17px "Courier New", monospace';
   g.fillText('rain nor sleet nor', w / 2, h - 40);
   g.fillText('reasons', w / 2, h - 20);
-});
+}
+
+function drawLostPoster(g, w, h) {
+  g.font = '700 52px "Courier New", monospace';
+  g.fillText('LOST?', w / 2, 64);
+  g.strokeStyle = '#3a3226'; g.lineWidth = 5; g.lineCap = 'round';
+  g.beginPath(); g.arc(w / 2, 170, 52, 0, Math.PI * 2); g.stroke();     // head
+  g.beginPath(); g.moveTo(w / 2 - 44, 140); g.lineTo(w / 2 - 24, 108); g.lineTo(w / 2 - 8, 132); g.stroke();  // ear
+  g.beginPath(); g.moveTo(w / 2 + 44, 140); g.lineTo(w / 2 + 24, 108); g.lineTo(w / 2 + 8, 132); g.stroke();
+  g.fillRect(w / 2 - 22, 160, 8, 8); g.fillRect(w / 2 + 14, 160, 8, 8); // eyes
+  g.beginPath(); g.moveTo(w / 2, 178); g.lineTo(w / 2 - 6, 188); g.lineTo(w / 2 + 6, 188); g.closePath(); g.fill();
+  g.font = '400 26px "Courier New", monospace';
+  g.fillText('answers to nothing', w / 2, 268);
+  g.fillText('reward: none', w / 2, 300);
+}
+
+// img entries size from width × aspect; drawn entries carry explicit w/h meters
+const WALL_ART = {
+  'art-wesee': { label: 'poster: the eye', img: 'poster-wesee.jpg', w: 1.32, aspect: 1.333 },
+  'art-calendar': { label: 'poster: egret calendar', img: 'poster-calendar.jpg', w: 1.44, aspect: 0.8 },
+  'art-workrules': { label: 'poster: work rules', img: 'poster-workrules.jpg', w: 1.36, aspect: 1.333 },
+  'art-happiness': { label: 'poster: happiness', img: 'poster-happiness.jpg', w: 1.24, aspect: 1.5 },
+  'art-wanted': { label: 'poster: most wanted', img: 'poster-wanted.jpg', w: 1.36, aspect: 1.333 },
+  'art-lift': { label: 'poster: lift w/ knees', w: 0.66, h: 0.84, draw: drawLiftPoster },
+  'art-zip': { label: 'poster: zip directory', w: 0.56, h: 0.74, draw: drawZipPoster },
+  'art-delivery': { label: 'poster: mr. delivery', w: 0.5, h: 0.7, draw: drawDeliveryPoster },
+  'art-lost': { label: 'poster: lost? cat', w: 0.5, h: 0.66, draw: drawLostPoster },
+};
+
+const drawnArtTexCache = new Map();
+function wallArtMaterial(type) {
+  const def = WALL_ART[type];
+  let tex;
+  if (def.img) {
+    tex = posterLoader.load(`assets/posters/${def.img}`);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAniso;
+  } else {
+    if (!drawnArtTexCache.has(type)) {
+      drawnArtTexCache.set(type, signTexture(256, Math.round(256 * def.h / def.w), (g, w, h) => {
+        g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);            // cream stock
+        g.strokeStyle = '#8a7d60'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12);
+        g.fillStyle = '#3a3226';
+        g.textAlign = 'center';
+        def.draw(g, w, h);
+      }));
+    }
+    tex = drawnArtTexCache.get(type);
+  }
+  const mat = new THREE.MeshLambertMaterial({ map: tex });
+  mat.userData.shadeBase = new THREE.Color(0xffffff);
+  return mat;
+}
+
+function buildArtItem(item) {
+  const def = WALL_ART[item.type];
+  if (!def) return null;
+  const hM = def.img ? def.w * def.aspect : def.h;
+  const mat = wallArtMaterial(item.type);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(def.w, hM), mat);
+  const rnd = mulberry32((item.seed ?? 1) * 2654435761 >>> 0 || 1);
+  mesh.rotation.z = (rnd() - 0.5) * 0.05;             // pinned slightly askew
+  const group = new THREE.Group();
+  group.add(mesh);
+  group.position.set(item.x, item.y ?? 2.0, item.z);
+  group.rotation.y = item.rotY;
+  group.scale.setScalar(item.scale);
+  applyShade([mat], item.shade);
+  scene.add(group);
+  group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
+  group.updateMatrixWorld(true);
+  const record = { item, group, mats: [mat], art: true };
+  furnitureRecords.push(record);
+  return record;
+}
+
+// default placements — where the posters hung before they were placeable
+const DLO_DEFAULT_ART = [
+  { type: 'art-wesee', x: -2.75, y: 1.78, z: ROOM.z0 + 0.035, rotY: 0, scale: 1, shade: 1, seed: 31 },
+  { type: 'art-calendar', x: 0.85, y: 1.98, z: ROOM.z0 + 0.03, rotY: 0, scale: 1, shade: 1, seed: 32 },
+  { type: 'art-lost', x: -3.6, y: 1.9, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 33 },
+  { type: 'art-lift', x: -6.8, y: 2.25, z: ROOM.z1 - 0.02, rotY: Math.PI, scale: 1, shade: 1, seed: 34 },
+  { type: 'art-zip', x: 2.2, y: 2.3, z: ROOM.z1 - 0.02, rotY: Math.PI, scale: 1, shade: 1, seed: 35 },
+  { type: 'art-workrules', x: -0.9, y: 2.4, z: ROOM.z1 - 0.02, rotY: Math.PI, scale: 1, shade: 1, seed: 36 },
+  { type: 'art-happiness', x: ROOM.x1 - 0.02, y: 2.35, z: -2.9, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 37 },
+  { type: 'art-delivery', x: ROOM.x1 - 0.02, y: 2.35, z: 1.4, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 38 },
+  { type: 'art-wanted', x: ROOM.x0 + 0.03, y: 2.3, z: 4.5, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 39 },
+];
+if (!archiveLayout.items.some((i) => WALL_ART[i.type])) {
+  archiveLayout.items.push(...DLO_DEFAULT_ART);
+}
+for (const item of archiveLayout.items) buildArtItem(item);
 
 // west wall: the corkboard with the little stickers (he consults it)
 addSign(signTexture(512, 400, (g, w, h) => {
@@ -1680,12 +1866,44 @@ addSign(signTexture(512, 400, (g, w, h) => {
       g.fill();
     }
   });
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.2),
+  // bigger and moved (2026-07-28, James): it runs under the desk and sticks out
+  // in front of it, with the chair sitting on it too
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 3.2),
     new THREE.MeshLambertMaterial({ map: texRug }));
   rug.rotation.x = -Math.PI / 2;
-  rug.rotation.z = 0.03;
-  rug.position.set(2.4, 0.006, -3.0);
+  rug.rotation.z = 0.02;
+  rug.position.set(2.7, 0.006, -4.3);
   scene.add(rug);
+}
+
+/* ================= the welcome mat (r12.1, James) ================= */
+
+{
+  const texMat = signTexture(384, 224, (g, w, h) => {
+    g.fillStyle = '#6e5b3e'; g.fillRect(0, 0, w, h);       // coir
+    for (let k = 0; k < 2600; k++) {                        // bristle noise
+      g.fillStyle = `rgba(${70 + Math.random() * 60},${55 + Math.random() * 45},${28 + Math.random() * 26},0.5)`;
+      g.fillRect(Math.random() * w, Math.random() * h, 2, 1);
+    }
+    g.strokeStyle = '#3e3322'; g.lineWidth = 14; g.strokeRect(9, 9, w - 18, h - 18);
+    g.fillStyle = 'rgba(40,32,20,0.82)';
+    g.font = '700 58px Georgia, "Times New Roman", serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('WELCOME', w / 2, h / 2 + 2);
+    for (let k = 0; k < 26; k++) {                          // worn-through patches
+      g.fillStyle = 'rgba(110,91,62,0.5)';
+      g.beginPath();
+      g.ellipse(Math.random() * w, Math.random() * h,
+        6 + Math.random() * 22, 3 + Math.random() * 8, Math.random() * Math.PI, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+  const mat = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.55),
+    new THREE.MeshLambertMaterial({ map: texMat }));
+  mat.rotation.x = -Math.PI / 2;
+  mat.rotation.z = Math.PI / 2 + 0.03;   // reads for whoever comes down the stairs
+  mat.position.set(ROOM.x0 + 0.62, 0.007, 2.6);
+  scene.add(mat);
 }
 
 /* ================= ceiling chute over the basket ================= */
@@ -1736,17 +1954,20 @@ const raycaster = new THREE.Raycaster();
 
 const PROPS = [
   {
-    file: 'assets/props/desk.glb', height: 1.42, pos: [2.5, 0, -5.0], rotY: 0,
+    // r12.3 (James): pushed back until its rear edge is ~1 inch off the north
+    // wall (depth 0.78m → center z −5.585). Chair + every desk item shifted
+    // the same Δ=0.585 so the arrangement holds.
+    file: 'assets/props/desk.glb', height: 1.42, pos: [2.5, 0, -5.585], rotY: 0,
     then(wrap) {
       // find the writing surface by dropping a ray at the front-left of the top
       wrap.updateMatrixWorld(true);
-      raycaster.set(new THREE.Vector3(2.15, 2.4, -4.68), new THREE.Vector3(0, -1, 0));
+      raycaster.set(new THREE.Vector3(2.15, 2.4, -5.265), new THREE.Vector3(0, -1, 0));
       const hit = raycaster.intersectObject(wrap, true)[0];
       if (hit) deskSurfaceY = hit.point.y;
       dressDesk();
     },
   },
-  { file: 'assets/props/chair.glb', height: 0.98, pos: [3.6, 0, -4.25], rotY: 2.7 },
+  { file: 'assets/props/chair.glb', height: 0.98, pos: [3.6, 0, -4.835], rotY: 2.7 },
   {
     file: 'assets/props/basket.glb', height: 1.12, pos: [-4.5, 0, -1.5], rotY: 0,
     then(wrap) {
@@ -1790,6 +2011,11 @@ const PROPS = [
   // at the basket so he can sit and watch the letters fall
   { file: 'assets/props/couch.glb', height: 0.8, pos: [-5.0, 0, -5.5], rotY: 0 },
   { file: 'assets/props/plant.glb', height: 0.72, pos: [-3.5, 0, -5.25], rotY: 3.6, tint: 0xc9a070 },
+  // the couch corner set (r12.1): small plant on the coffee table, two beat-up
+  // chairs angled in at the table (worn grey-brown tints, r12.1)
+  { file: 'assets/props/plant.glb', height: 0.3, pos: [-5.2, 0.42, -4.3], rotY: 1.9, tint: 0xd0b088 },
+  { file: 'assets/props/chair.glb', height: 0.96, pos: [-6.35, 0, -4.35], rotY: 0.16, tint: 0x9a8878 },
+  { file: 'assets/props/chair.glb', height: 0.94, pos: [-4.0, 0, -4.25], rotY: 3.2, tint: 0x8a7868 },
   // the AM radio (2026-07-27, Meshy refine 30cr, James's ask): a 1950s bakelite
   // set on the cabinet bank, angled at the room. Keeps its own Meshy textures —
   // no material name starts with prop_, so the swap loop passes it by. Clicking
@@ -1864,6 +2090,7 @@ function dressDesk() {
   const brass = new THREE.MeshStandardMaterial({ color: 0x9a8446, roughness: 0.3, metalness: 0.9 });
   const lamp = new THREE.Group();
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.03, 12), brass);
+  base.position.y = 0.015;                 // sit ON the surface, not half in it
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.3, 8), brass);
   stem.position.y = 0.16;
   stem.rotation.z = 0.28;
@@ -1879,31 +2106,58 @@ function dressDesk() {
   glowDisc.rotation.x = Math.PI / 2;
   glowDisc.position.set(-0.06, 0.29, 0);
   lamp.add(base, stem, shade, glowDisc);
-  lamp.position.set(2.12, y, -4.68);
+  // moved back toward the desk's rear edge (r12.1 — it half-clipped the desk)
+  lamp.position.set(2.12, y, -5.445);
   lamp.rotation.y = 0.5;
   scene.add(lamp);
-  lampLight.position.set(2.09, y + 0.28, -4.68);
+  lampLight.position.set(2.09, y + 0.28, -5.445);
 
-  const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.1, 12),
-    new THREE.MeshStandardMaterial({ color: 0x8a8378, roughness: 0.7 }));
-  mug.position.set(2.92, y + 0.05, -4.6);
-  scene.add(mug);
+  // the coffee mug: a real Meshy prop now (r12.1, James's ask), ceramic in-engine
+  loader.load('assets/props/mug.glb', (gltf) => {
+    const src = gltf.scene;
+    src.traverse((o) => {
+      if (o.isMesh) {
+        o.material = new THREE.MeshStandardMaterial({ color: 0xd8d0be, roughness: 0.55 });
+      }
+    });
+    const box = new THREE.Box3().setFromObject(src);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const wrap = new THREE.Group();
+    src.position.set(-center.x, -box.min.y, -center.z);
+    wrap.add(src);
+    wrap.scale.setScalar(0.105 / size.y);
+    wrap.position.set(2.92, y, -5.24);
+    wrap.rotation.y = -0.75;               // handle toward his chair
+    scene.add(wrap);
+  }, undefined, () => console.warn('[dlo] mug failed to load'));
 
-  const namePlate = addSign(signTexture(256, 64, (g, w, h) => {
+  // the postmaster's sign, on the wall above the desk now (r12.2, James) —
+  // twice the old plate, and he finally has a name
+  addSign(signTexture(640, 180, (g, w, h) => {
     g.fillStyle = '#211d16'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#9a8446'; g.lineWidth = 5; g.strokeRect(5, 5, w - 10, h - 10);
-    g.fillStyle = '#c9b483';
-    g.font = '700 34px "Courier New", monospace';
+    g.strokeStyle = '#9a8446'; g.lineWidth = 8; g.strokeRect(7, 7, w - 14, h - 14);
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('POSTMASTER', w / 2, h / 2 + 1);
-  }), 0.3, 0.075, 2.5, y + 0.05, -4.56, 0);
-  namePlate.rotation.x = -0.18;
+    g.fillStyle = '#b09a64';
+    g.font = '700 56px "Courier New", monospace';
+    g.fillText('POSTMASTER', w / 2, 54);
+    g.fillStyle = '#d8bd85';
+    g.font = '700 74px "Courier New", monospace';
+    g.fillText('JOHN DOUGH', w / 2, 128);
+  }), 0.88, 0.25, 2.5, 1.8, ROOM.z0 + 0.02, 0);
 
+  // paper reams: one proper stack now — squared-ish, each ream a little askew
+  let reamY = y;
   for (let i = 0; i < 3; i++) {
-    const papers = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.012 + Math.random() * 0.03, 0.32), matPaper);
-    papers.position.set(2.62 + i * 0.14 - 0.2, y + 0.02, -4.78 + (i % 2) * 0.12);
-    papers.rotation.y = (Math.random() - 0.5) * 0.5;
+    const th = 0.045;
+    const papers = new THREE.Mesh(new THREE.BoxGeometry(0.24, th, 0.32), matPaper);
+    papers.position.set(
+      2.66 + (Math.random() - 0.5) * 0.03,
+      reamY + th / 2,
+      -5.305 + (Math.random() - 0.5) * 0.03);
+    papers.rotation.y = (Math.random() - 0.5) * 0.22;
     scene.add(papers);
+    reamY += th;
   }
   // RETURN TO SENDER TO NOWHERE — paper sign pinned to the desk's room side
   const rts = addSign(signTexture(256, 300, (g, w, h) => {
@@ -1912,7 +2166,7 @@ function dressDesk() {
     g.font = '700 44px "Courier New", monospace';
     g.textAlign = 'center';
     ['RETURN', 'TO', 'SENDER', 'TO', 'NOWHERE'].forEach((t, i) => g.fillText(t, w / 2, 56 + i * 52));
-  }), 0.3, 0.36, 2.86, 0.62, -4.585, Math.PI);
+  }), 0.3, 0.36, 2.86, 0.62, -5.17, Math.PI);
   rts.rotation.z = 0.04;
 }
 
@@ -2053,7 +2307,7 @@ function posterFadeOut() {
 /* ================= navigation graph (verified in tools sim) ================= */
 
 const PM_STATIONS = {
-  desk:      { x: 2.5, z: -4.15, face: Math.PI },   // works at the desk, back to the room
+  desk:      { x: 2.5, z: -4.74, face: Math.PI },   // works at the desk, back to the room
   basket:    { x: -3.3, z: -0.6, face: -2.21 },
   furnace:   { x: 5.7, z: 2.6, face: 0.885 },
   clock:     { x: -7.9, z: 1.2, face: -Math.PI / 2 },
@@ -2076,6 +2330,7 @@ const NAV_NODES = {
   H4: { x: -6.8, z: 2.2 },
   H5: { x: 4.9, z: 3.4 },
   H7: { x: 4.35, z: -3.6 },
+  H8: { x: -3.0, z: -4.9 },   // couch approach lane, south of the coffee table
   ...PM_STATIONS,
 };
 const NAV_EDGES = [
@@ -2086,7 +2341,7 @@ const NAV_EDGES = [
   ['desk', 'coffee'],
   ['H2', 'basket'], ['H2', 'H4'], ['H2', 'window'],
   ['H4', 'clock'], ['H4', 'window'], ['H4', 'corkboard'], ['H4', 'doorSt'],
-  ['wander2', 'couch'],
+  ['wander2', 'H8'], ['H8', 'couch'],   // around the coffee-table nook (r12.1)
 ];
 const NAV_ADJ = {};
 for (const [a, b] of NAV_EDGES) {
@@ -2972,9 +3227,17 @@ let radioVol = 0.7;
 let radioIdx = Math.floor(Math.random() * RADIO_TRACKS.length);
 let radioGapT = null;
 
+const radioDir = new THREE.Vector3();
+const camFwd = new THREE.Vector3();
 function radioFalloff() {
   const d = pos.distanceTo(RADIO_POS);
-  return clamp(1 - (d - 2.5) / 14, 0.18, 1);
+  const byDistance = clamp(1 - (d - 2.5) / 14, 0.18, 1);
+  // facing factor (2026-07-28, James): the set is loudest when you look at it,
+  // ducks when it's behind you — never fully gone, it's still in the room
+  radioDir.copy(RADIO_POS).sub(pos).normalize();
+  camera.getWorldDirection(camFwd);
+  const facing = 0.4 + 0.6 * (0.5 + 0.5 * camFwd.dot(radioDir));
+  return byDistance * facing;
 }
 function radioApplyVolume() {
   radioAudio.volume = clamp(soundVol * radioVol * RADIO_LEVEL * radioFalloff(), 0, 1);
@@ -3053,8 +3316,9 @@ const BODY_R = 0.28;
 // Free-standing furniture = keep-out circles; wall-adjacent furniture = boxes
 // resolved by least-penetration push (a circle overlapping a wall can trap the
 // camera between circle push and wall clamp — the fuzz sim caught it).
+// (the desk chair's circle merged into the desk box in r12.3 — tucked back with
+// the desk it limit-cycled against the pigeonhole box's west face)
 const CIRCLES = [
-  [3.6, -4.25, 0.4],                       // chair
   [-4.5, -1.5, 0.95],                      // basket
   [6.8, 3.5, 1.0],                         // furnace
 ];
@@ -3062,7 +3326,9 @@ const CIRCLES = [
 // resolves into the room (a face just past the wall loses to the wall clamp and
 // traps the camera — the fuzz sim caught it).
 const STATIC_BOXES = [
-  [-0.15, 3.65, -8.0, -4.5],               // desk + donut table (no band behind)
+  [-0.15, 4.0, -8.0, -4.75],               // desk + donut table + tucked chair (desk
+                                           // at the wall r12.3; east face buried in
+                                           // the pigeonhole box on purpose)
   [4.45, 9.5, -8.0, -5.05],                // pigeonholes + coat-rack corner
   [7.45, 11.5, -5.15, 0.15],               // file cabinet bank (overlaps the
                                            // pigeonhole box so no sliver opens)
@@ -3071,6 +3337,9 @@ const STATIC_BOXES = [
   [-6.1, -3.9, -8.0, -5.2],                // the couch (box face sits behind the
                                            // cushion so his sit station clears it)
   [8.2, 11.5, 0.05, 1.9],                  // bookshelf (overlaps the cabinet bank)
+  [-6.65, -3.7, -4.65, -3.95],             // coffee table + flanking chairs (the
+                                           // couch nook; north face buried in the
+                                           // couch box on purpose — no sliver)
 ];
 
 // Arrange-mode furniture derives its keep-out from the item footprint: rotated
@@ -3221,26 +3490,9 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
-// drag look — grab/swing modes, shared preference with the other walkable worlds
-const LOOK_KEY = 'elastic-look-mode';
-let lookMode = localStorage.getItem(LOOK_KEY) === 'swing' ? 'swing' : 'grab';
-const lookToggle = document.createElement('button');
-lookToggle.id = 'look-toggle';
-lookToggle.title = 'how dragging turns the camera — click to switch';
-lookToggle.style.cssText = 'position:fixed;left:0.7rem;top:0.7rem;z-index:24;' +
-  'font:inherit;font-size:0.72rem;letter-spacing:0.05em;color:#cfd6c8;opacity:0.6;' +
-  'background:rgba(16,19,18,0.65);border:1px solid #3a453f;border-radius:999px;' +
-  'padding:0.25rem 0.8rem;cursor:pointer;';
-function renderLookToggle() {
-  lookToggle.textContent = lookMode === 'grab' ? 'drag moves the wall' : 'drag swings the view';
-}
-lookToggle.addEventListener('click', () => {
-  lookMode = lookMode === 'grab' ? 'swing' : 'grab';
-  localStorage.setItem(LOOK_KEY, lookMode);
-  renderLookToggle();
-});
-renderLookToggle();
-document.body.appendChild(lookToggle);
+// drag look — swing only (James 2026-07-28: swing is the default, no switch).
+// The old grab/swing toggle and its shared 'elastic-look-mode' key are gone.
+const lookMode = 'swing';
 
 const mouse = new THREE.Vector2();
 let dragging = false, moved = 0, lastX = 0, lastY = 0, downAt = 0;
@@ -3480,8 +3732,9 @@ function tick() {
     stage.style.cursor = hits.length ? 'pointer' : 'grab';
   }
 
-  // radio proximity falloff, throttled (distance only changes at walking speed)
-  if (frame % 15 === 0 && soundOn && radioOn && !radioAudio.paused) radioApplyVolume();
+  // radio falloff tracks position AND view direction now — a look-around changes
+  // it, so the throttle is tighter than the old walking-speed one
+  if (frame % 3 === 0 && soundOn && radioOn && !radioAudio.paused) radioApplyVolume();
 
   renderer.render(scene, camera);
 }
@@ -3527,9 +3780,9 @@ shiftTick();
 if (new URLSearchParams(location.search).has('arrange') && location.protocol !== 'file:') {
   import('./arrange.js').then(({ initArrange }) => initArrange({
     THREE, scene, camera, stage, ROOM,
-    FURNITURE, layout: archiveLayout, records: furnitureRecords,
-    buildFurnitureItem, removeFurnitureItem, rebuildKeepOuts, fuzzKeepOuts,
-    itemKeepOut, applyShade,
+    FURNITURE, WALL_ART, layout: archiveLayout, records: furnitureRecords,
+    buildFurnitureItem, buildArtItem, removeFurnitureItem, rebuildKeepOuts,
+    fuzzKeepOuts, itemKeepOut, applyShade,
     nav: { nodes: NAV_NODES, edges: NAV_EDGES },
   })).catch((err) => console.warn('[dlo] arrange mode failed to load:', err));
 }

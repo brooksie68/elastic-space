@@ -12,11 +12,14 @@ return addresses still work.
   UNTEXTURED previews, textured in-engine; a proper Meshy refine is 10cr/prop later).
 - `assets/radio-music/` — Suno tracks James authors for the office's AM radio (BUILT
   2026-07-27: 1950s bakelite set on the file cabinet bank, click toggles, "radio"
-  channel on the sound control, distance falloff). Each source mp3 gets a baked
-  `-radio.mp3` sibling via `node tools/radio-bake.mjs <file>` (AM squash chain, flags
-  documented in the script) — the radio plays ONLY the baked versions. Three tracks
-  live; when James drops a new one, bake it and add the `-radio.mp3` path to
-  `RADIO_TRACKS` in world.js.
+  channel on the sound control, distance × facing falloff — volume follows where the
+  camera looks since r12). Each source mp3 gets a baked `-radio.mp3` sibling via
+  `node tools/radio-bake.mjs <file>` — the radio plays ONLY the baked versions.
+  The r12 house chain (James's "tinny 1955 AM" ask): `--hp 550 --lp 2400 --box 6
+  --squash 24 --drive 1.7 --static -30 --crackle 2.5 --kbps 96 --clip 1`. Always
+  pass `--clip 1`: without it the narrowband bake can't reach source RMS and lands
+  5–7dB quiet (James hears loudness shifts). When he drops a new track, bake with
+  those flags and add the `-radio.mp3` path to `RADIO_TRACKS` in world.js.
 - `tmp/dead-letter-office/nav-fuzz-sim.mjs` — the durable constraint/nav sim (rebuilt
   2026-07-27; the original was scratchpad-only and lost). Run it after ANY furniture,
   keep-out, or nav change: `node tmp/dead-letter-office/nav-fuzz-sim.mjs`. It reads
@@ -47,6 +50,9 @@ knife: unsent replies, or replies returned "moved — left no address" (Claude's
 the second — the office holds their whole almost-romance). Get his answers first.
 
 ## World-specific rules
+
+- **The postmaster's name is John Dough** (James, 2026-07-28 — John Doe spelled like
+  the bread; the wall sign above the desk is canonical). Keep the spelling.
 
 - **The twelve letters are authored (2026-07-04) and protected** — never generate or reword
   them. The four airmail letters carry the drift exits; the stairwell door is the fifth.
@@ -84,10 +90,21 @@ the second — the office holds their whole almost-romance). Get his answers fir
   from item footprints (`itemKeepOut` + `mergeItemBoxes` in world.js — replicated
   verbatim in the sim; change one, change both). Run the sim after any layout,
   FURNITURE, or keep-out change. Box labels live in `ARCHIVE_LABELS` (James-approved
-  tone includes DICK PICS (CONFISCATED) — do not sanitize). The whole archive draws
-  from one canvas atlas: never give boxes per-mesh materials. The radio keeps its own
-  Meshy textures — PROP_MATERIALS must never grow a `prop_radio` key, and its
-  emissive stays faintly on (0.22 off / 0.42 playing).
+  tone includes DICK PICS (CONFISCATED) — do not sanitize; 72 entries since r12, the
+  atlas caps at 80 tiles so at most 72 labels + the 8 plain/top tiles). The whole
+  archive draws from one canvas atlas: never give boxes per-mesh materials. The
+  radio keeps its own Meshy textures — PROP_MATERIALS must never grow a `prop_radio`
+  key, and its emissive stays faintly on (0.22 off / 0.42 playing).
+- Wall art is placeable (r12, 2026-07-28): `WALL_ART` catalog + `buildArtItem` in
+  world.js; art items ride the same layout file with an extra `y` (hang height).
+  `DLO_DEFAULT_ART` seeds the classic placements when a saved layout carries no art
+  — keep it in sync if the catalog changes. In arrange mode art snaps to walls,
+  wheel = height; furniture wheel-rotation snaps to 8 stops (45°) — James's rule,
+  don't reintroduce free rotation. Fixtures (house sign, clock, drum-counter
+  tallies, corkboard, STAIRS plate) are NOT placeable on purpose. server.mjs
+  `furnitureTypes` must list every art type.
+- Drag look is swing-only (James 2026-07-28): no grab mode, no toggle — do not
+  bring the switch back.
 - Tile textures follow the never-black rule: procedural canvas fallback first, Meshy tile
   overlay on load. Prop materials clone the wood tile — clones are registered on
   `texWood.userData.clones` so the overlay marks them dirty too.

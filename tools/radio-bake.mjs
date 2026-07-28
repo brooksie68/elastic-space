@@ -16,6 +16,8 @@
 //   --static <dB>   static bed level rel. to program, -60 = off (default -34)
 //   --crackle <n>   dust ticks per second, 0 = off (default 1.5)
 //   --kbps <n>      MP3 bitrate, mono              (default 128)
+//   --clip <0|1>    1 = soft-clip peaks after RMS match instead of scaling the
+//                   whole track down (keeps loudness, adds era grit; default 0)
 
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -24,7 +26,7 @@ import lamejs from '@breezystack/lamejs';
 
 const args = process.argv.slice(2);
 const files = [];
-const opt = { hp: 300, lp: 3500, box: 4, squash: 20, drive: 1.4, static: -34, crackle: 1.5, kbps: 128 };
+const opt = { hp: 300, lp: 3500, box: 4, squash: 20, drive: 1.4, static: -34, crackle: 1.5, kbps: 128, clip: 0 };
 for (let i = 0; i < args.length; i++) {
   if (args[i].startsWith('--')) { opt[args[i].slice(2)] = Number(args[++i]); }
   else files.push(args[i]);
@@ -110,14 +112,19 @@ for (const file of files) {
     for (let i = 0; i < n; i++) x[i] += noise[i];
   }
 
-  // RMS-match to source, then safety peak limit
+  // RMS-match to source, then peak handling: either scale the whole track under
+  // the ceiling (transparent, but a narrowband bake can land audibly quiet), or
+  // --clip 1: soft-clip the peaks in place — loudness holds, the overs distort
+  // like a small overdriven speaker (the tinny-AM look wants this)
   const g = srcRms / rms(x);
   let post = 0;
   for (let i = 0; i < n; i++) post = Math.max(post, Math.abs(x[i] * g));
-  const lim = post > 0.98 ? 0.98 / post : 1;
+  const lim = !opt.clip && post > 0.98 ? 0.98 / post : 1;
   const pcm = new Int16Array(n);
   for (let i = 0; i < n; i++) {
-    const v = Math.max(-1, Math.min(1, x[i] * g * lim));
+    let v = x[i] * g * lim;
+    if (opt.clip) v = Math.tanh(v / 0.9) * 0.9;
+    v = Math.max(-1, Math.min(1, v));
     pcm[i] = v < 0 ? v * 32768 : v * 32767;
   }
 

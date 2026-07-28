@@ -3,6 +3,115 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — Claude (Fable 5) — r12.3: desk to the wall, bigger sign
+
+- **Desk pushed back** (James): rear edge now ~1 inch off the north wall
+  (measured depth 0.78m → center z −5.585, Δ=0.585). Everything desk-bound
+  moved the same Δ: chair, lamp (+lampLight), mug, ream stack, RETURN TO
+  SENDER sign, the surface raycast probe, and the desk PM station (z −4.74).
+  Keep-outs: desk box front follows (z1 −4.75) and extends east to x 4.0 to
+  swallow the tucked chair — the moved chair CIRCLE limit-cycled against the
+  pigeonhole box's west face (sim caught it, 31 trapped points), so the circle
+  is gone; its east face is deliberately buried in the pigeonhole box.
+  Sim 68/68.
+- **Sign bigger** (0.88×0.25m at y 1.8): POSTMASTER promoted to 56px in warmer
+  brass, JOHN DOUGH still clearly on top at 74px.
+- **Donut-box lid removed** (James, mid-session): the propped-open cardboard
+  lid behind the donuts read as a stray box balancing on its side.
+
+## 2026-07-28 — Claude (Fable 5) — r12.2: the postmaster gets a name
+
+Everything in r12.1 passed James's eye except the desk nameplate — his call:
+off the desk, onto the north wall right above it, twice the size, and with a
+name on it at last. **POSTMASTER / JOHN DOUGH** (John Doe, spelled like the
+bread — James's joke, keep the spelling). Sign is 0.6×0.15m at (2.5, 1.62)
+on the north wall, brass-bordered like the old plate.
+
+## 2026-07-28 — Claude (Fable 5) — r12.1: second punch list (same day)
+
+James's notes after the r12 report, plus new furniture. All his asks.
+
+- **Grass fixed**: the sill blades were 2px grey "spikes" (his word) — now 1px
+  curved leaning strokes in actual greens, denser.
+- **Desk cleanup**: banker's lamp base sat half inside the surface (cylinder
+  centered on y=0) — lifted onto it and the whole lamp moved to the desk's rear
+  (z −4.68 → −4.86, light follows). POSTMASTER nameplate was merged with the
+  paper reams — moved to the back edge (−4.88); the three reams were
+  interpenetrating at one height — now a proper vertical stack, each ream a
+  little askew. The cylinder "cup" replaced with a real Meshy mug.
+- **The mug saga** (18cr total, lesson recorded in props-manifest): two direct
+  text-to-3d attempts failed (fused-slab handle; then a three-handled loving
+  cup — a Blender handle-ectomy + voxel remesh made it worse and was abandoned
+  per the complexity-retreat doctrine). The image route landed first try:
+  nano-banana product photo → image-to-3d meshy-5 untextured →
+  `assets/props/mug.glb`, ceramic colored in-engine, loaded inside dressDesk
+  (needs deskSurfaceY, so not in PROPS).
+- **Welcome mat** at the stairwell door: drawn coir texture, worn WELCOME,
+  oriented to read for whoever comes down the stairs.
+- **The couch corner**: low coffee table (mkTable, 1.1×0.5×0.42 at −5.2,−4.3)
+  with a small plant on it, flanked by two beat-up chairs (chair.glb reused,
+  worn grey-brown tints, angled in). One new STATIC_BOXES keep-out covers the
+  set (north face deliberately buried in the couch box); the couch nav edge
+  reroutes wander2 → H8 (−3.0,−4.9) → couch so he walks the lane between couch
+  and table. Sim 68/68.
+- **Brick hearth** under the furnace corner: Meshy paver tile (3cr,
+  nano-banana), rows natively periodic, horizontal wrap crossfaded 40px —
+  verified tiled. 3.8×4.2m pad at the southeast corner, a hair proud of the
+  slab like the rug; canvas fallback drawn in brick tones (never-black rule).
+
+Not yet flown by James (r12 + r12.1 land together).
+
+## 2026-07-28 — Claude (Fable 5) — r12: James's ten-item punch list
+
+All from one brief; every item below was his direct ask.
+
+- **Swing look is THE look**: drag always swings the view now; the grab/swing
+  toggle button is gone (and this world no longer touches the shared
+  `elastic-look-mode` key).
+- **8 rotation stops in arrange mode**: furniture wheel-rotation snaps to 45°
+  steps — 4 wall-square + 4 diagonal (`snapRot`/`ROT_STEP` in arrange.js, wheel
+  delta accumulated per ~100). New spawns snap too. Existing saved rotYs are
+  untouched until rotated.
+- **All wall art is placeable**: new `WALL_ART` catalog in world.js (5 image
+  posters + 4 drawn: lift-with-knees, zip directory, mr. delivery, LOST? cat) +
+  `buildArtItem`. Art items live in the same layout file with an extra `y`
+  (hang height); `DLO_DEFAULT_ART` seeds the classic placements when a saved
+  layout has no art yet. In arrange mode art sticks to walls (drag slides it
+  along/across walls, per-item z-fight offset), wheel raises/lowers (0.7–3.5m),
+  scale/shade/duplicate/remove work. No keep-out, no nav impact. server.mjs
+  validates the 9 art types + optional y (0–5). Fixtures (house sign, clock,
+  tallies, corkboard, STAIRS plate) stay put on purpose.
+- **Archive labels 32 → 72**: the pool is still finite/preset (one atlas tile
+  per label — that's the single-material discipline), but at 72 the repeats
+  thin way out. Atlas maxes at 80 tiles of the 2048px canvas (72 labels + 4
+  plain + 4 taped tops).
+- **Radio hears where you look**: falloff = distance × facing (dot of camera
+  forward vs direction to the set, floored at 0.4 so it never vanishes).
+  Throttle tightened frame%15 → frame%3 since look direction changes fast.
+- **Radio tone shittier** (his ask: tinny 1955 AM): re-baked all three tracks
+  `--hp 550 --lp 2400 --box 6 --squash 24 --drive 1.7 --static -30
+  --crackle 2.5 --kbps 96 --clip 1`. New `--clip` flag in tools/radio-bake.mjs:
+  soft-clips peaks after RMS match instead of scaling the track down — the
+  narrowband bake couldn't reach source RMS without it (first attempts landed
+  −5 to −7dB; with clip, RMS matches exactly and the overs distort like a small
+  overdriven speaker, which is the point).
+- **Painted cinderblock walls**: Meshy text-to-image (3cr, James's ask),
+  sage-green institutional paint, low-rent but not peeling. Mortar grid
+  measured (System.Drawing), cropped to an exact 3×3 block period so it wraps —
+  verified on a 2×2 tiled render. Canvas fallback redrawn to cinderblock
+  proportions. Old brick wall.png lives in git history.
+- **The rug**: 3.4×2.2 → 4.4×3.2, moved from mid-floor to under the desk,
+  sticking out in front with the chair fully on it.
+- **Mechanical counters**: tally boards redrawn as riveted steel drum counters —
+  per-digit windows, rolled-wheel shading with neighbor digits peeking at the
+  edges, flap seam. DEAD LETTERS starts at 614,739 and still ticks live.
+  UNCLAIMED is now **CLAIMED: 0000017** (it does not tick; 17 is the joke).
+- **Sky outside the windows**: panes carry a drawn sky (overcast blue gradient,
+  soft clouds, sidewalk grass silhouettes along the sill) instead of flat
+  blue-grey.
+
+Sim: 66/66 green after everything. Not yet flown by James.
+
 ## 2026-07-27 — Claude (Fable 5) — r11: arrange mode (James's furniture editor)
 
 James's ask after flying r10: drop/move/rotate the shelves, boxes, and crates
