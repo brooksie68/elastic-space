@@ -3,6 +3,51 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — claude-fable (v54 — the nebula size dial + the Being Editor)
+
+James flew v53: "the nebulas are cool if a little bit underwhelming. They seem
+kinda small for the space." He floated 5×; the honest ceiling is 2× (beyond
+that the banks merge and lose their one-palette identities).
+
+- NEBULA SCALE DIAL: `nebScale` (0.5–2, default 1.6, layout dial) in
+  GOD MODE · the nebulae. Scale multiplies bank RADII only — seats stay put,
+  so the dial never re-rolls the sky. Default ships at 1.6 (his complaint was
+  "too small"; the dial is there for his 10% passes either way).
+- SEAT RESEED (one-time): gulf seats now reject the spawn corridor at the
+  DIAL CEILING (24km × SCALE_CAP + 6km margin, 9 samples along spawn→origin),
+  so no legal dial setting can drop gas on the player's first frame or the
+  run home. Old bank #1 sat 2km off the spawn at 1.6 — that's why. SCALE_CAP
+  (2) in nebulaGeometry restates the slider max — change them together.
+- SIM: TEST 2's blanket "nobody past 110km" satellite check replaced with
+  real satellite-town clearance (communityLayout seats, verbatim cut, +8km);
+  new TEST 10 re-proves spawn/approach/satellite/sightline/identity bars AT
+  the ceiling, reading SCALE_DEFAULT and SCALE_MAX out of world.js so the
+  sim can't drift from the sliders. All 10 pass; full suite + shader-check
+  green.
+- BEING EDITOR (`src/labs/being-editor/`): the saelyri lab promoted to a real
+  lab page (face-lab styling, admin panel Labs link, dashboard icon), with a
+  being dropdown (single entry today — the roster is the contract that more
+  peoples arrive here). The v54 shader round answers "add in the internal
+  structure": turbulence moved OFF the distance field (silhouette holds now),
+  interior split into three layers — luminous shell at d=0 (new `edge`
+  slider), ridged-fbm energy filaments (structure slider drives frequency +
+  count, white-hot at crossings), and a shrunk-form skeleton riding core
+  heat. Veins deliberately don't feed alpha — light inside the glass, not
+  fog. tmp/orb-dimension/saelyri-lab.html is superseded (banner added).
+- v54.1 SAME SESSION, with James looking: his verdict on the first cut —
+  loves the "rippling purple fire at the edges", interior "pure white all
+  the way through". Two real bugs found by capture (via the server's
+  /api/dev-snapshot — the pane wouldn't composite for screenshots all
+  night): (1) the skeleton term used max(d+0.16,0) = 1.0 across the WHOLE
+  interior — a filled core, not an inner surface; abs() made it a band.
+  (2) exposure: interior terms summed past 1.0 over ~25 march steps, so
+  everything clipped white. Emission now ~3x dimmer with the shell
+  coefficient raised to keep the edge fire exactly as bright; alpha got its
+  own weight (aw) so occlusion didn't dim with it; veins' white component
+  0.5 → 0.32 so knots read hot against purple, not white against white.
+  Sheets r3 (tmp/snapshots/being-editor-*-r3.png): filament networks read
+  through every state, homes are shell-less plasma. AWAITING HIS VERDICT.
+
 ## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
 
 - New house rule from James: every control panel dismisses on click-away. One

@@ -130,6 +130,21 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   atlas (`bakeWispAtlas`, unit 7) because per-fragment fbm cost 48 sines —
   `wisp-atlas-check.mjs` runs the shipped bake and writes a PNG preview; look
   at it after touching frequencies (the coarse family at 3.2 baked discs).
+  v54: `nebScale` (0.5–2, default 1.6) multiplies bank RADII only — seats
+  stay put, and gulf seat selection rejects the spawn corridor at the DIAL
+  CEILING (SCALE_CAP in nebulaGeometry restates the slider max — change them
+  together). Sim TEST 10 re-proves every clearance bar at the ceiling and
+  reads both numbers out of world.js. Satellite keep-out is the real town
+  seats (communityLayout), not a blanket ring radius.
+- THE BEING EDITOR (`src/labs/being-editor/`, v54): the Saelyri look-dev lab,
+  promoted from tmp/orb-dimension/saelyri-lab.html (superseded, kept as v53
+  reference). A lab, not a world — no drift/registry; linked from the admin
+  panel Labs section. Being dropdown is the roster contract for future
+  peoples. Shader discipline: turbulence NEVER displaces the distance field
+  (that was the blob bug) — interior is three layers: shell at d=0 (`edge`
+  slider), ridged-fbm filaments (structure), shrunk-form skeleton (core
+  heat); veins don't feed alpha. When the look lands, this shader becomes
+  Phase B's SDF actors in-world.
 - THE CADENCE CASTES (v51): six citizen robot kinds — chanter / lattice-wright /
   archivist / ferry / warden / gardener — Blender-built from primitives by
   `tmp/orb-dimension/cadence_robots.py` → `assets/robot/cadence-01..06.bin` (magic

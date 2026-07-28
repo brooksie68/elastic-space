@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Being Editor — Elastic Space</title>
+<style>
+  html { font-size: 16px; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #14161c; color: #cfd3dd;
+    font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.85rem;
+  }
+  .wrap { max-width: 1600px; margin: 0 auto; padding: 0.75rem 1rem; }
+  header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
+  header h1 { font-size: 1.1rem; margin: 0; color: #e8eaf0; letter-spacing: 0.04em; }
+  header .sub { color: #8a8fa3; font-size: 0.8rem; }
+  main { display: flex; gap: 0.9rem; align-items: stretch; }
+  #stage-panel { flex: 1 1 auto; min-width: 0; position: relative; }
+  #stage {
+    width: 100%; height: calc(100vh - 6rem); min-height: 420px;
+    background: #05060c; border: 1px solid #2a2e3c; border-radius: 4px; display: block;
+  }
+  #stage-hint { position: absolute; left: 0.6rem; bottom: 0.5rem; color: #666c80; font-size: 0.72rem; }
+  #controls {
+    flex: 0 0 21rem; max-width: 21rem; height: calc(100vh - 6rem); min-height: 420px;
+    overflow-y: auto; border: 1px solid #2a2e3c; border-radius: 4px;
+    background: #191c24; padding: 0.7rem;
+  }
+  #controls h2 {
+    font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: #9aa0b5; margin: 1rem 0 0.4rem; border-bottom: 1px solid #2a2e3c; padding-bottom: 0.25rem;
+  }
+  #controls h2:first-child { margin-top: 0; }
+  .sl { display: flex; align-items: center; gap: 0.45rem; margin: 0.22rem 0; }
+  .sl label { flex: 0 0 6.5rem; font-size: 0.74rem; color: #a9aec2; white-space: nowrap; }
+  .sl input[type=range] { flex: 1 1 auto; accent-color: #7a86ff; height: 1rem; }
+  .sl .v { flex: 0 0 2.2rem; text-align: right; font-size: 0.72rem; color: #7c8299; font-variant-numeric: tabular-nums; }
+  .row { display: flex; align-items: center; gap: 0.45rem; margin: 0.3rem 0; flex-wrap: wrap; }
+  button {
+    background: #262b3a; color: #cfd3dd; border: 1px solid #363c50; border-radius: 3px;
+    padding: 0.28rem 0.65rem; font-size: 0.78rem; cursor: pointer;
+  }
+  button:hover { background: #2e3448; }
+  button.on { background: #3b4470; border-color: #4a548c; }
+  select {
+    background: #20242f; color: #cfd3dd; border: 1px solid #363c50; border-radius: 3px;
+    padding: 0.26rem 0.4rem; font-size: 0.78rem; width: 100%;
+  }
+  #perf { font-size: 0.72rem; color: #7c8299; margin-top: 0.6rem; }
+  footer { color: #565c72; font-size: 0.7rem; margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>BEING EDITOR</h1>
+    <span class="sub">energy-being look development — the Orb Dimension's peoples</span>
+  </header>
+  <main>
+    <div id="stage-panel">
+      <canvas id="stage"></canvas>
+      <div id="stage-hint">beings sheet: the seven states of the morph wheel, held still for judgment</div>
+    </div>
+    <div id="controls">
+      <h2>being</h2>
+      <select id="being"></select>
+
+      <h2>view</h2>
+      <div class="row">
+        <button id="bSheet" class="on">beings sheet</button>
+        <button id="bHome">homes sheet</button>
+        <button id="bOrbit">orbit</button>
+      </div>
+
+      <h2>light</h2>
+      <div class="sl"><label>glow</label><input id="glow" type="range" min="20" max="200" value="100"><span class="v" id="glowV"></span></div>
+      <div class="sl"><label>turbulence</label><input id="turb" type="range" min="0" max="100" value="45"><span class="v" id="turbV"></span></div>
+      <div class="sl"><label>structure</label><input id="cplx" type="range" min="0" max="100" value="65"><span class="v" id="cplxV"></span></div>
+      <div class="sl"><label>corona</label><input id="cor" type="range" min="0" max="100" value="40"><span class="v" id="corV"></span></div>
+      <div class="sl"><label>core heat</label><input id="heat" type="range" min="0" max="100" value="60"><span class="v" id="heatV"></span></div>
+      <div class="sl"><label>edge</label><input id="edge" type="range" min="0" max="100" value="60"><span class="v" id="edgeV"></span></div>
+      <div class="sl"><label>family</label>
+        <select id="fam" style="flex:1 1 auto; width:auto;">
+          <option value="0">cyan</option><option value="1" selected>violet</option>
+          <option value="2">rose</option><option value="3">amber</option><option value="4">green</option>
+        </select>
+      </div>
+      <div id="perf"></div>
+      <footer>one raymarched shader serves the being and its home — nothing here is a mesh</footer>
+    </div>
+  </main>
+</div>
+<script src="../../core/dashboard-control.js"></script>
+<script>
+"use strict";
+// Being Editor — promoted from tmp/orb-dimension/saelyri-lab.html (v54).
+// One raymarched luminous-density shader serves BOTH the being (morphing
+// light-form) and its home (energy ball). The v54 round adds what James
+// asked for after the blob capture: INTERNAL STRUCTURE (ridged-noise energy
+// filaments + a bright inner skeleton) and a TIGHT SILHOUETTE (turbulence
+// moved off the distance field and into interior density, so edges hold).
+const canvas = document.getElementById("stage");
+const gl = canvas.getContext("webgl2", { alpha: false, antialias: false });
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  canvas.width = r.width * devicePixelRatio;
+  canvas.height = r.height * devicePixelRatio;
+}
+addEventListener("resize", resize);
+
+// beings roster: one entry today; the dropdown is the contract that more
+// peoples arrive here (each brings its own SDF set + defaults)
+const BEINGS = [
+  { name: "the Saelyri — light held in a shape", key: "saelyri" },
+];
+
+const VS = `#version 300 es
+layout(location=0) in vec2 aCorner;
+uniform vec3 uCamR, uCamU;
+uniform vec3 uOrigin;
+uniform float uRadius;
+uniform mat4 uVP;
+out vec3 vRO, vRD;
+void main() {
+  vec3 wp = uOrigin + (uCamR * aCorner.x + uCamU * aCorner.y) * uRadius * 1.25;
+  vRO = -uOrigin;
+  vRD = normalize(wp);
+  gl_Position = uVP * vec4(wp, 1.0);
+}`;
+
+const FS = `#version 300 es
+precision highp float;
+uniform float uTime, uGlow, uTurb, uCplx, uCorona, uHeat, uEdge, uMorph, uMode, uSeed;
+uniform vec3 uHueA, uHueB;
+in vec3 vRO, vRD;
+out vec4 oC;
+
+float hash(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
+float vnoise(vec3 p){
+  vec3 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  float n000=hash(i), n100=hash(i+vec3(1,0,0)), n010=hash(i+vec3(0,1,0)), n110=hash(i+vec3(1,1,0));
+  float n001=hash(i+vec3(0,0,1)), n101=hash(i+vec3(1,0,1)), n011=hash(i+vec3(0,1,1)), n111=hash(i+vec3(1,1,1));
+  return mix(mix(mix(n000,n100,f.x), mix(n010,n110,f.x), f.y),
+             mix(mix(n001,n101,f.x), mix(n011,n111,f.x), f.y), f.z);
+}
+float fbm(vec3 p){
+  float a=0.55, s=0.0;
+  for(int i=0;i<3;i++){ s += a*vnoise(p); p = p*2.03 + 5.1; a *= 0.5; }
+  return s;
+}
+float smin(float a, float b, float k){
+  float h = clamp(0.5 + 0.5*(b-a)/k, 0.0, 1.0);
+  return mix(b, a, h) - k*h*(1.0-h);
+}
+float sdSphere(vec3 p, float r){ return length(p)-r; }
+float sdBox(vec3 p, vec3 b){ vec3 q = abs(p)-b; return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0); }
+float sdTorus(vec3 p, vec2 t){ vec2 q = vec2(length(p.xz)-t.x, p.y); return length(q)-t.y; }
+float sdOcta(vec3 p, float s){ p = abs(p); return (p.x+p.y+p.z-s)*0.57735027; }
+float sdCapsule(vec3 p, vec3 a, vec3 b, float r){
+  vec3 pa = p-a, ba = b-a;
+  float h = clamp(dot(pa,ba)/dot(ba,ba), 0.0, 1.0);
+  return length(pa - ba*h) - r;
+}
+// vaguely humanoid: a bright core with head, shoulders, trailing limbs —
+// never anatomical, always suggestion (James's spec: "vaguely humanoid")
+float sdBeing(vec3 p){
+  float body = sdCapsule(p, vec3(0.0,-0.34,0.0), vec3(0.0,0.20,0.0), 0.20);
+  float head = sdSphere(p - vec3(0.0,0.40,0.0), 0.15);
+  float armL = sdCapsule(p, vec3(-0.10,0.16,0.0), vec3(-0.34,-0.12,0.06), 0.07);
+  float armR = sdCapsule(p, vec3( 0.10,0.16,0.0), vec3( 0.34,-0.10,-0.05), 0.07);
+  float legL = sdCapsule(p, vec3(-0.07,-0.30,0.0), vec3(-0.13,-0.66,0.03), 0.075);
+  float legR = sdCapsule(p, vec3( 0.07,-0.30,0.0), vec3( 0.14,-0.64,-0.02), 0.075);
+  float d = smin(body, head, 0.14);
+  d = smin(d, smin(armL, armR, 0.10), 0.12);
+  d = smin(d, smin(legL, legR, 0.10), 0.13);
+  return d;
+}
+float sdMandala(vec3 p){
+  float a = atan(p.z, p.x);
+  float r = length(p.xz);
+  float k = 6.2831853/7.0;
+  a = mod(a + k*0.5, k) - k*0.5;
+  vec3 q = vec3(cos(a)*r, p.y, sin(a)*r);
+  float petal = sdTorus(q - vec3(0.42,0.0,0.0), vec2(0.16,0.045));
+  float hub = sdTorus(p, vec2(0.17,0.05));
+  return smin(petal, hub, 0.06);
+}
+float sdDodecaish(vec3 p){
+  const vec3 n1 = vec3(0.577,0.577,0.577);
+  const vec3 n2 = vec3(0.0,0.357,0.934);
+  const vec3 n3 = vec3(0.0,-0.357,0.934);
+  p = abs(p);
+  float d = dot(p, n1);
+  d = max(d, dot(p, n2));
+  d = max(d, dot(p, n3));
+  d = max(d, dot(p, n2.yzx));
+  d = max(d, dot(p, n3.yzx));
+  d = max(d, dot(p, n2.zxy));
+  d = max(d, dot(p, n3.zxy));
+  return d - 0.52;
+}
+float shapeAt(vec3 p, float idx){
+  float i = mod(idx, 7.0);
+  float f = fract(i);
+  float s = smoothstep(0.0, 1.0, f);
+  float a, b;
+  float k = floor(i);
+  float ca = cos(uTime*0.15), sa = sin(uTime*0.15);
+  p = vec3(ca*p.x - sa*p.z, p.y, sa*p.x + ca*p.z);
+  float dHum = sdBeing(p);
+  float dBox = sdBox(p, vec3(0.42));
+  float dPyr = sdOcta(p, 0.62);
+  float dMan = sdMandala(p);
+  float dJew = sdDodecaish(p);
+  float dTor = sdTorus(p, vec2(0.40,0.15));
+  float dCld = sdSphere(p, 0.52) + (fbm(p*3.4 + uTime*0.25) - 0.5)*0.55;
+  if (k < 1.0)      { a = dHum; b = dBox; }
+  else if (k < 2.0) { a = dBox; b = dPyr; }
+  else if (k < 3.0) { a = dPyr; b = dMan; }
+  else if (k < 4.0) { a = dMan; b = dJew; }
+  else if (k < 5.0) { a = dJew; b = dTor; }
+  else if (k < 6.0) { a = dTor; b = dCld; }
+  else              { a = dCld; b = dHum; }
+  return mix(a, b, s);
+}
+float sdHome(vec3 p){
+  float t = uTime * 0.25;
+  float body = sdSphere(p, 0.52) + (fbm(p*2.6 + vec3(0.0,t,0.0)) - 0.5) * (0.10 + uTurb*0.34);
+  float ca = cos(t*0.7), sa = sin(t*0.7);
+  vec3 q = vec3(ca*p.x - sa*p.z, p.y, sa*p.x + ca*p.z);
+  float shards = sdOcta(q, 0.30 + 0.03*sin(uTime*0.6));
+  shards = max(shards, -sdSphere(q, 0.20));
+  float lattice = sdTorus(q.yzx, vec2(0.34, 0.018));
+  lattice = min(lattice, sdTorus(q, vec2(0.30, 0.016)));
+  float inner = min(shards, lattice);
+  return min(body, mix(body, inner, 0.55 * uCplx));
+}
+float map(vec3 p){
+  return uMode < 0.5 ? shapeAt(p, uMorph) : sdHome(p);
+}
+void main() {
+  vec3 ro = vRO, rd = normalize(vRD);
+  float b = dot(ro, rd), c = dot(ro, ro) - 1.0;
+  float h = b*b - c;
+  if (h < 0.0) discard;
+  h = sqrt(h);
+  float t0 = max(-b - h, 0.0), t1 = -b + h;
+  const int STEPS = 34;
+  float dt = (t1 - t0) / float(STEPS);
+  vec3 acc = vec3(0.0);
+  float alpha = 0.0;
+  // v54 (James: "add in the internal structure"): the distance field stays
+  // CLEAN — turbulence never displaces it, so the silhouette holds — and the
+  // interior carries three layers instead of one soup:
+  //   1. the shell: a thin bright skin right at d=0 (uEdge sharpens it)
+  //   2. filaments: ridged-noise energy channels flowing through the body
+  //   3. the skeleton: the same form shrunk, white-hot (uHeat)
+  float edgeK = 14.0 + uEdge * 22.0;
+  for (int i = 0; i < STEPS; i++) {
+    float t = t0 + dt * (float(i) + 0.5);
+    vec3 p = (ro + rd * t);
+    float d = map(p);
+    if (d > 0.35) continue;
+    float inside = smoothstep(0.02, -0.05, d);
+    // 1: the shell — luminous skin, tight against the form. James likes this
+    // layer ("rippling purple fire at the edges") — mot gives it the ripple.
+    float shell = exp(-abs(d) * edgeK);
+    // 2: filaments — ridged fbm carried on a slow interior flow; structure
+    // raises frequency AND count, turbulence drives how hard they churn
+    vec3 fp = p * (3.0 + uCplx * 5.0) + vec3(0.0, uTime * (0.15 + uTurb * 0.5), 0.0) + uSeed;
+    float rid = 1.0 - abs(2.0 * fbm(fp) - 1.0);
+    rid = pow(rid, 6.0 - uCplx * 2.5);
+    float veins = rid * inside * (0.4 + 1.8 * uCplx);
+    // 3: the skeleton — a SURFACE at depth (an inner glowing form), never a
+    // filled core. The v54 first cut used max(d+0.16, 0) which is 1.0 across
+    // the whole interior — that was James's "pure white all the way through";
+    // abs() makes it a band, and thin limbs (r<0.17) never reach it at all.
+    float skel = exp(-abs(d + 0.17) * 24.0) * inside;
+    // interior mottle keeps the body gaseous without eating the edge
+    float mot = 0.62 + 0.38 * fbm(p * 2.4 + uTime * 0.12 + uSeed);
+    // 4: dim gas between the filaments — structure is only legible against
+    // darkness, so the body base stays an order dimmer than the veins
+    float gas = inside * (0.02 + 0.06 * mot);
+    float rad = length(p);
+    vec3 hue = mix(uHueA, uHueB, clamp(rad * 1.5, 0.0, 1.0));
+    // EXPOSURE DISCIPLINE (v54.1, from the first snapshot round): interior
+    // terms summed past 1.0 over ~25 steps, so everything clipped to white
+    // and the structure vanished. Emission runs ~3x dimmer now; the shell
+    // coefficient rises to compensate so the edge fire James likes keeps its
+    // exact intensity; alpha uses its OWN weight so occlusion didn't dim.
+    vec3 col = hue * shell * 3.2 * (0.55 + 0.45 * mot)
+             + hue * gas
+             + mix(hue, vec3(1.0), 0.5) * veins * 0.6 * mot
+             + mix(hue, vec3(1.0), 0.85) * veins * veins * 0.32
+             + mix(hue, vec3(1.0), 0.2 + uHeat * 0.45) * skel * (0.45 + uHeat * 0.9);
+    float w = dt * (0.9 + uGlow * 1.1);
+    acc += col * w * (1.0 - alpha);
+    // alpha rides the body (gas carries most of it now — the interior should
+    // occlude the backdrop while EMITTING little), not the veins — they are
+    // light INSIDE the glass, they must not fog the silhouette
+    float aw = dt * 2.8;
+    alpha += (shell * 0.45 + gas * 3.2 + skel * 0.25) * aw * (1.0 - alpha);
+  }
+  float rim = exp(-max(map(rd * max(-b, 0.0) + ro), 0.0) * 3.0);
+  acc += mix(uHueA, vec3(1.0), 0.3) * rim * uCorona * 0.30;
+  alpha += rim * uCorona * 0.18;
+  alpha = clamp(alpha, 0.0, 1.0);
+  if (alpha < 0.003) discard;
+  oC = vec4(acc, alpha); // premultiplied
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const U = {};
+for (const n of ["uCamR","uCamU","uOrigin","uRadius","uVP","uTime","uGlow","uTurb",
+  "uCplx","uCorona","uHeat","uEdge","uMorph","uMode","uSeed","uHueA","uHueB"]) U[n] = gl.getUniformLocation(prog, n);
+
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, 1,1, -1,-1, 1,1, -1,1]), gl.STATIC_DRAW);
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.enableVertexAttribArray(0);
+gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+gl.bindVertexArray(null);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+gl.clearColor(0.004, 0.005, 0.012, 1);
+
+const FAMS = [
+  [[0.20,0.85,1.00],[0.05,0.25,0.55]],
+  [[0.72,0.45,1.00],[0.22,0.08,0.45]],
+  [[1.00,0.45,0.72],[0.42,0.06,0.24]],
+  [[1.00,0.72,0.30],[0.45,0.18,0.03]],
+  [[0.45,1.00,0.62],[0.08,0.35,0.18]],
+];
+
+function persp(fov, asp, n, f) {
+  const t = 1/Math.tan(fov/2);
+  return [t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,(2*f*n)/(n-f),0];
+}
+function view(r,u,f) { return [r[0],u[0],-f[0],0, r[1],u[1],-f[1],0, r[2],u[2],-f[2],0, 0,0,0,1]; }
+function mul(a,b) {
+  const o = new Float32Array(16);
+  for (let c=0;c<4;c++) for (let rw=0;rw<4;rw++)
+    o[c*4+rw] = a[rw]*b[c*4] + a[4+rw]*b[c*4+1] + a[8+rw]*b[c*4+2] + a[12+rw]*b[c*4+3];
+  return o;
+}
+const norm = (a) => { const l = Math.hypot(...a)||1; return [a[0]/l,a[1]/l,a[2]/l]; };
+const cross = (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+
+let mode = "beings", orbitHome = false, t0 = performance.now(), ema = 16;
+function drawSubject(vx, vy, vw, vh, opts) {
+  gl.viewport(vx, vy, vw, vh);
+  const f = norm(opts.dir);
+  const r = norm(cross(f, [0,1,0]));
+  const u = cross(r, f);
+  const vp = mul(persp(0.9, vw/vh, 0.05, 100), view(r,u,f));
+  // camera at origin looking along f: the subject sits ALONG f at its distance
+  const origin = [f[0]*opts.dist, f[1]*opts.dist, f[2]*opts.dist];
+  gl.uniformMatrix4fv(U.uVP, false, vp);
+  gl.uniform3fv(U.uCamR, r);
+  gl.uniform3fv(U.uCamU, u);
+  gl.uniform3fv(U.uOrigin, origin);
+  gl.uniform1f(U.uRadius, 1.0);
+  gl.uniform1f(U.uMorph, opts.morph);
+  gl.uniform1f(U.uMode, opts.mode);
+  gl.uniform1f(U.uSeed, opts.seed || 0);
+  const fam = FAMS[Number(document.getElementById("fam").value)];
+  gl.uniform3fv(U.uHueA, fam[0]);
+  gl.uniform3fv(U.uHueB, fam[1]);
+  gl.bindVertexArray(vao);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.bindVertexArray(null);
+}
+
+const HINTS = {
+  beings: "beings sheet: the seven states of the morph wheel, held still for judgment",
+  homes: "homes sheet: one home at four distances — across the map to inside it",
+  orbit: "orbit: one subject, live morph wheel, camera circling",
+};
+function frame(now) {
+  const dt = now - t0; t0 = now;
+  ema += (dt - ema) * 0.05;
+  document.getElementById("perf").textContent = `frame ${ema.toFixed(1)} ms`;
+  const t = now * 0.001;
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.useProgram(prog);
+  gl.uniform1f(U.uTime, t);
+  gl.uniform1f(U.uGlow, Number(glow.value)/100);
+  gl.uniform1f(U.uTurb, Number(turb.value)/100);
+  gl.uniform1f(U.uCplx, Number(cplx.value)/100);
+  gl.uniform1f(U.uCorona, Number(cor.value)/100);
+  gl.uniform1f(U.uHeat, Number(heat.value)/100);
+  gl.uniform1f(U.uEdge, Number(edge.value)/100);
+  const W = canvas.width, H = canvas.height;
+  if (mode === "beings") {
+    for (let i = 0; i < 7; i++) {
+      const col = i % 4, row = (i / 4) | 0;
+      drawSubject(col * (W/4), H/2 - row * (H/2), W/4, H/2,
+        { dir: [0.25, -0.05, 1], dist: 2.6, morph: i, mode: 0, seed: i * 3.1 });
+    }
+  } else if (mode === "homes") {
+    const ds = [7.0, 3.6, 2.3, 1.45];
+    for (let i = 0; i < 4; i++) {
+      const col = i % 2, row = (i / 2) | 0;
+      drawSubject(col * (W/2), H/2 - row * (H/2), W/2, H/2,
+        { dir: [0.3, -0.12, 1], dist: ds[i], morph: 0, mode: 1, seed: 1.7 });
+    }
+  } else {
+    const a = t * 0.25;
+    drawSubject(0, 0, W, H,
+      { dir: [Math.sin(a), -0.1, Math.cos(a)], dist: 2.9,
+        morph: (t * 0.18) % 7, mode: orbitHome ? 1 : 0, seed: 2.2 });
+  }
+  requestAnimationFrame(frame);
+}
+for (const id of ["glow","turb","cplx","cor","heat","edge"]) {
+  const el = document.getElementById(id);
+  const upd = () => { document.getElementById(id + "V").textContent = el.value; };
+  el.addEventListener("input", upd); upd();
+}
+const setMode = (m, btn) => {
+  mode = m;
+  for (const b of ["bSheet","bHome","bOrbit"]) document.getElementById(b).classList.remove("on");
+  btn.classList.add("on");
+  document.getElementById("stage-hint").textContent = HINTS[m];
+};
+document.getElementById("bSheet").onclick = (e) => { orbitHome = false; setMode("beings", e.target); };
+document.getElementById("bHome").onclick = (e) => { orbitHome = true; setMode("homes", e.target); };
+document.getElementById("bOrbit").onclick = (e) => setMode("orbit", e.target);
+{
+  const sel = document.getElementById("being");
+  for (const b of BEINGS) {
+    const o = document.createElement("option");
+    o.value = b.key;
+    o.textContent = b.name;
+    sel.appendChild(o);
+  }
+}
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

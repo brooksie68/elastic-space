@@ -8,6 +8,17 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-28 (Orb Dimension v54: nebula scale + the Being Editor)
+
+- Orb Dimension v54 on James's v53 flight notes: `nebScale` GOD MODE dial
+  (0.5–2.0, default 1.6) — bank radii only, seats fixed; nebula-sim TEST 10
+  re-proves spawn/corridor/satellite clearances at the dial ceiling.
+- THE BEING EDITOR (`src/labs/being-editor/`, admin Labs section): Saelyri
+  look-dev lab promoted from tmp, being dropdown for future peoples. Interior
+  rebuilt as three layers (shell / filaments / skeleton); v54.1 exposure fix
+  live with James (his call: edge fire good, middle pure white — filled-core
+  term + >1.0 emission, both fixed). r3 sheets via /api/dev-snapshot.
+
 ## 2026-07-28 (Surround feel pass + specials; Lumina track dropdown)
 
 - Surround, four James briefs across the day: feel pass 1 (extent-fit re-centred

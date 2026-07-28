@@ -37,12 +37,20 @@ consistent. `npm run check-worlds` audits every world against the contract.
    against --readout-h; tmp/orb-dimension/console-fit.html measures it.
    All 9 sims green. AWAITING JAMES'S FLIGHT (the gas in-world for the first
    time, the new spawn distance; also still open from v52: window density).
-   SAELYRI LAB STARTED (tmp/orb-dimension/saelyri-lab.html, James's go for
-   harness-first): one raymarched volumetric shader serving BOTH the beings
-   (7-state morph wheel: humanoid→cube→pyramid→mandala→jewel→torus→cloud) and
-   their homes (his brief: "more complexity, less of a shell on their spheres,
-   more of an energy ball"). First capture read as soft blobs — needs internal
-   structure and a tighter silhouette before a sheet is worth his time.
+   v54 2026-07-28 (James flew v53 — nebulae "cool if a little underwhelming...
+   kinda small"; Saelyri "a good start but still very lacking"): nebScale GOD
+   MODE dial (0.5–2.0, default 1.6; nebula-sim TEST 10 re-proves every
+   clearance at the dial ceiling). THE BEING EDITOR `src/labs/being-editor/`
+   (admin Labs section, being dropdown = roster contract, one Saelyri entry)
+   supersedes the tmp saelyri lab: interior rebuilt as three layers
+   (shell at d=0 / ridged-fbm filaments / shrunk-form skeleton) + v54.1
+   exposure fix with James watching — his read on the first cut: loves the
+   "rippling purple fire at the edges", interior was clipping pure white
+   (filled-core skeleton term + emission summing past 1.0; both fixed, edge
+   kept identical). r3 sheets in tmp/snapshots/ show filaments through every
+   state; captures went through the server's /api/dev-snapshot because the
+   pane wouldn't composite. AWAITING his eyes: nebScale in-flight, Being
+   Editor r3 look (his sliders: structure / core heat / edge).
    Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
    with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef
@@ -267,49 +275,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    while music runs, usable like a VJ rig, with the dice becoming "a whole
    control function." Design conversation BEFORE code; brief is in the world's
    CLAUDE.md NEXT UP item 4.
-6. SURROUND: player-vs-computer recreation of Atari's Surround (1977), BUILT
-   2026-07-25 as a draft on James's direct ask ("slick and modern looking, 2026
-   appropriate") — `src/worlds/surround/` (read its CLAUDE.md first). Pure sim-tested
-   core (`node tmp/surround/sim.mjs`, 7139 assertions), three AI tiers (ORACLE =
-   Voronoi + separated-mode space-fill), tuner, synthesized sound via shared control.
-   REBUILT IN 3D 2026-07-26 (James, before playing it: "one of the most boring
-   looking things I've ever seen... spruce it up massively, 3D effects, a neat HUD,
-   cool lighting"): three.js `render3d.js` — light-walls that rise behind each rider
-   and cool down the tail, under-glass reflections, glass floor + void grid with
-   rider light pools, BFS territory wash (`territory.js`) + HUD meter, containment
-   field that brightens on approach, crash power-down wave, custom bloom/ACES post
-   chain; new HUD; tuner split PLAY/LOOK with 14 live render knobs and file-backed
-   presets. game-core.js untouched. Silent look-dev harness at
-   `tmp/surround/lookdev.html` (KEEP IT) + `tmp/surround/smoke.html` (sound-stubbed
-   twin of the real page, `node tmp/surround/make-smoke.mjs`). Same night on his
-   two looks: canvas sizing fixed (a canvas is a REPLACED element — `inset: 0`
-   leaves it 300x150 in the corner), PAUSE (P/Esc, auto-pause on blur, 800ms GO
-   beat on resume) + two-step FORFEIT added, camera framing rewritten as a real
-   corner-projection solve (was filling 56% of the frame), and the grid presets
-   deepened to ~1.5:1 (34x23/44x30/58x39) because a 16:9 grid projects far wider
-   than the window once tilted. James: "surprisingly cool and fun." FEEL PASS 1
-   2026-07-27 (his four asks after real play): camera fit rewritten extent-based
-   + re-centred (the big HUD gap was one-sided fit slack; FIT_Y 0.96;
-   taller-still = his tilt slider, the plane horizon caps vertical fill), TURN
-   ASSIST (Core.reviveAfterCrash + 120ms grace slider — last-second turns now
-   save you at the cost of the lost step; sim 7160), 24 colour pairs rolled per
-   match (setPalette + --p1/--p2 color-mix HUD), RESTART (R key/button, two-step
-   arm, wipes score without conceding), and a START GATE (his call: never runs
-   until the button is clicked — attract mode with welcome card, match end and
-   forfeit land back on it, all other ways in removed). SPECIALS + EXITS
-   2026-07-28 (James: "do every single one"): core generalized to N riders, sim
-   7210 — boost/phase/trail-gaps/overtime/interference-zone/gauntlet-2v1/
-   blackout (SPECIALS tuner tab; gaps+zone default off) + four diegetic drift
-   exits (field breach, void hatch, riderless horizon wall, hidden stuck pixel;
-   drift.js wired, world still NOT in registry). SAME DAY on his flights:
-   his crash samples (assets/cycle-hits) wired by hit kind (trail vs wall);
-   breach iterated ×3 to a STATIC ghostly tear (his rule: no flicker — humans
-   lock onto motion), re-rolled to a random wall each round, and RIDING
-   THROUGH IT now drifts out for real (core rule, sim 7220; overtime can't
-   seal the corridor). Verdict so far: samples "really cool"; breach level
-   awaiting his eye at v8. Then ship
-   wiring (world.json, drift exits, registry — mind the drafts-in-registry
-   gotcha).
+6. SURROUND: **SHIPPED 2026-07-28** — `src/worlds/surround/` (its CLAUDE.md holds
+   all rules + hard-won lessons; full build history in its changelog and World
+   Ideas #59). James's ship brief executed: two field breaches (never behind the
+   HUD — `behindHud` veto + side-0 ban), the subtle rose-amber stray star, stuck
+   pixel kept; six diegetic exits total, all frame-aware (ship review found three
+   invisible at fixed positions — the walks in render3d.js are load-bearing).
+   world.json live, registry (drafts pruned per gotcha), admin panel Completed
+   list, check-worlds clean, sim 7228, tags ?v=9. AWAITING JAMES'S FLIGHT of the
+   ship build (second breach + star are new to his eye; breach v3 level too).
 7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one
    tank, one CPU, six symmetric mazes — BUILT 2026-07-25 as a draft on James's ask,
    same night as Surround (its sibling world: shared styling + architecture) —

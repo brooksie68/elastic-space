@@ -74,9 +74,11 @@
     commSat: 0.66,
     nodeGlow: 1,
     pulseTempo: 1,
-    // v53 the nebulae — glow is the permanent feel knob; density rebuilds
+    // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
+    // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
     nebDensity: 1,
+    nebScale: 1.6,
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -138,6 +140,10 @@
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
     { key: "nebDensity", label: "nebula density", min: 0.3, max: 1.2, step: 0.05, layout: true },
+    // scale's ceiling is sim-derived (nebula-sim TEST 10): at 2.0 the banks
+    // still clear the spawn, the approach line, and the satellite towns —
+    // beyond that they merge into soup and lose their one-palette identities
+    { key: "nebScale", label: "nebula size", min: 0.5, max: 2, step: 0.05, layout: true },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -2175,7 +2181,7 @@ void main() {
     { name: "ice", field: [0.040, 0.100, 0.210], core: [0.46, 0.86, 1.00] },
     { name: "rose", field: [0.130, 0.055, 0.095], core: [1.00, 0.58, 0.75] },
   ];
-  function nebulaGeometry(density) {
+  function nebulaGeometry(density, scale = 1) {
     const R = mulberry32(NEBULA_SEED);
     const rr = (a, b) => a + R() * (b - a);
     const nrm = (a) => {
@@ -2185,15 +2191,27 @@ void main() {
     const banks = [];
     // seats: the home bank fixed in the spawn sky; four gulf banks on
     // seeded bearings in the 52–82km band, ±22km height, min 50km apart.
-    // Radii stay small enough that no bank reaches the satellite ring.
-    const seats = [{ c: [30000, 9000, -18000], radius: 14000 }];
+    // v54: scale multiplies radii only — seats stay put, so the dial never
+    // re-rolls the sky. Its ceiling is guarded by nebula-sim TEST 10
+    // (spawn, approach line, satellite towns, bank identity).
+    const seats = [{ c: [30000, 9000, -18000], radius: 14000 * scale }];
+    const SCALE_CAP = 2; // the nebScale slider max — change them together
     let guard = 0;
-    while (seats.length < 5 && guard++ < 60) {
+    while (seats.length < 5 && guard++ < 200) {
       const ang = rr(0, TAU);
       const d = rr(52000, 82000);
       const c = [Math.cos(ang) * d, rr(-22000, 22000), Math.sin(ang) * d];
+      // spawn-corridor keep-out sized for the DIAL CEILING (24km × cap), so
+      // no legal scale setting can drop gas on the player's first frame or
+      // the run home — nebula-sim TESTs 9/10 hold the bars
+      let corridor = Infinity;
+      for (let k = 0; k <= 8; k++) {
+        const p = [0, 0, 54000 * (k / 8)];
+        corridor = Math.min(corridor, Math.hypot(c[0] - p[0], c[1] - p[1], c[2] - p[2]));
+      }
+      if (corridor < 24000 * SCALE_CAP + 6000) continue;
       if (seats.every((s) => Math.hypot(c[0] - s.c[0], c[1] - s.c[1], c[2] - s.c[2]) > 50000)) {
-        seats.push({ c, radius: rr(14000, 24000) });
+        seats.push({ c, radius: rr(14000, 24000) * scale });
       }
     }
     // palettes: a seeded shuffle of the deck, so the banks between them
@@ -2385,7 +2403,7 @@ void main() {
   applyCommunityLayout(cfg.colonyDist, cfg.commVert, cfg.commJitter, cfg.commSat);
   let COMM_GEO = communityGeometry(cfg.commScale);
   let STATIONS = stationGeometry();
-  let NEBULAE = nebulaGeometry(cfg.nebDensity); // v53: the five banks
+  let NEBULAE = nebulaGeometry(cfg.nebDensity, cfg.nebScale); // v53: the five banks
 
   function makeStations() {
     const out = [];
@@ -3131,7 +3149,7 @@ void main() {
     COMM_GEO = communityGeometry(cfg.commScale); // before stations: shellR feeds doorsteps
     uploadCommunities();
     STATIONS = stationGeometry();
-    NEBULAE = nebulaGeometry(cfg.nebDensity); // v53: density is a layout dial
+    NEBULAE = nebulaGeometry(cfg.nebDensity, cfg.nebScale); // v53: layout dials
     reefOrbs = makeReef();
     stationOrbs = makeStations();
     commOrbs = makeCommunityOrbs();
@@ -5156,7 +5174,7 @@ void main() {
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
     { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo"] },
-    { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity"] },
+    { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
