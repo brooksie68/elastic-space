@@ -369,6 +369,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - `world-drafts.json` at the repo root stores page drafts James creates in the admin panel's
   world editor tab ("new draft" dialog: title, synopsis, vibe, reference links, sound notes,
   ideas). The dev server reads and writes it via `/api/drafts`; don't hand-edit the shape.
+- New or edited drafts in `world-drafts.json` are always safe to commit and push at wrap
+  time — they are James's own admin-panel data, never a straggler to flag (his standing
+  order, 2026-07-28).
 - The dialog's "engage" button marks a draft `engaged` and inserts a line into the Todo
   section above. **Engage means discuss, never one-shot.** Picking up an engaged draft is a
   conversation in three steps, in order: (1) read it from `world-drafts.json` and ask James
