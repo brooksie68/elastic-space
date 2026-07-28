@@ -788,6 +788,11 @@
     let rafId = 0;
     let frameHook = null; // fx.js registers; receives (displayList, fieldTime)
     let domHidden = false;
+    // Freeze (2026-07-27): dt collapses to 0 so every clock — field, and via
+    // the frameHook dt, the scene/FX clocks too — holds still, but rendering
+    // continues, so tuning remains live on the frozen picture. Deliberately
+    // NOT a config key: transport state, never saved into presets.
+    let frozen = false;
 
     function tileTransform(tile, v, t) {
       const parts = [];
@@ -808,7 +813,7 @@
 
     function frame(now) {
       rafId = requestAnimationFrame(frame);
-      const dt = Math.min((now - lastNow) / 1000, 0.25);
+      const dt = frozen ? 0 : Math.min((now - lastNow) / 1000, 0.25);
       lastNow = now;
       fieldTime += dt * cfg.speed;
 
@@ -926,6 +931,8 @@
       getDisplayList: displayList,
       setFrameHook(fn) { frameHook = fn; },
       getTime() { return fieldTime; },
+      setFrozen(on) { frozen = !!on; },
+      isFrozen() { return frozen; },
       setConfig(partial) {
         const structural =
           (partial.rows !== undefined && partial.rows !== cfg.rows) ||

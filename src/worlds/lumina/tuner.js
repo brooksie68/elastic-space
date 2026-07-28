@@ -217,9 +217,40 @@
     const header = el("div", "tuner-tabs");
     const tabVisual = button("visual", "The field: structure, patterns, geometry, colors, FX rack", () => setTab("visual"), "tuner-tab");
     const tabAudio = button("audio", "The music: player, DJ sets, reactivity, mod matrix", () => setTab("audio"), "tuner-tab");
-    // Right side of the tab bar: text size, then detach. Sticky with the tabs,
-    // so it's reachable from either tab.
+    // Right side of the tab bar: dock side, text size, then detach. Sticky
+    // with the tabs, so it's reachable from either tab.
     const headRight = el("div", "tuner-headright");
+
+    // Dock side. Embedded: pick which edge the in-page panel docks to.
+    // Detached (the default home of the controls since 2026-07-27): clicking a
+    // side moves the controls INTO the page, docked on that edge — the way
+    // back from the window. The page host owns the state (`lumina-dock`).
+    {
+      const wrap = el("div", "tuner-dock");
+      wrap.appendChild(el("label", "tuner-label", "dock"));
+      const sides = [
+        ["left", "◧", "the left edge"],
+        ["top", "⬒", "the top"],
+        ["bottom", "⬓", "the bottom"],
+        ["right", "◨", "the right edge"],
+      ];
+      const btns = {};
+      sides.forEach(([side, glyph, where]) => {
+        const title = embedded
+          ? `Dock the panel on ${where}`
+          : `Close this window and dock the controls into the page, on ${where}`;
+        const b = button(glyph, title, () => {
+          send({ scope: "page", type: embedded ? "dock" : "attach", value: side });
+        }, "tuner-btn tuner-dockbtn");
+        btns[side] = b;
+        wrap.appendChild(b);
+      });
+      onReflect(() => {
+        const d = snap.dock || "right";
+        sides.forEach(([side]) => btns[side].classList.toggle("tuner-tab--on", d === side));
+      });
+      headRight.appendChild(wrap);
+    }
 
     // Panel type size. NOT a field parameter and deliberately NOT sent over the
     // channel — the detached controller usually sits on a different screen than
@@ -302,6 +333,15 @@
         }
       });
       del.disabled = true;
+      // "set as default" (James, 2026-07-28): overwrite the reserved
+      // "default launch" preset with the current look — the page opens on it.
+      const setDef = button("set as default", "Save the current look as “default launch” — the page opens on it from now on", () => {
+        const users = (snap && snap.fieldPresets ? snap.fieldPresets.user : []);
+        const exists = users.some((n) => n.toLowerCase() === "default launch");
+        if (!exists || confirm('Overwrite "default launch" with the current look?')) {
+          send({ scope: "field", type: "presetSetDefault" });
+        }
+      });
 
       // The roll cluster: back ← dice → keep. Undo what the dice just did, roll
       // again, or bank what's on screen without breaking stride.
@@ -319,8 +359,8 @@
         const name = (prompt("Name this look:", suggested) || "").trim();
         if (name) send({ scope: "field", type: "presetSave", name });
       }, "tuner-btn tuner-keep");
-      row.append(save, del, back, dice, keep);
-      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list. the page always opens on pork 2002 — “last session” brings back wherever the sliders were when you left. 🎲 rolls a completely random look; ↩ takes back the last roll; keep banks what you're looking at under a name"));
+      row.append(save, del, setDef, back, dice, keep);
+      row.appendChild(el("p", "tuner-desc", "built-ins are permanent; saved ones live in this browser until one earns a spot on the permanent list. the page opens on “default launch” if you've set one (set as default overwrites it with the current look), otherwise the stock full-screen grid — “last session” brings back wherever the sliders were when you left. 🎲 rolls a completely random look; ↩ takes back the last roll; keep banks what you're looking at under a name"));
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "field", type: "preset", value: sel.value });

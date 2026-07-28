@@ -11,7 +11,12 @@
 (function () {
   "use strict";
 
-  const MAX_DIM = 1600; // fill-rate cap — an FX frame never exceeds this
+  // Fill-rate cap — an FX frame never exceeds this. 1600 was fine inside the
+  // old 1024px staging frame; once the frame went full-window (2026-07-27) it
+  // upscaled ~1.6× across James's ~2560px viewport and EVERYTHING on the GL
+  // path read as blur (his 2026-07-28 report: "blur every single time I hit
+  // the dice"). 2560 keeps the canvas at least 1:1 with his CSS pixels.
+  const MAX_DIM = 2560;
 
   const VS = `
     attribute vec2 aPos;
@@ -440,7 +445,11 @@
       const sceneOn = wantScene ? renderScene(cfg.scene, cfg, w, h, dt) : false;
 
       paintSource(dl, cfg, sceneOn);
-      canvas.style.filter = dl.blur > 0 ? `blur(${(dl.blur * (rect.width / dl.w) / (cfg.fill ? 1 : 1)).toFixed(1)}px)` : "none";
+      // Whole-canvas blur; design px → screen px is rect/design (~7× at a
+      // full-window frame), so CAP the result — past ~64px the frame is a
+      // featureless blob no matter the intent (the 2026-07-28 whiteout bug).
+      const blurPx = Math.min(64, dl.blur * (rect.width / dl.w));
+      canvas.style.filter = dl.blur > 0 ? `blur(${blurPx.toFixed(1)}px)` : "none";
 
       gl.viewport(0, 0, w, h);
       gl.activeTexture(gl.TEXTURE0);

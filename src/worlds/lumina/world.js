@@ -12,10 +12,28 @@
   const PRESET_KEY = "lumina-presets";
   const DEFAULTS = LuminaField.DEFAULTS;
   const PATTERNS = LuminaField.PATTERNS;
+  // The page's HOUSE DEFAULT (James, 2026-07-27; edge-to-edge 2026-07-28):
+  // the 2002 animation scaled up — 16 flashing squares across, rows derived
+  // from the window's aspect so the tiles stay near-square, and fill mode on
+  // so the outer border reaches every screen edge (his call: "tile until it
+  // fills the space", no letterbox gaps). The renderer's DEFAULTS stay
+  // pork-2002-verbatim at 3×4 (sim contract); the original is still one
+  // preset-menu click away ("pork 2002"). Presets remain partials over
+  // DEFAULTS, not over START — a preset without rows/cols/fill still means
+  // the original framed grid.
+  function autoGrid() {
+    const w = window.innerWidth || 1024;
+    const h = window.innerHeight || 768;
+    const cols = 16;
+    const rows = Math.max(1, Math.min(24, Math.round(cols * (h / w))));
+    return { cols, rows };
+  }
+  const START = Object.assign({}, DEFAULTS, autoGrid(), { fill: true });
   const MARGIN_KEYS = ["marginTop", "marginRight", "marginBottom", "marginLeft"];
 
   let marginLink = "linked";
   let presetSelected = "";
+  let frozen = false; // animation freeze (the ❄ on the player) — transient
 
   // The page always OPENS on pure DEFAULTS — the basic 2002 animation (James,
   // 2026-07-25). Tuning still writes to localStorage on every change, but the
@@ -44,8 +62,43 @@
     }
   }
 
+  // User presets load early: "default launch" decides the opening state.
+  function loadUserPresets() {
+    try {
+      return JSON.parse(localStorage.getItem(PRESET_KEY)) || {};
+    } catch (err) {
+      return {};
+    }
+  }
+  const userPresets = loadUserPresets();
+
+  function saveUserPresets() {
+    try {
+      localStorage.setItem(PRESET_KEY, JSON.stringify(userPresets));
+    } catch (err) { /* no persistence */ }
+  }
+
+  // "default launch" (James, 2026-07-28): an ordinary user preset with a
+  // reserved name. If it exists, the page OPENS on it — his explicit
+  // carve-out from the never-apply-on-load rule ("set as default" is a
+  // deliberate designation, unlike the automatic last-session state).
+  const DEFAULT_LAUNCH = "default launch";
+  function defaultLaunchKey() {
+    return Object.keys(userPresets).find((k) => k.toLowerCase() === DEFAULT_LAUNCH) || null;
+  }
+
   // `state` is the authoritative CLEAN config — what the sliders say.
-  let state = Object.assign({}, DEFAULTS);
+  let state;
+  {
+    const dl = defaultLaunchKey();
+    if (dl) {
+      state = Object.assign({}, DEFAULTS, userPresets[dl]);
+      marginLink = userPresets[dl].marginLink || "linked";
+      presetSelected = `u:${dl}`;
+    } else {
+      state = Object.assign({}, START);
+    }
+  }
   const frame = document.getElementById("lumina-frame");
   const field = LuminaField.mount(frame, Object.assign({}, state));
   if (globalThis.LuminaFX) LuminaFX.attach(field, frame);
@@ -63,22 +116,40 @@
   // --- staging frame size ---------------------------------------------------
 
   const FRAME_KEY = "lumina-frame";
-  const FRAME_DEFAULTS = { w: 1024, h: 768 };
 
+  function fullWindow() {
+    return { w: window.innerWidth || 1024, h: window.innerHeight || 768 };
+  }
+
+  // Full screen is the DEFAULT frame (James, 2026-07-27). A manually chosen
+  // size still persists and wins — but a stored 1024×768 is the pre-change
+  // default, not a choice, so it upgrades to full screen too.
   function loadFrame() {
     try {
-      return Object.assign({}, FRAME_DEFAULTS, JSON.parse(localStorage.getItem(FRAME_KEY)) || {});
+      const stored = JSON.parse(localStorage.getItem(FRAME_KEY));
+      if (!stored || !stored.w || !stored.h || (stored.w === 1024 && stored.h === 768)) return fullWindow();
+      return { w: stored.w, h: stored.h };
     } catch (err) {
-      return Object.assign({}, FRAME_DEFAULTS);
+      return fullWindow();
     }
   }
   const frameSize = loadFrame();
+  // The player's expand toggle (2026-07-27): full-window ↔ the size it had
+  // before expanding. Transient, like the freeze — manual sizing clears it.
+  let frameExpanded = false;
+  let preExpand = null;
 
   function applyFrame() {
-    frame.style.width = `min(${frameSize.w}px, 100vw, calc(100vh * ${frameSize.w} / ${frameSize.h}))`;
+    // --lum-dock-w/-h are set on body by the dock classes (world.css) while
+    // the panel is open, so the frame shrinks out of the panel's way on
+    // whichever edge it occupies.
+    frame.style.width = `min(${frameSize.w}px, calc(100vw - var(--lum-dock-w, 0px)), calc((100vh - var(--lum-dock-h, 0px)) * ${frameSize.w} / ${frameSize.h}))`;
     frame.style.aspectRatio = `${frameSize.w} / ${frameSize.h}`;
     try {
-      localStorage.setItem(FRAME_KEY, JSON.stringify(frameSize));
+      // While the expand toggle is on, keep persisting the PRE-expand size —
+      // a reload should come back at the size you actually chose.
+      const keep = frameExpanded && preExpand ? preExpand : frameSize;
+      localStorage.setItem(FRAME_KEY, JSON.stringify(keep));
     } catch (err) { /* no persistence, still applies */ }
   }
   applyFrame();
@@ -93,21 +164,6 @@
 
   const FACTORY = globalThis.LUMINA_PRESETS || [];
 
-  function loadUserPresets() {
-    try {
-      return JSON.parse(localStorage.getItem(PRESET_KEY)) || {};
-    } catch (err) {
-      return {};
-    }
-  }
-  const userPresets = loadUserPresets();
-
-  function saveUserPresets() {
-    try {
-      localStorage.setItem(PRESET_KEY, JSON.stringify(userPresets));
-    } catch (err) { /* no persistence */ }
-  }
-
   // --- jump history (the back button next to the dice) ------------------------
   // Only WHOLE-LOOK jumps are recorded — a dice roll or a preset load. Slider
   // drags are not: during live play the stack would fill with a hundred
@@ -121,7 +177,90 @@
     if (history.length > HISTORY_MAX) history.shift();
   }
 
+  // --- the melt roll (blurry dice, 2026-07-28) -------------------------------
+  // Same roll as the dice, but numerics + colors EASE to the target over a few
+  // seconds; strings/booleans/structural keys snap up front (a grid rebuild
+  // can't lerp). One history entry — ↩ undoes the whole glide. Any other
+  // config write cancels it mid-flight and leaves the look where it stands.
+  let tweenRaf = 0;
+  function cancelTween() {
+    if (tweenRaf) {
+      cancelAnimationFrame(tweenRaf);
+      tweenRaf = 0;
+      field.setConfig({ blur: state.blur }); // strip the veil (state is honest)
+    }
+  }
+
+  function lerpHex(a, b, t) {
+    const pa = parseInt(a.slice(1), 16);
+    const pb = parseInt(b.slice(1), 16);
+    const ch = (sa, sb) => Math.round(sa + (sb - sa) * t);
+    const r = ch((pa >> 16) & 255, (pb >> 16) & 255);
+    const g = ch((pa >> 8) & 255, (pb >> 8) & 255);
+    const bl = ch(pa & 255, pb & 255);
+    return "#" + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, "0");
+  }
+
+  // The journey (v2, James: "take the one I have loaded and tween to the
+  // next one" — v1 snapped structure at t=0, which read as an instant jump):
+  // the CURRENT look stays up and melts soft over the first half (a blur
+  // veil, sin-shaped), the unmorphable keys — grid, layout, scene, pattern —
+  // swap at PEAK blur where nothing is legible, and the new look sharpens in
+  // over the second half while numerics/colors finish their glide.
+  const TWEEN_VEIL = 14; // design px of added blur at the midpoint swap
+  function rollTween(ms) {
+    cancelTween();
+    const target = Object.assign({}, DEFAULTS, globalThis.LuminaRandom.roll());
+    pushHistory();
+    presetSelected = "";
+    const from = Object.assign({}, state);
+    const SNAP = new Set(["rows", "cols", "nest", "syncBeats"]);
+    const HEX = /^#[0-9a-f]{6}$/i;
+    const snapVals = {};
+    const lerpKeys = [];
+    for (const k of Object.keys(target)) {
+      const v = target[k];
+      if (typeof v === "number" && !SNAP.has(k) && typeof from[k] === "number") lerpKeys.push(k);
+      else if (typeof v === "string" && HEX.test(v) && HEX.test(String(from[k]))) lerpKeys.push(k);
+      else snapVals[k] = v;
+    }
+    let swapped = false;
+    const t0 = performance.now();
+    const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / ms);
+      const e = ease(p);
+      const partial = {};
+      for (const k of lerpKeys) {
+        partial[k] = typeof target[k] === "number"
+          ? from[k] + (target[k] - from[k]) * e
+          : lerpHex(from[k], target[k], e);
+      }
+      if (!swapped && p >= 0.5) {
+        swapped = true;
+        Object.assign(partial, snapVals);
+      }
+      Object.assign(state, partial);
+      // The veil rides on top of the lerped blur and never lands in `state`,
+      // so a mid-flight cancel leaves the honest value behind.
+      const shown = Object.assign({}, partial);
+      const veil = Math.sin(Math.PI * p) * TWEEN_VEIL;
+      shown.blur = Math.max(0, (typeof shown.blur === "number" ? shown.blur : state.blur) + veil);
+      field.setConfig(shown);
+      notifyBase();
+      if (p < 1) {
+        tweenRaf = requestAnimationFrame(step);
+      } else {
+        tweenRaf = 0;
+        field.setConfig({ blur: state.blur }); // veil fully off
+        saveConfig();
+      }
+    };
+    tweenRaf = requestAnimationFrame(step);
+  }
+
   function applyPreset(config) {
+    cancelTween();
     pushHistory();
     marginLink = config.marginLink || "linked";
     state = Object.assign({}, DEFAULTS, config);
@@ -131,6 +270,7 @@
   }
 
   function undoJump() {
+    cancelTween();
     const prev = history.pop();
     if (!prev) return;
     marginLink = prev.marginLink;
@@ -153,6 +293,7 @@
   }
 
   function applySet(key, value) {
+    cancelTween();
     const partial = {};
     const keys = MARGIN_KEYS.includes(key) ? marginGroup(key) : [key];
     keys.forEach((k) => { partial[k] = value; });
@@ -170,13 +311,25 @@
   let music = null; // registered by music.js: { command(cmd), snapshotPart() }
   let detached = false;
 
+  // Which edge the open in-page panel docks to (James, 2026-07-27: any of the
+  // four). Chosen from the dock buttons in the panel's tab bar, remembered.
+  const DOCK_KEY = "lumina-dock";
+  const DOCK_SIDES = ["left", "right", "top", "bottom"];
+  let dockSide = "right";
+  try {
+    const d = localStorage.getItem(DOCK_KEY);
+    if (DOCK_SIDES.includes(d)) dockSide = d;
+  } catch (err) { /* fine */ }
+
   const channel = ("BroadcastChannel" in globalThis) ? new BroadcastChannel("lumina-ctl") : null;
 
   function snapshot() {
     return {
       config: Object.assign({}, state),
       marginLink,
-      frame: { w: frameSize.w, h: frameSize.h },
+      dock: dockSide,
+      frozen,
+      frame: { w: frameSize.w, h: frameSize.h, expanded: frameExpanded },
       fieldPresets: {
         factory: FACTORY.map((p) => ({ id: p.id, label: p.label })),
         user: Object.keys(userPresets).sort((a, b) => a.localeCompare(b)),
@@ -200,14 +353,15 @@
         applySet(cmd.key, cmd.value);
         break;
       case "reset":
-        applySet(cmd.key, DEFAULTS[cmd.key]);
+        applySet(cmd.key, START[cmd.key]);
         break;
       case "resetAll":
+        cancelTween();
         marginLink = "linked";
         presetSelected = "";
-        state = Object.assign({}, DEFAULTS);
+        state = Object.assign({}, START);
         field.setConfig(Object.assign({}, state));
-        Object.assign(frameSize, FRAME_DEFAULTS);
+        Object.assign(frameSize, fullWindow());
         applyFrame();
         saveConfig();
         notifyBase();
@@ -231,6 +385,15 @@
       case "randomize":
         applyPreset(globalThis.LuminaRandom.roll());
         presetSelected = "";
+        break;
+      case "randomizeTween":
+        rollTween(4000);
+        break;
+      case "freeze":
+        // Toggle (or set) the animation freeze — transport state, not config:
+        // never saved, never in presets, survives nothing.
+        frozen = cmd.value !== undefined ? !!cmd.value : !frozen;
+        field.setFrozen(frozen);
         break;
       case "undo":
         undoJump();
@@ -267,15 +430,54 @@
         saveUserPresets();
         presetSelected = "";
         break;
+      case "presetSetDefault": {
+        // Overwrite (or create) "default launch" with the current clean
+        // state — the tuner confirms before sending when one already exists.
+        const key = defaultLaunchKey() || DEFAULT_LAUNCH;
+        userPresets[key] = Object.assign({}, state, { marginLink });
+        saveUserPresets();
+        presetSelected = `u:${key}`;
+        break;
+      }
     }
   }
 
   function command(cmd) {
     if (cmd.scope === "field") fieldCommand(cmd);
     else if (cmd.scope === "frame") {
-      if (cmd.type === "set") snapFrame(cmd.w, cmd.h);
-      else if (cmd.mode === "fullw") snapFrame(window.innerWidth, window.innerWidth * (frameSize.h / frameSize.w));
-      else snapFrame(window.innerWidth, window.innerHeight);
+      if (cmd.type === "expandToggle") {
+        // Flag flips BEFORE snapFrame so applyFrame persists the right size.
+        if (frameExpanded && preExpand) {
+          frameExpanded = false;
+          snapFrame(preExpand.w, preExpand.h);
+        } else {
+          preExpand = { w: frameSize.w, h: frameSize.h };
+          frameExpanded = true;
+          snapFrame(window.innerWidth, window.innerHeight);
+        }
+      } else {
+        // Any manual size or snap means you took control — expanded no more.
+        frameExpanded = false;
+        if (cmd.type === "set") snapFrame(cmd.w, cmd.h);
+        else if (cmd.mode === "fullw") snapFrame(window.innerWidth, window.innerWidth * (frameSize.h / frameSize.w));
+        else snapFrame(window.innerWidth, window.innerHeight);
+      }
+    } else if (cmd.scope === "page") {
+      if (cmd.type === "dock" && DOCK_SIDES.includes(cmd.value)) {
+        dockSide = cmd.value;
+        try { localStorage.setItem(DOCK_KEY, dockSide); } catch (err) { /* fine */ }
+        syncDock();
+      } else if (cmd.type === "attach" && DOCK_SIDES.includes(cmd.value)) {
+        // From the detached window's dock picker: close the window and bring
+        // the panel into the page, docked on the chosen edge.
+        dockSide = cmd.value;
+        try { localStorage.setItem(DOCK_KEY, dockSide); } catch (err) { /* fine */ }
+        if (channel) channel.postMessage({ t: "close" });
+        setDetached(false);
+        tuner.hidden = false;
+        toggle.setAttribute("aria-expanded", "true");
+        syncDock();
+      }
     } else if (cmd.scope === "music" && music) {
       music.command(cmd);
     }
@@ -311,11 +513,15 @@
   const toggle = document.getElementById("lum-tuner-toggle");
   const tuner = document.getElementById("lum-tuner");
 
-  // Docked single-screen mode: the open panel docks right and the stage
-  // shifts left (world.css body.lum-docked rules) so viz + controls share
-  // one laptop screen (James, 2026-07-25).
+  // Docked single-screen mode: the open panel docks to dockSide and the stage
+  // cedes that edge (world.css body.lum-dock-* rules) so viz + controls share
+  // one laptop screen (James, 2026-07-25; four-way 2026-07-27).
   function syncDock() {
-    document.body.classList.toggle("lum-docked", !tuner.hidden);
+    const open = !tuner.hidden;
+    document.body.classList.toggle("lum-docked", open);
+    DOCK_SIDES.forEach((s) => {
+      document.body.classList.toggle(`lum-dock-${s}`, open && s === dockSide);
+    });
   }
 
   function setDetached(on) {
@@ -323,9 +529,9 @@
     if (on) {
       tuner.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
-      toggle.title = "Controls are in their own window — click to bring them back here";
+      toggle.title = "Controls are open in their own window — click to close them. The window's dock buttons bring them into this page instead";
     } else {
-      toggle.title = "Tune the field";
+      toggle.title = "Open the configuration window";
     }
     syncDock();
   }
@@ -348,20 +554,34 @@
   // Console access for poking at it live.
   globalThis.luminaField = field;
 
+  // The controls live in the detached window BY DEFAULT (James, 2026-07-27):
+  // the configuration button opens the window, and clicking it again — or
+  // while the in-page panel is up — closes whichever form is showing. The
+  // dock picker inside the window is the route back into the page.
   toggle.addEventListener("click", () => {
+    toggle.blur(); // keep Space as the global play/pause key
     if (detached) {
       if (channel) channel.postMessage({ t: "close" });
       setDetached(false);
+      emit();
+      return;
+    }
+    if (!tuner.hidden) {
+      tuner.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      syncDock();
+      return;
+    }
+    if (channel) {
+      // setDetached(true) follows on the window's "hello" handshake.
+      window.open("./tuner.html", "lumina-tuner", "width=1060,height=920");
+    } else {
+      // No BroadcastChannel (ancient browser) — fall back to the in-page panel.
       tuner.hidden = false;
       toggle.setAttribute("aria-expanded", "true");
       syncDock();
       emit();
-      return;
     }
-    const open = tuner.hidden;
-    tuner.hidden = !open;
-    toggle.setAttribute("aria-expanded", String(open));
-    syncDock();
   });
 
   // Click anywhere off the panel to close it. pointerdown, not click: a slider
@@ -370,7 +590,7 @@
   document.addEventListener("pointerdown", (e) => {
     if (tuner.hidden) return;
     if (tuner.contains(e.target) || toggle.contains(e.target)) return;
-    if (e.target.closest && e.target.closest(".lum-transport-bar")) return;
+    if (e.target.closest && e.target.closest(".lum-player")) return;
     tuner.hidden = true;
     toggle.setAttribute("aria-expanded", "false");
     syncDock();

@@ -15,14 +15,37 @@
   const GRID = globalThis.LUMINA_TRACK_GRID || {};
   const RAMP = globalThis.LuminaField.RAMP;
 
-  // James's Suno tracks — new MP3s dropped into assets/sound-tracks/ get a
-  // line here (no fetch/directory listing: file:// must keep working).
+  // James's Suno tracks. This baked list is the file:// fallback and the set
+  // with measured grids + composed sets; when the page is SERVED, any other
+  // MP3 dropped into assets/sound-tracks/ is auto-discovered on load (below)
+  // and appended — it plays with full band reactivity, but the beat clock and
+  // claude's set need the offline analyze/compose pass, so tell Claude when a
+  // keeper lands and it gets measured, composed, and baked in here.
   const DIR = "./assets/sound-tracks/";
   const TRACKS = [
     { file: "Angular Ritual.mp3", label: "Angular Ritual" },
     { file: "Jungle Moog Ritual.mp3", label: "Jungle Moog Ritual" },
     { file: "Timber at Sea.mp3", label: "Timber at Sea" },
   ];
+
+  // Served only — file:// keeps the baked list. Discovered tracks join the
+  // rotation (player dropdown, shuffle, prev/next) as soon as the list lands.
+  const served = location.protocol === "http:" || location.protocol === "https:";
+  if (served) {
+    fetch("/api/worlds/lumina/tracks")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data || !Array.isArray(data.files)) return;
+        let added = 0;
+        for (const file of data.files) {
+          if (TRACKS.some((t) => t.file === file)) continue;
+          TRACKS.push({ file, label: file.replace(/\.[a-z0-9]+$/i, "") });
+          added++;
+        }
+        if (added && globalThis.LuminaHost) globalThis.LuminaHost.emit();
+      })
+      .catch(() => { /* server down — baked list only */ });
+  }
 
   const STORE_KEY = "lumina-music";
   const PRESET_KEY = "lumina-music-presets";
@@ -34,6 +57,10 @@
     const rows = Array.isArray(s.rows) ? s.rows : [];
     s.rows = DSP.DEFAULTS.rows.map((d, i) => {
       const r = rows[i] || {};
+      // Migrate the pre-2026-07-28 stock row bass→blur 0.45 (whole-canvas
+      // whiteout on the GL path) to the current stock row. Exact match only —
+      // a hand-tuned blur row is a choice and survives.
+      if (r.src === "bass" && r.tgt === "blur" && r.amt === 0.45) return Object.assign({}, d);
       return {
         src: DSP.SOURCES.includes(r.src) || r.src === "off" ? r.src : d.src,
         tgt: DSP.TARGETS[r.tgt] ? r.tgt : d.tgt,
@@ -245,6 +272,14 @@
               if (audio.paused) start().catch(() => {});
               else stop();
               break;
+            // Discrete forms for the transport bar's separate buttons
+            // (2026-07-27); "toggle" stays for the tuner + speaker.
+            case "play":
+              if (audio.paused) start().catch(() => {});
+              break;
+            case "pause":
+              if (!audio.paused) stop();
+              break;
             case "stop":
               stop();
               audio.currentTime = 0;
@@ -435,29 +470,99 @@
     });
   }
 
-  // --- always-visible transport bar ----------------------------------------
+  // --- the little player (always visible, bottom left) ----------------------
   // James (2026-07-25, laptop-only sessions): player control must be present
-  // without opening the tuner — track, play/pause, a REAL stop, and the
-  // free-play/claude's-set switch, always on screen.
+  // without opening the tuner. 2026-07-27: rebuilt as a two-row unit — a brand
+  // row (logo + LUMINA) over the transport row, standard deck order with
+  // SEPARATE play and pause (◀◀ ▶ ❚❚ ■ ▶▶), then track, mode, configuration,
+  // and the animation-freeze button.
   {
+    // Inline SVG icons — text glyphs like ⏪ go color-emoji on Windows.
+    const icon = (paths, vb) =>
+      `<svg viewBox="${vb || "0 0 16 16"}" fill="currentColor" aria-hidden="true">${paths}</svg>`;
+    const ICONS = {
+      prev: icon('<path d="M10 2 3 8l7 6zM17 2l-7 6 7 6z"/>', "0 0 18 16"),
+      play: icon('<path d="M4 2l10 6-10 6z"/>'),
+      pause: icon('<path d="M4 2h3v12H4zM10 2h3v12h-3z"/>'),
+      stop: icon('<path d="M3.5 3.5h9v9h-9z"/>'),
+      next: icon('<path d="M1 2l7 6-7 6zM8 2l7 6-7 6z"/>', "0 0 18 16"),
+      // The freeze flake: six spokes — the picture holds still.
+      freeze: icon(
+        '<g stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none">' +
+        '<path d="M8 1.5v13M2.4 4.8l11.2 6.4M2.4 11.2l11.2-6.4"/></g>'),
+      // The die: five pips — the same roll as the panel's 🎲.
+      dice: icon(
+        '<rect x="1.7" y="1.7" width="12.6" height="12.6" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+        '<circle cx="5.2" cy="5.2" r="1.15"/><circle cx="10.8" cy="5.2" r="1.15"/>' +
+        '<circle cx="8" cy="8" r="1.15"/>' +
+        '<circle cx="5.2" cy="10.8" r="1.15"/><circle cx="10.8" cy="10.8" r="1.15"/>'),
+      // The soft die: the same five pips under a gaussian blur — the melt
+      // roll, tweening to a new random look instead of snapping.
+      diceSoft: icon(
+        '<defs><filter id="lum-dice-soft" x="-30%" y="-30%" width="160%" height="160%">' +
+        '<feGaussianBlur stdDeviation="0.75"/></filter></defs>' +
+        '<g filter="url(#lum-dice-soft)">' +
+        '<rect x="1.7" y="1.7" width="12.6" height="12.6" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+        '<circle cx="5.2" cy="5.2" r="1.15"/><circle cx="10.8" cy="5.2" r="1.15"/>' +
+        '<circle cx="8" cy="8" r="1.15"/>' +
+        '<circle cx="5.2" cy="10.8" r="1.15"/><circle cx="10.8" cy="10.8" r="1.15"/></g>'),
+      // Frame expand/shrink: arrows out to the corners, or back in.
+      expand: icon(
+        '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M9.6 2.4h4v4M13.6 2.4 9.4 6.6M6.4 13.6h-4v-4M2.4 13.6l4.2-4.2"/></g>'),
+      shrink: icon(
+        '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M13.6 6.4h-4v-4M9.6 6.4l4.2-4.2M2.4 9.6h4v4M6.4 9.6l-4.2 4.2"/></g>'),
+    };
+    // The wordmark's glint: a four-point light star, warm to cool.
+    const LOGO =
+      '<svg class="lum-player-logo" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<defs><linearGradient id="lum-logo-g" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" stop-color="#ffd479"/><stop offset="1" stop-color="#a58bff"/>' +
+      '</linearGradient></defs>' +
+      '<path fill="url(#lum-logo-g)" d="M12 1.5C13 8 16 11 22.5 12 16 13 13 16 12 22.5 11 16 8 13 1.5 12 8 11 11 8 12 1.5Z"/>' +
+      '<circle cx="12" cy="12" r="1.6" fill="#fff" opacity="0.9"/></svg>';
+
+    const playerEl = document.createElement("div");
+    playerEl.className = "lum-player";
+
+    const brandEl = document.createElement("div");
+    brandEl.className = "lum-player-brand";
+    brandEl.innerHTML = LOGO + '<span class="lum-player-name">lumina</span>';
+    playerEl.appendChild(brandEl);
+
     const barEl = document.createElement("div");
     barEl.className = "lum-transport-bar";
-    const btn = (label, title, cmd) => {
+    playerEl.appendChild(barEl);
+
+    const btn = (ic, title, onClick) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = label;
+      b.innerHTML = ICONS[ic];
       b.title = title;
-      b.addEventListener("click", () => host.command({ scope: "music", type: "player", cmd }));
+      // Blur after click so Space stays the play/pause key instead of
+      // re-firing whichever bar button was pressed last.
+      b.addEventListener("click", (e) => { onClick(e); b.blur(); });
       barEl.appendChild(b);
       return b;
     };
-    btn("◀", "Previous track", "prev");
-    const playBtn = btn("play", "Play / pause", "toggle");
-    btn("■", "Stop — rewind to the top; the field goes back to your sliders", "stop");
-    btn("▶", "Next track", "next");
-    const trackEl = document.createElement("span");
+    const player = (cmd) => () => host.command({ scope: "music", type: "player", cmd });
+
+    btn("prev", "Previous track", player("prev"));
+    const playBtn = btn("play", "Play", player("play"));
+    const pauseBtn = btn("pause", "Pause — the field keeps whatever it's doing", player("pause"));
+    btn("stop", "Stop — rewind to the top; the field goes back to your sliders", player("stop"));
+    btn("next", "Next track", player("next"));
+
+    // The track readout is a dropdown (James, 2026-07-28): switch straight to
+    // any loaded track from the player.
+    const trackEl = document.createElement("select");
     trackEl.className = "lum-transport-track";
+    trackEl.title = "Track — pick any loaded one";
+    trackEl.addEventListener("change", () =>
+      host.command({ scope: "music", type: "player", cmd: "select", index: Number(trackEl.value) }));
     barEl.appendChild(trackEl);
+    let trackSig = "";
     const mode = document.createElement("select");
     mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track";
     [["free", "free play"], ["claude", "claude's set"]].forEach(([v, t]) => {
@@ -468,13 +573,77 @@
     });
     mode.addEventListener("change", () => host.command({ scope: "music", type: "player", cmd: "dj", value: mode.value }));
     barEl.appendChild(mode);
-    document.body.appendChild(barEl);
+    // The configuration button rides after the mode switch (James,
+    // 2026-07-27) — a labelled button, not a floating icon. world.js owns its
+    // click behavior; we only seat it here.
+    const cfg = document.getElementById("lum-tuner-toggle");
+    if (cfg) barEl.appendChild(cfg);
+    // Animation freeze — pauses the PICTURE, not the music (field clock stops,
+    // rendering continues). Lives last, past configuration.
+    const freezeBtn = btn("freeze", "Freeze the animation — the picture holds still, the music plays on", () =>
+      host.command({ scope: "field", type: "freeze" }));
+    // The dice, last (James, 2026-07-27): blast to a completely new look
+    // without opening the config. Same roll as the panel's 🎲 — and the
+    // panel's ↩ back undoes it, same as any roll.
+    btn("dice", "Roll the dice — a completely new random look", () =>
+      host.command({ scope: "field", type: "randomize" }));
+    btn("diceSoft", "Melt roll — glide to a new random look over four seconds", () =>
+      host.command({ scope: "field", type: "randomizeTween" }));
+    // Expand toggle: visualization to full window, arrows flip inward, click
+    // again to shrink back to the size it had before.
+    const sizeBtn = btn("expand", "Expand the visualization to fill the window", () =>
+      host.command({ scope: "frame", type: "expandToggle" }));
+    let sizeState = false;
+    document.body.appendChild(playerEl);
+
     host.subscribe((snap) => {
       if (!snap || !snap.music) return;
-      playBtn.textContent = snap.music.playing ? "pause" : "play";
-      trackEl.textContent = snap.music.tracks[snap.music.trackIndex] || "";
+      playBtn.classList.toggle("on", !!snap.music.playing);
+      pauseBtn.classList.toggle("on", !snap.music.playing && (snap.music.time || 0) > 0);
+      // Sig-guarded rebuild: snapshots stream ~4 Hz while playing, and
+      // rebuilding an open select's options snaps it shut (house lesson).
+      const sig = snap.music.tracks.join(" ");
+      if (sig !== trackSig && document.activeElement !== trackEl) {
+        trackSig = sig;
+        trackEl.innerHTML = "";
+        snap.music.tracks.forEach((label, i) => {
+          const o = document.createElement("option");
+          o.value = String(i);
+          o.textContent = label;
+          trackEl.appendChild(o);
+        });
+      }
+      if (document.activeElement !== trackEl) trackEl.value = String(snap.music.trackIndex);
       if (document.activeElement !== mode) mode.value = snap.music.dj;
+      freezeBtn.classList.toggle("on", !!snap.frozen);
+      freezeBtn.title = snap.frozen
+        ? "Resume the animation"
+        : "Freeze the animation — the picture holds still, the music plays on";
+      const expanded = !!(snap.frame && snap.frame.expanded);
+      if (expanded !== sizeState) {
+        sizeState = expanded;
+        sizeBtn.innerHTML = ICONS[expanded ? "shrink" : "expand"];
+        sizeBtn.title = expanded
+          ? "Shrink the visualization back to the size it was"
+          : "Expand the visualization to fill the window";
+        sizeBtn.classList.toggle("on", expanded);
+      }
     });
     host.emit();
+
+    // Keyboard (James, 2026-07-27): Space = play/pause, Z = roll the dice.
+    // Skipped while a form control has focus — Space must keep activating
+    // whatever button/slider/select was last clicked or tabbed to.
+    window.addEventListener("keydown", (e) => {
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      const t = e.target;
+      if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(t.tagName))) return;
+      if (e.code === "Space") {
+        e.preventDefault(); // no page scroll
+        host.command({ scope: "music", type: "player", cmd: "toggle" });
+      } else if (e.code === "KeyZ") {
+        host.command({ scope: "field", type: "randomize" });
+      }
+    });
   }
 })();

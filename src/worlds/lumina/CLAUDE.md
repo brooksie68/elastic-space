@@ -51,9 +51,36 @@ The three things worth carrying in from the end of that session:
 - **Protected behaviors added on James's direct feedback (laptop session):**
   (1) free play is the DEFAULT — claude's set is opt-in via the transport
   bar; never make a composed set the entry experience again. (2) The
-  transport bar (music.js, bottom-left) stays always visible — prev/play/
-  STOP/next, track name, set switch. (3) Docked mode: the open in-page panel
-  docks right (body.lum-docked) so one laptop screen fits viz + controls.
+  player (music.js, bottom-left, `.lum-player` since 2026-07-27) stays
+  always visible — a two-row card: brand row (SVG logo + LUMINA wordmark)
+  over the transport row ◀◀ ▶ ❚❚ ■ ▶▶ (separate play and pause; SVG icons
+  only — text transport glyphs go color-emoji on Windows), track name, set
+  switch, the labelled `configuration` button (music.js seats
+  `#lum-tuner-toggle` there, world.js owns its behavior), then the ❄
+  animation freeze ({scope:"field", type:"freeze"} → field.setFrozen: dt→0,
+  picture holds, rendering and music continue; transient — never saved into
+  presets, resetAll leaves it alone), then the 🎲 dice (five-pip SVG die,
+  same randomize command as the panel's — ↩ back undoes bar rolls too),
+  then the blurry die (melt roll v2: {scope:"field", type:"randomizeTween"}
+  → world.js rollTween(4000) — numerics/hex colors ease in-out over 4s
+  while a sin-shaped blur veil rises; the unmorphable keys — grid, layout,
+  scene, pattern — swap at PEAK veil (p=0.5) where nothing is legible, then
+  it sharpens into the new look. The veil never lands in `state`; ONE undo
+  entry; any other config write cancels and strips the veil), then the ⛶ expand toggle ({scope:"frame", type:"expandToggle"}: frame →
+  full window ↔ prior size; arrows flip inward while expanded; manual frame
+  sizing clears it). Hotkeys on the main page: Space = play/pause,
+  Z = dice — suppressed while a form control has focus, and bar buttons
+  blur after click so Space never re-fires the last-pressed button.
+  (3) **The controls open DETACHED by default** (James, 2026-07-27, second
+  call of the day — supersedes the in-page-first flow): the configuration
+  button opens/closes the `tuner.html` window. The dock picker (both modes)
+  is the route in-page: in the window it closes the window and docks the
+  panel on the chosen edge ({scope:"page", type:"attach"}); embedded it
+  switches edges ({type:"dock"}). left/top/bottom/right, right default,
+  persisted under `lumina-dock`. `body.lum-dock-<side>` reserves the edge
+  through `--lum-dock-w/-h`, which `applyFrame()` also reads so the frame
+  shrinks out of the way, and the player card shifts clear on left/bottom
+  docks (world.css). No BroadcastChannel → button falls back in-page.
 - **Sets are v4** — fully re-cut on the bar grid; every event is B(n) or a
   measured drop/quiet, labels carry bar numbers ("b41 sheet lightning"), and
   composition-sim ENFORCES the grid (events within 90ms of a bar or on a
@@ -225,6 +252,10 @@ likely as item 3. Don't re-add it unprompted.
 - `fx.js` — WebGL post chain (13 effects). Consumes the field's display list
   via `field.setFrameHook`; active iff any fx* key > 0; DOM path untouched
   when off. FX knobs are field config keys — never invent a side channel.
+  **MAX_DIM (the FX resolution cap) must stay ≥ the CSS pixel width of a
+  full-window frame on James's screen (~2560)** — below that the whole GL
+  path upscales and reads as blur (the 2026-07-28 "blur every roll" bug;
+  1600 was fine only inside the old 1024px staging frame).
 - `tuner.js` + `tuner.css` — the whole control surface (two tabs: visual |
   audio), bus-driven, no state of its own. Runs embedded (index.html shell
   `#lum-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
@@ -234,7 +265,11 @@ likely as item 3. Don't re-add it unprompted.
   `--ui-base: 16px` and `font-size: calc(var(--ui-base) * var(--ui-scale, 1))`;
   every type size, pad, gap, control height and slider cap in `tuner.css` is
   `em` so the text-size control in the tab bar scales the whole surface
-  together. **Do not add `rem` values to this stylesheet** — the only three
+  together. EXCEPTION (found 2026-07-27): range inputs don't inherit the panel
+  font, so their `em` resolves against the browser's ~13.33px input default and
+  does NOT follow the text-size control — that's why the 20em/7.5em caps
+  measure 267px/100px, and it's kept that way on purpose (the caps were
+  measured; see the comment in tuner.css). **Do not add `rem` values to this stylesheet** — the only three
   left are viewport-anchored on purpose (bottom offset, scroll cap, width
   backstop). Keep the `--ui-scale` fallback in step with `UI_SCALE_DEFAULT` in
   tuner.js; it is what paints before the module runs. The scale persists PER
@@ -282,11 +317,25 @@ likely as item 3. Don't re-add it unprompted.
   parameter. Don't "simplify" it to CSS animations.
 - Timing constants (RAMP = 2.1s, the hold table) are decoded from the original GIFs —
   don't retune them in code; the tuner exists so James tunes by eye.
-- **Load behavior (James, 2026-07-25): the page always OPENS on pure DEFAULTS —
-  the basic pork 2002 animation.** Tuning still writes to localStorage
-  (`lumina-tuner`) on every change, but the stored state is never applied
-  silently on load — it's reachable as the "last session" entry (value `last`,
-  "auto" optgroup) in the field preset menu. Don't reintroduce apply-on-load.
+- **Load behavior (James, 2026-07-25; scaled 2026-07-27; "default launch"
+  2026-07-28): the page OPENS on the user preset named "default launch" if
+  one exists** (case-insensitive; the `set as default` button in the preset
+  row overwrites it with the current look, confirm-guarded). This is James's
+  explicit carve-out from the never-apply-on-load rule — the automatic
+  last-session state still NEVER applies on load. **Without that preset, the
+  page opens on the HOUSE DEFAULT — the 2002 animation edge-to-edge: 16 cols,
+  rows derived from the window aspect (autoGrid), fill mode ON so the outer
+  border reaches every screen edge, in a full-window frame** (`START` in
+  world.js = renderer DEFAULTS + autoGrid + fill;
+  reset/resetAll target START; a stored frame size wins over full-window
+  except a legacy 1024×768, which upgrades). The renderer's own DEFAULTS
+  stay pork-2002-verbatim at 3×4 (sim contract), and presets remain partials
+  over DEFAULTS — not START — so a preset without rows/cols means the
+  original grid ("pork 2002" in the menu is the true original). Tuning still
+  writes to localStorage (`lumina-tuner`) on every change, but the stored
+  state is never applied silently on load — it's reachable as the "last
+  session" entry (value `last`, "auto" optgroup) in the field preset menu.
+  Don't reintroduce apply-on-load.
 - Both tuner tabs have a reset: visual's resets field + frame (`resetAll`,
   field scope), audio's resets reactivity/matrix/shuffle/per-track/DJ mode
   (`resetAll`, music scope — leaves playback and volume alone).
@@ -300,7 +349,8 @@ likely as item 3. Don't re-add it unprompted.
   James's saved presets live in localStorage `lumina-presets`; when he says one
   earns a spot, bake it into `presets.js` — never delete or retune existing
   entries there without his say-so.
-- The 1024×768 frame in index.html is TEMPORARY staging, not the design.
+- The staging frame in index.html is TEMPORARY, not the design (full-window
+  by default since 2026-07-27; resizable via the panel and the ⛶ toggle).
 - Status: draft/WIP — intentionally NOT in the registry, no drift exits, no admin panel
   link yet. Those land at ship time along with the final setting.
 - Open idea (unbuilt): a "steps" option quantizing the ramp to the GIFs' 21 discrete
@@ -308,9 +358,14 @@ likely as item 3. Don't re-add it unprompted.
 
 ## Music reactivity (built 2026-07-24, phase 1)
 
-- Tracks are James's Suno MP3s in `assets/sound-tracks/` — a new track is
-  dropped there AND added to the `TRACKS` list at the top of `music.js`
-  (no directory listing: file:// must keep working).
+- Tracks are James's Suno MP3s in `assets/sound-tracks/`. Since 2026-07-28 a
+  served page AUTO-DISCOVERS any audio in that folder
+  (`GET /api/worlds/:slug/tracks` in server.mjs → appended to `TRACKS` at
+  load; the player's track readout is a dropdown). The baked `TRACKS` list in
+  music.js remains the file:// fallback AND the set with measured grids +
+  composed sets: discovered tracks get band reactivity only, so when a
+  dropped-in track earns a keep, analyze it (track-analyze.mjs), compose it,
+  and bake it into `TRACKS`.
 - Architecture mirrors the field/world split: `music-dsp.js` is the DOM-free
   math (bands, auto-gain, envelopes, beat detector, mod matrix) so
   `tmp/lumina/music-sim.mjs` runs the exact shipping code — run it after any

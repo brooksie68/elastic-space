@@ -202,7 +202,10 @@ globalThis.LuminaRandom = (function () {
       cols: 1 + Math.floor(R() * 16),
       tileSize: rnd(6, 220),
       pattern: pick(F.PATTERNS).id, spread: rnd(0, 2), twist: R(),
-      blur: odds(0.35) ? rnd(0, 70) : 0,
+      // Blur is an ACCENT (James, 2026-07-28 — rolls kept landing in "super
+      // blur"): rarer, and never past a soft haze. The old rnd(0, 70) with a
+      // scene on was a full-screen blob.
+      blur: odds(0.2) ? rnd(0, 22) : 0,
       marginTop: rnd(0, 90), marginRight: rnd(0, 90),
       marginBottom: rnd(0, 90), marginLeft: rnd(0, 90),
       gapX: rnd(0, 130), gapY: rnd(0, 130), inset: rnd(0, 60),
@@ -226,14 +229,20 @@ globalThis.LuminaRandom = (function () {
       syncBeats: pick([0, 0, 1, 2, 2, 4, 4, 8, 16]),
     };
 
-    // Every FX off, then switch a random two-to-four of them on.
+    // Every FX off, then switch a random two-to-four of them on — but the
+    // feedback trio smears the whole frame, so it rolls SEPARATELY (James,
+    // 2026-07-28: with trails/zoom/rot in the general rack, ~58% of rolls
+    // landed on a smear, and up to 0.9 deep the picture dissolved in a
+    // second). At most one of the three, one roll in four, never deep.
     F.FX_KEYS.forEach((k) => { cfg[k] = 0; });
-    const rack = F.FX_KEYS.slice();
+    const SMEAR = ["fxTrails", "fxZoom", "fxZoomRot"];
+    const rack = F.FX_KEYS.filter((k) => SMEAR.indexOf(k) < 0);
     for (let i = rack.length - 1; i > 0; i--) {
       const j = Math.floor(R() * (i + 1));
       [rack[i], rack[j]] = [rack[j], rack[i]];
     }
     rack.slice(0, 2 + Math.floor(R() * 3)).forEach((k) => { cfg[k] = rnd(0.15, 0.9); });
+    if (odds(0.25)) cfg[pick(SMEAR)] = rnd(0.1, 0.45);
 
     // Anti-blackout. A roll must always show SOMETHING.
     if (cfg.scene === "none") {

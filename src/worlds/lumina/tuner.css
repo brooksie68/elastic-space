@@ -19,11 +19,14 @@
    bottom offset, the scroll cap, the width backstop — stays in rem.
    --ui-base 16px x --ui-scale 1 reproduces the pre-2026-07-27 panel exactly;
    keep that fallback in step with UI_SCALE_DEFAULT in tuner.js. */
+/* Charcoal, not black (James, 2026-07-27): white type on a near-black panel
+   was fatiguing to read. Keep the surface a dark gray so the whites sit
+   closer to it, and don't push any text back up to pure #fff. */
 .lum-tuner {
   --ui-base: 16px;
   backdrop-filter: blur(10px);
-  background: rgba(8, 8, 8, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(42, 42, 48, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 1em;
   bottom: 1rem;
   display: grid;
@@ -46,7 +49,7 @@
 
 /* Detached window: the same panel fills the page instead of floating. */
 body.lum-tuner-page {
-  background: #0b0b0e;
+  background: #2a2a30;
   margin: 0;
 }
 
@@ -96,7 +99,20 @@ body.lum-tuner-page .lum-tuner {
 .tuner-tab--on {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.7);
-  color: #fff;
+  color: #f2f2f6;
+}
+
+/* Dock-side picker in the tab bar (embedded panel only). */
+.tuner-dock {
+  align-items: center;
+  display: flex;
+  gap: 0.3em;
+}
+
+.tuner-dockbtn {
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0.35em 0.55em;
 }
 
 /* Right side of the sticky tab bar: text size, then detach. */
@@ -178,7 +194,7 @@ body.lum-tuner-page .lum-tuner {
   background: transparent;
   cursor: pointer;
   flex: 1;
-  height: 1.4em;
+  height: 2.1em;
   margin: 0;
   max-width: 20em;
   min-width: 4em;
@@ -189,33 +205,41 @@ body.lum-tuner-page .lum-tuner {
   max-width: 7.5em;
 }
 
+/* Thumbs are 2em — doubled 2026-07-27 (James: too small to grab quickly with
+   the mouse). NOTE: range inputs do NOT inherit the panel font, so em here
+   resolves against the browser's ~13.33px input default, not --ui-base ×
+   --ui-scale — 2em ≈ 26.7px, exactly 2× the old 1em thumb, and the 20em/7.5em
+   track caps ≈ the measured 267px/100px. Keep it that way: the caps were
+   measured, and scaling tracks with the text control would move them.
+   The input height above must contain the thumb; the webkit margin-top
+   recenters it on the track: (track − thumb) / 2 = (0.3em − 2em) / 2. */
 .lum-tuner input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
-  height: 4px;
+  height: 0.3em;
 }
 
 .lum-tuner input[type="range"]::-webkit-slider-thumb {
   appearance: none;
-  background: #f5f5f5;
+  background: #f0f0f4;
   border-radius: 50%;
-  height: 1em;
-  margin-top: -6px;
-  width: 1em;
+  height: 2em;
+  margin-top: -0.85em;
+  width: 2em;
 }
 
 .lum-tuner input[type="range"]::-moz-range-track {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.45));
   border-radius: 999px;
-  height: 4px;
+  height: 0.3em;
 }
 
 .lum-tuner input[type="range"]::-moz-range-thumb {
-  background: #f5f5f5;
+  background: #f0f0f4;
   border: none;
   border-radius: 50%;
-  height: 1em;
-  width: 1em;
+  height: 2em;
+  width: 2em;
 }
 
 .lum-tuner output {
@@ -350,18 +374,21 @@ body.lum-tuner-page .lum-tuner {
 .tuner-reset:hover,
 .tuner-reset:focus-visible {
   border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
+  color: #f2f2f6;
 }
 
 /* --- sections, pattern picker, selects, toggles ----------------------------- */
 
+/* Section names are signage, not fine print (James, 2026-07-27: "I can barely
+   read them") — sized and weighted to be found at a glance. */
 .tuner-section {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 0.66em;
-  letter-spacing: 0.28em;
-  margin: 0.227em 0 -0.53em;
-  padding-top: 1.06em;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.95em;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  margin: 0.16em 0 -0.37em;
+  padding-top: 0.74em;
   text-transform: uppercase;
 }
 
@@ -389,7 +416,7 @@ body.lum-tuner-page .lum-tuner {
 }
 
 .lum-tuner select option {
-  background: #141418;
+  background: #2a2a30;
 }
 
 .tuner-mini--select {
@@ -412,7 +439,7 @@ body.lum-tuner-page .lum-tuner {
 .tuner-step:hover,
 .tuner-step:focus-visible {
   border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
+  color: #f2f2f6;
 }
 
 .tuner-pattern .tuner-desc {
@@ -456,7 +483,7 @@ body.lum-tuner-page .lum-tuner {
 .tuner-btn:hover:not(:disabled),
 .tuner-btn:focus-visible {
   border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
+  color: #f2f2f6;
 }
 
 .tuner-btn:disabled {

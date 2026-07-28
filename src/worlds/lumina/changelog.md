@@ -3,8 +3,204 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — Claude (Fable 5) — track dropdown + folder discovery
+
+- James's ask: the track name in the player should be a dropdown ("switch to
+  any track that's loaded"), and the folder should just pick up any MP3s he
+  drops in. Both in:
+  - The transport-bar track readout is now a `<select>` (sends the existing
+    `player/select` command). Rebuilds are sig-guarded and skip while focused —
+    the ~4 Hz playing snapshots would otherwise snap an open dropdown shut.
+  - New server route `GET /api/worlds/:slug/tracks` lists
+    `assets/sound-tracks/` audio (mp3/m4a/ogg/wav; mirrors the art route).
+    When served, music.js fetches it at load and appends anything not in the
+    baked TRACKS list (label = filename); file:// keeps the baked list.
+    Verified on a throwaway :4175 instance — **the running dev server needs
+    one restart (launcher double-click) before discovery goes live**.
+  - Discovered tracks play with full band reactivity; the beat clock and
+    claude's-set need the offline analyze/compose pass, so keepers still get
+    told to Claude and baked in (comment in music.js says so).
+- Sims green (music 43, composition 124). Dropdown not yet click-tested —
+  music world, stays out of the agent pane; James's next session is the test.
+- The panel-redesign conversation (START HERE above) remains queued — this
+  was a self-contained player ask.
+
 **The world was called Relaaax until 2026-07-26.** Entries below that date use the old
 name — that is deliberate, not drift. See the rename entry immediately following.
+
+## 2026-07-27 panel pass 2: reach + contrast — Claude (Fable 5)
+
+James's five notes at session open, all built. This is still tactical polish — the big
+regroup ("VJ instrument", NEXT UP item 4) remains a design conversation for its own
+session.
+
+- **Configuration button in the transport bar.** The panel no longer opens from the
+  tiny circle-of-sliders icon bottom right — that button is gone. A labelled
+  `configuration` button now rides at the end of the transport bar (bottom left, after
+  the free-play/claude's-set switch). music.js seats the same `#lum-tuner-toggle`
+  element into the bar, so world.js's open/close/detach logic is untouched; if the bar
+  ever failed to mount, the button falls back to fixed bottom-left. Label is
+  "configuration" for now — James floated "visual audio config" as an alternative.
+- **DETACHED IS THE DEFAULT (James, same session, mind changed after seeing pass 2).**
+  The configuration button now opens the controls in the detached window
+  (`tuner.html`), not the in-page panel; clicking it again closes whichever form is
+  up. The way back in-page is the dock picker, which now renders in BOTH modes: in
+  the window it means "close this window and dock the controls into the page on this
+  edge" (`{scope:"page", type:"attach", value:side}` → host closes the remote, shows
+  the embedded panel docked there). Embedded it still just switches edges. No
+  BroadcastChannel → the button falls back to the in-page panel. Verified by probe:
+  embedded mount sends `dock`, detached mount sends `attach`, window has no detach
+  button.
+- **Four-way dock.** New `dock ◧ ⬒ ⬓ ◨` picker in the panel's tab bar (embedded only —
+  the detached window keeps just detach). The open panel docks left, top, bottom, or
+  right (right is the default = the old behavior); choice persists (`lumina-dock`).
+  Plumbing: `{scope:"page", type:"dock"}` command → world.js sets
+  `body.lum-dock-<side>`, world.css reserves the edge via `--lum-dock-w/-h`, and
+  `applyFrame()` now reads those vars in its width formula so the frame genuinely
+  shrinks out of the panel's way (the old right-dock CSS width rule was dead — inline
+  style always won). The transport bar shifts clear when the panel docks left or
+  bottom (it must stay visible, always). All four sides verified numerically at
+  1920×1080: paddings land on the right edges, frame drops to 853px under top/bottom.
+- **Charcoal, not black.** Panel surface `rgba(8,8,8,.78)` → `rgba(42,42,48,.92)`,
+  detached page and select dropdowns to match, transport bar too; every pure `#fff`
+  text color softened to `#f2f2f6`. James: the white-on-black contrast "gives eye
+  fatigue really quickly".
+- **Slider thumbs doubled** — 1em → 2em (≈13px → ≈27px; input height 2.1em to contain
+  them). Discovered in the process: range inputs do NOT inherit the panel font, so
+  their em resolves against the browser's ~13.33px input default and never scaled with
+  the text-size control — which is also why pass 1 measured the 20em cap at 267px.
+  Documented in tuner.css; left that way on purpose so the measured caps hold.
+- **Section headers readable** — `.tuner-section` 0.66em/40% white → 0.95em/500
+  weight/78% white, tracking eased 0.28em → 0.18em. James: "I can barely read them."
+
+- **The little player (third brief of the day).** The transport bar became a two-row
+  card: a brand row — new inline-SVG Lumina logo (four-point light glint, warm-amber →
+  violet gradient, `#lum-logo-g`) + the LUMINA wordmark — above the transport row.
+  Controls re-ordered to deck standard with SEPARATE play and pause: ◀◀ ▶ ❚❚ ■ ▶▶,
+  then track name, mode select, configuration, and last the ❄ animation freeze. All
+  five transport glyphs are inline SVG, not text — ⏪-class glyphs render as color
+  emoji on Windows. New `play`/`pause` player commands in music.js (`toggle` remains
+  for the tuner and the speaker); play lights up while playing, pause while paused
+  mid-track. Wrapper class is `.lum-player` — world.js click-away exempts it, and the
+  dock-clear rules moved onto it.
+- **Animation freeze (❄).** `{scope:"field", type:"freeze"}` toggles
+  `field.setFrozen()`: the field's frame dt collapses to 0, so the field clock — and
+  through the frameHook dt, the scene/FX clocks — hold still while rendering
+  continues (tuning stays live on a frozen picture; music, if playing, plays on).
+  Deliberately transient: not a config key, never saved, never in presets, resetAll
+  leaves it alone. `frozen` rides in the snapshot; the ❄ lights while frozen. James
+  asked for "an icon, I don't know what to put" — went with a six-spoke snowflake,
+  easy to swap.
+- **Dice on the player.** A five-pip SVG die, last in the row past the ❄ (James:
+  "blast to a new look anytime" without opening the config). Sends the same
+  `{scope:"field", type:"randomize"}` as the panel's 🎲, so the panel's ↩ back undoes
+  bar rolls too.
+- **Expand toggle on the player.** Corner-arrows button next to the dice:
+  `{scope:"frame", type:"expandToggle"}` snaps the frame to the full window and
+  remembers the prior size; click again (arrows flipped inward, button lit) to snap
+  back. Transient like the freeze — never persisted as the expanded size would be, so
+  a reload comes back at the pre-expand size, and any manual frame set/snap clears
+  the toggle (you took control). `snap.frame.expanded` drives the icon swap.
+- **Hotkeys.** Space = play/pause, Z = roll the dice (main page). Skipped while a
+  form control has focus; bar buttons and the configuration button blur after click
+  so Space doesn't re-fire the last-pressed button.
+- **House default scaled up (James's brief: "six more on either side… sixteen
+  across, nine or ten bars stacked", full screen).** The page now opens at 16 cols ×
+  10 rows in a full-window frame: `START` in world.js overlays rows/cols on the
+  renderer's DEFAULTS, and reset/resetAll target START. The renderer's DEFAULTS are
+  untouched (pork-2002-verbatim 3×4, sim contract holds — 123/42 green) and presets
+  stay partials over DEFAULTS, so "pork 2002" in the menu is still the exact
+  original. Frame: full-window is the default; a stored manual size persists and
+  wins, except a stored legacy 1024×768, which upgrades to full-window. The .lum-frame
+  CSS no longer hard-codes 1024/4:3 (applyFrame owns size inline; a CSS height would
+  override the inline aspect-ratio — don't add one).
+
+## 2026-07-28 — the melt roll (Claude, James's ask; v2 same day on his report)
+
+- **Blurry-die button next to the dice** (same five-pip SVG under an feGaussianBlur):
+  `{scope:"field", type:"randomizeTween"}` → `rollTween(4000)` in world.js — the same
+  LuminaRandom roll, but eased to over 4s. One pushHistory entry, so ↩ undoes the
+  whole glide; state + notifyBase update per frame so music modulation rides the
+  moving base; any other config write (slider, preset, dice, reset, undo) cancels
+  mid-flight and leaves the look where it stands. saveConfig only at completion.
+- **v2 — one continuous dissolve.** v1 snapped the unmorphable keys (grid, layout,
+  scene, pattern) at t=0, which James correctly read as "immediately jumps, then
+  tweens to get ANOTHER thing." Now the CURRENT look stays up and melts: a
+  sin-shaped blur veil (TWEEN_VEIL 14 design px, on top of the lerped blur) rises
+  over the first half, the structural swap happens at PEAK veil (p=0.5) where
+  nothing is legible, and the second half sharpens into the new look while
+  numerics/colors finish. The veil is display-only — it never lands in `state`, so
+  cancel/complete both leave the honest blur value (cancelTween strips it).
+
+## 2026-07-28 — the ACTUAL blur bug, third pass (Claude, James's 3rd report)
+
+- **It was the stock reactivity matrix all along: `bass → blur, amt 0.45`.** With
+  span 80 that writes up to ~36 design-px of blur every frame there's bass; on the
+  GL path (any FX/scene on — every roll) that blur is a CSS filter on the WHOLE
+  canvas, scaled by design→screen (~7× full-window) = total whiteout the moment
+  music plays. James's "crisp for two tenths of a second" = the envelope attack
+  before the first bass write; "no way out" = rewritten per frame. MAX_DIM (pass 2)
+  and roll ranges (pass 1) were real but minor. Fixes: stock row is now
+  bass→sizePulse 0.4; mergeSettings migrates a stored bass/blur/0.45 row (exact
+  match only — hand-tuned blur rows survive) so James's persisted settings heal on
+  load; the GL canvas blur is capped at 64 CSS px so no writer can ever whiteout
+  again; music-sim asserts the stock matrix drives no whole-frame smear target
+  (43/43). His "default launch" preset still pre-dates fill — reset → set as
+  default re-captures (told him, pass 2 note stands).
+
+## 2026-07-28 — the REAL blur bug + edge-to-edge start (Claude, James's 2nd report)
+
+- **"Blur every single time I hit the dice" — root cause was resolution, not roll
+  values.** fx.js MAX_DIM capped every FX frame at 1600px; inside the old 1024px
+  staging frame that never downscaled below CSS size, but the full-window frame
+  (2026-07-27) stretched a ≤1600px canvas across James's ~2560px viewport — a 1.6×
+  upscale, so the ENTIRE GL path (any roll: 2–4 FX on) rendered soft. The crisp
+  split-second he saw was the DOM path's last frame before the canvas covered it;
+  his no-FX presets stayed on the DOM path, which is why they looked fine. MAX_DIM
+  is now 2560 (≥1:1 with his CSS pixels; ~2.6× the old fill cost — watch for frame
+  drops on heavy scenes at full screen). The 07-28 smear-discipline changes stay:
+  they were real, just not the cause.
+- **START is edge-to-edge.** His call: "tile until it fills the space… the outer
+  border fills the entire space", not a fixed grid. START now sets `fill: true` and
+  derives rows from the window aspect (`autoGrid()`: cols 16, rows =
+  round(16·h/w) clamped 1..24 — 9 at 16:9) so tiles stay near-square and nothing
+  letterboxes. NOTE: a "default launch" preset saved before this keeps its stored
+  fill/grid — reset (new edge-to-edge baseline) → tune → set as default re-captures.
+
+## 2026-07-28 — dice smear fix (Claude, James's bug report)
+
+- **"Blur after blur" diagnosed and fixed.** Two compounding causes in
+  `LuminaRandom.roll`: (1) `blur` rolled up to 70 design-px and the ≤12 clamp only
+  ran with scene "none" — scene rolls kept the full blob; (2) the feedback trio
+  (fxTrails/fxZoom/fxZoomRot) sat in the general FX rack, so ~58% of rolls carried
+  at least one whole-frame smear at up to 0.9 — crisp for a split second, then the
+  picture dissolved. Now: blur is an accent (20% of rolls, ≤22), and the feedback
+  trio rolls separately — at most ONE of the three, 25% of rolls, 0.1–0.45 deep.
+  composition-sim asserts the discipline over 3000 rolls (blur ≤ 24, ≤1 feedback
+  effect ≤ 0.5, smear rolls under 35%); 124/124 + 42/42 green.
+
+## 2026-07-28 — "default launch" (Claude, James's brief + plan approval)
+
+- **"default launch"** is a reserved user preset (case-insensitive name match): if it
+  exists, the page OPENS on it — James's explicit carve-out from the 2026-07-25
+  never-apply-on-load rule ("set as default" is a deliberate designation; the
+  automatic last-session state still never applies on load). No preset → house START
+  (16×10 full-window). It's otherwise an ordinary preset: pick it from the menu to
+  snap back, delete it to return to factory launch; panel reset still targets the
+  factory baseline. Frame size and music settings are not part of it (both have
+  their own persistence).
+- **`set as default` button** in the preset row after delete: confirms
+  ("Overwrite…?") only when a default launch already exists, then sends
+  `{scope:"field", type:"presetSetDefault"}` — world.js writes the current clean
+  state (+ marginLink) into the preset, preserving James's original key casing.
+  User-preset loading moved above state init in world.js so the opening state can
+  read it. Probe-verified: button present, no-existing-preset click sends the
+  command dialog-free. Sims 123/42 green.
+
+Sims green (composition 123, music 42). Not yet seen by James's eye — the embedded
+panel, the bar button, real dock switching, and the player card were verified by
+computed-style/DOM probes on tuner.html (sound world stays out of the agent pane),
+not by a human look.
 
 ## 2026-07-27 panel pass 1 — Claude (Opus 5)
 

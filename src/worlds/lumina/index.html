@@ -8,25 +8,19 @@
   <link rel="stylesheet" href="./tuner.css" />
 </head>
 <body>
-  <!-- Temporary staging: the field lives in a centered 1024×768 frame until
+  <!-- Temporary staging: the field lives in a centered frame (full-window by
+       default since 2026-07-27) until
        its final setting is decided. The renderer fills whatever box it's given. -->
   <main class="lum-stage">
     <div id="lumina-frame" class="lum-frame"></div>
   </main>
 
+  <!-- The panel opens from a labelled button; music.js seats it at the end of
+       the transport bar. The fixed fallback position in world.css only shows
+       if the bar never mounts. -->
   <button id="lum-tuner-toggle" class="lum-tuner-toggle" type="button"
           aria-expanded="false" aria-controls="lum-tuner"
-          title="Tune the field" aria-label="Tune the field">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-         stroke-linecap="round" aria-hidden="true">
-      <line x1="3" y1="6" x2="21" y2="6"></line>
-      <circle cx="9" cy="6" r="2.4" fill="currentColor" stroke="none"></circle>
-      <line x1="3" y1="12" x2="21" y2="12"></line>
-      <circle cx="15" cy="12" r="2.4" fill="currentColor" stroke="none"></circle>
-      <line x1="3" y1="18" x2="21" y2="18"></line>
-      <circle cx="6" cy="18" r="2.4" fill="currentColor" stroke="none"></circle>
-    </svg>
-  </button>
+          title="Open the configuration window">configuration</button>
 
   <!-- The control surface is built into this shell by tuner.js (two tabs:
        visual | audio). The detach button pops the same surface out into

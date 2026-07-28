@@ -106,7 +106,11 @@
     accentDecay: 0.13, // grid-locked accent impulse fall, seconds
     rows: [
       { src: "beat",  tgt: "tileSize", amt: 0.55 },
-      { src: "bass",  tgt: "blur",     amt: 0.45 },
+      // Was bass→blur 0.45 until 2026-07-28: on the GL path blur hits the
+      // WHOLE canvas scaled by design→screen (~7× at a full-window frame), so
+      // any bass = total whiteout ("full blur the moment I press play").
+      // mergeSettings migrates the old stored stock row to this one.
+      { src: "bass",  tgt: "sizePulse", amt: 0.4 },
       { src: "beat",  tgt: "twist",    amt: 0.4 },
       { src: "mid",   tgt: "spread",   amt: 0.35 },
       { src: "high",  tgt: "desync",   amt: 0.3 },

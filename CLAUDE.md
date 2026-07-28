@@ -170,8 +170,28 @@ consistent. `npm run check-worlds` audits every world against the contract.
    with shorter clearer explanations (largely a COPY EDIT — every control has a long
    sentence under it), it must invite live play while the music runs so he can use it
    like a VJ rig, and the dice becomes "a whole control function" rather than one button.
-   Two loose ends from pass 1: ↩ back and `keep` have never been click-tested, and the
-   grid column minimum (15em) wants a sweep. The rest of the Lumina item is #5.5 below.
+   PASS 2 BUILT 2026-07-27 (James's five tactical notes, same day): `configuration`
+   button in the transport bar (floating circle icon gone), DETACHED WINDOW IS THE
+   DEFAULT (his second call of the day — the button opens tuner.html; the dock picker
+   is the route back in-page, four edges, persisted), charcoal panel instead of black,
+   2× slider thumbs, readable section headers — see the world changelog. AWAITING HIS
+   EYES; the regroup/VJ design conversation is still the open work. Two loose ends
+   from pass 1: ↩ back and `keep` have never been click-tested, and the grid column
+   minimum (15em) wants a sweep.
+   PASS 3 2026-07-27/28 (same session, James driving by eye all night): THE LITTLE
+   PLAYER — two-row card (SVG logo + LUMINA wordmark over the transport), deck-order
+   ◀◀ ▶ ❚❚ ■ ▶▶ with separate play/pause, then ❄ animation freeze, 🎲 dice, blurry-die
+   MELT ROLL (4s dissolve: blur veil up, structural swap at peak, sharpen into the
+   new look), ⛶ expand toggle, Space/Z hotkeys. House default = 2002 animation
+   edge-to-edge (fill + aspect-derived rows, full-window frame). "DEFAULT LAUNCH"
+   preset system (set-as-default button; page opens on it). THE BLUR SAGA — three
+   passes to the real bug: stock matrix row bass→blur 0.45 whited out the whole GL
+   canvas whenever music played (fixed: bass→sizePulse + stored-settings migration +
+   64px canvas-blur cap + sim guard); also MAX_DIM 1600→2560 (full-window upscale
+   softness) and roll smear discipline. All in the world changelog. AWAITING HIS
+   EYES on: melt roll v2, edge-to-edge default, the healed blur. He plans "another
+   round of VJing" from his tuned default launch. The rest of the Lumina item is
+   #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
@@ -267,9 +287,25 @@ consistent. `npm run check-worlds` audits every world against the contract.
    beat on resume) + two-step FORFEIT added, camera framing rewritten as a real
    corner-projection solve (was filling 56% of the frame), and the grid presets
    deepened to ~1.5:1 (34x23/44x30/58x39) because a 16:9 grid projects far wider
-   than the window once tilted. James: "surprisingly cool and fun." Next: feel
-   pass (speed, tilt, default AI), then ship wiring (world.json, drift exits,
-   registry — mind the drafts-in-registry gotcha).
+   than the window once tilted. James: "surprisingly cool and fun." FEEL PASS 1
+   2026-07-27 (his four asks after real play): camera fit rewritten extent-based
+   + re-centred (the big HUD gap was one-sided fit slack; FIT_Y 0.96;
+   taller-still = his tilt slider, the plane horizon caps vertical fill), TURN
+   ASSIST (Core.reviveAfterCrash + 120ms grace slider — last-second turns now
+   save you at the cost of the lost step; sim 7160), 24 colour pairs rolled per
+   match (setPalette + --p1/--p2 color-mix HUD), RESTART (R key/button, two-step
+   arm, wipes score without conceding), and a START GATE (his call: never runs
+   until the button is clicked — attract mode with welcome card, match end and
+   forfeit land back on it, all other ways in removed). SPECIALS + EXITS
+   2026-07-28 (James: "do every single one"): core generalized to N riders, sim
+   7210 — boost/phase/trail-gaps/overtime/interference-zone/gauntlet-2v1/
+   blackout (SPECIALS tuner tab; gaps+zone default off) + four diegetic drift
+   exits (field breach, void hatch, riderless horizon wall, hidden stuck pixel;
+   drift.js wired, world still NOT in registry). Specials visuals + exit props
+   NOT yet eyeballed by anyone — pane wouldn't composite. AWAITING HIS NEXT
+   FLIGHT. Then ship
+   wiring (world.json, drift exits, registry — mind the drafts-in-registry
+   gotcha).
 7. COMBAT: player-vs-computer recreation of Atari's Combat (1977) level one — one
    tank, one CPU, six symmetric mazes — BUILT 2026-07-25 as a draft on James's ask,
    same night as Surround (its sibling world: shared styling + architecture) —
