@@ -84,6 +84,12 @@
     shellOp: 1,
     glow: 1,
     haze: 1,
+    // v55 distance vibe (James: "clear as day at 86km"): aerial = how fast
+    // distance desaturates + cools structure color; melt = how eagerly
+    // subpixel detail (crust windows, data dashes) dissolves into aggregate
+    // glow. Both 0 = the old always-crisp look.
+    aerial: 1,
+    melt: 1,
     fadeSpeed: 1,
     grouping: "scatter",
     // v48 drag-stick steering: press plants a virtual joystick, offset
@@ -102,6 +108,14 @@
     stickYawMax: 28,  // v48.5: down from 42 — James: "I should turn slower"
     stickPitchMax: 20, // stays ~70% of yaw
     stickCurve: 1.7,
+    // v54.2: the grab circle is its own dial — 3× the old reach/2 (James:
+    // only-inside-the-reticle made the nose hard to grab). The ghost ring
+    // below marks the edge while he tunes it.
+    stickGrab: 390,
+    // v54.3: a captured spawn pose (TUNE → capture spawn) — null = the
+    // stock station-approach spawn. { pos, f, u } in world meters; part
+    // of the preset snapshot so "set as start" carries it.
+    spawnPose: null,
   };
   // pool: slider adds/removes orbs incrementally — NEVER re-rolls the field
   const SLIDERS = [
@@ -112,9 +126,12 @@
     { key: "shellOp", label: "glass", min: 0.2, max: 1.5, step: 0.05 },
     { key: "glow", label: "glow", min: 0, max: 2, step: 0.05 },
     { key: "haze", label: "haze", min: 0, max: 3, step: 0.05 },
+    { key: "aerial", label: "aerial haze", min: 0, max: 3, step: 0.05 },
+    { key: "melt", label: "detail melt", min: 0, max: 2, step: 0.05 },
     { key: "fadeSpeed", label: "color fade", min: 0.2, max: 4, step: 0.1 },
     { key: "stickDead", label: "dead zone", min: 0, max: 60, step: 1 },
     { key: "stickReach", label: "reach", min: 80, max: 600, step: 5 },
+    { key: "stickGrab", label: "grab radius", min: 60, max: 800, step: 5 },
     { key: "stickYawMax", label: "yaw °/s", min: 10, max: 120, step: 1 },
     { key: "stickPitchMax", label: "pitch °/s", min: 6, max: 120, step: 1 },
     { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
@@ -165,6 +182,19 @@
       cfg.grouping = "scatter";
     }
     if (!["drag", "center"].includes(cfg.stickMode)) cfg.stickMode = "center";
+    // v54.3: the captured spawn — pos must be finite and inside the flyable
+    // space, basis vectors finite; anything off falls back to stock.
+    const sp = cfg.spawnPose;
+    const fin3 = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+    if (sp && fin3(sp.pos) && fin3(sp.f) && fin3(sp.u)) {
+      sp.pos = [
+        clamp(sp.pos[0], -SPACE_X, SPACE_X),
+        clamp(sp.pos[1], -SPACE_Y, SPACE_Y),
+        clamp(sp.pos[2], -SPACE_Z, SPACE_Z),
+      ];
+    } else {
+      cfg.spawnPose = null;
+    }
     // stick migrations — one per feel decision James made by voice. Each
     // runs once against older saved cfgs; after any save the version is
     // persisted and his tuner choices rule from then on.
@@ -196,6 +226,7 @@
   // start preset applies on the next reload, never mid-flight.
   const PRESET_API = "/api/worlds/orb-dimension/presets";
   let onPresetStoreReplaced = null; // the tuner hooks its picker refresh here
+  let lateApplyStart = null; // the tuner hooks the late start-preset apply here (v54.3)
   function pushPresetFile() {
     fetch(PRESET_API, {
       method: "PUT",
@@ -209,8 +240,13 @@
     } catch {}
     pushPresetFile();
   }
+  // v54.3: the API route only exists on the dev server — on a public
+  // static host, fall back to the committed file itself, so a visitor
+  // gets James's start preset, not factory defaults. file:// rejects
+  // both fetches → localStorage rules, as before.
   fetch(PRESET_API)
     .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .catch(() => fetch("assets/presets.json").then((r) => (r.ok ? r.json() : Promise.reject())))
     .then((file) => {
       if (!file || typeof file.presets !== "object" || file.presets === null) return;
       const fileEmpty = Object.keys(file.presets).length === 0;
@@ -223,14 +259,31 @@
         localStorage.setItem(PRESET_KEY, JSON.stringify(presetStore));
       } catch {}
       if (onPresetStoreReplaced) onPresetStoreReplaced();
+      // v54.3: a fresh browser booted on defaults before the file arrived —
+      // if the file's start preset differs from what boot applied, apply it
+      // now (the tuner assigns the hook; it relayouts + repaints).
+      const start = presetStore.default && presetStore.presets[presetStore.default];
+      if (start && JSON.stringify(start) !== bootStartSnap && lateApplyStart) {
+        lateApplyStart(start);
+      }
     })
     .catch(() => {}); // file:// — localStorage rules
   function cfgSnapshot() {
     const snap = { grouping: cfg.grouping, stickMode: cfg.stickMode };
     for (const s of SLIDERS) snap[s.key] = cfg[s.key];
+    if (cfg.spawnPose) {
+      snap.spawnPose = {
+        pos: cfg.spawnPose.pos.slice(),
+        f: cfg.spawnPose.f.slice(),
+        u: cfg.spawnPose.u.slice(),
+      };
+    }
     return snap;
   }
+  let bootStartSnap = null; // what boot applied — the late fetch compares against it
   if (presetStore.default && presetStore.presets[presetStore.default]) {
+    bootStartSnap = JSON.stringify(presetStore.presets[presetStore.default]);
+    cfg.spawnPose = null; // presets without a pose mean stock spawn
     Object.assign(cfg, presetStore.presets[presetStore.default]);
     sanitizeCfg();
   }
@@ -370,6 +423,24 @@
     ret: hud.querySelector(".vs-reticle"),
   };
   let hudNext = 0; // next text-readout refresh (ms); bar animates every frame
+
+  // v54.2b (James: the ghost ring sat low): the reticle's true screen center.
+  // The glass sits ABOVE the console, so the cross is not the window center —
+  // everything stick-centered (grab test, anchor, ghost ring) keys off this.
+  // Cached; a resize marks it stale.
+  const retC = { x: window.innerWidth / 2, y: window.innerHeight / 2, stale: true };
+  function reticleCenter() {
+    if (retC.stale) {
+      retC.stale = false;
+      const r = vsEls.ret.getBoundingClientRect();
+      if (r && r.width) {
+        retC.x = r.left + r.width / 2;
+        retC.y = r.top + r.height / 2;
+      }
+    }
+    return retC;
+  }
+  window.addEventListener("resize", () => { retC.stale = true; });
 
   const anchors = Array.from(document.querySelectorAll(".orb.portal"));
 
@@ -3193,6 +3264,37 @@ void main() {
     pos: [0, 0, 54000],
     ...spawnBasis(),
   };
+  // v54.3: a captured spawn (TUNE → capture spawn) overrides the stock pose.
+  // Pure pose-setter — orthonormalized here so a hand-edited or stale preset
+  // can never ship a skewed basis. Mid-flight callers cancel the autopilot
+  // themselves (autoNav is declared much later; at boot it doesn't exist yet).
+  function applySpawnPose(pose) {
+    if (!pose) return;
+    const n3 = (v) => {
+      const m = Math.hypot(v[0], v[1], v[2]);
+      return m > 1e-6 ? [v[0] / m, v[1] / m, v[2] / m] : null;
+    };
+    const f = n3(pose.f);
+    if (!f) return;
+    const d = f[0] * pose.u[0] + f[1] * pose.u[1] + f[2] * pose.u[2];
+    let u = n3([pose.u[0] - f[0] * d, pose.u[1] - f[1] * d, pose.u[2] - f[2] * d]);
+    if (!u) {
+      // stored up was parallel to forward — rebuild from world-up (or +x
+      // when the nose points straight up/down)
+      const w = Math.abs(f[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+      const dw = f[0] * w[0] + f[1] * w[1] + f[2] * w[2];
+      u = n3([w[0] - f[0] * dw, w[1] - f[1] * dw, w[2] - f[2] * dw]);
+    }
+    cam.pos = pose.pos.slice();
+    cam.f = f;
+    cam.u = u;
+    cam.r = [
+      f[1] * u[2] - f[2] * u[1],
+      f[2] * u[0] - f[0] * u[2],
+      f[0] * u[1] - f[1] * u[0],
+    ];
+  }
+  applySpawnPose(cfg.spawnPose);
   let pendingYaw = 0;   // eased look input awaiting application
   let pendingPitch = 0;
   // v47: the nose has rotational inertia now. Mouse deltas land in the
@@ -3210,6 +3312,9 @@ void main() {
   const stick = { ax: 0, ay: 0 };
   let stickLive = false;
   let rollVel = 0;      // rad/s
+  // v55.3: what the reticle shows — the integral of COMMANDED roll (A/D),
+  // eased home by R / goHome. Never derived from world attitude.
+  let rollShown = 0;    // rad
   let leveling = false;
   let thrust = 0;       // current thruster speed, m/s
   let impulse = 0;      // impulse-drive speed, m/s — coasts on release (v44)
@@ -3275,12 +3380,16 @@ void main() {
     cam.f = b.f;
     cam.r = b.r;
     cam.u = b.u;
+    // v54.3: home IS the captured spawn when one is set — H returns the
+    // ship to the start condition, whatever James made it
+    applySpawnPose(cfg.spawnPose);
     pendingYaw = 0;
     pendingPitch = 0;
     lookRateYaw = 0;
     lookRatePitch = 0;
     stickLive = false;
     rollVel = 0;
+    rollShown = 0; // spawn pose = zero commanded roll (v55.3)
     leveling = false;
     thrust = 0;
     impulse = 0;
@@ -3301,6 +3410,7 @@ void main() {
     if (autoNav && e.code !== "KeyN") autoNav = null;
     if (e.code === "KeyN") setOpen("nav");
     if (e.code === "KeyH") goHome();
+    if (e.code === "KeyZ") zoomTarget = 1; // magnifier off, eased back
     if (e.code === "KeyX") {
       // all-stop (v37): cancel the drives, bleed to a halt fast
       if (overdrive) odThump(false);
@@ -3323,6 +3433,13 @@ void main() {
   window.addEventListener("keyup", (e) => keys.delete(e.code));
   window.addEventListener("blur", () => keys.clear());
 
+  // v55.1 the magnifier: wheel zooms toward/away, exponential so each
+  // notch feels equal at any level. The frame loop eases zoom to this.
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoomTarget = clamp(zoomTarget * Math.exp(-e.deltaY * 0.0015), 1, ZOOM_MAX);
+  }, { passive: false });
+
   const drag = { on: false, downX: 0, downY: 0, downT: 0 };
   const mouse = { x: -1, y: -1 };
 
@@ -3344,12 +3461,14 @@ void main() {
     // "hands on" signal that arms the stick and releases the autopilot /
     // leveling. Arming is per-hold (cleared on release, v48.2).
     if (!drag.on) return;
-    const ax = cfg.stickMode === "center" ? window.innerWidth / 2 : stick.ax;
-    const ay = cfg.stickMode === "center" ? window.innerHeight / 2 : stick.ay;
-    // center mode: only a hold that BEGAN near the reticle (half of reach)
-    // is a steering grab — a drag that started out at a portal stays a drag
+    const rc = reticleCenter();
+    const ax = cfg.stickMode === "center" ? rc.x : stick.ax;
+    const ay = cfg.stickMode === "center" ? rc.y : stick.ay;
+    // center mode: only a hold that BEGAN near the reticle is a steering
+    // grab — a drag that started out at a portal stays a drag. The grab
+    // radius is its own dial since v54.2 (was reach/2 — too small to hit).
     const grabbed = cfg.stickMode !== "center" ||
-      Math.hypot(drag.downX - ax, drag.downY - ay) <= cfg.stickReach * 0.5;
+      Math.hypot(drag.downX - ax, drag.downY - ay) <= cfg.stickGrab;
     if (grabbed && Math.hypot(e.clientX - ax, e.clientY - ay) > cfg.stickDead) {
       stickLive = true;
       leveling = false;
@@ -3389,9 +3508,25 @@ void main() {
   const view = new Float32Array(16);
   const vp = new Float32Array(16);
   const FOV = (60 * Math.PI) / 180;
+  // v55.1 the magnifier (James's ask): wheel zooms the view 1×–8× by
+  // narrowing the effective FOV; Z snaps back. zoom eases toward zoomTarget
+  // in the frame loop (never snaps — motion restraint), and every
+  // projection-adjacent tan(FOV/2) divides by it via tanF() so clicks, the
+  // home marker and the nav ring stay glued to the world while zoomed.
+  let zoom = 1, zoomTarget = 1;
+  const ZOOM_MAX = 8;
+  const tanF = () => Math.tan(FOV / 2) / zoom;
+  // v55.4 LENS SHIFT (James: "press D... the reticle should stay pointed
+  // exactly onto whatever I started from"): the reticle X sits at the GLASS
+  // center, which is above the window center (the console eats the bottom) —
+  // but the optical axis used to exit through the window center, so rolls
+  // orbited the point under the X instead of holding it. The asymmetric
+  // frustum moves the principal point up to the X: rolls, turns and the
+  // magnifier all pivot exactly on the reticle cross. NDC shift, +up.
+  const projShiftY = () => 1 - (2 * reticleCenter().y) / window.innerHeight;
 
-  function setProj(aspect) {
-    const f = 1 / Math.tan(FOV / 2);
+  function setProj(aspect, shiftY) {
+    const f = 1 / tanF();
     // v49: the far plane covers the whole big dimension (corner-to-corner
     // ~1,436km). Depth precision is spent up close where the meshes live;
     // orbs don't write depth, so far conflicts can't artifact.
@@ -3399,6 +3534,7 @@ void main() {
     proj.fill(0);
     proj[0] = f / aspect;
     proj[5] = f;
+    proj[9] = -(shiftY || 0); // principal point at NDC +shiftY (the X)
     proj[10] = (far + near) / (near - far);
     proj[11] = -1;
     proj[14] = (2 * far * near) / (near - far);
@@ -3529,6 +3665,7 @@ in vec2 vUV;
 in float vDist;
 in vec3 vP;
 out vec4 oC;
+${COMM_AER}
 
 // cotangent-frame normal mapping (Schueler): the tangent basis is derived
 // per-pixel from screen-space derivatives of position and UV, so no tangent
@@ -3562,6 +3699,8 @@ void main() {
   // aerial haze, same knob as the orbs — softened v52 (1.6 → 1.05): the
   // station must still read from the 27km spawn; fog owns the gulf, not home
   col *= exp(-vDist * uFog * 1.05);
+  // v55: distance also quiets the bone — desaturate + cool before dark
+  col = aerial(col, vDist);
   oC = vec4(col, 1.0);
 }`;
       const mk = (type, src) => {
@@ -3578,7 +3717,7 @@ void main() {
       gl.linkProgram(p);
       if (!gl.getProgramParameter(p, gl.LINK_STATUS))
         throw new Error(gl.getProgramInfoLog(p));
-      for (const n of ["uVP", "uCamPos", "uTex", "uNorm", "uHasNorm", "uFog", "uTime"])
+      for (const n of ["uVP", "uCamPos", "uTex", "uNorm", "uHasNorm", "uFog", "uAer", "uTime"])
         skull.U[n] = gl.getUniformLocation(p, n);
 
       const vao = gl.createVertexArray();
@@ -3718,6 +3857,20 @@ vec3 hueCol(float h) {
   float x = h / 360.0;
   return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
 }`;
+  // v55 aerial perspective (James: everything "looks perfectly clear all the
+  // time... killing the distance vibe"): distance quiets a surface before fog
+  // dims it — luminance-preserving desaturation drifting toward a cool haze
+  // cast. Multiplicative only, so it is safe on premultiplied-alpha outputs
+  // and can never lift black space. uAer = cfg.aerial / AER_M (set with uFog).
+  // Structure-only by design: orbs already desaturate, beacons/hearts stay
+  // fog-proof long-range reads, the nebulae ARE the weather.
+  const COMM_AER = `
+uniform float uAer;
+vec3 aerial(vec3 col, float dist) {
+  float a = 1.0 - exp(-dist * uAer);
+  float lum = dot(col, vec3(0.299, 0.587, 0.114));
+  return mix(col, lum * vec3(0.74, 0.82, 1.05), a);
+}`;
   // the Cadence's metal: gunmetal slabs and webbing, readability over realism
   // (partial self-light like the robots); struts run a data pulse end to end
   const COMM_FS_SOLID = `#version 300 es
@@ -3728,6 +3881,7 @@ uniform float uTime;
 uniform float uTempo;
 uniform float uFade;
 uniform float uFams[5];
+uniform float uMelt;
 in vec3 vP;
 in vec3 vN;
 in vec2 vUV;
@@ -3735,13 +3889,15 @@ in vec4 vAux;
 in vec3 vC;
 out vec4 oC;
 ${COMM_HUE}
+${COMM_AER}
 void main() {
   vec3 N = normalize(vN);
   float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
   float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
   vec3 col = vec3(0.30, 0.33, 0.38) *
     (vec3(0.22, 0.23, 0.26) + key * vec3(0.85, 0.9, 1.0) * 0.85 + rim * vec3(0.35, 0.42, 0.55) * 0.3);
-  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2);
+  float dd = distance(vP, uCamPos);
+  float fogF = exp(-dd * uFog * 1.2);
   if (vAux.x > 0.5 && vAux.x < 1.5) {
     vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
     float p = fract(vUV.x - uTime * uTempo * 0.22 + vAux.y);
@@ -3760,10 +3916,17 @@ void main() {
     float pane = step(0.2, f.x) * step(f.x, 0.8) * step(0.24, f.y) * step(f.y, 0.76);
     vec3 wcol = mix(vec3(0.45, 0.85, 1.0), vec3(1.0, 0.72, 0.38), step(0.5, vAux.z));
     float flicker = 0.85 + 0.15 * sin(uTime * (0.4 + h * 1.3) + h * 40.0);
-    oC = vec4((col * fogF + wcol * lit * pane * 1.9 * flicker * pow(fogF, 0.55)) * uFade, 1.0);
+    // v55 detail melt: when a window cell projects below a few pixels the
+    // grid can't honestly resolve — crossfade the crisp panes into their
+    // steady average glow (lit 0.34 × pane duty 0.31 × mean flicker ≈ 0.09).
+    // uMelt scales the pixel threshold; 0 = always crisp (the old look).
+    float cellPx = 1.0 / max(max(fwidth(g.x), fwidth(g.y)), 1e-6);
+    float crisp = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, cellPx);
+    float win = mix(0.09, lit * pane * flicker, crisp);
+    oC = vec4(aerial(col * fogF + wcol * win * 1.9 * pow(fogF, 0.55), dd) * uFade, 1.0);
     return;
   }
-  oC = vec4(col * fogF * uFade, 1.0);
+  oC = vec4(aerial(col * fogF, dd) * uFade, 1.0);
 }`;
   // the glass: iridescent planes (thin-film shimmer riding the fresnel),
   // data planes raining bright dashes, and the node crystals — each little
@@ -3777,6 +3940,7 @@ uniform float uTempo;
 uniform float uFade;
 uniform float uGlow;
 uniform float uFams[5];
+uniform float uMelt;
 in vec3 vP;
 in vec3 vN;
 in vec2 vUV;
@@ -3784,6 +3948,7 @@ in vec4 vAux;
 in vec3 vC;
 out vec4 oC;
 ${COMM_HUE}
+${COMM_AER}
 void main() {
   vec3 N = normalize(vN);
   vec3 V = normalize(uCamPos - vP);
@@ -3801,6 +3966,11 @@ void main() {
     float ph = fract(sin(colX * 78.233 + vAux.y) * 12543.853);
     float yy = fract(vUV.y * 3.0 + uTime * uTempo * sp * 0.22 + ph);
     float dash = step(0.82, fract(yy * 9.0));
+    // v55 detail melt: dashes below a few pixels dissolve into their duty-
+    // cycle average (0.18) — a faint steady stream instead of strobing dots
+    float dashPx = 1.0 / max(fwidth(vUV.y * 27.0), 1e-6);
+    float crisp = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, dashPx);
+    dash = mix(0.18, dash, crisp);
     col = vec3(0.4, 0.55, 0.75) * (0.04 + fres * 0.35) + famc * dash * (0.5 + fres);
     a = 0.06 + fres * 0.4 + dash * 0.25;
   } else {
@@ -3809,8 +3979,9 @@ void main() {
     col = famc * (0.05 + fres * 0.5) + mix(famc, vec3(1.0), 0.35) * sun;
     a = clamp(0.10 + fres * 0.5 + sun * 0.35, 0.0, 0.9);
   }
-  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
-  oC = vec4(col * a * fogF, a * fogF);
+  float gd = distance(vP, uCamPos);
+  float fogF = exp(-gd * uFog * 1.2) * uFade;
+  oC = vec4(aerial(col, gd) * a * fogF, a * fogF);
 }`;
   // the bridges: a hot center line between two suns, pulse packets running
   // both directions, each carrying its home node's color across the gap
@@ -3829,6 +4000,7 @@ in vec4 vAux;
 in vec3 vC;
 out vec4 oC;
 ${COMM_HUE}
+${COMM_AER}
 void main() {
   float acc = exp(-14.0 * abs(vUV.y - 0.5));
   vec3 grad = mix(hueCol(uFams[int(vAux.x + 0.5)]), hueCol(uFams[int(vAux.y + 0.5)]), vUV.x);
@@ -3844,10 +4016,11 @@ void main() {
        + exp(-70.0 * abs(fract(pf + 0.667) - 0.5));
     pk = pk * 1.3 + 0.10;
   }
-  float fogF = exp(-distance(vP, uCamPos) * uFog * 1.2) * uFade;
-  oC = vec4(grad * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
+  float bd = distance(vP, uCamPos);
+  float fogF = exp(-bd * uFog * 1.2) * uFade;
+  oC = vec4(aerial(grad, bd) * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -4223,6 +4396,7 @@ in vec3 vN;
 in vec2 vUV;
 in vec3 vP;
 out vec4 oC;
+${COMM_AER}
 void main() {
   vec3 base = texture(uTex, vUV).rgb;
   vec3 N = normalize(vN);
@@ -4233,7 +4407,9 @@ void main() {
     + key * vec3(0.9, 0.95, 1.05) * 0.9
     + rim * vec3(0.3, 0.4, 0.55) * 0.25
     + under * vec3(0.4, 0.9, 1.0) * 0.5);
-  col *= exp(-distance(vP, uCamPos) * uFog * 1.4);
+  float rd = distance(vP, uCamPos);
+  col *= exp(-rd * uFog * 1.4);
+  col = aerial(col, rd); // v55: distance quiets the metal too
   oC = vec4(col, 1.0);
 }`;
   const loadImg = (src) => new Promise((res, rej) => {
@@ -4244,7 +4420,7 @@ void main() {
   });
   // build one robot program: its own texture parked on a dedicated unit
   function makeRobotProg(img, unit) {
-    const pr = makeProg(ROBOT_VS, ROBOT_FS, ["uVP", "uModel", "uCamPos", "uFog", "uTex"]);
+    const pr = makeProg(ROBOT_VS, ROBOT_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uTex"]);
     const tex = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -4317,10 +4493,12 @@ void main() {
 
   function rayDir(px, py) {
     const b = camBasis();
-    const t = Math.tan(FOV / 2);
+    const t = tanF();
     const aspect = canvas.clientWidth / canvas.clientHeight;
     const nx = (2 * px / canvas.clientWidth - 1) * t * aspect;
-    const ny = (1 - 2 * py / canvas.clientHeight) * t;
+    // v55.4: subtract the lens shift — pixel rays must agree with the
+    // shifted frustum or clicks land above their targets
+    const ny = (1 - 2 * py / canvas.clientHeight - projShiftY()) * t;
     const d = [
       b.f[0] + b.r[0] * nx + b.u[0] * ny,
       b.f[1] + b.r[1] * nx + b.u[1] * ny,
@@ -4499,9 +4677,29 @@ void main() {
     // center reticle — grab near it, hold, and pull; the reticle itself
     // marks neutral, so no extra chrome on the glass. Both modes steer
     // only while the button is held.
+    // v55.1 the magnifier: ease zoom toward the wheel's target — never a
+    // snap (motion restraint). setProj reads zoom every frame, so nothing
+    // else needs rebuilding. The ×-readout rides under the reticle.
+    zoom += (zoomTarget - zoom) * Math.min(1, dt * 6);
+    if (Math.abs(zoom - zoomTarget) < 0.002) zoom = zoomTarget;
+    if (magUi.z !== zoom) {
+      magUi.z = zoom;
+      const magOn = zoom > 1.001;
+      if (magOn !== magUi.on) {
+        magUi.on = magOn;
+        magRead.classList.toggle("on", magOn);
+      }
+      if (magOn) {
+        const mrc = reticleCenter();
+        magRead.textContent = "MAG ×" + zoom.toFixed(1);
+        magRead.style.left = mrc.x + "px";
+        magRead.style.top = mrc.y + 150 + "px";
+      }
+    }
     const DEG = Math.PI / 180;
-    const stickAx = cfg.stickMode === "center" ? window.innerWidth / 2 : stick.ax;
-    const stickAy = cfg.stickMode === "center" ? window.innerHeight / 2 : stick.ay;
+    const stickRc = reticleCenter();
+    const stickAx = cfg.stickMode === "center" ? stickRc.x : stick.ax;
+    const stickAy = cfg.stickMode === "center" ? stickRc.y : stick.ay;
     const stickHeld = stickLive && !autoNav && drag.on;
     let stickMag = 0; // 0..1 deflection after deadzone, 1 = saturated
     if (stickHeld) {
@@ -4511,8 +4709,9 @@ void main() {
         const span = Math.max(1, cfg.stickReach - cfg.stickDead);
         stickMag = Math.min(1, (mag - cfg.stickDead) / span);
         // radial curve, direction preserved — gentle near center for aim,
-        // full authority at the rim
-        const gain = Math.pow(stickMag, cfg.stickCurve) / mag;
+        // full authority at the rim. v55.1: /zoom — magnified turn rates
+        // shrink to match, so the view never whips while zoomed.
+        const gain = Math.pow(stickMag, cfg.stickCurve) / (mag * zoom);
         pendingYaw -= dx * gain * cfg.stickYawMax * DEG * dt;
         pendingPitch -= dy * gain * cfg.stickPitchMax * DEG * dt;
       }
@@ -4542,8 +4741,34 @@ void main() {
         stickRim.classList.toggle("sat", stickMag >= 1);
       }
     }
+    // v54.2: the ghost grab ring — a faint dotted edge marking how far from
+    // the reticle a press still grabs the nose (cfg.stickGrab). On for now
+    // so James can see and tune the radius; flip GRAB_RING to retire it.
+    const GRAB_RING = true;
+    const grabOn = GRAB_RING && cfg.stickMode === "center";
+    if (grabOn) {
+      if (grabUi.d !== cfg.stickGrab * 2) {
+        grabUi.d = cfg.stickGrab * 2;
+        const pad = 3, side = grabUi.d + pad * 2;
+        stickGrabRing.setAttribute("width", side);
+        stickGrabRing.setAttribute("height", side);
+        stickGrabRing.setAttribute("viewBox",
+          `${-(cfg.stickGrab + pad)} ${-(cfg.stickGrab + pad)} ${side} ${side}`);
+        stickGrabCirc.setAttribute("r", cfg.stickGrab);
+      }
+      if (grabUi.x !== stickAx || grabUi.y !== stickAy) {
+        grabUi.x = stickAx;
+        grabUi.y = stickAy;
+        stickGrabRing.style.left = stickAx + "px";
+        stickGrabRing.style.top = stickAy + "px";
+      }
+    }
+    if (grabOn !== grabUi.on) {
+      grabUi.on = grabOn;
+      stickGrabRing.classList.toggle("on", grabOn);
+    }
 
-    const ROT = 0.7; // rad/s (arrow keys)
+    const ROT = 0.7 / zoom; // rad/s (arrow keys; v55.1: slower while magnified)
     if (keys.has("ArrowLeft")) { pendingYaw += ROT * dt; leveling = false; }
     if (keys.has("ArrowRight")) { pendingYaw -= ROT * dt; leveling = false; }
     if (keys.has("ArrowUp")) { pendingPitch += ROT * dt; leveling = false; }
@@ -4561,6 +4786,13 @@ void main() {
     const pitchStep = lookRatePitch * dt;
     pendingYaw -= yawStep;
     pendingPitch -= pitchStep;
+    // v55.3 THE POD CONTRACT (James: "this is space... I just point where I
+    // wanna go"): every rotation is in the SHIP'S OWN FRAME, always — yaw
+    // about ship-up, pitch about ship-right, roll about the boresight. No
+    // world-frame axes, no attitude-dependent blending, ever (the v55.2
+    // horizon-lock experiment whipped the view near 90° bank — reverted the
+    // same night). The reticle tilt is COMMANDED ROLL, not world attitude —
+    // that is what makes the tilt he sets robotically hold while dragging.
     if (yawStep !== 0) rotateCam(cam.u, yawStep);
     if (pitchStep !== 0) rotateCam(cam.r, pitchStep);
 
@@ -4574,6 +4806,7 @@ void main() {
     rollVel += (rollIn * ROLL_RATE - rollVel) * (1 - Math.exp(-dt * 6));
     if (Math.abs(rollVel) > 1e-4) {
       rotateCam(cam.f, rollVel * dt);
+      rollShown += rollVel * dt; // the reticle follows the COMMAND (v55.3)
       if (rollIn !== 0) leveling = false;
     }
 
@@ -4616,6 +4849,7 @@ void main() {
       const k = 1 - Math.exp(-dt * 2.5);
       cam.f = vnorm(vlerp(cam.f, fl, k));
       cam.u = vnorm(vlerp(cam.u, [0, 1, 0], k));
+      rollShown *= 1 - k; // the reticle glides home with the ship (v55.3)
       if (vdot(cam.f, fl) > 0.99995 && cam.u[1] > 0.99995) leveling = false;
     }
     orthonormalize();
@@ -4708,11 +4942,14 @@ void main() {
     vsEls.h2o.style.width = (fuel.h2o * 100).toFixed(1) + "%";
     vsEls.deu.style.width = (fuel.deu * 100).toFixed(1) + "%";
     const bankDeg = Math.atan2(cam.r[1], cam.u[1]) * 180 / Math.PI;
-    // the WHOLE reticle is the attitude instrument (James, v25): it counter-
-    // rotates through the full 360° as you roll, so a barrel roll spins it
-    // all the way around while the canopy frame stays put
+    // the WHOLE reticle spins through the full 360° as you roll (James, v25)
+    // — but since v55.3 it shows COMMANDED roll (rollShown), never world
+    // attitude: A/D move it, R glides it home, and dragging the mouse can
+    // NEVER move it (world-bank drive made body-frame turns read as phantom
+    // rolls — James's "it flipped over on its own"). BNK below stays honest
+    // world telemetry.
     vsEls.ret.style.transform =
-      "translate(-50%, -50%) rotate(" + (-bankDeg).toFixed(1) + "deg)";
+      "translate(-50%, -50%) rotate(" + ((rollShown * 180) / Math.PI).toFixed(1) + "deg)";
     if (now >= hudNext) {
       hudNext = now + 120;
       const spd = Math.abs(speed);
@@ -4800,7 +5037,7 @@ void main() {
       canvas.height = bh;
       gl.viewport(0, 0, bw, bh);
     }
-    setProj(W / H);
+    setProj(W / H, projShiftY());
     const bb = camBasis();
     setView(bb);
     mulVP();
@@ -4841,6 +5078,7 @@ void main() {
         gl.uniformMatrix4fv(skull.U.uVP, false, vp);
         gl.uniform3fv(skull.U.uCamPos, cam.pos);
         gl.uniform1f(skull.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(skull.U.uAer, cfg.aerial / 120000);
         gl.uniform1f(skull.U.uTime, t);
         gl.drawElements(gl.TRIANGLES, skull.count, gl.UNSIGNED_INT, 0);
         gl.bindVertexArray(null);
@@ -4851,6 +5089,7 @@ void main() {
         gl.uniformMatrix4fv(robotMesh.prog.U.uVP, false, vp);
         gl.uniform3fv(robotMesh.prog.U.uCamPos, [0, 0, 0]); // v49: ship space
         gl.uniform1f(robotMesh.prog.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(robotMesh.prog.U.uAer, cfg.aerial / 120000);
         for (const rb of robotFleet.list) {
           const rdx = rb.pos[0] - cam.pos[0], rdy = rb.pos[1] - cam.pos[1], rdz = rb.pos[2] - cam.pos[2];
           if (rdx * rdx + rdy * rdy + rdz * rdz > 196000000) continue; // > 14 km: subpixel
@@ -4866,6 +5105,7 @@ void main() {
         gl.uniformMatrix4fv(cadenceMesh.prog.U.uVP, false, vp);
         gl.uniform3fv(cadenceMesh.prog.U.uCamPos, [0, 0, 0]); // ship space
         gl.uniform1f(cadenceMesh.prog.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(cadenceMesh.prog.U.uAer, cfg.aerial / 120000);
         for (let kind = 0; kind < 6; kind++) {
           const mesh = cadenceMesh.meshes[kind];
           let bound = false;
@@ -4889,6 +5129,8 @@ void main() {
         gl.useProgram(commGL.solid.p);
         gl.uniformMatrix4fv(commGL.solid.U.uVP, false, vp);
         gl.uniform1f(commGL.solid.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(commGL.solid.U.uAer, cfg.aerial / 120000);
+        gl.uniform1f(commGL.solid.U.uMelt, cfg.melt);
         gl.uniform1f(commGL.solid.U.uTime, t);
         gl.uniform1f(commGL.solid.U.uTempo, cfg.pulseTempo);
         for (const cd of commDraw) {
@@ -4915,6 +5157,8 @@ void main() {
           gl.useProgram(pr.p);
           gl.uniformMatrix4fv(pr.U.uVP, false, vp);
           gl.uniform1f(pr.U.uFog, cfg.haze / 18000);
+          gl.uniform1f(pr.U.uAer, cfg.aerial / 120000);
+          gl.uniform1f(pr.U.uMelt, cfg.melt);
           gl.uniform1f(pr.U.uTime, t);
           gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
           if (pass === "glass") gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
@@ -4959,11 +5203,11 @@ void main() {
       const x = rx * bb.r[0] + ry * bb.r[1] + rz * bb.r[2];
       const y = rx * bb.u[0] + ry * bb.u[1] + rz * bb.u[2];
       const z = rx * bb.f[0] + ry * bb.f[1] + rz * bb.f[2];
-      const tf = Math.tan(FOV / 2);
+      const tf = tanF();
       let show = false, nx = 0, ny = 0;
       if (z > 0) {
         nx = x / z / (tf * (W / H));
-        ny = y / z / tf;
+        ny = y / z / tf + projShiftY(); // v55.4: match the shifted frustum
         if (Math.abs(nx) > 0.92 || Math.abs(ny) > 0.92) {
           const m = 0.92 / Math.max(Math.abs(nx), Math.abs(ny));
           nx *= m;
@@ -4995,11 +5239,11 @@ void main() {
       const y = rx * bb.u[0] + ry * bb.u[1] + rz * bb.u[2];
       const z = rx * bb.f[0] + ry * bb.f[1] + rz * bb.f[2];
       const dist = Math.hypot(x, y, z) || 1;
-      const tf = Math.tan(FOV / 2);
+      const tf = tanF();
       let nx = 0, ny = 0, size = 40, on = false;
       if (z > 0) {
         nx = x / z / (tf * (W / H));
-        ny = y / z / tf;
+        ny = y / z / tf + projShiftY(); // v55.4: match the shifted frustum
         if (Math.abs(nx) <= 0.92 && Math.abs(ny) <= 0.92) {
           on = true;
           size = clamp(140000 / dist, 34, 120);
@@ -5163,8 +5407,8 @@ void main() {
     // 1,000×1,000×250km and it is STILL not a slider. Geography is law.)
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
-    { label: "the air", keys: ["haze", "fadeSpeed"] },
-    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickYawMax", "stickPitchMax", "stickCurve"] },
+    { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed"] },
+    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "stickCurve"] },
     // v49 GOD MODE (James's tally: top speed + tank length are the key
     // ones) — physics/feel knobs, forever tunable. The ring dials freeze
     // with the geography when the layout finalizes.
@@ -5273,15 +5517,25 @@ void main() {
   const applyP = presetButton("apply", () => {
     const p = presetStore.presets[presetSel.value];
     if (!p) return;
+    applyPresetSnapshot(p);
+  });
+  // v54.3: one path for "apply" and the late start-preset arrival. A preset
+  // without a pose means stock spawn (pre-clear, don't inherit); a preset
+  // WITH one teleports there via goHome — motion zeroed, autopilot off.
+  function applyPresetSnapshot(p) {
     const prevGrouping = cfg.grouping;
+    cfg.spawnPose = null;
     Object.assign(cfg, p);
     sanitizeCfg();
     reflectAll();
+    refreshSpawnUi();
     // v49: relayout instead of bare assemble — a preset may carry ring dials
     if (cfg.grouping !== prevGrouping) rebuildAll();
     else relayout();
+    if (cfg.spawnPose) goHome();
     saveCfg();
-  });
+  }
+  lateApplyStart = applyPresetSnapshot;
   const startP = presetButton("set as start", () => {
     if (!presetStore.presets[presetSel.value]) return;
     presetStore.default = presetSel.value;
@@ -5306,6 +5560,36 @@ void main() {
 
   presetRow.append(presetSel, nameInput, saveP, applyP, startP, deleteP, copyP);
   panel.appendChild(presetRow);
+
+  // v54.3: the spawn row — capture the ship's position + facing as the
+  // start condition. Part of the preset snapshot: capture, then save a
+  // preset and set it as start. "stock spawn" clears back to the station
+  // approach. H (return home) also honors the captured pose.
+  const spawnRow = document.createElement("div");
+  spawnRow.className = "tuner-presets tuner-spawn";
+  const spawnStat = document.createElement("span");
+  spawnStat.className = "spawn-stat";
+  function refreshSpawnUi() {
+    const sp = cfg.spawnPose;
+    spawnStat.textContent = sp
+      ? `spawn ${(sp.pos[0] / 1000).toFixed(1)} / ${(sp.pos[1] / 1000).toFixed(1)} / ${(sp.pos[2] / 1000).toFixed(1)} km`
+      : "spawn: stock (station approach)";
+  }
+  const capP = presetButton("capture spawn", () => {
+    cfg.spawnPose = { pos: cam.pos.slice(), f: cam.f.slice(), u: cam.u.slice() };
+    saveCfg();
+    refreshSpawnUi();
+    capP.textContent = "captured ✓ — save a preset to keep it";
+    setTimeout(() => { capP.textContent = "capture spawn"; }, 2600);
+  });
+  const stockP = presetButton("stock spawn", () => {
+    cfg.spawnPose = null;
+    saveCfg();
+    refreshSpawnUi();
+  });
+  refreshSpawnUi();
+  spawnRow.append(capP, stockP, spawnStat);
+  panel.appendChild(spawnRow);
   document.body.appendChild(panel);
 
   // ---- the controls card (v37) — CTRL on the deck opens the full reference
@@ -5327,6 +5611,9 @@ void main() {
       <dt>space</dt><dd>overdrive on / off (3,600 m/s, burns deuterium, slams in 3s — the crossing tier; TUNE → GOD MODE retunes the whole ladder)</dd>
       <dt>S + shift</dt><dd>reverse booster</dd>
       <dt>X</dt><dd>all-stop — brake to a halt</dd>
+      <dt>wheel / Z</dt><dd>magnifier — scroll to zoom the view up to 8×
+        (steering slows to match, so the view never whips); Z eases back
+        to 1×</dd>
       <dt>A / D</dt><dd>roll — a pure spin around the nose, like a pencil
         through the ship; it never changes where you're headed</dd>
       <dt>R</dt><dd>level off</dd>
@@ -5449,8 +5736,22 @@ void main() {
   stickRim.id = "stick-rim";
   const stickDot = document.createElement("div");
   stickDot.id = "stick-dot";
-  document.body.append(stickRim, stickDot);
+  // v54.2: the ghost grab ring — temporary instrumentation while James
+  // tunes stickGrab; flip GRAB_RING in the frame loop to hide it. An SVG
+  // circle, not a CSS border: dasharray gives real spaced dots (a 1px
+  // dotted border reads as a hazy solid line — his report).
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const stickGrabRing = document.createElementNS(SVGNS, "svg");
+  stickGrabRing.id = "stick-grab";
+  const stickGrabCirc = document.createElementNS(SVGNS, "circle");
+  stickGrabRing.appendChild(stickGrabCirc);
+  // v55.1: the magnifier readout — "MAG ×2.4" under the reticle while zoomed
+  const magRead = document.createElement("div");
+  magRead.id = "mag-read";
+  document.body.append(stickRim, stickDot, stickGrabRing, magRead);
   const stickUi = { shown: false };
+  const grabUi = { on: false, d: 0, x: 0, y: 0 };
+  const magUi = { z: 1, on: false };
 
   // one panel at a time: NAV, TUNE and CTRL close each other
   const PANELS = {

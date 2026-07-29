@@ -51,6 +51,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
    state; captures went through the server's /api/dev-snapshot because the
    pane wouldn't composite. AWAITING his eyes: nebScale in-flight, Being
    Editor r3 look (his sliders: structure / core heat / edge).
+   v54.2–v55.4 2026-07-28 (James flying all night, driving by feel): stickGrab
+   dial + dotted ghost grab ring; reticleCenter() — then the LENS SHIFT
+   (v55.4): the optical axis now exits through the reticle X (proj[9]), so
+   rolls/turns/zoom pivot on the cross (any new screen↔world math must add
+   projShiftY()). THE POD CONTRACT (v55.3, his emphatic spec: "this is
+   space... it turns where I turn it and stays there"): ship-frame rotations
+   only, reticle tilt = COMMANDED roll (rollShown), never world attitude; the
+   v55.2 horizon-locked-yaw experiment was built and REVERTED the same night
+   — do not rebuild. Presets now travel (static-host fallback + first-load
+   apply) + CAPTURE SPAWN in the tuner (spawnPose rides presets; H honors
+   it). Distance vibe: aerial + melt dials ("the air"); the MAGNIFIER
+   (wheel 1×–8×, Z reset, steering slows /zoom). All awaiting his continued
+   flights; sims grew stick-sim TEST 7 (pod contract) + nine-green suite.
    Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
    with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef

@@ -60,6 +60,14 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 - Dust is CAMERA-LOCAL as of v49: motes recycle through a box around the ship (wrap
   math in the frame loop) so speed reads at 3,600 anywhere in the gulf. Don't move dust
   back to world-fixed scatter.
+- DISTANCE VIBE (v55): two dials in "the air" — `aerial` (luminance-preserving
+  desaturate+cool with distance, shared COMM_AER snippet, structure shaders
+  only: skull/comm/robots) and `melt` (fwidth-based subpixel dissolve: crust
+  windows and glass dashes crossfade into their average glow instead of
+  staying razor-crisp). Orbs keep their own v47 desaturation, beacons/hearts
+  stay fog-proof, nebulae are exempt (they ARE the weather). True post-DOF
+  was deliberately NOT built (fill-rate). shader-check substitutes COMM_AER —
+  new shaders using it must keep the `${COMM_AER}` interpolation verbatim.
 - Veils are fogged at 0.05 strength (v49.2), NEVER fog-exempt: their dim-mottling look
   only exists under fog — exemption rendered them as a ball pit of giant spheres
   (James's report, confirmed by screenshot). Halos are long-range only (v49.1 gate,
@@ -179,6 +187,18 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   `tmp/orb-dimension/v47-sim.mjs` after touching any of them (binary formats,
   retirement cleanliness, instance-stride wiring, shader kind coverage) — plus
   reef-sim as always.
+- THE MAGNIFIER (v55.1): wheel zooms 1×–8× by narrowing effective FOV
+  (`zoom`/`tanF()` beside the matrices); Z resets. Every tan(FOV/2) site
+  MUST go through tanF() — a raw tan reintroduces click/HUD drift while
+  zoomed.
+- LENS SHIFT (v55.4): the optical axis passes through the RETICLE X, not
+  the window center (proj[9] = −projShiftY(); the glass sits above the
+  console so the two differ). Any new screen↔world math must include
+  projShiftY() on the y side (see rayDir / home marker / nav ring) or it
+  will land below the eye's truth. Rolls/turns/zoom all pivot on the X —
+  that is the point of it (James's in-place barrel roll). Steering rates divide by zoom (stick gain + arrow ROT; stick-sim
+  guards the gain line's exact /(mag * zoom) form) — never let zoomed turn
+  rates run at full speed, that's a motion-sickness whip.
 - Mouse look is a critically-damped second-order servo (LOOK_W 10, v47). Do not revert
   to a first-order ease — the discontinuous velocity was the jerk James flagged.
 - Steering is a virtual joystick PINNED to the center reticle (v48.2, James's spec):
@@ -192,6 +212,16 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   source-guards them and must pass after any change. stickLive discipline:
   autopilot engage, R, H, and release disarm; only beyond-deadzone motion while
   holding re-arms. Never let a parked cursor steer.
+- THE POD CONTRACT (v55.3, James: "this is space... I just point where I
+  wanna go. It turns where I turn it, and it stays there"): EVERY rotation
+  is ship-frame — yaw about cam.u, pitch about cam.r, roll about cam.f. No
+  world-frame axes, no attitude-dependent blending, no aerodynamic behavior,
+  ever. (The v55.2 horizon-locked yaw was tried the same night and REVERTED
+  — it whipped the view near 90° bank. Don't rebuild it.) The reticle tilt
+  shows COMMANDED roll (`rollShown`: A/D integral, R/goHome ease it home),
+  never world attitude — world-bank drive is what made honest body-frame
+  turns read as phantom rolls. BNK in the console stays world telemetry.
+  stick-sim TEST 7 + guards hold all of this.
 - The v26 bank-carve is RETIRED (v48.4, James's pencil spec): A/D is pure roll
   about the boresight and must never change heading — flying + roll = corkscrew
   with the nose glued to the target. Turning belongs to the stick alone. The

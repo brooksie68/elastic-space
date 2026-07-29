@@ -8,6 +8,20 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-28 (Orb Dimension v54.2–v55.4: flight-feel night)
+
+- James flew all night, driving by feel: stickGrab dial + dotted ghost grab
+  ring; presets travel to static hosts (fallback + first-load apply);
+  CAPTURE SPAWN tuner row (spawnPose rides presets, H honors it); aerial +
+  detail-melt distance dials; wheel MAGNIFIER (1×–8×, Z reset).
+- THE POD CONTRACT (v55.3): ship-frame rotations only, reticle tilt =
+  commanded roll — the v55.2 horizon-locked-yaw experiment reverted same
+  night on his emphatic call ("this is space").
+- LENS SHIFT (v55.4): the optical axis exits through the reticle X — rolls,
+  turns and zoom pivot on the cross; clicks/marker/nav ring taught the shift.
+- Suite grew stick-sim TEST 7 (pod contract); all nine sims + shader-check
+  green. Detail in the world changelog.
+
 ## 2026-07-28 (admin panel: "unwired" page-notes)
 
 - Worlds-list "(draft)" note renamed to **unwired** on James's call — it marks

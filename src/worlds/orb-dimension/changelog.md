@@ -3,6 +3,187 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-28 — claude-fable (v55.4 — lens shift: the X IS the axis)
+
+James, flying: "press D... the reticle should stay pointed exactly onto
+whatever I started from — it's going around in a larger circle." Right
+again: the reticle X sits at the GLASS center (the console pushes the
+glass up), but the optical axis exited through the WINDOW center — so a
+pure roll orbited the point under the X around the true screen center.
+
+- ASYMMETRIC FRUSTUM (`projShiftY()` = the reticle's NDC height,
+  proj[9] = −shift): the principal point now passes through the reticle
+  cross. Rolls pivot exactly on the X, turns pivot on the X, and the
+  magnifier zooms into the X. This finishes the v54.2b thread (the stick
+  anchor moved to the glass center then; now the projection itself has).
+- The three CPU-side projections follow the shift: rayDir (clicks land
+  where the eye says), home marker, nav ring. Everything GPU-side rides
+  proj automatically. Verified numerically: axis point renders at the
+  reticle pixel, ray at the reticle pixel is exactly cam.f, overlay of a
+  dead-ahead target lands on the reticle pixel.
+
+Full suite green. Awaiting James's barrel roll.
+
+## 2026-07-28 — claude-fable (v55.3 — THE POD CONTRACT; v55.2 reverted)
+
+James flew v55.2 and killed it, with a clear spec: "I don't want this ship
+to act like a plane. This is space... I just point where I wanna go...
+It turns where I turn it, and it stays there while I drag the mouse
+around." At 90° bank the horizon-lock blend whipped the view ("I just did
+a barrel roll") — the blend zone near knife-edge was real motion, not
+display.
+
+- v55.2's world-axis yaw blend REVERTED: yaw is plain `rotateCam(cam.u,
+  yawStep)` again. Pod contract: ship-frame rotations only, forever.
+- THE REAL ORIGINAL BUG FOUND: the WHOLE reticle (v25) counter-rotated
+  with WORLD bank — so honest body-frame turns visibly spun his
+  instrument ("phantom D key"). The reticle now shows COMMANDED roll
+  (`rollShown` = A/D integral; R and leveling glide it home; goHome
+  zeroes it). Dragging the mouse cannot move it, by construction. BNK in
+  the console keeps honest world bank.
+- stick-sim TEST 7 replaced: knife-edge + two full dragged circles →
+  ship-up invariant to 0.0, commanded-roll display unchanged; new guards
+  pin the yaw/pitch application lines and the rollShown reticle drive.
+
+Full suite green. Awaiting James: set any tilt, drag anywhere — the
+reticle must never move on its own.
+
+## 2026-07-28 — claude-fable (v55.2 — horizon-locked yaw: the bank stays put)
+
+James, flying: banked left with A, held a left turn — and partway around
+the bank read as if D were pressed, the turn switching sides on its own.
+"I wanna back into a turn and hold that bank indefinitely... fifty circles
+in a row."
+
+Diagnosis: yaw rotated about SHIP-up. Rotating about a tilted axis
+corkscrews the orientation against the horizon — 180° into a banked turn
+the bank reads reversed. Geometry, not an input bug.
+
+- Yaw now rotates about the HORIZON vertical, which preserves every basis
+  vector's angle to the horizon: the bank he set — and the reticle tilt —
+  stay mathematically pinned through any number of circles. Sign-corrected
+  by u[1] so inverted flight still follows the hand (the v48.3 lesson);
+  smoothly blends back to ship-up yaw near vertical pitch (world yaw there
+  reads as roll) and near knife-edge bank (sign flicker). A/D remain pure
+  pencil roll; pitch remains ship-frame.
+- stick-sim TEST 7: two full 45°-banked circles → bank drift 0.0 (exact);
+  contrast leg proves the old axis drifted 0.79 rad in a quarter turn.
+  New guard lines on the axis blend.
+
+Full suite green. Awaiting James's circles.
+
+## 2026-07-28 — claude-fable (v55.1 — the magnifier)
+
+James's ask (his pick between site-wide and in-ship): a ship zoom.
+
+- WHEEL zooms the view 1×–8× (exponential notches, eased in the frame
+  loop — never a snap, motion restraint); Z eases back to 1×. Implemented
+  as effective-FOV narrowing: `zoom`/`zoomTarget` next to the matrices,
+  `tanF() = tan(FOV/2)/zoom`, and every projection-adjacent tan site
+  (setProj, rayDir clicks, home marker, nav ring) reads it — clicks and
+  HUD overlays stay glued to the world at any magnification.
+- STEERING SLOWS TO MATCH (÷zoom): the stick gain line (stick-sim guard
+  updated to the new verbatim form — at zoom 1 it is the identical
+  formula) and the arrow ROT. On-screen angular speed stays constant, so
+  the view can't whip while magnified.
+- "MAG ×2.4" readout under the reticle (instrument-faint, hidden at 1×),
+  CTRL card documents wheel/Z.
+
+Full suite green + shaders compile. Awaiting James's eye.
+
+## 2026-07-28 — claude-fable (v55 — the distance vibe: aerial + detail melt)
+
+James, flying: "Korrudan is 86km away and it looks as clear as day... teeny
+little high res lights... killing the distance vibe." Diagnosis: not missing
+blur — impossible detail (subpixel window grids rendered razor-crisp at any
+range). His pick of the offered routes: dissolve-at-source + aerial pass,
+both on dials; true post-DOF held in reserve (it taxes exactly the frames
+that already dip).
+
+- AERIAL PERSPECTIVE (`aerial` dial, "the air", 0–3, default 1): shared
+  `COMM_AER` GLSL snippet — luminance-preserving desaturation drifting
+  toward a cool haze cast (lum × [0.74,0.82,1.05]), 1−exp(−d·uAer),
+  uAer = cfg.aerial/120000 (~50% quieted at 86km). Multiplicative only, so
+  it can never lift black space and is premultiplied-alpha safe. Applied to
+  STRUCTURE only: skull, comm solid/glass/bridge, robots + castes. Orbs
+  already desaturate (v47 line kept), beacons/hearts stay fog-proof
+  long-range reads, nebulae ARE the weather — all untouched.
+- DETAIL MELT (`melt` dial, "the air", 0–2, default 1): fwidth()-measured
+  projected size — crust window cells below ~6px (×melt) crossfade into
+  their steady average glow (lit 0.34 × duty 0.31 × mean flicker ≈ 0.09,
+  no flicker at range), glass data-dashes dissolve into their 0.18 duty
+  average. Kills the "teeny lights" shimmer too. 0 = the old crisp look.
+- shader-check.html learned the COMM_AER substitution (all comm shaders +
+  ROBOT_FS interpolate it now).
+
+Full suite green + all shaders compile. Awaiting James's flight: both
+dials default 1, tune the vibe by eye (aerial = how fast color quiets,
+melt = how eagerly detail dissolves).
+
+## 2026-07-28 — claude-fable (v54.3 — presets travel + capture spawn)
+
+James asked: "if I set a start preset and we push, does a visitor get
+exactly what I set?" Honest answer was no — two gaps, both fixed:
+
+- STATIC-HOST FALLBACK: the preset boot fetch now falls back from the
+  dev-server API route to the committed `assets/presets.json` itself, so
+  a public host (GitHub Pages / elastic-space.net) serves his start
+  preset instead of factory defaults. file:// still degrades to
+  localStorage/defaults as before.
+- FIRST-LOAD APPLY: a fresh browser used to boot on defaults even when
+  the file loaded (it only seeded the cache for the NEXT load). The boot
+  path now records what it applied (`bootStartSnap`); when the file
+  arrives with a different start preset, `lateApplyStart` (= the same
+  `applyPresetSnapshot` the apply button uses) applies it live.
+- CAPTURE SPAWN (his ask, same breath): new tuner spawn row — "capture
+  spawn" stores the ship's position + facing (`cfg.spawnPose`, {pos,f,u},
+  meters) with a live readout in km; "stock spawn" clears it. It rides
+  the preset snapshot, so capture → save preset → set as start = the
+  world opens exactly there, aimed exactly that way. sanitizeCfg clamps
+  the pos into SPACE bounds and null's any malformed pose;
+  `applySpawnPose` orthonormalizes the basis (parallel-up fallback).
+  Applying a preset that carries a pose teleports via goHome (motion
+  zeroed, autopilot off); presets without one mean stock (pre-cleared,
+  never inherited). H (return home) honors the captured pose too.
+
+Full suite green + shader-check pass. Awaiting James: capture a spot,
+star it, and reload — and eventually a fresh-browser test of the
+visitor path.
+
+## 2026-07-28 — claude-fable (v54.2 — the grab circle gets its own dial)
+
+James, flying: the steering grab zone felt like it was only the reticle
+circle itself — too small to hit reliably. His spec: ~3× the radius, same
+center, reticle untouched, plus a temporary faint dotted ring at the new
+edge so he can see and tune it.
+
+- `stickGrab` (px, default 390 = 3× the old reach/2 = 130) is a new cfg
+  key + slider in "the stick" tuner group (60–800). The center-mode grab
+  test in pointermove now uses it directly; stickReach and all deflection
+  math are untouched (stick-sim still guards those lines verbatim).
+- GHOST GRAB RING: `#stick-grab`, a 1px dotted rgba(150,205,255,0.16)
+  circle pinned to the reticle center, diameter = stickGrab×2, live-follows
+  the slider. Temporary instrumentation — flip GRAB_RING (frame loop) to
+  false to retire it once the radius lands.
+- Full suite green (init-smoke + 8 extraction sims) + shader-check pass.
+
+v54.2b, same session (James flew it: ring not dotted, not centered, more
+of it below the reticle than above):
+
+- THE CROSS IS NOT THE WINDOW CENTER — the glass sits above the console,
+  so window/2 rides low. New `reticleCenter()` (vsEls.ret rect, cached,
+  resize-stale) now feeds ALL of center-mode: the grab test, the stick
+  anchor, and the ghost ring. Steering neutral finally sits on the actual
+  cross, not a point below it.
+- The ring is an SVG circle now (dasharray 0.5/10, round caps = real
+  spaced ghost dots at 0.28 alpha) — a 1px dotted CSS border renders as a
+  hazy solid line at that alpha.
+- init-smoke's document stub learned `createElementNS` (returns the same
+  element stub as createElement).
+
+Where it stands: awaiting James's flight — he tunes the radius by eye,
+then we either keep the ring, dim it, or flip GRAB_RING off.
+
 ## 2026-07-28 — claude-fable (v54 — the nebula size dial + the Being Editor)
 
 James flew v53: "the nebulas are cool if a little bit underwhelming. They seem

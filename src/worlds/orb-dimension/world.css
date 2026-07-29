@@ -629,6 +629,51 @@ body::after {
 #stick-rim.on { opacity: 1; }
 /* full deflection: the rim wakes so you can see "farther adds nothing" */
 #stick-rim.sat { border-color: rgba(190, 230, 255, 0.55); }
+/* v54.2: the ghost grab ring — the faint dotted edge of the steering grab
+   zone (cfg.stickGrab), centered on the reticle cross, shown while James
+   tunes the radius. SVG dasharray = real spaced dots (a 1px dotted border
+   read as a hazy solid). */
+#stick-grab {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+#stick-grab.on { opacity: 1; }
+/* v55.1: the magnifier readout — instrument-faint, under the reticle */
+#mag-read {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  font: 12px/1 Consolas, "Cascadia Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: rgba(170, 215, 255, 0.55);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+#mag-read.on { opacity: 1; }
+
+/* v54.3: the spawn row — capture button + faint readout of the saved spot */
+.tuner-spawn .spawn-stat {
+  align-self: center;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(150, 205, 255, 0.55);
+  white-space: nowrap;
+}
+
+#stick-grab circle {
+  fill: none;
+  stroke: rgba(150, 205, 255, 0.28);
+  stroke-width: 1.6;
+  stroke-dasharray: 0.5 10;
+  stroke-linecap: round;
+}
 
 #nav-arrow {
   position: fixed;
