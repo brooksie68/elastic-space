@@ -1,28 +1,5 @@
 # Face Lab changelog
 
-## 2026-07-31 (later) — Claude (Fable 5) — head purge: picker down to the two keepers
-
-James's order, verbatim intent: "get rid of all of the heads except postmaster v2 +
-beard placement preview and postmaster KeenTools... I don't wanna save them anywhere.
-I don't wanna archive them." DELETED (git rm, no archive — git history is the only
-trace): mannequin bust (`bust.glb`), sculpt head (`sculpt.glb`), old KT head
-(`postmaster-kt.glb`), both road-B scans (`postmaster-scan.glb`,
-`postmaster-scan-noeyes.glb`), plus the orphaned `bust-manifest.json` /
-`sculpt-manifest.json`. Picker now holds exactly `postmaster-kt2.glb` and
-`postmaster-kt2-beard.glb` ("they might be redeemable"). lab.js: MODELS trimmed
-(kt2 is the default/fallback now), load + error status messages genericized off the
-hardcoded bust.glb, skin-default no longer bust-conditional. Loose ends, both
-harmless: the skin/eye variant pickers target MPFB meshes no remaining model has
-(they no-op on KT heads — remove or repurpose when the lab UI is next touched), and
-presets that set sculpt identity dials are orphaned (unknown morph names are ignored;
-James can prune them in the UI).
-
-DECISION SUPERSEDED tonight: the beard remesh-first plan applied to the OLD beard —
-dead. James's call: if the head regenerates, the beard regenerates in the same
-family; kt2 + old beard stay together as the archived pair, no credits spent fitting
-the old beard to anything new. Remesh-on-generation (quad, ~40k) is how the NEW
-family's beard arrives at sane density.
-
 ## 2026-07-31 — Claude (Fable 5) — eyelid repair rounds 7–10: the real culprit was a baked shadow
 
 James kept seeing "the imprint of the pupil on the lower lid" after rounds 4–6.
