@@ -204,8 +204,10 @@ globalThis.LuminaRandom = (function () {
       pattern: pick(F.PATTERNS).id, spread: rnd(0, 2), twist: R(),
       // Blur is an ACCENT (James, 2026-07-28 — rolls kept landing in "super
       // blur"): rarer, and never past a soft haze. The old rnd(0, 70) with a
-      // scene on was a full-screen blob.
-      blur: odds(0.2) ? rnd(0, 22) : 0,
+      // scene on was a full-screen blob. Cut 20% → 5% on James's 2026-07-31
+      // call ("remove seventy five percent of the chance") — still too many
+      // rolls were landing blurry.
+      blur: odds(0.05) ? rnd(0, 22) : 0,
       marginTop: rnd(0, 90), marginRight: rnd(0, 90),
       marginBottom: rnd(0, 90), marginLeft: rnd(0, 90),
       gapX: rnd(0, 130), gapY: rnd(0, 130), inset: rnd(0, 60),

@@ -3,6 +3,20 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-31 — Claude (Fable 5) — dice blur odds cut to a quarter
+
+- James: blur rolls still land way too often on both dice — *"it needs to be
+  only, like, twenty five percent as much as it's happening now."* One knob
+  covers both buttons (🎲 and the melt roll both target `LuminaRandom.roll`):
+  `blur: odds(0.2)` → `odds(0.05)` in presets.js. Range (≤22) untouched, so
+  when blur DOES land it looks the same — it just lands on ~1 roll in 20
+  instead of 1 in 5.
+- The melt roll's transition veil is unchanged — that blur is the dissolve
+  effect itself, not the landed look.
+- composition-sim grew a rate guard next to the smear guard: >0 and <8% of
+  3000 seeded rolls (binomial headroom over a true 5%). Sims green
+  (composition 125, music 43).
+
 ## 2026-07-28 — Claude (Fable 5) — track dropdown + folder discovery
 
 - James's ask: the track name in the player should be a dropdown ("switch to
