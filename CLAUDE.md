@@ -340,6 +340,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
    metallic/emission maps), (2) POSTMASTER as Humanoid + retargeted animation
    library (the big unlock), (3) ship-route decision for a Unity world (exits,
    sound bridge, size budget). Memory: `unity-character-pipeline`.
+9. SERVER FIX — registry draft-leak in the admin archive/status actions (James asked
+   for this reminder, 2026-07-31 global wrap): `regenerateWorldRegistry()` (and
+   `npm run registry`) includes draft worlds, so every kebab archive/status click
+   puts drafts (currently arachno-wars-2500, lumina, the-valence-lab) into the LIVE
+   drift pool until someone restores `src/core/world-registry.js`. Seen for real when
+   James archived Combat. Fix: make the generator exclude unshipped worlds, then
+   retire the manual-restore gotcha here and in docs/building-a-world.md. A task
+   chip was left in the 07-31 wrap session; either route works.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 
