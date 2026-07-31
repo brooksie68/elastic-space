@@ -34,6 +34,7 @@
         <button id="tab-button-worlds" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="tab-worlds">worlds</button>
         <button id="tab-button-editor" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-editor">world editor</button>
         <button id="tab-button-drafts" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-drafts">drafts</button>
+        <button id="tab-button-archived" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-archived">archived</button>
       </nav>
 
       <div id="tab-worlds" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-worlds">
@@ -289,6 +290,28 @@
           </div>
           <p id="drafts-status" class="small drafts-status"></p>
           <div id="drafts-list" class="drafts-list"></div>
+        </section>
+      </div>
+
+      </div>
+
+      <div id="tab-archived" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-archived" hidden>
+
+      <div class="editor-sections">
+        <p class="offline-note panel" hidden>
+          The archive list wakes up once the server is running.
+        </p>
+
+        <section class="panel archived-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">archived</p>
+              <h2>Archived worlds</h2>
+            </div>
+          </div>
+          <p class="small">Out of the drift and the worlds directory; folders live in <code>archive/</code>. Restoring one is a manual move back into <code>src/worlds/</code>.</p>
+          <nav id="archived-list" class="pages-list" aria-label="Archived worlds"></nav>
+          <p id="archived-status" class="small archived-status"></p>
         </section>
       </div>
 

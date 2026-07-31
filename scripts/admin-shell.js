@@ -61,9 +61,63 @@
     setEditorAwake(up && served);
     if (up && served) {
       injectArchiveButtons();
+      if (!archivedLoaded) {
+        loadArchivedList();
+      }
     }
     setTimeout(poll, up ? 5000 : 2000);
   }
+
+  // --- Archived tab --------------------------------------------------------
+  // Lists archive/ folders via GET /api/archive; each row links straight to
+  // the archived page. Served copy only — the list sleeps under file://.
+  const archivedListEl = document.getElementById("archived-list");
+  const archivedStatusEl = document.getElementById("archived-status");
+  let archivedLoaded = false;
+
+  function archivedLabelFor(slug) {
+    return slug
+      .split("-")
+      .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+      .join(" ");
+  }
+
+  async function loadArchivedList() {
+    if (!served || !archivedListEl) {
+      return;
+    }
+    try {
+      const response = await fetch("/api/archive", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Archive list failed (${response.status}).`);
+      }
+      const slugs = await response.json();
+      archivedLoaded = true;
+      archivedListEl.replaceChildren(
+        ...slugs.map((slug) => {
+          const anchor = document.createElement("a");
+          anchor.href = `./archive/${slug}/index.html`;
+          anchor.target = "_blank";
+          anchor.rel = "noopener";
+          anchor.append(`${archivedLabelFor(slug)} `);
+          const note = document.createElement("span");
+          note.className = "page-note";
+          note.textContent = `archive/${slug}`;
+          anchor.append(note);
+          return anchor;
+        }),
+      );
+      archivedStatusEl.textContent = slugs.length ? "" : "Nothing archived yet.";
+      archivedStatusEl.classList.remove("error");
+    } catch (error) {
+      archivedStatusEl.textContent = error.message;
+      archivedStatusEl.classList.add("error");
+    }
+  }
+
+  document
+    .getElementById("tab-button-archived")
+    .addEventListener("click", loadArchivedList);
 
   // --- Archive buttons ---------------------------------------------------
   // Archiving moves src/worlds/<slug> into archive/ through the server API,
@@ -106,7 +160,7 @@
     archiveDialog.innerHTML =
       '<h3 class="archive-heading"></h3>' +
       '<p class="archive-copy">This moves it out of Elastic Space into the archive: ' +
-      "it disappears from drift, from this panel, and from the worlds directory. " +
+      "it disappears from drift and the worlds directory, and shows up on the archived tab. " +
       'The folder lands in <code></code> if you ever want it back.</p>' +
       '<p class="archive-error" hidden></p>' +
       '<div class="archive-actions">' +
@@ -158,6 +212,7 @@
       archivePending = null;
       archiveDialog.close();
       row.remove();
+      loadArchivedList();
       flashArchiveStatus(
         `"${title}" moved to archive/${slug}.${result.warning ? ` ${result.warning}` : ""}`,
         Boolean(result.warning),

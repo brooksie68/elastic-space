@@ -320,6 +320,19 @@ h2 {
   padding: 1.25rem 1.5rem;
 }
 
+/* Archived tab */
+.archived-panel {
+  padding: 1.25rem 1.5rem;
+}
+
+.archived-status {
+  margin: 0.5rem 0 0;
+}
+
+.archived-status.error {
+  color: var(--danger);
+}
+
 /* Save confirmation toast (scripts/admin.js) */
 .save-toast {
   background: var(--panel);

@@ -366,6 +366,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - The repo-root `index.html` is the admin panel: server status light, the page directory, the
   dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
   to `/`). It is James's primary starting point while the project is in active development.
+- Fourth tab **archived** (added 2026-07-31): lists `archive/` folders via `GET /api/archive`
+  with direct links (labels derived from slugs), served copy only. Refreshes on tab click and
+  after a kebab archive action. This is the only place archived worlds are listed — the
+  all-projects ops dashboard deliberately has no archive section (removed same day).
 - `start-elastic-space.cmd` at the repo root is the ONE launcher (`serve-local.cmd` and
   `start-local.cmd` were deleted 2026-07-13 — do not recreate them, nor any older launcher
   names). Double-click: reuses a running server or starts it in its own CMD window on
