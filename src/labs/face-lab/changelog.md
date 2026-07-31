@@ -1,5 +1,30 @@
 # Face Lab changelog
 
+## 2026-07-31 (later) — Claude (Fable 5) — head purge, take two: picker is the two KT heads
+
+Take one purged by label interpretation, got the keepers wrong, and was rolled
+back in full (commits 311b288 + its restore — net zero). Redo done the right way:
+Claude listed the picker as a numbered list, James picked keepers BY NUMBER.
+KEPT: `postmaster-kt2.glb` ("postmaster v2 (KeenTools, slim face)") and
+`postmaster-kt.glb` ("postmaster (KeenTools)", the original fuller face).
+PERMANENTLY DELETED, his explicit order, no archive (git history is the only
+trace): mannequin bust, sculpt head (identity dials), postmaster v2 + beard
+(placement preview), both road-B scans, plus the orphaned bust/sculpt manifests.
+Note the beard placement preview died too — consistent with tonight's family
+decision (old beard stays with the old generation; the new head gets a
+new-family beard generated with remesh on).
+
+lab.js: MODELS trimmed to the two keepers (kt2 is default/fallback), load +
+error status messages genericized off the hardcoded bust.glb, skin default no
+longer bust-conditional. Loose ends, both harmless: skin/eye variant pickers
+target MPFB meshes no remaining model has (no-op on KT heads — strip on next
+UI touch); presets that set sculpt identity dials or bust morphs are orphaned
+(unknown morph names are ignored; James can prune them in the lab UI).
+
+PROCESS RULE, learned tonight: when James names models/files to keep or delete,
+echo the exact labels back as a numbered list and get his picks by number before
+deleting anything. Spoken names are ambiguous; numbers are not.
+
 ## 2026-07-31 — Claude (Fable 5) — eyelid repair rounds 7–10: the real culprit was a baked shadow
 
 James kept seeing "the imprint of the pupil on the lower lid" after rounds 4–6.

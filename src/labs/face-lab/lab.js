@@ -105,16 +105,12 @@ const PAIR_SUFFIXES = [
   ['convex', 'concave'], ['uncompress', 'compress'], ['forward', 'backward'],
 ];
 
+// Picker cut to two keepers 2026-07-31 — James choosing BY NUMBER from the full
+// list. Everything else (mannequin bust, sculpt head, beard placement preview,
+// both road-B scans) permanently deleted, no archive; git history is the only trace.
 const MODELS = [
-  { id: 'bust', label: 'mannequin', file: 'assets/bust.glb' },
-  { id: 'sculpt', label: 'sculpt head (identity dials)', file: 'assets/sculpt.glb' },
   { id: 'postmaster-kt2', label: 'postmaster v2 (KeenTools, slim face)', file: 'assets/postmaster-kt2.glb' },
-  // Placement preview only — the beard carries no morph targets yet, so the jaw
-  // moves through it. 52 MB; slow first load.
-  { id: 'postmaster-kt2-beard', label: 'postmaster v2 + beard (placement preview)', file: 'assets/postmaster-kt2-beard.glb' },
   { id: 'postmaster-kt', label: 'postmaster (KeenTools)', file: 'assets/postmaster-kt.glb' },
-  { id: 'postmaster-scan', label: 'postmaster (scan, road B)', file: 'assets/postmaster-scan.glb' },
-  { id: 'postmaster-scan-noeyes', label: 'postmaster (scan, no eyeballs)', file: 'assets/postmaster-scan-noeyes.glb' },
 ];
 const activeModel = MODELS.find((m) => m.id === localStorage.getItem('face-lab-model')) || MODELS[0];
 
@@ -214,9 +210,9 @@ new GLTFLoader().load(activeModel.file, (gltf) => {
 
   life = createFaceLife({ meshes: morphMeshes, headBone });
   buildSliders(life.morphNames);
-  status(`bust loaded — ${morphMeshes.length} meshes, ${life.morphNames.length} morphs`);
+  status(`${activeModel.label} loaded — ${morphMeshes.length} meshes, ${life.morphNames.length} morphs`);
 }, undefined, (err) => {
-  status('failed to load assets/bust.glb — ' + err.message, true);
+  status(`failed to load ${activeModel.file} — ` + err.message, true);
 });
 
 // ---------------------------------------------------------------- slider UI
@@ -629,7 +625,7 @@ async function initVariants() {
     }
   };
   fill('skin-select', variants.skins, 'face-lab-skin', () => bodyMesh,
-    activeModel.id === 'bust' ? 'skins/middleage_african_male.jpg' : 'skins/old_caucasian_male.jpg');
+    'skins/old_caucasian_male.jpg');
   fill('eye-select', variants.eyes, 'face-lab-eyes', () => eyesMesh, 'eyes/brown.png');
 }
 initVariants();
