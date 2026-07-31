@@ -18,6 +18,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const worldsDir = join(rootDir, "src", "worlds");
+const labsDir = join(rootDir, "src", "labs");
 const archiveDir = join(rootDir, "archive");
 const host = process.env.ELASTIC_SPACE_HOST || "127.0.0.1";
 const port = Number(process.env.ELASTIC_SPACE_PORT || "4174");
@@ -1419,14 +1420,18 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
-  const presetsMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/presets$/i);
+  // Presets serve both worlds and labs (labs added 2026-07-29 for the Being
+  // Editor): same store shape, same validation, labs back up under tmp/labs-<slug>/.
+  const presetsMatch = pathname.match(/^\/api\/(worlds|labs)\/([a-z0-9-]+)\/presets$/i);
   if (presetsMatch) {
-    const presetsSlug = slugify(presetsMatch[1]);
-    if (!isValidSlug(presetsSlug) || !(await pathExists(join(worldsDir, presetsSlug)))) {
-      sendJson(response, 404, { error: "World not found." });
+    const presetsKind = presetsMatch[1].toLowerCase();
+    const presetsBase = presetsKind === "labs" ? labsDir : worldsDir;
+    const presetsSlug = slugify(presetsMatch[2]);
+    if (!isValidSlug(presetsSlug) || !(await pathExists(join(presetsBase, presetsSlug)))) {
+      sendJson(response, 404, { error: presetsKind === "labs" ? "Lab not found." : "World not found." });
       return true;
     }
-    const presetsPath = join(worldsDir, presetsSlug, "assets", "presets.json");
+    const presetsPath = join(presetsBase, presetsSlug, "assets", "presets.json");
 
     if (request.method === "GET") {
       try {
@@ -1452,14 +1457,19 @@ async function handleApi(request, response, pathname) {
 
     // Timestamped backup of the current file before every save; tmp/ is gitignored.
     try {
-      const backupDir = join(rootDir, "tmp", presetsSlug, "preset-backups");
+      const backupDir = join(
+        rootDir,
+        "tmp",
+        presetsKind === "labs" ? `labs-${presetsSlug}` : presetsSlug,
+        "preset-backups",
+      );
       await mkdir(backupDir, { recursive: true });
       const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
       await writeFile(join(backupDir, `presets-${stamp}.json`), await readFile(presetsPath));
     } catch {
       // No previous presets file to back up — fine.
     }
-    await mkdir(join(worldsDir, presetsSlug, "assets"), { recursive: true });
+    await mkdir(join(presetsBase, presetsSlug, "assets"), { recursive: true });
     await writeFile(
       presetsPath,
       `${JSON.stringify({ presets: payload.presets, default: payload.default || null }, null, 2)}\n`,

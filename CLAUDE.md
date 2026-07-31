@@ -64,6 +64,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
    it). Distance vibe: aerial + melt dials ("the air"); the MAGNIFIER
    (wheel 1×–8×, Z reset, steering slows /zoom). All awaiting his continued
    flights; sims grew stick-sim TEST 7 (pod contract) + nine-green suite.
+   2026-07-29: BEING EDITOR PERSISTENCE — James lost a tweaked look to a
+   closed tab (the lab had none). Now: continuous localStorage autosave
+   (reopen = exact state) + file-backed presets
+   (`src/labs/being-editor/assets/presets.json`, picker/save/save-as/
+   make-default; saving IS telling Claude). server.mjs presets route
+   generalized to `/api/(worlds|labs)/:slug/presets` — NEEDS A SERVER
+   RESTART James hasn't done yet. His lost look must be re-dialed; he
+   announced "some new stuff" for Orb Dimension but never got to it.
    Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
    with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef

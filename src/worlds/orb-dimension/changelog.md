@@ -3,6 +3,25 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-29 — claude-fable (Being Editor: persistence)
+
+James tweaked the Being Editor to a look he liked, closed the tab, and the
+look was gone — the lab had zero persistence. Fixed two ways:
+
+- FILE-BACKED PRESETS: server.mjs presets route generalized to
+  `/api/(worlds|labs)/:slug/presets` (labs resolve under src/labs/, backups
+  in tmp/labs-<slug>/preset-backups/). The editor grew a presets section
+  (picker / save / save as / make default) writing
+  `src/labs/being-editor/assets/presets.json` — saving IS telling Claude,
+  same contract as the world tuners. localStorage is the boot cache and
+  file:// fallback; an empty file gets seeded from the browser store.
+- CONTINUOUS AUTOSAVE: every slider input snapshots to localStorage
+  (`elastic-being-editor-state`) and reopening the tab restores it —
+  last-touched state beats the default preset on load, by design.
+
+Snapshot keys: glow/turb/cplx/cor/heat/edge/fam. Needs a server restart to
+serve the new labs route. His lost look still needs re-tweaking, sadly.
+
 ## 2026-07-28 — claude-fable (v55.4 — lens shift: the X IS the axis)
 
 James, flying: "press D... the reticle should stay pointed exactly onto

@@ -86,6 +86,17 @@
           <option value="2">rose</option><option value="3">amber</option><option value="4">green</option>
         </select>
       </div>
+      <h2>presets</h2>
+      <div class="row">
+        <select id="preset" style="flex:1 1 auto; width:auto;"><option value="">— current —</option></select>
+      </div>
+      <div class="row">
+        <button id="pSave">save</button>
+        <button id="pSaveAs">save as…</button>
+        <button id="pDefault">make default</button>
+      </div>
+      <div id="pStatus" style="font-size:0.72rem; color:#7c8299;"></div>
+
       <div id="perf"></div>
       <footer>one raymarched shader serves the being and its home — nothing here is a mesh</footer>
     </div>
@@ -452,6 +463,103 @@ document.getElementById("bOrbit").onclick = (e) => setMode("orbit", e.target);
     sel.appendChild(o);
   }
 }
+// --- persistence (2026-07-29): file-backed presets via /api/labs/being-editor/presets
+// (same store shape as world tuners: file is truth when served, localStorage is the
+// boot cache + file:// fallback) PLUS a continuous autosave of the current sliders,
+// restored on load — a closed tab no longer loses a look.
+const LAB_SLUG = "being-editor";
+const LS_STATE = "elastic-being-editor-state";
+const LS_STORE = "elastic-being-editor-presets";
+const API = `/api/labs/${LAB_SLUG}/presets`;
+const KEYS = ["glow","turb","cplx","cor","heat","edge","fam"];
+let store = { presets: {}, default: null };
+let served = false;
+
+function snapshot() {
+  const s = {};
+  for (const k of KEYS) s[k] = Number(document.getElementById(k).value);
+  return s;
+}
+function apply(snap) {
+  for (const k of KEYS) {
+    const el = document.getElementById(k);
+    if (snap[k] != null) el.value = snap[k];
+    el.dispatchEvent(new Event("input"));
+  }
+}
+function pStatus(msg) { document.getElementById("pStatus").textContent = msg; }
+function rebuildPicker(selected) {
+  const sel = document.getElementById("preset");
+  sel.innerHTML = '<option value="">— current —</option>';
+  for (const name of Object.keys(store.presets).sort()) {
+    const o = document.createElement("option");
+    o.value = name;
+    o.textContent = name + (store.default === name ? " ★" : "");
+    sel.appendChild(o);
+  }
+  sel.value = selected || "";
+}
+async function pushStore() {
+  localStorage.setItem(LS_STORE, JSON.stringify(store));
+  if (!served) { pStatus("saved locally (no server)"); return; }
+  try {
+    const r = await fetch(API, { method: "PUT",
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(store) });
+    pStatus(r.ok ? "saved to file" : "save failed: " + (await r.json()).error);
+  } catch { pStatus("save failed — server gone?"); }
+}
+document.getElementById("preset").addEventListener("change", (e) => {
+  const name = e.target.value;
+  if (name && store.presets[name]) { apply(store.presets[name]); pStatus(`loaded "${name}"`); }
+});
+document.getElementById("pSave").onclick = () => {
+  const name = document.getElementById("preset").value ||
+    prompt("preset name:", "james-being-01");
+  if (!name) return;
+  store.presets[name] = snapshot();
+  rebuildPicker(name);
+  pushStore();
+};
+document.getElementById("pSaveAs").onclick = () => {
+  const name = prompt("preset name:", "james-being-01");
+  if (!name) return;
+  store.presets[name] = snapshot();
+  rebuildPicker(name);
+  pushStore();
+};
+document.getElementById("pDefault").onclick = () => {
+  const name = document.getElementById("preset").value;
+  if (!name) { pStatus("pick a preset first"); return; }
+  store.default = name;
+  rebuildPicker(name);
+  pushStore();
+};
+for (const k of KEYS) {
+  document.getElementById(k).addEventListener("input", () => {
+    localStorage.setItem(LS_STATE, JSON.stringify(snapshot()));
+  });
+}
+(async () => {
+  try { store = JSON.parse(localStorage.getItem(LS_STORE)) || store; } catch {}
+  try {
+    const r = await fetch(API);
+    if (r.ok) {
+      const file = await r.json();
+      served = true;
+      // an empty/absent file gets seeded from the browser store; otherwise file wins
+      if (Object.keys(file.presets).length || file.default) store = file;
+      else if (Object.keys(store.presets).length) pushStore();
+    }
+  } catch { /* file:// or server down — localStorage carries it */ }
+  rebuildPicker(store.default || "");
+  // restore order: last-touched sliders beat the default preset — the point of
+  // the autosave is that reopening the tab shows exactly what you left
+  let last = null;
+  try { last = JSON.parse(localStorage.getItem(LS_STATE)); } catch {}
+  if (last) apply(last);
+  else if (store.default && store.presets[store.default]) apply(store.presets[store.default]);
+})();
+
 resize();
 requestAnimationFrame(frame);
 </script>
