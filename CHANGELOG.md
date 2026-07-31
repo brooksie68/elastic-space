@@ -8,6 +8,23 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-31 (Unity character pipeline: pilot night)
+
+- Unity 6.5 adopted on James's go after the "sell me on Unity" conversation —
+  new sibling repo `_unity/es-characters` (own git; see its CLAUDE.md).
+  Unity MCP relay registered with Claude Code; Unity_RunCommand drives the
+  editor like the Blender bridge.
+- Pilot proven end-to-end the same night: WebGL build served at
+  `tmp/unity-pilot/` (13MB engine base, ~25MB with content), Starter Assets
+  third-person robot in a graybox (James: "controls feel like any polished
+  game"), pointer lock ripped out for web-friendly drag-look.
+- The Gardener droid: Cadence caste 6 rebuilt as a 13-part FBX (visor head,
+  antennae, claw arm, six tendrils) with a CadenceDrone brain — NavMesh
+  wander, hover bob, banking, pendulum tendrils, head tracking. James's
+  verdict: motion reads natural, "good physics".
+- Next (each with a go): droid PBR pass, postmaster as Humanoid with
+  retargeted animations, ship-route decision. Todo item 8.
+
 ## 2026-07-28 (Orb Dimension v54.2–v55.4: flight-feel night)
 
 - James flew all night, driving by feel: stickGrab dial + dotted ghost grab

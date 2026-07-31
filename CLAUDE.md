@@ -308,6 +308,21 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
+8. UNITY CHARACTER PIPELINE (pilot BUILT 2026-07-31, James's go after the "sell me
+   on Unity" conversation — his brief: real character machinery, "what we have is
+   sort of a clunky puppet"): Unity 6.5 free Personal + project repo
+   `C:\Users\brook\ai-projects\_unity\es-characters` (own git; READ ITS CLAUDE.md
+   FIRST — MCP bridge usage, build/deploy loop, no-pointer-lock rule, prefab
+   gotchas). Unity MCP relay registered with Claude Code as `unity` (user scope);
+   editor must be open. Pilot live at `tmp/unity-pilot/` on 4174: graybox +
+   Starter Assets third-person robot (James: feels like any polished game) + the
+   GARDENER DROID (Cadence caste 6 rebuilt as 13-part FBX, es-characters
+   tools/gardener_droid.py) with NavMesh wander / hover / pendulum tendrils /
+   head tracking — his verdict: natural, "good physics". NOT a world, not in the
+   drift. NEXT, each with its own go: (1) droid PBR pass (palette-aligned
+   metallic/emission maps), (2) POSTMASTER as Humanoid + retargeted animation
+   library (the big unlock), (3) ship-route decision for a Unity world (exits,
+   sound bridge, size budget). Memory: `unity-character-pipeline`.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 
