@@ -8,6 +8,21 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-07-31 (Dead Letter Office: the KDLO broadcast + the letter deck)
+
+- The office radio is now a sequential 1951 broadcast (r13): James's fourth Suno
+  track baked in, Claude's DJ copy + 8 period ad spots all voiced via ElevenLabs
+  (Bill Social Media, eleven_v3) and baked through the AM chain. Break format per
+  James: song → sign-off → two ads → intro; dj8 loops the set. `tools/eleven.mjs`
+  grew `--stability` and an `stt` scribe command (used to preserve his copy tweaks
+  when the combined DJ reads were re-cut into eight pieces).
+- The letter deck grew 12 → 68, all Claude-written in the house voice on James's
+  asks: 25 "later acquisitions," 21 "shelf-box strata" (Santa/chains/divorce/
+  evictions/resignations/confessions), then a length-variety pass (micro letters
+  to four sagas incl. the fence feud and the cardamom bread recipe). James
+  approved all 68; the whole deck is protected text now. He named the mode:
+  DLO is "a Claude flavored world" — he art-directs, the content voice is Claude's.
+
 ## 2026-07-31 (Unity character pipeline: pilot night)
 
 - Unity 6.5 adopted on James's go after the "sell me on Unity" conversation —

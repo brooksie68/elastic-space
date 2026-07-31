@@ -18,8 +18,16 @@ return addresses still work.
   The r12 house chain (James's "tinny 1955 AM" ask): `--hp 550 --lp 2400 --box 6
   --squash 24 --drive 1.7 --static -30 --crackle 2.5 --kbps 96 --clip 1`. Always
   pass `--clip 1`: without it the narrowband bake can't reach source RMS and lands
-  5–7dB quiet (James hears loudness shifts). When he drops a new track, bake with
-  those flags and add the `-radio.mp3` path to `RADIO_TRACKS` in world.js.
+  5–7dB quiet (James hears loudness shifts). Since 2026-07-30 the radio is a
+  SEQUENTIAL broadcast — `RADIO_PROGRAM` in world.js: song → DJ sign-off of
+  that tune → two ads → DJ intro of the next → song, looping (James's spec:
+  the sign-off must come BEFORE the ads). dj1–8: odd = sign-off, even = intro,
+  dj8 loops the set; all speech (djs + ads ad1–8) is voice Bill (Social Media)
+  `AGhk9wKpcIV2UvBus4CY`, eleven_v3, stability 1.0 via tools/eleven.mjs.
+  Program order is load-bearing (the DJ references): never shuffle, and
+  tune-in must start on a `song:true` entry. When James drops a new track,
+  bake with those flags and splice it into `RADIO_PROGRAM` — which means new
+  DJ copy (a sign-off and an intro) on either side, not just a list append.
 - `tmp/dead-letter-office/nav-fuzz-sim.mjs` — the durable constraint/nav sim (rebuilt
   2026-07-27; the original was scratchpad-only and lost). Run it after ANY furniture,
   keep-out, or nav change: `node tmp/dead-letter-office/nav-fuzz-sim.mjs`. It reads
@@ -56,6 +64,15 @@ the second — the office holds their whole almost-romance). Get his answers fir
 
 - **The twelve letters are authored (2026-07-04) and protected** — never generate or reword
   them. The four airmail letters carry the drift exits; the stairwell door is the fifth.
+  The deck grew to 58 on 2026-07-30 (25 "later acquisitions" then 21 "shelf-box strata" —
+  Santa/chains/divorce/evictions/resignations/confessions sampling the archive box labels)
+  and to 68 on 2026-07-31 (the "length strata": James wants realistic length VARIETY —
+  two-word scraps through four multi-page sagas; the letter panel scrolls, so long is
+  safe). All growth was James's ask, Claude-written in the house voice; includes the KDLO
+  listener letter and the Novak/Kessler pair that never met. James signed off on the
+  full 68 on 2026-07-31 — the protection now covers the WHOLE deck: additions come only
+  from James's explicit ask, rewording never. Length spread is part of the deck's
+  character — new letters must not regress to uniform paragraph-scale.
 - **Face/eyes: hands off** (James, 2026-07-21) — the frozen face ships as-is; the 3D eye-rig
   work stays parked in `tmp/dead-letter-office/meshy/viewer.html` until James reopens it.
 - Postmaster integration facts (learned the hard way, sessions 07-17/18):

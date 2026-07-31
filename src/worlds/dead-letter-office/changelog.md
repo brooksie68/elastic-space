@@ -3,6 +3,77 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-31 — Claude (Fable 5) + James — the length strata (deck 58 → 68)
+
+- James on the 46: content "really good... hit the mark with the vibe", but
+  the uniform length reads unreal — he wants scraps through sagas ("some that
+  are just a couple of words... a handful that are, like, two pages").
+- **3 trims** (scarecrow, projectionist, quilt divorce) — each down to its
+  best lines. **10 new**: two-word letters ("Come home. — everyone" / the
+  "Yes." that missed the Harvest Dance), one-sentence divorce filing ("File
+  it before he apologizes again," stamped Overtaken by Events), the milkman
+  note, the glove of principle, Gene Mackey's ten-item Santa list (item 6
+  cross-references Dorothy Cade's Petey — same December), and FOUR SAGAS
+  (the letter panel scrolls, verified: max-height 88vh + overflow-y auto):
+  the Gorczak/Piatek fence feud 1934–1969 (ends "Enclosed is one dollar"),
+  the sewing-box inventory from lot 40, night watchman Brozek's final
+  hourly report ("Nothing takes attendance"), and Grandma Holm's cardamom
+  bread recipe with digressions. The twelve untouched; portals 4/68.
+  JAMES APPROVED ALL 68 ("the cardamom bread recipe is classic... let's use
+  all of these") — the whole deck is now protected text.
+
+## 2026-07-30 — Claude (Fable 5) + James — the deck grows: 12 → 37 → 58
+
+- **25 new letters** ("the later acquisitions"), James's ask after the KDLO
+  session: wry, poignant stories-in-a-paragraph in the house voice, appended
+  after the protected twelve (verbatim untouched; first envelope still
+  guaranteed airmail). Among them: a KDLO listener who has noticed the
+  broadcast repeats word for word and irons to it like scripture; the
+  Novak/Kessler letters that crossed in March 1954 and both came back; the
+  scarecrow's reference letter; Operator No. 9 and the ice-storm wrong
+  number; the eleven-mile balloon answered 24 years late. James: "true to
+  form... I like them very much."
+- **21 more — the shelf-box strata** (his follow-up: sample what's IN the
+  archive boxes): Santa ×5 (the naughty-list litigator; Alma's Korea letter —
+  "the house with the dog"; the 1899 red-sled follow-up; Roger Blum's hedge —
+  "a man can leave a light on without knowing who comes"; Dorothy Cade's
+  skip-our-house), chain letters ×3 (incl. E. Grandy, 84, returning her luck
+  unused), divorce papers ×3 (the quilt too warm to file; page four's
+  three-inch reason space; the 11-years-unclaimed decree), evictions ×3 (the
+  landlord's paragraph two; the courthouse swallows; FORT DEFIANCE vs the
+  railroad), resignations ×2 (the dog warden whose heart changed sides; the
+  fireman's boots on the third peg), confessions ×5 (the firewood angel; the
+  7:22 clock; the sinkers in the bass; the statue with the tailor's face; the
+  silent soprano). Deck: 58, portals still 4/58. AWAITING JAMES'S READ — any
+  he cuts or rewords, edit in place.
+
+## 2026-07-30 — Claude (Fable 5) + James — KDLO: the radio becomes a broadcast
+
+- **Worn Fiddle Porch** (new Suno track from James) baked through the r12 house
+  chain (`--hp 550 --lp 2400 --box 6 --squash 24 --drive 1.7 --static -30
+  --crackle 2.5 --kbps 96 --clip 1`; RMS matched exactly, limiter ×1.000).
+- **The KDLO broadcast**: Claude wrote a 1951 country-western DJ package
+  (Prairie Home Companion droll — made-up bands/players per tune, KDLO station
+  id) + eight 15s period ad spots (flour, Crestwood automobile, fishing rods,
+  coffee, boots, hair tonic, washer, liniment). All speech is voice Bill
+  (Social Media) `AGhk9wKpcIV2UvBus4CY`, model eleven_v3, stability 1.0,
+  via `tools/eleven.mjs` (new `--stability` flag; also a new `stt` scribe
+  command with word timestamps). James on the ads: "they're great."
+- **Break format is James's spec**: song ends → DJ signs off that tune → two
+  ads → DJ intros the next → song. First cut had combined sign-off+intro
+  clips and put both ads before the DJ — wrong order on air. James's four
+  combined reads were transcribed (scribe) to preserve his copy tweaks
+  (Wilma the fiddle, the pine box, "Am I right, folks?"), then regenerated as
+  EIGHT pieces: odd dj = sign-off, even dj = intro, dj8 loops the set. (A
+  waveform-split approach was built and discarded the same hour —
+  regeneration is cleaner.) All 16 speech clips baked through the r12 AM
+  chain, RMS-matched.
+- **world.js rewired sequential**: `RADIO_TRACKS` → `RADIO_PROGRAM` (20 items,
+  `song:true` flags). Order is load-bearing (the DJ references), so no shuffle
+  anywhere; tune-in starts on a random SONG (`RADIO_SONG_STARTS`), never
+  mid-break. Dead air stays 1.8–4.4s after songs; speech cues tighter
+  (0.6–1.3s).
+
 ## 2026-07-28 — Claude (Fable 5) — r12.3: desk to the wall, bigger sign
 
 - **Desk pushed back** (James): rear edge now ~1 inch off the north wall

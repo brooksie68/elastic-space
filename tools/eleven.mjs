@@ -6,8 +6,9 @@
 // Usage:
 //   node tools/eleven.mjs voices [search]
 //   node tools/eleven.mjs sfx "prompt" out.mp3 [--seconds N]
-//   node tools/eleven.mjs tts "text" out.mp3 --voice <id or name> [--model <model_id>]
+//   node tools/eleven.mjs tts "text" out.mp3 --voice <id or name> [--model <model_id>] [--stability N]
 //   node tools/eleven.mjs music "prompt" out.mp3 [--ms N]   (experimental)
+//   node tools/eleven.mjs stt in.mp3 [--words]   (scribe transcription; --words adds timestamps)
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -107,8 +108,33 @@ switch (cmd) {
       text,
       model_id: flag(args, "--model", "eleven_multilingual_v2"),
     };
+    // v3 stability is discrete: 0.0 creative / 0.5 natural / 1.0 robust
+    const stability = flag(args, "--stability");
+    if (stability !== undefined) body.voice_settings = { stability: Number(stability) };
     const res = await request(`/text-to-speech/${voiceId}`, { method: "POST", body });
     await saveAudio(res, out);
+    break;
+  }
+
+  case "stt": {
+    const [inPath] = args;
+    if (!inPath) fail("usage: stt in.mp3 [--words]");
+    const form = new FormData();
+    form.append("model_id", "scribe_v1");
+    form.append("file", new Blob([readFileSync(inPath)]), "audio.mp3");
+    const res = await fetch(API + "/speech-to-text", {
+      method: "POST",
+      headers: { "xi-api-key": apiKey() },
+      body: form,
+    });
+    if (!res.ok) fail(`POST /speech-to-text -> HTTP ${res.status}\n${(await res.text()).slice(0, 600)}`);
+    const data = await res.json();
+    console.log(data.text);
+    if (args.includes("--words") && data.words) {
+      for (const w of data.words) {
+        if (w.type === "word") console.log(`${w.start.toFixed(2)}-${w.end.toFixed(2)}  ${w.text}`);
+      }
+    }
     break;
   }
 

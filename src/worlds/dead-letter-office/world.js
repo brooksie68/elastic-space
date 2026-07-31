@@ -4,9 +4,9 @@
  * The Meshy postmaster (rig + 18-clip anim pack, 2026-07-17) walks his shift:
  * desk work, basket pickups, filing, feeding the furnace, punching the clock,
  * coffee. Undeliverable mail falls from a ceiling chute into the wire basket and
- * can be read from any angle. The twelve letters are authored (2026-07-04) and
- * unchanged; the four airmail letters still carry the drift exits, and the
- * stairwell door is a fifth.
+ * can be read from any angle. The original twelve letters are authored
+ * (2026-07-04) and unchanged (25 more joined the deck 2026-07-30); the four
+ * airmail letters still carry the drift exits, and the stairwell door is a fifth.
  *
  * Hard-won integration facts honored here:
  *  - Meshy materials carry the color atlas twice (map + emissiveMap): the
@@ -21,7 +21,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from '../../lib/three/loaders/GLTFLoader.js';
 import { mergeGeometries } from '../../lib/three/utils/BufferGeometryUtils.js';
 
-/* ================= the twelve letters (authored, protected) ================= */
+/* ============ the letters (first twelve authored 2026-07-04, protected;
+   +25 acquisitions and +21 shelf-box strata 2026-07-30, +10 length strata
+   and 3 trims 2026-07-31 — 68 total, the twelve remain verbatim) ============ */
 
 const LETTERS = [
   {
@@ -163,6 +165,684 @@ const LETTERS = [
       "But when you are ready: something bioluminescent has been asking after you. It does not use the postal system. It says you know the way, and if you don't, the return address does.",
     ],
     sign: "— The Office",
+  },
+
+  /* ---- the later acquisitions (2026-07-30, James's ask: 25 more) ---- */
+  {
+    to: "The Station Manager\nRadio KDLO\nFarmers Union Bldg.",
+    from: "Mrs. L. Prue\nRural Route 2",
+    stamp: "No Such Station",
+    postmark: ["Dead Letter", "Office", "Oct 1951"],
+    body: [
+      "I listen every night while I do the ironing, and I have noticed that your announcer says the very same things each night, word for word — the same joke about the accordion, the same fiddle named Wilma, the same two advertisements.",
+      "At first I minded. Now I iron to it like it was scripture. If he ever says something new, I believe it will mean something enormous has happened, and I am not sure I want that.",
+      "Please do not change the programme.",
+    ],
+    sign: "— Mrs. L. Prue, listening",
+  },
+  {
+    to: "To Whom It May Concern\nc/o Any Farm\nWith Crows",
+    from: "E. Tillman\nTillman & Son, feed corn",
+    stamp: "Insufficient Address",
+    postmark: ["Dead Letter", "Office", "Sep 1963"],
+    body: [
+      "A reference for my scarecrow, retiring after eleven years on the northeast forty: quiet, punctual, took one day off during the tornado, and came back. The crows respect him, which is more than they ever gave me.",
+      "He prefers facing east. I never asked.",
+    ],
+    sign: "— E. Tillman",
+  },
+  {
+    to: "Miss Ada Kessler\n31 Foundry Street\nLowellville",
+    from: "P. Novak\nc/o the Merchant Marine",
+    stamp: "Moved — Left No Address",
+    postmark: ["Dead Letter", "Office", "Mar 1954"],
+    body: [
+      "They tell me we sail Tuesday, and I find I cannot go without saying it plainly: it is you. It has been you since the dance at the grange hall, and it will keep on being you in every port they can invent.",
+      "If this reaches you, write to the shipping office at Baltimore. I will leave word wherever I land.",
+    ],
+    sign: "Yours entire, P.",
+  },
+  {
+    to: "P. Novak\nc/o the Shipping Office\nBaltimore",
+    from: "A. Kessler\n(new address inside)",
+    stamp: "Not Called For",
+    postmark: ["Dead Letter", "Office", "Mar 1954"],
+    body: [
+      "Before you sail: yes. Whatever it was you were working up to say at the grange hall before your ship came in, the answer is yes, and has been for some time.",
+      "I have moved to my sister's on Water Street — the landlady on Foundry would not hold my mail. Write to me there. I will wait, but hurry anyway.",
+    ],
+    sign: "— Ada",
+  },
+  {
+    to: "The New Owner\nof the Hallett Upright\nsold at auction, lot 9",
+    from: "V. Marsh, piano tuner\n(retired)",
+    stamp: "Auction House Closed",
+    postmark: ["Dead Letter", "Office", "Jan 1979"],
+    body: [
+      "I tuned that instrument for forty years, and I should tell you: middle C is a shade flat and will not hold true no matter what anyone does. I have watched three better men than me try.",
+      "The lady of the house used to sing to it in the evenings, and after she passed, the note went down and stayed down. My advice is to leave it. Some things are in tune with something else.",
+    ],
+    sign: "— V. Marsh",
+  },
+  {
+    to: "The Returns Desk\nCarnegie Free Library\nBranch No. 4",
+    from: "H. Ostrander\nformerly of the 6th grade",
+    stamp: "Branch Closed",
+    postmark: ["Dead Letter", "Office", "Jun 1988"],
+    body: [
+      "Enclosed please find The Boys' Book of Polar Exploration, due April 11th, 1946. I have calculated the fine at four cents a day and I am prepared to discuss terms.",
+      "In my defense, I read it eleven times the first year and once every year after, and it has gotten me through two wars and one marriage, which is more than most books manage.",
+      "I have underlined some parts. I understand this is against the rules. So is keeping a book forty-two years.",
+    ],
+    sign: "— H. Ostrander, sorry",
+  },
+  {
+    to: "The gentleman on the\nDaviston exchange, line 4\n(night of the ice storm)",
+    from: "Operator No. 9",
+    stamp: "Exchange Discontinued",
+    postmark: ["Dead Letter", "Office", "Feb 1957"],
+    body: [
+      "You will not remember me. I connected you by mistake to a wrong number in Daviston the night the lines iced over. It is my job to disconnect errors, and I did not.",
+      "You talked to that woman for four hours about nothing — dogs, pie, the war, the ice — and I sat with my hand on the key the whole time and listened like a person warming herself at a window.",
+      "I am writing because I never learned whether you called her back. Somebody should know how it came out. I connected this county for thirty years, and that call is the one I think about.",
+    ],
+    sign: "— Operator No. 9",
+  },
+  {
+    to: "The man who waves\nfrom the porch on Route 9\n(white house, red chair)",
+    from: "A commuter\n(the green Hudson)",
+    stamp: "House Not Found",
+    postmark: ["Dead Letter", "Office", "Nov 1972"],
+    body: [
+      "For nine years you have waved at my car in the morning, and I have waved back, and I know nothing else about you, and I have told you more with that hand than I have told some family.",
+      "This morning the chair was empty, and I drove on to work like a man with the floor gone out from under him. I am writing to the house in the hope that somebody there will tell me the wave has only moved indoors for the winter.",
+    ],
+    sign: "— The green Hudson, 7:40 or so",
+  },
+  {
+    to: "The family that lost TIPPY\n(from the notice at\nthe Red Owl store)",
+    from: "W. Odom\nout past the gravel pit",
+    stamp: "Notice Weathered",
+    postmark: ["Dead Letter", "Office", "Aug 1966"],
+    body: [
+      "Your notice said REWARD and gave a number, but the rain got to the paper and took the number with it, so I am writing to the store and hoping.",
+      "The news is: he came to my porch in June, ate like a congressman, and stayed. He is asleep on my boot as I write this. He is a good dog. He misses you at suppertime; the rest of the day, I confess, he seems to be getting along.",
+      "No reward needed. Come see him, or don't, and know he's well. Either way the porch light is on.",
+    ],
+    sign: "— W. Odom",
+  },
+  {
+    to: "Master Danny Kubek\n722 Cherry Street\n(or wherever he is now)",
+    from: "Grandma\n(you know the address)",
+    stamp: "No Longer at This Address",
+    postmark: ["Dead Letter", "Office", "Dec 1969"],
+    body: [
+      "Every December I knit you mittens, and every December they come back to me with a different rubber stamp on the envelope. You are somewhere being twenty-six years old, and I am told boys that age do not lose mittens the way they used to.",
+      "I knit them anyway. It is not really about the mittens, Danny, but you will not know that for another thirty years, so: they are blue, and there is a dollar in the left one, same as ever.",
+    ],
+    sign: "— Grandma",
+  },
+  {
+    to: "Mr. A. Brandt\n(measurements on file)",
+    from: "Mandel & Sons, Tailors\nMain at Third",
+    stamp: "Unclaimed",
+    postmark: ["Dead Letter", "Office", "May 1961"],
+    body: [
+      "Your suit is ready. It has been ready since the 9th of March, 1953, when you were called away in the middle of the second fitting.",
+      "Styles have changed twice since then; I have quietly kept the lapels current. My son says to sell it. But you paid your deposit, and a deposit is a promise on both ends.",
+      "It will fit you. That is the part I cannot explain to my son — every year I take it in or let it out a little, on a guess, and I have never once doubted the guess.",
+    ],
+    sign: "— E. Mandel, of Mandel & Sons",
+  },
+  {
+    to: "Whoever lives at\n40 Linden Street now",
+    from: "The previous tenant\n(the one with the trowel)",
+    stamp: "Occupant Declined",
+    postmark: ["Dead Letter", "Office", "Oct 1984"],
+    body: [
+      "Under the south fence, about a hand deep, there are two hundred daffodil bulbs I planted the autumn before we had to sell. Nobody knows they are there but you and me.",
+      "I am not asking anything. Only — some March, when the yellow comes up out of nowhere in a line clear to the gate, you will wonder. It was on purpose. All of it was on purpose.",
+    ],
+    sign: "— The previous tenant",
+  },
+  {
+    to: "The Sexton\nSt. Ambrose (the stone one\non the hill)",
+    from: "C. Loach\nformerly your bell-ringer",
+    stamp: "Parish Consolidated",
+    postmark: ["Dead Letter", "Office", "Apr 1977"],
+    body: [
+      "Forty-one years I rang the changes, and the doctors say that is where the hearing went, and I want you to know I signed off on the trade and would again.",
+      "My ask is small: Sunday mornings, would you leave the tower door open while they ring? My granddaughter drives me to the bottom of the hill. I cannot hear the bells anymore, but I can feel them in the car door, and that is most of it, if anyone asks.",
+    ],
+    sign: "— C. Loach",
+  },
+  {
+    to: "The Management\nThe Rialto Theater\n(closed Tuesdays)",
+    from: "Your projectionist\n(the booth)",
+    stamp: "Theater Dark",
+    postmark: ["Dead Letter", "Office", "Jul 1958"],
+    body: [
+      "For eleven years I have spliced one frame of a sunset into every newsreel. Nobody ever noticed, but the whole house breathes different for a moment, and that was me.",
+      "Take it out of my wages.",
+    ],
+    sign: "— The booth",
+  },
+  {
+    to: "Miss E. Calloway\nc/o the District Schools\n(she taught the 4th grade)",
+    from: "R. Pfeiffer\n(a grown man now)",
+    stamp: "Retired — No Forwarding",
+    postmark: ["Dead Letter", "Office", "Sep 1981"],
+    body: [
+      "In October of 1949 the window of Room 6 was broken by a snowball with a rock in it, and Gerald Stroud was kept in for it every recess of that winter. It was not Gerald. I let a boy freeze indoors for my aim.",
+      "You told us a man's character is what he does when nobody is looking. I was looking, ma'am. It took thirty-two years, but here is a dollar for the glass, and interest, and this.",
+    ],
+    sign: "— R. Pfeiffer, Room 6",
+  },
+  {
+    to: "The War Department\nMedals Section\nWashington, D.C.",
+    from: "F. Aldous\n(formerly Sergeant)",
+    stamp: "Section Reorganized",
+    postmark: ["Dead Letter", "Office", "Nov 1955"],
+    body: [
+      "Enclosed are two medals awarded to me in error. The citation says I held the ridge. The truth is I got lost in the smoke, sat down against what I took for a wall, and it was the ridge, and the war walked past me twice.",
+      "I have carried them ten years and they have gotten heavier every year, which is not how metal behaves. Give them to somebody who was where he meant to be. Or to nobody. They were fine ribbons, and I am sorry.",
+    ],
+    sign: "— F. Aldous, formerly Sergeant",
+  },
+  {
+    to: "The Operator\nThe carousel at\nLakeview Amusement Park",
+    from: "M. (age 61)\n(formerly age 7)",
+    stamp: "Park Demolished",
+    postmark: ["Dead Letter", "Office", "Jun 1990"],
+    body: [
+      "There was a white horse on the outside ring with a chipped ear and a green saddle, and in 1936 I named him Colonel and told him things I have never told anyone since.",
+      "I read they auctioned the horses when the park came down. I am not trying to buy him. I only want whoever winds up with the Colonel to know that he has heard a little girl's whole heart once, and to please dust his ear gently.",
+    ],
+    sign: "— M.",
+  },
+  {
+    to: "Whoever lost a gold ring\nin the sea\n(inscribed: 'til the tide turns)",
+    from: "Mrs. N. Behan\nthe fish counter, Sat. mornings",
+    stamp: "Inscription Insufficient",
+    postmark: ["Dead Letter", "Office", "Mar 1971"],
+    body: [
+      "On Friday last I opened a cod of ordinary appearance and found your wedding band inside, which the fish had carried, I am told, from anywhere at all.",
+      "The jeweler says 1921 by the hallmark. If the marriage outlived the ring, come to the fish counter Saturdays and describe the hand it fit. If it did not — I polish it Sundays, and it is having a better time than most rings.",
+    ],
+    sign: "— Mrs. N. Behan",
+  },
+  {
+    to: "The Town of Peavine\n(all of it)\nformerly off Route 12",
+    from: "The cartography dept.\nOverland Atlas Co.",
+    stamp: "No Such Town",
+    postmark: ["Dead Letter", "Office", "Feb 1963"],
+    body: [
+      "In the 1958 edition our draftsman left you off the state map — an error of ink, nothing more, and we apologize. We restored you in 1961.",
+      "But we are obliged to report that in the meantime your population went from 91 to 40, and our surveyor writes that the hardware store is closed and will not say more. We have put you back exactly where you were. Towns are asked to do the same, and we understand if that is no longer possible.",
+    ],
+    sign: "— Overland Atlas Co., Corrections",
+  },
+  {
+    to: "Mr. O. Quill\nthe yellow house\npast the second bridge",
+    from: "Census enumerator\nDistrict 11",
+    stamp: "House Counted, Not Found",
+    postmark: ["Dead Letter", "Office", "Jul 1960"],
+    body: [
+      "Sir: in April I counted you. We spoke at your gate about the dry spring, you gave your age as 44 and your occupation as beekeeper, and I wrote it down and tipped my hat.",
+      "The office informs me there is no yellow house past the second bridge and no record of any Quill in this county, living or otherwise. I am required to strike you from the rolls. I am striking you from the rolls, sir, but not from anything else. The bees were real. I have the sting to show.",
+    ],
+    sign: "— Enumerator, District 11",
+  },
+  {
+    to: "The next man to wear\na brown wool overcoat\n(donated, St. Vincent's)",
+    from: "The former Mrs. T.",
+    stamp: "Bin Emptied",
+    postmark: ["Dead Letter", "Office", "Jan 1986"],
+    body: [
+      "The coat was my husband's. Before you ask: yes, the pockets. Left: a theater stub from 1949 and a smooth stone from a beach I could name but won't. Right: a grocery list in his hand — bread, thread, bulbs — which I have decided you should keep.",
+      "He warmed it for thirty-seven years. It runs a little warm still, is my belief. Wear it somewhere he'd approve of: anywhere at all, with weather.",
+    ],
+    sign: "— The former Mrs. T.",
+  },
+  {
+    to: "Miss Patsy Greer\n(age 9, as of the sending)\nthe Greer farm",
+    from: "T. Colby, orchardist",
+    stamp: "Farm Sold Twice Since",
+    postmark: ["Dead Letter", "Office", "Oct 1978"],
+    body: [
+      "In the fall of 1954 your balloon came down in my orchard with a tag asking WHOEVER FINDS THIS to please write back and say how far it flew. Signed, Patsy, age 9.",
+      "It flew eleven miles. I did not write because eleven seemed a small number for so much string and hope, and I put the tag in a drawer, and the drawer became twenty-four years.",
+      "It has bothered me at odd hours ever since. Eleven miles, Patsy. But it cleared two rivers and the county line, and it beat every balloon I ever heard of, and I am sorry to be late.",
+    ],
+    sign: "— T. Colby, orchardist",
+  },
+  {
+    to: "The Editor\nThe Old Homestead Almanac\n(in confidence)",
+    from: "Your long-range\nweather correspondent",
+    stamp: "Opened by Mistake",
+    postmark: ["Dead Letter", "Office", "Dec 1973"],
+    body: [
+      "You have paid me thirty dollars a year since 1948 for the long-range forecasts, and the time has come to tell you my method, which my conscience and my doctor both advise. There is no method. I sit on the porch in August and decide how the winter feels.",
+      "I am right about as often as the government, which costs considerably more. Still, a man wants to confess something before he goes. Print next year's mild. It feels mild.",
+    ],
+    sign: "— Your weather man",
+  },
+  {
+    to: "The children of\nHarmon Street School\n(1949 through 1974)",
+    from: "Albert\n(the corner of Fifth)",
+    stamp: "School Rezoned",
+    postmark: ["Dead Letter", "Office", "Jun 1974"],
+    body: [
+      "Twenty-five years I walked you across Fifth Street, and by my arithmetic that is one hundred eleven thousand crossings and no losses, which I will put up against any record in this county.",
+      "You are bankers and farmers and one of you is a judge now, and you still cross at my corner some mornings, grown huge, checking both ways like I taught you. That checking is mine. That is my monument, and you all carry it.",
+    ],
+    sign: "— Albert, the corner of Fifth",
+  },
+  {
+    to: "The County Clerk\nCourthouse\nAttn: Records",
+    from: "Miss Birdie Pell\n(age 8), the Pell place",
+    stamp: "No Applicable Form",
+    postmark: ["Dead Letter", "Office", "Jul 1965"],
+    body: [
+      "Enclosed please find my census of the fireflies in our bottom field, taken the night of July 4th: four thousand and six, or possibly four thousand and seven, as one blinked in a way I could not swear was one or two.",
+      "My brother says they are not citizens. Kindly settle a bet: it seems to me anything that shows up every summer, works all night, and asks for nothing should be counted as something.",
+    ],
+    sign: "— Miss Birdie Pell, age 8",
+  },
+
+  /* ---- the shelf-box strata (2026-07-30, James's ask: what's IN the archive
+     boxes — Santa ×5, chains ×3, divorce ×3, evictions ×3, resignations ×2,
+     confessions ×5) ---- */
+  {
+    to: "Mr. S. Claus\nThe North Pole\n(the main office)",
+    from: "Wendell R. Petty\n(age 8), 14 Ash Street",
+    stamp: "No Route North",
+    postmark: ["Dead Letter", "Office", "Dec 1954"],
+    body: [
+      "I have it from Carol Ann Mackey that I am on the naughty list, and I am writing to dispute it. The cellar window was broken by Douglas Fett. The gum in Carol Ann's hair arrived there by accident of wind. Witnesses are available, except Douglas.",
+      "I have been good since Halloween by any fair measure, and I would ask that the record reflect it. I want the fire engine with the ladder that cranks.",
+      "If the list cannot be amended at this date, I understand, and will pursue the matter next year.",
+    ],
+    sign: "— Wendell R. Petty, age 8",
+  },
+  {
+    to: "Santa Claus\nThe North Pole\n(please hurry)",
+    from: "Miss Alma Frisk\n(age 7)",
+    stamp: "Address Outside Routes",
+    postmark: ["Dead Letter", "Office", "Dec 1952"],
+    body: [
+      "Do not bring me anything this year. Put it all toward my dad, who is in Korea, which mama shows me on the map with her finger.",
+      "If he cannot fit in the sleigh with the toys, I have drawn our house on the back of this letter, with the porch light on, so you can show him what it looks like in case he has trouble remembering. It is the house with the dog.",
+    ],
+    sign: "— Alma, age 7 (the house with the dog)",
+  },
+  {
+    to: "Santa Claus\nThe North Pole\n(attention: back orders)",
+    from: "G. Maddox\n(age 61)",
+    stamp: "Order Not on File",
+    postmark: ["Dead Letter", "Office", "Dec 1949"],
+    body: [
+      "In December of 1899 I wrote you regarding a red sled with iron runners. I never heard back, and I am following up, as fifty years seems long enough to wait politely.",
+      "I no longer require the sled. The hill has houses on it now anyway. I am writing mostly to keep the correspondence open, as you are the only one I ever wrote to who might still be there.",
+    ],
+    sign: "— G. Maddox, formerly age 11",
+  },
+  {
+    to: "S. Claus (if applicable)\nThe North Pole",
+    from: "Roger Blum\n(age 9), the Blum house",
+    stamp: "Conditionally Addressed",
+    postmark: ["Dead Letter", "Office", "Dec 1961"],
+    body: [
+      "My friend Carl says you are not real, and my sister says grow up, and my mother says finish your plate, which is not an answer.",
+      "I am not asking questions. I am just saying the milk and cookies arrangement continues at our house either way, no hard feelings, whatever the truth turns out to be. A man can leave a light on without knowing who comes.",
+    ],
+    sign: "— Roger Blum, age 9",
+  },
+  {
+    to: "Santa Claus\nThe North Pole\n(private)",
+    from: "Dorothy Cade\n(age 10)",
+    stamp: "Marked Private",
+    postmark: ["Dead Letter", "Office", "Dec 1958"],
+    body: [
+      "Please skip our house this year. Daddy's plant is on strike and mama cries at the Sears book, and I am old enough to know, but my brother Petey is not.",
+      "So skip us, but here is the important part: tell Petey the sleigh broke down. Do not tell him the true reason. He is five and he thinks the world is good, and I am working hard to keep him that way as long as I can.",
+      "If you have anything spare, he likes red.",
+    ],
+    sign: "— Dorothy Cade, age 10",
+  },
+  {
+    to: "Mrs. H. Plum\n6 Orchard Lane\n(sixth of six)",
+    from: "(the chain)",
+    stamp: "Chain Ends Here",
+    postmark: ["Dead Letter", "Office", "Apr 1936"],
+    body: [
+      "This letter has gone around the world eleven times since 1911. Copy it six times within six days and good fortune follows: Mrs. Reese of Joliet copied it and found five dollars in an old coat. Do not break the chain: Mr. Pole of Duluth broke it, and his hat blew into the river, and then his other hat.",
+      "Do not ask what the letter is for. The letter is for continuing. It is the oldest kind of letter there is.",
+    ],
+    sign: "— (copy exactly)",
+  },
+  {
+    to: "The Sender\nof the six-copies letter\n(up the chain)",
+    from: "E. Grandy\n(age 84)",
+    stamp: "Refused — Chain Broken",
+    postmark: ["Dead Letter", "Office", "Jun 1957"],
+    body: [
+      "I received your letter instructing me to copy it six times or invite misfortune. I decline. I am eighty-four years old. I have buried two husbands, outlived a flood, and once shook the hand of a president I did not care for. Whatever is coming for chain-breakers, I would like to see it try.",
+      "I am returning your luck unused. Spend it on the young. They frighten easier.",
+    ],
+    sign: "— E. Grandy",
+  },
+  {
+    to: "Mr. Harold Beemis\n11 Water Street\n(you are the sixth)",
+    from: "Your neighbor Gus\n(I panicked)",
+    stamp: "Delivery Declined",
+    postmark: ["Dead Letter", "Office", "Oct 1964"],
+    body: [
+      "By now you have seen the enclosed letter demanding six copies in six days. Harold, I am sorry. The other five went to strangers out of the phone book, but the instructions were strict about six, and midnight was coming, and yours was the only other name I could think of. I panicked.",
+      "You may break the chain and take your chances, or copy it and lose an evening as I did. Either way, please still come Thursdays for cards. Whatever bad luck follows me, it knows about Thursdays, and has always been welcome.",
+    ],
+    sign: "— Gus, next door",
+  },
+  {
+    to: "Mrs. I. Vance\n(address on file\nno longer good)",
+    from: "Lundgren & Son\nAttorneys-at-Law",
+    stamp: "Addressee Unknown",
+    postmark: ["Dead Letter", "Office", "Sep 1962"],
+    body: [
+      "He keeps the truck; you keep the piano; the dog alternates. The quilt your mother made for the wedding bed is enclosed — neither party would claim it, and neither would let the other have it. Our firm cannot keep it. It is too warm a thing to file.",
+    ],
+    sign: "— Lundgren & Son, Attorneys",
+  },
+  {
+    to: "The Clerk of Court\nDomestic Filings\nCounty Courthouse",
+    from: "N. Ostrow\n(the respondent)",
+    stamp: "Filing Incomplete",
+    postmark: ["Dead Letter", "Office", "May 1955"],
+    body: [
+      "You will find everything signed where the little pencil marks told me to sign. I have signed away the house, the acreage, and my Sundays, all in blue ink, all legible, as instructed.",
+      "I did not complete page four, where the form asks for the reason in the space provided. Twenty-two years, and the space provided is three inches long. I have no reason that fits. Return the form to me when the county prints an honest one.",
+    ],
+    sign: "— N. Ostrow",
+  },
+  {
+    to: "Mr. & Mrs. C. Hobb\n(jointly, one last time)\nRural Route 4",
+    from: "Office of the\nCounty Clerk",
+    stamp: "Decree Unclaimed",
+    postmark: ["Dead Letter", "Office", "Aug 1960"],
+    body: [
+      "Your final decree has been ready for collection since March of 1949. Eleven years. Neither party has come for it. The county does not presume to know its citizens' hearts, but the clerk notes you were both seen at the fair in August, sharing a candy apple, and that Mrs. Hobb won the pie contest and Mr. Hobb held her coat.",
+      "The decree remains in our drawer. It keeps fine. Kindly advise, or kindly don't.",
+    ],
+    sign: "— Office of the County Clerk",
+  },
+  {
+    to: "Mr. T. Wozniak\nApt. 2 rear, the shoe man\n22 Dill Street",
+    from: "A. Kravitz\n(your landlord)",
+    stamp: "Tenant Unmoved",
+    postmark: ["Dead Letter", "Office", "Mar 1959"],
+    body: [
+      "Paragraph one: you are hereby given thirty (30) days' notice to vacate for nonpayment, as required by my son, who has taken over the building's affairs and its letterhead.",
+      "Paragraph two, from me: ignore paragraph one. Nobody is going anywhere while I am alive. You fixed my roof in '44 for nothing, and a man's ledger has more than one column in it. Pay when the shoe shop pays you.",
+      "Do not show my son this letter.",
+    ],
+    sign: "— A. Kravitz, the actual landlord",
+  },
+  {
+    to: "The Swallows\nresident in the eaves\nCounty Courthouse (north)",
+    from: "Office of the\nTown Clerk",
+    stamp: "Occupants Airborne",
+    postmark: ["Dead Letter", "Office", "Apr 1966"],
+    body: [
+      "You and your issue are hereby directed to vacate the courthouse eaves no later than April the 1st, pursuant to the building committee's resolution of last fall, the same as the resolution of the six falls before it.",
+      "The clerk is required to serve this notice and has done so by reading it aloud from the steps, feeling foolish. Enforcement has been attempted twice, by ladder. The committee is aware of your position. You return on or about April the 9th, and the matter is continued another year.",
+    ],
+    sign: "— The Town Clerk, resigned to it",
+  },
+  {
+    to: "The Commander\nFORT DEFIANCE\n(the elm, trackside)",
+    from: "Great Plains & Western\nRailroad, Land Office",
+    stamp: "Fort Holds",
+    postmark: ["Dead Letter", "Office", "Jul 1953"],
+    body: [
+      "The structure known as FORT DEFIANCE, erected in the trackside elm at mile 214 without permit, must be removed within sixty days. This is the railroad's third notice.",
+      "The Land Office acknowledges your reply to the second notice, consisting of one (1) arrowhead and a drawing of the fort's cannon. The railroad finds your counteroffer persuasive but insufficient, and notes for the record that the cannon appears to be a stovepipe.",
+      "Our inspector reports the fort is well kept and flies its flag in all weathers. Sixty days, gentlemen. The railroad has been young too.",
+    ],
+    sign: "— Land Office, GP&W RR",
+  },
+  {
+    to: "The Selectmen\nTown Hall\n(all five of them)",
+    from: "H. Pruitt\nCounty Dog Warden",
+    stamp: "Position Since Filled",
+    postmark: ["Dead Letter", "Office", "Oct 1958"],
+    body: [
+      "I resign as dog warden, effective the first hard frost. In nine years I have caught three hundred and forty dogs and returned three hundred and forty dogs, many of them the same dog, one of them eleven times.",
+      "I have come to understand that the dogs and I are engaged in a game, that the game has rules I was never shown, and that the dogs are winning. A man should not hold a public office his heart has changed sides on.",
+      "I recommend for the post anyone who runs slower than me. The dogs prefer it close.",
+    ],
+    sign: "— H. Pruitt",
+  },
+  {
+    to: "Chief Engineer\nVolunteer Hose Co. No. 1",
+    from: "S. Dubcek\n(badge 4)",
+    stamp: "Never Accepted",
+    postmark: ["Dead Letter", "Office", "Nov 1971"],
+    body: [
+      "Forty-one years with the company, and the doctor and the ladder have come to an agreement over my head: I am done climbing. Consider this my resignation, tendered with a full heart and a bad knee.",
+      "One condition, and I will hold the company to it: my boots stay by the engine, third peg. They know the way to a fire by themselves now, and some green kid is going to be glad of boots that pull toward the smoke.",
+    ],
+    sign: "— S. Dubcek, badge 4",
+  },
+  {
+    to: "The Editor\nThe Weekly Courier\n(letters column)",
+    from: "(a man with a wagon)",
+    stamp: "Author Unknown",
+    postmark: ["Dead Letter", "Office", "Feb 1968"],
+    body: [
+      "For twenty-two winters somebody has stacked split firewood on the porches of this town's widows in the night, and for twenty-two winters your paper has run guesses every February. It was me. The mystery can retire; my back already has.",
+      "I am confessing so the town stops crediting angels for what was only a man with a wagon and a reason he never gave. The reason was a porch I sat on cold, once, a long time ago, waiting for help that took its time. That is all the reason there ever is.",
+    ],
+    sign: "— (the wagon is sold)",
+  },
+  {
+    to: "The Congregation\nFirst Methodist\n(the one with the tower)",
+    from: "L. Fenwick\n(now of Ohio)",
+    stamp: "No Longer in Parish",
+    postmark: ["Dead Letter", "Office", "Jun 1963"],
+    body: [
+      "The tower clock has said 7:22 since the autumn of 1946, and the town has made its peace with it, and I understand there is now a café called The Seven Twenty-Two. It was me. I climbed up on a dare with my cousin's .22 — the arithmetic of that has not escaped me — and I hit the works with the second shot.",
+      "I am told the town says the clock stopped the hour the war ended, or the hour old Reverend Miles died, depending who is talking. Both are better stories than mine. Keep either. But I wanted one soul on earth to hold the true one.",
+    ],
+    sign: "— L. Fenwick",
+  },
+  {
+    to: "The Membership\nOtter Tail Rod & Gun Club\n(read at the meeting)",
+    from: "C. Yost\n(the record holder)",
+    stamp: "Delivery Refused",
+    postmark: ["Dead Letter", "Office", "Mar 1970"],
+    body: [
+      "The brass plate over the bar says C. Yost, largemouth bass, eleven pounds four ounces, June 1953. I am writing to report there were three lead sinkers in that fish, and the fish and I both knew it.",
+      "Seventeen years that plate has looked at me every Friday night. Take it down, or leave it up as a monument to the sinkers, whichever the membership prefers. Either way I have paid: I have not enjoyed a fish since, and I used to love fish.",
+    ],
+    sign: "— C. Yost",
+  },
+  {
+    to: "The Town of Coulter\nAttn: Historical Society",
+    from: "The estate of\nA. Brazda, sculptor",
+    stamp: "Society Disbanded",
+    postmark: ["Dead Letter", "Office", "Sep 1975"],
+    body: [
+      "Our father cast the statue of your founder, Colonel Coulter, in 1928. Going through his papers we find an envelope marked FOR THE TOWN, WHEN I AM GONE, and in it this: no photograph of the Colonel existed. The face on your statue is our father's father, a tailor from Moravia, who never set foot in your county but had, our father writes, the correct jaw.",
+      "For forty-seven years your town has laid wreaths at the feet of a man who mended coats. Our father kept the secret and the commission. We see no reason to unveil anything now, except that the tailor deserves the wreaths on the record somewhere. They would have astonished him.",
+    ],
+    sign: "— The Brazda family",
+  },
+  {
+    to: "The Choir Director\nFirst Lutheran\n(soprano section)",
+    from: "Mrs. G. Sorley\n(third row, aisle end)",
+    stamp: "Unopened by Request",
+    postmark: ["Dead Letter", "Office", "Dec 1972"],
+    body: [
+      "Thirty-one years in your choir, and here is my confession: I lost the voice in 1941, after the diphtheria, and never told a soul. I have mouthed every anthem since. Thirty-one years of Holy, Holy, Holy, silent as snow.",
+      "I stayed because the robes are warm and the third row is the only place I have ever stood shoulder to shoulder with people and felt the music go through me like weather. You may put me out. But I ask you to consider that nobody has ever once noticed, and what that says about how a choir actually works.",
+    ],
+    sign: "— Mrs. G. Sorley",
+  },
+
+  /* ---- the length strata (2026-07-31, James: "a lot more variety in the
+     length... that's what would be more realistic" — scraps, notes, one list,
+     and four sagas; the letter panel scrolls past 88vh) ---- */
+  {
+    to: "Mr. E. Skoglund\n(wherever this finds him)",
+    from: "(the house on Alder Street)",
+    stamp: "Found No One",
+    postmark: ["Dead Letter", "Office", "Mar 1949"],
+    body: [
+      "Come home.",
+    ],
+    sign: "— everyone",
+  },
+  {
+    to: "Mr. J. Quist\nc/o the Harvest Dance\n(ask anyone)",
+    from: "(you know who)",
+    stamp: "Dance Concluded",
+    postmark: ["Dead Letter", "Office", "Sep 1950"],
+    body: [
+      "Yes.",
+    ],
+    sign: "— (still yes)",
+  },
+  {
+    to: "The Clerk of Court\nDomestic Filings",
+    from: "Mrs. F.\n(in haste)",
+    stamp: "Overtaken by Events",
+    postmark: ["Dead Letter", "Office", "Jul 1956"],
+    body: [
+      "File it before he apologizes again.",
+    ],
+    sign: "— Mrs. F.",
+  },
+  {
+    to: "The Milkman\n(route 6, the early one)",
+    from: "The Hollisters\n(the porch with the pail)",
+    stamp: "Route Discontinued",
+    postmark: ["Dead Letter", "Office", "May 1962"],
+    body: [
+      "Leave one extra bottle from now on, for the cat that is not ours. Bill us as usual and say nothing to the Neelys.",
+    ],
+    sign: "— The Hollisters",
+  },
+  {
+    to: "Lost & Found\nUnion Depot",
+    from: "O. Lindqvist",
+    stamp: "Not Found",
+    postmark: ["Dead Letter", "Office", "Jan 1954"],
+    body: [
+      "One glove, brown leather, left hand, lost on the 4:15 six years ago. I have kept the right. It has become a matter of principle.",
+    ],
+    sign: "— O. Lindqvist",
+  },
+  {
+    to: "Santa Claus\nThe North Pole",
+    from: "Gene Mackey\n(age 8)",
+    stamp: "Postage: Two Caps",
+    postmark: ["Dead Letter", "Office", "Dec 1958"],
+    body: [
+      "Dear Santa, here is the list.",
+      "1. The air rifle. You know the one.",
+      "2. Hockey skates, size 5 to grow into, Mom says.",
+      "3. A compass.",
+      "4. The volcano book, not the baby one.",
+      "5. Caps. All the caps you can spare.",
+      "6. Something good for Petey Cade next door. Ask around about why.",
+      "7. A flashlight.",
+      "8. Batteries. I have learned that lesson.",
+      "9. No socks. If the elves have already made the socks, fine. But know that I know.",
+      "10. Whatever my mom wants. She never says. She fixes everybody's plate and sits down last. Figure it out, you're the professional.",
+    ],
+    sign: "— Gene Mackey, age 8",
+  },
+  {
+    to: "The estate of A. Gorczak\n(the lawyers handling it)",
+    from: "E. Piatek\nthe adjoining forty",
+    stamp: "No Executor Found",
+    postmark: ["Dead Letter", "Office", "Jun 1969"],
+    body: [
+      "To the lawyers handling Anton Gorczak's affairs: I am told you are collecting statements regarding the boundary dispute. Here is the complete record, kept accurate, as he would want it kept.",
+      "1934: Anton moved the line fence one foot onto my land while I was at my brother's wedding. I moved it back two.",
+      "1935: he moved it back one and a half, and reseeded my clover wrong out of spite. The clover came in better than my own. I have never forgiven him.",
+      "1936: I painted my side of the fence. He painted his side a better color, which he then would not name. It took me until Easter to match it.",
+      "1937: the hailstorm. We did not fight that year. His barn lost its roof and my horses stood in his parlor for six days. The fence stood in water to the second rail.",
+      "1938 through 1941: skirmishes too numerous to list. See the diagram. The diagram is his; he drew fences truer than any man in this county, and it is the one thing I ever told him to his face.",
+      "1942: both boys shipped out — his Frank, my Walter. Anton and I mended fence together that spring without one word passing. Best fence we ever built. A man can say a great deal with a post maul, and we said all of it.",
+      "1943: Frank did not come home. That fall I moved my fence one foot onto my own land, so his cows could reach the creek shade. We never spoke of it. He never moved it back.",
+      "1951: the tornado took my fence entire, and Anton Gorczak rebuilt it in three days, on the old true line, to the inch, while I lay with a broken hip cursing him from the window. He billed me one dollar. I did not pay it, on principle, and he sent that bill every Christmas after, and it is how I knew he was well.",
+      "1962: too old to farm the back forties, the both of us, we rented to the Lindstrom boy, who took the fence down to run the parcels as one field. Anton and I stood where the line had been and could not find it. He said, 'Well.' I said, 'Well.' We stood there a long time. There has never been a bigger field.",
+      "This Christmas the bill did not come, and I knew that too.",
+      "So, to the lawyers: there is no dispute. There was never a dispute. There was a fence, and two old fools who kept it in perfect repair for thirty-five years, and if your papers require a finding, write down that the line is wherever Anton Gorczak said it was.",
+      "Enclosed is one dollar.",
+    ],
+    sign: "— E. Piatek",
+  },
+  {
+    to: "The buyer of box lot 40\nestate sale, the Hyde place\n(the black tin with roses)",
+    from: "The eldest daughter",
+    stamp: "Sale Concluded",
+    postmark: ["Dead Letter", "Office", "Sep 1980"],
+    body: [
+      "You bought my mother's sewing box at the sale on Saturday — lot 40, one dollar fifty. The auctioneer called it 'notions.' I was the woman by the porch rail who could not make herself bid. Before it is only buttons to you, I want one person on earth to have the inventory.",
+      "The needle book, wool felt, shaped like a house: she made it at nine years old, in Norway, before the boat. It is the oldest thing our family owns. Owned.",
+      "The blue spool: the thread she basted my wedding dress with, and my sister's. She let mine out twice and took my sister's in once, and what that arithmetic says about our marriages she never once said out loud.",
+      "The scissors we were forbidden to touch, which cut paper NEVER, and which every one of us used for paper, and she knew every time. She could hear it from two rooms. Paper has a sound, she said. So do liars.",
+      "The pincushion tomato. Science has no explanation for why they are tomatoes. Neither did she, and she distrusted the question.",
+      "The milk-glass button jar. On winter Sundays we sorted it on the rug — by size, then by color, then back in the jar — and I was forty years old before it occurred to me that the sorting was never for anything. It was to keep four children still in one room where she could count us. She was sorting us.",
+      "The darning egg, worn smooth as a chestnut. She held it in her fist the last week, in the hospital, when she did not know our names anymore. She knew the egg. A nurse asked what it was and I said: a tool — you hold it inside the sock, where the hole is, so the mending has something to press against. Write that down somewhere. It is not only for socks.",
+      "The thimble, worn through at the top. The hardware man told her a worn-through thimble means ten thousand hours, and she said, 'Then it owes me nothing,' and bought no new one, and pushed the needle sideways with her ring finger for the last eleven years. It is why every sweater this family owns pulls a little to the left. We are a crooked people, and it is documented in wool.",
+      "That is the inventory. Keep it together in the tin, is my only ask. It is one lot. It was one life, a dollar fifty, and the auctioneer was righter than he knew: those were her notions — that a hole is a thing you press against from the inside; that children hold still if you sort them gently; that paper has a sound, and so do liars.",
+      "Use the scissors for whatever you want. She can hear you.",
+    ],
+    sign: "— the woman by the porch rail",
+  },
+  {
+    to: "The Town Council\n(for the record)",
+    from: "N. Brozek\nnight watchman (the last)",
+    stamp: "Position Abolished",
+    postmark: ["Dead Letter", "Office", "Oct 1964"],
+    body: [
+      "To the Council: I am told the town has voted to discontinue the position of night watchman, the streetlights being judged sufficient. Very well. Enclosed is my final report, one complete shift, submitted in full, so the record shows what the streetlights will be doing instead of me.",
+      "9:00. Walked Main from the depot to the church. Tried every door twice. Locked, all, as they have been since 1949, when Elmer at the hardware left his open on purpose after we argued about whether I check.",
+      "10:00. The Pyle dog began at the moon, per schedule. Stood with him a while at the gate. He does not bark at the moon when he has company. No one has ever asked what the barking is for, except me. It is for the company.",
+      "11:00. Lights out at the hotel, all but room 9, which is a salesman practicing his figures out loud at the window. He is bad at them. I have started rooting for him.",
+      "12:00. Checked the mill pond gate. Confiscated two of the four cigarettes hidden in the usual place under the footbridge. Two and not four is town diplomacy: enough gone that the boys know somebody knows, enough left that they keep the spot where I can find it.",
+      "1:00. The Hedstrom kitchen light, burning late, per every Tuesday. Her husband drives the milk route Wednesdays and she cannot sleep the night before an empty bed, so she irons. Forty years I have kept that light company from the street and she has never known it. Tell her or don't. She irons beautifully. You can see the steam.",
+      "2:00. Nothing. I want the record to show how much of this job was nothing, and that I was there for all of it. Nothing does not happen by itself. Nothing takes attendance.",
+      "3:00. Talked the Verlan boy down out of the war memorial elm, where he goes when his father drinks, and walked him home the long way, per our arrangement. The long way is long enough that he is asleep on his feet by the porch and does not hear whatever there is to hear inside. The long way is the whole job, gentlemen, if you are keeping track of what the streetlights will need to learn.",
+      "4:00. Freight through at 4:11, on time. Waved at the brakeman. I do not know his name; I have waved at him nine years. Somewhere a man I never met says of us, 'that is the town where the fellow waves.' That is a kind of streetlight too, I would argue, and I am arguing.",
+      "5:00. First light at the bakery; the smell by 5:20. Gustafson hands the first burnt roll out the back door to whoever is standing there. For nine years that has been me. Starting next week it is nobody. He will hold it out anyway, is my guess. A door gets a habit.",
+      "6:00. Rang off at the depot. Handed in the clock and the key. That clock has punched every hour of mine since 1924; we retire disagreeing about how many that is.",
+      "Report ends. All was well. All was almost always well, gentlemen — that was never the news down here. The news was that somebody checked.",
+    ],
+    sign: "— N. Brozek, badge 1 (there was only ever the one)",
+  },
+  {
+    to: "Miss Karin Holm\n(my granddaughter)\nleft no forwarding",
+    from: "Grandma Holm",
+    stamp: "Forwarding Expired",
+    postmark: ["Dead Letter", "Office", "Nov 1976"],
+    body: [
+      "You called long distance, which is money, to ask for the cardamom bread the way I make it, and then you moved before I could write it down for you. Here it is anyway. It will find you or it won't, which is how it goes with bread too.",
+      "First: two cups of milk, scalded. Watch it. Scalded is the moment before the moment you were about to look away.",
+      "The yeast: prove it in a little of the warm milk with a spoon of sugar. If it does not foam, throw it out and start over, and do not mourn yeast. This applies broadly. I was first courted by a man with a borrowed boat and good posture. The boat did not foam. I started over with the man who became your grandfather, and to his last day he thanked that boat.",
+      "Cardamom: eleven pods, crushed yourself, in the cloth, with the rolling pin. Not powder from a can. The can is fine for people you like. The pods are for people you love. That is the whole of my philosophy, and now you have it.",
+      "Flour: begin with five cups, but the dough decides. Your mother always fought the dough. You cannot fight dough, Karin — it has no pride, it simply waits. So did I, and she came around, and we baked every Christmas after. She came around late. Bread rises late in a cold house. It rises, though.",
+      "Butter: the good butter. If the store man tells you the other kind is just the same, he has told you about butter and about himself.",
+      "Knead until your arms burn, and then count a hundred more. It is the only part of my life anyone ever called patient. It is not patience if you get to hit something. But I let them call me patient.",
+      "First rise: one hour under the flour-sack towel — the one with the windmill, bottom drawer of the hutch. The hutch is also yours someday. Your aunt does not know yet. This letter is my evidence.",
+      "Braid in six strands. Your grandfather said six was showing off, and I said yes, and he lived another forty years and never asked again. Marry someone who understands the first time. Or at least stops asking.",
+      "Egg over the top, pearl sugar, hot oven, twenty minutes, turn it once, and take it out when the whole kitchen smells like the inside of a church bell. You will know. You have always known things. You only call long distance to hear them said.",
+      "Bake it wherever it is you have landed, and the smell will make the place yours. That is what the recipe is for, Karin. The bread is only how the smell travels.",
+    ],
+    sign: "— Grandma Holm (the towel is yours too — show your aunt this letter)",
   },
 ];
 
@@ -3207,16 +3887,40 @@ let soundOn = false;
 let soundVol = 0.8;
 const AMBIENCE_LEVEL = 0.4;
 
-// The AM radio (2026-07-27): three Suno tracks James authored, baked through
+// The AM radio (2026-07-27, broadcast format 2026-07-30): Suno tracks James
+// authored plus his DJ reads and the KDLO ad spots, all baked through
 // tools/radio-bake.mjs (the -radio.mp3 siblings ARE the radio — never play the
-// clean sources here). Plays by default when sound comes on; clicking the set
+// clean sources here). The program is SEQUENTIAL and loops: each DJ bit signs
+// off the tune before it and intros the one after, so order is load-bearing —
+// never shuffle. Plays by default when sound comes on; clicking the set
 // toggles it. Volume falls off with distance from the cabinet-bank corner so it
 // reads as coming from the box, plus its own slider on the sound control.
-const RADIO_TRACKS = [
-  'assets/radio-music/High-Chapparal-radio.mp3',
-  'assets/radio-music/Highland-Ghost-Waltz-radio.mp3',
-  'assets/radio-music/Moon Over Dry Wash-radio.mp3',
+// Break format (James): song ends → DJ signs it off (odd dj) → two ads →
+// DJ intros the next number (even dj) → song. dj8 loops the set.
+const RADIO_PROGRAM = [
+  { src: 'assets/radio-music/High-Chapparal-radio.mp3', song: true },
+  { src: 'assets/radio-music/dj1-radio.mp3' },
+  { src: 'assets/radio-music/ad1-radio.mp3' },
+  { src: 'assets/radio-music/ad2-radio.mp3' },
+  { src: 'assets/radio-music/dj2-radio.mp3' },
+  { src: 'assets/radio-music/Highland-Ghost-Waltz-radio.mp3', song: true },
+  { src: 'assets/radio-music/dj3-radio.mp3' },
+  { src: 'assets/radio-music/ad3-radio.mp3' },
+  { src: 'assets/radio-music/ad4-radio.mp3' },
+  { src: 'assets/radio-music/dj4-radio.mp3' },
+  { src: 'assets/radio-music/Moon Over Dry Wash-radio.mp3', song: true },
+  { src: 'assets/radio-music/dj5-radio.mp3' },
+  { src: 'assets/radio-music/ad5-radio.mp3' },
+  { src: 'assets/radio-music/ad6-radio.mp3' },
+  { src: 'assets/radio-music/dj6-radio.mp3' },
+  { src: 'assets/radio-music/Worn-Fiddle-Porch-radio.mp3', song: true },
+  { src: 'assets/radio-music/dj7-radio.mp3' },
+  { src: 'assets/radio-music/ad7-radio.mp3' },
+  { src: 'assets/radio-music/ad8-radio.mp3' },
+  { src: 'assets/radio-music/dj8-radio.mp3' },
 ];
+const RADIO_SONG_STARTS = RADIO_PROGRAM
+  .map((item, i) => (item.song ? i : -1)).filter((i) => i >= 0);
 const RADIO_POS = new THREE.Vector3(8.2, 1.5, -3.55);
 const RADIO_LEVEL = 0.9;
 const radioGlowMats = [];
@@ -3224,7 +3928,8 @@ const radioAudio = new Audio();
 radioAudio.preload = 'auto';
 let radioOn = true;                 // the office radio plays unless someone turns it off
 let radioVol = 0.7;
-let radioIdx = Math.floor(Math.random() * RADIO_TRACKS.length);
+// tune in mid-broadcast, but always on a song — never mid-commercial-break
+let radioIdx = RADIO_SONG_STARTS[Math.floor(Math.random() * RADIO_SONG_STARTS.length)];
 let radioGapT = null;
 
 const radioDir = new THREE.Vector3();
@@ -3243,7 +3948,7 @@ function radioApplyVolume() {
   radioAudio.volume = clamp(soundVol * radioVol * RADIO_LEVEL * radioFalloff(), 0, 1);
 }
 function radioStart() {
-  if (!radioAudio.src) radioAudio.src = RADIO_TRACKS[radioIdx];
+  if (!radioAudio.src) radioAudio.src = RADIO_PROGRAM[radioIdx].src;
   radioApplyVolume();
   radioAudio.play().catch(() => {});
 }
@@ -3259,13 +3964,17 @@ function setRadio(on) {
 }
 radioAudio.addEventListener('ended', () => {
   clearTimeout(radioGapT);
-  radioGapT = setTimeout(() => {    // dead air between numbers, like the real thing
+  // dead air after a number, like the real thing; speech runs tighter —
+  // the booth cues the next cart fast
+  const gap = RADIO_PROGRAM[radioIdx].song
+    ? 1800 + Math.random() * 2600
+    : 600 + Math.random() * 700;
+  radioGapT = setTimeout(() => {
     if (!soundOn || !radioOn) return;
-    radioIdx = (radioIdx + 1 + Math.floor(Math.random() * (RADIO_TRACKS.length - 1)))
-      % RADIO_TRACKS.length;
-    radioAudio.src = RADIO_TRACKS[radioIdx];
+    radioIdx = (radioIdx + 1) % RADIO_PROGRAM.length;
+    radioAudio.src = RADIO_PROGRAM[radioIdx].src;
     radioStart();
-  }, 1800 + Math.random() * 2600);
+  }, gap);
 });
 
 if (window.ElasticSoundControl) {
