@@ -138,6 +138,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    texture-only repair, diag_eyelid.py). Still to generate: hair, brows, cap,
    glasses — ask Meshy for should_remesh:true + quad + ~40k, since the meshy-6
    default is remesh OFF, which is why the beard arrived at 1.49M verts.
+   SESSION 2026-07-31 (postmaster = THE POC, James's framing: he unlocks
+   everything — face, beard, arms down, animations, clothing, accoutrements):
+   eyelid repair rounds 4–10 landed in `assets/postmaster-kt2.glb` (head socket
+   repaint + eyeball sclera scrub + baked-shadow removal; the changelog's
+   method lesson: dump textures + render UNLIT before tuning thresholds).
+   fix_eyelid.py has a stronger de-shadow cap (2.2) EDITED BUT NOT RUN.
+   Agreed orders: beard = remesh FIRST (5cr, no go given yet) then conform-fit
+   interactively; Mixamo is free (Adobe ID only); glasses regenerate from the
+   drawing, procedural pair retired. Refs: DLO assets/ref/05_POSTMASTER.png.
    READ `src/labs/face-lab/changelog.md` before touching any of this.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25

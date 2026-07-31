@@ -1,6 +1,108 @@
 # Face Lab changelog
 
-## 2026-07-26/27 — Claude + James (REBUILD AS ONE FAMILY: new bald head in the lab, beard mounted, fit unresolved)
+## 2026-07-31 — Claude (Fable 5) — eyelid repair rounds 7–10: the real culprit was a baked shadow
+
+James kept seeing "the imprint of the pupil on the lower lid" after rounds 4–6.
+Each round's lesson, in order:
+
+- r7: UV-island SEAM pixels — face rasterisation misses gutter pixels between
+  islands and bilinear/mip sampling bleeds them in. Mask now extends 6 px
+  (nd by min-filter, zone masks by dilation). Plus a desaturation rule
+  (lower-lid skin is strongly warm, warmth 0.2+; the ghost was ~0.10) and the
+  eyeball scrub went to FULL sclera flood outside the iris (the junk-only pass
+  left every mid-tone painted shadow band).
+- r9 (James's lab screenshot, both eyes circled): stopped threshold whack-a-mole
+  — the waterline shelf band is now repainted UNCONDITIONALLY (geometry
+  decides, not colour). Shelf UV islands surrounded by gutter are unreachable
+  by diffusion inpaint (12k px kept their paint) → flooded with the median
+  lid-skin tone. Added from-below "shelf view" renders matching his angle.
+- r10, THE ACTUAL FIX: an UNLIT ALBEDO render (diag_albedo.py, emission-only
+  materials) exposed a broad BAKED SHADOW blotch painted under each eye —
+  near-skin colour, invisible to every rule, and my lit Cycles renders had
+  disguised it as cast shadow (the lab renders shadowless, so James saw it
+  raw). Removed as what it is — low-frequency darkening: masked-blur luminance
+  field, brighten-only gain toward the zone's 70th-percentile luminance,
+  feathered (fix_eyelid.py section 5c). Verified by re-rendered unlit albedo:
+  left eye much cleaner, both lids read as skin.
+
+METHOD LESSON (cost four rounds): when a painted artifact survives a repaint
+pass, DUMP THE TEXTURES AND LOOK (diag_eyetex.py) and render UNLIT before
+tuning thresholds — lit renders hide albedo problems inside shadow.
+
+Shipped export: postmaster-kt2.glb with de-shadow gain cap 1.6 (that run's
+max). fix_eyelid.py on disk has the cap raised to 2.2 for a stronger pass —
+EDITED BUT NOT YET RUN; next session: run it, judge the unlit albedo, re-export
+if better. The "+ beard" picker entry still loads the OLD un-repaired export.
+
+Session answers recorded: beard order is REMESH FIRST (5cr meshy_remesh to
+~40k quads, judged by renders) THEN conform-fit — fitting the 1.49M-vert soup
+first would be thrown away. Mixamo is free (free Adobe ID, no subscription).
+Glasses: retire the procedural wire pair, generate from the drawing via the
+image route. Reference images live in DLO assets/ref/ (05_POSTMASTER.png).
+
+## 2026-07-30 — Claude (eyelid texture repair SHIPPED; postmaster = the POC)
+
+James's framing this session: the postmaster is the proof of concept for
+expressive characters across all of Elastic Space — face, beard, arms-down
+body, animations, clothing, accoutrements all on the roadmap. Standing
+answers from tonight: the beard gets its polygon reduction BEFORE any
+conform-fit (remesh changes the shape, so fit-then-remesh is work thrown
+away); Mixamo is free (free Adobe ID, no subscription) and stays the body
+animation route; the procedural wire glasses are dropped — glasses will be
+generated from the concept art via the image route like every family asset.
+
+EYELID ARTIFACT FIXED (`tmp/face-lab/fix_eyelid.py`, four rounds, sheet
+fix-eyelid-sheet.png): the painted-in eye KeenTools left on the head's own
+texture is repainted out — texture-only, no geometry, no morphs, source
+head.glb untouched, `assets/postmaster-kt2.glb` re-exported (10.7 MB,
+55 keys intact). What the four rounds taught:
+  1. Colour thresholds alone miss warm iris speckle (it passes for skin) —
+     round 1 left tan remnants at the lower lid margin.
+  2. Unconditional repaint of the socket bag erases the LEGIT dark lash
+     line, and diffusion inpainting will happily bleed atlas-gutter black
+     into the fill — round 2 produced a chrome band + black rectangle.
+     Both rules are now permanent: near-black pixels never seed the fill,
+     and aggressive masks stay out of the upper lash line.
+  3. The working recipe: conservative colour rules everywhere + aggressive
+     rules (dark/speckle) scoped to the LOWER socket bag only, selected by
+     face normal (interior = normal points at the eye centre) and world-z
+     (below eye centre). Per-pixel 3D position/normal maps come from
+     barycentric UV rasterisation of the head triangles.
+SAME SESSION, ROUND 5–6 (James still saw "the imprint of the pupil on the
+lower lid"): two more sources found by DUMPING THE TEXTURES and looking
+(diag_eyetex.py — always do this before threshold archaeology):
+  1. Head texture had a grey-green faded pupil ghost at the lower waterline.
+     Colour rule that caught it: `g >= r` — skin is never green-dominant.
+  2. The EYEBALL textures themselves carry painted lids + lash flecks AROUND
+     the iris (KeenTools projection junk); that ring wraps the ball and peeks
+     past the real lids. Fix: detect pupil (central dark blob, median-trim —
+     restrict search to the image centre, the texture's unused corners are
+     also black), scan rings outward for TRUE sclera (v>0.68 AND chroma<0.14
+     — round 5 accepted light hazel at v>0.55 and ATE THE OUTER IRIS, muddy
+     doll-eye), then replace only junk pixels (chromatic or dark) outside the
+     iris disc, keeping real sclera shading. Both eyes clean, iris size
+     intact, lash lines intact (sheet fix-eyelid-sheet2.png).
+ROUNDS 7–8 (James: still the imprint; round-6 sheet's BEFORE was the
+ORIGINAL artifact, which hid that 6 hadn't moved past 4 — always diff
+against the last state the user judged, not the original): the real source
+was the EYEBALL: the sclera ring-scan overshot the true iris edge (stopped
+at R=308, true edge ~255) because junk crescents surround the iris, so a
+protected ring of painted junk survived every pass — including the pale
+grey band BELOW the iris that reads as a pupil shadow on the lower lid.
+Fix: cap iris_R at 2.2x the measured pupil radius (anatomy), then flood
+everything outside with sampled sclera (junk-only replacement had left all
+the mid-tone shadow bands). Head texture got a seam-extension (mask
+dilated 6px — UV-gutter pixels bleed in via bilinear/mip sampling and
+face rasterisation never covers them) + a desaturation rule
+(lower-lid skin is strongly warm, warmth>0.2; the ghost was ~0.10) + a
+second RESIDUE pass re-detecting on the inpainted result (a single pass
+cannot flag the ghost-mixed-with-skin edges its own fill creates).
+Verified in renders both eyes: sclera uniform, iris full size, lower lid
+clean. The texture-dump crop (diag_eyetex.py) was the tool that found all
+of it — LOOK at the pixels before tuning thresholds.
+NOTE: "postmaster v2 + beard (placement preview)" still loads the OLD
+un-repaired export; the repaired texture work lands in the conformed-beard
+rebuild whenever that happens.
 
 STANDING RULE SET THIS SESSION — never cut/trim pieces off an existing 3D model
 to use as assets. Every asset is generated individually so its characteristics
