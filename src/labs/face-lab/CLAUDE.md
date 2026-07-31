@@ -6,9 +6,13 @@ It is linked from the admin panel's "Labs" section.
 
 ## What it is
 
-A three.js viewer for `assets/bust.glb` (an MPFB2 human bust carrying 52 ARKit
-face-unit morphs + 15 Meta viseme morphs) driven by the shared runtime engine
-`src/core/face-life.js`. James uses it to:
+A three.js viewer driven by the shared runtime engine `src/core/face-life.js`.
+**Since the 2026-07-31 head purge (James's order, see changelog) the model picker
+holds exactly two models:** `assets/postmaster-kt2.glb` ("postmaster v2", KeenTools,
+55 ARKit keys) and `assets/postmaster-kt2-beard.glb` (placement preview). The MPFB2
+bust, sculpt head, old KT head, and road-B scans were deleted outright — no archive,
+git history only. References to the bust below are historical machinery; the build
+scripts survive in `tmp/face-lab/` but their products are gone. James uses the lab to:
 
 1. Mix morph sliders into expressions and save them as named presets.
 2. Test preset A→B transitions (duration/easing/loop) — the transition bench.
