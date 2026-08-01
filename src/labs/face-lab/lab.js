@@ -109,6 +109,8 @@ const PAIR_SUFFIXES = [
 // list. Everything else (mannequin bust, sculpt head, beard placement preview,
 // both road-B scans) permanently deleted, no archive; git history is the only trace.
 const MODELS = [
+  // The 2026-07-31 new-family head: ChatGPT turnaround -> Meshy -> KeenTools.
+  { id: 'postmaster-v3', label: 'postmaster v3 (new family)', file: 'assets/postmaster-v3.glb' },
   { id: 'postmaster-kt2', label: 'postmaster v2 (KeenTools, slim face)', file: 'assets/postmaster-kt2.glb' },
   { id: 'postmaster-kt', label: 'postmaster (KeenTools)', file: 'assets/postmaster-kt.glb' },
 ];
