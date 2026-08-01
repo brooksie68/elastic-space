@@ -11,7 +11,9 @@
     margin: 0; background: #14161c; color: #cfd3dd;
     font-family: "Segoe UI", system-ui, sans-serif; font-size: 0.85rem;
   }
-  .wrap { max-width: 1600px; margin: 0 auto; padding: 0.75rem 1rem; }
+  /* full-bleed on purpose (James, 2026-07-31): this is a look-dev stage, not a
+     dashboard — the 1600px admin-panel cap does not apply here */
+  .wrap { padding: 0.75rem 1rem; }
   header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
   header h1 { font-size: 1.1rem; margin: 0; color: #e8eaf0; letter-spacing: 0.04em; }
   header .sub { color: #8a8fa3; font-size: 0.8rem; }
@@ -60,7 +62,7 @@
   <main>
     <div id="stage-panel">
       <canvas id="stage"></canvas>
-      <div id="stage-hint">beings sheet: the seven states of the morph wheel, held still for judgment</div>
+      <div id="stage-hint">beings sheet: humanoid, mandala, cloud — three stations of the morph wheel</div>
     </div>
     <div id="controls">
       <h2>being</h2>
@@ -71,6 +73,9 @@
         <button id="bSheet" class="on">beings sheet</button>
         <button id="bHome">homes sheet</button>
         <button id="bOrbit">orbit</button>
+      </div>
+      <div class="row">
+        <button id="bCount">show all seven</button>
       </div>
 
       <h2>light</h2>
@@ -115,8 +120,12 @@ const canvas = document.getElementById("stage");
 const gl = canvas.getContext("webgl2", { alpha: false, antialias: false });
 function resize() {
   const r = canvas.getBoundingClientRect();
-  canvas.width = r.width * devicePixelRatio;
-  canvas.height = r.height * devicePixelRatio;
+  // fragment budget: raymarch cost scales with pixel count, and the soft glow
+  // upscales invisibly — never render this shader at native 4K-ish resolution
+  const PIX_CAP = 1.5e6;
+  const s = Math.min(devicePixelRatio, Math.sqrt(PIX_CAP / (r.width * r.height)));
+  canvas.width = Math.round(r.width * s);
+  canvas.height = Math.round(r.height * s);
 }
 addEventListener("resize", resize);
 
@@ -212,29 +221,28 @@ float sdDodecaish(vec3 p){
   d = max(d, dot(p, n3.zxy));
   return d - 0.52;
 }
+// one shape of the wheel by index — branches are uniform-coherent (k comes
+// from uMorph), so only the SDFs actually on screen get evaluated. The old
+// version computed all seven (including the fbm cloud) every raymarch step.
+float shapeK(float k, vec3 p){
+  if (k < 1.0) return sdBeing(p);
+  if (k < 2.0) return sdBox(p, vec3(0.42));
+  if (k < 3.0) return sdOcta(p, 0.62);
+  if (k < 4.0) return sdMandala(p);
+  if (k < 5.0) return sdDodecaish(p);
+  if (k < 6.0) return sdTorus(p, vec2(0.40,0.15));
+  return sdSphere(p, 0.52) + (fbm(p*3.4 + uTime*0.25) - 0.5)*0.55;
+}
 float shapeAt(vec3 p, float idx){
   float i = mod(idx, 7.0);
   float f = fract(i);
-  float s = smoothstep(0.0, 1.0, f);
-  float a, b;
   float k = floor(i);
   float ca = cos(uTime*0.15), sa = sin(uTime*0.15);
   p = vec3(ca*p.x - sa*p.z, p.y, sa*p.x + ca*p.z);
-  float dHum = sdBeing(p);
-  float dBox = sdBox(p, vec3(0.42));
-  float dPyr = sdOcta(p, 0.62);
-  float dMan = sdMandala(p);
-  float dJew = sdDodecaish(p);
-  float dTor = sdTorus(p, vec2(0.40,0.15));
-  float dCld = sdSphere(p, 0.52) + (fbm(p*3.4 + uTime*0.25) - 0.5)*0.55;
-  if (k < 1.0)      { a = dHum; b = dBox; }
-  else if (k < 2.0) { a = dBox; b = dPyr; }
-  else if (k < 3.0) { a = dPyr; b = dMan; }
-  else if (k < 4.0) { a = dMan; b = dJew; }
-  else if (k < 5.0) { a = dJew; b = dTor; }
-  else if (k < 6.0) { a = dTor; b = dCld; }
-  else              { a = dCld; b = dHum; }
-  return mix(a, b, s);
+  float a = shapeK(k, p);
+  if (f < 0.001) return a; // sheet panes sit on whole states — one SDF, done
+  float b = shapeK(mod(k + 1.0, 7.0), p);
+  return mix(a, b, smoothstep(0.0, 1.0, f));
 }
 float sdHome(vec3 p){
   float t = uTime * 0.25;
@@ -279,11 +287,16 @@ void main() {
     // layer ("rippling purple fire at the edges") — mot gives it the ripple.
     float shell = exp(-abs(d) * edgeK);
     // 2: filaments — ridged fbm carried on a slow interior flow; structure
-    // raises frequency AND count, turbulence drives how hard they churn
-    vec3 fp = p * (3.0 + uCplx * 5.0) + vec3(0.0, uTime * (0.15 + uTurb * 0.5), 0.0) + uSeed;
-    float rid = 1.0 - abs(2.0 * fbm(fp) - 1.0);
-    rid = pow(rid, 6.0 - uCplx * 2.5);
-    float veins = rid * inside * (0.4 + 1.8 * uCplx);
+    // raises frequency AND count, turbulence drives how hard they churn.
+    // Only paid for genuinely interior samples — the shell band outside the
+    // form multiplies veins by ~0 anyway, so skip its fbm entirely there.
+    float veins = 0.0;
+    if (inside > 0.003) {
+      vec3 fp = p * (3.0 + uCplx * 5.0) + vec3(0.0, uTime * (0.15 + uTurb * 0.5), 0.0) + uSeed;
+      float rid = 1.0 - abs(2.0 * fbm(fp) - 1.0);
+      rid = pow(rid, 6.0 - uCplx * 2.5);
+      veins = rid * inside * (0.4 + 1.8 * uCplx);
+    }
     // 3: the skeleton — a SURFACE at depth (an inner glowing form), never a
     // filled core. The v54 first cut used max(d+0.16, 0) which is 1.0 across
     // the whole interior — that was James's "pure white all the way through";
@@ -380,7 +393,12 @@ function drawSubject(vx, vy, vw, vh, opts) {
   const f = norm(opts.dir);
   const r = norm(cross(f, [0,1,0]));
   const u = cross(r, f);
-  const vp = mul(persp(0.9, vw/vh, 0.05, 100), view(r,u,f));
+  // fit BOTH dimensions: persp()'s fov is vertical, so in a pane narrower than
+  // it is tall the horizontal frustum shrinks and limbs clip at the pane edges
+  // — widen the fov in narrow panes so the subject always fits
+  const asp = vw / vh;
+  const fov = asp >= 1 ? 0.9 : 2 * Math.atan(Math.tan(0.45) / asp);
+  const vp = mul(persp(fov, asp, 0.05, 100), view(r,u,f));
   // camera at origin looking along f: the subject sits ALONG f at its distance
   const origin = [f[0]*opts.dist, f[1]*opts.dist, f[2]*opts.dist];
   gl.uniformMatrix4fv(U.uVP, false, vp);
@@ -400,14 +418,21 @@ function drawSubject(vx, vy, vw, vh, opts) {
 }
 
 const HINTS = {
+  beings3: "beings sheet: humanoid, mandala, cloud — three stations of the morph wheel",
   beings: "beings sheet: the seven states of the morph wheel, held still for judgment",
   homes: "homes sheet: one home at four distances — across the map to inside it",
   orbit: "orbit: one subject, live morph wheel, camera circling",
 };
+// 2026-07-31 (James: the lab was killing his laptop): three shapes is the
+// default sheet — humanoid / mandala / cloud span the wheel; "show all seven"
+// brings the full set back when a judgment needs it
+let sheetAll = false;
+const SHEET3 = [0, 3, 6];
 function frame(now) {
   const dt = now - t0; t0 = now;
   ema += (dt - ema) * 0.05;
-  document.getElementById("perf").textContent = `frame ${ema.toFixed(1)} ms`;
+  document.getElementById("perf").textContent =
+    `frame ${ema.toFixed(1)} ms · render ${canvas.width}×${canvas.height}`;
   const t = now * 0.001;
   gl.clear(gl.COLOR_BUFFER_BIT);
   gl.useProgram(prog);
@@ -420,11 +445,13 @@ function frame(now) {
   gl.uniform1f(U.uEdge, Number(edge.value)/100);
   const W = canvas.width, H = canvas.height;
   if (mode === "beings") {
-    for (let i = 0; i < 7; i++) {
-      const col = i % 4, row = (i / 4) | 0;
-      drawSubject(col * (W/4), H/2 - row * (H/2), W/4, H/2,
-        { dir: [0.25, -0.05, 1], dist: 2.6, morph: i, mode: 0, seed: i * 3.1 });
-    }
+    const picks = sheetAll ? [0,1,2,3,4,5,6] : SHEET3;
+    const cols = sheetAll ? 4 : 3, rows = sheetAll ? 2 : 1;
+    picks.forEach((m, i) => {
+      const col = i % cols, row = (i / cols) | 0;
+      drawSubject(col * (W/cols), H - (row + 1) * (H/rows), W/cols, H/rows,
+        { dir: [0.25, -0.05, 1], dist: 2.6, morph: m, mode: 0, seed: m * 3.1 });
+    });
   } else if (mode === "homes") {
     const ds = [7.0, 3.6, 2.3, 1.45];
     for (let i = 0; i < 4; i++) {
@@ -449,11 +476,17 @@ const setMode = (m, btn) => {
   mode = m;
   for (const b of ["bSheet","bHome","bOrbit"]) document.getElementById(b).classList.remove("on");
   btn.classList.add("on");
-  document.getElementById("stage-hint").textContent = HINTS[m];
+  const hintKey = (m === "beings" && !sheetAll) ? "beings3" : m;
+  document.getElementById("stage-hint").textContent = HINTS[hintKey];
 };
 document.getElementById("bSheet").onclick = (e) => { orbitHome = false; setMode("beings", e.target); };
 document.getElementById("bHome").onclick = (e) => { orbitHome = true; setMode("homes", e.target); };
 document.getElementById("bOrbit").onclick = (e) => setMode("orbit", e.target);
+document.getElementById("bCount").onclick = (e) => {
+  sheetAll = !sheetAll;
+  e.target.textContent = sheetAll ? "show three" : "show all seven";
+  if (mode === "beings") setMode("beings", document.getElementById("bSheet"));
+};
 {
   const sel = document.getElementById("being");
   for (const b of BEINGS) {

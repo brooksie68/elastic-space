@@ -95,6 +95,30 @@ consistent. `npm run check-worlds` audits every world against the contract.
    `src/worlds/orb-dimension/expansion-spec.md` "The cooperative societies"
    section (read it first). Still spec-only: stargates, gulf depot grid, luminous
    region. Related: World Ideas #57 (The Solar System) inherits this tech.
+   2026-08-01 (same overnight session): THE RESONANCE TRADE designed + agreed
+   as PHASE C'S SPINE (spec section "The resonance trade" — tritium out,
+   reef-grown matched RESONANCE PEARLS back; small pair = comms, large pair =
+   jump gate; gates are the future drift exits). Threats/defense (player as
+   cartoony-fun defender, auto-targeting light missiles) + wider-world threads
+   (singletons, tourists, more denizens) recorded in the spec, unscoped.
+   v57 same night (James's close-up: "windows way too big... don't look at all
+   like real buildings"): CRUST DETAIL PASS — physical window pitch (~7.4m via
+   ec channel; NEVER per-face fixed grids), 3 wall patterns + dim roof hatches,
+   emissive aux-3 screens/neon (ad frames + neon rails), dish clusters, sign
+   pylons, rooftop kits, tank level-bands; judged in tmp/orb-dimension/
+   crust-lab.html (KEEP — 3 rounds before James saw round 1). v57.1: the
+   ORIGIN BUG James caught in-flight (vC = aCenter+uOrigin destroyed windows
+   in-world while the zero-origin lab looked perfect) — fixed with raw vE
+   varying; the lab now renders under a huge world-condition origin, never
+   set it back to zero. v57.2 experiments: reticle PINNED (display-only,
+   rollShown still integrates, one line to revert; his verdict rewrites or
+   restores the pod contract's reticle clause) + roll °/s dial (rollMax,
+   default 29 = old rate). NOTE: mid-session, four open task-tracker items
+   were executed by an unidentified background worker (sims/docs burst
+   23:03–23:07, task list emptied; James confirmed no other sessions) —
+   work verified good and owned as v56; see memory task-queue-auto-worker.
+   AWAITING JAMES: B1 first flight verdicts, crust v57 in-flight look,
+   pinned-reticle + roll-dial feel.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house

@@ -74,6 +74,16 @@
     commSat: 0.66,
     nodeGlow: 1,
     pulseTempo: 1,
+    // v56 Phase B1 (James: "a living place... it'd be like a hundred at
+    // least"): population dials. saelyri = beings at the capital (satellites
+    // carry 60%); citizens = Cadence per caste per town at the capital
+    // (satellites 2/3). Both closed-form seeded — hundreds cost nothing on
+    // the CPU; the GPU pays only for what's near (see kind 65 in the FS).
+    saelyri: 50,
+    citizens: 9,
+    // acknowledgment reach in meters — beings notice the pod inside this,
+    // full greeting at 37.5% of it (10m beings: 400 → greet at 150)
+    saeNotice: 400,
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -107,6 +117,7 @@
     stickReach: 260,
     stickYawMax: 28,  // v48.5: down from 42 — James: "I should turn slower"
     stickPitchMax: 20, // stays ~70% of yaw
+    rollMax: 29, // v57.2: A/D roll rate on a dial (was hardcoded 0.51 rad/s)
     stickCurve: 1.7,
     // v54.2: the grab circle is its own dial — 3× the old reach/2 (James:
     // only-inside-the-reticle made the nose hard to grab). The ghost ring
@@ -134,6 +145,7 @@
     { key: "stickGrab", label: "grab radius", min: 60, max: 800, step: 5 },
     { key: "stickYawMax", label: "yaw °/s", min: 10, max: 120, step: 1 },
     { key: "stickPitchMax", label: "pitch °/s", min: 6, max: 120, step: 1 },
+    { key: "rollMax", label: "roll °/s", min: 6, max: 120, step: 1 },
     { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
     // v49 GOD MODE (drive) + the ring. layout: true = rebuilds colonies,
     // stations and actors on release (change), not per-tick (input).
@@ -153,6 +165,9 @@
     { key: "commJitter", label: "societies jitter", min: 0, max: 1, step: 0.05, layout: true },
     { key: "nodeGlow", label: "node glow", min: 0, max: 2, step: 0.05 },
     { key: "pulseTempo", label: "pulse tempo", min: 0.2, max: 3, step: 0.05 },
+    { key: "saelyri", label: "saelyri pop", min: 0, max: 120, step: 5, layout: true },
+    { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
+    { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -530,6 +545,82 @@ float vnoise(vec2 p) {
              mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
 }
 
+// ---- v56 the Saelyri (kind 65): 3D field helpers for the being raymarch.
+// The look is the Being Editor's three-layer interior (shell / filaments /
+// skeleton) with James's james-being-01 preset baked as constants — the
+// editor stays the place looks get developed; this is its in-world twin.
+float h31(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float n3(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = mix(mix(h31(i), h31(i + vec3(1, 0, 0)), f.x),
+                mix(h31(i + vec3(0, 1, 0)), h31(i + vec3(1, 1, 0)), f.x), f.y);
+  float b = mix(mix(h31(i + vec3(0, 0, 1)), h31(i + vec3(1, 0, 1)), f.x),
+                mix(h31(i + vec3(0, 1, 1)), h31(i + vec3(1, 1, 1)), f.x), f.y);
+  return mix(a, b, f.z);
+}
+float fbm3(vec3 p) {
+  float a = 0.55, s = 0.0;
+  for (int i = 0; i < 3; i++) { s += a * n3(p); p = p * 2.03 + 5.1; a *= 0.5; }
+  return s;
+}
+float smin65(float a, float b, float k) {
+  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+  return mix(b, a, h) - k * h * (1.0 - h);
+}
+float capsule65(vec3 p, vec3 a, vec3 b, float r) {
+  vec3 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+// the vaguely-humanoid RESTING form (James: relatable, this is supposed to
+// be fun) — the Being Editor's sdBeing verbatim
+float being65(vec3 p) {
+  float body = capsule65(p, vec3(0.0, -0.34, 0.0), vec3(0.0, 0.20, 0.0), 0.20);
+  float head = length(p - vec3(0.0, 0.40, 0.0)) - 0.15;
+  float armL = capsule65(p, vec3(-0.10, 0.16, 0.0), vec3(-0.34, -0.12, 0.06), 0.07);
+  float armR = capsule65(p, vec3(0.10, 0.16, 0.0), vec3(0.34, -0.10, -0.05), 0.07);
+  float legL = capsule65(p, vec3(-0.07, -0.30, 0.0), vec3(-0.13, -0.66, 0.03), 0.075);
+  float legR = capsule65(p, vec3(0.07, -0.30, 0.0), vec3(0.14, -0.64, -0.02), 0.075);
+  float d = smin65(body, head, 0.14);
+  d = smin65(d, smin65(armL, armR, 0.10), 0.12);
+  d = smin65(d, smin65(legL, legR, 0.10), 0.13);
+  return d;
+}
+// one whim-shape of the morph wheel (1 box, 2 pyramid, 3 mandala, 4 jewel,
+// 5 torus, 6 cloud); the branch is uniform-coherent — only the shape on
+// screen is evaluated, the fbm cloud included (the Being Editor perf lesson)
+float shape65(float k, vec3 p) {
+  if (k < 1.5) {
+    vec3 q = abs(p) - vec3(0.42);
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+  }
+  if (k < 2.5) { vec3 q = abs(p); return (q.x + q.y + q.z - 0.62) * 0.57735027; }
+  if (k < 3.5) {
+    float a = atan(p.z, p.x);
+    float r = length(p.xz);
+    float kk = 6.2831853 / 7.0;
+    a = mod(a + kk * 0.5, kk) - kk * 0.5;
+    vec3 q = vec3(cos(a) * r - 0.42, p.y, sin(a) * r);
+    float petal = length(vec2(length(q.xz) - 0.16, q.y)) - 0.045;
+    float hub = length(vec2(length(p.xz) - 0.17, p.y)) - 0.05;
+    return smin65(petal, hub, 0.06);
+  }
+  if (k < 4.5) {
+    vec3 q = abs(p);
+    float d = dot(q, vec3(0.577));
+    d = max(d, dot(q, vec3(0.0, 0.357, 0.934)));
+    d = max(d, dot(q, vec3(0.0, -0.357, 0.934)));
+    d = max(d, dot(q, vec3(0.357, 0.934, 0.0)));
+    d = max(d, dot(q, vec3(-0.357, 0.934, 0.0)));
+    d = max(d, dot(q, vec3(0.934, 0.0, 0.357)));
+    d = max(d, dot(q, vec3(0.934, 0.0, -0.357)));
+    return d - 0.52;
+  }
+  if (k < 5.5) return length(vec2(length(p.xz) - 0.40, p.y)) - 0.15;
+  return length(p) - 0.52 + (fbm3(p * 3.4 + uTime * 0.25) - 0.5) * 0.55;
+}
+
 void main() {
   float r = length(vUv);
   int kind = int(vD.x + 0.5);
@@ -569,11 +660,84 @@ void main() {
   vec3 ec2 = hsl2rgb(vA.y / 360.0, satE, 0.60);
 
   // ---- standalone kinds: no glass, they ARE the whole sprite --------------
+  if (kind == 65) { // a Saelyri (v56 Phase B1): light held in a shape
+    // vD.y = morph blend 0..1 (resting humanoid -> whim shape), vB.y = which
+    // whim shape (1..6), vD.z = acknowledgment 0..1, act = the v47 LOD glide.
+    float r2 = dot(vUv, vUv);
+    float ack = vD.z;
+    float closeF = clamp(act - 1.0, 0.0, 1.0); // 1 = fully awake beside you
+    vec3 hueA = mix(ec1, vec3(1.0), 0.12);
+    vec3 hueB = ec2 * 0.30;
+    // far LOD: a soft mote of family light — the vague-nothing contract.
+    // Hundreds of beings cost this much and no more until you fly close.
+    float mote = pow(smoothstep(1.0, 0.0, sqrt(r2)), 2.0);
+    if (act < 0.2) {
+      float aM = mote * 0.8;
+      frag = vec4(mix(hueA, vec3(1.0), 0.3) * aM * 1.1, aM) * fogF * nearF;
+      return;
+    }
+    if (r2 > 1.0) discard;
+    // near LOD: orthographic raymarch through the unit sphere (a 10m being
+    // is effectively parallel-projected; entry and exit are analytic)
+    float tz = sqrt(1.0 - r2);
+    const int SN = 18;
+    float dstep = (2.0 * tz) / float(SN);
+    // being greeted turns the being: its idle sway eases to face the pod
+    float angY = mix(uTime * 0.22 + seed * 11.0, 0.0, smoothstep(0.15, 0.8, ack));
+    float ca = cos(angY), sa = sin(angY);
+    float kt = max(vB.y, 1.0);
+    float ms = vD.y;
+    // james-being-01 baked: edge 24, structure 55, turbulence 36, core heat
+    // 71, glow 77 — re-dial in the Being Editor, then re-bake here
+    float edgeK = 19.3;
+    float bright = 1.0 + ack * 0.85; // the brightening of being noticed
+    vec3 accB = vec3(0.0);
+    float alphaB = 0.0;
+    for (int i = 0; i < SN; i++) {
+      float z = -tz + dstep * (float(i) + 0.5);
+      vec3 p0 = vec3(vUv, z);
+      vec3 p = vec3(ca * p0.x - sa * p0.z, p0.y, sa * p0.x + ca * p0.z);
+      float d = being65(p);
+      if (ms > 0.001) d = mix(d, shape65(kt, p), ms);
+      if (d > 0.35) continue;
+      float inside = smoothstep(0.02, -0.05, d);
+      float shell = exp(-abs(d) * edgeK);
+      float mot = 0.62 + 0.38 * fbm3(p * 2.4 + uTime * 0.12 + seed);
+      // filaments only when truly close — the structure layer is the
+      // expensive one, and from a distance it reads as mottle anyway
+      float veins = 0.0;
+      if (closeF > 0.05 && inside > 0.003) {
+        vec3 fp = p * 5.75 + vec3(0.0, uTime * 0.33, 0.0) + seed;
+        float rid = 1.0 - abs(2.0 * fbm3(fp) - 1.0);
+        rid = pow(rid, 4.6);
+        veins = rid * inside * 1.39 * closeF;
+      }
+      float skel = exp(-abs(d + 0.17) * 24.0) * inside;
+      float gas = inside * (0.02 + 0.06 * mot);
+      float radb = length(p);
+      vec3 hue = mix(hueA, hueB, clamp(radb * 1.5, 0.0, 1.0));
+      vec3 col = hue * shell * 3.2 * (0.55 + 0.45 * mot)
+               + hue * gas
+               + mix(hue, vec3(1.0), 0.5) * veins * 0.6 * mot
+               + mix(hue, vec3(1.0), 0.85) * veins * veins * 0.32
+               + mix(hue, vec3(1.0), 0.52) * skel * 1.09;
+      accB += col * dstep * 1.75 * (1.0 - alphaB);
+      alphaB += (shell * 0.45 + gas * 3.2 + skel * 0.25) * dstep * 2.8 * (1.0 - alphaB);
+    }
+    alphaB = clamp(alphaB, 0.0, 1.0);
+    // the far mote crossfades out as the body fades in — no pop at the seam
+    float seam = smoothstep(0.2, 0.55, act);
+    vec3 colOut = mix(mix(hueA, vec3(1.0), 0.3) * mote * 1.1, accB * bright, seam);
+    float aOut = mix(mote * 0.8, alphaB, seam);
+    frag = vec4(colOut, aOut) * fogF * nearF;
+    return;
+  }
   if (kind == 60) { // colony glyph: a rune sent into the dark
     vec2 guv = vUv * 0.5 + 0.5;
     float cx = mod(vD.y, 8.0);
     float cy = floor(vD.y / 8.0);
-    float g = texture(uGlyphs, vec2((cx + guv.x) / 8.0, (cy + guv.y) / 8.0)).r;
+    // v56: the atlas grew two rows of Saelyri greeting glyphs — 8 wide, 10 tall
+    float g = texture(uGlyphs, vec2((cx + guv.x) / 8.0, (cy + guv.y) / 10.0)).r;
     vec3 gc = mix(ec1, vec3(1.0), 0.25) * (0.75 + 0.25 * sin(t0 * 3.0));
     float ga = g * vD.z;
     frag = vec4(gc * ga, ga * 0.85) * fogF;
@@ -1234,11 +1398,16 @@ void main() {
   // ---- the glyph atlas (v47) --------------------------------------------------
   // 64 runes on an 8x8 canvas grid — the colony language, drawn fresh but
   // deterministically every load (seeded strokes on a 4x4 lattice). Unit 4.
-  const GLYPH_N = 64;
+  const GLYPH_N = 64; // reef runes: rows 0–7 — reef picks stay in 0..63
+  // v56: rows 8–9 hold the TEN Saelyri greeting glyphs (James: "make up
+  // ten"), indices SAE_GLYPH0..SAE_GLYPH0+9 — authored marks, not random
+  // strokes: a people's shared script, one glyph flashed per greeting.
+  const SAE_GLYPH0 = 64;
   {
     const GS = 512, CELL = GS / 8;
     const c = document.createElement("canvas");
-    c.width = c.height = GS;
+    c.width = GS;
+    c.height = GS + CELL * 2; // 8x8 runes + 2 rows of greeting glyphs
     const x = c.getContext("2d");
     const R = mulberry32(0x617c9);
     x.lineCap = "round";
@@ -1273,6 +1442,106 @@ void main() {
         }
       }
       void P;
+    }
+    // the ten greeting glyphs: each drawn twice (soft wide pass then sharp)
+    // so the atlas glow bakes in like the runes above
+    {
+      const SAE_DRAWS = [
+        (cx2, cy2, s) => { // 0: the spiral — "I unfold toward you"
+          x.beginPath();
+          for (let a = 0; a <= 4.2; a += 0.1) x.lineTo(cx2 + Math.cos(a * 1.9) * a * s * 0.135, cy2 + Math.sin(a * 1.9) * a * s * 0.135);
+          x.stroke();
+        },
+        (cx2, cy2, s) => { // 1: ringed heart — a dot held in two circles
+          for (const rr2 of [0.5, 0.28]) { x.beginPath(); x.arc(cx2, cy2, s * rr2, 0, TAU); x.stroke(); }
+          x.beginPath(); x.arc(cx2, cy2, s * 0.07, 0, TAU); x.fill();
+        },
+        (cx2, cy2, s) => { // 2: three rising arcs — the wave of a hand
+          for (let k = 0; k < 3; k++) {
+            x.beginPath();
+            x.arc(cx2, cy2 + s * (0.45 - k * 0.28), s * 0.42, Math.PI * 1.15, Math.PI * 1.85);
+            x.stroke();
+          }
+        },
+        (cx2, cy2, s) => { // 3: the lemniscate — "we two, one path"
+          x.beginPath();
+          for (let a = 0; a <= TAU + 0.1; a += 0.08) {
+            const dn = 1 + Math.sin(a) * Math.sin(a);
+            x.lineTo(cx2 + (Math.cos(a) / dn) * s * 0.55, cy2 + ((Math.sin(a) * Math.cos(a)) / dn) * s * 0.55);
+          }
+          x.stroke();
+        },
+        (cx2, cy2, s) => { // 4: chevron stack — steps of welcome
+          for (let k = 0; k < 3; k++) {
+            x.beginPath();
+            x.moveTo(cx2 - s * 0.4, cy2 - s * 0.3 + k * s * 0.3);
+            x.lineTo(cx2, cy2 - s * 0.05 + k * s * 0.3);
+            x.lineTo(cx2 + s * 0.4, cy2 - s * 0.3 + k * s * 0.3);
+            x.stroke();
+          }
+        },
+        (cx2, cy2, s) => { // 5: orbit and moons — a visitor circling home
+          x.beginPath(); x.arc(cx2, cy2, s * 0.13, 0, TAU); x.fill();
+          x.beginPath(); x.ellipse(cx2, cy2, s * 0.52, s * 0.24, -0.5, 0, TAU); x.stroke();
+          for (const a of [0.7, 3.6]) {
+            x.beginPath();
+            x.arc(cx2 + Math.cos(a) * s * 0.48, cy2 + Math.sin(a) * s * 0.2, s * 0.06, 0, TAU);
+            x.fill();
+          }
+        },
+        (cx2, cy2, s) => { // 6: the branch — one line becomes three
+          x.beginPath(); x.moveTo(cx2, cy2 + s * 0.5); x.lineTo(cx2, cy2); x.stroke();
+          for (const dx of [-0.35, 0, 0.35]) {
+            x.beginPath(); x.moveTo(cx2, cy2);
+            x.quadraticCurveTo(cx2 + dx * s * 0.6, cy2 - s * 0.2, cx2 + dx * s, cy2 - s * 0.48);
+            x.stroke();
+          }
+        },
+        (cx2, cy2, s) => { // 7: the standing wave — light speaking
+          x.beginPath();
+          for (let k = 0; k <= 40; k++) {
+            const u = k / 40;
+            x.lineTo(cx2 + (u - 0.5) * s, cy2 + Math.sin(u * TAU * 1.5) * s * 0.28);
+          }
+          x.stroke();
+        },
+        (cx2, cy2, s) => { // 8: triangle in circle — a shape held safely
+          x.beginPath(); x.arc(cx2, cy2, s * 0.52, 0, TAU); x.stroke();
+          x.beginPath();
+          for (let k = 0; k <= 3; k++) {
+            const a = -Math.PI / 2 + (k / 3) * TAU;
+            x.lineTo(cx2 + Math.cos(a) * s * 0.3, cy2 + Math.sin(a) * s * 0.3);
+          }
+          x.stroke();
+        },
+        (cx2, cy2, s) => { // 9: the radiant — eight rays from a quiet center
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * TAU;
+            x.beginPath();
+            x.moveTo(cx2 + Math.cos(a) * s * 0.18, cy2 + Math.sin(a) * s * 0.18);
+            x.lineTo(cx2 + Math.cos(a) * s * 0.52, cy2 + Math.sin(a) * s * 0.52);
+            x.stroke();
+          }
+          x.beginPath(); x.arc(cx2, cy2, s * 0.08, 0, TAU); x.fill();
+        },
+      ];
+      x.lineJoin = "round";
+      for (let j = 0; j < SAE_DRAWS.length; j++) {
+        const cx2 = (j % 8) * CELL + CELL / 2;
+        const cy2 = (8 + ((j / 8) | 0)) * CELL + CELL / 2;
+        // the atlas uploads un-flipped (canvas-down = billboard-up), so
+        // mirror each authored glyph about its cell center to render upright
+        x.save();
+        x.translate(0, cy2 * 2);
+        x.scale(1, -1);
+        for (const [w, a] of [[7, 0.35], [3, 1]]) {
+          x.strokeStyle = "rgba(255,255,255," + a + ")";
+          x.fillStyle = x.strokeStyle;
+          x.lineWidth = w;
+          SAE_DRAWS[j](cx2, cy2, CELL - 22);
+        }
+        x.restore();
+      }
     }
     const gt = gl.createTexture();
     gl.activeTexture(gl.TEXTURE4);
@@ -2065,6 +2334,91 @@ void main() {
     }
     return out;
   }
+  // ---- v56 Phase B1: the Saelyri themselves -------------------------------
+  // Deterministic member roll for every community: capPop beings at the
+  // capital, 60% at each satellite (James: "a hundred at least" — defaults
+  // give 50 + 3x30 = 140). Each member is a CLOSED-FORM motion recipe — a
+  // loose orbit around its home sun; ~30% are travelers that ping-pong one
+  // light bridge with long dwells at each end. Morph life: resting humanoid,
+  // one whim excursion per cycle, 12s melt each way (James: 10-15s), short
+  // hold at the whim shape. All numbers seeded — society-sim asserts them.
+  function saelyriLayout(geoList, capPop) {
+    const R = mulberry32(SOCIETY_SEED ^ 0x5ae111);
+    const rr = (a, b) => a + R() * (b - a);
+    // closest approach of an orbit circle to the skull ellipsoid, in en
+    // units (1 = the bone surface) — capital orbits must never dip inside
+    const orbitEnMin = (nd, ax, rad) => {
+      const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+      let e1 = [
+        ref[1] * ax[2] - ref[2] * ax[1],
+        ref[2] * ax[0] - ref[0] * ax[2],
+        ref[0] * ax[1] - ref[1] * ax[0]];
+      const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
+      e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+      const e2 = [
+        ax[1] * e1[2] - ax[2] * e1[1],
+        ax[2] * e1[0] - ax[0] * e1[2],
+        ax[0] * e1[1] - ax[1] * e1[0]];
+      let mn = Infinity;
+      for (let s = 0; s < 48; s++) {
+        const th = (s / 48) * TAU;
+        const px = nd.p[0] + (e1[0] * Math.cos(th) + e2[0] * Math.sin(th)) * rad;
+        const py = nd.p[1] + (e1[1] * Math.cos(th) + e2[1] * Math.sin(th)) * rad;
+        const pz = nd.p[2] + (e1[2] * Math.cos(th) + e2[2] * Math.sin(th)) * rad;
+        mn = Math.min(mn, Math.hypot(px / SKULL_EL[0], py / SKULL_EL[1], pz / SKULL_EL[2]));
+      }
+      return mn;
+    };
+    const out = [];
+    for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+      const geo = geoList[ci];
+      const list = [];
+      out.push(list);
+      if (!geo || !geo.nodes.length) continue;
+      const nMem = ci === 0 ? Math.round(capPop) : Math.round(capPop * 0.6);
+      for (let i = 0; i < nMem; i++) {
+        let ndI = (R() * geo.nodes.length) | 0;
+        let nd = geo.nodes[ndI];
+        let ax = [rr(-1, 1), rr(-0.5, 0.5), rr(-1, 1)];
+        let al = Math.hypot(ax[0], ax[1], ax[2]) || 1;
+        ax = [ax[0] / al, ax[1] / al, ax[2] / al];
+        // orbit clears the node's crystal planes (they reach ~1.35 radii)
+        let rad = nd.r * rr(1.45, 2.6);
+        // capital only: an orbit around a bone-hugging sun may swing INTO
+        // Korrudan — deterministic re-rolls (same R stream, so still
+        // sim-provable) until the whole circle clears the ellipsoid
+        if (ci === 0) {
+          for (let tries = 0; tries < 24 && orbitEnMin(nd, ax, rad) < 1.03; tries++) {
+            ndI = (R() * geo.nodes.length) | 0;
+            nd = geo.nodes[ndI];
+            const ax2 = [rr(-1, 1), rr(-0.5, 0.5), rr(-1, 1)];
+            const al2 = Math.hypot(ax2[0], ax2[1], ax2[2]) || 1;
+            ax = [ax2[0] / al2, ax2[1] / al2, ax2[2] / al2];
+            rad = nd.r * rr(1.45, 2.6);
+          }
+        }
+        const traveler = geo.edges.length > 0 && R() < 0.3;
+        list.push({
+          ndI,
+          rad,
+          axis: ax, // normalized above (and re-rolled clear of the bone at home)
+          w: TAU / rr(200, 600), // one lap in 200-600s: drift, not traffic
+          ph: rr(0, TAU),
+          fam: nd.fam,
+          traveler,
+          edge: traveler ? (R() * geo.edges.length) | 0 : -1,
+          tw: TAU / rr(180, 420), // travel cycle: long dwells, brief crossings
+          tph: rr(0, TAU),
+          mLen: rr(60, 180),  // seconds between whim excursions
+          mOff: rr(0, 1000),
+          mMelt: 12,          // melt time each way
+          mHold: rr(6, 14),   // held at the whim shape
+          seed: rr(0, 100),
+        });
+      }
+    }
+    return out;
+  }
   // society hues: the same five families the reefs speak — one dimension, one
   // language of light. (Shared deliberately: the Saelyri and the reef life
   // are relatives; the plan's later phases lean on that.)
@@ -2078,7 +2432,11 @@ void main() {
   // region/district tags); crustGeometry() grows the city from those
   // anchors: shanty stacks with lit windows (the scale ruler), gantry
   // masts, tank farms, the jaw refinery glowing warm between the teeth,
-  // and a mechanical iris ring set into each eye socket. Deterministic —
+  // and a mechanical iris ring set into each eye socket. v57 (James's
+  // close-up verdict: "they don't look at all like real buildings"): comm
+  // dish clusters, sign pylons with ad screens, tank level-bands, rooftop
+  // kits (greebles / antennae / billboards / neon trim), and physical-pitch
+  // windows in three patterns. Deterministic —
   // crust-sim extracts this block verbatim, from the CRUST_SEED declaration
   // to the crust-hues comment (do not repeat those literal markers here).
   const CRUST_SEED = 0x0c1791ce;
@@ -2097,15 +2455,20 @@ void main() {
     };
     const xfn = (n) => [n[0], n[1] * ct - n[2] * st, n[1] * st + n[2] * ct];
     const m = { v: [], i: [] };
-    const vert = (p, n, u, v, aux) => {
-      m.v.push(p[0], p[1], p[2], n[0], n[1], n[2], u, v, aux[0], aux[1], aux[2], aux[3], 0, 0, 0);
+    // v57: ec rides the last three floats — for window faces it carries the
+    // face HALF-SIZES in meters + the pattern (the FS derives a physical
+    // window pitch from it, James's "the windows are way too big" fix);
+    // plain metal and struts leave it zero.
+    const vert = (p, n, u, v, aux, ec) => {
+      m.v.push(p[0], p[1], p[2], n[0], n[1], n[2], u, v, aux[0], aux[1], aux[2], aux[3],
+        ec ? ec[0] : 0, ec ? ec[1] : 0, ec ? ec[2] : 0);
     };
-    const quad = (c, eu, ev, n, aux) => {
+    const quad = (c, eu, ev, n, aux, ec) => {
       const b = m.v.length / 15;
-      vert([c[0] - eu[0] - ev[0], c[1] - eu[1] - ev[1], c[2] - eu[2] - ev[2]], n, 0, 0, aux);
-      vert([c[0] + eu[0] - ev[0], c[1] + eu[1] - ev[1], c[2] + eu[2] - ev[2]], n, 1, 0, aux);
-      vert([c[0] + eu[0] + ev[0], c[1] + eu[1] + ev[1], c[2] + eu[2] + ev[2]], n, 1, 1, aux);
-      vert([c[0] - eu[0] + ev[0], c[1] - eu[1] + ev[1], c[2] - eu[2] + ev[2]], n, 0, 1, aux);
+      vert([c[0] - eu[0] - ev[0], c[1] - eu[1] - ev[1], c[2] - eu[2] - ev[2]], n, 0, 0, aux, ec);
+      vert([c[0] + eu[0] - ev[0], c[1] + eu[1] - ev[1], c[2] + eu[2] - ev[2]], n, 1, 0, aux, ec);
+      vert([c[0] + eu[0] + ev[0], c[1] + eu[1] + ev[1], c[2] + eu[2] + ev[2]], n, 1, 1, aux, ec);
+      vert([c[0] - eu[0] + ev[0], c[1] - eu[1] + ev[1], c[2] - eu[2] + ev[2]], n, 0, 1, aux, ec);
       m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
     };
     const nrm = (a) => {
@@ -2114,8 +2477,9 @@ void main() {
     };
     const crs = (a, b) => [
       a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-    // an axis-aligned-to-frame box: c center, half sizes h along frame axes
-    const box = (c, f1, f2, f3, h, aux) => {
+    // an axis-aligned-to-frame box: c center, half sizes h along frame axes.
+    // style (v57) flows to each face's ec: [halfW, halfH, windowPattern].
+    const box = (c, f1, f2, f3, h, aux, style) => {
       const axes = [[f1, f2, f3], [f2, f3, f1], [f3, f1, f2]];
       for (let a = 0; a < 3; a++) {
         const [e, e1, e2] = axes[a];
@@ -2125,9 +2489,51 @@ void main() {
             [c[0] + e[0] * he * sgn, c[1] + e[1] * he * sgn, c[2] + e[2] * he * sgn],
             [e1[0] * s1, e1[1] * s1, e1[2] * s1],
             [e2[0] * s2 * sgn, e2[1] * s2 * sgn, e2[2] * s2 * sgn],
-            sgn < 0 ? [-e[0], -e[1], -e[2]] : e, aux);
+            // roofs and floors (axis 0 = the stack normal) never carry the
+            // wall pattern — style -1 = sparse dim service hatches (the lab
+            // sheet caught strip-style ceilings reading as monster stripes)
+            sgn < 0 ? [-e[0], -e[1], -e[2]] : e, aux, [s1, s2, a === 0 ? -1 : style || 0]);
         }
       }
+    };
+    // v57 tech kit (James: "real buildings... communication dishes, tanks of
+    // unknown origin, lighted screens, advertising, neon"):
+    // an octagonal fan plate, both windings — the dish face
+    const fan = (c, ax, rad, aux) => {
+      const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+      const e1 = nrm(crs(ref, ax));
+      const e2 = crs(ax, e1);
+      const b = m.v.length / 15;
+      vert(c, ax, 0.5, 0.5, aux);
+      for (let s = 0; s < 8; s++) {
+        const th = (s / 8) * TAU;
+        vert([
+          c[0] + (e1[0] * Math.cos(th) + e2[0] * Math.sin(th)) * rad,
+          c[1] + (e1[1] * Math.cos(th) + e2[1] * Math.sin(th)) * rad,
+          c[2] + (e1[2] * Math.cos(th) + e2[2] * Math.sin(th)) * rad], ax, 0.5 + Math.cos(th) / 2, 0.5 + Math.sin(th) / 2, aux);
+      }
+      for (let s = 0; s < 8; s++) {
+        const r1 = b + 1 + s, r2 = b + 1 + ((s + 1) % 8);
+        m.i.push(b, r1, r2, b, r2, r1); // both windings — no culling surprises
+      }
+    };
+    // a free-standing screen: one double-sided emissive quad (aux kind 3)
+    const screen = (c, eu, ev, n, aux) => {
+      quad(c, eu, ev, n, aux);
+      quad(c, [-eu[0], -eu[1], -eu[2]], ev, [-n[0], -n[1], -n[2]], aux);
+    };
+    // a comm dish: mount, mast, tilted plate, lit feed-tip at the focus
+    const dish = (W, n, t1, t2, fam) => {
+      const mh = rr(24, 60);
+      const mount = [W[0] + n[0] * mh, W[1] + n[1] * mh, W[2] + n[2] * mh];
+      box([W[0] + n[0] * 8, W[1] + n[1] * 8, W[2] + n[2] * 8], n, t1, t2, [8, rr(10, 16), rr(10, 16)], [0, rr(0, TAU), 0, fam]);
+      strutC(W, mount, rr(3, 5), [0, 0, 0, fam]);
+      const sky = nrm([n[0] + rr(-0.7, 0.7), n[1] + rr(0.1, 0.9), n[2] + rr(-0.7, 0.7)]);
+      const rad = rr(22, 58);
+      fan(mount, sky, rad, [0, rr(0, TAU), 0, fam]);
+      const focus = [mount[0] + sky[0] * rad * 0.55, mount[1] + sky[1] * rad * 0.55, mount[2] + sky[2] * rad * 0.55];
+      strutC(mount, focus, 2, [0, 0, 0, fam]);
+      box(focus, sky, t1, t2, [3, 3, 3], [3, rr(0, TAU), 1, fam]); // the feed glows neon
     };
     const strutC = (p, q, w, aux) => {
       const d = nrm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);
@@ -2154,7 +2560,25 @@ void main() {
       const jaw = pt.region === 1;
       const fam = (R() * 5) | 0;
       const kindRoll = R();
-      if (kindRoll < 0.14) {
+      if (kindRoll < 0.955 && kindRoll >= 0.9) {
+        // v57 dish cluster: one big listener + a small companion
+        dish(W, n, t1, t2, fam);
+        if (R() < 0.5) {
+          const off = rr(40, 80);
+          dish([W[0] + t1[0] * off, W[1] + t1[1] * off, W[2] + t1[2] * off], n, t1, t2, (R() * 5) | 0);
+        }
+      } else if (kindRoll >= 0.955) {
+        // v57 sign pylon: a mast holding a big double-sided ad screen —
+        // the commercial presence, readable from the approach
+        const h = rr(120, 300);
+        const tip = [W[0] + n[0] * h, W[1] + n[1] * h, W[2] + n[2] * h];
+        strutC(W, tip, rr(5, 9), [0, 0, 0, fam]);
+        const sw = rr(40, 95), sh = sw * rr(0.4, 0.7);
+        const face = nrm([t2[0] + rr(-0.4, 0.4) * t1[0], t2[1], t2[2] + rr(-0.4, 0.4) * t1[2]]);
+        const eu = nrm(crs(face, n));
+        screen(tip, [eu[0] * sw, eu[1] * sw, eu[2] * sw], [n[0] * sh, n[1] * sh, n[2] * sh],
+          face, [3, rr(0, TAU), R() < 0.75 ? 0 : 1, fam]);
+      } else if (kindRoll < 0.14) {
         // gantry mast: a spine standing off the bone, pulse running it
         const h = rr(260, 620) * (jaw ? 1.2 : 1);
         const tip = [W[0] + n[0] * h, W[1] + n[1] * h, W[2] + n[2] * h];
@@ -2168,20 +2592,32 @@ void main() {
             [bpt[0] + t1[0] * arm, bpt[1] + t1[1] * arm, bpt[2] + t1[2] * arm], rr(5, 9), aux);
         }
       } else if (kindRoll < 0.24) {
-        // tank farm: low fat blocks hugging the surface, unlit
+        // tank farm: fat vessels hugging the surface — v57: each carries a
+        // thin neon LEVEL BAND partway up, glowing whatever its unknown
+        // substance glows (James: "tanks of unknown origin")
         const naux = [0, rr(0, TAU), 0, fam];
         for (let k = 0, nk = 2 + ((R() * 3) | 0); k < nk; k++) {
           const off = rr(-90, 90);
-          box([W[0] + t1[0] * off + n[0] * 26, W[1] + t1[1] * off + n[1] * 26, W[2] + t1[2] * off + n[2] * 26],
-            n, t1, t2, [rr(22, 44), rr(34, 62), rr(34, 62)], naux);
+          const th2 = rr(22, 44), tw = rr(34, 62), tz = rr(34, 62);
+          const tc = [W[0] + t1[0] * off + n[0] * 26, W[1] + t1[1] * off + n[1] * 26, W[2] + t1[2] * off + n[2] * 26];
+          box(tc, n, t1, t2, [th2, tw, tz], naux);
+          const lvl = th2 * rr(-0.5, 0.6); // the fill line
+          box([tc[0] + n[0] * lvl, tc[1] + n[1] * lvl, tc[2] + n[2] * lvl],
+            n, t1, t2, [1.6, tw + 1.5, tz + 1.5], [3, rr(0, TAU), 1, (R() * 5) | 0]);
         }
       } else {
         // shanty stack: boxes stepping up the normal — lit windows are the
         // ruler that makes 12km read as 12km. Roots sink into the bone.
+        // v57: each stack speaks ONE window pattern (grid / down-strips /
+        // portholes), and the top earns a roof kit — greebles, an antenna,
+        // sometimes neon trim, a rooftop screen, or a small dish.
         const nBox = 2 + ((R() * (jaw ? 4 : 3)) | 0);
         let base = -50;
         let wx = rr(70, 170) * (jaw ? 1.35 : 1);
         let wz = rr(70, 170) * (jaw ? 1.35 : 1);
+        const styleRoll = R();
+        const style = styleRoll < 0.55 ? 0 : styleRoll < 0.8 ? 1 : 2;
+        let topC = null, topH = [0, 0, 0];
         for (let k = 0; k < nBox; k++) {
           const bh = rr(45, 110);
           const jx = rr(-26, 26), jz = rr(-26, 26);
@@ -2189,7 +2625,9 @@ void main() {
             W[0] + n[0] * (base + bh) + t1[0] * jx + t2[0] * jz,
             W[1] + n[1] * (base + bh) + t1[1] * jx + t2[1] * jz,
             W[2] + n[2] * (base + bh) + t1[2] * jx + t2[2] * jz];
-          const lit = wx > 55 && R() < 0.8;
+          // v57: upper floors light too — the old wx>55 cut sent every
+          // tower top dark, which is half of why they read as dead boxes
+          const lit = wx > 34 && R() < 0.85;
           // aux for windows: [2, phase, warmth, fam]. Warmth is positional,
           // not region-tagged: everything low-and-forward (the whole chin /
           // jaw underside) glows refinery-warm so the mouth reads as one
@@ -2198,10 +2636,49 @@ void main() {
           const aux = lit
             ? [2, rr(0, TAU), warmHere ? 1 : (R() < 0.6 ? 1 : 0), fam]
             : [0, rr(0, TAU), 0, fam];
-          box(c, n, t1, t2, [bh, wx, wz], aux);
+          box(c, n, t1, t2, [bh, wx, wz], aux, style);
+          topC = c;
+          topH = [bh, wx, wz];
           base += bh * 2 * rr(0.82, 0.98);
           wx *= rr(0.62, 0.85);
           wz *= rr(0.62, 0.85);
+        }
+        // the roof kit
+        if (topC) {
+          const roof = [
+            topC[0] + n[0] * topH[0], topC[1] + n[1] * topH[0], topC[2] + n[2] * topH[0]];
+          for (let g2 = 0, ng = 1 + ((R() * 3) | 0); g2 < ng; g2++) {
+            const gx = rr(-0.55, 0.55) * topH[1], gz = rr(-0.55, 0.55) * topH[2];
+            const gs = rr(3, 9);
+            box([roof[0] + t1[0] * gx + t2[0] * gz + n[0] * gs,
+              roof[1] + t1[1] * gx + t2[1] * gz + n[1] * gs,
+              roof[2] + t1[2] * gx + t2[2] * gz + n[2] * gs],
+              n, t1, t2, [gs, rr(4, 12), rr(4, 12)], [0, rr(0, TAU), 0, fam]);
+          }
+          if (R() < 0.6) { // antenna
+            const ah = rr(30, 90);
+            strutC(roof, [roof[0] + n[0] * ah, roof[1] + n[1] * ah, roof[2] + n[2] * ah], rr(1.2, 2.5), [0, 0, 0, fam]);
+          }
+          const roofRoll = R();
+          if (roofRoll < 0.16) {
+            dish(roof, n, t1, t2, fam);
+          } else if (roofRoll < 0.34) {
+            // rooftop billboard leaning over the street
+            const sw = Math.min(topH[1], topH[2]) * rr(0.7, 1.1), sh = sw * rr(0.4, 0.65);
+            const face = R() < 0.5 ? t1 : t2;
+            const eu = nrm(crs(face, n));
+            screen([roof[0] + n[0] * sh * 1.4, roof[1] + n[1] * sh * 1.4, roof[2] + n[2] * sh * 1.4],
+              [eu[0] * sw, eu[1] * sw, eu[2] * sw], [n[0] * sh, n[1] * sh, n[2] * sh],
+              face, [3, rr(0, TAU), R() < 0.7 ? 0 : 1, fam]);
+          } else if (roofRoll < 0.55) {
+            // neon trim: two glowing edge rails along the roof line
+            for (const sgn of [-1, 1]) {
+              box([roof[0] + t1[0] * topH[1] * sgn + n[0] * 1.5,
+                roof[1] + t1[1] * topH[1] * sgn + n[1] * 1.5,
+                roof[2] + t1[2] * topH[1] * sgn + n[2] * 1.5],
+                n, t1, t2, [1.4, 1.4, topH[2] * 0.95], [3, rr(0, TAU), 1, (R() * 5) | 0]);
+            }
+          }
         }
       }
     }
@@ -2552,6 +3029,9 @@ void main() {
   const colonyLife = []; // update records, one per animated actor
   const robotFleet = { list: [], nodes: null };
   const cadenceBots = []; // v51: the citizen castes, re-seated by makeActors
+  const saeBeings = []; // v56: the Saelyri — closed-form members over kind-65 orbs
+  const saeGlyphs = []; // v56: greeting glyph pool, shared by whoever is greeting
+  let saeChordLast = -1e9; // global chord spacing — a crowd must not stack chords
 
   function makeActors() {
     actorOrbs = [];
@@ -2652,7 +3132,9 @@ void main() {
       const com = COMMUNITIES[ci];
       const geo = COMM_GEO[ci];
       if (!com.c || !geo || !geo.nodes.length) continue;
-      const per = ci === 0 ? 3 : 2;
+      // v56: population dial (James: a living place) — capital fields
+      // cfg.citizens per caste, satellites two-thirds of that
+      const per = Math.max(0, Math.round(cfg.citizens * (ci === 0 ? 1 : 2 / 3)));
       for (let kind = 0; kind < 6; kind++) {
         for (let n = 0; n < per; n++) {
           const ndI = (Math.random() * geo.nodes.length) | 0;
@@ -2693,6 +3175,39 @@ void main() {
           cadenceBots.push(bot);
         }
       }
+    }
+
+    // -- the Saelyri (v56 Phase B1): light-beings at home around their suns.
+    // saelyriLayout rolls the deterministic members; here they become kind-65
+    // orb actors. Motion is closed-form in updateActors — hundreds are free.
+    saeBeings.length = 0;
+    saeGlyphs.length = 0;
+    const sae = saelyriLayout(COMM_GEO, cfg.saelyri);
+    for (let ci = 0; ci < COMMUNITIES.length; ci++) {
+      const com = COMMUNITIES[ci];
+      const geo = COMM_GEO[ci];
+      if (!com.c || !geo || !geo.nodes.length) continue;
+      for (const m of sae[ci]) {
+        const [h1, h2] = SOC_FAMS[m.fam];
+        const o = actorBase(65, 5, rand(h1, h2), rand(h1, h2)); // 10m beings (James: "they're not giants")
+        o.quadScale = 1.35;
+        o.halo = 0.6;
+        o.fadeDur = rand(4, 8);
+        const nd = geo.nodes[m.ndI];
+        o.fix = [com.c[0] + nd.p[0] + m.rad, com.c[1] + nd.p[1], com.c[2] + nd.p[2]]; // seated, never origin
+        actorOrbs.push(o);
+        saeBeings.push(Object.assign({ ci, o, ack: 0, d: 1e9, lastChord: -1e9 }, m));
+      }
+    }
+    // the greeting glyph pool: six sprites, assigned to whoever is greeting
+    for (let i = 0; i < 6; i++) {
+      const o = actorBase(60, 4, 0, 0);
+      o.p0 = SAE_GLYPH0;
+      o.p1 = 0;
+      o.fixedR = 0;
+      o.fix = [0, 9e6, 0]; // parked far overhead until a greeting claims it
+      actorOrbs.push(o);
+      saeGlyphs.push({ o, being: null });
     }
   }
 
@@ -2922,6 +3437,120 @@ void main() {
         rb.glow.fix[1] = rb.pos[1] - 3.2 + Math.sin(t * 1.2 + rb.seed) * 0.4;
         rb.glow.fix[2] = rb.pos[2];
         rb.glow.fixedR = 0.9 + Math.min(sp / Math.max(dt, 1e-3) / 120, 1) * 1.4;
+      }
+    }
+
+    // -- the Saelyri (v56): closed-form drift, then acknowledgment.
+    // Every position is a pure function of t — no state integrates, so 140
+    // beings (or 400 at the dial's top) cost a few trig calls each and can
+    // never drift apart from a determinism sim.
+    {
+      const notice = cfg.saeNotice;
+      const full = notice * 0.375;
+      const frameOf = (ax) => {
+        const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+        let e1 = [
+          ref[1] * ax[2] - ref[2] * ax[1],
+          ref[2] * ax[0] - ref[0] * ax[2],
+          ref[0] * ax[1] - ref[1] * ax[0]];
+        const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
+        e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+        const e2 = [
+          ax[1] * e1[2] - ax[2] * e1[1],
+          ax[2] * e1[0] - ax[0] * e1[2],
+          ax[0] * e1[1] - ax[1] * e1[0]];
+        return [e1, e2];
+      };
+      const seatAt = (sb, geo, com, ndI, th, out) => {
+        const nd = geo.nodes[ndI % geo.nodes.length];
+        const [e1, e2] = frameOf(sb.axis);
+        const cth = Math.cos(th), sth = Math.sin(th);
+        out[0] = com.c[0] + nd.p[0] + (e1[0] * cth + e2[0] * sth) * sb.rad;
+        out[1] = com.c[1] + nd.p[1] + (e1[1] * cth + e2[1] * sth) * sb.rad;
+        out[2] = com.c[2] + nd.p[2] + (e1[2] * cth + e2[2] * sth) * sb.rad;
+      };
+      const pa = [0, 0, 0], pb = [0, 0, 0];
+      for (const sb of saeBeings) {
+        const com = COMMUNITIES[sb.ci];
+        const geo = COMM_GEO[sb.ci];
+        if (!com.c || !geo || !geo.nodes.length) { sb.o.fixedR = 0; continue; }
+        const th = t * sb.w + sb.ph;
+        seatAt(sb, geo, com, sb.ndI, th, pa);
+        if (sb.traveler && geo.edges.length) {
+          // ping-pong one light bridge: long dwells (76% of the cycle), a
+          // brief smooth crossing — commuting, not orbiting the whole town
+          const [ea, eb] = geo.edges[sb.edge % geo.edges.length];
+          const u = 0.5 + 0.5 * Math.sin(t * sb.tw + sb.tph);
+          const e = (() => { const c2 = clamp((u - 0.38) / 0.24, 0, 1); return c2 * c2 * (3 - 2 * c2); })();
+          if (e > 0) {
+            seatAt(sb, geo, com, sb.ndI === eb ? ea : eb, th, pb);
+            pa[0] += (pb[0] - pa[0]) * e;
+            pa[1] += (pb[1] - pa[1]) * e - Math.sin(e * Math.PI) * 20; // sag under the bridge line
+            pa[2] += (pb[2] - pa[2]) * e;
+          }
+        }
+        pa[1] += Math.sin(t * 0.4 + sb.seed) * 1.2; // breathing bob
+        sb.o.fix[0] = pa[0];
+        sb.o.fix[1] = pa[1];
+        sb.o.fix[2] = pa[2];
+        // morph life: rest as the humanoid, one whim excursion per cycle
+        const cyc = (t + sb.mOff) / sb.mLen;
+        const cn = Math.floor(cyc);
+        const us = (cyc - cn) * sb.mLen; // seconds into this cycle
+        const h = Math.sin(cn * 12.9898 + sb.seed) * 43758.5453;
+        const kt = 1 + (Math.floor((h - Math.floor(h)) * 6) % 6);
+        const dur = sb.mMelt * 2 + sb.mHold;
+        let ms = 0;
+        if (us < dur) {
+          ms = us < sb.mMelt ? us / sb.mMelt
+             : us > sb.mMelt + sb.mHold ? (dur - us) / sb.mMelt : 1;
+          ms = ms * ms * (3 - 2 * ms);
+        }
+        sb.o.spin = kt; // rides the spin slot — kind 65 never spins glass
+        sb.o.p0 = ms;
+        // acknowledgment: notice at the dial, full greeting at 37.5% of it
+        const dx = cam.pos[0] - pa[0], dy = cam.pos[1] - pa[1], dz = cam.pos[2] - pa[2];
+        sb.d = Math.hypot(dx, dy, dz);
+        const raw = clamp((notice - sb.d) / (notice - full), 0, 1);
+        sb.ack += (raw - sb.ack) * (1 - Math.exp(-dt * 2.2));
+        sb.o.p1 = sb.ack;
+        // the chord: once per being per long while, never two at once
+        if (raw > 0.6 && sb.ack > 0.55 && t - sb.lastChord > 25 && t - saeChordLast > 1.6) {
+          sb.lastChord = t;
+          saeChordLast = t;
+          saelyriChord(sb.fam, 1 - sb.d / notice);
+        }
+      }
+      // glyph pool: the nearest greeters get the six sprites
+      const greeting = saeBeings.filter((sb) => sb.ack > 0.5).sort((a, b) => a.d - b.d);
+      for (let gi = 0; gi < saeGlyphs.length; gi++) {
+        const gp = saeGlyphs[gi];
+        const sb = gi < greeting.length ? greeting[gi] : null;
+        if (gp.being !== sb) {
+          gp.being = sb;
+          if (sb) {
+            // each fresh greeting draws a glyph and a color of its own
+            // (James: ten glyphs, random colors)
+            gp.o.p0 = SAE_GLYPH0 + ((Math.random() * 10) | 0);
+            gp.o.h1 = rand(0, 360);
+            gp.o.h2 = gp.o.h1;
+            gp.o.sat = 85;
+          }
+        }
+        if (!sb) {
+          gp.o.fixedR = 0;
+          gp.o.p1 = 0;
+          gp.o.fix[1] = 9e6;
+          continue;
+        }
+        // drawn in light above the being, leaned toward the pod
+        const tc = [cam.pos[0] - sb.o.fix[0], cam.pos[1] - sb.o.fix[1], cam.pos[2] - sb.o.fix[2]];
+        const tl = Math.hypot(tc[0], tc[1], tc[2]) || 1;
+        gp.o.fix[0] = sb.o.fix[0] + (tc[0] / tl) * 4;
+        gp.o.fix[1] = sb.o.fix[1] + 9 + (tc[1] / tl) * 4;
+        gp.o.fix[2] = sb.o.fix[2] + (tc[2] / tl) * 4;
+        gp.o.fixedR = 4;
+        gp.o.p1 = clamp((sb.ack - 0.5) / 0.4, 0, 1) * (0.78 + 0.22 * Math.sin(t * 2.1 + sb.seed));
       }
     }
 
@@ -3844,12 +4473,15 @@ out vec3 vN;
 out vec2 vUV;
 out vec4 vAux;
 out vec3 vC;
+out vec3 vE; // v57: aCenter RAW — the crust packs face sizes + pattern here;
+             // vC (+uOrigin) stays world-space for the glass/bridge programs
 void main() {
   vP = aPos + uOrigin;
   vN = aNorm;
   vUV = aUV;
   vAux = aAux;
   vC = aCenter + uOrigin;
+  vE = aCenter;
   gl_Position = uVP * vec4(vP, 1.0);
 }`;
   const COMM_HUE = `
@@ -3887,6 +4519,7 @@ in vec3 vN;
 in vec2 vUV;
 in vec4 vAux;
 in vec3 vC;
+in vec3 vE;
 out vec4 oC;
 ${COMM_HUE}
 ${COMM_AER}
@@ -3903,17 +4536,84 @@ void main() {
     float p = fract(vUV.x - uTime * uTempo * 0.22 + vAux.y);
     col += famc * (exp(-60.0 * abs(p - 0.5)) * 1.6 + 0.05);
   }
+  if (vAux.x > 2.5) {
+    // v57 screens + neon (James: "lighted screens... advertising...
+    // commercial presence, neon"): fully emissive panels. vAux.z picks the
+    // program — 0 = animated ad screen (scrolling color bands + moving
+    // blocks, two-tone), 1 = steady neon in the family color with a lazy
+    // flicker and the occasional stutter. vAux.y is the per-panel phase.
+    vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
+    vec3 e;
+    if (vAux.z < 0.5) {
+      // billboard, not pixel soup (lab round 2): big slow two-tone panels
+      // behind a bright neon FRAME — the frame is what sells "sign" at range
+      float band = fract(vUV.y * 2.0 - uTime * (0.06 + 0.05 * fract(vAux.y * 7.31)) + vAux.y);
+      float blocks = step(0.5, fract(sin(dot(floor(vec2(vUV.x * 3.0, band * 2.0)), vec2(127.1, 311.7)) + vAux.y * 9.1) * 43758.5453));
+      vec3 c2 = hueCol(uFams[int(mod(vAux.w + 2.0, 5.0))]);
+      e = mix(famc, c2, blocks) * (0.35 + 1.0 * smoothstep(0.1, 0.45, band) * smoothstep(0.98, 0.55, band));
+      float frame = 1.0 - step(0.055, vUV.x) * step(vUV.x, 0.945) * step(0.085, vUV.y) * step(vUV.y, 0.915);
+      e = mix(e, famc * 1.7, frame);
+      e += vec3(1.0) * step(0.972, fract(band * 2.0 + blocks * 0.37)) * 0.5; // scan sparkle
+    } else {
+      float fl = 0.82 + 0.18 * sin(uTime * 2.3 + vAux.y * 17.0);
+      fl *= 1.0 - 0.5 * step(0.994, fract(sin(floor(uTime * 3.0) + vAux.y) * 43758.5453)); // neon stutter
+      e = famc * fl * 1.4;
+    }
+    // screens melt like windows: below a few pixels they become their glow
+    float px = 1.0 / max(max(fwidth(vUV.x), fwidth(vUV.y)), 1e-6);
+    float crispS = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, px);
+    e = mix(famc * 0.5, e, crispS);
+    oC = vec4(aerial(col * fogF * 0.3 + e * 2.2 * pow(fogF, 0.5), dd) * uFade, 1.0);
+    return;
+  }
   if (vAux.x > 1.5) {
     // v52 crust windows: the lit grid is the station's ruler — thousands of
     // small lights against the bone are what make 12km READ as 12km.
     // vAux.z picks warm homes vs cool works; windows resist fog harder than
     // metal so the city glow reaches the spawn approach.
-    vec2 g = vUV * vec2(7.0, 5.0);
+    // v57 (James: "the windows are way too big... at least double or maybe
+    // triple the lights"): the grid pitch is PHYSICAL now — vE.xy carries
+    // the face half-sizes in meters, one window column per ~7.4m and row
+    // per ~5.6m whatever the building size, so panes are ~4m house-scale
+    // everywhere and big faces carry hundreds of lights, not 35. vE.z picks
+    // the pattern: 0 rect grid, 1 parallel strips running down, 2 portholes,
+    // -1 roof hatches. NEVER read these from vC — the VS adds uOrigin to vC
+    // (world-space for glass/bridge), which silently destroyed every window
+    // in-world while the zero-origin lab looked perfect (James caught it).
+    float styleW = vE.z;
+    vec2 face = max(vE.xy * 2.0, vec2(8.0));
+    vec2 g = vUV * max(floor(face / vec2(7.4, 5.6)), vec2(1.0));
     vec2 cell = floor(g);
     float h = fract(sin(dot(cell, vec2(127.1, 311.7)) + vAux.y * 13.7) * 43758.5453);
-    float lit = step(h, 0.34);
     vec2 f = fract(g);
-    float pane = step(0.2, f.x) * step(f.x, 0.8) * step(0.24, f.y) * step(f.y, 0.76);
+    float lit, pane;
+    float roofDim = 1.0;
+    if (styleW < -0.5) { // roof plate: a few dim round service hatches
+      vec2 g3 = vUV * max(floor(face / vec2(9.0)), vec2(1.0));
+      h = fract(sin(dot(floor(g3), vec2(127.1, 311.7)) + vAux.y * 13.7) * 43758.5453);
+      f = fract(g3);
+      g = g3;
+      lit = step(h, 0.10);
+      pane = smoothstep(0.26, 0.18, length(f - 0.5));
+      roofDim = 0.45;
+    } else if (styleW > 1.5) { // portholes: round lights on a SQUARE pitch — the
+      // shared 7.4x5.6 grid stretched them into ellipses (lab sheet 1)
+      vec2 g2 = vUV * max(floor(face / vec2(6.2)), vec2(1.0));
+      vec2 cell2 = floor(g2);
+      h = fract(sin(dot(cell2, vec2(127.1, 311.7)) + vAux.y * 13.7) * 43758.5453);
+      f = fract(g2);
+      g = g2;
+      lit = step(h, 0.30);
+      pane = smoothstep(0.30, 0.22, length(f - 0.5));
+    } else if (styleW > 0.5) { // strips: unbroken light-lines running down the face
+      float hc = fract(sin(cell.x * 127.1 + vAux.y * 13.7) * 43758.5453);
+      lit = step(hc, 0.38);
+      pane = step(0.32, f.x) * step(f.x, 0.68);
+      h = hc;
+    } else { // the classic grid
+      lit = step(h, 0.34);
+      pane = step(0.2, f.x) * step(f.x, 0.8) * step(0.24, f.y) * step(f.y, 0.76);
+    }
     vec3 wcol = mix(vec3(0.45, 0.85, 1.0), vec3(1.0, 0.72, 0.38), step(0.5, vAux.z));
     float flicker = 0.85 + 0.15 * sin(uTime * (0.4 + h * 1.3) + h * 40.0);
     // v55 detail melt: when a window cell projects below a few pixels the
@@ -3922,7 +4622,7 @@ void main() {
     // uMelt scales the pixel threshold; 0 = always crisp (the old look).
     float cellPx = 1.0 / max(max(fwidth(g.x), fwidth(g.y)), 1e-6);
     float crisp = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, cellPx);
-    float win = mix(0.09, lit * pane * flicker, crisp);
+    float win = mix(0.09, lit * pane * flicker, crisp) * roofDim;
     oC = vec4(aerial(col * fogF + wcol * win * 1.9 * pow(fogF, 0.55), dd) * uFade, 1.0);
     return;
   }
@@ -4801,7 +5501,7 @@ void main() {
     // Q/E stay unassigned for now)
     // v48.6: climbing back up in +10% steps by ear (James) — the slower
     // stick made 0.46 feel like nothing. History: 0.66 → 0.46 → 0.51.
-    const ROLL_RATE = 0.51; // rad/s
+    const ROLL_RATE = (cfg.rollMax * Math.PI) / 180; // v57.2: dialable (default 29°/s = the old 0.51)
     const rollIn = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
     rollVel += (rollIn * ROLL_RATE - rollVel) * (1 - Math.exp(-dt * 6));
     if (Math.abs(rollVel) > 1e-4) {
@@ -4921,7 +5621,10 @@ void main() {
       // near = fully awake. Thresholds scale with the orb's size (a big
       // worldlet declares itself sooner); a robot's service call also wakes
       // its client. Smoothed, so the states glide.
-      if (o.kind && o.kind < 60) {
+      // v56: kind 65 (the Saelyri) rides the same three-state glide — a 10m
+      // being stirs at ~1.3km and wakes fully at ~280m, which is also the
+      // raymarch gate in its shader branch
+      if (o.kind && (o.kind < 60 || o.kind === 65)) {
         const orr = radiusOf(o);
         const nearD = orr * 20 + 1200, vnearD = orr * 6 + 250;
         let tgt = dists[i] < vnearD * vnearD ? 2 : dists[i] < nearD * nearD ? 1 : 0;
@@ -4948,8 +5651,11 @@ void main() {
     // NEVER move it (world-bank drive made body-frame turns read as phantom
     // rolls — James's "it flipped over on its own"). BNK below stays honest
     // world telemetry.
-    vsEls.ret.style.transform =
-      "translate(-50%, -50%) rotate(" + ((rollShown * 180) / Math.PI).toFixed(1) + "deg)";
+    // v57.2 EXPERIMENT (James, 2026-08-01): the reticle is PINNED — wings
+    // level at the screen midline always; rolling spins the universe past a
+    // fixed X. rollShown still integrates underneath (stick-sim guards it)
+    // so this is one line to revert if the feel doesn't stick.
+    vsEls.ret.style.transform = "translate(-50%, -50%)";
     if (now >= hudNext) {
       hudNext = now + 120;
       const spd = Math.abs(speed);
@@ -5408,7 +6114,7 @@ void main() {
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed"] },
-    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "stickCurve"] },
+    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "rollMax", "stickCurve"] },
     // v49 GOD MODE (James's tally: top speed + tank length are the key
     // ones) — physics/feel knobs, forever tunable. The ring dials freeze
     // with the geography when the layout finalizes.
@@ -5417,7 +6123,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo"] },
+    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice"] },
     { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
@@ -6022,6 +6728,40 @@ void main() {
     set(e.odGain.gain, od * 0.4, 0.3);
     set(e.odSaw1.frequency, (66 + 28 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
     set(e.odSaw2.frequency, (66.5 + 28.2 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
+  }
+
+  // v56: the greeting chord — a Saelyri that notices you answers in its
+  // family's harmony: soft rolled sines through the cave echo. One chord per
+  // being per long while; updateActors enforces global spacing too.
+  const SAE_CHORDS = [
+    [220.0, 277.18, 329.63, 493.88],  // cyan — A add9: open, bright
+    [185.0, 220.0, 277.18, 415.30],   // violet — F#m11: veiled, inward
+    [293.66, 369.99, 440.0, 554.37],  // rose — Dmaj7: warm lift
+    [196.0, 246.94, 293.66, 329.63],  // amber — G6: settled, golden
+    [164.81, 246.94, 293.66, 369.99], // green — Em9: cool, growing
+  ];
+  function saelyriChord(fam, prox) {
+    if (!sound.on || !sound.ctx || !sound.pingBus) return;
+    const ctx = sound.ctx;
+    const t0 = ctx.currentTime;
+    const freqs = SAE_CHORDS[((fam % 5) + 5) % 5];
+    freqs.forEach((f, i) => {
+      const ts = t0 + i * 0.045; // a slow roll upward, never a stab
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, ts);
+      env.gain.exponentialRampToValueAtTime(0.028 * prox + 0.008, ts + 0.14);
+      env.gain.exponentialRampToValueAtTime(0.0001, ts + 2.6);
+      for (const det of [-3, 3]) {
+        const o = ctx.createOscillator();
+        o.type = "sine";
+        o.frequency.value = f;
+        o.detune.value = det;
+        o.connect(env);
+        o.start(ts);
+        o.stop(ts + 2.8);
+      }
+      env.connect(sound.pingBus);
+    });
   }
 
   // success chime: two quick rising notes through the cave's echo chain —

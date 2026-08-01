@@ -3,6 +3,155 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-01 — claude-fable (v57 — the crust grows up: real buildings)
+
+James's close-up verdict on the v52 crust ("the windows are way too big...
+just a bunch of half-hearted rectangles with little lighted rectangles on
+top of them"): windows read as hundred-footers, no variety, no technology.
+Also the standing v52 open question (window density) — answered.
+
+- PHYSICAL WINDOW PITCH: ec (the spare 3 floats per vertex) now carries
+  each face's half-sizes in meters + a pattern id; the FS derives one
+  window column per ~7.4m / row per ~5.6m whatever the building size. Big
+  faces went from 35 potential lights to hundreds of ~4m panes — the lab
+  sheets show genuine city-block walls now.
+- THREE WALL PATTERNS per stack (seeded 55/25/20): the classic grid,
+  parallel light-strips running down the face, round portholes (square
+  6.2m pitch — the shared anisotropic grid stretched them into ellipses,
+  lab round 1). ROOFS AND FLOORS never carry the wall pattern (style -1 =
+  sparse dim service hatches; strip-style ceilings read as monster
+  stripes, lab round 2). Upper floors light too (wx>34, was wx>55 — dark
+  tower tops were half the "dead boxes" read).
+- THE TECH KIT: comm dish clusters (mast + octagonal plate aimed skyward
+  + neon feed-tip at the focus), sign pylons with big double-sided ad
+  screens, rooftop kits on every shanty stack (greebles, antennae, and a
+  roll among rooftop billboard / neon edge-rails / small dish), tank
+  farms now wear a thin neon LEVEL BAND at their fill line (James: "tanks
+  of unknown origin containing whatever substance").
+- SCREENS + NEON are a new emissive aux kind 3 in COMM_FS_SOLID: ad
+  program (slow two-tone panel blocks + sweep + bright neon frame — the
+  frame is what sells "sign" at range, lab round 2) and neon program
+  (family color, lazy flicker, occasional stutter). Both melt to their
+  average glow below a few pixels like windows.
+- THE LAB: tmp/orb-dimension/crust-lab.html (KEEP IT) — extracts the real
+  crustGeometry + COMM solid shader, renders six vantage points (jaw
+  street to 3.2km approach), auto-captures a sheet to tmp/snapshots/ via
+  /api/dev-snapshot. Three rounds ran before James saw anything.
+- Sims: crust-sim ALL PASS every round (window verts 18.6k → 27.3k, tris
+  34.2k of the 60k band, face still bare, jaw still warm); init-smoke,
+  society/reef/v47/nebula green; shader-check ALL SHADERS PASS.
+
+v57.1 — THE ORIGIN BUG (James flew it: "I don't see many windows at all"):
+the window pitch data rode vC, but COMM_VS adds uOrigin to vC (it is a
+world-space channel for the glass/bridge programs) — so in-world every
+face size read as tens of kilometers, the grid went subpixel, and melt
+erased the windows. The zero-origin lab could never see it. Fix: new vE
+varying carries aCenter RAW; the lab now renders with an 83km uOrigin
+(world condition, camera moved to match) so origin-contamination bugs can
+never look clean again — the sheet under that origin is identical to
+round 3. shader-check ALL PASS (glass/bridge ignore the extra varying).
+
+v57.2 — RETICLE PIN EXPERIMENT (James: "I want that orientation to be
+frozen... they should stay pinned to the viewport as the ship rolls and
+the space spins by outside"): the reticle graphic no longer rotates — the
+wings hold the screen midline always; barrel rolls spin the universe past
+a fixed X. Display-only: rolling, steering, and rollShown's integration
+are untouched (stick-sim TEST 1 guard updated to the pinned transform
+line, TEST 7 unchanged), so the v55.3 commanded-roll display is one line
+away if the feel doesn't stick. His verdict decides whether the pod
+contract's reticle clause gets rewritten or restored. Same exchange: the
+A/D roll rate moved onto a dial — `rollMax` ("roll °/s", the stick group,
+6–120, default 29 = the old hardcoded 0.51 rad/s). Arrow-key turn rate is
+the last hardcoded rotation, offered, not yet asked for.
+
+AWAITING JAMES: the sheet + an in-world flight over the crust.
+
+## 2026-07-31 — claude-fable (v56 — PHASE B1: the Saelyri are home)
+
+James's go, same session as the Being Editor perf pass — his brief on top of
+the agreed 11-point plan: "I wanna see a lot of things flying around... like
+a living place." Populations 10× the proposal. Everything closed-form.
+
+- THE SAELYRI IN-WORLD: kind-65 orb actors — 140 beings at the default dial
+  (capital 50, satellites 30 each; `saelyri` GOD MODE dial 0–120 capital).
+  10m tall (James: "they're not giants"). The FS grew the Being Editor's
+  three-layer interior (shell / filaments / skeleton) with james-being-01
+  BAKED as constants (edge 24, structure 55, turb 36, heat 71, glow 77) —
+  re-dial in the editor, re-bake here. Orthographic raymarch through the
+  unit sphere, 18 steps, family hues from SOC_FAMS via the instance's own
+  h1/h2.
+- THE LOD IS THE POPULATION TRICK: below act 0.2 a being is a 2-line soft
+  mote (the vague-nothing contract); the raymarch only runs near, filaments
+  only when fully awake (act>1), and the act glide (kind 65 joined the v47
+  smoothing) crossfades mote→body with no pop. Hundreds are free — CPU cost
+  is a few trig calls per being (pure functions of t, sim-provable).
+- MOTION: saelyriLayout (deterministic, SOCIETY_SEED ^ 0x5ae111, lives
+  inside the society-sim extraction markers) — loose orbits around each
+  being's home sun (1.45–2.6 radii, clear of the crystal planes), laps in
+  200–600s; ~30% are TRAVELERS ping-ponging one light bridge with long
+  dwells (76% of cycle) and a sagging crossing. Capital orbits get
+  deterministic re-rolls until the whole circle clears Korrudan (the probe
+  found beings swinging THROUGH the bone at pop 120 — sim TEST 12 now bars
+  it, worst en 1.036).
+- MORPH LIFE: resting humanoid (James: "more relatable, this is supposed to
+  be fun"), one whim excursion per 60–180s cycle — 12s melt out to one of
+  the six wheel shapes (box/pyramid/mandala/jewel/torus/cloud, seeded per
+  cycle), 6–14s hold, 12s melt home. Blend + target ride p0 + the spin slot.
+- ACKNOWLEDGMENT (respond in place; approaching is a later personality
+  pass): `saeNotice` dial (default 400m; full greeting at 37.5% = 150m —
+  rescaled from the plan's 2km/800m which were calibrated for 30–60m
+  giants). The being eases around to FACE the pod, brightens ×1.85, and one
+  of TEN authored greeting glyphs (atlas rows 8–9, indices 64–73; spiral /
+  ringed heart / rising arcs / lemniscate / chevrons / orbit-and-moons /
+  branch / standing wave / triangle-in-circle / radiant) draws in light
+  above it in a random color (James's call), via a 6-sprite shared pool.
+  Glyph atlas is 8×10 now — the kind-60 shader divides y by 10.
+- THE GREETING CHORD: per-family voicings through the cave echo (cyan
+  A add9, violet F#m11, rose Dmaj7, amber G6, green Em9), rolled sines,
+  25s per-being cooldown + 1.6s global spacing so a crowd never stacks.
+- CITIZENS DIAL: Cadence castes now `citizens` per caste at the capital
+  (default 9, was 3), satellites 2/3 — 162 robots at default. Same closed-
+  form loops, one draw per bot, 14km cull holds the visible set to one town.
+- Sims: society-sim TEST 12 (determinism, populations, crystal clearance,
+  traveler edges, morph spec, flight bounds, skull clearance at dial
+  ceiling); shader-check now also compiles the MAIN ORB VS/FS (it never did
+  — and that is where kind 65 lives). Suite of nine: ALL PASS.
+
+NOT YET FLOWN. First-flight checklist for James: crowd feel at the capital
+vs satellites (dials: saelyri / citizens / saeNotice), the greeting at 150m,
+chord taste, glyph legibility, and frame rate parked beside a crowd.
+Phase B2 (fleet community routes + society sound beds) parked per his call.
+
+## 2026-07-31 — claude-fable (Being Editor: performance pass)
+
+James: the lab was "killing my laptop" — everything slowed while it was
+loaded, sliders felt like they fought a re-render. Diagnosis: the sliders
+were innocent; the GPU was simply pinned. Three compounding costs, all cut:
+
+- RESOLUTION CAP: the canvas rendered at full devicePixelRatio × client
+  size. Raymarch cost scales with pixels and the soft glow upscales
+  invisibly, so resize() now budgets ~1.5M rendered pixels (the perf line
+  shows the actual render resolution).
+- ONE SDF PER STEP: shapeAt() evaluated ALL SEVEN wheel shapes (including
+  the fbm cloud) every raymarch step, then mixed two. New shapeK(k) branch
+  evaluates only the shape(s) on screen; whole-state panes (fract≈0) skip
+  the second SDF entirely. The filament fbm is also skipped outside the
+  form (veins were multiplied to ~0 there anyway).
+- THREE SHAPES DEFAULT (James: "maybe three is enough"): the beings sheet
+  opens with humanoid / mandala / cloud (wheel stations 0/3/6, seeds
+  preserved so looks match the old sheet); a "show all seven" button
+  restores the full wheel for judgment days.
+
+Same session, James's next call: FULL-BLEED — the 1600px admin-panel width
+cap removed (a look-dev stage is not a dashboard), and the pane cameras now
+fit BOTH dimensions (persp fov is vertical-only; in a narrower-than-tall
+pane the horizontal frustum shrank and limbs/petals clipped at the pane
+edges — "cut off at either ends". Narrow panes now widen the fov:
+asp < 1 → fov = 2·atan(tan(0.45)/asp)).
+
+Verified: shader compiles + links clean on the served page, script runs
+end-to-end. Not yet flown by James on the laptop that hurt.
+
 ## 2026-07-29 — claude-fable (Being Editor: persistence)
 
 James tweaked the Being Editor to a look he liked, closed the tab, and the

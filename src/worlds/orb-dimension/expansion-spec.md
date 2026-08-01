@@ -14,6 +14,70 @@ consensus (see "The cooperative societies" section below + world changelog v50).
 Phases B/C/D agreed in outline, each still needs its own go. Stargates, gulf depot
 grid, luminous region: still spec-only.
 
+STATUS 2026-07-31: Phase B1 (the Saelyri in-world) BUILT as v56 — James's go after
+the 11-question round, his overrides: 10m beings, populations 10x ("a living
+place... a hundred at least"). Fleet routes + society sound split off as B2. Same
+session: THE RESONANCE TRADE designed and agreed (section below) — it becomes
+PHASE C'S SPINE. Threats/defense and the wider-world threads recorded below, all
+still spec-only.
+
+## The resonance trade (consensus 2026-07-31 — Phase C's spine, needs its build go)
+
+James's brief ("I'm just kinda riffing. Pull what you think makes sense out of
+that"), shaped and agreed the same day. The hinge is v50 canon: the Saelyri and
+the reef life are RELATIVES — same five families, one language of light.
+
+- THE LOOP: (1) the Cadence mine oxygen/lithium asteroids and harvest crystalline
+  tritium near the communities — raw tritium is POISON to them (canon since the
+  Phase C outline): the machines mine and haul a substance they can never touch,
+  for two peoples who drink it. (2) Convoys carry tritium out to the reef ring —
+  tritium only, James's call; no lithium/oxygen shipments. (3) Fed on tritium,
+  the reef polyps do to MATTER what the Saelyri do to themselves — hold light in
+  a shape: over long spans they precipitate RESONANCE PEARLS (James: "I love that
+  idea"), solid matter with a phase-locked standing wave inside. Grown, not
+  manufactured — metabolism, not assembly; only living reef tissue can make one.
+  Pearls grown in the same polyp cluster come out MATCHED: two bodies, one wave.
+- THE TECHNOLOGY: a small matched pair is instant communication; a large matched
+  pair is a JUMP GATE. Same substance, two sizes — this is why gates come in
+  pairs and why every gate needs the reef.
+- THE ARC: the trade routes exist because the gate network is BEING BUILT. The
+  world the player flies through is a civilization mid-construction of its gates;
+  when the stargates phase ships, gates coming online is the payoff of traffic
+  the player has been watching for phases. Gates are also the eventual DIEGETIC
+  DRIFT EXITS (James: fly through a gate / press a control-panel button →
+  the next Elastic Space world).
+- ROUTES: towns <-> ring only for now (colony-to-colony trade SKIPPED for the
+  time being, James's call). ~250km at overdrive is ~70s — regular, believable,
+  watchable runs. CADENCE: "definitely not a highway" — from any vantage, a
+  convoy visible somewhere every couple of minutes at most. The gulf's emptiness
+  stays the terrain; sparse lit threads crossing black read as scale.
+- PHASE C SPINE (James: "I'd like to just see the whole thing get rigged up"):
+  harvest verbs + visible convoys + pearl nurseries at the reef (polyps with
+  growing bright beads) + a first gate visibly under construction. Build plan
+  still needs its own DISCUSS -> PLAN -> go.
+
+## Threats, defense, and the player's role (James, 2026-07-31 — future phase, unscoped)
+
+- Not exactly pirates — OUTSIDE THREATS, more than one type, to the trade and
+  the harmony. Every denizen (including ones yet to be invented) can be
+  threatened by external influences.
+- THE PLAYER IS THE DEFENDER. Tone: sport, cartoony, FUN — fly over, find
+  raiders, loose auto-targeting light missiles, destroy them. Key requirement:
+  easy to jump into and understand — a visitor should be having fun within
+  moments, no tutorial weight. This coexists with the drift: play a little,
+  then fly through a gate onward.
+
+## The wider world (James, 2026-07-31 — standing direction, not a phase)
+
+"No real reason for us to limit any of this. We can just kinda keep building
+and building until the whole thing is really full and vibrant."
+
+- SINGLETON DESTINATIONS: one-off places with their own traffic types.
+- TOURIST TRAFFIC: visitors warping in from other domains/dimensions; one-off
+  aliens passing through.
+- NATURAL WONDERS: places people travel to see.
+- MORE PRIMARY DENIZENS: a fourth, maybe a fifth people someday.
+
 ## The cooperative societies (consensus 2026-07-24, Phase A built v50)
 
 - The peoples: the SAELYRI (vaguely humanoid flowy light-forms, brighter centers,

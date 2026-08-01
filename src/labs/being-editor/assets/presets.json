@@ -1,0 +1,14 @@
+{
+  "presets": {
+    "james-being-01": {
+      "glow": 77,
+      "turb": 36,
+      "cplx": 55,
+      "cor": 32,
+      "heat": 71,
+      "edge": 24,
+      "fam": 1
+    }
+  },
+  "default": "james-being-01"
+}

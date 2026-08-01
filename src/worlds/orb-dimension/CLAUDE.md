@@ -120,6 +120,19 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   must always dominate — Knowhere rule: ~75% bare bone, districts not blankets. Run
   `node tmp/orb-dimension/crust-sim.mjs` after touching any of it. CRUST_SCALE/TILT
   in the block restate the skull loader's numbers — change both together.
+  v57 (James's close-up brief — "the windows are way too big... don't look at
+  all like real buildings"): window pitch is PHYSICAL (~7.4×5.6m; ec carries
+  face half-sizes + pattern id; portholes square 6.2m) — never go back to a
+  per-face fixed grid, that's what made windows read as hundred-footers. Three
+  wall patterns per stack (grid / down-strips / portholes); roofs and floors
+  are style -1 dim service hatches (wall patterns on ceilings read as monster
+  stripes). Solid-shader aux kind 3 = emissive screens/neon (ad program with
+  the bright frame + neon program; both melt like windows). Tech kit: comm
+  dishes, sign pylons, rooftop kits (greebles/antennae/billboards/neon rails),
+  tank level-bands. Judge ALL crust look changes in
+  `tmp/orb-dimension/crust-lab.html` FIRST (auto-captures a 6-pane sheet to
+  tmp/snapshots/ via /api/dev-snapshot) — three rounds ran there before James
+  saw anything.
 - THE NEBULAE (v53, James's brief): five banks of glowing gas — one over home
   in the spawn sky, four in the gulf (52–82km) — each speaking ONE of five
   palettes (their own identity, deliberately NOT the reef hue families).
@@ -144,6 +157,29 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   together). Sim TEST 10 re-proves every clearance bar at the ceiling and
   reads both numbers out of world.js. Satellite keep-out is the real town
   seats (communityLayout), not a blanket ring radius.
+- THE SAELYRI IN-WORLD (v56, Phase B1 — James's go on the 11-point plan +
+  "ten times the populations"): kind-65 orb actors, 10m beings, 140 at
+  default dials (`saelyri` capital pop ×0.6 satellites, `citizens` per-caste
+  robots, `saeNotice` greet range — GOD MODE · the societies). Rules:
+  (1) the look is the Being Editor's shader with preset james-being-01
+  BAKED as FS constants — look changes happen in the editor first, then
+  re-bake the constants (they're commented at the kind-65 block); never
+  fork the look here. (2) LOD is the population contract: below act 0.2 a
+  being is a 2-line mote — never make far beings busy; filaments gate on
+  act>1. (3) All motion is CLOSED-FORM in updateActors (orbits + bridge
+  ping-pong + morph schedule are pure functions of t); saelyriLayout is
+  deterministic and lives INSIDE the society-sim extraction markers — run
+  `node tmp/orb-dimension/society-sim.mjs` (TEST 12) after any change, and
+  shader-check (it compiles the main orb FS now). Capital orbits re-roll
+  deterministically until the whole circle clears Korrudan — don't remove
+  the guard, TEST 12 bars it at the dial ceiling. (4) Acknowledgment is
+  respond-in-place: face the pod, brighten, glyph, chord. Approach behavior
+  is a LATER personality pass — don't add it unasked. (5) The greeting
+  glyphs are atlas rows 8–9 (SAE_GLYPH0=64, ten authored marks, random
+  color per greeting); reef rune picks stay in 0..63; the atlas is 8×10 and
+  the kind-60 shader divides y by 10. (6) Chords: SAE_CHORDS per family,
+  25s per-being + 1.6s global spacing — never let a crowd stack chords.
+  Phase B2 (fleet community routes + society sound beds) needs its own go.
 - THE BEING EDITOR (`src/labs/being-editor/`, v54): the Saelyri look-dev lab,
   promoted from tmp/orb-dimension/saelyri-lab.html (superseded, kept as v53
   reference). A lab, not a world — no drift/registry; linked from the admin

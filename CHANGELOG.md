@@ -8,6 +8,15 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-01 (Orb Dimension: Saelyri home, crust grows up, trade designed)
+
+- Being Editor perf pass (pixel cap, one-SDF-per-step, 3-shape default) + full-bleed + narrow-pane fov fit; james-being-01 saved and made default
+- Orb Dimension v56 PHASE B1: 140 Saelyri in-world (kind-65 raymarch, mote↔body LOD, closed-form orbits/travelers/morphs, acknowledgment + glyphs + family chords), Cadence castes 3×, new dials
+- The resonance trade designed + specced as Phase C's spine (tritium out, matched pearls back, pearls power comms + jump gates); threats/defense + wider-world threads recorded
+- v57 crust detail pass (physical window pitch, 3 patterns, screens/neon/dishes/pylons/rooftop kits/tank bands) via new crust-lab; v57.1 origin bug James caught, fixed + lab hardened
+- v57.2 experiments: pinned reticle, roll °/s dial
+- Mid-session anomaly: an unidentified background worker executed 4 open task-tracker items (verified good, owned as v56); forensics in session, memory written
+
 ## 2026-08-01 (Postmaster do-over night: new family, Faceit pivot)
 
 - `docs/character-pipeline.md` created — canonical make-a-character recipe
