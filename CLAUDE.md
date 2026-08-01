@@ -72,8 +72,24 @@ consistent. `npm run check-worlds` audits every world against the contract.
    generalized to `/api/(worlds|labs)/:slug/presets` — NEEDS A SERVER
    RESTART James hasn't done yet. His lost look must be re-dialed; he
    announced "some new stuff" for Orb Dimension but never got to it.
-   Presets file-backed since v49.4 (james-prefs-01 is start preset). NEXT, each
-   with its own go: Phase B peoples (SDF Saelyri actors, acknowledgment, sound),
+   Presets file-backed since v49.4 (james-prefs-01 is start preset).
+   2026-07-31: Being Editor PERF PASS (resolution cap ~1.5M px, one-SDF-per-
+   step, 3-shape default sheet + full-bleed layout — James's "killing my
+   laptop" fixed) and preset james-being-01 saved + made default.
+   v56 2026-07-31 (PHASE B1 BUILT — James's go on Claude's 11-question plan,
+   his overrides: 10m beings, populations 10× "a living place... a hundred at
+   least"): THE SAELYRI IN-WORLD — 140 beings default (dials saelyri/
+   citizens/saeNotice in GOD MODE · the societies), kind-65 raymarched orb
+   actors with james-being-01 baked, mote↔body LOD (far = 2-line glow),
+   closed-form orbits + bridge travelers + whim-morph schedule (rest
+   humanoid, 12s melts), respond-in-place acknowledgment (face + brighten +
+   one of 10 authored glyphs in random colors + per-family greeting chords),
+   Cadence castes 3× (162 robots). society-sim TEST 12 (incl. skull
+   clearance at dial ceiling — the probe caught beings orbiting through the
+   bone), shader-check now compiles the main orb FS. All nine sims green.
+   AWAITING HIS FIRST FLIGHT (crowd feel, greeting range, chord taste,
+   frame rate in a crowd). NEXT, each with its own go: Phase B2 (fleet
+   community routes + society sound beds — split from B1 at his call),
    Phase C resources (tritium + 2 asteroid types, harvest verbs), Phase D reef
    expansion (4× size, glyphs, new creatures). Spec:
    `src/worlds/orb-dimension/expansion-spec.md` "The cooperative societies"
@@ -156,6 +172,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    interactively; Mixamo is free (Adobe ID only); glasses regenerate from the
    drawing, procedural pair retired. Refs: DLO assets/ref/05_POSTMASTER.png.
    READ `src/labs/face-lab/changelog.md` before touching any of this.
+   SESSION 2026-07-31/08-01 — THE DO-OVER NIGHT. `docs/character-pipeline.md`
+   is now the canonical make-a-character recipe (prompt pack + lessons) — READ
+   IT FIRST for any character work. Head purge (twice — wrong keeper on take 1;
+   memory `delete-by-numbered-list`), then a whole NEW FAMILY in one night:
+   ChatGPT turnaround/head/wig-v5 hair/beard/hat/glasses (sheets + crops in
+   tmp/dead-letter-office/), six Meshy pieces first-try (180cr, remesh-on
+   quad 40k), head→KeenTools→"postmaster v3" picker entry, James rigged the
+   body at Mixamo + banked 12 clips, three Blender assembly rounds
+   (tmp/dead-letter-office/meshy-v2/assembly + scripts/). ENDED IN A PIVOT,
+   James's call after the art-alignment review: KT HEAD RETIRED — FaceBuilder's
+   realistic template deletes stylized proportions (family mismatch with the
+   gnome props). New doctrine: the Meshy mesh IS the character; the rig comes
+   TO the mesh. Faceit 2.3.73 + Auto-Rig Pro installed (zips in
+   ai-projects/_blender-add-ons/). NEXT with his go: gnome head + GENERATED
+   eyes/inner-mouth → Faceit 52-key test → conform props → render gate →
+   Unity. Approved spends: SALSA (~$40) once a morph head is in Unity;
+   animation packs after retarget testing. Full verdicts: face-lab changelog.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
@@ -226,10 +259,20 @@ consistent. `npm run check-worlds` audits every world against the contract.
    passes to the real bug: stock matrix row bass→blur 0.45 whited out the whole GL
    canvas whenever music played (fixed: bass→sizePulse + stored-settings migration +
    64px canvas-blur cap + sim guard); also MAX_DIM 1600→2560 (full-window upscale
-   softness) and roll smear discipline. All in the world changelog. AWAITING HIS
-   EYES on: melt roll v2, edge-to-edge default, the healed blur. He plans "another
-   round of VJing" from his tuned default launch. The rest of the Lumina item is
-   #5.5 below.
+   softness) and roll smear discipline. All in the world changelog. He plans
+   "another round of VJing" from his tuned default launch.
+   PASSES 4+5 2026-07-31 (same session as the dice-odds cuts — blur 20%→5%,
+   iris out of the rack at 8%, melt roll 4s→2s): pass 4 = his four-part brief
+   (−/+ text stepper, section CARDS in CSS columns filling a maximized window,
+   gold headers + one-sentence summaries, plain-language copy pass) — his
+   verdict "so much better"; pass 5 = his "do them all" on Claude's five
+   usability proposals: per-card 🎲/🔒 (GROUPS in presets.js, host-enforced
+   locks honored by both dice), thumbnail chip pickers (layout/shape/wave/
+   palette/scene + ANIMATED pattern chips), ghost dots (sliders show live
+   music modulation), the perform strip (6 punch pads + XY pad, keys 1–6),
+   my-deck favorites + collapsible cards. Sims 252+43 green; tuner.html
+   loads clean; NOT click-tested against a live host. AWAITING HIS EYES on
+   all of pass 5. The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded
@@ -338,8 +381,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
    head tracking — his verdict: natural, "good physics". NOT a world, not in the
    drift. NEXT, each with its own go: (1) droid PBR pass (palette-aligned
    metallic/emission maps), (2) POSTMASTER as Humanoid + retargeted animation
-   library (the big unlock), (3) ship-route decision for a Unity world (exits,
-   sound bridge, size budget). Memory: `unity-character-pipeline`.
+   library (the big unlock — body IS rigged via Mixamo 2026-08-01, 12 clips
+   banked in elastic-space tmp/dead-letter-office/meshy-v2/, blocked on the
+   Faceit head rebuild, see item 0.5), (3) ship-route decision for a Unity
+   world (exits, sound bridge, size budget). Memory: `unity-character-pipeline`.
 9. SERVER FIX — registry draft-leak in the admin archive/status actions (James asked
    for this reminder, 2026-07-31 global wrap): `regenerateWorldRegistry()` (and
    `npm run registry`) includes draft worlds, so every kebab archive/status click
@@ -348,6 +393,12 @@ consistent. `npm run check-worlds` audits every world against the contract.
    James archived Combat. Fix: make the generator exclude unshipped worlds, then
    retire the manual-restore gotcha here and in docs/building-a-world.md. A task
    chip was left in the 07-31 wrap session; either route works.
+10. ASSETS CATALOG (James, 2026-07-31): new top-level "Assets" tab on the elastic-space
+    admin panel — a browsable archive of reusable 3D parts (the plant, postmaster pieces,
+    gardener droid, Meshy props, etc.). Grid of cards: thumbnail, short description, and
+    which worlds/projects currently use it. Grouped by project first; other sorts can come
+    later. 3D assets only to start — music is mostly not reusable, leave it out. Not built;
+    design pass + James's go first.
 3. (dropped 2026-07-18: "city tile" panorama — James sealed the shop with a Meshy door
    instead; there is no outside. If one ever returns, it gets built properly.)
 

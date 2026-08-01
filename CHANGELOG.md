@@ -8,6 +8,21 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-01 (Postmaster do-over night: new family, Faceit pivot)
+
+- `docs/character-pipeline.md` created — canonical make-a-character recipe
+  (ChatGPT prompt pack, Meshy settings, per-step lessons).
+- Face Lab picker purged to James's numbered picks (take two; take one kept the
+  wrong head and was fully rolled back — three commits, net honest).
+- Whole new postmaster family in one night: turnaround, bald head, wig-v5 hair,
+  beard, hat, glasses → six Meshy pieces first-try (180cr) → KeenTools head
+  ("postmaster v3" in the lab) → James rigged the body at Mixamo, 12 clips.
+- Three Blender assembly rounds (scripts preserved in
+  tmp/dead-letter-office/meshy-v2/scripts/): feature-band mounting, UV
+  re-transfer, despeckle, arms-down render rig.
+- PIVOT at wrap: KT head retired (realistic template vs gnome props); Faceit +
+  Auto-Rig Pro installed; next session tests Faceit 52 keys on the gnome head.
+
 ## 2026-07-31 (Dead Letter Office: the KDLO broadcast + the letter deck)
 
 - The office radio is now a sequential 1951 broadcast (r13): James's fourth Suno
