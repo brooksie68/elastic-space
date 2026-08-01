@@ -184,10 +184,14 @@ Judge each result against viewing distance before the next spend.
 
 ## Phase 3 — the mechanical tail
 
-1. **Head → KeenTools** (`tools/keentools.mjs`, key in elastic-space `.env`):
-   render the Meshy head front + 40°L + 40°R, submit, get the ARKit head
-   back (55 keys, working eyelids/mouth/teeth). Never join or separate its
-   materials — the mirrored eye pair anchors camera framing.
+1. **Head → Faceit** (RETIRED 2026-08-01: KeenTools — its FaceBuilder fits a
+   realistic-human template and structurally deletes stylized proportions;
+   the v3 postmaster head came back a bald heavyset stranger. Doctrine now:
+   the Meshy mesh IS the character; the rig comes TO the mesh.) Route: Meshy
+   head into Blender, GENERATE eyeballs + inner-mouth geometry, Faceit
+   2.3.73 landmark pass → 52 ARKit keys on the mesh's own topology.
+   Escalation: Polywink (€299/character, 24h). Body: Auto-Rig Pro available
+   alongside Mixamo. Add-on zips: `ai-projects/_blender-add-ons/`.
 2. **Body → Mixamo** (free Adobe ID): auto-rig, pull test clips (walk, idle,
    carry). Standard skeleton = Unity Humanoid.
 3. **Assemble in Blender** (headless; per-world .blend under `tmp/`): head
@@ -225,5 +229,11 @@ Judge each result against viewing distance before the next spend.
   heads-tall scale; ear-span sizing is a trap — use feature bands) + all four
   accessories mounted parametrically. Round 3 sheet: good face/beard/glasses;
   REMAINING: collar seam (black gap + bare neck column — cut interplay),
-  hair too far back/sparse from front, cap could sit lower, kt2-era eyelid
-  polish n/a. James's gate NOT passed yet — iterate seam + hair first.
+  hair too far back/sparse from front, cap could sit lower.
+- 2026-08-01 (global wrap): **KT HEAD RETIRED — James's decision after the
+  art-alignment review** (family mismatch: realistic KT head vs gnome props;
+  see face-lab changelog for the full verdict). Faceit 2.3.73 + Auto-Rig Pro
+  installed and verified in Blender 5.1. Next session: gnome head + generated
+  eyeballs/inner-mouth → Faceit landmark pass → judge the 52 keys. The
+  assembly machinery (feature bands, UV transfer, despeckle) carries over;
+  only the head changes. James's render gate remains unpassed.

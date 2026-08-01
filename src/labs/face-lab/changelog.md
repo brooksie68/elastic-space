@@ -1,5 +1,39 @@
 # Face Lab changelog
 
+## 2026-08-01 — Claude (Fable 5) — KT HEAD RETIRED for the postmaster; Faceit doctrine
+
+Relayed from James's art-alignment session at global wrap (composite = new-family
+hat/hair/glasses/beard placed on the KeenTools v3 head, three assembly rounds):
+
+REVIEW VERDICT: beard a flat white crust pressed on the cheeks (no volume, bare
+jaw beneath, shard artifact at the nose bridge); glasses not "on" the face (eyes
+off-center, floating bridge, temples diving into the beard, shadow smears on the
+nose); baked-shadow blotches on the nose again; hair one crumb above one ear vs
+the concept's thick curls; hat perched high on bare skull; sparse gray brows;
+torn black collar. ROOT CAUSE: family mismatch — KT FaceBuilder fits its own
+REALISTIC-HUMAN parametric template, structurally deleting stylized proportions,
+so the head came back a bald heavyset stranger while every prop was made for the
+gnome. Placement iteration cannot close that gap.
+
+THE DECISION (James): KeenTools is retired for the postmaster (and any stylized
+character). New doctrine: **the Meshy mesh IS the character; the rig comes TO
+the mesh, never the reverse.** Installed and verified in Blender 5.1 tonight:
+Faceit 2.3.73 (52 ARKit keys built on any mesh's own topology), Auto-Rig Pro
+3.78.35 full + AI module (body rig + Mixamo/mocap retarget). Zips archived at
+`C:\Users\brook\ai-projects\_blender-add-ons\`; ARP AI at
+`C:\Users\brook\Documents\AutoRigPro\AI`. Escalation if Faceit underwhelms:
+Polywink "Animation for iPhone X" (€299/character, 24h turnaround).
+
+NEXT (from ~2026-08-02, James's go per step): Meshy gnome head into Blender,
+GENERATE eyeballs + inner-mouth geometry (never cut), Faceit landmark pass,
+judge the 52 shapes. Do NOT keep placing props on the KT head — the props are
+fine and were made for the gnome; they conform to the gnome head once it acts.
+Tonight's assembly machinery (feature-band mounting, UV re-transfer, despeckle,
+collar work — see scripts in `tmp/dead-letter-office/meshy-v2/scripts/`) stays
+valid; only the head it dressed changes. `postmaster-v3.glb` stays in the
+picker as a reference/archive piece, label unchanged, no longer the postmaster.
+Memory (other session): `blender-face-rig-toolkit`.
+
 ## 2026-07-31 (later) — Claude (Fable 5) — head purge, take two: picker is the two KT heads
 
 Take one purged by label interpretation, got the keepers wrong, and was rolled
