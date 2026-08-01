@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-01 (Admin panel: archived tab)
+
+- Fourth admin tab "archived": lists `archive/` folders via GET /api/archive with direct links (slug-derived labels, `archive/<slug>` path notes); refreshes on tab click and after a kebab archive; archive-dialog copy points at the tab
+- This tab is now the only place archived worlds are listed — the all-projects ops dashboard's Archive section was removed the same night at James's call
+
 ## 2026-08-01 (Orb Dimension: Saelyri home, crust grows up, trade designed)
 
 - Being Editor perf pass (pixel cap, one-SDF-per-step, 3-shape default) + full-bleed + narrow-pane fov fit; james-being-01 saved and made default
