@@ -17,13 +17,24 @@
    persisted per window under `lumina-ui-scale`) scales the whole surface
    together instead of just the letters. Only viewport-anchored chrome — the
    bottom offset, the scroll cap, the width backstop — stays in rem.
-   --ui-base 16px x --ui-scale 1 reproduces the pre-2026-07-27 panel exactly;
-   keep that fallback in step with UI_SCALE_DEFAULT in tuner.js. */
+   --ui-base went 16px → 26px on 2026-07-31 (James: "even at a hundred
+   percent the description text is like point six type... the baseline font
+   size needs to be larger") — the new 60% is roughly the old 100%, and 100%
+   is sized for human eyes on a high-res laptop. Keep the fallback in step
+   with UI_SCALE_DEFAULT in tuner.js. */
 /* Charcoal, not black (James, 2026-07-27): white type on a near-black panel
    was fatiguing to read. Keep the surface a dark gray so the whites sit
    closer to it, and don't push any text back up to pure #fff. */
 .lum-tuner {
-  --ui-base: 16px;
+  --ui-base: 21px; /* 26px × 0.8 — James dialed it in: "the current eighty
+                      percent becomes the new one hundred" (2026-07-31) */
+  /* Section-header gold (James, 2026-07-31): "everything is white on blue...
+     very hard to distinguish." Headers and summaries hang off this one hue. */
+  --gold: #e3b968;
+  /* Control labels (James, 2026-07-31): the card gold pulled a step darker
+     and toward red — kin to the titles, clearly not the titles, and clearly
+     not the white explanatory text. */
+  --gold-ember: #cc945c;
   backdrop-filter: blur(10px);
   background: rgba(42, 42, 48, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -60,21 +71,169 @@ body.lum-tuner-page .lum-tuner {
   left: auto;
   max-height: none;
   min-height: 100vh;
+  /* The DOCUMENT scrolls in the window, not the panel — overflow-y:auto here
+     would make the panel the sticky containing scroller and the frozen head
+     would ride away with the page (James's "freeze rows" bug, 2026-07-31). */
+  overflow-y: visible;
   position: static;
   transform: none;
   width: auto;
 }
 
-/* --- tabs ------------------------------------------------------------------ */
+/* --- tabs + command bar (one sticky unit since 2026-07-31) ------------------ */
+
+.tuner-head {
+  background: rgba(42, 42, 48, 0.97);
+  display: grid;
+  gap: 0.55em;
+  margin: -1em -1.3em 0;
+  padding: 1em 1.3em 0.65em;
+  position: sticky; /* also the anchor for the gear dropdown */
+  top: 0;
+  z-index: 6;
+}
+
+body.lum-tuner-page .tuner-head {
+  background: #2a2a30;
+}
 
 .tuner-tabs {
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   display: flex;
+  flex-wrap: wrap;
   gap: 0.6em;
-  padding-bottom: 0.65em;
-  position: sticky;
-  top: 0;
+}
+
+/* The command bar: transport + freeze/dice/melt/back + volume, always in
+   reach on both tabs (James, 2026-07-31: "I prominently need stop and
+   pause... freeze and dice and melt"). */
+.tuner-cmdbar {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em;
+  padding-top: 0.55em;
+}
+
+.tuner-cmdbtn {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5em;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  min-width: 3em;
+  padding: 0.55em 0.8em;
+  transition: background 80ms ease, border-color 80ms ease;
+}
+
+.tuner-cmdbtn svg {
+  display: block;
+  height: 1em;
+  margin: 0 auto;
+  width: auto;
+}
+
+.tuner-cmdbtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.tuner-cmdbtn.on {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.tuner-cmdbtn:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.tuner-cmdsep {
+  align-self: stretch;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  margin: 0 0.3em;
+}
+
+.tuner-cmdvol {
+  align-items: center;
+  display: flex;
+  gap: 0.5em;
+}
+
+.lum-tuner .tuner-cmdvol input[type="range"] {
+  flex: none;
+  min-width: 0;
+  width: 7em;
+}
+
+/* The gear's dropdown: which cards are on the board at all. */
+.tuner-gearmenu {
+  background: #303038;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.6em;
+  box-shadow: 0 0.6em 2em rgba(0, 0, 0, 0.5);
+  display: grid;
+  gap: 0.35em;
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 0.8em 1em;
+  position: absolute;
+  right: 1.3em;
+  top: 100%;
+  z-index: 7;
+}
+
+.tuner-gearmenu[hidden] {
+  display: none;
+}
+
+.tuner-gearcap {
+  color: var(--gold);
+  font-size: 0.68em;
+  letter-spacing: 0.22em;
+  margin: 0.45em 0 0.1em;
+  text-transform: uppercase;
+}
+
+.tuner-gearrow {
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78em;
+  gap: 0.55em;
+}
+
+.tuner-gearrow input[type="checkbox"] {
+  accent-color: #f5f5f5;
+  cursor: pointer;
+}
+
+.tuner-gearreset {
+  justify-self: start;
+  margin-top: 0.5em;
+}
+
+/* ⇄ send-to-other-tab, at the right edge of each gear row. */
+.tuner-gearmove {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.4em;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 0.85em;
+  line-height: 1;
+  margin-left: auto;
+  padding: 0.25em 0.5em;
+}
+
+.tuner-gearmove:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #f2f2f6;
 }
 
 .tuner-tab {
@@ -102,20 +261,8 @@ body.lum-tuner-page .lum-tuner {
   color: #f2f2f6;
 }
 
-/* Dock-side picker in the tab bar (embedded panel only). */
-.tuner-dock {
-  align-items: center;
-  display: flex;
-  gap: 0.3em;
-}
-
-.tuner-dockbtn {
-  letter-spacing: 0;
-  line-height: 1;
-  padding: 0.35em 0.55em;
-}
-
-/* Right side of the sticky tab bar: text size, then detach. */
+/* Right side of the sticky tab bar: text size, then detach. (The dock picker
+   was removed 2026-07-31 — the controls are a remote, period.) */
 .tuner-headright {
   align-items: center;
   display: flex;
@@ -127,21 +274,17 @@ body.lum-tuner-page .lum-tuner {
   margin-left: 0;
 }
 
+/* − / + stepper (was a slider; James 2026-07-31: "plus minus like it is
+   everywhere else"). */
 .tuner-textsize {
   align-items: center;
   display: flex;
-  gap: 0.5em;
-}
-
-/* Short on purpose — it is chrome, not a performance control. */
-.lum-tuner input[type="range"].tuner-textrange {
-  flex: none;
-  min-width: 0;
-  width: 5.5em;
+  gap: 0.4em;
 }
 
 .tuner-textsize output {
   min-width: 4ch;
+  text-align: center;
 }
 
 /* Back sits left of the dice and reads quieter than it until there is
@@ -173,7 +316,7 @@ body.lum-tuner-page .lum-tuner {
 
 .tuner-speed label,
 .tuner-label {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--gold-ember);
   font-size: 0.72em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -203,6 +346,47 @@ body.lum-tuner-page .lum-tuner {
 /* Inside a grid column the track gets what the label leaves, capped shorter. */
 .tuner-mini input[type="range"] {
   max-width: 7.5em;
+}
+
+/* The track wrapper (2026-07-31): positions the modulation ghost over the
+   input. Caps in px on purpose — they mirror the measured 267px/100px input
+   caps (em here resolves against the PANEL font, not the input default, so
+   em values would silently widen the tracks). */
+.tuner-track {
+  display: flex;
+  flex: 1;
+  max-width: 267px;
+  min-width: 4em;
+  position: relative;
+}
+
+.tuner-mini .tuner-track {
+  max-width: 100px;
+}
+
+.tuner-track input[type="range"] {
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+}
+
+/* The ghost: where the music is actually holding this knob right now.
+   Fades out on its own when the modulation stops. */
+.tuner-ghost {
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(227, 185, 104, 0.8);
+  height: 0.55em;
+  left: 0;
+  margin-left: -0.275em;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: left 70ms linear, opacity 200ms ease;
+  width: 0.55em;
+  z-index: 1;
 }
 
 /* Thumbs are 2em — doubled 2026-07-27 (James: too small to grab quickly with
@@ -270,16 +454,16 @@ body.lum-tuner-page .lum-tuner {
 }
 
 .tuner-desc {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 0.68em;
-  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.72em;
+  letter-spacing: 0.02em;
   line-height: 1.35;
   margin: -0.294em 0 0;
   width: 100%;
 }
 
 .tuner-mini label {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--gold-ember);
   font-size: 0.72em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -379,17 +563,336 @@ body.lum-tuner-page .lum-tuner {
 
 /* --- sections, pattern picker, selects, toggles ----------------------------- */
 
+/* Sections are CARDS in user-owned ROWS since 2026-07-31 (James: "one to
+   five cards and a variable height"). Each .tuner-row is a flexbox; every
+   card takes an equal share, so one card per row = full width. A row with a
+   pinned height (.tuner-row--fixed) scrolls its cards internally. */
+.tuner-rows {
+  display: grid;
+  gap: 1em;
+}
+
+.tuner-row {
+  align-items: stretch;
+  display: flex;
+  gap: 1em;
+  position: relative;
+}
+
+.tuner-row > .tuner-card {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.tuner-row--fixed > .tuner-card {
+  overflow-y: auto;
+}
+
+.tuner-card {
+  align-content: start;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 0.75em;
+  display: grid;
+  gap: 0.8em;
+  margin: 0;
+  padding: 0.85em 1em 1em;
+}
+
+/* --- edit layout mode ------------------------------------------------------- */
+
+/* Card grip: only visible while editing; drag it to move the card. */
+.tuner-grip {
+  background: rgba(227, 185, 104, 0.12);
+  border: 1px dashed rgba(227, 185, 104, 0.55);
+  border-radius: 0.4em;
+  color: var(--gold);
+  cursor: grab;
+  display: none;
+  font-size: 0.7em;
+  letter-spacing: 0.25em;
+  padding: 0.35em 0.6em;
+  text-align: center;
+  text-transform: uppercase;
+  touch-action: none;
+  user-select: none;
+}
+
+.tuner-edit .tuner-grip {
+  display: block;
+}
+
+.tuner-dragging {
+  opacity: 0.35;
+}
+
+/* Row height grip: the row's bottom edge while editing. */
+.tuner-rowgrip {
+  background: rgba(227, 185, 104, 0.25);
+  border-radius: 999px;
+  bottom: -0.62em;
+  cursor: ns-resize;
+  height: 0.38em;
+  left: 15%;
+  position: absolute;
+  right: 15%;
+  touch-action: none;
+}
+
+.tuner-rowgrip:hover {
+  background: rgba(227, 185, 104, 0.6);
+}
+
+/* Drop markers: gold = will land here, red = row is full (max 5). */
+.tuner-dropmark {
+  background: var(--gold);
+  border-radius: 999px;
+  flex: none;
+  width: 0.3em;
+}
+
+.tuner-dropline {
+  background: var(--gold);
+  border-radius: 999px;
+  height: 0.3em;
+}
+
+.tuner-drop--bad {
+  background: #d05548;
+}
+
 /* Section names are signage, not fine print (James, 2026-07-27: "I can barely
-   read them") — sized and weighted to be found at a glance. */
+   read them") — gold since 2026-07-31 so they read as landmarks against all
+   the white-on-charcoal. */
 .tuner-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 0.95em;
+  color: var(--gold);
+  font-size: 1.08em; /* +2px at base scale (James, 2026-07-31) */
   font-weight: 500;
   letter-spacing: 0.18em;
-  margin: 0.16em 0 -0.37em;
-  padding-top: 0.74em;
+  margin: 0;
   text-transform: uppercase;
+}
+
+/* One plain sentence under each header: what this group of controls does. */
+.tuner-summary {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75em;
+  line-height: 1.4;
+  margin: -0.6em 0 0;
+}
+
+/* Card header row: title left, tools (🎲 roll / 🔒 lock / ▾ fold) right. */
+.tuner-cardhead {
+  align-items: center;
+  display: flex;
+  gap: 0.5em;
+  justify-content: space-between;
+}
+
+.tuner-cardhead .tuner-section {
+  min-width: 0;
+}
+
+.tuner-cardtools {
+  display: flex;
+  flex: none;
+  gap: 0.35em;
+}
+
+.tuner-cardbtn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.45em;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  font-size: 0.78em;
+  line-height: 1;
+  padding: 0.3em 0.45em;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.tuner-cardbtn:hover:not(:disabled),
+.tuner-cardbtn:focus-visible {
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #f2f2f6;
+}
+
+.tuner-cardbtn:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.tuner-lock.on {
+  border-color: var(--gold);
+}
+
+.tuner-card--locked {
+  border-color: rgba(227, 185, 104, 0.45);
+}
+
+.tuner-card--closed > *:not(.tuner-cardhead):not(.tuner-grip) {
+  display: none !important;
+}
+
+/* My deck — the pinned-favorites card, visible on both tabs. */
+.tuner-deck {
+  border-color: rgba(227, 185, 104, 0.4);
+}
+
+.tuner-star {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+  font-size: 0.8em;
+  line-height: 1;
+  padding: 0 0.15em;
+}
+
+.tuner-star:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tuner-star.on {
+  color: var(--gold);
+}
+
+/* --- visual picker chips ---------------------------------------------------- */
+
+.tuner-chipswrap {
+  display: grid;
+  gap: 0.4em;
+}
+
+.tuner-chipshead {
+  align-items: center;
+  display: flex;
+  gap: 0.4em;
+}
+
+.tuner-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.tuner-chip {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.5em;
+  cursor: pointer;
+  display: grid;
+  gap: 0.25em;
+  justify-items: center;
+  padding: 0.35em 0.4em 0.3em;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.tuner-chip canvas {
+  border-radius: 0.3em;
+  display: block;
+  height: 2.15em;
+  width: 3.4em;
+}
+
+.tuner-chip-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.62em;
+  letter-spacing: 0.06em;
+}
+
+.tuner-chip:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.tuner-chip--on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
+}
+
+.tuner-chip--on .tuner-chip-label {
+  color: var(--gold);
+}
+
+/* --- the perform strip ------------------------------------------------------ */
+
+.tuner-perform {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2em;
+}
+
+.tuner-pads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6em;
+  max-width: 26em;
+}
+
+.tuner-pad {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.6em;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-size: 0.78em;
+  letter-spacing: 0.14em;
+  min-width: 7.5em;
+  padding: 1.05em 1.1em;
+  text-transform: uppercase;
+  touch-action: none;
+  transition: background 80ms ease, color 80ms ease;
+  user-select: none;
+}
+
+.tuner-pad.on {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #1c1c20;
+}
+
+.tuner-xy {
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+.tuner-xy-pad {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 25% 100%,
+    rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.6em;
+  cursor: crosshair;
+  height: 11em;
+  position: relative;
+  touch-action: none;
+  width: 15em;
+}
+
+.tuner-xy-dot {
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(227, 185, 104, 0.8);
+  height: 0.8em;
+  left: 50%;
+  margin: -0.4em 0 0 -0.4em;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  width: 0.8em;
+}
+
+.tuner-xy-axes {
+  display: grid;
+  gap: 0.5em;
 }
 
 .tuner-pattern {
@@ -397,6 +900,37 @@ body.lum-tuner-page .lum-tuner {
   display: flex;
   flex-wrap: wrap;
   gap: 0.7em;
+}
+
+/* --- the performance timeline ----------------------------------------------- */
+
+.tuner-tlstrip {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.5em;
+  overflow: hidden;
+}
+
+.tuner-tlstrip--armed {
+  border-color: rgba(224, 85, 72, 0.8);
+}
+
+.tuner-tlcanvas {
+  cursor: crosshair;
+  display: block;
+  touch-action: none;
+  width: 100%;
+}
+
+.tuner-rec.on {
+  background: rgba(224, 85, 72, 0.25);
+  border-color: #e05548;
+  color: #ffd9d4;
+}
+
+.tuner-tlcount {
+  font-size: 0.75em;
+  min-width: 9ch;
+  text-align: left;
 }
 
 .lum-tuner select {
@@ -449,7 +983,7 @@ body.lum-tuner-page .lum-tuner {
 
 .tuner-check {
   align-items: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--gold-ember);
   cursor: pointer;
   display: flex;
   flex: none;
@@ -521,6 +1055,7 @@ body.lum-tuner-page .lum-tuner {
 .tuner-modrow {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.55em;
 }
 

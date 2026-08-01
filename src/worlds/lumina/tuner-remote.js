@@ -13,11 +13,13 @@
   const channel = new BroadcastChannel("lumina-ctl");
   const snapCbs = [];
   const beatCbs = [];
+  const modCbs = [];
 
   const bus = {
     send: (cmd) => channel.postMessage({ t: "cmd", cmd }),
     onSnapshot: (cb) => snapCbs.push(cb),
     onBeat: (cb) => beatCbs.push(cb),
+    onMod: (cb) => modCbs.push(cb),
     requestSnapshot: () => channel.postMessage({ t: "hello" }),
   };
 
@@ -26,6 +28,7 @@
     if (!m) return;
     if (m.t === "snap") snapCbs.forEach((cb) => cb(m.snap));
     else if (m.t === "beat") beatCbs.forEach((cb) => cb());
+    else if (m.t === "mod") modCbs.forEach((cb) => cb(m.values));
     else if (m.t === "close") window.close();
   };
 

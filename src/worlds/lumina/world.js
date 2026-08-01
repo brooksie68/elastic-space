@@ -111,29 +111,25 @@
   globalThis.luminaTuner = {
     getBase: () => Object.assign({}, state),
     onBaseChange: (cb) => baseListeners.push(cb),
+    // Held punch-pad overrides — the music tick lays these over everything
+    // else each frame (defined below with the pads).
+    getPunch: () => punchOverrides(),
   };
 
   // --- staging frame size ---------------------------------------------------
-
-  const FRAME_KEY = "lumina-frame";
 
   function fullWindow() {
     return { w: window.innerWidth || 1024, h: window.innerHeight || 768 };
   }
 
-  // Full screen is the DEFAULT frame (James, 2026-07-27). A manually chosen
-  // size still persists and wins — but a stored 1024×768 is the pre-change
-  // default, not a choice, so it upgrades to full screen too.
-  function loadFrame() {
-    try {
-      const stored = JSON.parse(localStorage.getItem(FRAME_KEY));
-      if (!stored || !stored.w || !stored.h || (stored.w === 1024 && stored.h === 768)) return fullWindow();
-      return { w: stored.w, h: stored.h };
-    } catch (err) {
-      return fullWindow();
-    }
-  }
-  const frameSize = loadFrame();
+  // FIT SCREEN IS THE DEFAULT, always (James, 2026-07-31: "ninety plus percent
+  // of the time I just want it to fit screen"). The page always opens at the
+  // window's size and keeps tracking window resizes until a size is chosen by
+  // hand this session — the old stored-size-wins behavior is gone, and frame
+  // sizes no longer persist at all. "fit screen" in the panel hands the frame
+  // back to auto.
+  const frameSize = fullWindow();
+  let frameAuto = true;
   // The player's expand toggle (2026-07-27): full-window ↔ the size it had
   // before expanding. Transient, like the freeze — manual sizing clears it.
   let frameExpanded = false;
@@ -145,12 +141,6 @@
     // whichever edge it occupies.
     frame.style.width = `min(${frameSize.w}px, calc(100vw - var(--lum-dock-w, 0px)), calc((100vh - var(--lum-dock-h, 0px)) * ${frameSize.w} / ${frameSize.h}))`;
     frame.style.aspectRatio = `${frameSize.w} / ${frameSize.h}`;
-    try {
-      // While the expand toggle is on, keep persisting the PRE-expand size —
-      // a reload should come back at the size you actually chose.
-      const keep = frameExpanded && preExpand ? preExpand : frameSize;
-      localStorage.setItem(FRAME_KEY, JSON.stringify(keep));
-    } catch (err) { /* no persistence, still applies */ }
   }
   applyFrame();
 
@@ -163,6 +153,58 @@
   // --- field presets --------------------------------------------------------
 
   const FACTORY = globalThis.LUMINA_PRESETS || [];
+
+  // --- card locks (2026-07-31) ----------------------------------------------
+  // A locked card's keys survive every dice roll — both dice. Host-owned so
+  // the embedded panel and the detached window agree.
+  const LOCK_KEY = "lumina-locks";
+  const GROUPS = (globalThis.LuminaRandom && globalThis.LuminaRandom.GROUPS) || {};
+  const locks = {};
+  try {
+    const l = JSON.parse(localStorage.getItem(LOCK_KEY));
+    if (l && typeof l === "object") {
+      Object.keys(l).forEach((g) => { if (GROUPS[g]) locks[g] = true; });
+    }
+  } catch (err) { /* fine */ }
+  function saveLocks() {
+    try { localStorage.setItem(LOCK_KEY, JSON.stringify(locks)); } catch (err) { /* fine */ }
+  }
+  // Strip locked groups' keys out of a rolled config.
+  function unlockedOnly(rolled) {
+    const out = Object.assign({}, rolled);
+    Object.keys(locks).forEach((g) => {
+      (GROUPS[g] || []).forEach((k) => { delete out[k]; });
+    });
+    return out;
+  }
+
+  // --- punch pads (2026-07-31, the perform strip) ---------------------------
+  // Momentary overrides: a held pad's values ride ON TOP of state, like music
+  // modulation; release restores clean. Never lands in `state`, never saved.
+  // While music plays, its tick merges punchOverrides() last (music.js);
+  // the direct write here covers the silent case.
+  const PUNCHES = {
+    blackout: { low: "#000000", high: "#000000", bg: "#000000", sceneMix: 0 },
+    strobe: { waveform: "square", speed: 6, desync: 0, holdScale: 0 },
+    kaleido: { fxKaleido: 0.75 },
+    iris: { fxIris: 0.85 },
+    warp: { fxWarp: 0.85 },
+  };
+  const activePunch = {};
+  function punchOverrides() {
+    const o = {};
+    Object.keys(activePunch).forEach((n) => Object.assign(o, PUNCHES[n] || {}));
+    return o;
+  }
+  let prevPunchKeys = [];
+  function applyPunches() {
+    const partial = {};
+    prevPunchKeys.forEach((k) => { partial[k] = state[k]; }); // released → clean
+    const o = punchOverrides();
+    Object.assign(partial, o);
+    prevPunchKeys = Object.keys(o);
+    if (Object.keys(partial).length) field.setConfig(partial);
+  }
 
   // --- jump history (the back button next to the dice) ------------------------
   // Only WHOLE-LOOK jumps are recorded — a dice roll or a preset load. Slider
@@ -210,7 +252,11 @@
   const TWEEN_VEIL = 14; // design px of added blur at the midpoint swap
   function rollTween(ms) {
     cancelTween();
-    const target = Object.assign({}, DEFAULTS, globalThis.LuminaRandom.roll());
+    const target = Object.assign({}, DEFAULTS, unlockedOnly(globalThis.LuminaRandom.roll()));
+    // Locked keys hold their CURRENT values — not DEFAULTS.
+    Object.keys(locks).forEach((g) => {
+      (GROUPS[g] || []).forEach((k) => { if (k in state) target[k] = state[k]; });
+    });
     pushHistory();
     presetSelected = "";
     const from = Object.assign({}, state);
@@ -308,6 +354,7 @@
 
   const subscribers = [];
   const beatSubs = [];
+  const modSubs = []; // live modulated values (music.js), for the panel's ghost dots
   let music = null; // registered by music.js: { command(cmd), snapshotPart() }
   let detached = false;
 
@@ -329,6 +376,7 @@
       marginLink,
       dock: dockSide,
       frozen,
+      locks: Object.assign({}, locks),
       frame: { w: frameSize.w, h: frameSize.h, expanded: frameExpanded },
       fieldPresets: {
         factory: FACTORY.map((p) => ({ id: p.id, label: p.label })),
@@ -382,12 +430,45 @@
         }
         break;
       }
-      case "randomize":
-        applyPreset(globalThis.LuminaRandom.roll());
+      case "randomize": {
+        const rolled = globalThis.LuminaRandom.roll();
+        let partial;
+        if (cmd.group && GROUPS[cmd.group]) {
+          // Per-card dice: roll ONLY this card's keys. A locked card's own
+          // dice is disabled in the panel; skip here too as a backstop.
+          if (locks[cmd.group]) break;
+          partial = {};
+          GROUPS[cmd.group].forEach((k) => { if (k in rolled) partial[k] = rolled[k]; });
+        } else {
+          partial = unlockedOnly(rolled);
+        }
+        applyPreset(Object.assign({}, state, partial));
         presetSelected = "";
         break;
+      }
+      case "lockToggle":
+        if (GROUPS[cmd.group]) {
+          if (locks[cmd.group]) delete locks[cmd.group];
+          else locks[cmd.group] = true;
+          saveLocks();
+        }
+        break;
+      case "punch": {
+        // Momentary: on at pointerdown, off at release. "freeze" maps onto
+        // the transient frozen flag; the rest are config overrides.
+        if (cmd.name === "freeze") {
+          frozen = !!cmd.on;
+          field.setFrozen(frozen);
+          break;
+        }
+        if (!PUNCHES[cmd.name]) break;
+        if (cmd.on) activePunch[cmd.name] = true;
+        else delete activePunch[cmd.name];
+        applyPunches();
+        break;
+      }
       case "randomizeTween":
-        rollTween(4000);
+        rollTween(2000); // 4000 → 2000 on James's call, 2026-07-31
         break;
       case "freeze":
         // Toggle (or set) the animation freeze — transport state, not config:
@@ -442,8 +523,19 @@
     }
   }
 
+  // Field-command tap (2026-07-31, the performance timeline): music.js
+  // records James's live moves from here. Replays go through host.replay*
+  // below, which deliberately bypass this tap — the ghost never re-records.
+  const cmdTaps = [];
+
   function command(cmd) {
-    if (cmd.scope === "field") fieldCommand(cmd);
+    if (cmd.scope === "field") {
+      fieldCommand(cmd);
+      if (cmdTaps.length) {
+        const after = Object.assign({}, state);
+        cmdTaps.forEach((cb) => cb(cmd, after, frozen));
+      }
+    }
     else if (cmd.scope === "frame") {
       if (cmd.type === "expandToggle") {
         // Flag flips BEFORE snapFrame so applyFrame persists the right size.
@@ -458,9 +550,9 @@
       } else {
         // Any manual size or snap means you took control — expanded no more.
         frameExpanded = false;
-        if (cmd.type === "set") snapFrame(cmd.w, cmd.h);
-        else if (cmd.mode === "fullw") snapFrame(window.innerWidth, window.innerWidth * (frameSize.h / frameSize.w));
-        else snapFrame(window.innerWidth, window.innerHeight);
+        if (cmd.type === "set") { frameAuto = false; snapFrame(cmd.w, cmd.h); }
+        else if (cmd.mode === "fullw") { frameAuto = false; snapFrame(window.innerWidth, window.innerWidth * (frameSize.h / frameSize.w)); }
+        else { frameAuto = true; snapFrame(window.innerWidth, window.innerHeight); } // fit = back to auto
       }
     } else if (cmd.scope === "page") {
       if (cmd.type === "dock" && DOCK_SIDES.includes(cmd.value)) {
@@ -494,19 +586,49 @@
       beatSubs.forEach((cb) => cb());
       if (channel && detached) channel.postMessage({ t: "beat" });
     },
+    // Streamed by music.js (~15 Hz while modulating): the values it is
+    // actually writing to the field, so panel sliders can show where the
+    // music is pushing them.
+    mod(values) {
+      modSubs.forEach((cb) => cb(values));
+      if (channel && detached) channel.postMessage({ t: "mod", values });
+    },
     registerMusic(handlers) {
       music = handlers;
     },
+    // --- the performance timeline's hooks (2026-07-31) ---------------------
+    // Recording: every live field command lands here with the state after it.
+    onFieldCommand(cb) { cmdTaps.push(cb); },
+    // Replays write the CLEAN state (they are James's real moves, played by
+    // the ghost) but skip the tap, the undo stack, and the preset churn.
+    replayBase(partial) {
+      cancelTween();
+      Object.assign(state, partial);
+      field.setConfig(Object.assign({}, partial));
+      notifyBase();
+    },
+    replayPunch(name, on) { fieldCommand({ type: "punch", name, on }); },
+    replayFreeze(on) { fieldCommand({ type: "freeze", value: on }); },
     localBus() {
       return {
         send: command,
         onSnapshot: (cb) => subscribers.push(cb),
         onBeat: (cb) => beatSubs.push(cb),
+        onMod: (cb) => modSubs.push(cb),
         requestSnapshot: () => emit(),
       };
     },
   };
   globalThis.LuminaHost = host;
+
+  // Fit-screen is a living default: while no size has been chosen by hand,
+  // the frame follows the window.
+  window.addEventListener("resize", () => {
+    if (frameAuto && !frameExpanded) {
+      snapFrame(window.innerWidth, window.innerHeight);
+      emit();
+    }
+  });
 
   // --- detached controller (tuner.html over BroadcastChannel) ---------------
 

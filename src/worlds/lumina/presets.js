@@ -238,13 +238,19 @@ globalThis.LuminaRandom = (function () {
     // second). At most one of the three, one roll in four, never deep.
     F.FX_KEYS.forEach((k) => { cfg[k] = 0; });
     const SMEAR = ["fxTrails", "fxZoom", "fxZoomRot"];
-    const rack = F.FX_KEYS.filter((k) => SMEAR.indexOf(k) < 0);
+    // The iris also rolls on its own low gate (James, 2026-07-31: "a cool
+    // effect... gets old pretty quickly" — riding the general rack it landed
+    // on ~30% of rolls). It reads best deployed deliberately on breakdowns
+    // and drops; the dice only rarely reaches for it.
+    const SOLO = SMEAR.concat("fxIris");
+    const rack = F.FX_KEYS.filter((k) => SOLO.indexOf(k) < 0);
     for (let i = rack.length - 1; i > 0; i--) {
       const j = Math.floor(R() * (i + 1));
       [rack[i], rack[j]] = [rack[j], rack[i]];
     }
     rack.slice(0, 2 + Math.floor(R() * 3)).forEach((k) => { cfg[k] = rnd(0.15, 0.9); });
     if (odds(0.25)) cfg[pick(SMEAR)] = rnd(0.1, 0.45);
+    if (odds(0.08)) cfg.fxIris = rnd(0.15, 0.9);
 
     // Anti-blackout. A roll must always show SOMETHING.
     if (cfg.scene === "none") {
@@ -267,5 +273,26 @@ globalThis.LuminaRandom = (function () {
     return cfg;
   }
 
-  return { roll };
+  // Card key-groups: which config keys belong to which panel card. Drives the
+  // per-card dice (partial rolls) and the card locks (a locked group's keys
+  // survive every dice roll untouched) — tuner.js card group ids match these.
+  // New rollable keys MUST join a group or no card dice will ever roll them.
+  const GROUPS = {
+    looks: ["speed", "tileSize", "blur"],
+    pulse: ["holdScale", "desync", "ease", "border"],
+    structure: ["layout", "shape", "waveform", "palette", "hueShift", "merge",
+      "rotate", "spin", "displace", "sizePulse", "counter", "nest"],
+    scene: ["scene", "scenePalette", "sceneGenome", "sceneMix", "sceneTiles",
+      "sceneSpeed", "sceneScale", "sceneDrive", "sceneWarp", "sceneHue"],
+    beat: ["accent", "syncBeats"],
+    pattern: ["pattern", "spread", "twist"],
+    grid: ["rows", "cols", "fill"],
+    margins: ["marginTop", "marginRight", "marginBottom", "marginLeft",
+      "gapX", "gapY", "inset"],
+    corners: ["radiusTile", "radiusRow", "radiusOuter"],
+    fx: globalThis.LuminaField ? globalThis.LuminaField.FX_KEYS.slice() : [],
+    canvas: ["low", "high", "bg"],
+  };
+
+  return { roll, GROUPS };
 })();

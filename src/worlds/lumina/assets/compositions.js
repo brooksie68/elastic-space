@@ -472,14 +472,471 @@
     [91, "A", "none", { __ramp: 3, speed: 0.2, blur: 50, fxIris: 0.95, sceneMix: 0, low: "#000000", high: "#000407" }],
   ];
 
+  // ==========================================================================
+  // SPORE CIRCUIT — 130.05 BPM (lock 3.59x, the analyzer's most confident),
+  // bar 1.845s, 102 bars. Sections A1-20 / B21-64 (hot, e0.59) / A'65-76 /
+  // B''77-102 (hottest). Measured drop at bar 47; 17 punches, all hit.
+  // Bio-techno: a culture growing in a dish, bursting its walls on the drops.
+  // ==========================================================================
+  const SPORE_LOOKS = {
+    A: { // petri dish — phyllotaxis colonies drifting over slow ink
+      base: {
+        rows: 8, cols: 8, tileSize: 26, gapX: 22, gapY: 22,
+        speed: 0.8, holdScale: 0.8, desync: 0.3, ease: 0.7, border: 0,
+        low: "#03140a", high: "#7ef29b", bg: "#010806", palette: "duo",
+        layout: "spiral", shape: "circle", waveform: "sine",
+        pattern: "ripple", spread: 1.2, blur: 3, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0.12, displace: 0, sizePulse: 0.35, merge: 0, counter: 0, nest: 0,
+        fill: false, radiusTile: 0.5, fxBloom: 0.25, fxIris: 0.2, fxGrain: 0.15,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0.2, fxSlit: 0, fxCrt: 0,
+        scene: "ink", scenePalette: "acid", sceneMix: 0.65, sceneTiles: 0.55,
+        sceneSpeed: 0.5, sceneScale: 0.45, sceneDrive: 0.4, sceneWarp: 0.55,
+        sceneGenome: "violet veil", accent: "four", syncBeats: 2,
+      },
+      react: { master: 1.0, attack: 0.02, release: 0.2, beatSense: 0.7, beatDecay: 0.25, accentDecay: 0.12,
+        rows: [R("pulse", "sizePulse", 0.5), R("bass", "sceneDrive", 0.4), R("high", "spin", 0.3),
+          R("bar", "sceneHue", 0.18), R("phrase", "sceneScale", 0.25), OFF] },
+    },
+    B: { // mycelium lattice — hex threadwork, rings, tight and dry
+      base: {
+        rows: 10, cols: 11, tileSize: 34, gapX: 12, gapY: 12,
+        speed: 1, holdScale: 0.2, desync: 0.12, ease: 0.25, border: 0.8,
+        low: "#0a1002", high: "#d8e84a", bg: "#050801", palette: "duo",
+        layout: "hex", shape: "ring", waveform: "triangle",
+        pattern: "drops", spread: 1, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0.15, sizePulse: 0.3, merge: 0.2, counter: 0, nest: 1,
+        fill: true, radiusTile: 0.5, fxBloom: 0.15, fxIris: 0, fxGrain: 0.2,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0.12, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0.2,
+        scene: "none", scenePalette: "acid", sceneMix: 0.3, sceneTiles: 1,
+        sceneSpeed: 0.8, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+        sceneGenome: "violet veil", accent: "backbeat", syncBeats: 2,
+      },
+      react: { master: 1.2, attack: 0.015, release: 0.15, beatSense: 0.75, beatDecay: 0.2, accentDecay: 0.1,
+        rows: [R("pulse", "tileSize", 0.6), R("pulse", "displace", 0.35), R("swing", "twist", 0.4),
+          R("high", "desync", 0.3), R("bar", "merge", -0.25), R("beat", "sizePulse", 0.4)] },
+    },
+    C: { // sporeburst — the dish cracks, flame genome takes the frame
+      base: {
+        rows: 6, cols: 6, tileSize: 44, gapX: 34, gapY: 34,
+        speed: 1.8, holdScale: 0.3, desync: 0.25, ease: 0.15, border: 0,
+        low: "#100114", high: "#e26bff", bg: "#08010c", palette: "neon",
+        layout: "radial", shape: "star", waveform: "triangle",
+        pattern: "rings", spread: 1.3, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0.2, displace: 0.3, sizePulse: 0.5, merge: 0, counter: 0, nest: 0,
+        fill: true, radiusTile: 0.2, fxBloom: 0.4, fxIris: 0, fxGrain: 0.15,
+        fxKaleido: 0.45, fxTrails: 0, fxShutter: 0, fxRgb: 0.25, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0.3, fxSlit: 0, fxCrt: 0,
+        scene: "flame", scenePalette: "genome", sceneGenome: "violet veil",
+        sceneMix: 1, sceneTiles: 0.35, sceneSpeed: 1.1, sceneScale: 0.5,
+        sceneDrive: 0.7, sceneWarp: 0.5, accent: "eighths", syncBeats: 1,
+      },
+      react: { master: 1.5, attack: 0.012, release: 0.12, beatSense: 0.8, beatDecay: 0.15, accentDecay: 0.09,
+        rows: [R("pulse", "sceneDrive", 0.65), R("pulse", "fxBloom", 0.5), R("pulse", "fxKaleido", 0.3),
+          R("bass", "sceneWarp", 0.4), R("bar", "sceneHue", 0.3), R("phrase", "spread", 0.3)] },
+    },
+    D: { // culture bloom — fat merged slabs, sunset-bright, wall to wall
+      base: {
+        rows: 5, cols: 7, tileSize: 120, gapX: 10, gapY: 10,
+        speed: 1.3, holdScale: 0.4, desync: 0.1, ease: 0.1, border: 0,
+        low: "#1c0602", high: "#ffb35c", bg: "#0d0301", palette: "sunset",
+        layout: "brick", shape: "square", waveform: "square",
+        pattern: "quarters", spread: 0.8, blur: 0, hueShift: 0, sceneHue: 0,
+        rotate: 0, spin: 0, displace: 0, sizePulse: 0.25, merge: 0.9, counter: 0, nest: 0,
+        fill: true, radiusTile: 0.3, fxBloom: 0.3, fxIris: 0, fxGrain: 0.1,
+        fxKaleido: 0, fxTrails: 0, fxShutter: 0.25, fxRgb: 0, fxPixel: 0,
+        fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+        scene: "none", scenePalette: "sunset", sceneMix: 0.3, sceneTiles: 1,
+        sceneSpeed: 0.8, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+        sceneGenome: "violet veil", accent: "four", syncBeats: 1,
+      },
+      react: { master: 1.4, attack: 0.012, release: 0.11, beatSense: 0.85, beatDecay: 0.13, accentDecay: 0.08,
+        rows: [R("pulse", "tileSize", 0.8), R("pulse", "fxBloom", 0.4), R("bar", "hueShift", 0.2),
+          R("beat", "displace", 0.4), R("swing", "spread", -0.3), R("high", "fxGrain", 0.3)] },
+    },
+  };
+
+  const SPORE_SCORE = [
+    [1, "A"],                                     // the culture, growing
+    [3, "A", "hue"],                              // PUNCH — drop
+    [7, "B", "slow"],                             // PUNCH — drop; threads preview
+    [11, "A", "shape"],
+    [16, "B"],                                    // PUNCH — break returns
+    [19, "C", "tight"],                           // PUNCH — drop; first crack
+    [21, "C"],                                    // PUNCH + section B — burst
+    [25, "D"],                                    // PUNCH — break returns
+    [29, "B", "fast"],                            // PUNCH — groove settles in
+    [32, "A", "scene"],
+    [35, "C", "hue"],                             // PUNCH — groove change
+    [37, "D", "tight"],                           // PUNCH — drop
+    [40, "B", "offbeat"],                         // PUNCH — break returns
+    [44, "A", "invert"],                          // PUNCH — break returns
+    [47, "C", "burst", { sceneGenome: "firebird" }], // the measured big drop (86s)
+    [49, "C", "fast"],                            // PUNCH — build
+    [53, "B", "hue"],
+    [59, "D", "shape"],                           // PUNCH — groove change
+    [63, "A", "tiles", { scene: "ridge", scenePalette: "acid", sceneMix: 0.5 }],
+    [65, "A", "slow"],                            // section A' — the dish rests
+    [69, "B", "gallop"],
+    [73, "C", "scene"],                           // PUNCH — build
+    [77, "D", "hue"],                             // section B'' — hottest stretch
+    [78, "C", "burst"],                           // PUNCH — build
+    [80, "B", "fast"],                            // PUNCH — groove change
+    [84, "D", "invert"],
+    [88, "C", "stutter", { sceneGenome: "gold phoenix" }],
+    [92, "B", "hue"],
+    [98, "D", "blast"],                           // PUNCH — final drop
+    [100, "A", "slow", { __ramp: 3, fxTrails: 0.5, sceneMix: 0, fxIris: 0.95, speed: 0.3 }],
+  ];
+
+  // ==========================================================================
+  // ZION RIPS v2 — 155.2 BPM, 133 bars, 16-bar phrases from bar 21.
+  // James's second brief (2026-07-31): *"lull them into complacency with a
+  // little A B A B. But then you're gonna rock it off into a journey to
+  // infinity and beyond. Take them someplace they've never been and never
+  // return."* So: bars 1–19 are a hypnotic two-look seesaw riding the
+  // stutter intro. From bar 21 the set is a ONE-WAY TRIP — twenty-nine
+  // looks, every one built fresh on the reset chassis (ZBASE), no look ever
+  // played twice, no return to A or B. Still tight to the grid: every event
+  // sits on a punch bar or 8/16 phrase mark, grooves run syncBeats 1–2 with
+  // pulse/bar/swing matrices, and the b82–91 break gets its own deep-water
+  // pair before the b91 supernova rips back in.
+  // ==========================================================================
+  // The reset chassis: a complete neutral state. Every journey look spreads
+  // over this, so each event fully determines the frame — no FX or motion
+  // bleeding through from the look before.
+  const ZBASE = {
+    rows: 8, cols: 8, tileSize: 40, gapX: 16, gapY: 16,
+    speed: 1, holdScale: 0.2, desync: 0.1, ease: 0.3, border: 0,
+    low: "#050505", high: "#e8e8e8", bg: "#020202", palette: "duo",
+    layout: "grid", shape: "square", waveform: "triangle",
+    pattern: "unison", spread: 1, blur: 0, hueShift: 0, sceneHue: 0,
+    rotate: 0, spin: 0, displace: 0, sizePulse: 0.25, merge: 0, counter: 0, nest: 0,
+    fill: true, radiusTile: 0, fxBloom: 0.2, fxIris: 0, fxGrain: 0.15,
+    fxKaleido: 0, fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+    fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+    scene: "none", scenePalette: "duo", sceneMix: 0.5, sceneTiles: 1,
+    sceneSpeed: 0.8, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+    sceneGenome: "amber globe", accent: "four", syncBeats: 1,
+  };
+  const zl = (over, react) => ({ base: Object.assign({}, ZBASE, over), react });
+  const zr = (rows, over) => Object.assign({ master: 1.3, attack: 0.012, release: 0.12,
+    beatSense: 0.8, beatDecay: 0.16, accentDecay: 0.08, rows }, over || {});
+
+  const ZION_LOOKS = {
+    // --- the lull: two looks, traded straight, then abandoned forever ------
+    A: zl({
+      rows: 7, cols: 9, tileSize: 30, gapX: 18, gapY: 26, speed: 0.8,
+      holdScale: 0.6, ease: 0.35, border: 1, desync: 0.05,
+      low: "#030a04", high: "#8fbf62", bg: "#010301", fill: false,
+      shape: "bar", pattern: "rows-alt", spread: 0.9, blur: 2,
+      sizePulse: 0.2, merge: 0.15, fxIris: 0.3, fxGrain: 0.25, fxCrt: 0.5,
+      scene: "ridge", scenePalette: "crt", sceneMix: 0.55, sceneTiles: 0.7,
+      sceneSpeed: 0.4, sceneScale: 0.45, sceneDrive: 0.3, sceneWarp: 0.4,
+      accent: "downbeat", syncBeats: 2,
+    }, zr([R("pulse", "tileSize", 0.55), R("pulse", "fxBloom", 0.4), R("bar", "merge", 0.25),
+      R("swing", "spread", 0.25), R("bass", "sceneDrive", 0.35), OFF],
+      { master: 1.1, release: 0.16, beatDecay: 0.2, accentDecay: 0.1 })),
+    B: zl({
+      rows: 9, cols: 10, tileSize: 42, gapX: 10, gapY: 10,
+      holdScale: 0.1, ease: 0.1, border: 0.8, desync: 0.06,
+      low: "#0c0502", high: "#e8a33c", bg: "#040201",
+      layout: "hex", shape: "hexagon", waveform: "square",
+      pattern: "checkerboard", spread: 0.9, displace: 0.12, sizePulse: 0.35,
+      merge: 0.25, radiusTile: 0.1, fxGrain: 0.2, fxRgb: 0.15, fxCrt: 0.3,
+      accent: "four",
+    }, zr([R("pulse", "tileSize", 0.75), R("pulse", "displace", 0.4), R("pulse", "fxRgb", 0.35),
+      R("swing", "twist", 0.4), R("bar", "merge", -0.3), R("high", "desync", 0.25)])),
+
+    // --- the journey: 29 looks, played once each, in order, never again ----
+    shatter: zl({ // b21 — the engine window breaks into a 12-way rose
+      rows: 5, cols: 9, tileSize: 56, layout: "radial", shape: "star",
+      pattern: "rings", low: "#12041f", high: "#f2f24f", bg: "#050110",
+      palette: "neon", spread: 1.3, fxKaleido: 0.9, fxBloom: 0.35, fxRgb: 0.2,
+      spin: 0.15, accent: "eighths",
+    }, zr([R("pulse", "fxKaleido", 0.25), R("pulse", "tileSize", 0.6), R("swing", "twist", 0.5),
+      R("bar", "hueShift", 0.3), R("high", "fxRgb", 0.3), OFF])),
+    barcode: zl({ // b23 — scanning lasers read the crowd
+      rows: 3, cols: 20, tileSize: 90, gapX: 6, gapY: 30, shape: "slit",
+      waveform: "saw", pattern: "columns-alt", low: "#020202", high: "#f2f2f2",
+      bg: "#000000", fxSlit: 0.35, spread: 0.6, accent: "sixteenths",
+    }, zr([R("pulse", "fxSlit", 0.4), R("pulse", "tileSize", 0.5), R("high", "desync", 0.35),
+      R("swing", "spread", 0.4), R("bar", "displace", 0.25), OFF])),
+    magma: zl({ // b29 — the floor is lava, cathedral flames underneath
+      rows: 6, cols: 7, tileSize: 110, gapX: 8, gapY: 8, layout: "brick",
+      waveform: "sine", pattern: "drops", palette: "lava", low: "#1c0300",
+      high: "#ff7b24", bg: "#0a0100", merge: 0.92, ease: 0.6, holdScale: 0.6,
+      speed: 0.9, scene: "flame", scenePalette: "genome",
+      sceneGenome: "ember cathedral", sceneMix: 0.8, sceneTiles: 0.5,
+      sceneDrive: 0.6, accent: "backbeat", syncBeats: 2,
+    }, zr([R("pulse", "sceneDrive", 0.6), R("bass", "sceneWarp", 0.45), R("pulse", "merge", 0.3),
+      R("bar", "sceneHue", 0.2), R("lowmid", "tileSize", 0.4), OFF])),
+    reef: zl({ // b33 — phosphor rings breathing in cold water
+      rows: 9, cols: 9, tileSize: 34, gapX: 24, gapY: 24, shape: "ring",
+      waveform: "sine", pattern: "ripple", palette: "ocean", low: "#01131c",
+      high: "#4fe8d0", bg: "#000a10", counter: 0.6, ease: 0.9, holdScale: 0.8,
+      speed: 0.7, fill: false, radiusTile: 0.5, scene: "ink",
+      scenePalette: "ocean", sceneMix: 0.55, sceneTiles: 0.6, sceneSpeed: 0.45,
+      sceneWarp: 0.6, accent: "clave", syncBeats: 2,
+    }, zr([R("pulse", "counter", 0.3), R("mid", "sceneDrive", 0.4), R("pulse", "sizePulse", 0.45),
+      R("phrase", "sceneScale", 0.3), R("bar", "sceneHue", 0.15), OFF])),
+    strobehall: zl({ // b38 — a white corridor slams its doors in time
+      rows: 12, cols: 3, tileSize: 150, gapX: 20, gapY: 6, shape: "bar",
+      waveform: "square", pattern: "snake", low: "#f4f4f4", high: "#0a0a0a",
+      bg: "#101010", holdScale: 0, ease: 0, fxShutter: 0.5, fxGrain: 0.1,
+      speed: 1.4, accent: "four",
+    }, zr([R("pulse", "fxShutter", 0.35), R("pulse", "tileSize", 0.7), R("swing", "spread", -0.35),
+      R("beat", "displace", 0.5), R("bar", "merge", 0.3), OFF],
+      { master: 1.5, attack: 0.01, release: 0.09 })),
+    pinwheel: zl({ // b42 — a galaxy spins up from the spiral seed
+      rows: 10, cols: 10, tileSize: 22, layout: "spiral", shape: "circle",
+      pattern: "pinwheel", palette: "rainbow", low: "#0a0416", high: "#c8b8ff",
+      bg: "#030109", spin: 0.5, rotate: 0.3, fill: false, radiusTile: 0.5,
+      scene: "nebula", scenePalette: "neon", sceneMix: 0.7, sceneTiles: 0.55,
+      sceneSpeed: 1.1, blur: 1.5, accent: "offbeat", syncBeats: 2,
+    }, zr([R("pulse", "spin", 0.3), R("pulse", "tileSize", 0.5), R("bar", "sceneHue", 0.35),
+      R("high", "sceneDrive", 0.4), R("phrase", "sceneScale", -0.3), OFF])),
+    acidmelt: zl({ // b48 — the checkerboard liquefies
+      rows: 10, cols: 12, tileSize: 60, gapX: 4, gapY: 4, waveform: "sine",
+      pattern: "checkerboard", palette: "acid", low: "#0c1400", high: "#c8f23c",
+      bg: "#050900", fxWarp: 0.8, ease: 1, holdScale: 1, speed: 0.8,
+      merge: 0.3, accent: "gallop", syncBeats: 2,
+    }, zr([R("pulse", "fxWarp", 0.3), R("lowmid", "merge", 0.4), R("pulse", "sizePulse", 0.5),
+      R("bar", "hueShift", 0.25), R("swing", "twist", 0.45), OFF])),
+    drummachine: zl({ // b52 — four decoded tempos stacked like an 808 grid
+      rows: 8, cols: 14, tileSize: 46, gapX: 8, gapY: 18, shape: "bar",
+      waveform: "square", pattern: "tempo-rows", low: "#140a02", high: "#ffb838",
+      bg: "#070300", border: 1.4, fxCrt: 0.6, fxGrain: 0.3, accent: "sixteenths",
+    }, zr([R("pulse", "tileSize", 0.65), R("pulse", "fxRgb", 0.3), R("high", "desync", 0.4),
+      R("swing", "spread", 0.5), R("beat", "sizePulse", 0.5), OFF])),
+    dotmatrix: zl({ // b55 — the picture decides it's made of pixels
+      rows: 18, cols: 18, tileSize: 14, gapX: 10, gapY: 10, shape: "circle",
+      pattern: "sparkle", palette: "rainbow", low: "#080808", high: "#e8e8e8",
+      bg: "#020202", fxPixel: 0.55, radiusTile: 0.5, desync: 0.5,
+      fill: false, accent: "eighths",
+    }, zr([R("pulse", "fxPixel", 0.25), R("high", "desync", 0.35), R("pulse", "tileSize", 0.6),
+      R("bar", "hueShift", 0.4), R("mid", "sizePulse", 0.4), OFF])),
+    temple: zl({ // b61 — hexagonal gold under sunset light
+      rows: 6, cols: 8, tileSize: 88, gapX: 12, gapY: 12, layout: "hex",
+      shape: "hexagon", pattern: "x-cross", palette: "sunset", low: "#170804",
+      high: "#ffc06a", bg: "#090301", merge: 0.7, holdScale: 0.5, ease: 0.5,
+      fxBloom: 0.4, speed: 0.9, accent: "backbeat", syncBeats: 2,
+    }, zr([R("pulse", "fxBloom", 0.45), R("pulse", "merge", 0.3), R("bass", "tileSize", 0.5),
+      R("bar", "sceneHue", 0.2), R("phrase", "spread", 0.35), OFF])),
+    ghost: zl({ // b65 — the negative afterimage floats past
+      rows: 5, cols: 5, tileSize: 70, gapX: 40, gapY: 40, shape: "circle",
+      waveform: "sine", pattern: "quarters", low: "#e8e2d6", high: "#141210",
+      bg: "#d9d2c4", blur: 25, fxTrails: 0.4, ease: 1, holdScale: 1.4,
+      speed: 0.5, fill: false, radiusTile: 0.5, accent: "downbeat", syncBeats: 4,
+    }, zr([R("pulse", "blur", -0.4), R("mid", "sizePulse", 0.4), R("bar", "spread", 0.4),
+      R("phrase", "hueShift", 0.15), OFF, OFF],
+      { master: 0.9, attack: 0.03, release: 0.3 })),
+    lasercage: zl({ // b68 — crossed beams, nowhere to stand
+      rows: 9, cols: 9, tileSize: 52, gapX: 14, gapY: 14, shape: "cross",
+      waveform: "square", pattern: "edges", palette: "neon", low: "#10021c",
+      high: "#ff3ad8", bg: "#06010c", fxRgb: 0.5, displace: 0.3, rotate: 0.25,
+      accent: "stutter",
+    }, zr([R("pulse", "displace", 0.5), R("pulse", "fxRgb", 0.35), R("pulse", "tileSize", 0.6),
+      R("swing", "rotate", 0.4), R("high", "fxBloom", 0.4), OFF])),
+    flock: zl({ // b73 — triangles scatter like birds off a wire
+      rows: 11, cols: 13, tileSize: 26, gapX: 20, gapY: 20, shape: "triangle",
+      pattern: "scatter", low: "#041206", high: "#7df29e", bg: "#010603",
+      rotate: 0.7, desync: 0.55, displace: 0.25, sizePulse: 0.5, fill: false,
+      accent: "gallop",
+    }, zr([R("pulse", "displace", 0.45), R("high", "rotate", 0.35), R("pulse", "sizePulse", 0.5),
+      R("swing", "twist", 0.5), R("bar", "hueShift", 0.2), OFF])),
+    hexstorm: zl({ // b77 — the lattice shakes itself apart (build to the break)
+      rows: 12, cols: 12, tileSize: 38, gapX: 8, gapY: 8, layout: "hex",
+      shape: "diamond", pattern: "drops", low: "#0d0714", high: "#b89ae8",
+      bg: "#040208", desync: 0.6, displace: 0.92, sizePulse: 0.6, spread: 1.5,
+      fxGrain: 0.35, accent: "eighths",
+    }, zr([R("pulse", "displace", 0.6), R("pulse", "desync", 0.3), R("bass", "tileSize", 0.6),
+      R("swing", "spread", 0.4), R("high", "fxGrain", 0.3), OFF],
+      { master: 1.5 })),
+    deepsea: zl({ // b82 — THE BREAK: all the machinery sinks underwater
+      rows: 6, cols: 6, tileSize: 24, gapX: 44, gapY: 44, layout: "radial",
+      shape: "circle", waveform: "sine", pattern: "rings", palette: "ocean",
+      low: "#01070e", high: "#3d76a8", bg: "#000409", speed: 0.45,
+      holdScale: 1.2, ease: 1, desync: 0.35, spin: 0.06, fill: false,
+      radiusTile: 0.5, blur: 6, fxIris: 0.4, fxTrails: 0.3, fxBloom: 0.3,
+      scene: "ink", scenePalette: "ocean", sceneMix: 0.85, sceneTiles: 0.35,
+      sceneSpeed: 0.3, sceneDrive: 0.3, sceneWarp: 0.6,
+      accent: "downbeat", syncBeats: 8,
+    }, zr([R("mid", "sceneDrive", 0.35), R("pulse", "sizePulse", 0.35), R("bar", "sceneHue", 0.12),
+      R("lowmid", "blur", 0.2), R("phrase", "fxIris", 0.15), OFF],
+      { master: 0.85, attack: 0.04, release: 0.4, beatDecay: 0.35, accentDecay: 0.22 })),
+    horizon: zl({ // b86 — the quiet floor: light bends around a black center
+      rows: 4, cols: 4, tileSize: 16, gapX: 60, gapY: 60, layout: "radial",
+      shape: "ring", waveform: "sine", pattern: "rings", low: "#02020a",
+      high: "#1c2a66", bg: "#010104", speed: 0.3, holdScale: 1.6, ease: 1,
+      fill: false, radiusTile: 0.5, blur: 10, fxBloom: 0.45, fxTrails: 0.35,
+      scene: "nebula", scenePalette: "genome", sceneGenome: "violet veil",
+      sceneMix: 0.7, sceneTiles: 0.2, sceneSpeed: 0.25, sceneScale: 0.7,
+      accent: "none", syncBeats: 16,
+    }, zr([R("level", "sceneDrive", 0.3), R("bar", "sceneHue", 0.1), R("lowmid", "blur", 0.25),
+      OFF, OFF, OFF],
+      { master: 0.7, attack: 0.05, release: 0.5, beatDecay: 0.4, accentDecay: 0.3 })),
+    supernova: zl({ // b91 — the drop back in: everything ignites at once
+      rows: 7, cols: 7, tileSize: 96, gapX: 10, gapY: 10, layout: "radial",
+      shape: "star", waveform: "square", pattern: "rings", palette: "lava",
+      low: "#1a0200", high: "#ffdd30", bg: "#0c0100", speed: 1.8,
+      sizePulse: 0.7, displace: 0.4, spread: 1.4, fxBloom: 0.55, fxShutter: 0.45,
+      fxRgb: 0.3, scene: "flame", scenePalette: "genome", sceneGenome: "firebird",
+      sceneMix: 1, sceneTiles: 0.4, sceneSpeed: 1.3, sceneDrive: 0.97,
+      sceneWarp: 0.96, accent: "four",
+    }, zr([R("pulse", "sceneDrive", 0.7), R("pulse", "tileSize", 0.8), R("pulse", "fxBloom", 0.5),
+      R("bass", "sceneWarp", 0.5), R("swing", "displace", 0.4), R("bar", "sceneHue", 0.25)],
+      { master: 1.7, attack: 0.008, release: 0.09 })),
+    tunnel: zl({ // b93 — the feedback corridor opens; we fly down it
+      rows: 8, cols: 8, tileSize: 44, gapX: 24, gapY: 24, shape: "square",
+      pattern: "rings", palette: "rainbow", low: "#060606", high: "#f2f2f2",
+      bg: "#000000", fxZoom: 0.4, fxZoomRot: 0.22, fxBloom: 0.3, fill: false,
+      accent: "eighths",
+    }, zr([R("pulse", "fxZoom", 0.2), R("swing", "fxZoomRot", 0.2), R("pulse", "tileSize", 0.6),
+      R("bar", "hueShift", 0.35), R("high", "fxBloom", 0.35), OFF])),
+    serpent: zl({ // b98 — one long rainbow body winds through the grid
+      rows: 10, cols: 16, tileSize: 30, gapX: 6, gapY: 6, shape: "ring",
+      pattern: "snake", palette: "rainbow", low: "#0a0a0a", high: "#e8e8e8",
+      bg: "#030303", spread: 1.8, radiusTile: 0.5, desync: 0.2,
+      accent: "clave", syncBeats: 2,
+    }, zr([R("pulse", "spread", -0.35), R("pulse", "tileSize", 0.55), R("bar", "hueShift", 0.45),
+      R("swing", "twist", 0.5), R("mid", "sizePulse", 0.45), OFF])),
+    twinsuns: zl({ // b102 — two counter-phased stars eclipse each other
+      rows: 2, cols: 8, tileSize: 120, gapX: 30, gapY: 80, layout: "radial",
+      shape: "circle", waveform: "sine", pattern: "checkerboard",
+      palette: "sunset", low: "#140500", high: "#ffcf5c", bg: "#070200",
+      counter: 0.9, sizePulse: 0.5, radiusTile: 0.5, fxBloom: 0.5, fill: false,
+      accent: "backbeat",
+    }, zr([R("pulse", "counter", 0.25), R("pulse", "fxBloom", 0.4), R("bass", "tileSize", 0.7),
+      R("bar", "hueShift", 0.2), R("phrase", "spread", 0.4), OFF])),
+    graveyard: zl({ // b106 — a wall of dying televisions
+      rows: 6, cols: 9, tileSize: 78, gapX: 14, gapY: 20, shape: "square",
+      waveform: "square", pattern: "rows-alt", low: "#061006", high: "#9fe89a",
+      bg: "#020402", border: 2, fxCrt: 0.8, fxGrain: 0.5, fxRgb: 0.2,
+      holdScale: 0.4, accent: "offbeat", syncBeats: 2,
+    }, zr([R("pulse", "fxRgb", 0.4), R("high", "fxGrain", 0.35), R("pulse", "tileSize", 0.5),
+      R("beat", "displace", 0.4), R("swing", "spread", 0.3), OFF])),
+    confetti: zl({ // b110 — the club ceiling opens, everything falls
+      rows: 16, cols: 16, tileSize: 18, gapX: 14, gapY: 14, shape: "diamond",
+      pattern: "scatter", palette: "rainbow", low: "#0a0a0a", high: "#f2f2f2",
+      bg: "#030303", desync: 0.92, sizePulse: 0.9, rotate: 0.5, displace: 0.35,
+      fill: false, accent: "sixteenths",
+    }, zr([R("pulse", "sizePulse", 0.6), R("pulse", "displace", 0.5), R("high", "rotate", 0.4),
+      R("bar", "hueShift", 0.5), R("swing", "desync", 0.3), OFF])),
+    xray: zl({ // b112 — the drop strips everything to bones
+      rows: 5, cols: 14, tileSize: 66, gapX: 8, gapY: 26, shape: "slit",
+      waveform: "square", pattern: "bounce-x", low: "#dce8f2", high: "#0a1420",
+      bg: "#c4d4e0", fxRgb: 0.4, fxShutter: 0.3, spread: 0.7,
+      accent: "four",
+    }, zr([R("pulse", "tileSize", 0.7), R("pulse", "fxShutter", 0.3), R("swing", "displace", 0.45),
+      R("bar", "merge", 0.3), R("high", "fxRgb", 0.3), OFF],
+      { master: 1.5, attack: 0.01 })),
+    clockwork: zl({ // b119 — chevron gears at four different speeds
+      rows: 9, cols: 11, tileSize: 48, gapX: 12, gapY: 12, shape: "chevron",
+      pattern: "tempo-cols", low: "#120c02", high: "#d8a848", bg: "#060401",
+      border: 1, nest: 2, rotate: 0.15, fxGrain: 0.25, accent: "gallop",
+      syncBeats: 2,
+    }, zr([R("pulse", "tileSize", 0.55), R("swing", "rotate", 0.35), R("pulse", "sizePulse", 0.45),
+      R("bar", "merge", 0.25), R("lowmid", "spread", 0.35), OFF])),
+    prism: zl({ // b124 — light through broken glass, bent and multiplied
+      rows: 7, cols: 7, tileSize: 58, gapX: 18, gapY: 18, shape: "triangle",
+      pattern: "diagonal", palette: "rainbow", low: "#0c0c14", high: "#e8e8f2",
+      bg: "#040408", fxKaleido: 0.6, fxWarp: 0.4, fxBloom: 0.35, rotate: 0.4,
+      accent: "eighths",
+    }, zr([R("pulse", "fxKaleido", 0.3), R("pulse", "fxWarp", 0.25), R("bar", "hueShift", 0.4),
+      R("high", "fxBloom", 0.4), R("swing", "rotate", 0.4), OFF])),
+    whitehole: zl({ // b127 — THE final drop: a supernova in negative
+      rows: 6, cols: 6, tileSize: 190, gapX: 12, gapY: 12, waveform: "square",
+      pattern: "quarters", low: "#ffffff", high: "#100e0c", bg: "#f2ede2",
+      merge: 0.5, sizePulse: 0.5, fxShutter: 0.75, blur: 3, fxBloom: 0.3,
+      accent: "four",
+    }, zr([R("pulse", "tileSize", 0.9), R("pulse", "blur", 0.5), R("pulse", "fxShutter", 0.35),
+      R("swing", "spread", -0.4), R("beat", "displace", 0.55), R("bar", "merge", 0.35)],
+      { master: 1.7, attack: 0.008, release: 0.08 })),
+    afterimage: zl({ // b129 — neon burns fading on the retina
+      rows: 12, cols: 12, tileSize: 20, gapX: 22, gapY: 22, shape: "circle",
+      pattern: "sparkle", palette: "neon", low: "#060606", high: "#e8e8e8",
+      bg: "#010101", fxTrails: 0.6, fxBloom: 0.45, spin: 0.25, desync: 0.5,
+      fill: false, radiusTile: 0.5, accent: "offbeat",
+    }, zr([R("pulse", "fxBloom", 0.5), R("pulse", "sizePulse", 0.5), R("high", "desync", 0.35),
+      R("bar", "hueShift", 0.35), R("swing", "spin", 0.25), OFF])),
+    ascension: zl({ // b131 — the tiles let go; only nebula light remains
+      rows: 3, cols: 3, tileSize: 12, gapX: 80, gapY: 80, shape: "circle",
+      waveform: "sine", pattern: "unison", low: "#040210", high: "#8a7ad8",
+      bg: "#010008", speed: 0.5, ease: 1, holdScale: 1, fill: false,
+      radiusTile: 0.5, fxZoom: 0.3, fxBloom: 0.4, scene: "nebula",
+      scenePalette: "genome", sceneGenome: "violet veil", sceneMix: 1,
+      sceneTiles: 0.1, sceneSpeed: 0.6, sceneScale: 0.6, sceneDrive: 0.6,
+      accent: "downbeat", syncBeats: 4,
+    }, zr([R("level", "sceneDrive", 0.4), R("pulse", "fxZoom", 0.15), R("bar", "sceneHue", 0.2),
+      R("phrase", "sceneScale", 0.3), OFF, OFF],
+      { master: 1.0, attack: 0.03, release: 0.35 })),
+    void: zl({ // b133 — no return: the iris closes on somewhere new
+      rows: 1, cols: 1, tileSize: 30, gapX: 100, gapY: 100, shape: "circle",
+      waveform: "sine", pattern: "unison", low: "#010102", high: "#0a0a14",
+      bg: "#000000", speed: 0.25, ease: 1, fill: false, radiusTile: 0.5,
+      blur: 90, fxIris: 0.95, fxTrails: 0.5, scene: "none", sceneMix: 0,
+      accent: "none", syncBeats: 0,
+    }, zr([R("level", "fxBloom", 0.2), OFF, OFF, OFF, OFF, OFF],
+      { master: 0.5, attack: 0.05, release: 0.5 })),
+  };
+
+  const ZION_SCORE = [
+    // The lull — A B A B on the stutter intro's own punches. Last sighting.
+    [1, "A"],
+    [4, "B"],                                     // PUNCH — build
+    [7, "A", "offbeat"],                          // PUNCH — drop
+    [9, "B", "offbeat"],                          // PUNCH — build
+    [12, "A", "invert"],                          // PUNCH — drop, inverted smirk
+    [14, "B", "invert"],                          // PUNCH — groove
+    [17, "A", "tight"],                           // PUNCH — drop
+    [19, "B", "tight"],                           // PUNCH — groove
+    // The journey. Nothing below repeats. Ever.
+    [21, "shatter"],                              // PUNCH + PHRASE — departure
+    [23, "barcode"],                              // PUNCH
+    [29, "magma"],                                // 8-bar mark
+    [33, "reef"],
+    [38, "strobehall"],                           // PUNCH
+    [42, "pinwheel"],                             // PUNCH — drop
+    [48, "acidmelt"],                             // PUNCH
+    [52, "drummachine"],                          // PUNCH
+    [55, "dotmatrix"],                            // PUNCH
+    [61, "temple"],                               // PUNCH + 8-bar mark
+    [65, "ghost"],
+    [68, "lasercage"],                            // PUNCH
+    [73, "flock"],                                // PUNCH
+    [77, "hexstorm"],                             // 8-bar mark — build to the break
+    [82, "deepsea"],                              // PUNCH — THE BREAK
+    [86, "horizon", "none", { __ramp: 2 }],       // PUNCH — quiet floor, glide down
+    [91, "supernova"],                            // PUNCH — DROP back in
+    [93, "tunnel"],                               // PUNCH + PHRASE
+    [98, "serpent"],                              // PUNCH
+    [102, "twinsuns"],                            // PUNCH — drop
+    [106, "graveyard"],                           // PUNCH
+    [110, "confetti"],                            // PUNCH
+    [112, "xray"],                                // PUNCH — drop
+    [119, "clockwork"],                           // PUNCH
+    [124, "prism"],                               // PUNCH
+    [127, "whitehole"],                           // PUNCH — THE final drop
+    [129, "afterimage"],                          // PUNCH
+    [131, "ascension"],                           // PUNCH
+    // Bar 133 starts 2.7s before the file ends — the ramp must fit inside.
+    [133, "void", "none", { __ramp: 1.5 }],       // PUNCH — gone for good
+  ];
+
   globalThis.LUMINA_COMPOSITIONS = {
     "Angular Ritual.mp3": build("Angular Ritual.mp3", ANGULAR_LOOKS, ANGULAR_SCORE),
     "Jungle Moog Ritual.mp3": build("Jungle Moog Ritual.mp3", JUNGLE_LOOKS, JUNGLE_SCORE),
     "Timber at Sea.mp3": build("Timber at Sea.mp3", TIMBER_LOOKS, TIMBER_SCORE),
+    "Spore Circuit.mp3": build("Spore Circuit.mp3", SPORE_LOOKS, SPORE_SCORE),
+    "Zion Rips.mp3": build("Zion Rips.mp3", ZION_LOOKS, ZION_SCORE),
   };
   globalThis.LUMINA_LOOKS = {
     "Angular Ritual.mp3": ANGULAR_LOOKS,
     "Jungle Moog Ritual.mp3": JUNGLE_LOOKS,
     "Timber at Sea.mp3": TIMBER_LOOKS,
+    "Spore Circuit.mp3": SPORE_LOOKS,
+    "Zion Rips.mp3": ZION_LOOKS,
   };
 })();

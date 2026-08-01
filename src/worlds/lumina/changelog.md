@@ -3,6 +3,296 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-07-31 — Claude (Fable 5) — THE PERFORMANCE TIMELINE (record your own set)
+
+- James's brief, after Zion v2 still didn't hit his felt beat: he doesn't
+  trust the analyzer's grid, and he can't perform four perfect minutes live —
+  *"record segments, record myself doing moves, then stop and go back to an
+  earlier part, press record again and try something else."* **NO QUANTIZE,
+  his explicit call** — raw audio-time capture, his hands decide the beat.
+  The timeline strip deliberately shows seconds + energy silhouette, never
+  bar claims.
+- Architecture: `timeline.js` (new, DOM-free, sim-tested) holds the event
+  model ({t,k,v} control moves / {t,base} whole-look landings / pad+freeze
+  events), the punch-in MERGE CONTRACT, and the replay cursor.
+  world.js grew a field-command TAP (recording source) and `replayBase` /
+  `replayPunch` / `replayFreeze` (replay sink — bypasses the tap, the undo
+  stack, and preset churn: the ghost never re-records). music.js wires
+  capture+replay to the audio clock: per-track store (`lumina-timeline`),
+  loop-region cycling (an armed pass banks a take every lap), latch
+  (touch a key during a take and the ghost releases that key), fold-on-seek
+  (scrub anywhere, the look catches up). Playback is a third player mode:
+  **"your set"** ("mine"), next to claude's set and free play.
+- The merge contract (per-parameter punch-in): outside the region nothing
+  changes; inside, a prior control move dies only if the new take touched
+  that key; a whole-look jump in a take wipes its region; pads clear pads.
+  Melt rolls record their LANDING state, not the 2s glide (documented
+  limitation). Dice rolls record the rolled result, so replays are
+  deterministic.
+- Panel: new full-width **timeline card** (stock home: visual row 3; stored
+  layouts adopt it at the bottom — drag it up or reset). Energy-silhouette
+  strip: click = jump, drag = loop region, double-click = clear loop; gold
+  ticks = moves (tall = look jumps, blue = pads); red playhead while armed.
+  Buttons: ● record / ■ punch out, take counter, undo take, clear loop,
+  clear track (confirmed). Arming flips claude's set to free play first.
+- New sim `tmp/lumina/timeline-sim.mjs` (24 asserts) runs the shipping
+  timeline.js: merge rules, [tIn,tOut) boundary, fold accumulation, sticky
+  freeze, cursor no-double-fire, backward-seek rewind. All suites green
+  (24 + 300 + 53). Card render + "your set" option verified live in
+  tuner.html.
+- NOT DONE YET: file-backed timeline persistence (localStorage only — a
+  server route like presets' would make recordings durable + tell Claude),
+  and transcribing an earned performance into compositions.js as canon.
+
+## 2026-07-31 — Claude (Fable 5) — Zion Rips v2: the one-way journey
+
+- James's second brief, verbatim spirit: lull them with a little A B A B,
+  then *"rock it off into a journey to infinity and beyond. Take them
+  someplace they've never been and never return."* The v1 four-look
+  vocabulary was leaning on compositional structure way too hard for him.
+- v2: bars 1–19 are the lull — A/B traded straight on the stutter intro's
+  punches (offbeat, inverted, tight — same two rooms, growing suspicion).
+  From bar 21 (first 16-bar phrase) it is a ONE-WAY TRIP: **29 looks, each
+  built complete on a reset chassis (`ZBASE` + `zl()` helper), each played
+  exactly once, never revisited** — shatter, barcode, magma, reef,
+  strobehall, pinwheel, acidmelt, drummachine, dotmatrix, temple, ghost,
+  lasercage, flock, hexstorm, then the break pair (deepsea b82, horizon b86
+  on the measured quiet floor), supernova at the b91 drop-back, tunnel,
+  serpent, twinsuns, graveyard, confetti, xray, clockwork, prism, whitehole
+  at the b127 final drop, afterimage, ascension, void.
+- Still musically anchored: every event on a punch bar or 8/16 phrase mark,
+  grooves at syncBeats 1–2 with pulse/bar/swing rows, break at 8/16.
+  Tune by bar label ("b110 confetti").
+- Sim pushed back once — "pushes sliders to extremes (3 of 12)" — and it was
+  right, given the brief: peaks turned up to honest stops (magma merge 0.92,
+  hexstorm displace 0.92, supernova drive 0.97/warp 0.96, confetti desync
+  0.92, whitehole 190px slabs + shutter 0.75, void blur 90). 300/300 + 53/53
+  green. The ZBASE/zl chassis is the pattern for future
+  journey-style sets — steal it.
+
+## 2026-07-31 — Claude (Fable 5) — two new tracks measured + composed
+
+- James dropped **Spore Circuit** and **Zion Rips** into sound-tracks/ and
+  asked for authored sets — with a specific brief for Zion: *"REALLY pay
+  attention to the sections. do things at 8 bars and 16, listen for the
+  breaks. and keep Lumina pretty tightly synced to the beat in general."*
+- Analyzer run (both tracks added to track-analyze.mjs TRACKS; grid + JSON
+  regenerated). **Spore Circuit**: 130.05 BPM at 3.59× lock — the most
+  confident grid we have; A[1–20] B[21–64] A'[65–76] B''[77–102]; big drop
+  bar 47; 17 punches. **Zion Rips**: 155.2 BPM, 133 bars, clean 16-bar
+  phrases from bar 21; A[1–20] stutter intro (silence→drop at b12 and b17),
+  B[21–80], A-BREAK[81–92] (quiet floor b84–86, drop out b91), B'[93–133],
+  final drop b127; 38 punches.
+- **Spore Circuit set** — bio-techno: petri dish (spiral/ink), mycelium
+  lattice (hex/rings/"drops" pattern), sporeburst (radial stars + flame
+  genomes, firebird/gold-phoenix rotation), culture bloom (merged sunset
+  slabs). Hits all 17 punch bars.
+- **Zion Rips set** — machine city: the gate (bronze bars, CRT green,
+  ridge), the engine room (copper hex pistons, square wave, sync 1), the rip
+  (neon slit lasers, fxSlit), the slam (blown-out white for drops), the
+  break (ocean ink fog, iris, sync 4 — bars 82–91 own it). Hits ALL 38
+  punch bars; every identity change sits on a 16-bar phrase boundary
+  (21/37/53/69/93) with 8-bar variations between; every groove look runs
+  syncBeats 1–2 with pulse/bar/swing matrix rows — nothing follows lagging
+  band envelopes for rhythm. Outro ramp is 1.5 bars because bar 133 starts
+  2.7s before the file ends (a 4-bar glide would die half-open — the sim's
+  scene-fade + blackness asserts caught exactly this).
+- Both tracks baked into music.js TRACKS (measured grid + composed set, not
+  just folder-discovery reactivity). composition-sim grew the two tracks
+  (durations + count 3→5): 300/300; music-sim 53/53.
+- No BPM_OVERRIDE lines added — James hasn't called tempos on these; the
+  detector's locks look sane (Spore especially). If his ear disagrees,
+  override and re-run analyze + sims.
+
+## 2026-07-31 — Claude (Fable 5) — pass 6.4: cards cross tabs
+
+- James: the visual tab needs access to the audio cards — reactivity
+  "controls so much about how this works... visually." Cards are now
+  TAB-AGNOSTIC: every gear row grew a ⇄ button that sends the card to the
+  other tab's board (own row at the end; drag into place from there). The
+  registration pane is only the card's HOME — default placement + adoption
+  for stores that predate it. renderLayout resolves ids across both
+  registries and dedupes (first placement wins).
+- Stock layout updated: reactivity now opens FULL-WIDTH on the visual board,
+  third row, under perform; audio keeps player + a matrix/react-presets
+  pair. Existing stored layouts keep reactivity where it was (stores win
+  over defaults, by design) — ⇄ or reset to get the new arrangement.
+- Verified live: ⇄ moved mod matrix into the visual pane's DOM and back,
+  gear regrouped both times, hidden flags untouched, fresh load lands on the
+  new stock layout.
+
+## 2026-07-31 — Claude (Fable 5) — pass 6.3: ember control labels
+
+- All control titles (slider/select/chip labels + checkbox labels like
+  "fill") moved from 70% white to `--gold-ember` (#cc945c) — the card gold
+  pulled a step darker and toward red, James's spec: kin to the gold titles,
+  clearly distinct from them AND from the white explanatory text. One CSS
+  var; tune there.
+
+## 2026-07-31 — Claude (Fable 5) — pass 6.2: type dialed in by eye
+
+- 26px overshot ("too far in the other direction"): base is now **21px** —
+  James's exact spec, the 26px-era 80% becomes the new 100%. Scale key
+  bumped again (`lumina-ui-scale3`, the per-base-change rule). Everything
+  else he called "really going great."
+
+## 2026-07-31 — Claude (Fable 5) — pass 6.1: frozen head, no docks, human-size type
+
+James's reaction to pass 6 ("amazing... so slick") plus three fixes:
+
+- **The head actually freezes now.** His "freeze rows" ask exposed a real
+  bug: in the detached window the DOCUMENT scrolls, but `.lum-tuner` kept its
+  `overflow-y: auto`, making it the sticky container — so the "sticky" head
+  rode away with the page. `body.lum-tuner-page .lum-tuner { overflow-y:
+  visible }` fixes it; verified by scrolling 800px and reading the head's
+  rect (top stays 0). Tabs + top-right controls + command bar are now frozen
+  at the top no matter what.
+- **Dock picker UI removed** ("kill the dock icons... I'm only gonna ever
+  use this as a remote"). Host dock machinery stays for the
+  no-BroadcastChannel fallback; no buttons.
+- **Base type 16px → 26px** ("the baseline font size needs to be larger" —
+  at the old base, 100% put descriptions at ~10.9px). Now 100% ≈ readable
+  (descs ~18.7px), ~60% reproduces the old cramped look, scale floor 80 → 50.
+  Scale storage moved to `lumina-ui-scale2` so percentages saved against the
+  old base can't land huge; every window restarts at the new 100%.
+
+## 2026-07-31 — Claude (Fable 5) — panel pass 6: the board is yours
+
+Same night as pass 5. James flew the five and came back with the structural
+brief: transport must live IN the panel, the board must be rearrangeable
+("one to five cards and a variable height"), hiding must mean GONE (the gear),
+fit screen should just be the default, and the top-right chrome was fighting
+the picture. Plan shown first, his additions folded in, then built:
+
+- **The command bar.** A second sticky row under the tabs, on both tabs, both
+  homes: play/pause + stop (SVG icons — text transport glyphs go color-emoji
+  on Windows), then ❄ freeze / 🎲 dice / melt die / ↩ back, then VOLUME. All
+  reuse the existing host commands and light up from snapshots.
+- **The layout engine.** Cards register in a per-pane registry; the panes
+  render from `lumina-layout` (per window, v1 schema): rows of 1–5 cards,
+  equal width shares, each row auto height or pinned in em (scales with the
+  text-size control). `edit layout` toggles grip bars (⠿ drag a card; drop
+  beside a card to join its row — a red line refuses a full row of 5 — or
+  into a gap for a new full-width row) and ↕ row-bottom grips (drag = pin
+  height, cards scroll inside; double-click = auto). Stock layout: looks and
+  perform full-width (they were half-empty before), pattern full-width so the
+  animated chips spread out. EXTENSIBILITY CONTRACT: a card the store has
+  never seen lands as its own row at the end; stored ids that no longer exist
+  drop silently — future cards need zero migration.
+- **The gear (⚙).** Checklist of every card (+ my deck): unchecked = removed
+  from the board entirely, not collapsed; recheck and it returns where it
+  last lived. `reset layout` restores stock rows/heights/visibility.
+  Click-away closes it (house rule).
+- **Fit screen is THE default.** The frame always opens at the window size
+  and follows window resizes until a size is chosen by hand that session
+  ("set"/"full width" pin it; "fit screen" hands it back to auto). Frame
+  sizes no longer persist at all — the old stored-size-wins load behavior and
+  the 1024×768 upgrade rule are gone.
+- **Top-right chrome (this world only).** The shared speaker is hidden —
+  volume now lives in the player bar (new slider) and the command bar, all
+  driving the same shared gain so they stay in sync. The dashboard icon reads
+  at 50% alpha, 100% on hover.
+- **Player bar collapse.** ▾ in the brand row folds the whole transport away
+  to logo + LUMINA + ▴; persisted (`lumina-player-mini`). The bar stays
+  visible (protected behavior) — just small.
+- Verified in the served tuner.html: no console errors; stock rows exactly as
+  authored; edit toggle shows 16 card grips + 10 row grips; gear hide/show/
+  reset round-trips; a synthetic pointer drag moved "scene" out of its shared
+  row into its own new row with the drop marker showing. Sims 252 + 43 green.
+  NOT yet driven by a human against a live host — James is the click test.
+
+## 2026-07-31 — Claude (Fable 5) — panel pass 5: the five ("fuck it, do them all")
+
+James's go on all five usability proposals in one pass, same session as pass 4.
+Section titles also bumped 0.95em → 1.08em (+2px) on his ask.
+
+- **Per-card 🎲 + 🔒.** Every visual card's header has its own dice (rolls
+  ONLY that card's keys) and a lock (every dice roll — plain, melt, card —
+  leaves a locked card's keys at their current values). Key-groups live in
+  presets.js `LuminaRandom.GROUPS`; the HOST enforces locks (world.js
+  `randomize {group}` / `lockToggle` commands, `lumina-locks` storage, in the
+  snapshot as `snap.locks`). composition-sim asserts every rolled key belongs
+  to exactly ONE group — an ungrouped key would be unrollable-by-card and
+  unlockable (252 asserts green).
+- **Visual pickers.** layout/shape/wave/palette (structure), scene, and the
+  whole pattern list are thumbnail CHIP STRIPS now, not dropdowns. Layout
+  chips plot the field's real `layoutTiles()`; wave chips draw the actual
+  curve; palette chips are the actual ramps; pattern chips ANIMATE the real
+  per-tile phase math at ~20fps (one shared loop, skipped while hidden).
+  Unknown future values get a generic fallback chip — extending the field
+  never breaks the picker.
+- **Ghost dots.** music.js streams the matrix-modulated values (~15 Hz,
+  `host.mod` → bus `onMod`, over the BroadcastChannel too) and every field
+  slider grew a gold ghost dot that dances where the music is actually
+  holding that knob. Fades out ~450ms after the modulation stops.
+- **The perform strip.** New full-width card under "looks": six momentary
+  punch pads (blackout / strobe / freeze / kaleido / iris / warp — hold keys
+  1–6) that fire while held and restore clean on release (host-side
+  overrides, never in `state`; the music tick merges them last so pads work
+  mid-set), plus an XY pad driving any two knobs at once (axes persisted,
+  `lumina-xy`).
+- **My deck + collapsible cards.** Star (☆) any slider/select/chip-strip to
+  pin a live copy into "my deck" — a gold-bordered card above the tabs,
+  visible from both. Every card collapses to its header (▾). Favs/collapse
+  persist per window (`lumina-favs` / `lumina-collapsed`), like text size.
+- Verified: tuner.html loads clean (no console errors; 17 cards, 11 locks,
+  57 chips, 6 pads, 50 ghost dots, no horizontal scroll); node --check on all
+  five edited JS files; sims 252 + 43 green. NOT yet click-tested against a
+  live host — the pane can't load index.html (music autoplay rule). AWAITING
+  JAMES: roll/lock feel, pad choices + punch depths, XY defaults
+  (warp × scene drive), chip art, deck workflow.
+
+## 2026-07-31 — Claude (Fable 5) — panel pass 4: cards, gold, columns, copy
+
+James's four-part brief, same session as the dice odds work:
+
+- **Text size is a − / + stepper now** (tab bar, steps of 10, double-click the
+  % resets) — his call: "plus minus like it is everywhere else." The slider
+  and its `.tuner-textrange` rule are gone.
+- **Sections are CARDS flowing into CSS columns** (`.tuner-cards`,
+  `columns: 24em`). His complaint was real and measured: every section was
+  its own tiny grid, so a maximized window put everything in a left stack.
+  Verified at 1920×1080: four columns of 454px cards, edge to edge, no
+  horizontal scroll; audio tab three cards + full-width player. "looks"
+  (presets + dice + speed/size/blur) and "player" are full-width top cards
+  outside the columns. Each section's multiple `minis()` grids merged into
+  one per card so controls flow evenly.
+- **Gold section headers** (`--gold: #e3b968`) + every card opens with a
+  `.tuner-summary` — ONE plain sentence: what this group of controls does.
+  New groupings got names in the process: the formerly unlabeled
+  holds/desync/ease/border block is "pulse"; colors + frame + reset are
+  "canvas".
+- **Copy pass over every `.tuner-desc`**: shorter, plainer, says what you'll
+  see, jargon out ("chromatic aberration" → "red, green and blue slip apart,
+  broken-projector style"). The long presets paragraph cut to one line; the
+  technical WebGL rack footnote deleted.
+- Also: sticky tab bar got a solid background (cards scrolled visibly under
+  it), descs nudged brighter/larger (0.45→0.52 alpha, 0.68→0.72em), matrix
+  rows can wrap inside their card.
+- STATUS: layout verified numerically (pane wouldn't composite for
+  screenshots); AWAITING JAMES'S EYES on the whole pass — gold hue, card
+  grouping, summary copy all tunable. The VJ-instrument design conversation
+  (NEXT UP 4) is still open; this pass is its typographic/layout groundwork.
+
+## 2026-07-31 — Claude (Fable 5) — iris pulled from the dice rack
+
+- James: the iris comes up too often on dice rolls — *"a cool effect... gets
+  old pretty quickly"*; it's best used deliberately (breakdowns/drops), which
+  *"isn't really gonna happen with dice flipping."* Riding the general FX rack
+  it landed on ~30% of rolls (2–4 of 10 effects per roll). Now it rolls like
+  the smear trio: excluded from the rack, its own `odds(0.08)` gate — about a
+  quarter of the old rate. Depth range unchanged (0.15–0.9, anti-blackout cap
+  at 0.5 with no scene). composition-sim grew an iris rate guard next to the
+  blur one.
+
+## 2026-07-31 — Claude (Fable 5) — melt roll halved to 2s
+
+- James flew the 5% blur odds ("definitely much better"), then asked for the
+  melt roll to run half as long: `rollTween(4000)` → `rollTween(2000)` in
+  world.js. The shape is untouched — same sin veil, same peak-blur structural
+  swap at p=0.5 — everything just happens in 2s instead of 4s. No sim guards
+  the duration; sims still green (composition 125, music 43).
+
 ## 2026-07-31 — Claude (Fable 5) — dice blur odds cut to a quarter
 
 - James: blur rolls still land way too often on both dice — *"it needs to be

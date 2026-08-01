@@ -352,3 +352,55 @@ body.lum-dock-bottom .lum-player {
   position: static;
   z-index: auto;
 }
+
+/* --- top-right chrome, this world only (James, 2026-07-31) ------------------
+   The shared speaker is hidden — volume lives in the player bar and the
+   panel's command bar instead (his call; the sound still starts through the
+   same shared control machinery). The dashboard icon stays but at half
+   strength so the corner stops competing with the picture. */
+.es-sound {
+  display: none;
+}
+
+.es-dash {
+  opacity: 0.5;
+}
+
+.es-dash:hover,
+.es-dash:focus-visible {
+  opacity: 1;
+}
+
+/* Volume in the transport bar — same knob as the panel's, drives the shared
+   gain through the host. */
+.lum-transport-vol {
+  accent-color: #dfe3ee;
+  width: 5.5rem;
+}
+
+/* --- collapsed player (James, 2026-07-31): just the logo, the wordmark, and
+   the expand button. The collapse toggle sits top right of the brand row. */
+.lum-player-fold {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  margin-left: auto;
+  padding: 0.1rem 0.2rem;
+}
+
+.lum-player-fold:hover {
+  color: #fff;
+}
+
+.lum-player--mini .lum-transport-bar {
+  display: none;
+}
+
+.lum-player--mini .lum-player-brand {
+  border-bottom: none;
+  padding-bottom: 0.05rem;
+}

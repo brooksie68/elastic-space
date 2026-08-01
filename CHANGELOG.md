@@ -8,6 +8,19 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-01 (Lumina: panel becomes a board, the performance timeline)
+
+- Panel passes 6–7: user-owned row layout engine (1–5 cards/row, drag + row
+  heights, gear show/hide, cards cross tabs), sticky command bar with transport,
+  dock UI removed, base type dialed to 21px by James's eye, ember labels
+- World chrome: fit-screen frame default, player-bar volume + collapse, shared
+  speaker hidden in-world; dice tamed (blur 5%, iris 8%, melt 2s)
+- Two new Suno tracks measured + composed (Spore Circuit, Zion Rips); Zion
+  re-cut as a 29-look one-way journey on James's "never return" brief
+- THE PERFORMANCE TIMELINE: record-your-own-set in segments, no quantize
+  (James's law), per-key punch-in merge, loop takes, ghost replay, "your set"
+  mode; new timeline.js + timeline-sim (24), all suites green (24/300/53)
+
 ## 2026-08-01 (Admin panel: archived tab)
 
 - Fourth admin tab "archived": lists `archive/` folders via GET /api/archive with direct links (slug-derived labels, `archive/<slug>` path notes); refreshes on tab click and after a kebab archive; archive-dialog copy points at the tab

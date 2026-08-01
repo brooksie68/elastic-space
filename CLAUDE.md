@@ -296,7 +296,28 @@ consistent. `npm run check-worlds` audits every world against the contract.
    music modulation), the perform strip (6 punch pads + XY pad, keys 1–6),
    my-deck favorites + collapsible cards. Sims 252+43 green; tuner.html
    loads clean; NOT click-tested against a live host. AWAITING HIS EYES on
-   all of pass 5. The rest of the Lumina item is #5.5 below.
+   all of pass 5.
+   PASSES 6–7 + THE PERFORMANCE TIMELINE 2026-07-31/08-01 (all-night session,
+   James driving by eye, verdicts "so slick" / "really going great"): the panel
+   became a LAYOUT ENGINE — user-owned rows (1–5 cards each, drag grips, drag
+   row heights, gear show/hide + reset, cards cross tabs via gear ⇄, per-window
+   `lumina-layout`), sticky command bar (transport + freeze/dice/melt/back +
+   volume), dock UI killed (remote-only, his call), base type 16→26→21px (his
+   eye: old 80% = new 100%, scale key bumps per base change), ember control
+   labels, plain-language copy + card summaries. World: fit-screen is the living
+   frame default, player bar gained volume + collapse-to-wordmark, shared
+   speaker hidden + dashboard icon 50% (this world only). Dice: blur odds 20→5%,
+   iris out of the rack to 8%, melt roll 4s→2s. TWO NEW TRACKS analyzed+composed
+   (Spore Circuit 130BPM bio-techno; Zion Rips 155BPM — v2 on his brief: ABAB
+   lull then a 29-look one-way journey, no look repeated). THE PERFORMANCE
+   TIMELINE built on his ask ("record segments... build it up over time" — NO
+   QUANTIZE, his law, he doesn't trust detected downbeats): timeline.js pure
+   core + host command-tap recording, per-key punch-in merge, loop-cycle takes,
+   latch, ghost replay, "your set" player mode, timeline card with energy strip.
+   Sims 24+300+53 green. AWAITING: his first recording session, both new sets
+   in flight, 21px type verdict. NEXT (needs go): file-backed timelines,
+   transcribing an earned performance into compositions.js.
+   The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
    `assets/spastic-space/recreation-notes.md` (read it first — timing table is exact, decoded

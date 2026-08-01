@@ -26,6 +26,8 @@
     { file: "Angular Ritual.mp3", label: "Angular Ritual" },
     { file: "Jungle Moog Ritual.mp3", label: "Jungle Moog Ritual" },
     { file: "Timber at Sea.mp3", label: "Timber at Sea" },
+    { file: "Spore Circuit.mp3", label: "Spore Circuit" },
+    { file: "Zion Rips.mp3", label: "Zion Rips" },
   ];
 
   // Served only — file:// keeps the baked list. Discovered tracks join the
@@ -81,7 +83,7 @@
   store.pertrack = store.pertrack || {};
   // Free play is the DEFAULT (James, 2026-07-25): entering the world never
   // hands the field to a composed set — claude's set is an explicit opt-in.
-  if (store.dj !== "free" && store.dj !== "claude") store.dj = "free";
+  if (store.dj !== "free" && store.dj !== "claude" && store.dj !== "mine") store.dj = "free";
   let settings = mergeSettings(store.settings);
   let presetSelected = "";
 
@@ -172,6 +174,13 @@
     store.track = TRACKS[trackIndex].file;
     if (store.perTrack) recallPerTrack();
     resetComposition();
+    // Timelines are per track: drop any in-flight take, loop, and session
+    // undo, and point the ghost at the new track's recording.
+    tlArmed = false;
+    tlTake = [];
+    tlLoop = null;
+    tlUndo = [];
+    tlRebuildPlayer(0);
     saveStore();
     if (andPlay) start().catch(() => {});
   }
@@ -221,6 +230,90 @@
     saveStore();
   }
 
+  // --- the performance timeline (2026-07-31) --------------------------------
+  // James records his own set in SEGMENTS: punch in over a region, make some
+  // moves, punch out, scrub back, try again. NO QUANTIZE — his call: every
+  // move is stored at the raw audio time he made it; the beat grid never
+  // touches this data. Merge rules + replay cursor live in timeline.js (pure,
+  // sim-tested); this block is the wiring: capture from the host's command
+  // tap, replay through host.replay* (which bypass the tap — the ghost never
+  // re-records), per-track persistence, loop-region cycling.
+  const TL = globalThis.LuminaTimeline;
+  const TL_KEY = "lumina-timeline";
+  function loadTimelines() {
+    try { return JSON.parse(localStorage.getItem(TL_KEY)) || {}; } catch (err) { return {}; }
+  }
+  const timelines = loadTimelines();
+  function saveTimelines() {
+    try { localStorage.setItem(TL_KEY, JSON.stringify(timelines)); } catch (err) { /* fine */ }
+  }
+  const tlEvents = () => timelines[TRACKS[trackIndex].file] || [];
+
+  let tlArmed = false;
+  let tlTake = [];            // moves captured since punch-in
+  let tlIn = 0;               // punch-in time (audio seconds)
+  let tlTouched = new Set();  // keys touched this take — latch-mutes the ghost
+  let tlUndo = [];            // pre-merge timelines, newest last (session only)
+  let tlLoop = null;          // {a, b} or null
+  let tlPlayer = null;
+  let tlLastT = 0;
+
+  const tlActive = () => store.dj === "mine" || tlArmed;
+
+  function tlRebuildPlayer(seekT) {
+    tlPlayer = TL && tlEvents().length ? TL.makePlayer(tlEvents()) : null;
+    if (seekT !== undefined) tlSeek(seekT);
+  }
+
+  // Put the world where the timeline says it should be at t (fold), so
+  // scrubbing into the middle of a performance looks right.
+  function tlSeek(t) {
+    tlLastT = t;
+    if (!tlPlayer || !tlActive()) return;
+    const { partial, freeze } = tlPlayer.seek(t);
+    const b = Object.assign({}, partial);
+    if (tlArmed) tlTouched.forEach((k) => { delete b[k]; });
+    if (Object.keys(b).length) host.replayBase(b);
+    if (freeze !== null) host.replayFreeze(freeze);
+  }
+
+  function tlCommit(tOut) {
+    tlUndo.push(clone(tlEvents()));
+    if (tlUndo.length > 20) tlUndo.shift();
+    timelines[TRACKS[trackIndex].file] = TL.mergeTake(tlEvents(), tlTake, tlIn, tOut);
+    saveTimelines();
+    tlTake = [];
+    tlTouched = new Set();
+    tlRebuildPlayer(audio.currentTime);
+  }
+
+  // Capture: every live field command while armed and the track is rolling.
+  host.onFieldCommand((cmd, after, frozenNow) => {
+    if (!tlArmed || audio.paused) return;
+    const t = +audio.currentTime.toFixed(3);
+    if (cmd.type === "set") {
+      // Linked margins move as a group — record what actually changed.
+      if (/^margin/.test(cmd.key)) {
+        ["marginTop", "marginRight", "marginBottom", "marginLeft"].forEach((k) => {
+          tlTake.push({ t, k, v: after[k] });
+          tlTouched.add(k);
+        });
+      } else {
+        tlTake.push({ t, k: cmd.key, v: cmd.value });
+        tlTouched.add(cmd.key);
+      }
+    } else if (["preset", "randomize", "randomizeTween", "resetAll", "patternStep", "undo"].includes(cmd.type)) {
+      // Whole-look jumps record their LANDING state (a melt roll records
+      // where it lands, not the two-second glide).
+      tlTake.push({ t, base: Object.assign({}, after) });
+      tlTouched = new Set(Object.keys(after));
+    } else if (cmd.type === "punch") {
+      tlTake.push({ t, punch: cmd.name, on: !!cmd.on });
+    } else if (cmd.type === "freeze") {
+      tlTake.push({ t, freeze: true, on: !!frozenNow });
+    }
+  });
+
   // --- host registration ----------------------------------------------------
 
   host.registerMusic({
@@ -230,6 +323,17 @@
         shuffle: !!store.shuffle,
         perTrack: !!store.perTrack,
         dj: store.dj,
+        timeline: {
+          armed: tlArmed,
+          count: tlEvents().length,
+          takeCount: tlTake.length,
+          loop: tlLoop,
+          canUndo: tlUndo.length > 0,
+          // Compact strip data: [t, kind] with 0 = control move, 1 = whole
+          // look, 2 = pad/freeze; plus the track's energy silhouette.
+          events: tlEvents().map((e) => [Math.round(e.t * 100) / 100, e.base ? 1 : e.k ? 0 : 2]),
+          barEnergy: (GRID[TRACKS[trackIndex].file] || {}).barEnergy || null,
+        },
         trackIndex,
         playing: !audio.paused,
         time: audio.currentTime || 0,
@@ -306,9 +410,55 @@
               saveStore();
               break;
             case "dj":
-              store.dj = cmd.value === "free" ? "free" : "claude";
+              store.dj = ["free", "claude", "mine"].includes(cmd.value) ? cmd.value : "free";
               saveStore();
               resetComposition();
+              tlRebuildPlayer(audio.currentTime);
+              break;
+          }
+          break;
+        case "timeline":
+          switch (cmd.cmd) {
+            case "arm":
+              if (tlArmed) {
+                // Punch OUT: merge the take into the track's timeline.
+                tlArmed = false;
+                tlCommit(audio.currentTime);
+              } else {
+                // Punch IN. Claude's set can't be driving while you record
+                // your own — recording flips to free play. Prior takes still
+                // replay under you (that's the overdub), minus any key you
+                // touch from here on.
+                if (store.dj === "claude") { store.dj = "free"; saveStore(); resetComposition(); }
+                tlArmed = true;
+                tlTake = [];
+                tlTouched = new Set();
+                tlIn = audio.currentTime;
+                tlRebuildPlayer(audio.currentTime);
+                if (audio.paused) start().catch(() => {});
+              }
+              break;
+            case "loop":
+              tlLoop = (typeof cmd.a === "number" && typeof cmd.b === "number" && cmd.b - cmd.a > 0.5)
+                ? { a: cmd.a, b: cmd.b } : null;
+              break;
+            case "loopClear":
+              tlLoop = null;
+              break;
+            case "undoTake":
+              if (tlUndo.length) {
+                timelines[TRACKS[trackIndex].file] = tlUndo.pop();
+                saveTimelines();
+                tlRebuildPlayer(audio.currentTime);
+              }
+              break;
+            case "clear":
+              if (tlEvents().length) {
+                tlUndo.push(clone(tlEvents()));
+                timelines[TRACKS[trackIndex].file] = [];
+                saveTimelines();
+                tlRebuildPlayer();
+              }
               break;
           }
           break;
@@ -386,13 +536,52 @@
   const accents = DSP.createAccents();
   let lastNow = performance.now();
   let lastBeatFired = -1;
+  let lastModEmit = 0;
+  let modEmitted = false;
 
   function tick(now) {
     requestAnimationFrame(tick);
     const dt = Math.min((now - lastNow) / 1000, 0.1);
     lastNow = now;
+
+    // --- the timeline ghost: fire recorded moves at their exact times ------
+    if (!audio.paused) {
+      const t = audio.currentTime;
+      if (tlActive() && tlPlayer) {
+        // A scrub in either direction re-folds instead of burst-firing.
+        if (t < tlLastT - 0.05 || t > tlLastT + 1) tlSeek(t);
+        tlPlayer.step(t, (e) => {
+          if (e.k) {
+            // Latch: once you touch a key during a take, the ghost lets go
+            // of that key for the rest of the take.
+            if (!(tlArmed && tlTouched.has(e.k))) host.replayBase({ [e.k]: e.v });
+          } else if (e.base) {
+            const b = Object.assign({}, e.base);
+            if (tlArmed) tlTouched.forEach((k) => { delete b[k]; });
+            host.replayBase(b);
+          } else if (e.punch) {
+            host.replayPunch(e.punch, e.on);
+          } else if (e.freeze !== undefined) {
+            host.replayFreeze(e.on);
+          }
+        });
+        tlLastT = t;
+      }
+      // Loop region: wrap at the end; an armed pass commits and stays armed,
+      // so cycling a section stacks takes without touching the transport.
+      if (tlLoop && t >= tlLoop.b) {
+        if (tlArmed) {
+          tlCommit(Math.min(t, tlLoop.b));
+          tlIn = tlLoop.a;
+        }
+        audio.currentTime = tlLoop.a;
+        tlSeek(tlLoop.a);
+        host.emit();
+      }
+    }
     if (!analyser || audio.paused || (!djEngine && settings.master === 0)) {
       restoreBase();
+      if (modEmitted) { modEmitted = false; host.mod({}); } // clear ghost dots
       return;
     }
     analyser.getByteFrequencyData(freqData);
@@ -454,8 +643,18 @@
     prevTouched.forEach((k) => {
       if (!(k in partial)) partial[k] = effBase[k];
     });
+    // Held punch pads (world.js) ride last — over base, comp, and modulation.
+    const punch = bridge.getPunch ? bridge.getPunch() : null;
+    if (punch) Object.assign(partial, punch);
     globalThis.luminaField.setConfig(partial);
     prevTouched = touched;
+    // Ghost dots (2026-07-31): stream the matrix-modulated values ~15 Hz so
+    // the panel's sliders can show where the music is pushing them.
+    if (now - lastModEmit > 66) {
+      lastModEmit = now;
+      host.mod(mods);
+      modEmitted = Object.keys(mods).length > 0;
+    }
   }
   requestAnimationFrame(tick);
 
@@ -531,6 +730,27 @@
     brandEl.innerHTML = LOGO + '<span class="lum-player-name">lumina</span>';
     playerEl.appendChild(brandEl);
 
+    // Collapse to just the wordmark (James, 2026-07-31): ▾ folds the whole
+    // transport away, leaving logo + LUMINA + ▴ to bring it back. Persisted.
+    const MINI_KEY = "lumina-player-mini";
+    const foldBtn = document.createElement("button");
+    foldBtn.type = "button";
+    foldBtn.className = "lum-player-fold";
+    const setMini = (mini) => {
+      playerEl.classList.toggle("lum-player--mini", mini);
+      foldBtn.textContent = mini ? "▴" : "▾";
+      foldBtn.title = mini ? "Expand the player" : "Collapse the player down to the wordmark";
+      try { localStorage.setItem(MINI_KEY, mini ? "1" : "0"); } catch (err) { /* fine */ }
+    };
+    foldBtn.addEventListener("click", () => {
+      setMini(!playerEl.classList.contains("lum-player--mini"));
+      foldBtn.blur();
+    });
+    brandEl.appendChild(foldBtn);
+    let startMini = false;
+    try { startMini = localStorage.getItem(MINI_KEY) === "1"; } catch (err) { /* fine */ }
+    setMini(startMini);
+
     const barEl = document.createElement("div");
     barEl.className = "lum-transport-bar";
     playerEl.appendChild(barEl);
@@ -565,7 +785,7 @@
     let trackSig = "";
     const mode = document.createElement("select");
     mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track";
-    [["free", "free play"], ["claude", "claude's set"]].forEach(([v, t]) => {
+    [["free", "free play"], ["claude", "claude's set"], ["mine", "your set"]].forEach(([v, t]) => {
       const o = document.createElement("option");
       o.value = v;
       o.textContent = t;
@@ -573,6 +793,21 @@
     });
     mode.addEventListener("change", () => host.command({ scope: "music", type: "player", cmd: "dj", value: mode.value }));
     barEl.appendChild(mode);
+    // Volume (James, 2026-07-31): the shared top-right speaker is hidden in
+    // this world — this slider and the panel's command bar ARE the volume.
+    // Both drive the shared gain through the host, so they stay in step.
+    const volEl = document.createElement("input");
+    volEl.type = "range";
+    volEl.className = "lum-transport-vol";
+    volEl.min = "0";
+    volEl.max = "1000";
+    volEl.step = "1";
+    volEl.title = "Volume — double-click restores full";
+    volEl.addEventListener("input", () =>
+      host.command({ scope: "music", type: "player", cmd: "volume", value: Number(volEl.value) / 1000 }));
+    volEl.addEventListener("dblclick", () =>
+      host.command({ scope: "music", type: "player", cmd: "volume", value: 1 }));
+    barEl.appendChild(volEl);
     // The configuration button rides after the mode switch (James,
     // 2026-07-27) — a labelled button, not a floating icon. world.js owns its
     // click behavior; we only seat it here.
@@ -615,6 +850,9 @@
       }
       if (document.activeElement !== trackEl) trackEl.value = String(snap.music.trackIndex);
       if (document.activeElement !== mode) mode.value = snap.music.dj;
+      if (document.activeElement !== volEl && snap.music.volume !== undefined) {
+        volEl.value = String(Math.round(snap.music.volume * 1000));
+      }
       freezeBtn.classList.toggle("on", !!snap.frozen);
       freezeBtn.title = snap.frozen
         ? "Resume the animation"

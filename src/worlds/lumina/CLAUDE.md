@@ -62,7 +62,8 @@ The three things worth carrying in from the end of that session:
   presets, resetAll leaves it alone), then the 🎲 dice (five-pip SVG die,
   same randomize command as the panel's — ↩ back undoes bar rolls too),
   then the blurry die (melt roll v2: {scope:"field", type:"randomizeTween"}
-  → world.js rollTween(4000) — numerics/hex colors ease in-out over 4s
+  → world.js rollTween(2000) (4s → 2s, James 2026-07-31) — numerics/hex
+  colors ease in-out over 2s
   while a sin-shaped blur veil rises; the unmorphable keys — grid, layout,
   scene, pattern — swap at PEAK veil (p=0.5) where nothing is legible, then
   it sharpens into the new look. The veil never lands in `state`; ONE undo
@@ -71,16 +72,21 @@ The three things worth carrying in from the end of that session:
   sizing clears it). Hotkeys on the main page: Space = play/pause,
   Z = dice — suppressed while a form control has focus, and bar buttons
   blur after click so Space never re-fires the last-pressed button.
+  2026-07-31 additions: a VOLUME slider in the bar (the shared top-right
+  speaker is HIDDEN in this world, James's call — world.css `.es-sound
+  {display:none}`; the bar's slider, the panel's command bar, and the audio
+  tab all drive the same shared gain), the dashboard icon at 50% alpha, and
+  a ▾ collapse in the brand row that folds the card to logo + LUMINA + ▴
+  (`lumina-player-mini`; "always visible" now means at least the wordmark).
   (3) **The controls open DETACHED by default** (James, 2026-07-27, second
   call of the day — supersedes the in-page-first flow): the configuration
-  button opens/closes the `tuner.html` window. The dock picker (both modes)
-  is the route in-page: in the window it closes the window and docks the
-  panel on the chosen edge ({scope:"page", type:"attach"}); embedded it
-  switches edges ({type:"dock"}). left/top/bottom/right, right default,
-  persisted under `lumina-dock`. `body.lum-dock-<side>` reserves the edge
-  through `--lum-dock-w/-h`, which `applyFrame()` also reads so the frame
-  shrinks out of the way, and the player card shifts clear on left/bottom
-  docks (world.css). No BroadcastChannel → button falls back in-page.
+  button opens/closes the `tuner.html` window. THE DOCK PICKER UI WAS
+  REMOVED 2026-07-31 (James: "kill the dock icons... I'm only gonna ever use
+  this as a remote") — do not resurrect it. The host still understands
+  {scope:"page", type:"dock"/"attach"} and the `lumina-dock` /
+  `body.lum-dock-<side>` / `--lum-dock-w/-h` machinery survives because the
+  no-BroadcastChannel fallback still docks the panel in-page; there is just
+  no button for it.
 - **Sets are v4** — fully re-cut on the bar grid; every event is B(n) or a
   measured drop/quiet, labels carry bar numbers ("b41 sheet lightning"), and
   composition-sim ENFORCES the grid (events within 90ms of a bar or on a
@@ -260,9 +266,56 @@ likely as item 3. Don't re-add it unprompted.
   audio), bus-driven, no state of its own. Runs embedded (index.html shell
   `#lum-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
   BroadcastChannel "lumina-ctl"). New field/music params get their control
-  HERE, in the right tab.
+  HERE, in the right tab — inside the right CARD: since 2026-07-31 (pass 4)
+  sections are `.tuner-card`s created by `card(parent, title, summary, {group})`,
+  flowing into CSS columns (`.tuner-cards`, 24em) so a maximized window
+  fills side to side; "looks", "perform" and "player" are full-width cards
+  outside the columns. Headers are gold (`--gold`), and every card carries a
+  one-sentence plain-language `.tuner-summary` — new sections must too.
+  Control descs are deliberately short and non-technical; the text-size
+  control is a − / + stepper, not a slider.
+- **Panel pass 5 (2026-07-31, James's "do them all") — the five live-play
+  systems.** (1) Per-card 🎲/🔒: key-groups in presets.js
+  `LuminaRandom.GROUPS` — every NEW rollable key must join exactly one group
+  (composition-sim enforces coverage); locks are host-enforced in world.js
+  (`randomize {group}`, `lockToggle`, `lumina-locks`) and honored by BOTH
+  dice including the melt roll. (2) Visual pickers: layout/shape/wave/
+  palette/scene/pattern are chip strips (`chips()` + draw fns at the top of
+  tuner.js); every drawer must survive unknown values (generic fallback) so
+  extending the field can't break the picker; pattern chips animate the real
+  phase math. (3) Ghost dots: music.js streams live modulated values via
+  `host.mod` (~15 Hz) → bus `onMod`; field sliders show a gold dot where the
+  music holds them. (4) The perform strip: momentary punch pads (PUNCHES in
+  world.js — overrides ride over state and NEVER land in it; music tick
+  merges `bridge.getPunch()` last) + an XY pad (axes in `lumina-xy`). Keys
+  1–6 hold-to-fire. (5) "my deck" favorites (☆ on any control, `lumina-favs`)
+  + per-card collapse (`lumina-collapsed`) — per window, like text size.
+  New controls automatically join the deck system via the factory BUILDERS
+  registry; bypass the factories and you lose starring.
+- **Panel pass 6 (2026-07-31): the layout engine + command bar.** The sticky
+  header is `.tuner-head` = tabs row + COMMAND BAR (play/pause, stop, freeze,
+  dice, melt, back, volume — SVG transport icons, reflect from snapshots).
+  Cards register in a per-pane registry (`CARDS` in tuner.js via `card(pane,
+  title, summary, opts)` — pane is the string "visual"|"audio", cards never
+  append themselves); panes render from `lumina-layout` (per window): rows of
+  1–5 cards (MAX_PER_ROW), equal flex shares, row height auto or pinned in
+  `em`. `edit layout` = drag grips + row-height grips; the ⚙ gear = per-card
+  show/hide (hidden means NOT RENDERED, distinct from ▾ collapse) + reset.
+  THE EXTENSIBILITY CONTRACT: register a card and it appears as its own row
+  at the end for stores that predate it; ids that stop existing drop
+  silently. Never hand a card a fixed width — width is always the row share.
+  CARDS ARE TAB-AGNOSTIC (2026-07-31, James: the visual tab must be able to
+  host reactivity/matrix): the registration pane is only the card's HOME
+  (default placement + adoption); the gear's ⇄ sends any card to the other
+  tab's board, renderLayout resolves ids across both registries and dedupes.
+  Reactivity's stock home is the VISUAL board (full-width, under perform).
 - **The panel is sized in `em` off ONE base (2026-07-27).** `.lum-tuner` sets
-  `--ui-base: 16px` and `font-size: calc(var(--ui-base) * var(--ui-scale, 1))`;
+  `--ui-base: 21px` (16px until 2026-07-31, then 26px for an hour; James
+  dialed the final size by eye — "the current eighty percent becomes the new
+  one hundred". Scale floor is 50; the scale key is `lumina-ui-scale3` —
+  bump the key WHENEVER the base changes so old-base percentages can't land
+  at the wrong physical size) and
+  `font-size: calc(var(--ui-base) * var(--ui-scale, 1))`;
   every type size, pad, gap, control height and slider cap in `tuner.css` is
   `em` so the text-size control in the tab bar scales the whole surface
   together. EXCEPTION (found 2026-07-27): range inputs don't inherit the panel
@@ -285,7 +338,20 @@ likely as item 3. Don't re-add it unprompted.
   slider drags. If you ever make hand tweaks undoable, do it as a separate
   stack; mixing them makes "back" useless during a set.
 - `world.js` — host: clean state authority, command router
-  (`LuminaHost`), field presets, frame, detach handshake.
+  (`LuminaHost`), field presets, frame, detach handshake. Since 2026-07-31
+  also the timeline hooks: `onFieldCommand` (the recording tap — every live
+  field command with post-state) and `replayBase`/`replayPunch`/
+  `replayFreeze` (the replay sink — bypasses the tap, the undo stack, and
+  preset churn; the ghost must never re-record or pollute undo).
+- `timeline.js` — THE PERFORMANCE RECORDER core (2026-07-31), DOM-free:
+  event model, punch-in merge contract, replay cursor. **NO QUANTIZE — a
+  James law, not a default:** he does not trust the analyzer's grid; moves
+  are stored at raw audio time and the timeline UI must never snap, nudge,
+  or show bar claims. music.js owns the wiring (capture, per-track store
+  `lumina-timeline`, loop cycling, latch, fold-on-seek, the "mine" / "your
+  set" player mode). Run `node tmp/lumina/timeline-sim.mjs` after touching
+  any of it. Known limitation: melt rolls record their landing, not the
+  glide. Not yet file-backed (localStorage only).
 - `music.js` — audio graph, player, reactivity loop, DJ playback; registers
   with the host and mounts the tuner. `music-dsp.js` — DOM-free DSP + the
   TARGETS table (new modulatable params get an entry there).
@@ -327,8 +393,11 @@ likely as item 3. Don't re-add it unprompted.
   rows derived from the window aspect (autoGrid), fill mode ON so the outer
   border reaches every screen edge, in a full-window frame** (`START` in
   world.js = renderer DEFAULTS + autoGrid + fill;
-  reset/resetAll target START; a stored frame size wins over full-window
-  except a legacy 1024×768, which upgrades). The renderer's own DEFAULTS
+  reset/resetAll target START). FRAME: fit-screen is the default and frame
+  sizes NEVER persist (James, 2026-07-31 — replaces the old stored-size-wins
+  rule): the frame opens at window size and follows window resizes until a
+  size is set by hand that session; "fit screen" returns it to auto. The
+  renderer's own DEFAULTS
   stay pork-2002-verbatim at 3×4 (sim contract), and presets remain partials
   over DEFAULTS — not START — so a preset without rows/cols means the
   original grid ("pork 2002" in the menu is the true original). Tuning still
