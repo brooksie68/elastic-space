@@ -1,5 +1,49 @@
 # Face Lab changelog
 
+## 2026-08-02 (evening) — Claude (Opus 5) — THE FACE MOVES: full Mesh-to-Head from scratch, rig verified
+
+James ran the entire Headshot 3 Mesh-to-Head workflow himself from the raw OBJ,
+Claude coaching by screenshot. Opening correction, worth keeping: Claude started
+*doing* the work (requesting access, driving panels) and James stopped it — "I'm
+not learning anything, this isn't really what I want." The agreed mode is
+coaching: he holds the mouse, Claude reads the screen and directs. He also asked
+directly whether Claude *can* drive these tools — answer yes, with the honest
+caveats (downscaled screenshots, slow round trips, window shuffling, and no
+aesthetic judgment), and the split is: Claude drives tedious mechanical passes,
+James drives anything that's a judgment call.
+
+RESULT: the wrapped head is on a CC body with a seamless neck, and the facial rig
+**works**. Tested via Animation Player → Motion → facial rig → range of
+expressions. His verdict: "a thousand times more successful than anything we've
+done so far... it still looks like the guy... his skin moves around as if there
+are bones underneath. Very flexible and lifelike."
+
+THE TWO-HOUR BUG, and it was Claude's instruction: Headshot's checklist says to
+put the source mesh's base at world origin (0,0,0). Claude relayed that as
+`Move Z = 11.4`. Headshot uses the prop's **world position literally** — so the
+generated character mounted the head *on the floor between the character's feet*,
+with the neck stretched 160cm down to reach it. That stretch is what James kept
+describing as "cellophane pulling into infinity," and it survived every checkbox
+we toggled because no checkbox was ever the cause. James diagnosed it himself by
+ignoring Claude's advice and clicking ATTACH TO BODY to see where things landed.
+THE RULE: load a base character FIRST, then position the source head prop
+**overlapping the base character's head** (~Z 160, Scale 1200) before starting.
+
+REMAINING (James's eye): eyes and teeth read too realistic against the cartoony
+face — that's the Digital Human shaders (SSS, wet speculars, layered iris), not
+resolution; levers are flatten the material, swap the iris for a two-tone
+texture, enlarge iris relative to sclera. Teeth are too narrow and poke through
+the upper lip; want widening, pushing back, and tilting up into the jaw.
+
+THE OPEN DECISION — the body. James is confident he can make beards, hair and
+clothing work in CC, and asked how to get the Blender/Meshy body in here. Three
+routes: (1) don't import — rebuild the gnome's proportions on CC's own body with
+Proportion / Adjust Bones / morphs, so nothing is ever fitted to anything and
+clothes and hair conform by design; (2) AccuRIG the Meshy body (rigs that mesh,
+but marrying our CC head to it is the same cross-family seam that has beaten us
+every time); (3) Transformer (aimed at Daz-standard rigs, behavior on a Meshy
+mesh unknown). Claude's recommendation is (1); James's call, not made yet.
+
 ## 2026-08-02 (overnight) — Claude (Fable 5) — THE POSTMASTER EXISTS: body built, head wrapped, dressed
 
 James drove CC5 all night with Claude riding shotgun (desktop control + docs);

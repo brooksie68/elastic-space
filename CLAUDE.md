@@ -250,6 +250,29 @@ consistent. `npm run check-worlds` audits every world against the contract.
    purchase, neck/tilt profile check, skin-tone seam match, head-size
    decision, then the two export tracks (iClone speech; CC→FBX→Blender→GLB
    into DLO with Mouth Open as Morph checked).
+   2026-08-02 (evening): **THE FACIAL RIG IS VERIFIED.** James ran a full
+   Headshot 3 Mesh-to-Head from the raw OBJ himself — Claude COACHING by
+   screenshot, not driving (his correction at the top of the session: "I'm
+   not learning anything"; agreed split = Claude drives tedious mechanical
+   passes, James drives judgment calls). Head attached to a CC body with a
+   seamless neck; facial clip played from Animation Player → Motion →
+   facial rig. His verdict: "a thousand times more successful than anything
+   we've done so far... it still looks like the guy... his skin moves around
+   as if there are bones underneath." THE BUG THAT ATE THE SESSION (Claude's
+   instruction): Headshot uses the source prop's WORLD POSITION literally, so
+   "base at world origin" mounted the head on the FLOOR between the feet with
+   the neck stretched 160cm — load a base character FIRST and overlap the
+   source head on its head (Z~160, Scale 1200, Rotate 0/0/0). Runbook third
+   pass (items 14–25: the snapshot-stale align pane, right-drag orbits the
+   pane, points 26/29/32 are on the BACK of the head, no clear-all so
+   re-import the prop, re-run gen after hiding faces) is in
+   docs/character-pipeline.md — READ IT before touching Headshot again.
+   OPEN, his call, not made: eyes/teeth read too realistic (materials not
+   resolution), teeth need widening/pushing back, and THE BODY ROUTE —
+   (1) rebuild gnome proportions on CC's own body so nothing is ever fitted
+   to anything and clothes/hair conform by design [Claude's rec], (2) AccuRIG
+   the Meshy body, (3) Transformer. He's confident he can make beards, hair
+   and clothing work in CC.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

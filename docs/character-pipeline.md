@@ -319,3 +319,60 @@ Judge each result against viewing distance before the next spend.
      speech/performance; Unity via Reallusion Auto Setup FBX; Blender =
      adapter only (props in, FBX→GLB out for DLO — tick "Mouth Open as
      Morph" in FBX advanced settings). Never edit the character downstream.
+
+- 2026-08-02 (evening): **THE FACIAL RIG IS VERIFIED.** James ran a complete
+  Mesh-to-Head from the raw OBJ himself (Claude coaching by screenshot, not
+  driving — his correction, see face-lab changelog), attached to a CC body with
+  a seamless neck, and played a facial-expression clip: the face moves, and it
+  still reads as the postmaster. Open: eyes/teeth too realistic (materials, not
+  resolution), teeth too narrow and clipping the upper lip, and the body route
+  decision (rebuild gnome proportions on CC's body vs AccuRIG the Meshy body).
+
+  **CC5 house runbook, third pass (the Mesh-to-Head click-path, start to end):**
+  14. **POSITION IS EVERYTHING — this cost two hours.** Headshot uses the source
+     prop's WORLD POSITION literally. Headshot's own "place the base at world
+     origin (0,0,0)" guidance produces a character with the head mounted on the
+     FLOOR between the feet and the neck stretched ~160cm down to reach it (the
+     "cellophane pulling into infinity"). No stage-3 checkbox is ever the cause.
+     Correct order: **load a base character first**, then set the source head to
+     roughly `Move Z 160, Scale 1200, Rotate 0/0/0` so it OVERLAPS the base
+     character's head, then start Head Generation.
+  15. OBJ import already converts Y-up→Z-up. `Rotate 0/0/0` is correct; do not
+     add the X=90 a Blender instinct suggests. The mesh arrives ~1.9cm tall, so
+     Scale 1200 ≈ a life-size 23cm head. It looks tiny only because CC's camera
+     has a minimum approach distance — that's not a reason to scale to 12000.
+  16. The alignment pane is a **snapshot taken when Start Head Generation runs**.
+     It never live-updates. Change the prop transform → close the Mesh to Head
+     window → relaunch, or you will be aligning against a stale image. The pane
+     also ignores your viewport camera entirely (it renders from world axes), so
+     it — not the viewport — is the authority on whether the head faces front.
+  17. In the alignment panes: **left-click places a point, right-drag orbits,
+     middle-drag pans, wheel zooms.** The panel's pan/orbit/zoom buttons drive
+     the MAIN viewport, not the panes, which is why no button ever changes that
+     cursor. Points are matched by INDEX, so place them in the base head's
+     numbering order.
+  18. In the 32-point set, **26, 29 and 32 are not missing — they're on the back
+     of the head** (behind each ear, plus the occiput). Orbit to reach them.
+  19. There is NO clear-all for alignment points, and orphaned points survive
+     closing the file and relaunching Headshot. The only reliable reset is to
+     delete the prop and re-import the OBJ.
+  20. Stage 2's "hide unnecessary faces" (e.g. the source's flared open neck)
+     only takes effect if you **re-run generation** — the small round icon on
+     the HEAD GEN tab. Re-running discards any stage-3 sculpting.
+  21. Stage 3: **Keep Neck Shape + Keep Head Size** on; the Smooth brush cleans
+     the little spikes at the neck edge (shrink Radius first — RMB+drag). Fix
+     spikes here, on the CC mesh; hiding SOURCE faces cannot remove them.
+  22. While the Mesh to Head panel is open, the rest of CC's panels are inert on
+     the character. Close it before expecting Morphs/Material to respond.
+  23. Face smoke-test without iClone: Animation Player (bottom) → **Motion**
+     dropdown → facial rig → a range-of-expressions clip → Play. **Remove**
+     clears the clip back to neutral.
+  24. Edit Mesh must be entered with the part already selected in the Morphs
+     parts tree, otherwise the Vertex/Face/Element/Sculpt tabs don't appear.
+     **Element mode selects one tooth at a time** (each tooth is its own
+     element) — for whole-arch moves use Vertex + select-all. Edit Mesh holds
+     the jaw open deliberately while you work; exiting closes it.
+  25. Eyes/teeth reading too realistic is a MATERIAL problem, not resolution:
+     Digital Human shaders bring SSS, wet speculars and layered iris depth.
+     Cheapest stylization levers, in order: flatten the material, swap the iris
+     for a flat two-tone texture, enlarge iris relative to sclera.
