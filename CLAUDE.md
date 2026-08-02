@@ -273,6 +273,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    to anything and clothes/hair conform by design [Claude's rec], (2) AccuRIG
    the Meshy body, (3) Transformer. He's confident he can make beards, hair
    and clothing work in CC.
+   2026-08-02 (late): TOOLING PASS, no build — see docs/character-pipeline.md
+   items 26–34. BOUGHT on Superhive: EyeForge ($16.98, 30 iris types incl. a
+   stylized set — the answer to "eyes read too realistic") and Lambrador3D
+   Realistic Mouth ($14.99, teeth+gums+tongue+THROAT, subdiv + 2,815-tri game
+   build; take Jaw_Blend + Jaw_Textures, keep all 313MB in tmp/). RECOMMENDED
+   not bought: Stylized Hair Pro ($22, MIT, mesh conversion — but grab v4.2.1
+   for Blender 5.1, NOT the latest). REALLUSION CART PRICED at the 26th
+   Anniversary buy-2-get-50%: iClone 8 + CC5 $449 + Headshot 3 $99.50 +
+   AccuPOSE Infinity $74.50 = $623 excl. tax, 40 free min of AI Video Mocap;
+   iClone earns its place on AI Video Mocap (video in, animation out) and
+   AccuPOSE is an iClone-only plugin. Not bought, at 50% only during the sale:
+   ActorMIXER PRO ($119.40) — check CC5 Deluxe overlap first. Key Headshot 3
+   findings: the mesh workflow WRAPS CC topology onto your source (your
+   topology is always replaced — that IS the product), stylized is an
+   explicitly supported case via extra alignment points + normal baking,
+   SubD-0 keeps output realtime-light, and image-to-3D is HEADS ONLY — Meshy
+   still owns props and clothing.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

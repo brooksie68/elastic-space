@@ -376,3 +376,79 @@ Judge each result against viewing distance before the next spend.
      Digital Human shaders bring SSS, wet speculars and layered iris depth.
      Cheapest stylization levers, in order: flatten the material, swap the iris
      for a flat two-tone texture, enlarge iris relative to sclera.
+
+- 2026-08-02 (late): **TOOLING PASS — Superhive shopping + the Reallusion stack.**
+  No build work; a purchasing session. What the money is for, in each case, is the
+  gap between "CC5 makes a great head" and "the head is stylized and ships to web".
+
+  **Bought (Superhive):**
+  26. **EyeForge** ($16.98, PixelicaCG) — 30 iris textures split 10 realistic /
+     10 stylized / 10 anime, plus pupil shape, iris/sclera/vein dials and
+     toggleable fake reflections. Blender 4.0–5.2, GPL, 4.0★/7. This is the
+     direct answer to runbook item 25 (eyes reading too realistic): the fix is a
+     flat stylized iris map, and this is a library of them. 4K image maps on a
+     clean sphere, so it bakes down to plain mesh + texture for glTF.
+  27. **Realistic Mouth (Jaw) & Teeth** ($14.99, Lambrador3D) — teeth, gums,
+     tongue **and a throat**, which is the deciding feature: without it jawOpen
+     shows daylight through a hollow head. Ships a subdiv build (32,652 tris,
+     separate tooth mesh) and a game build (2,815 tris) on the same UVs, plus
+     OBJ/FBX and 4K PBR sets. Blender 3.6, Royalty Free.
+     **Grab `Jaw_Blend.zip` + `Jaw_Textures.zip`**; skip FBX/OBJ (they exist for
+     non-Blender users). Textures loose, not packed — they get repainted toward
+     the painted look. All 313MB stays in `tmp/`; only the downsized bake ships,
+     at 1K or 512 on the low-poly build.
+
+  **Recommended, not yet bought:** Stylized Hair Pro ($22, Dean Zarkov, MIT,
+  5.0★/22) — geometry-nodes stylized locks with Mesh Conversion + Bake Hair
+  Geometry, so it collapses to exportable mesh. Its default output is chunky
+  storybook locks rather than realistic strands, which is the right family for
+  the gnome; beard, brows and hair all come off one tool.
+  **Version trap: the listing says 4.5–5.0, but you need v4.2.1 from Version
+  History for Blender 5.1** — v4.3.1 is 5.2-only and will look like a broken
+  add-on.
+
+  **Reallusion cart priced (26th Anniversary, buy-2-get-50%, all lines took the
+  full 50%):** iClone 8 + CC5 $449, Headshot 3 $99.50, AccuPOSE Infinity $74.50
+  = **$623 excl. tax** (~$662 in MA), plus 40 free minutes of AI Video Mocap.
+  AccuPOSE is an **iClone 8** plugin, so it only earns its place because iClone
+  is in the cart. The argument for iClone over the cheaper $249 CC5+Headshot3
+  bundle is AI Video Mocap — video in, character animation out, which is the
+  "animation routines" goal without a mocap suit. Left behind at this price:
+  ActorMIXER PRO ($119.40), the character-variety engine — but check first
+  whether CC5 Deluxe's built-in ActorMIXER generator overlaps it.
+
+  **Headshot 3 facts worth knowing before the next Mesh-to-Head run:**
+  28. The mesh workflow is a **wrap**: CC topology is projected onto your source
+     and your texture is baked onto it. Your topology is always replaced — the
+     output is a CC head on a CC body. That replacement is what buys the rig,
+     the ARKit set, the clothing system and the body, so it is the product, not
+     a side effect.
+  29. Stylized is a **supported** case, not a tolerated one — Reallusion's mesh
+     workflow page has a "Bring in Stylized Characters" section covering cubic
+     styles, sharp lines, exaggerated eye sockets and "extreme head & neck
+     shapes... for stylized creatures with a bold design." The technique is to
+     **add alignment points** over the exaggerated areas (ears, neck) beyond the
+     preset 24/32/35, and to let **normal baking** carry the sharp detail the
+     wrap can't hold as geometry. Their own copy still warns a creatively
+     designed head "can present challenges and potentially yield unintended
+     results."
+  30. **SubD-0 to SubD-2 output** — wrap to a chosen subdivision level and keep
+     the mesh lightweight for realtime. CC characters do not have to arrive
+     heavy; it's a setting.
+  31. **"No Mask"** preserves bust models that carry their own hair or coverings
+     without distorting the texture; eyelash and lip masks fix the small
+     artifacts that show when blinking or parting the lips.
+  32. The Headshot **3 vs 2 comparison chart shows the Mesh Workflow row
+     identical in both columns** — the v3 money went into the image side (new
+     AI model, text-to-image, image enhancement, spline reshaper, 58 preset
+     morphs, body matching). Relevant new capability for us: **Body Matching**
+     generates a base body from the source image, and the **Spline-Based
+     Reshaper supports profile views**, which is precisely what defeated the
+     KeenTools attempts.
+  33. Headshot's AI image generation runs on Google Nano Banana and **burns AI
+     points per generation** — meter it like Meshy credits, it is not a bundled
+     feature.
+  34. Scope correction: Headshot's image-to-3D makes **heads only**, by fitting
+     CC topology to a photo — it does not invent geometry. Meshy still owns
+     props, clothing and anything that isn't a head. Buy the Reallusion stack on
+     the head/rig/animation chain, not as a Meshy replacement.
