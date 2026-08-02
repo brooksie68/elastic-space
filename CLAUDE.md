@@ -213,6 +213,27 @@ consistent. `npm run check-worlds` audits every world against the contract.
    eyes/inner-mouth → Faceit 52-key test → conform props → render gate →
    Unity. Approved spends: SALSA (~$40) once a morph head is in Unity;
    animation packs after retarget testing. Full verdicts: face-lab changelog.
+   2026-08-01 (day): FACEIT ROUTE PARKED → **CC5 PIVOT**. Scripted eye/teeth
+   installation came out uncanny; James bought Reallusion CC5 + Headshot 3 +
+   iClone 8 + AccuPOSE (~$623) — head-wrapping drapes THEIR rigged topology over
+   OUR mesh so the shape wins. No MCP/headless for these tools: James drives the
+   GUI, Claude rides shotgun via desktop control.
+   2026-08-01 (night): THE BODY QUESTION ANSWERED — **there is no short-fat-old-man
+   model to buy.** Short is a typed height, chubby is morph sliders; the market
+   sells the slider set, not the man. (James rejected all dwarf/gnome/fantasy
+   options: he wants an ordinary older guy, "a Santa Claus body, but shorter.")
+   He owns stock CC5 only — 175 embedded sliders, 10 Body Morph presets, all
+   slim/fit. If the built-ins fall short: HD Ultimate Morphs $149, or ~$40 of Daz
+   (Old Chap + Aging Morphs, Genesis 8) via CC5's Transformer. Claude drove CC5
+   by desktop control for the first time; body swap PROVED to leave the head
+   untouched, then the reset trap (Proportion → Reset All clears BONE edits only,
+   NOT morph sliders — they stack invisibly) forced a restart from the clean
+   project. **Baseline file: `tmp/dead-letter-office/Postmaster-CharacterCreator/
+   RL_CC3_Plus.ccProject`.** STILL OPEN: the backward head tilt (rest-pose
+   rotation on the head bone) and making him short + round. The CC5 click-path
+   runbook (camera hotkeys, Content Manager paths, Headshot 3 alignment points,
+   the blob diagnosis) is now in `docs/character-pipeline.md` — READ IT before
+   touching CC5.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

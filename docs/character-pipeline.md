@@ -237,3 +237,50 @@ Judge each result against viewing distance before the next spend.
   eyeballs/inner-mouth → Faceit landmark pass → judge the 52 keys. The
   assembly machinery (feature bands, UV transfer, despeckle) carries over;
   only the head changes. James's render gate remains unpassed.
+- 2026-08-01 (day): **anatomy retrofit REJECTED, CC5 PIVOT** — the Faceit
+  route's install-eyes-and-teeth step, done headless (EyeForge + Lambrador
+  jaw, auto-landmarks, parametric seating, lid/lip cuts), came out uncanny
+  (shredded lids, jaw scar) and James parked it: scripted vertex surgery over
+  chat hit its ceiling again. New plan: Reallusion **Character Creator 5 +
+  Headshot 3** head-wrap (their rigged topology + full anatomy conforms to
+  OUR mesh shape; stylized is a first-class CC market) + iClone 8/AccuPOSE
+  for AI video mocap. Clean head exported for it:
+  `tmp/dead-letter-office/meshy-v2/cc5/`. Phase 3 step 1 will be rewritten
+  once the wrap verdict is in; Faceit stays as fallback/non-humanoid route.
+  Full detail: face-lab changelog 2026-08-01 (day).
+- 2026-08-01 (night): **THE BODY QUESTION ANSWERED — nothing to buy.** James
+  asked for a mesh matching the postmaster's build (short, rotund, ordinary old
+  man — explicitly NOT a dwarf/gnome/fantasy figure: "a Santa Claus body, but
+  shorter"). There is no such product: short is a typed height, chubby is morph
+  sliders, and the market sells the slider set, not the man. He owns stock CC5
+  only (175 embedded sliders, 10 Body Morph presets, all slim/fit). Upgrade
+  routes if the built-ins fall short: HD Ultimate Morphs $149 (potbelly / beer
+  belly / love handles / aging sliders) or ~$40 of Daz (Old Chap + Aging Morphs
+  for Genesis 8) through CC5's Transformer, which supports Genesis 3/8/8.1/9.
+  Claude drove CC5 by desktop control for the first time — body swap verified to
+  leave the head untouched, then a reset trap (below) forced a full restart from
+  the clean project. Head tilt and shortness both still open.
+
+  **CC5 house runbook (first pass — the click-path facts that cost us time):**
+  1. `Modify → Proportion → Reset All` resets BONE edits ONLY. Morph slider
+     values are a separate layer that survives it and stacks invisibly on top of
+     any Body Morph preset. There is no reset-everything button — reopen a clean
+     `.ccProject` instead. Proportion and Adjust Bones are different tools.
+  2. The scroll wheel does NOT zoom the viewport. `F` front, `S` right, `A` left,
+     `D` back, `J` face, `Home` reset. `K` ("All") frames the whole scene incl.
+     lights and loses the character; `J` is the way back.
+  3. Content Manager = `Window → Content Manager` (F4). Body-only morphs at
+     Template → Actor → **Body Morph** (toggle Pack→Item for individual entries).
+  4. Headshot 3 mesh alignment uses 24/32/35 **alignment points** with auto-detect
+     for the essential 24, source and target in separate synced-camera views —
+     never hand-position one head over the other. After auto-detect, drag spline
+     nodes OUT to the concept silhouette or the fit pulls toward normal anatomy.
+     Never scale head size with viewport transforms. Export sculpts to Blender
+     **as a morph**, never as a full avatar, or the rig and 54 keys are lost.
+  5. Baseline project file: `tmp/dead-letter-office/Postmaster-CharacterCreator/
+     RL_CC3_Plus.ccProject` (rigged head + 54 morphs on the neutral body).
+     `Postmaster.ccProject` is the pre-wrap raw Meshy head; `Postmaster-body-01`
+     is contaminated, don't use it.
+  6. The back-of-skull blob is inherited, not a wrap failure: the head was
+     generated from front + 40°L + 40°R only, so Meshy invented the occiput.
+     Hair and cap cover the whole region — dress him before sculpting it.

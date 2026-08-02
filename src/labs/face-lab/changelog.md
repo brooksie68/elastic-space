@@ -1,6 +1,121 @@
 # Face Lab changelog
 
-## 2026-08-01 — Claude (Fable 5) — KT HEAD RETIRED for the postmaster; Faceit doctrine
+## 2026-08-01 (night) — Claude (Opus 5) — the body hunt + first drive of CC5
+
+James's ask: find a mesh that maps to the postmaster — a short, rotund old man —
+that we can bring into Character Creator and Blender. Extensive search run. He
+rejected the first pass outright (it anchored on dwarves/gnomes/fantasy): "not
+six feet tall and not thin... a Santa Claus body, but shorter." A regular guy.
+
+THE ANSWER, and it is not a product: **there is nothing to buy, because nobody
+sells one.** Short is a height value you type. Chubby is morph sliders. What the
+market actually sells is the *slider set*, not the man. The correct search was
+never "short fat old man model."
+
+What James owns, verified on disk (`C:\Users\Public\Documents\Reallusion\
+Reallusion Templates`): stock CC5 only — 175 embedded morph sliders (6 full-body,
+~24 torso), 10 Body Morph presets, all slim or fit (CC3+_Neutral_F/M, CC4
+Camila/Kevin, HD Aaron/Ariana, HD Neutral_F/M). No ActorMIXER library, no HD
+Human Anatomy Set, no Ultimate Morphs. If the built-in sliders fall short the
+two routes are: **HD Ultimate Morphs $149** (literal potbelly / beer belly /
+love handles / muffin top / aging sliders; bundled into CC5 Deluxe, which he
+doesn't have) or **Daz ~$40** — Old Chap + Aging Morphs for Genesis 8 through
+CC5's Transformer, which officially supports Genesis 3 / 8 / 8.1 / 9.
+
+**THE RESET GOTCHA — this cost the session an hour and two false "it's fixed"
+claims.** Modify → Proportion → **Reset All** resets BONE proportion edits ONLY.
+Morph slider values are a *separate layer* and survive it untouched. Fattening
+done with torso/full-body sliders therefore stacks invisibly on top of any Body
+Morph preset applied afterwards: the character reads as a wide slab with no abs
+and looks nothing like the preset thumbnail, while every bone field reads 100.
+There is no single reset-everything button. Reopening a clean `.ccProject` is
+the reliable way back. (Proportion and Adjust Bones are also two different tools
+sitting next to each other in that list; Reset All only covers Proportion.)
+
+CC5 operating facts learned the hard way:
+1. **The scroll wheel does not zoom the viewport.** Camera hotkeys: `F` front,
+   `S` right, `A` left, `D` back, `J` face, `Home` reset. `K` is "All" — it
+   frames the whole scene including lights and shrinks the character to a dot.
+   Avoid it; `J` is the reliable way back from a lost camera.
+2. Content Manager = `Window → Content Manager` (F4). Body-only morphs live at
+   Template → Actor → **Body Morph**; switch the Pack/Item toggle to Item to see
+   individual entries. Applying one leaves the head completely untouched —
+   verified in-app, which answers James's "can we swap the body and keep this
+   head" question: yes.
+3. First launch shows a full-panel content promo over the Content Manager; the
+   Start button clears it and installs the stock library.
+
+**Headshot 3 mesh alignment is not eyeball positioning.** It uses 24 / 32 / 35
+alignment points with auto-detect for the essential 24, and shows source and
+target in separate views with synchronized camera navigation — you compare point
+positions, never silhouettes. James had been hand-placing his head against the
+neutral body's own head with both drawing on top of each other and no way to
+hide one; that is the likely origin of the backward head tilt. Nose poking
+through the base head's mouth is fine and expected under the real workflow.
+
+The back-of-skull blob diagnosed: the source head was generated from front +
+40°L + 40°R only (P2). Meshy never saw the back of that skull and invented a
+featureless lump; Headshot wrapped it faithfully. It is not a wrap failure. Hair
+and cap cover the entire region — dress him before sculpting any of it. It also
+read far worse against the neutral body than against a real adult male torso.
+
+From Reallusion's own caricature runbook (magazine, 2026-06-26) — the same
+realism-pull that killed the KeenTools head, but here it's an overridable
+control: after auto-detect, drag the spline nodes OUT to the concept silhouette
+"even if it looks extreme"; never scale head size with viewport transforms (it
+breaks camera projection); export sculpts to Blender **as a morph, not a full
+avatar**, or the rig and the 54 expression keys are lost.
+
+PROJECT FILE MAP, `tmp/dead-letter-office/Postmaster-CharacterCreator/`:
+`Postmaster.ccProject` (17:27, 12MB) = the raw Meshy head, no body, no rig —
+pre-wrap. `RL_CC3_Plus.ccProject` (20:53, 52MB) = **THE CLEAN RIGGED
+POSTMASTER**, head + 54 morphs on the neutral body; this is the baseline.
+`Postmaster-body-01.ccProject` (21:01) = contaminated with this session's
+slider work, do not use.
+
+ENDED: reloaded `RL_CC3_Plus.ccProject` clean at James's call. Nothing from the
+session survives in the project — by design. Still open: the backward head tilt
+(a rest-pose rotation on the head bone), and making him short and round.
+
+METHOD FAILURE worth keeping: twice reported the body "fixed" without checking
+the result against the reference thumbnail, and James caught both. Reset the
+layer you actually edited, then look at it before saying it's done. Same species
+as the render-grading lesson in the entry below.
+
+## 2026-08-01 (day) — Claude (Fable 5) — anatomy retrofit parked; CC5 pivot
+
+The Faceit route's step one — install eyes/teeth into the sealed Meshy gnome
+head — was attempted headless and REJECTED by James mid-round. What ran:
+landmark auto-detection (pupils by dark-cluster symmetry, mouth crease by
+nose-anchored darkness band — three rounds to land; markers verified by
+render each round), EyeForge + Lambrador jaw purchased ($32, zips in
+_blender-add-ons), parts auto-seated parametrically
+(prep_faceit_head{,2}.py, placement X-ray sheets), then lid/lip opening cuts.
+The cuts produced shredded lids, a scar seam across jaw/neck, bulging eyes —
+James: hardcore uncanny valley, "this process blows chunks." The real lesson,
+same species as the beard saga: anatomy install is visual interactive work;
+scripted vertex surgery over chat has a ceiling and we hit it again. ALSO:
+Claude reviewed its own renders and under-graded disqualifying artifacts as
+"polish items" — grade "does it look like flesh," not "did the numbers land."
+
+PIVOT (James, after his own research + an Opus session's cart review): buy
+Reallusion CC5 + Headshot 3 (+ iClone 8 + AccuPOSE, anniversary 50% off,
+~$623) — head-wrapping drapes THEIR rigged topology (eyes/teeth/tongue/rig
+included) over OUR mesh; the shape wins, unlike KeenTools where the realism
+prior wins. Stylized is a first-class CC market (James's point, accepted).
+AI Video Mocap justifies iClone (animation routines without a suit).
+Clean uncut head exported for the trial/purchase: meshy-v2/cc5/
+(postmaster_head.fbx embedded-texture + obj/mtl/png). Faceit stays owned —
+fallback + non-humanoid futures. Landmark detection code stays useful.
+STATUS: PURCHASED + installing (iClone 8 → CC5 → AccuPOSE, in that order,
+2026-08-01 afternoon). No MCP/headless for these tools — agreed model: James
+drives the GUI, Claude rides shotgun via desktop access + digested docs, and
+the working click-path gets written into docs/character-pipeline.md as the
+house runbook. Next session: draft the import→Headshot-wrap→export runbook,
+then the first wrap attempt on meshy-v2/cc5/postmaster_head.fbx, judged by
+James's eye on the proportion-preservation question. iClone 8 has an
+official Python API (CC5's scripting surface unverified) — check later for
+partial re-automation.
 
 Relayed from James's art-alignment session at global wrap (composite = new-family
 hat/hair/glasses/beard placed on the KeenTools v3 head, three assembly rounds):
