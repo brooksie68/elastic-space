@@ -1,5 +1,71 @@
 # Face Lab changelog
 
+## 2026-08-02 (overnight) — Claude (Fable 5) — THE POSTMASTER EXISTS: body built, head wrapped, dressed
+
+James drove CC5 all night with Claude riding shotgun (desktop control + docs);
+he deliberately learned the tool himself ("I shouldn't be so lazy") and solved
+several UI dead-ends on his own. The night ended with a finished-looking
+character: short round body, wrapped gnome head, white hair + white beard,
+glasses, black sweater, pinstripe pants, sneakers. His framing: "finally good
+enough to move out of this phase."
+
+THE BODY: James bought **HD Ultimate Morphs** (now installed; browsable under
+Actor → Morph in Content Manager and as slider categories in the Morphs tab).
+The winning recipe, exactly as hoped: Load CC3+ Neutral Base (Modify panel →
+Character section — NOT the Content Manager; avatar presets error without a
+standard CC character on stage) → apply **Heavy Male** body morph (Content
+Manager → Actor → Morph → Body Morph → CC3+) → Ultimate Morph sliders by eye →
+height down. Mid-build the machine hard-rebooted (CC5 froze first); only the
+unsaved session was lost, redo was quick.
+
+THE WRAP, body-first this time (v2 of the workflow — last night's head landed
+between the feet): body built and saved FIRST, then the head prop scaled
+(~1200% — the FBX imports at 1/12 size, units mismatch) and positioned
+overlapping the base head, eyes aligned front + side, THEN Headshot 3 Mesh →
+dots → generate → Refine Mesh → Attach to Body. James reports the dots
+interface is genuinely good once learned. Result attached cleanly — first
+time head + body have read as the same person.
+
+TEETH (the night's long fight, lessons hard-won):
+1. His original complaint: front teeth clip through the tightened top lip
+   during speech. Fixed by nudging teeth back, then forward a hair (tongue
+   poked through at the extreme; a slightly bitten tongue at rest was accepted).
+2. The working selection recipe: Scene tab → CC_Base_Teeth, then **isolate
+   mode** → the teeth appear alone ("floating dentures"), select, move tool.
+   Object-level transform tools stay GRAYED for base anatomy in normal view;
+   Edit Mesh (entered from the teeth) scopes to teeth only.
+3. Yellow selection corners draw at object size — zoomed out they're invisible
+   pixels inside the head; this cost an hour of "why won't it select."
+4. Modify → Morphs tab with "teeth" searched exposes a full teeth slider kit
+   (Top Teeth Length, Teeth Scale Back, Front Width, Gap Between Teeth...) —
+   the civilized route for next time.
+5. An "open mouth"-style hold toggle exists (James used it early, never found
+   it again; best lead: Facial Profile Editor expression-row preview toggle,
+   per Reallusion forum). UNRESOLVED — find and document it next CC session.
+
+WARDROBE + COLOR: clothes conformed from stock CC content (Layered sweater,
+Slim fit pants, Sport sneakers); "Viking" beard = a SET of pieces (sideburns/
+chinstrap/soul patch/mustache + Male_Bushy brows), each with its own material.
+Hair "Short blowback". Color routes: hair/beard = Material tab (checkered
+icon) → Smart Hair shader root/end colors (James got both to white); cloth =
+Material tab → Material Settings → **Diffuse Color** chip (multiplies the
+texture — tints/darkens, can't lighten past the map).
+
+DECISIONS: facial hair will be BOUGHT native to CC (no more glued-on
+Meshy beards — conforming hair moves with the jaw). Handoff doctrine agreed:
+CC5 = single source of truth for the character; iClone = performance/speech
+(AccuLips); Unity via Reallusion Auto Setup FBX; Blender = adapter shop only
+(prop prep in, FBX→GLB out for DLO; check "Mouth Open as Morph" at FBX export).
+
+STILL OPEN: the hat + our Meshy glasses/props as CC accessories (store glasses
+worn tonight); neck/tilt check in profile (looks right in renders, unverified);
+skin-tone seam head-vs-body (Headshot color match pass); head-size decision
+(realistic ratio now vs Carl-from-Up exaggeration — James's call before
+wardrobe finalizes); the open-mouth toggle hunt; then the two export tracks.
+Project files in tmp/dead-letter-office/Postmaster-CharacterCreator/ (James
+saved as Postmaster-body-01.ccProject through the night — note this REUSES the
+name Opus's notes called contaminated; tonight's file is the good one).
+
 ## 2026-08-01 (night) — Claude (Opus 5) — the body hunt + first drive of CC5
 
 James's ask: find a mesh that maps to the postmaster — a short, rotund old man —

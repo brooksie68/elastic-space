@@ -284,3 +284,38 @@ Judge each result against viewing distance before the next spend.
   6. The back-of-skull blob is inherited, not a wrap failure: the head was
      generated from front + 40°L + 40°R only, so Meshy invented the occiput.
      Hair and cap cover the whole region — dress him before sculpting it.
+
+- 2026-08-02 (overnight): **THE CHARACTER LANDED.** Heavy Male body morph +
+  HD Ultimate Morphs sliders + shortened height = the postmaster's body;
+  body-first Headshot wrap attached clean; dressed, white hair/beard, glasses.
+  Full session detail: face-lab changelog 2026-08-02.
+
+  **CC5 house runbook, second pass (this session's click-path facts):**
+  7. Load a base from Modify panel → Character section (Load CC3+ Neutral
+     Base), NOT the Content Manager — avatar presets error without a standard
+     CC character on stage. Body Morph presets (Heavy Male etc.) live at
+     Content Manager → Actor → Morph → Body Morph → CC3+ and need that
+     character loaded first.
+  8. The head FBX imports at 1/12 scale (units) — type ~1200% into the prop's
+     Transform Scale, then position it OVERLAPPING the base head, eyes aligned
+     in front (F) + side (S) views. Nose through the base face = correct.
+  9. Two selection systems that don't talk: Scene-tree selection drives the
+     Attribute panel; tool modes (Proportion/Edit Mesh) own the canvas. If the
+     canvas ignores the Scene panel, you're in a mode. Selection corners draw
+     at object size — invisible on a tooth-sized object unless zoomed in (J).
+  10. Base anatomy (teeth/eyes) can't be object-transformed — move/rotate/
+     scale stay grayed. Working routes: isolate mode + move tool (proven), or
+     Edit Mesh entered FROM the teeth (scopes to teeth only), or the Morphs
+     tab teeth sliders (search "teeth": Top Teeth Length, Scale Back, Gap...).
+  11. Color: hair/beard via Material tab → Smart Hair shader (root/end
+     swatches); cloth via Material tab → Material Settings → Diffuse Color
+     chip — multiplies the texture, so it tints and darkens but cannot
+     lighten past the map. Store beards arrive as PIECE SETS (sideburns/
+     chinstrap/mustache/soul patch), one material each.
+  12. UNRESOLVED: a checkbox that HOLDS the mouth open during teeth work
+     exists (James used it once, two hours of searching never refound it).
+     Best lead: Facial Profile Editor expression-row preview toggle.
+  13. Handoff doctrine: CC5 owns the character (.ccProject master); iClone =
+     speech/performance; Unity via Reallusion Auto Setup FBX; Blender =
+     adapter only (props in, FBX→GLB out for DLO — tick "Mouth Open as
+     Morph" in FBX advanced settings). Never edit the character downstream.

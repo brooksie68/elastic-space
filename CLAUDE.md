@@ -234,6 +234,22 @@ consistent. `npm run check-worlds` audits every world against the contract.
    runbook (camera hotkeys, Content Manager paths, Headshot 3 alignment points,
    the blob diagnosis) is now in `docs/character-pipeline.md` — READ IT before
    touching CC5.
+   2026-08-02 (overnight): **THE POSTMASTER EXISTS.** James bought HD Ultimate
+   Morphs; Heavy Male morph + Ultimate sliders + height-down = the body
+   ("Santa's brother who took the civil service exam"); body-first Headshot
+   wrap attached clean; teeth seated (isolate mode + move tool — object
+   transforms are LOCKED for base anatomy); dressed + white hair/beard +
+   glasses from stock CC content. His verdict: "finally good enough to move
+   out of this phase." Runbook second pass in docs/character-pipeline.md
+   (items 7–13: base loads from Modify panel not Content Manager, head FBX
+   imports at 1/12 scale, two selection systems, cloth Diffuse Color chip,
+   the unfound hold-mouth-open toggle). Working file:
+   tmp/dead-letter-office/Postmaster-CharacterCreator/Postmaster-body-01
+   .ccProject (SUPERSEDES the same-named contaminated one from 08-01).
+   NEXT with his go: hat + Meshy props as accessories, native beard pack
+   purchase, neck/tilt profile check, skin-tone seam match, head-size
+   decision, then the two export tracks (iClone speech; CC→FBX→Blender→GLB
+   into DLO with Mouth Open as Morph checked).
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
