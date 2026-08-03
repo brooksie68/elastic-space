@@ -394,6 +394,106 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Sims 24+300+53 green. AWAITING: his first recording session, both new sets
    in flight, 21px type verdict. NEXT (needs go): file-backed timelines,
    transcribing an earned performance into compositions.js.
+   2026-08-02: NEW VISUALIZATION BACKLOG, James's picks from two brainstormed
+   sets of 20 (first set was too literal/narrative — objects and one-way
+   accretive growth, which he explicitly ruled out for Lumina, see
+   `accretive-music-world-idea` memory for the spun-off future-world thought;
+   second set corrected toward abstract/fluid/dice-compatible, which he
+   confirmed is the right register). Approved for a build queue, not built
+   yet: Living Type, Marbling (ebru), Aurora Curtains, Radio Static Painting
+   (from set 1); Kaleidoscope Fold, Plasma Field, Ghost Face, Caustics Field,
+   Chromatic Aberration Bloom, Moiré Interference Weave, Feedback Loop Zoom,
+   Glitch Displacement, Aurora Ribbon Swarm (from set 2, his "abstract"
+   register) — full descriptions are in this session's chat, write them up
+   fresh in the world changelog when building starts. Back burner: Rainbow
+   Particle Swirl (#19) and The Living Mandala Engine (#20, the synthesis
+   piece — kaleidoscope + liminal raymarched core + fractal-flame color +
+   feedback trails). Kaleidoscope Fold / Plasma / Caustics / Chromatic
+   Aberration / Moiré / Feedback Loop / Glitch are FX-rack modifiers (stack
+   on anything already live, multiplicative like the dice already are);
+   Living Type / Marbling / Aurora Curtains / Radio Static / Ghost Face /
+   Aurora Ribbon Swarm are new GPU scenes. SAME SESSION, a second thread
+   still open: TRACK STRUCTURE MAPPING — James wants a tick-lock visual
+   metronome (start it whenever aligned by ear, nudge BPM/phase until ticks
+   land on the kick, saves as a permanent per-track BPM_OVERRIDE + beat-1
+   offset) plus a hand-tapped structure lane (record mode, typed markers —
+   break/buildup/fade-pause/drop/hit — snapped to the locked beat, reusable
+   like `compositions.js` but hand-authored instead of guessed). His explicit
+   call on auto-detection: don't over-invest — "elements to the way music
+   sounds and hits people... you actually need me in that role," so the
+   tick-lock UI and hand-tapped lane are the real tools, only a light pass on
+   tightening existing tempo/phase detection to get him close faster. OPEN,
+   his call not made: whether a marked moment should bias the dice odds
+   (Claude's rec — keeps the always-surprising feel), hard-trigger a scripted
+   combo, or let him flag specific markers as scripted while the rest bias.
+   His drop example (dark/blurry/muted fade, then explode into Ghost Face +
+   swirling tunnel + particle explosion on the backbeat) is the reference
+   feel for whichever route he picks. Neither the visualization backlog nor
+   the structure mapping is built — both need his go before code.
+   2026-08-03: THIRD IDEA BATCH, sourced from reference stills James dropped
+   in `tmp/lumina/viz-examples-2/` (all video captures — every image is
+   in motion in the source). He called out viz 8/10/11, synesthesia-6/7/8,
+   and all four sphere images (sphere, sphere-explodes, sphere-inside,
+   sphere-long fibers) as the ones he loves; general note: he wants that
+   rainbow-palette soft-blending-gradient look "once in a while." Claude
+   read 8 of the 10 and derived a fresh batch, ADDED TO THE BACKLOG (same
+   not-built status as the other two sets): Fiber Urchin Burst (coiled
+   fiber-sphere that explodes into a screen-filling radial burst on hits,
+   re-coils between), Warp Ring Tunnel (endless concentric pulsing rings,
+   camera flying through, white-hot core cooling to the rim), Woven Sphere
+   (calm counterpart to the urchin — fine woven/moiré texture, breathing
+   scale, thin rim-glow), Wet Chrome Cavern (organic liquid-metal cave,
+   fresnel-lit bulbous walls rippling, blue→purple→pink→gold on structure
+   changes), Bioluminescent Throat (the cavern constricting rhythmically
+   like swallowing, color pooling at the pinch on the downbeat),
+   Chrysanthemum Firework Field (many fiber-bursts at different depths,
+   each on its own schedule), Solar Flare Rings (the warp tunnel with
+   visible plasma/fire texture instead of clean geometry), Iridescent
+   Membrane (one soft-focus undulating translucent sheet, oil-slick
+   rainbow interference — the soft-gradient ask, purest form), Radial
+   Bloom Zoom (warp tunnel fused with Kaleidoscope Fold from batch 2),
+   Fiber Combing (the urchin's fiber material combed sideways by a
+   reversing wind instead of bursting radially). James's scope call: "why
+   not, blow this thing up" — not started that night. James's TIMELINE
+   REFINEMENT, resolving the open bias-vs-hard-trigger question from batch
+   2: his worked example (quick-switch, quick-switch, pause, fade, major
+   break, six breaks every other beat) is a RHYTHM TEMPLATE, not a script
+   of specific effects — "you could replace those events with any events,
+   and they would look cool to the music... it's always gonna feel like
+   it's going along with the music, and that's of paramount importance."
+   Working design: the hand-tapped structure lane records a sequence of
+   event-SLOT types with beat-locked timing (the skeleton is authored and
+   fixed, so it always fits), but each slot's actual visual content is
+   still dice-rolled fresh every playthrough (so it's always surprising).
+   This is the emerging answer to the open question, not yet confirmed
+   with James as final. NEXT LUMINA SESSION: both making new viz options
+   AND the performance-tracking thread (beat lock, timeline marking, the
+   rhythm-template structure) are explicitly both in scope — his words,
+   "I wanna be able to dive into this both into..." Nothing in this entry
+   is built.
+   2026-08-03: FLAME EVOLUTION, APPROVED (his "yes," asked cross-thread in
+   a Dead Letter Office session by accident, answer relayed back here —
+   diagnosis and plan both stand). His complaint: the culled flame-farm
+   genomes (v3 2026-07-25, 20 shapes in `flame-genomes.js`) are
+   "underwhelming" live — particles crawl a fixed attractor but the shape
+   itself never swirls or evolves, "a photo of particles" moving slowly
+   along it, not what Electric Sheep-style flame fractals are known for.
+   Root cause: each genome is fixed transform coefficients, so the
+   attractor shape is constant even though particles traverse it. THE FIX,
+   in order of drama, all still needed (nothing built yet): (1) continuous
+   swirl — slowly rotate each transform inside the genome so the attractor
+   visibly churns, kills the "static photo" feeling on its own; (2) music
+   modulation — wire coefficient wobble into the mod matrix (bass twists
+   one transform, phrase boundaries reseed another) so the churn is in the
+   groove like everything else in Lumina; (3) genome morphing — crossfade
+   between the 20 culled genomes as continuous interpolation, one shape
+   liquidly becoming another instead of cutting, natural dice/melt-roll
+   material. OPEN: performance — the flame scene currently assumes a
+   static attractor; per-frame coefficient changes mean continuously
+   re-converging the shape, needs its own look-dev harness pass before it
+   flies (same discipline as the nebula/crust labs). This is its own
+   Lumina session, slots naturally alongside the visualization backlog
+   above.
    The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
