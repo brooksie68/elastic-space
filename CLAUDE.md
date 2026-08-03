@@ -290,6 +290,28 @@ consistent. `npm run check-worlds` audits every world against the contract.
    explicitly supported case via extra alignment points + normal baking,
    SubD-0 keeps output realtime-light, and image-to-3D is HEADS ONLY — Meshy
    still owns props and clothing.
+   2026-08-02/03 (overnight): **JOHN DOUGH DRESSED + BAKED FOR WEB.** James in
+   CC5 (Claude coaching by screenshot + headless-Blender adapter work): Meshy
+   hat + glasses converted GLB→FBX, imported, fitted, attached to CC_Base_Head
+   (hat renamed "PM Hat"; lens material split, opacity 0.04); hair-under-hat
+   hidden via Edit Mesh; stock stylized eye preset replaced the too-human
+   irises (one double-click — beat Claude's planned texture surgery); teeth
+   swap attempted, CC5 crashed (undo-fragile, ~5th time), James reverted to
+   human teeth by choice. Wardrobe stays stock (black sweater/grey trousers/
+   boots) — real uniform deferred, he won't pay per-garment prices; wants a
+   bundle later. Runbook items 35–44 added (docs/character-pipeline.md).
+   THEN THE EXPORT TRACK RAN: CC5 FBX export (Mouth Open as Morph) →
+   headless-Blender bake → `tmp/dead-letter-office/cc5-bake/john-dough.glb`,
+   31.7MB, 106 bones, ALL 177 facial morphs (visemes incl.) — Meshy props
+   decimated (82k→24k verts), textures 1024/512 WebP, CC Diffuse-Color tints
+   re-applied from john-dough.json (FBX drops them), tear-line/eye-occlusion
+   shells cut, leftover hidden Biker_Jeans cut (A/B render proved Trouser is
+   the outfit). Renders approved-quality; James: "light years ahead."
+   KNOWN GAP, his call pending: the beard (CC Smart Hair cards thin out
+   through the pipeline — "older biker" not "Santa pirate"); agreed fix is
+   Stylized Hair Pro ($22, v4.2.1) solid-mesh beard in Blender + weight/morph
+   transfer, needs his go. NEXT: DLO world wiring (placement, capsule proxy,
+   idle/face behavior — design conversation first), then animations + voice.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

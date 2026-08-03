@@ -3,6 +3,24 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-02/03 — Claude (Fable 5) + James — John Dough dressed, baked, web-ready
+
+- Accessories night in CC5, James driving with Claude coaching by screenshot:
+  the Meshy family hat and glasses (GLB→FBX via headless Blender) fitted and
+  attached to CC_Base_Head; hair-under-hat hidden; lenses at 4% opacity;
+  stock stylized eye preset fixed the too-human irises. Wardrobe stays stock
+  CC content for now (uniform bundle purchase deferred, James's call).
+- The export track ran end to end for the first time: CC5 FBX (Mouth Open as
+  Morph) → headless-Blender bake → `tmp/dead-letter-office/cc5-bake/
+  john-dough.glb` — 31.7MB, 106 bones, all 177 facial morphs including the
+  16 visemes. Meshy props decimated, WebP textures, CC tints re-applied from
+  the sidecar JSON (plain FBX drops them), stray hidden jeans cut.
+- James's verdict: "light years ahead of where we have been."
+- Open: beard reads thin post-pipeline ("older biker, not Santa pirate") —
+  agreed fix is a Stylized Hair Pro solid-mesh beard ($22, awaiting his go);
+  DLO world wiring is the next step (placement/behavior design conversation
+  first); then animations and voice.
+
 ## 2026-07-31 — Claude (Fable 5) + James — the length strata (deck 58 → 68)
 
 - James on the 46: content "really good... hit the mark with the vibe", but

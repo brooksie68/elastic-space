@@ -312,9 +312,9 @@ Judge each result against viewing distance before the next spend.
      chip — multiplies the texture, so it tints and darkens but cannot
      lighten past the map. Store beards arrive as PIECE SETS (sideburns/
      chinstrap/mustache/soul patch), one material each.
-  12. UNRESOLVED: a checkbox that HOLDS the mouth open during teeth work
-     exists (James used it once, two hours of searching never refound it).
-     Best lead: Facial Profile Editor expression-row preview toggle.
+  12. RESOLVED 2026-08-02: the hold-the-mouth-open control is in the
+     **Modify menu** — Open/Close Mouth (Open/Close Eyes lives next to it).
+     It was never a buried checkbox; it's a top-level menu item.
   13. Handoff doctrine: CC5 owns the character (.ccProject master); iClone =
      speech/performance; Unity via Reallusion Auto Setup FBX; Blender =
      adapter only (props in, FBX→GLB out for DLO — tick "Mouth Open as
@@ -452,3 +452,45 @@ Judge each result against viewing distance before the next spend.
      CC topology to a photo — it does not invent geometry. Meshy still owns
      props, clothing and anything that isn't a head. Buy the Reallusion stack on
      the head/rig/animation chain, not as a Meshy replacement.
+
+- 2026-08-02/03 (overnight): **CC5 house runbook, fourth pass — accessories
+  night (hat, glasses, eyes on John Dough).**
+  35. **CC5 is undo-fragile.** ~5 crashes/freezes across the sessions so far,
+     most with Ctrl+Z in the flight recorder. James's working rhythm: save
+     before every experiment, let the save fully settle (+5s), then single
+     undos only — confirm each landed before the next; never machine-gun
+     Z-Z-Z. Reload-from-save is the deep undo. (Save-before-teeth-swap paid
+     off tonight — crash cost nothing.)
+  36. Meshy GLBs convert to FBX in headless Blender (import_scene.gltf →
+     unpack_all → export_scene.fbx with embed_textures) and import clean. GLB
+     meters read as CC centimeters — props arrive ~100× too BIG (opposite of
+     the OBJ head's 1/12): start at Scale 1% and dial by eye.
+  37. Static-mesh FBX import pops the project-FPS dialog — irrelevant without
+     animation data, either answer is fine.
+  38. **Props attach via Modify panel → Attach section → Pick Parent** → click
+     the character's head → it binds to CC_Base_Head and rides all motion. No
+     "convert to accessory" step exists or is needed. Detach button = undo.
+  39. **Edit Mesh has no keyboard delete.** Select faces → the Modify panel's
+     "Visible Mesh" row → **Hide** button. The wireframe cage keeps drawing
+     hidden faces inside the tool, so it looks like nothing happened — exit
+     Edit Mesh to judge. Hide sticks through export; Show All un-hides. Used
+     for hair-under-hat and would work for lens removal.
+  40. Multi-mesh FBX import offers "break into subprops" — say NO for worn
+     props (one transform, one Attach; materials stay separately editable
+     regardless). The split-mesh glasses (Frames/Lens materials) let the lens
+     get its own **Opacity slider** (Material Settings block, below Shadow
+     Threshold) — lenses at ~5–10 opacity read as cartoon glass.
+  41. **Eyes: stock Content Manager eye presets beat texture surgery.** The
+     stylized presets fixed "irises too detailed/too human" in one double-click,
+     both eyes. Material-tab route for reference: eyeball = Std_Eye_R/L (PBR,
+     iris+sclera share one Base Color map — Diffuse tint stains the whites),
+     wet layer = Std_Cornea_R/L (Digital_Human_Eye shader). EyeForge maps stay
+     the fallback for a custom iris.
+  42. Morphs-panel search matches literal slider names only ("thigh" finds
+     nothing, "calf" works) — browse the **category tree** (Actor → Body →
+     Leg/Hip/Glute/Waist) instead of searching.
+  43. The elusive hold-mouth-open toggle from item 13: **Modify panel has
+     Open/Close Eyes and Open/Close Mouth buttons** — found at last.
+  44. Heavy-body arm clipping at rest (hands sink into thighs): pose-level fix
+     is Edit Pose, rotate upper arms out 5–8°; the real fix comes per-clip at
+     the animation layer in iClone. Don't touch bind/proportion tools for it.
