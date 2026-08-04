@@ -21,30 +21,54 @@ Entries in `changelog.md` from before that date use the old names on purpose.
   decoded GIF timing table, framing, era notes. The timing constants in
   `lumina-field.js` come straight from it.
 
-## START HERE — next session is the panel (James, 2026-07-27 wrap)
+## START HERE — the wave queue (2026-08-03, James's "to infinity and beyond")
 
-He ended the 2026-07-27 session by saying so directly: **the next session starts on
-optimizing the panel.** Don't open with anything else, and don't start by writing panel
-code — his brief is a design problem. Read NEXT UP item 4 below for the full brief in his
-words, then have the conversation.
+**FIRST, PROPOSED 2026-08-03 late and NOT yet approved — the LEARNING BENCH.**
+James's ask after flying the new FX: a way to learn effects one at a time
+from a clean start ("okay, this one makes them round... this one blurs").
+Proposal on the table, awaiting his go + two answers: (1) `bench` command-bar
+button — snapshot current state, cut to the 2002 grid with all fx/scene at
+zero, show an effect-chip strip where each chip SOLOS its effect at mid
+value (click next chip = previous drops out), press again to restore;
+(2) the PRACTICE CLOCK — a silent fixed-120BPM internal grid feeding
+pulse/bar/swing/accents so beat-reactive behavior works with no track
+playing (NOT the parked audio thread — no detection, just a clock).
+Open questions: build both together? chips = FX rack only first, or also
+scenes/structure? Reminders that already exist for him: "pork 2002" preset
+= the baseline grid, double-click any slider resets that key, visual-tab
+reset = house default.
 
-The three things worth carrying in from the end of that session:
+The 2026-08-03 session studied his 27 reference stills (tmp/lumina/
+viz-examples — the Synesthesia captures are the quality AND interface
+target) and set a three-wave build plan. **THE AUDIO THREAD IS PARKED, his
+explicit call:** no beat-detection changes, no tempo-matching complexity, no
+tick-lock, no structure lane — "we will come back to it." The timeline-markup
+/ rhythm-template idea (slot timing authored, content dice-rolled) stays
+agreed DIRECTION for later; see the project CLAUDE.md Todo and the
+`lumina-structure-rhythm-template` memory.
 
-1. **"Shorter, clear explanations" is largely a COPY EDIT.** Every control currently has
-   a long full sentence of `.tuner-desc` under it. Rewriting that copy is cheaper to
-   iterate on than moving boxes, and it may deliver most of what he means by "big jumble"
-   on its own. Consider proposing a copy pass as step one, before any restructuring.
-2. **Two loose ends from pass 1**, both small: the ↩ back and `keep` buttons have never
-   been clicked by anyone (verified by construction only — the detached controller has no
-   host to talk to, and the host page plays music, which doesn't go in the agent browser
-   pane), and the `.tuner-minis` column minimum is 15em, a value that measured well at
-   1585px rather than an optimum. A column-width sweep (13/15/17/19/21em) was attempted
-   and abandoned when the browser pane hung; it would settle the ~8% height increase that
-   capping the sliders introduced.
-3. **The dice is the spine of the redesign,** not a button to relocate. His framing: it
-   "is gonna become a whole control function." The ↩/🎲/keep cluster shipped in pass 1 is
-   the seed of that, and NEXT UP item 3 (per-parameter re-rolling locked to the beat grid)
-   is probably the same feature seen from the other end. Design them together.
+**WAVE 1 — BUILT 2026-08-03, awaiting his eyes** (changelog entry has the
+detail): the ⓘ info library (tuner-info.js), per-scene controls + punch
+verbs (scenes.js DEFS), fxKaleido v2 fold (rings/refold/spin +
+fold-lab.html). Dice odds his calls: scene rolls flat "nuts random", blur
+stays minimized.
+
+**WAVE 2 — next, each with its own go:** (1) the fiber-sphere instrument
+(his four "sphere" stills are ONE object: woven calm ↔ EXPLODE ↔ inside
+view ↔ long fibers; 3D GPU fiber system, own look-dev lab, EXPLODE punch);
+(2) ink scene v2 (the "swirls" stills: more octaves, sharper filaments,
+deeper dark-to-electric range); (3) rainbow soft-gradient palette family +
+an ultra-soft gradient-wash breather scene (viz 8); (4) flame evolution
+stage 1 (approved genome swirl — see `lumina-flame-evolution` memory).
+
+**WAVE 3 — backlog:** chrome cavern cluster (synesthesia 6/7/8: displaced
+heightfield + wet specular, lab first), Voronoi cells (viz 18, Max Cooper
+"Order From Chaos"), tunnel cluster, remaining FX (plasma, caustics, moiré,
+glitch, feedback zoom, full chromatic-aberration bloom).
+
+Older context worth keeping: the ↩ back and `keep` buttons have still never
+been human-clicked against a live host, and the `.tuner-minis` 15em column
+minimum has never been swept.
 
 ## Next session (2026-07-25 night wrap)
 
@@ -130,6 +154,15 @@ The three things worth carrying in from the end of that session:
 - Adding a scene: shader in scenes.js (+LIST), nothing in fx.js unless it
   needs a custom draw path (flame pattern), tuner select picks it up from
   LIST, sim asserts the uniform contract automatically via SCENES.FRAG.
+- **Per-scene registration (2026-08-03, `DEFS` in scenes.js — the
+  Synesthesia two-tier model):** every scene ALSO registers in DEFS —
+  `params` (its own knobs: key must exist in DEFAULTS and in
+  LuminaRandom.GROUPS.scene, carries kind + info text; shown in the scene
+  card only while that scene plays) and up to THREE `punches` (James's cap
+  — momentary verbs, "scn-" prefixed field-key override maps; they appear
+  as gold pads in the perform strip while the scene plays and ride
+  world.js's punch machinery, never landing in state). composition-sim
+  enforces all of it. Adding scene controls/verbs never touches tuner.js.
 
 ## Flame genomes (2026-07-26)
 
@@ -255,7 +288,14 @@ likely as item 3. Don't re-add it unprompted.
   DOM path; defaults render pork 2002 verbatim (sim-asserted — keep it that
   way). Non-grid layouts + FX read positions from `layoutTiles()` /
   `displayList()` (analytic, design coords).
-- `fx.js` — WebGL post chain (13 effects). Consumes the field's display list
+- `fx.js` — WebGL post chain (13 effects + the kaleido v2 fold, 2026-08-03:
+  `fxKalRing` radial ring-repeat / `fxKalIter` 0-2 refolds / `fxKalSpin`
+  slow fold rotation — sub-params inert unless fxKaleido > 0, all-zero ==
+  the legacy fold exactly, so old presets/sets are untouched. The dice rolls
+  them only WITH a rolled kaleido, never in the rack shuffle. Judged in
+  `tmp/lumina/fold-lab.html` (KEEP — that's where fold math gets judged
+  before it ships) and proven end-to-end by `tmp/lumina/kal-probe.html`).
+  Consumes the field's display list
   via `field.setFrameHook`; active iff any fx* key > 0; DOM path untouched
   when off. FX knobs are field config keys — never invent a side channel.
   **MAX_DIM (the FX resolution cap) must stay ≥ the CSS pixel width of a
@@ -355,8 +395,21 @@ likely as item 3. Don't re-add it unprompted.
 - `music.js` — audio graph, player, reactivity loop, DJ playback; registers
   with the host and mounts the tuner. `music-dsp.js` — DOM-free DSP + the
   TARGETS table (new modulatable params get an entry there).
+- `tuner-info.js` — THE ⓘ LIBRARY (2026-08-03, James's brief: short labels
+  on the surface, verbose explanations + "significant visual examples"
+  behind a small i). `LUMINA_INFO.INFO[id]` (ids `"scope:key"`, `"card:id"`,
+  `"row:id"`) holds the copy; `DEMOS[name]` are draw-closure factories for
+  the animated mini-demos (mini flash-field engine, FX cartoons, scene
+  stage, envelope meters). Loaded before tuner.js in BOTH index.html and
+  tuner.html. The control factories look entries up by id and fall back to
+  any inline `desc`; the popover lives on document.body (the panel's
+  backdrop-filter would trap position:fixed) and inherits the text-size
+  control via an inline font-size on open. **Every new control or card must
+  register an INFO entry** — surface prose is retired; the only surviving
+  on-panel sentence is the pattern hint (a live readout).
 - Script order in index.html matters: field → presets → dsp → composition →
-  compositions → fx → tuner → world → music.
+  compositions → flame-genomes → scenes → fx → tuner-info → tuner → world →
+  timeline → music.
 - Sims: `node tmp/lumina/composition-sim.mjs` (58 asserts — engine, sets,
   field-v2 units) and `node tmp/lumina/music-sim.mjs` (14) after ANY change
   to the field math, DSP, engine, or sets.

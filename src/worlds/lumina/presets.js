@@ -242,8 +242,12 @@ globalThis.LuminaRandom = (function () {
     // effect... gets old pretty quickly" — riding the general rack it landed
     // on ~30% of rolls). It reads best deployed deliberately on breakdowns
     // and drops; the dice only rarely reaches for it.
+    // The kaleido v2 sub-params (2026-08-03) are inert without fxKaleido, so
+    // they never ride the rack shuffle — they roll only WITH a rolled
+    // kaleido, below.
+    const KAL_SUB = ["fxKalRing", "fxKalIter", "fxKalSpin"];
     const SOLO = SMEAR.concat("fxIris");
-    const rack = F.FX_KEYS.filter((k) => SOLO.indexOf(k) < 0);
+    const rack = F.FX_KEYS.filter((k) => SOLO.indexOf(k) < 0 && KAL_SUB.indexOf(k) < 0);
     for (let i = rack.length - 1; i > 0; i--) {
       const j = Math.floor(R() * (i + 1));
       [rack[i], rack[j]] = [rack[j], rack[i]];
@@ -251,6 +255,11 @@ globalThis.LuminaRandom = (function () {
     rack.slice(0, 2 + Math.floor(R() * 3)).forEach((k) => { cfg[k] = rnd(0.15, 0.9); });
     if (odds(0.25)) cfg[pick(SMEAR)] = rnd(0.1, 0.45);
     if (odds(0.08)) cfg.fxIris = rnd(0.15, 0.9);
+    if (cfg.fxKaleido > 0) {
+      if (odds(0.6)) cfg.fxKalRing = rnd(0.2, 0.85);
+      if (odds(0.35)) cfg.fxKalIter = pick([0.5, 1]);
+      if (odds(0.5)) cfg.fxKalSpin = rnd(0.1, 0.6);
+    }
 
     // Anti-blackout. A roll must always show SOMETHING.
     if (cfg.scene === "none") {

@@ -1085,3 +1085,102 @@ body.lum-tuner-page .tuner-head {
   background: #fff;
   transition: none;
 }
+
+/* --- ⓘ info popovers (2026-08-03) ------------------------------------------
+   The surface carries short labels only; explanations live behind the ⓘ.
+   The popover is appended to document.body (backdrop-filter on .lum-tuner
+   would trap position:fixed) — its font-size is set inline on open so the
+   text-size control still scales it. */
+.tuner-info {
+  align-self: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  flex: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.62em;
+  font-style: italic;
+  height: 1.6em;
+  line-height: 1;
+  padding: 0;
+  width: 1.6em;
+}
+
+.tuner-info:hover,
+.tuner-info:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.tuner-infopop {
+  background: #2c2c34;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.7em;
+  box-shadow: 0 0.8em 2.4em rgba(0, 0, 0, 0.55);
+  display: grid;
+  font-family: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
+  gap: 0.55em;
+  max-width: min(30em, calc(100vw - 24px));
+  padding: 0.8em 0.9em 0.9em;
+  position: fixed;
+  width: max-content;
+  z-index: 10000;
+}
+
+.tuner-infopop[hidden] {
+  display: none;
+}
+
+.tuner-infotitle {
+  color: var(--gold);
+  font-size: 0.78em;
+  letter-spacing: 0.2em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.tuner-infotext {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.78em;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 34em;
+}
+
+.tuner-infocanvas {
+  background: #0e0e12;
+  border-radius: 0.5em;
+  width: 100%;
+}
+
+.tuner-infocanvas[hidden] {
+  display: none;
+}
+
+/* --- per-scene pads + controls (2026-08-03) --------------------------------
+   The active scene's own punch verbs, gold-tinted so they read as the
+   scene's property, not the stock strip's. */
+.tuner-scenepads {
+  display: inline-flex;
+  gap: 0.5em;
+}
+
+.tuner-scenepads:not(:empty) {
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  margin-left: 0.3em;
+  padding-left: 0.8em;
+}
+
+.tuner-pad--scene {
+  border-color: rgba(227, 185, 104, 0.55);
+  color: var(--gold);
+}
+
+.tuner-scenelocal:not(:empty) {
+  border-top: 1px dashed rgba(255, 255, 255, 0.14);
+  margin-top: 0.3em;
+  padding-top: 0.7em;
+}

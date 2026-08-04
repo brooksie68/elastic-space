@@ -72,6 +72,8 @@
     fxWarp:    { label: "fx warp",    span: 1,   min: 0, max: 1 },
     fxSlit:    { label: "fx slit",    span: 1,   min: 0, max: 1 },
     fxKaleido: { label: "fx kaleido", span: 0.8, min: 0, max: 1 },
+    fxKalRing: { label: "fx kal rings", span: 1, min: 0, max: 1 },
+    fxKalSpin: { label: "fx kal spin", span: 0.6, min: 0, max: 1 },
     fxBloom:   { label: "fx bloom",   span: 1,   min: 0, max: 1 },
     fxGrain:   { label: "fx grain",   span: 1,   min: 0, max: 1 },
     fxCrt:     { label: "fx crt",     span: 1,   min: 0, max: 1 },

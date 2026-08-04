@@ -94,6 +94,9 @@
     nest: { toSlider: (v) => v, fromSlider: (p) => p, format: String, min: 0, max: 2 },
     fxTrails: pct, fxZoom: pct, fxZoomRot: pct, fxPixel: pct, fxRgb: pct, fxWarp: pct,
     fxSlit: pct, fxKaleido: { toSlider: (v) => Math.round(v * 1000), fromSlider: (p) => p / 1000, format: (v) => (v <= 0 ? "off" : `${2 + Math.round(v * 10)} way`) },
+    fxKalRing: pct,
+    fxKalIter: { toSlider: (v) => Math.round(v * 2), fromSlider: (p) => p / 2, format: (v) => ["off", "double", "triple"][Math.round(v * 2)] || "off", min: 0, max: 2 },
+    fxKalSpin: { toSlider: (v) => Math.round(v * 1000), fromSlider: (p) => p / 1000, format: (v) => (v <= 0 ? "off" : `${Math.round(v * 28.6)}°/s`) },
     fxBloom: pct, fxGrain: pct, fxCrt: pct, fxShutter: pct, fxIris: pct,
     sceneMix: pct, sceneTiles: pct,
     sceneSpeed: times(2),
@@ -373,6 +376,78 @@
       input.value = value;
     }
 
+    // --- ⓘ info popovers (2026-08-03, James's brief) ------------------------
+    // The surface shows short labels only; the verbose explanation + an
+    // animated mini demo live behind a small ⓘ. Content: tuner-info.js.
+    // The popover lives on document.body because .lum-tuner's backdrop-filter
+    // makes it a containing block — position:fixed inside it would pin to the
+    // panel, not the viewport. Font size is copied from the container on open
+    // so the text-size control still scales it.
+    const INFO_LIB = globalThis.LUMINA_INFO || { INFO: {}, DEMOS: {} };
+    const pop = el("div", "tuner-infopop");
+    pop.hidden = true;
+    const popTitle = el("p", "tuner-infotitle");
+    const popCanvas = el("canvas", "tuner-infocanvas");
+    popCanvas.width = 360;
+    popCanvas.height = 170;
+    const popText = el("p", "tuner-infotext");
+    pop.append(popTitle, popCanvas, popText);
+    document.body.appendChild(pop);
+    let popDraw = null, popStart = 0, popFor = null;
+    (function popLoop(now) {
+      requestAnimationFrame(popLoop);
+      if (pop.hidden || !popDraw) return;
+      popDraw(popCanvas.getContext("2d"), popCanvas.width, popCanvas.height, (now - popStart) / 1000);
+    })(performance.now());
+    function closeInfo() {
+      pop.hidden = true;
+      popDraw = null;
+      popFor = null;
+    }
+    function openInfo(btn, id, title, fallback) {
+      if (popFor === id && !pop.hidden) { closeInfo(); return; }
+      const entry = INFO_LIB.INFO[id];
+      popTitle.textContent = title;
+      popText.textContent = (entry && entry.t) || fallback || "";
+      const demoFactory = entry && entry.demo ? INFO_LIB.DEMOS[entry.demo] : null;
+      popDraw = demoFactory ? demoFactory() : null;
+      popCanvas.hidden = !popDraw;
+      popStart = performance.now();
+      popFor = id;
+      pop.style.fontSize = getComputedStyle(container).fontSize;
+      pop.hidden = false;
+      const r = btn.getBoundingClientRect();
+      const pw = pop.offsetWidth, ph = pop.offsetHeight;
+      const x = Math.max(8, Math.min(r.left, window.innerWidth - pw - 10));
+      let y = r.bottom + 8;
+      if (y + ph > window.innerHeight - 8) y = Math.max(8, r.top - ph - 8);
+      pop.style.left = `${x}px`;
+      pop.style.top = `${y}px`;
+    }
+    // Returns null when there is nothing to say — no entry, no fallback —
+    // so a content-less control simply gets no ⓘ.
+    function infoBtn(id, title, fallback) {
+      if (!INFO_LIB.INFO[id] && !fallback) return null;
+      const b = el("button", "tuner-info", "i");
+      b.type = "button";
+      b.title = "What does this do?";
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openInfo(b, id, title, fallback);
+      });
+      return b;
+    }
+    // House rule: dismiss on pointerdown click-away (Esc works too).
+    document.addEventListener("pointerdown", (e) => {
+      if (pop.hidden) return;
+      if (pop.contains(e.target)) return;
+      if (e.target.closest && e.target.closest(".tuner-info")) return;
+      closeInfo();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeInfo();
+    });
+
     // --- shared builders ----------------------------------------------------
 
     function slider(scope, key, label, spec, opts2) {
@@ -410,8 +485,11 @@
       }
       const out = el("output");
       wrap.append(lab, ...(o.extra ? [o.extra] : []), track, out);
-      if (!o.deck) wrap.appendChild(starFor(id));
-      if (o.desc) wrap.appendChild(el("p", "tuner-desc", o.desc));
+      if (!o.deck) {
+        wrap.appendChild(starFor(id));
+        const ib = infoBtn(id, label, o.desc);
+        if (ib) wrap.appendChild(ib);
+      }
       input.addEventListener("input", () => {
         const v = spec.fromSlider(Number(input.value));
         out.textContent = spec.format(v);
@@ -445,8 +523,11 @@
       });
       if (o.title) sel.title = o.title;
       wrap.appendChild(sel);
-      if (!o.deck) wrap.appendChild(starFor(id));
-      if (o.desc) wrap.appendChild(el("p", "tuner-desc", o.desc));
+      if (!o.deck) {
+        wrap.appendChild(starFor(id));
+        const ib = infoBtn(id, label, o.desc);
+        if (ib) wrap.appendChild(ib);
+      }
       sel.addEventListener("change", () => send({ scope, type: "set", key, value: sel.value }));
       onReflect(() => {
         const source = scope === "field" ? snap.config : snap.music.settings;
@@ -467,7 +548,11 @@
       const wrap = el("div", "tuner-chipswrap");
       const head = el("div", "tuner-chipshead");
       head.appendChild(el("label", "tuner-label", label));
-      if (!o.deck) head.appendChild(starFor(id));
+      if (!o.deck) {
+        head.appendChild(starFor(id));
+        const ib = infoBtn(id, label, o.desc);
+        if (ib) head.appendChild(ib);
+      }
       wrap.appendChild(head);
       const strip = el("div", "tuner-chips");
       const btns = new Map();
@@ -485,7 +570,6 @@
         strip.appendChild(b);
       });
       wrap.appendChild(strip);
-      if (o.desc) wrap.appendChild(el("p", "tuner-desc", o.desc));
       onReflect(() => {
         const source = scope === "field" ? snap.config : snap.music.settings;
         const cur = String(source[key]);
@@ -514,6 +598,13 @@
       const head = el("div", "tuner-cardhead");
       head.appendChild(el("p", "tuner-section", title));
       const tools = el("div", "tuner-cardtools");
+      // The card's ⓘ: the old one-sentence summary retired into the popover
+      // (2026-08-03) — the summary param now seeds its fallback text.
+      const cardId = o.id || title;
+      {
+        const ib = infoBtn(`card:${cardId}`, title, summary);
+        if (ib) tools.appendChild(ib);
+      }
       if (o.group) {
         const roll = el("button", "tuner-cardbtn", "🎲");
         roll.type = "button";
@@ -534,7 +625,6 @@
         });
         tools.append(roll, lock);
       }
-      const cardId = o.id || title;
       const fold = el("button", "tuner-cardbtn tuner-fold", "▾");
       fold.type = "button";
       const setFold = (closed) => {
@@ -554,7 +644,6 @@
       tools.appendChild(fold);
       head.appendChild(tools);
       c.appendChild(head);
-      if (summary) c.appendChild(el("p", "tuner-summary", summary));
       if (collapsedIds.includes(cardId)) setFold(true);
       CARDS[pane].set(cardId, c);
       return c;
@@ -734,9 +823,12 @@
     {
       const head = el("div", "tuner-cardhead");
       head.appendChild(el("p", "tuner-section", "my deck"));
+      const tools = el("div", "tuner-cardtools");
+      const ib = infoBtn("card:my deck", "my deck",
+        "Your pinned controls — hit the ☆ on any control to keep a copy here, on top, on both tabs.");
+      if (ib) tools.appendChild(ib);
+      head.appendChild(tools);
       deck.appendChild(head);
-      deck.appendChild(el("p", "tuner-summary",
-        "Your pinned controls — hit the ☆ on any control to keep a copy here, on top, on both tabs."));
     }
     const deckGrid = el("div", "tuner-minis");
     deck.appendChild(deckGrid);
@@ -1068,7 +1160,11 @@
         if (name) send({ scope: "field", type: "presetSave", name });
       }, "tuner-btn tuner-keep");
       row.append(save, del, setDef, back, dice, keep);
-      row.appendChild(el("p", "tuner-desc", "🎲 rolls a whole new look, ↩ takes it back, keep banks what's on screen. set as default picks the look the page opens on; “last session” brings back where you left off"));
+      {
+        const ib = infoBtn("row:looks-presets", "presets & the dice",
+          "🎲 rolls a whole new look, ↩ takes it back, keep banks what's on screen. set as default picks the look the page opens on; “last session” brings back where you left off");
+        if (ib) row.appendChild(ib);
+      }
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "field", type: "preset", value: sel.value });
@@ -1159,6 +1255,45 @@
         b.addEventListener("pointercancel", up);
         padHandlers[String(i + 1)] = { down, up, btn: b };
         padRow.appendChild(b);
+      });
+
+      // The active scene's own punch verbs (2026-08-03): up to three extra
+      // pads, declared in scenes.js DEFS, riding the same punch machinery.
+      // They appear only while their scene is playing; a held pad is released
+      // before the strip rebuilds so a scene change can't strand an override.
+      const scenePadHost = el("span", "tuner-scenepads");
+      padRow.appendChild(scenePadHost);
+      let scenePadSig = null;
+      onReflect(() => {
+        if (snap.config.scene === scenePadSig) return;
+        scenePadSig = snap.config.scene;
+        [...scenePadHost.querySelectorAll(".tuner-pad.on")].forEach((b) => {
+          send({ scope: "field", type: "punch", name: b.dataset.punch, on: false });
+        });
+        scenePadHost.textContent = "";
+        const defs = (globalThis.LuminaScenes && globalThis.LuminaScenes.DEFS) || {};
+        const d = defs[scenePadSig];
+        (((d && d.punches) || []).slice(0, 3)).forEach((pv) => {
+          const b = el("button", "tuner-pad tuner-pad--scene", pv.label);
+          b.type = "button";
+          b.dataset.punch = pv.name;
+          b.title = `${pv.tip} — ${scenePadSig}'s own verb`;
+          const down = () => {
+            if (b.classList.contains("on")) return;
+            b.classList.add("on");
+            send({ scope: "field", type: "punch", name: pv.name, on: true });
+          };
+          const up = () => {
+            if (!b.classList.contains("on")) return;
+            b.classList.remove("on");
+            send({ scope: "field", type: "punch", name: pv.name, on: false });
+          };
+          b.addEventListener("pointerdown", (e) => { e.preventDefault(); down(); });
+          b.addEventListener("pointerup", up);
+          b.addEventListener("pointerleave", up);
+          b.addEventListener("pointercancel", up);
+          scenePadHost.appendChild(b);
+        });
       });
       // Keys 1–6 are the pads, hold-to-fire, whenever this panel is visible.
       window.addEventListener("keydown", (e) => {
@@ -1271,8 +1406,11 @@
         }
       });
       rowB.append(rec, count, undoTake, loopClear, clearAll);
-      rowB.appendChild(el("p", "tuner-desc",
-        "click the strip to jump; drag a stretch to loop it — a looping armed pass banks a take every lap. gold ticks are your moves (tall = whole-look jumps, blue = pads). switch the player to “your set” to watch it back"));
+      {
+        const ib = infoBtn("row:timeline-strip", "the strip",
+          "click the strip to jump; drag a stretch to loop it — a looping armed pass banks a take every lap. gold ticks are your moves (tall = whole-look jumps, blue = pads). switch the player to “your set” to watch it back");
+        if (ib) rowB.appendChild(ib);
+      }
       cTl.appendChild(rowB);
 
       // Strip interactions: click = seek, drag = loop region, dblclick = clear.
@@ -1409,9 +1547,34 @@
         slider("field", "sceneDrive", "scene drive", FIELD_SLIDERS.sceneDrive, { desc: "energy — glow, density, agitation" }),
         slider("field", "sceneWarp", "scene warp", FIELD_SLIDERS.sceneWarp, { desc: "bends the backdrop — each scene warps its own way" }),
         slider("field", "sceneHue", "scene hue", FIELD_SLIDERS.sceneHue, { desc: "spins the backdrop's colors" }),
-      ].concat(genomeNames.length ? [
-        select("field", "sceneGenome", "flame genome", genomeNames, { desc: "which bred flame plays — set scene palette to “genome” for its true colors" }),
-      ] : []));
+      ]);
+
+      // Per-scene controls (2026-08-03, the Synesthesia two-tier model): the
+      // active scene's OWN knobs, declared in scenes.js DEFS. The section
+      // swaps when the scene changes — the shared scene* sliders above never
+      // move. Rebuilds are sig-guarded to actual scene changes; each rebuild
+      // leaves its old reflectors behind (safeSet on detached nodes is a
+      // no-op), same accepted pattern as the deck.
+      const KINDS = {
+        pct: (p) => slider("field", p.key, p.label || p.key, pct, { desc: p.info }),
+        genomes: (p) => genomeNames.length
+          ? select("field", p.key, p.label || "flame genome", genomeNames, { desc: p.info })
+          : null,
+      };
+      const localHost = el("div", "tuner-scenelocal");
+      cScene.appendChild(localHost);
+      let localSig = null;
+      onReflect(() => {
+        if (snap.config.scene === localSig) return;
+        localSig = snap.config.scene;
+        const defs = (globalThis.LuminaScenes && globalThis.LuminaScenes.DEFS) || {};
+        const d = defs[localSig];
+        localHost.textContent = "";
+        const els = ((d && d.params) || [])
+          .map((p) => (KINDS[p.kind] ? KINDS[p.kind](p) : null))
+          .filter(Boolean);
+        if (els.length) minis(localHost, els);
+      });
     }
 
     {
@@ -1553,6 +1716,9 @@
       slider("field", "fxWarp", "warp", FIELD_SLIDERS.fxWarp, { desc: "the picture ripples — heat haze to liquid" }),
       slider("field", "fxSlit", "slit-scan", FIELD_SLIDERS.fxSlit, { desc: "rows lag in time — motion smears like taffy" }),
       slider("field", "fxKaleido", "kaleido", FIELD_SLIDERS.fxKaleido, { desc: "kaleidoscope mirrors" }),
+      slider("field", "fxKalRing", "kal rings", FIELD_SLIDERS.fxKalRing, { desc: "folds the kaleidoscope in radius too — concentric mandala bands" }),
+      slider("field", "fxKalIter", "kal fold", FIELD_SLIDERS.fxKalIter, { desc: "folds the fold again — lacier, more intricate ornament" }),
+      slider("field", "fxKalSpin", "kal spin", FIELD_SLIDERS.fxKalSpin, { desc: "the whole mandala slowly rotates" }),
       slider("field", "fxBloom", "bloom", FIELD_SLIDERS.fxBloom, { desc: "bright spots glow and spill" }),
       slider("field", "fxGrain", "grain", FIELD_SLIDERS.fxGrain, { desc: "film grain" }),
       slider("field", "fxCrt", "crt", FIELD_SLIDERS.fxCrt, { desc: "old TV — scanlines, curved glass, sync tears on the beat" }),
@@ -1597,7 +1763,11 @@
       row.append(wIn, el("span", "tuner-x", "×"), hIn,
         button("full width", "Snap the frame to 100% of the window width", () => send({ scope: "frame", type: "snap", mode: "fullw" })),
         button("fit screen", "Snap the frame to the window's exact size and aspect ratio", () => send({ scope: "frame", type: "snap", mode: "fit" })));
-      row.appendChild(el("p", "tuner-desc", "the stage, in pixels — any size, any aspect; scales down to fit the window"));
+      {
+        const ib = infoBtn("row:frame", "frame",
+          "the stage, in pixels — any size, any aspect; scales down to fit the window");
+        if (ib) row.appendChild(ib);
+      }
       onReflect(() => {
         safeSet(wIn, snap.frame.w);
         safeSet(hIn, snap.frame.h);
@@ -1632,7 +1802,11 @@
       });
       dj.title = "claude's set plays a composed light show authored for each track; free play hands the field back to your sliders";
       row.append(play, stopBtn, prev, sel, next, shuffleWrap, djLabel, dj);
-      row.appendChild(el("p", "tuner-desc", "claude's set plays a light show composed for each track — free play hands the field back to you"));
+      {
+        const ib = infoBtn("row:player-dj", "visual dj",
+          "claude's set plays a light show composed for each track — free play hands the field back to you");
+        if (ib) row.appendChild(ib);
+      }
       sel.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "select", index: Number(sel.value) }));
       shuffle.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "shuffle", value: shuffle.checked }));
       dj.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "dj", value: dj.value }));
@@ -1777,7 +1951,11 @@
       ptWrap.title = "Remember these reactivity settings for the current track and recall them whenever it plays";
       row.append(save, del, ptWrap);
       row.appendChild(button("reset", "Reset the audio tab — reactivity, matrix, shuffle, per-track, DJ mode — back to stock", () => send({ scope: "music", type: "resetAll" }), "tuner-reset"));
-      row.appendChild(el("p", "tuner-desc", "per track remembers these settings for whichever song is playing"));
+      {
+        const ib = infoBtn("row:react-pertrack", "react presets",
+          "per track remembers these settings for whichever song is playing");
+        if (ib) row.appendChild(ib);
+      }
       sel.addEventListener("change", () => {
         del.disabled = !sel.value.startsWith("u:");
         if (sel.value) send({ scope: "music", type: "preset", value: sel.value });

@@ -190,6 +190,16 @@
     iris: { fxIris: 0.85 },
     warp: { fxWarp: 0.85 },
   };
+  // Scene punch verbs (2026-08-03): each scene's own momentary pads, declared
+  // in scenes.js DEFS — same machinery, "scn-" names keep them out of the
+  // stock pads' way. The tuner only SHOWS the active scene's verbs, but the
+  // overrides are scene-generic keys, so a stale hold can't strand anything.
+  {
+    const defs = (globalThis.LuminaScenes && globalThis.LuminaScenes.DEFS) || {};
+    Object.keys(defs).forEach((s) => (defs[s].punches || []).forEach((p) => {
+      PUNCHES[p.name] = p.over;
+    }));
+  }
   const activePunch = {};
   function punchOverrides() {
     const o = {};

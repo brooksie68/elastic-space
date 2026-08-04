@@ -119,6 +119,11 @@
     fxWarp: 0,     // turbulence displacement
     fxSlit: 0,     // slit-scan row time-shear
     fxKaleido: 0,  // 0 = off, else 2..12 mirror segments
+    // Kaleido v2 (2026-08-03, the fold — proven in tmp/lumina/fold-lab.html):
+    // sub-params, inert unless fxKaleido > 0.
+    fxKalRing: 0,  // radial ring-repeat: 0 = off .. 1 = tight concentric bands
+    fxKalIter: 0,  // iterative refold: 0 / 0.5 / 1 -> 0 / 1 / 2 extra folds
+    fxKalSpin: 0,  // slow rotation drift of the fold space, 0..~29°/s
     fxBloom: 0,    // bright glow
     fxGrain: 0,    // film grain
     fxCrt: 0,      // scanlines + barrel + sync tear
@@ -141,7 +146,8 @@
   };
 
   const FX_KEYS = ["fxTrails", "fxZoom", "fxZoomRot", "fxPixel", "fxRgb", "fxWarp",
-    "fxSlit", "fxKaleido", "fxBloom", "fxGrain", "fxCrt", "fxShutter", "fxIris"];
+    "fxSlit", "fxKaleido", "fxKalRing", "fxKalIter", "fxKalSpin",
+    "fxBloom", "fxGrain", "fxCrt", "fxShutter", "fxIris"];
 
   // Deterministic per-tile hash in [0,1) — scatter patterns and desync stay
   // stable across reloads instead of reshuffling every visit.

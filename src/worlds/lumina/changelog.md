@@ -3,6 +3,128 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-03 — Claude (Fable 5) — Jungle Moog Ritual v3: THE REEL (v2 killed same night)
+
+- James flew the deepening ritual and killed the structure on sight: "somehow
+  you got it in your head that I wanted this back and forth thing... four
+  bars of this, four bars of that. It's really boring. What I want is a blow
+  you away reel. This is the demo reel for the investors... Never come back
+  to the same thing twice. Every single cut should be something new, all the
+  way through. Cut frequently and often and use very extreme changes."
+  STANDING LESSON for all future sets: call-and-response trading is DEAD as
+  a default shape — call() survives for lulls a brief explicitly asks for.
+- v3 = THE REEL: **71 cuts, every look appears exactly once and never
+  returns.** No totems, no vocabulary reuse — the score IS the vocabulary
+  (JUNGLE_REEL entries generate one look each). Adjacent cuts are authored
+  maximally opposed: supernova (gold fire, full fold, out of the gate at
+  bar 1) → blacksnap (two dim rings in a void) → acidwall (full-bleed lime
+  hex) → violetfold (triple-refold nebula) → dustfield (400 drifting
+  embers) → magmaslabs (giant molten squares)... whiteout at the b21
+  monster, theeye (a single watching ring) at b62, detonation at b146,
+  zenith → eventide → lightsout to close with 3s to spare.
+- Still measured, not chaotic: all 33 punches hit, cuts land on punch bars
+  or 4/2-bar marks, quiet pockets get extreme QUIET cuts (voidhush /
+  deepdrift / heldbreath / exhale), the b85 build and b246 climb are the
+  only ramps besides the outro. Eight shared REACT archetypes keep every
+  cut beat-locked (pulse/bar/swing rows; nothing follows lagging bands).
+- The fold runs the whole reel: supernova/violetfold/glasscut/goldburst/
+  lacequake/lily/kalvortex/cathedral/greenfurnace/zenith all use kal
+  rings/refold/spin differently. Avg cut ≈ 3.6 bars ≈ 6.7s.
+- Sims 335/335 + 53 green. Tune by bar label ("b118 lacequake").
+
+## 2026-08-03 — Claude (Fable 5) — Jungle Moog Ritual set v2: the deepening ritual (SUPERSEDED same night — see v3 above)
+
+- James's brief, same night as Wave 1: "take a pass at doing a VJ session on
+  jungle moog ritual and try to be really surprising. Try to match the beat.
+  Try to look for where the breaks are, and don't be too repetitive... use
+  some of the new effects early in the set and throughout."
+- The old four-look set is REPLACED. New architecture: Zion's reset-chassis
+  pattern (JBASE/jl — every look complete, nothing bleeds) with a hybrid
+  shape — three recurring TOTEMS (totem = THE MANDALA, a flame genome
+  through the new kal fold, on screen by bar 9 and returning all night with
+  different genomes/ring depths; undergrowth; machine) anchoring ELEVEN
+  ONE-SHOT looks that each appear exactly once (firstlight, moth, vines,
+  drums, rain, eyes, strobeswamp, cavefire, glowworms, ignition, breakpool).
+- The measured structure drives everything: all 33 punches hit; the b21
+  monster (2.73) gets moth (triple-refold neon lace); the b146 late monster
+  (2.61) gets ignition (white-hot gold phoenix through full rings, gated);
+  both measured quiet pockets (bars 67-71 twice, bar 143.5) get breakpool
+  hushes with the b69/b73 drops ripping out of them; the b85 build is a
+  4-bar strobeswamp ramp into the b94 drop.
+- New effects early + throughout, per his instruction: firstlight OPENS the
+  track already folded (soft 5-way, slow spin), and kal rings/refold/spin
+  appear in totem, moth, cavefire, ignition and the closing dissolve — plus
+  the new matrix targets in anger (bass→fxKalRing breathing in totem,
+  bass→fxKalSpin in moth, pulse→fxKalSpin in ignition).
+- Grooves run syncBeats 1-4 with pulse/bar/swing rows everywhere — nothing
+  rhythmic follows lagging band envelopes. Accents rotate (downbeat, four,
+  eighths, offbeat, gallop, backbeat, stutter). Outro: the mandala dissolves
+  over a 6-bar ramp at b249, black by b257 with 3s to spare.
+- Sims: 335/335 + 53 + 24 green, first run. Tune by bar label ("b118 moth").
+- AWAITING JAMES'S FLIGHT — his first authored set that uses the fold.
+
+## 2026-08-03 — Claude (Fable 5) — WAVE 1: the ⓘ library, per-scene controls, the fold
+
+James's brief after studying his Synesthesia captures together ("the interface
+is equally important... reduce the descriptive text into a small i icon...
+become more verbose and show significant visual examples"). Plan approved as
+three waves; the audio/beat-detection thread EXPLICITLY PARKED at his call —
+no tick-lock, no structure lane, no detection changes until he reopens it.
+
+- **The ⓘ info system.** All `.tuner-desc` sentences and card summaries are
+  off the surface — every control and card now carries a small circled-i that
+  opens a fixed popover (click-away + Esc dismiss, house rule) with VERBOSE
+  plain-language copy and, on ~44 controls, an animated mini-demo showing the
+  knob being swept (mini flash-field engine, FX cartoons, scene stage,
+  envelope meters). Content lives in **tuner-info.js** (new file, loaded
+  before tuner.js in BOTH index.html and tuner.html):
+  `LUMINA_INFO.INFO["scope:key" | "card:id" | "row:id"]` +
+  `DEMOS[name] -> factory() -> draw(ctx,w,h,t)`. The factories look entries
+  up by control id and fall back to any inline `desc` string, so a missing
+  entry degrades to the short sentence, never to nothing. NEW-CONTROL RULE:
+  register an INFO entry (and a demo if it earns one) when adding a control.
+  The popover lives on document.body — `.lum-tuner`'s backdrop-filter makes
+  the panel a containing block that would trap position:fixed. The only
+  surviving surface prose is the pattern hint (a live readout, not a desc).
+- **Per-scene controls + punch verbs (the Synesthesia two-tier model).**
+  scenes.js grew `DEFS`: each scene declares its own `params` (custom knobs,
+  shown in the scene card only while that scene plays — flame's genome menu
+  moved there, so it no longer haunts the other scenes) and up to THREE
+  `punches` (James's cap) — momentary verbs that join the perform strip as
+  gold pads while their scene is playing, riding world.js's existing punch
+  machinery ("scn-" prefix, never in state; a held pad is released before a
+  scene change rebuilds the strip). Launch verbs: ink surge, ridge quake,
+  flame flare, nebula burst. composition-sim enforces the whole contract
+  (params ∈ DEFAULTS ∩ GROUPS.scene with kind+info, ≤3 verbs, real override
+  keys). Adding a scene's controls/verbs now never touches tuner.js.
+- **fxKaleido v2 — the fold.** Proven FIRST in `tmp/lumina/fold-lab.html`
+  (KEEP IT — procedural engraved-gold + neon-RGB sources standing in for
+  James's two kaleidoscope reference families; posts 4×4 contact sheets via
+  /api/dev-snapshot; round 1 landed both families). Then ported verbatim into
+  fx.js FS_POST: three new field keys — `fxKalRing` (radial ring-repeat: the
+  references fold in RADIUS, not just angle — concentric mandala bands),
+  `fxKalIter` (0/1/2 iterative refolds → lace), `fxKalSpin` (the fold space
+  slowly wheels; the picture underneath doesn't). All default 0 == the
+  legacy fold exactly (old presets/sets render untouched). Dice: the subs
+  never ride the rack shuffle (they're inert without kaleido) — they roll
+  only WITH a rolled kaleido (ring 60% / iter 35% / spin 50%). Matrix targets
+  added for ring + spin (iter is discrete — a ramp would flicker).
+  `tmp/lumina/kal-probe.html` (keep) proves the fold end-to-end through the
+  real mount+attach chain with rAF pumped manually, A/B legacy-vs-v2.
+- Dice odds stay per James: scene rolls flat/uniform ("let it go nuts"),
+  blur discipline untouched at ~5%.
+- Sims: composition-sim grew the DEFS + kal contracts — 335/335; music-sim
+  53/53; timeline-sim 24/24; fx-test compiles the new FS_POST (FX-OK);
+  tuner.html loads clean (89 ⓘ buttons, all three kal sliders, popover +
+  demos + click-away verified live; per-scene section and pads verified by
+  synthetic BroadcastChannel snapshots — genome select appears on flame,
+  pads swap ink→surge / flame→flare).
+- AWAITING JAMES: the ⓘ feel (per-control popovers + demos), the quieter
+  surface, scene verbs under his fingers, and the fold in flight — kal
+  rings/fold/spin over the flame scene is the Synesthesia-mandala bet.
+  NEXT (wave 2, each with his go): fiber-sphere instrument lab, ink v2,
+  rainbow palette family + gradient-wash breather, flame evolution stage 1.
+
 ## 2026-07-31 — Claude (Fable 5) — THE PERFORMANCE TIMELINE (record your own set)
 
 - James's brief, after Zion v2 still didn't hit his felt beat: he doesn't

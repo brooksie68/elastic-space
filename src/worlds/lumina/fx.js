@@ -62,7 +62,8 @@
     uniform sampler2D uTex;
     uniform vec2 uRes;
     uniform float uPixel, uRgb, uWarp, uSlit, uKaleido, uBloom, uGrain,
-                  uCrt, uShutter, uIris, uTime, uBeat;
+                  uCrt, uShutter, uIris, uTime, uBeat,
+                  uKalRing, uKalIter, uKalSpin;
     float hash21(vec2 p) {
       p = fract(p * vec2(123.34, 456.21));
       p += dot(p, p + 45.32);
@@ -84,12 +85,23 @@
         if (abs(uv.y - tearY) < 0.035 * uCrt * uBeat) uv.x += 0.07 * uCrt * uBeat;
       }
       if (uKaleido > 0.5) {
+        // v2 fold (2026-08-03, judged in tmp/lumina/fold-lab.html): angular
+        // wedge fold + optional slow spin, iterative refold, and radial
+        // ring-repeat. All three extras default 0 == the original fold.
         vec2 c = uv - 0.5;
         float seg = 6.2831853 / uKaleido;
-        float a = atan(c.y, c.x);
+        float a = atan(c.y, c.x) + uKalSpin * uTime;
         a = mod(a, seg);
         a = abs(a - seg * 0.5);
-        uv = clamp(0.5 + vec2(cos(a), sin(a)) * length(c), 0.0, 1.0);
+        if (uKalIter > 0.5) a = abs(mod(a * 2.0 + seg * 0.31, seg) - seg * 0.5);
+        if (uKalIter > 1.5) a = abs(mod(a * 2.0 + seg * 0.17, seg) - seg * 0.5);
+        float kr = length(c);
+        if (uKalRing > 0.001) {
+          float band = mix(0.5, 0.11, uKalRing);
+          float m = abs(mod(kr, band) - band * 0.5) * 2.0;
+          kr = mix(kr, 0.1 + m * 1.5, uKalRing);
+        }
+        uv = clamp(0.5 + vec2(cos(a), sin(a)) * kr, 0.0, 1.0);
       }
       if (uWarp > 0.0) {
         vec2 n = vec2(
@@ -489,6 +501,9 @@
       u(progPost, "uWarp", cfg.fxWarp);
       u(progPost, "uSlit", cfg.fxSlit);
       u(progPost, "uKaleido", cfg.fxKaleido > 0 ? 2 + Math.round(cfg.fxKaleido * 10) : 0);
+      u(progPost, "uKalRing", cfg.fxKalRing || 0);
+      u(progPost, "uKalIter", cfg.fxKalIter > 0 ? Math.round(cfg.fxKalIter * 2) : 0);
+      u(progPost, "uKalSpin", (cfg.fxKalSpin || 0) * 0.5);
       u(progPost, "uBloom", cfg.fxBloom);
       u(progPost, "uGrain", cfg.fxGrain);
       u(progPost, "uCrt", cfg.fxCrt);

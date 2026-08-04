@@ -516,6 +516,32 @@ consistent. `npm run check-worlds` audits every world against the contract.
    flies (same discipline as the nebula/crust labs). This is its own
    Lumina session, slots naturally alongside the visualization backlog
    above.
+   2026-08-03 (night, "to infinity and beyond"): **WAVE 1 BUILT** on James's
+   go after the reference-still study (his 27 stills incl. Synesthesia
+   captures — quality AND interface target; his i-icon brief). Delivered:
+   the ⓘ info library (tuner-info.js — surface descs retired into verbose
+   popovers with 44 animated mini-demos; every new control must register),
+   per-scene controls + ≤3 punch verbs per scene (scenes.js DEFS, sim-
+   enforced; ink surge / ridge quake / flame flare / nebula burst), and the
+   fxKaleido v2 FOLD (fxKalRing/fxKalIter/fxKalSpin; judged in
+   tmp/lumina/fold-lab.html — KEEP — and proven end-to-end in
+   kal-probe.html; legacy fold untouched at zeros). Dice: scene odds flat
+   ("nuts random"), blur stays 5%. Sims 335+53+24 green, fx-test FX-OK.
+   **THE AUDIO/BEAT THREAD IS PARKED, his explicit call** — no detection or
+   tempo-matching work until he reopens it; rhythm-template stays agreed
+   direction. AWAITING HIS EYES on all of Wave 1; the wave queue (fiber-
+   sphere lab next, then ink v2, rainbow palettes, flame swirl; wave 3
+   backlog) is the START HERE section of the world CLAUDE.md. Same night,
+   his ask: JUNGLE MOOG RITUAL v3 "THE REEL" (v2's call-and-response
+   killed on sight — his brief: "the demo reel for the investors...
+   never come back to the same thing twice... very extreme changes."
+   STANDING LESSON: A/B trading is dead as a default set shape). 71
+   cuts, every look exactly once, adjacent cuts maximally opposed, all
+   33 punches + quiet pockets honored, the fold everywhere; sims green.
+   Awaiting his flight of it. Session-end proposal AWAITING HIS GO: the
+   LEARNING BENCH (solo-one-effect chip strip from a clean 2002 grid +
+   silent 120BPM practice clock) — spec at the top of the world CLAUDE.md
+   START HERE.
    The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in

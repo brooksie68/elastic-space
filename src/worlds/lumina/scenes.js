@@ -17,6 +17,52 @@
 
   const LIST = ["none", "ink", "ridge", "flame", "nebula"];
 
+  // --- per-scene registration (2026-08-03, the Synesthesia two-tier model) --
+  // Each scene declares its OWN controls and punch verbs here; the tuner and
+  // world.js pick them up automatically — adding a scene never means touching
+  // tuner.js. The contract:
+  //   params:  the scene's custom knobs, shown in the scene card only while
+  //            that scene is playing. { key, kind, label, info }. `key` must
+  //            exist in lumina-field.js DEFAULTS and belong to
+  //            LuminaRandom.GROUPS.scene (both sim-enforced) so presets and
+  //            the dice treat it like any other knob. `kind` picks the
+  //            control: "pct" (0–1 slider) | "genomes" (the bred-flame menu).
+  //   punches: UP TO THREE momentary verbs (James's cap, 2026-08-03), shown
+  //            as pads in the perform strip while the scene is playing.
+  //            { name, label, tip, over } — `over` is a field-key override
+  //            map riding world.js's punch machinery: fires while held,
+  //            never lands in state. Prefix names "scn-" so they can't
+  //            collide with the stock pads.
+  const DEFS = {
+    none: { params: [], punches: [] },
+    ink: {
+      params: [],
+      punches: [
+        { name: "scn-surge", label: "surge", tip: "The ink boils over while held", over: { sceneDrive: 1, sceneWarp: 0.9 } },
+      ],
+    },
+    ridge: {
+      params: [],
+      punches: [
+        { name: "scn-quake", label: "quake", tip: "The ridges convulse while held", over: { sceneWarp: 0.95, sceneSpeed: 1.7 } },
+      ],
+    },
+    flame: {
+      params: [
+        { key: "sceneGenome", kind: "genomes", label: "flame genome", info: "Which bred flame plays. These twenty are the survivors of a 7,307-render overnight farm, hand-picked. Set scene palette to “genome” to see each one's true bred colors." },
+      ],
+      punches: [
+        { name: "scn-flare", label: "flare", tip: "The flame goes white-hot while held", over: { sceneDrive: 1, fxBloom: 0.6 } },
+      ],
+    },
+    nebula: {
+      params: [],
+      punches: [
+        { name: "scn-burst", label: "burst", tip: "Punch the throttle down the star tunnel while held", over: { sceneSpeed: 2, sceneDrive: 0.95 } },
+      ],
+    },
+  };
+
   // Shared fragment prelude: noise kit + the 6-stop palette ramp.
   const PRELUDE = `
     precision mediump float;
@@ -278,6 +324,7 @@
 
   globalThis.LuminaScenes = {
     LIST,
+    DEFS,
     FRAG: { ink: FS_INK, ridge: FS_RIDGE, nebula: FS_NEBULA },
     FLAME: { vs: VS_FLAME, fs: FS_FLAME, points: FLAME_POINTS, maxXforms: MAX_XFORMS },
     GENOMES,
