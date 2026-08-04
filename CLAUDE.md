@@ -312,6 +312,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Stylized Hair Pro ($22, v4.2.1) solid-mesh beard in Blender + weight/morph
    transfer, needs his go. NEXT: DLO world wiring (placement, capsule proxy,
    idle/face behavior — design conversation first), then animations + voice.
+   2026-08-03/04 (THE FURNISHING NIGHT — the stage is set for him): DLO
+   arrange mode became a full room editor (locks, spawn-in-hand, Ctrl+S,
+   crane, everything placeable incl. desk/cabinets/pigeonholes/oil tank +
+   James's 10-prop Meshy canvas batch baked in); James furnished the whole
+   room from a blank canvas (60 items, saved); old Meshy postmaster benched
+   then REHIRED against the new layout (sim 44/44, window station moved for
+   his oil tank). His wrap words: "a really good night... months getting
+   here. Tomorrow night we get a postmaster proper." AGREED: the retiring
+   Meshy postmaster gets a framed-portrait placeable (render him FIRST).
+   Read src/worlds/dead-letter-office/CLAUDE.md before starting — the
+   rehire flags, prop pipeline, and dynamic-station rules are all there.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
