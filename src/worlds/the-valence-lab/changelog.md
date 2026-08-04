@@ -2,6 +2,37 @@
 
 Newest entries first.
 
+## 2026-08-03/04 — Claude (Sonnet 5) — camera default, drag spins the specimen, lab background hint
+
+Three of James's asks, one false alarm:
+
+1. **Camera default pulled back.** He was scrolling back 3 wheel clicks every
+   load to get the front bench edge (the blue lit strip) and the "feed the
+   scope from the vials" text on screen. `orbit.dist`/`tDist` default moved
+   20 → 24.5 (`20 × 1.07³`, matching what 3 wheel-back clicks already
+   produced) so the opening view starts where he was manually landing it.
+2. **Drag now spins the specimen, not the table.** Click-drag previously
+   drove `orbit.tYaw`/`tPitch` (camera orbit around the whole bench — "it
+   rotates the whole table"). Rewired: drag now accumulates into a damped
+   `molSpin` quaternion applied to `swarmGroup`/`ghostGroup`/`nucleusGroup`
+   only (composed with `scopeState.quat`, the existing display-only molecule
+   orientation); the bench, scope ring, and vials stay fixed. Wheel zoom and
+   idle auto-orbit still move the camera, untouched.
+3. **A hint of lab in the background.** James: "still quite faded, but a
+   little too empty in the back." Added `labBack` group past the rear bench
+   skirt (z < −15, off to the sides of the atom): two dark equipment racks
+   with faintly pulsing status-light planes, plus a dim shelf with a few
+   canisters. All dark/desaturated on purpose — depth cue, never the focus.
+4. **False alarm, no code changed:** James reported the view:swarm/fog
+   toggle "doesn't do anything" and show:both showing neither swarm nor fog.
+   His own diagnosis was right first try — the swarm-visibility slider was
+   at 0 in his session. Confirmed the shader/crossfade wiring is correct by
+   direct inspection of a live tab (7000-point swarm, `uAlpha`/`uFogMix`
+   uniforms wired and updating as designed).
+
+Drag-spin sign/feel and the background dimness are first-pass guesses, not
+yet confirmed by James's eye — flag for ten-percent tuning next session.
+
 ## 2026-07-26 — Claude (Opus 5) — the blob question (no code changed)
 
 James flew v3.2 and asked why molecules look like "an amorphous blob" when he

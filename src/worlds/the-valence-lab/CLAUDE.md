@@ -120,8 +120,15 @@ unexplained. Name is James's.
 1. Draft status: no drift exits, no registry entry, no sound. These arrive at
    ship time only. Keep the world OUT of `world-registry.js` until then (the
    registry generator includes drafts — restore the registry if you regenerate).
-2. Camera: slow damped orbit, wide default, idle auto-orbit after 6 s. James
-   gets motion sick — never add snap moves or shake.
+2. Camera: slow damped orbit, wide default (dist 24.5, tuned 2026-08-03 to
+   match where James was manually landing it after 3 scroll-back clicks),
+   idle auto-orbit after 6 s. James gets motion sick — never add snap moves
+   or shake. **Click-drag no longer moves the camera** (2026-08-03): drag
+   accumulates into `molSpin`, a damped quaternion applied to
+   `swarmGroup`/`ghostGroup`/`nucleusGroup` only — it spins the specimen in
+   place. Camera yaw/pitch (`orbit.tYaw`/`tPitch`) now only move via wheel
+   zoom (dist) and the idle auto-orbit timer; don't reintroduce drag→camera
+   coupling.
 3. Controls: since v3 there is NO ⚙ tuner — every lever lives in the right
    panel's scope console, "controls" tab, grouped by science (the cloud /
    the shells / the scope / this console). James's framing: "it's not a
@@ -170,3 +177,10 @@ opacity default, staged-atom spacing, refusal copy. Expect ten-percent
 tuning. Phase C (narrated scale journey) and D (showcases) still need their
 own planning conversations and gos. Still draft: no drift exits, no registry
 entry, no sound.
+
+2026-08-03/04 session: camera default pulled back to 24.5, drag rewired to
+spin the specimen instead of orbiting the camera/bench, faint background lab
+hint added (`labBack` group). Swarm/fog toggle "not working" report turned
+out to be his own swarm-visibility slider at 0 — no code bug, nothing to
+fix. AWAITING JAMES'S EYES on all three changes (drag-spin feel/sign and
+background dimness are first-pass guesses).

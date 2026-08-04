@@ -61,8 +61,8 @@ const CAM_TARGET = new THREE.Vector3(0, 6.8, 0);
 
 // Slow, damped orbit — wide by default, no snap (motion restraint).
 const orbit = {
-  yaw: 0.0, pitch: 0.18, dist: 20,
-  tYaw: 0.0, tPitch: 0.18, tDist: 20,
+  yaw: 0.0, pitch: 0.18, dist: 24.5,
+  tYaw: 0.0, tPitch: 0.18, tDist: 24.5,
   lastInput: -10,
 };
 function applyCamera() {
@@ -76,6 +76,24 @@ function applyCamera() {
     CAM_TARGET.z + orbit.dist * cp * Math.cos(orbit.yaw),
   );
   camera.lookAt(CAM_TARGET);
+}
+
+// Specimen spin — click-drag rotates the atom/molecule itself, not the bench.
+// Damped like the camera orbit (no snap): a live target quaternion accumulates
+// drag deltas, the current quaternion eases toward it every frame.
+const molSpin = { q: new THREE.Quaternion(), tQ: new THREE.Quaternion() };
+const MOL_SPIN_Y = new THREE.Vector3(0, 1, 0);
+const MOL_SPIN_X = new THREE.Vector3(1, 0, 0);
+const _spinDelta = new THREE.Quaternion();
+function applyMolSpin() {
+  molSpin.q.slerp(molSpin.tQ, 0.08);
+  // nucleusGroup's cluster offsets already bake scopeState.quat at layout time
+  // (rebuildSceneForScope), so the group itself only needs the live spin;
+  // swarm/ghost quaternions are reset to scopeState.quat each rebuild, so they
+  // need spin composed on top.
+  swarmGroup.quaternion.multiplyQuaternions(molSpin.q, scopeState.quat);
+  ghostGroup.quaternion.copy(swarmGroup.quaternion);
+  nucleusGroup.quaternion.copy(molSpin.q);
 }
 
 function resize() {
@@ -207,6 +225,53 @@ scope.add(colFoot);
   }));
   scene.add(dust);
   dust.onBeforeRender = () => { dust.rotation.y += 0.00008; };
+}
+
+// ---------------------------------------------------------------------------
+// A hint of the lab beyond the bench — faint silhouettes past the rear
+// skirt (z < -5.75), off to the sides of the atom. Dim and desaturated on
+// purpose: depth cue, never the focus.
+
+const labBack = new THREE.Group();
+scene.add(labBack);
+
+const labMat = new THREE.MeshStandardMaterial({ color: 0x10151b, metalness: 0.5, roughness: 0.82 });
+const labLitCool = new THREE.MeshBasicMaterial({ color: 0x2f8fae, transparent: true, opacity: 0.2 });
+const labLitWarm = new THREE.MeshBasicMaterial({ color: 0x9a7a3a, transparent: true, opacity: 0.16 });
+
+function buildLabRack(x, z, seed) {
+  const rack = new THREE.Group();
+  rack.position.set(x, 0, z);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 5.4, 1.1), labMat);
+  body.position.y = 2.7;
+  rack.add(body);
+  const lights = [];
+  for (let i = 0; i < 4; i++) {
+    const lit = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.26), (i % 3 === 0 ? labLitWarm : labLitCool).clone());
+    lit.position.set(0, 1.15 + i * 1.05, 0.56);
+    lit.userData.phase = seed + i * 1.7;
+    rack.add(lit);
+    lights.push(lit);
+  }
+  rack.onBeforeRender = () => {
+    const t = performance.now() / 1000;
+    for (const lit of lights) lit.material.opacity = 0.12 + 0.1 * (0.5 + 0.5 * Math.sin(t * 0.6 + lit.userData.phase));
+  };
+  labBack.add(rack);
+}
+buildLabRack(-13.5, -15.5, 0);
+buildLabRack(15, -16, 3.1);
+
+// A dim back shelf with a few canisters — the bench-clutter kit again, pushed
+// back and darkened so it reads as depth, not detail.
+const labShelf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.16, 1.1), labMat);
+labShelf.position.set(-2, 3.1, -15.6);
+labBack.add(labShelf);
+for (let i = 0; i < 4; i++) {
+  const h = 0.6 + (i % 3) * 0.18;
+  const canister = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, h, 12), labMat);
+  canister.position.set(-5.2 + i * 1.2, 3.1 + h / 2 + 0.08, -15.6);
+  labBack.add(canister);
 }
 
 // ---------------------------------------------------------------------------
@@ -904,8 +969,7 @@ function rebuildSceneForScope() {
       swarmUniforms.uValenceStart.value = Math.min(...scopeState.staged.map((s) => s.valenceStart));
     }
   }
-  swarmGroup.quaternion.copy(scopeState.quat);
-  ghostGroup.quaternion.copy(scopeState.quat);
+  applyMolSpin();
   scopeState.displayScale = Math.min(tuner.atomScale, scopeState.fitLimit || Infinity);
   const entries = [];
   if (scopeState.mode === 'molecule') {
@@ -1118,7 +1182,7 @@ function loadElement(symbol) {
 }
 
 // ---------------------------------------------------------------------------
-// Pointer input — orbit drag, vial hover/click, wheel zoom.
+// Pointer input — drag spins the specimen (camera stays put), vial hover/click, wheel zoom.
 
 const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
@@ -1133,10 +1197,11 @@ canvas.addEventListener('pointermove', (e) => {
   if (dragging && downXY) {
     const dx = e.clientX - downXY[0], dy = e.clientY - downXY[1];
     moved += Math.abs(e.movementX) + Math.abs(e.movementY);
-    orbit.tYaw = orbit.yaw + dx * -0.004;
-    orbit.tPitch = THREE.MathUtils.clamp(orbit.pitch + dy * 0.003, -0.05, 0.85);
+    _spinDelta.setFromAxisAngle(MOL_SPIN_Y, dx * 0.006);
+    molSpin.tQ.premultiply(_spinDelta);
+    _spinDelta.setFromAxisAngle(MOL_SPIN_X, dy * 0.006);
+    molSpin.tQ.premultiply(_spinDelta);
     downXY = [e.clientX, e.clientY];
-    orbit.yaw = orbit.tYaw - (orbit.tYaw - orbit.yaw) * 0.5;
     orbit.lastInput = performance.now() / 1000;
   } else {
     pointerNdc.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
@@ -1318,6 +1383,7 @@ function frame() {
   if (now - orbit.lastInput > 6 && !dragging) orbit.tYaw += tuner.orbitSpeed * dt;
 
   applyCamera();
+  applyMolSpin();
   updateSwarm(dt);
   updateNuclei(simTime);
   updateCollapse();

@@ -1,5 +1,17 @@
 [
   {
+    "id": "cute-animal-overload",
+    "title": "Cute Animal Overload",
+    "synopsis": "It's nothing but kittens and puppies and capybaras and owl babies in a beautiful vale full of sunlight, flowers, and rich, green grass",
+    "vibe": "cuteness overload",
+    "links": "",
+    "sound": "",
+    "ideas": "",
+    "updated": "2026-08-04T02:45:33.128Z",
+    "status": "draft",
+    "created": "2026-08-04T02:45:33.129Z"
+  },
+  {
     "id": "battle-level-w-the-jabberwocky-rifle",
     "title": "Battle Level w the Jabberwocky Rifle",
     "synopsis": "Doom-like first person shooter where the only weapon shoots a huge variety of unpredictable things at the enemies",
@@ -25,13 +37,13 @@
   },
   {
     "id": "marble-drop-rebuild-one-level",
-    "title": "Marble Drop rebuild one level",
+    "title": "Marble Drop rebuild",
     "synopsis": "",
     "vibe": "",
     "links": "https://en.wikipedia.org/wiki/Marble_Drop",
     "sound": "",
     "ideas": "",
-    "updated": "2026-07-28T05:15:58.010Z",
+    "updated": "2026-08-04T02:45:57.854Z",
     "status": "draft",
     "created": "2026-07-27T05:00:14.549Z"
   },
