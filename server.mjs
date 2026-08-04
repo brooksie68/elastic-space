@@ -847,6 +847,20 @@ const furnitureTypes = new Set([
   // y (hang height in meters) on top of the furniture item shape
   "art-wesee", "art-calendar", "art-workrules", "art-happiness", "art-wanted",
   "art-lift", "art-zip", "art-delivery", "art-lost",
+  // the furnishing expansion (2026-08-03): GLB props, tables, bookshelf,
+  // the house sign, and tabletop clutter (surf items carry a y like art)
+  "chair", "couch", "plant-big", "plant-small",
+  "coffee-table", "work-table", "big-table", "bookshelf",
+  "parcel", "svc-coffee", "svc-donuts", "svc-lunchbox",
+  "svc-scale", "svc-twine", "svc-ledger",
+  "art-housesign",
+  "desk", "cabinet-bank", "radio",
+  "svc-lamp", "svc-mug", "svc-papers", "svc-rts",
+  "rug", "rug-2", "pigeonholes", "art-postmaster",
+  "coat-rack", "radiator", "art-corkboard", "oil-tank",
+  "art-tally-dead", "art-tally-claimed", "art-wallclock",
+  "bookshelf-2", "coffee-maker", "mug-green", "lunchbox-2",
+  "welcome-mat", "art-exitsign", "open-book", "wastebasket", "floor-lamp",
 ]);
 function validateFurnitureLayout(layout) {
   if (!Array.isArray(layout.items)) {
@@ -870,8 +884,8 @@ function validateFurnitureLayout(layout) {
     if (item.scale < 0.4 || item.scale > 2) {
       return `Item ${i}: scale out of range (0.4-2).`;
     }
-    if (item.shade < 0.4 || item.shade > 1.6) {
-      return `Item ${i}: shade out of range (0.4-1.6).`;
+    if (item.shade < 0.4 || item.shade > 2.6) {
+      return `Item ${i}: shade out of range (0.4-2.6).`;
     }
     if (item.seed !== undefined && !Number.isInteger(item.seed)) {
       return `Item ${i}: seed must be an integer.`;

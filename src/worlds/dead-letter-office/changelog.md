@@ -3,6 +3,221 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-03 — Claude (Fable 5) — the great furnishing expansion (r13)
+
+James's brief: make (nearly) everything arrangeable, flip the desk, more pipes,
+fix the light shafts, walk a touch faster — clean room now, new postmaster next.
+
+- **Everything placeable.** New FURNITURE types: `chair`, `couch`, `plant-big`,
+  `plant-small`, `coffee-table`, `work-table` (the donut table), `big-table`
+  (door table), `bookshelf`, `parcel`, and the tabletop `svc-*` clutter
+  (coffee service, donuts, lunchbox, parcel scale, twine, ledger+ink). The
+  house sign is wall art now (`art-housesign`, appended to James's saved
+  layout at its old spot). GLB types clone Meshy props with per-item materials
+  (glbFurnSource/fillGlbFurniture); their old fixed-prop/STATIC_BOXES copies
+  are gone. Fixed set that remains: desk + chair + dressing, basket, furnace,
+  radio, cabinets, pigeonholes, radiator, corkboard/clock/tallies/STAIRS.
+- **Surface items** (`surf: true`): no camera keep-out, carry a `y`, and in
+  arrange mode they raycast onto whatever's under the cursor — tables,
+  shelves, other parcels, or the floor. Arrange panel regrouped into
+  furniture / tabletop / wall art with headers, panel scrolls.
+- **The desk flip.** Desk faces the room (center z −4.9, rotY π), chair
+  between desk and wall, John Dough works BEHIND it — new `desk` station
+  (1.85, −5.42) facing the room, reached via new nav node `deskW` through the
+  west gap. Desk dressing mirrored (lamp/mug/papers/RTS sign). New concept:
+  `PM_LANES` — floor he may walk that the camera may not (the strip behind
+  the desk); the nav sim exempts lane points in TEST 3.
+- **Dynamic stations.** `coffee` anchors to the first placed `work-table`,
+  `couch` to the first placed `couch` (refreshDynStations: stand-off in front
+  of the item, auto-wired to the nearest clear hub). No item → routine
+  retires quietly. James's current cleaned layout has neither, so those
+  routines are dormant until he refurnishes.
+- **Pipes**: fat 0.15 r steam main (E–W + N–S branch), return line, mid-room
+  run, four risers punching the ceiling with collar flanges.
+- **Light shafts**: each is now two planes crossed on the beam axis, and every
+  plane's opacity fades by view angle each frame — edge-on it dissolves
+  instead of reading as a floating pane of glass. Side falloff baked into the
+  texture; `tune.shaft` still scales it.
+- **Camera walk +10%** (2.2 → 2.42 m/s; wheel dolly matched, TOP_SPEED cap
+  unchanged).
+- **Sim**: restored to its canonical path `tmp/dead-letter-office/
+  nav-fuzz-sim.mjs` (it had been shuffled into `_files/` where its relative
+  world.js path breaks); updated for surf filtering + PM_LANES. 60/60 green
+  against BOTH James's saved layout and the reseeded DLO_DEFAULT_LAYOUT
+  (classic furnishing as placeables; work-table moved west of the desk — its
+  old spot blocked the new desk approach).
+- server.mjs `furnitureTypes` extended with all new types.
+- NOT eyeballed in-world (sound world, stays out of the pane) — James flies
+  it next. Open questions for his pass: RTS sign readability, lamp/mug spots
+  on the flipped desk, chair-behind-desk clearance, shaft fade strength.
+
+Round two, same session (James: "silly not to have it there" + the reset):
+
+- **The desk set is placeable too**: `desk` (GLB), the chair stays the generic
+  `chair` placeable, and the dressing became `svc-lamp` / `svc-mug` /
+  `svc-papers` / `svc-rts` surface items — dressDesk() is gone; only the JOHN
+  DOUGH wall sign stays fixed. The banker's-lamp PointLight anchors to the
+  first placed svc-lamp (dark when none; tuner respects it).
+- **The file cabinets are placeable**: `cabinet-bank` (the whole 5×2 bank as
+  one item, drawer fronts on its facing side, one drawer randomly left open).
+- **The radio is placeable** (it had to be — it sits on the bank): keeps its
+  Meshy textures (`keepMats`), stays click-toggleable, glow mats + RADIO_POS
+  follow the placed item, record.cleanup deregisters on remove.
+- **Dynamic stations grew**: `desk` and `cabinets` join coffee/couch. Approach
+  wiring got smarter — no own-box exemption anymore; when no straight hub walk
+  is clear (the behind-the-desk case) it wires hub → side node → station so he
+  walks AROUND his desk. Postmaster homes at wander1 if no desk exists.
+- **"clear the room"** button in arrange mode: native confirm, removes every
+  placed item (furniture, clutter, art), nothing saved until "save layout".
+- STATIC_BOXES is down to pigeonholes + radiator; PM_LANES now empty (kept for
+  the sim contract). Both layouts reseeded with desk set + bank + radio; both
+  sim runs 52/52 green. The nav-warning + shade machinery skips
+  `keepEmissive` mats (lamp glow, radio dial).
+
+Round three, same session (James: "add the rug, the postmaster sign, and the
+thing that is like shelves with reams of paper"):
+
+- **The rug is placeable** (`rug`): surf-flagged so it has NO keep-out (you
+  walk over a rug) but it sits in the furniture palette, not tabletop; its
+  threadbare texture draws per-item from the seed. Old fixed rug removed.
+- **The JOHN DOUGH sign is wall art** (`art-postmaster`, drawPostmasterSign)
+  — the last fixed piece of the desk corner. Seeded into both layouts at its
+  wall spot above where the desk stood.
+- **The pigeonholes are placeable** (`pigeonholes`): same cubbies + legs +
+  resident bundles, built local-space; slot positions are recorded locally
+  (PIGEON_LOCAL_SLOTS) and refreshDynStations maps the FIRST placed unit's
+  slots to world space. `pigeon` joined the dynamic stations; with no unit
+  placed (or none reachable) the basket routine burns everything instead of
+  filing — pmFileCarried also self-guards mid-walk. The old pigeonhole
+  static box shrank to just the coat-rack corner.
+- Sim 49/49 green against James's saved layout (rug/pigeonholes/postmaster
+  sign appended at their classic spots); server allowlist grew the three
+  types; arrange palette picks them up automatically.
+
+Round four, same session: **rug two** (`rug-2`, James's brief: 1920s–30s
+oriental, dark reddish-maroon + brown with gold woven in, symmetrical floral
+filigree). Drawn procedurally in-engine (not a Blender bake — no asset file,
+live shade, per-item wear) with strict 4-way quadrant symmetry: lobed central
+medallion, corner spandrel fans, gold filigree vines, rosette-and-diamond main
+border between guard bands, knotted fringe on the short ends. 4.4 × 3.06 m.
+If the drawn look misses, the fallback is a Meshy tile / Blender bake swap.
+
+Round five, same session — **the blank-canvas pass** (James: place everything
+organically first, repath the postmaster after):
+
+- **The postmaster is BENCHED**: `PM_ENABLED = false` skips his loader; every
+  pm path already guards on pmModel, so he simply never exists. The loading
+  poster now lifts when the last prop lands. Flip the flag + re-run the sim
+  to rehire him.
+- **Arrange nav warnings OFF** (`NAV_WARN = false` in arrange.js): nothing can
+  block a walk that isn't happening — no red items, place anything anywhere.
+  Flip back on at rehire time.
+- **Coat rack, radiator, corkboard are placeables**: `coat-rack` (pole + pegs
+  + mail bag), `radiator` (fins + feed pipe, long side along x), and
+  `art-corkboard` (wall art; the pm corkboard routine is a dynamic station
+  now, anchored to wherever the board hangs — refreshDynStations learned to
+  anchor to wall-art items, no side-step fallback for art).
+- **STATIC_BOXES is empty** — every camera keep-out now derives from placed
+  items. PM_STATIONS lost its last furniture entry (corkboard).
+- **Art seeding gated**: DLO_DEFAULT_ART seeds fresh visitors (no layout file)
+  only. A SAVED empty layout stays empty — James's blank canvas is
+  authoritative. His layout.js is currently `items: []` on purpose.
+- Sims 46/46 green (empty layout, no static boxes). Server restarted by James
+  mid-session, then allowlist grew coat-rack/radiator/art-corkboard — **needs
+  one more restart before the next save layout.**
+Round six, same session — arrange-mode quality of life (James's asks):
+
+- **Per-item LOCK** ("you stay"): `lock in place` / `unlock` button; a locked
+  item can't be picked up, dragged, wheeled, slid, or deleted — clicking it
+  just shows its lock state (grey box helper) while the camera drags right
+  past. Duplicates of a locked item start free. `locked: true` rides the
+  layout JSON (server writes items verbatim — no server change, no restart).
+  "clear the room" still removes locked items (it has its own confirm).
+- Palette buttons alphabetized by label within each group; panel font bumped
+  a point (13px base / 12px buttons).
+- Also this round: `rug-2` seeded nowhere on purpose; oil-tank Meshy prompt
+  handed to James (first render good, floating feed-valve to be re-rolled
+  with the bottom-fittings line removed; import plan: scale to 2.05 m, rusty
+  iron in-engine, `oil-tank` placeable).
+
+Round seven, same session — **the oil tank** (James's Meshy generation, 2026-08-04
+early): 10k-tri remeshed tank verified by headless-Blender render (the 31.6MB
+canvas GLB stays in tmp/_files). House tile route on James's call — Meshy
+text-to-image rust tile (3cr, nano-banana) → `assets/textures/rust-tile.jpg`
+(1024 jpg) + `texRust` (never-black fallback, clone registry); Blender strip
+pass killed the baked 4K steel maps and cube-projected UVs at 0.5m/unit →
+`assets/props/oiltank.glb` (444KB). `oil-tank` placeable (gh 2.05m,
+prop_oiltank rust material, repeat 0.4). KNOWN WART: the generation's floating
+feed valve under the belly is baked into the mesh — James decides: delete the
+disconnected island in the strip pass (artifact cleanup) or re-roll the model.
+Server allowlist +oil-tank (restart still pending). Sims 46/46.
+
+Round eight, same session — **James's Meshy prop batch + live counters**:
+
+- The drum counters are placeable wall art: `art-tally-dead` / `art-tally-
+  claimed` (WALL_ART `live:` entries — every placed copy shares the runtime
+  canvas via LIVE_ART_TEX, so the count keeps ticking wherever they hang;
+  unlit like the old fixed signs). Fixed addSigns removed.
+- The drawn 3:11 clock is GONE (James's call) — replaced by his Meshy pendulum
+  clock as `art-wallclock`, the first GLB wall-art entry (buildArtItem grew a
+  glb branch: centered mesh, pushed off the wall by depth/2, faint dual-atlas
+  self-light). WALL_ART glb defs: gh (hang height), depth, w (panel-only).
+- Four more of his canvas props, render-verified then baked (decimate + 1024
+  WebP in headless Blender; 72MB of canvas GLBs → 6.3MB in assets/props):
+  `bookshelf-2` book rack (steel, floor, 63k tris), `coffee-maker` (surf),
+  `mug-green` (surf), `lunchbox-2` Vault-Tec (surf). All keepMats; the
+  keepMats path now damps Meshy dual-atlas emissive to 0.25 generically.
+- Arrange QoL (same round, earlier): footprint-aware wall clamp (bookshelf
+  back can kiss the wall; rotation re-clamps; surf clutter reaches wall-side
+  desk tops) + world-click highlights the item's palette button (green/orange
+  border) and scrolls it into view.
+- Oil tank: James reports the redone tank has the valve attached + two end
+  valves; his call is the current one is fine, no further action. (If the
+  in-repo oiltank.glb still shows the floating valve in-world, re-run the
+  strip pass on whichever GLB he drops next — pipeline is in this changelog.)
+- Server allowlist +7 types. Sims 46/46. Server restart still pending before
+  the next layout save.
+
+Rounds nine+ (late night into 08-04, James furnishing live, features on demand):
+
+- Arrange QoL: per-item lock grew L-key toggle + orange selected outline +
+  select-while-locked; palette alphabetized + font bump; footprint-aware wall
+  clamp; world-click highlights the palette button; spawn-IN-HAND (new items
+  ride the cursor, click sets down, Esc cancels — no more lamps born inside
+  desks); Ctrl+S saves; art drags on wall PLANES (the pendulum-clock corner-
+  snap bug) and carries height in the same drag; art also mounts on vertical
+  furniture faces (JOHN DOUGH sign on the desk front); shade range 0.5–2.5
+  (server 0.4–2.6).
+- Movement: walk 2.42→2.78, TOP_SPEED 3.5, Shift = 2× sprint, R/F eye height
+  promoted from arrange-only to the live view (smooth, floor→rafters);
+  ceiling fixtures ghost to 10% ONLY while the eye is inside their ~1m bubble
+  (per-fixture mats — everything else stays solid).
+- More placeables from James's Meshy batch: exit sign (art glb, def.glow),
+  open book, wastebasket (first `wear:` user — rust composited at 15% at
+  load), floor lamp with a REAL light (pool of four, anchored to the first
+  four placed). Welcome mat converted. PM shelves relabeled "PM shelf: …".
+- Rust tile regraded in place (45% desat, umber tint) after James's "too red,
+  like old paint" — tank + wear users inherit on refresh, zero credits.
+- **THE POSTMASTER IS REHIRED** (PM_ENABLED true, NAV_WARN true) against
+  James's fully furnished 60-item room — sim 44/44. His window station moved
+  to the south-west window (the oil tank owns the west one now) and
+  approaches via H4 only, nudged to (-5.6, 4.8) to clear James's shelf by
+  the strict arrange-warning rule. James's layout always wins; routes bend
+  around it.
+- NEXT SESSION (James, at wrap, happy — "a really good night... months
+  getting here"): bring in the CC5 John Dough proper (tmp/dead-letter-office/
+  cc5-bake/john-dough.glb, see item 0.5) — sizing against desk + chair, then
+  animations + voice (he's picking a voice). The current Meshy postmaster
+  retires with honors — AGREED (James: "we definitely should do that"): he
+  gets a framed portrait as a placeable wall-art item, hung in the office
+  he used to run. Render the old model for the frame before anything else
+  touches him.
+
+- REHIRE CHECKLIST for the repath session: PM_ENABLED true, NAV_WARN true,
+  re-run nav sim against James's final layout, sanity-check dynamic stations
+  (desk/coffee/couch/cabinets/pigeon/corkboard) against where he actually put
+  things, and re-tune nav hubs if his room shape moved the walkable lanes.
+
 ## 2026-08-02/03 — Claude (Fable 5) + James — John Dough dressed, baked, web-ready
 
 - Accessories night in CC5, James driving with Claude coaching by screenshot:

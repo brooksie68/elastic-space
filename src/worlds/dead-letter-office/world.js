@@ -1050,6 +1050,22 @@ const bulbLights = [];
 const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0 });
 const shadeMat = new THREE.MeshStandardMaterial({ color: 0x243026, roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
 const cordMat = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.9 });
+
+// Ghost-through (James, 2026-08-04): fixtures stay fully solid to look at —
+// but the ONE the camera is flying through fades out just while the eye is
+// inside its bubble, so passing never fills the screen with fixture guts.
+// Per-fixture material clones make the fade individual.
+const ceilingFixtures = [];   // { pos, mats, fade }
+function ghostable(mats, x, y, z) {
+  const clones = mats.map((m) => {
+    const c = m.clone();
+    c.transparent = true;
+    return c;
+  });
+  ceilingFixtures.push({ pos: new THREE.Vector3(x, y, z), mats: clones, fade: 1 });
+  return clones;
+}
+
 for (const [x, y, z, lit] of BULBS) {
   if (lit) {
     const pt = new THREE.PointLight(0xffc87a, 1.5, 13, 1.6);
@@ -1057,12 +1073,13 @@ for (const [x, y, z, lit] of BULBS) {
     bulbLights.push(pt);
     scene.add(pt);
   }
+  const [gCord, gShade, gBulb] = ghostable([cordMat, shadeMat, bulbMat], x, y, z);
   const cordLen = ROOM.h - y - 0.18;
-  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, cordLen + 0.36, 5), cordMat);
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, cordLen + 0.36, 5), gCord);
   cord.position.set(x, y + 0.18 + cordLen / 2, z);
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.13, 18, 1, true), shadeMat);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.13, 18, 1, true), gShade);
   shade.position.set(x, y + 0.1, z);
-  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), bulbMat);
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), gBulb);
   glass.position.set(x, y, z);
   scene.add(cord, shade, glass);
 }
@@ -1076,16 +1093,17 @@ const fluorTubeMat = new THREE.MeshBasicMaterial({ color: 0xe4f2e2 });
 const fluorBodyMat = new THREE.MeshStandardMaterial({ color: 0x8a9088, roughness: 0.5, metalness: 0.6 });
 function fluorFixture(x, y, z, ry, lit) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.07, 0.28), fluorBodyMat);
+  const [gBody, gTube, gCord] = ghostable([fluorBodyMat, fluorTubeMat, cordMat], x, y, z);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.07, 0.28), gBody);
   g.add(body);
   for (const off of [-0.07, 0.07]) {
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.15, 10), fluorTubeMat);
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.15, 10), gTube);
     tube.rotation.z = Math.PI / 2;
     tube.position.set(0, -0.05, off);
     g.add(tube);
   }
   for (const rx of [-0.45, 0.45]) {
-    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, ROOM.h - y, 5), cordMat);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, ROOM.h - y, 5), gCord);
     rod.position.set(rx, (ROOM.h - y) / 2, 0);
     g.add(rod);
   }
@@ -1111,6 +1129,15 @@ fluorFixture(8.1, 3.05, -2.2, Math.PI / 2, false);  // file cabinet bank (emissi
 const lampLight = new THREE.PointLight(0x9adb6e, 1.8, 5, 1.8);
 lampLight.position.set(2.12, 1.1, -4.68);
 scene.add(lampLight);
+
+// warm pool for the placeable floor lamps (anchored in refreshDynStations;
+// dark until a 'floor-lamp' item exists). Four real lights max (raised from
+// two 2026-08-04 when James hit the cap) — watch the frame rate before more.
+const floorLampLights = [0, 1, 2, 3].map(() => {
+  const l = new THREE.PointLight(0xffd9a0, 0, 6, 1.8);
+  scene.add(l);
+  return l;
+});
 
 // furnace embers — flickers in the loop; flares when a letter goes in
 const furnaceLight = new THREE.PointLight(0xff7a2e, 1.1, 7, 1.8);
@@ -1206,6 +1233,18 @@ const texWood = tileTex('assets/textures/wood.png', (g, px) => {
     g.fillRect(x + 1, 0, plank - 2, px);
   }
 });
+// aged rusty iron (2026-08-04, the oil tank — Meshy tile, 3cr): charcoal-brown
+// steel fallback with orange rust blooms until the real tile loads
+const texRust = tileTex('assets/textures/rust-tile.jpg', (g, px) => {
+  g.fillStyle = '#3a322c'; g.fillRect(0, 0, px, px);
+  for (let k = 0; k < 70; k++) {
+    g.fillStyle = jitter(k % 3 ? '#8a5424' : '#5a2a1e', 0.2);
+    g.beginPath();
+    g.ellipse(Math.random() * px, Math.random() * px, 6 + Math.random() * 26,
+      4 + Math.random() * 14, Math.random() * Math.PI, 0, Math.PI * 2);
+    g.fill();
+  }
+});
 
 // per-surface UV scaling: one shared texture, geometry carries the repeat
 function uvScale(geo, sx, sy) {
@@ -1285,6 +1324,23 @@ const matPaper = new THREE.MeshLambertMaterial({ color: 0xd8cdae });
   pipe(0.055, 18, 0, ROOM.h - 0.62, 4.85, 0, Math.PI / 2);
   pipe(0.07, ROOM.h, -8.6, ROOM.h / 2, -4.6, 0, 0);                // corner downpipe
   pipe(0.045, ROOM.h, 8.55, ROOM.h / 2, -4.9, 0, 0);
+  // the heating plant's arteries (2026-08-03, James: "there's a bunch of
+  // radiators upstairs that are probably getting heat from down here") — a fat
+  // insulated steam main with risers punching up through the ceiling, plus a
+  // second bank of runs so the ceiling reads like a working basement
+  pipe(0.15, 18, 0, ROOM.h - 0.28, -2.3, 0, Math.PI / 2);          // the steam main, east-west
+  pipe(0.15, 12, 6.2, ROOM.h - 0.3, 0, Math.PI / 2, 0);            // main's north-south branch
+  pipe(0.09, 18, 0, ROOM.h - 0.55, -2.62, 0, Math.PI / 2);         // return line under the main
+  pipe(0.06, 12, -3.4, ROOM.h - 0.45, 0, Math.PI / 2, 0);          // mid-room north-south run
+  // risers: where the heat leaves for the radiators upstairs
+  pipe(0.085, 1.1, -4.9, ROOM.h - 0.55, -2.3, 0, 0);
+  pipe(0.085, 1.1, 1.7, ROOM.h - 0.55, -2.3, 0, 0);
+  pipe(0.085, 1.1, 6.2, ROOM.h - 0.55, 2.9, 0, 0);
+  pipe(0.06, 1.0, -3.4, ROOM.h - 0.5, 3.8, 0, 0);
+  // elbow collars where the risers meet the main (a little flange thickness)
+  for (const [ex, ez] of [[-4.9, -2.3], [1.7, -2.3], [6.2, 2.9]]) {
+    pipe(0.105, 0.16, ex, ROOM.h - 0.24, ez, 0, 0);
+  }
   scene.add(new THREE.Mesh(mergeGeometries(pipeGeos), matPipe));
 }
 
@@ -1311,8 +1367,10 @@ function addSign(tex, w, h, x, y, z, ry, { lit = false } = {}) {
   return m;
 }
 
-// DEAD LETTER OFFICE — the house sign, north wall
-addSign(signTexture(1024, 512, (g, w, h) => {
+// DEAD LETTER OFFICE — the house sign. Placeable wall art since 2026-08-03
+// (James: control everything on the walls) — the drawing lives here, the
+// placement lives in the layout via WALL_ART 'art-housesign'.
+function drawHouseSign(g, w, h) {
   g.fillStyle = '#1c262b'; g.fillRect(0, 0, w, h);
   g.strokeStyle = '#5a6a66'; g.lineWidth = 10; g.strokeRect(14, 14, w - 28, h - 28);
   g.fillStyle = '#c9b483';
@@ -1324,31 +1382,23 @@ addSign(signTexture(1024, 512, (g, w, h) => {
   g.font = '700 44px "Arial Narrow", Impact, sans-serif';
   g.fillStyle = '#8a9a90';
   g.fillText('WE  DELIVER  NOWHERE', w / 2, 452);
-}), 2.4, 1.2, -0.8, 2.55, ROOM.z0 + 0.02, 0);
+}
 
-// stopped wall clock — 3:11, forever
-addSign(signTexture(256, 256, (g) => {
-  g.clearRect(0, 0, 256, 256);
-  g.fillStyle = '#d8cdae';
-  g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = '#26221c'; g.lineWidth = 12;
-  g.beginPath(); g.arc(128, 128, 114, 0, Math.PI * 2); g.stroke();
-  g.fillStyle = '#26221c';
-  for (let i = 0; i < 12; i++) {
-    const a = i * Math.PI / 6;
-    g.save(); g.translate(128, 128); g.rotate(a);
-    g.fillRect(-4, -104, 8, 22);
-    g.restore();
-  }
-  const hand = (a, len, wdt) => {
-    g.save(); g.translate(128, 128); g.rotate(a);
-    g.fillRect(-wdt / 2, -len, wdt, len + 12);
-    g.restore();
-  };
-  hand((3 + 11 / 60) / 12 * Math.PI * 2, 58, 10);  // hour: 3:11
-  hand(11 / 60 * Math.PI * 2, 92, 6);              // minute
-  g.beginPath(); g.arc(128, 128, 9, 0, Math.PI * 2); g.fill();
-}), 0.66, 0.66, 2.6, 2.9, ROOM.z0 + 0.02, 0);
+// POSTMASTER JOHN DOUGH — his name plate, placeable wall art (2026-08-03)
+function drawPostmasterSign(g, w, h) {
+  g.fillStyle = '#211d16'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#9a8446'; g.lineWidth = 8; g.strokeRect(7, 7, w - 14, h - 14);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#b09a64';
+  g.font = '700 56px "Courier New", monospace';
+  g.fillText('POSTMASTER', w / 2, 54);
+  g.fillStyle = '#d8bd85';
+  g.font = '700 74px "Courier New", monospace';
+  g.fillText('JOHN DOUGH', w / 2, 128);
+}
+
+// (the drawn stopped clock is GONE — 2026-08-04, James's call: replaced by
+// the Meshy pendulum wall clock, placeable as 'art-wallclock')
 
 // tally boards — mechanical drum counters (2026-07-28, James: "look mechanical").
 // Each digit lives in its own riveted window on a rolling wheel: brushed housing,
@@ -1429,8 +1479,9 @@ function drawTally(g, w, h, label, value) {
 }
 const texTallyDead = tallyTexture('dead', 'DEAD LETTERS', String(deadLettersTotal).padStart(7, '0'));
 const texTallyClaimed = tallyTexture('claimed', 'CLAIMED', '0000017');
-addSign(texTallyDead, 1.35, 0.53, -6.9, 3.15, ROOM.z0 + 0.02, 0, { lit: true });
-addSign(texTallyClaimed, 1.35, 0.53, -6.9, 2.5, ROOM.z0 + 0.02, 0, { lit: true });
+// The drum counters are placeable wall art since 2026-08-04 ('art-tally-*').
+// Their textures live HERE and keep counting; every placed copy shares them.
+const LIVE_ART_TEX = { tallyDead: texTallyDead, tallyClaimed: texTallyClaimed };
 function bumpDeadLetters() {
   deadLettersTotal += 1;
   const t = tallyCtx.dead;
@@ -1445,7 +1496,7 @@ function bumpDeadLetters() {
 
 // high barred windows with cool light shafts — three now (2026-07-22): it's the
 // dead letter office, not a dungeon; the upstairs world leaks in cozily
-const shaftMat = (() => {
+const shaftTex = (() => {
   const c = document.createElement('canvas');
   c.width = 64; c.height = 256;
   const g = c.getContext('2d');
@@ -1453,12 +1504,25 @@ const shaftMat = (() => {
   gr.addColorStop(0, 'rgba(157,184,204,0.9)');
   gr.addColorStop(1, 'rgba(157,184,204,0)');
   g.fillStyle = gr; g.fillRect(0, 0, 64, 256);
-  const t = new THREE.CanvasTexture(c);
-  return new THREE.MeshBasicMaterial({
-    map: t, transparent: true, opacity: tune.shaft,
-    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-  });
+  // soft horizontal falloff so the crossed planes have no hard side edges
+  const side = g.createLinearGradient(0, 0, 64, 0);
+  side.addColorStop(0, 'rgba(0,0,0,1)');
+  side.addColorStop(0.28, 'rgba(0,0,0,0)');
+  side.addColorStop(0.72, 'rgba(0,0,0,0)');
+  side.addColorStop(1, 'rgba(0,0,0,1)');
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = side; g.fillRect(0, 0, 64, 256);
+  return new THREE.CanvasTexture(c);
 })();
+const shaftMatTemplate = () => new THREE.MeshBasicMaterial({
+  map: shaftTex, transparent: true, opacity: tune.shaft,
+  blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+});
+// each shaft = two planes crossed on the beam axis; per-frame each plane fades
+// by how face-on it is to the camera, so walking around one never shows the
+// old floating-pane-of-glass edge (James, 2026-08-03)
+const shaftPlanes = [];
+const shaftToCam = new THREE.Vector3();
 // a bit of sky outside the panes (2026-07-28, James): pale overcast blue with
 // slow clouds, drawn once — the world upstairs, seen from below the sidewalk
 const skyTex = (() => {
@@ -1524,10 +1588,18 @@ function mkWindow(x, z, ry) {
   scene.add(g);
 }
 function mkShaft(x, y, z, zRoll) {
-  const shaft = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 4.6), shaftMat);
-  shaft.position.set(x, y, z);
-  shaft.rotation.set(0, Math.PI / 2, zRoll);
-  scene.add(shaft);
+  const crossTurn = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+  for (let k = 0; k < 2; k++) {
+    const mat = shaftMatTemplate();
+    const shaft = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 4.6), mat);
+    shaft.position.set(x, y, z);
+    shaft.rotation.set(0, Math.PI / 2, zRoll);
+    if (k === 1) shaft.quaternion.multiply(crossTurn);   // crossed on the beam axis
+    scene.add(shaft);
+    shaft.updateMatrixWorld(true);
+    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(shaft.quaternion);
+    shaftPlanes.push({ mesh: shaft, mat, normal });
+  }
 }
 mkWindow(ROOM.x0 + 0.06, -2.0, Math.PI / 2);   // west (the original)
 mkShaft(ROOM.x0 + 1.65, 1.85, -1.6, 0.62);
@@ -1536,23 +1608,9 @@ mkShaft(-5.2, 1.85, ROOM.z1 - 1.6, -0.62);
 mkWindow(5.8, ROOM.z1 - 0.06, Math.PI);
 mkShaft(5.5, 1.85, ROOM.z1 - 1.6, -0.62);
 
-// radiator under the window — its fins speak a little Morse
-{
-  const fins = [];
-  for (let i = 0; i < 9; i++) {
-    const g = new THREE.CylinderGeometry(0.05, 0.05, 0.78, 8);
-    g.translate(0, 0, i * 0.115 - 0.46);
-    fins.push(g);
-  }
-  const top = new THREE.CylinderGeometry(0.035, 0.035, 1.05, 8);
-  top.rotateX(Math.PI / 2);
-  top.translate(0, 0.36, 0);
-  fins.push(top);
-  const rad = new THREE.Mesh(mergeGeometries(fins),
-    new THREE.MeshStandardMaterial({ color: 0x5a5148, roughness: 0.6, metalness: 0.5 }));
-  rad.position.set(ROOM.x0 + 0.32, 0.42, -2.0);
-  scene.add(rad);
-}
+// (the radiator became the 'radiator' placeable, 2026-08-03 — buildRadiator
+// in the furniture catalog. Its fins still speak a little Morse, wherever
+// James parks it.)
 
 // the stairwell door — a drift exit. Metal, wire glass, somewhere above: stairs.
 const doorMeshes = new Set();
@@ -1587,13 +1645,8 @@ const doorMeshes = new Set();
   knob.position.set(ROOM.x0 + 0.13, 1.05, 2.18);
   scene.add(knob);
   doorMeshes.add(knob);
-  addSign(signTexture(256, 96, (g, w, h) => {
-    g.fillStyle = '#8a8064'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#26221c';
-    g.font = '700 54px "Courier New", monospace';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('STAIRS ↗', w / 2, h / 2 + 2);
-  }), 0.56, 0.21, ROOM.x0 + 0.03, 2.62, 2.6, Math.PI / 2);
+  // (the drawn STAIRS ↗ plate retired 2026-08-04 — James's Meshy EXIT sign
+  // is placeable wall art now, 'art-exitsign')
 }
 
 // punch clock beside the door, amber and counting your shift
@@ -1633,111 +1686,23 @@ const punchClockMeshes = new Set();
 
 /* ================= north wall: pigeonholes ================= */
 
-const pigeonholeSlots = [];   // world positions envelopes fly into
-{
-  const unit = new THREE.Group();
-  const COLS = 6, ROWS = 4, CW = 0.5, CH = 0.42, DEEP = 0.4;
-  const W = COLS * CW + 0.08, H = ROWS * CH + 0.08;
-  const back = new THREE.Mesh(uvScale(new THREE.BoxGeometry(W, H, 0.04), W / WOOD_TILE, H / WOOD_TILE), matWood);
-  back.position.set(0, H / 2, -DEEP / 2);
-  unit.add(back);
-  const shelfGeos = [];
-  for (let r = 0; r <= ROWS; r++) {
-    const g = new THREE.BoxGeometry(W, 0.035, DEEP);
-    g.translate(0, r * CH + 0.02, 0);
-    shelfGeos.push(g);
-  }
-  for (let cIdx = 0; cIdx <= COLS; cIdx++) {
-    const g = new THREE.BoxGeometry(0.035, H, DEEP);
-    g.translate(cIdx * CW - W / 2 + 0.04, H / 2, 0);
-    shelfGeos.push(g);
-  }
-  unit.add(new THREE.Mesh(uvScale(mergeGeometries(shelfGeos), 2, 2), matWood));
-  // a few resident bundles
-  for (let k = 0; k < 7; k++) {
-    const cIdx = Math.floor(Math.random() * COLS), r = Math.floor(Math.random() * ROWS);
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1 + Math.random() * 0.14, 0.24), matPaper);
-    b.position.set(cIdx * CW - W / 2 + CW / 2 + 0.04, r * CH + 0.12, 0.02);
-    b.rotation.y = (Math.random() - 0.5) * 0.3;
-    unit.add(b);
-  }
-  unit.position.set(6.25, 0.86, ROOM.z0 + 0.26);
-  scene.add(unit);
-  // stout legs
-  for (const lx of [-W / 2 + 0.1, W / 2 - 0.1]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.86, 0.3), matWood);
-    leg.position.set(6.25 + lx, 0.43, ROOM.z0 + 0.26);
-    scene.add(leg);
-  }
-  for (let cIdx = 0; cIdx < COLS; cIdx++) {
-    for (let r = 0; r < ROWS; r++) {
-      pigeonholeSlots.push(new THREE.Vector3(
-        6.25 + cIdx * CW - W / 2 + CW / 2 + 0.04,
-        0.86 + r * CH + 0.2,
-        ROOM.z0 + 0.42));
-    }
-  }
-}
+// The unit itself is the 'pigeonholes' placeable since 2026-08-03
+// (buildPigeonholes in the furniture catalog). This array holds the WORLD
+// slot positions envelopes fly into — refreshDynStations rebuilds it from
+// the first placed unit; empty means nowhere to file (he burns instead).
+const pigeonholeSlots = [];
 
 /* ================= east wall: the file cabinet bank, coat rack ============== */
 
 // A double-deep bank of green filing cabinets (2026-07-22, James): five wide
 // along the wall, two rows deep. The lone cabinet + coffee hotplate it replaces
 // moved on: coffee service lives on the donut table by the desk now.
-let cabinetTopY = 1.32;
-const cabMat = new THREE.MeshStandardMaterial({ color: 0x4e5a54, roughness: 0.55, metalness: 0.5 });
-const handleMat = new THREE.MeshStandardMaterial({ color: 0x9a8a5a, metalness: 0.8, roughness: 0.4 });
-{
-  const drawerGeos = [], handleGeos = [], bodyGeos = [];
-  for (let row = 0; row < 2; row++) {
-    for (let i = 0; i < 5; i++) {
-      const cx = 8.55 - row * 0.68, cz = -3.9 + i * 0.72;
-      const body = new THREE.BoxGeometry(0.62, 1.32, 0.66);
-      body.translate(cx, 0.66, cz);
-      bodyGeos.push(body);
-      if (row === 1) {   // only the room-facing row shows drawer fronts
-        for (let d = 0; d < 4; d++) {
-          const dr = new THREE.BoxGeometry(0.03, 0.26, 0.56);
-          dr.translate(cx - 0.33, 0.24 + d * 0.31, cz);
-          drawerGeos.push(dr);
-          const h = new THREE.BoxGeometry(0.03, 0.035, 0.16);
-          h.translate(cx - 0.36, 0.3 + d * 0.31, cz);
-          handleGeos.push(h);
-        }
-      }
-    }
-  }
-  scene.add(new THREE.Mesh(mergeGeometries(bodyGeos), cabMat));
-  scene.add(new THREE.Mesh(mergeGeometries(drawerGeos), matIron));
-  scene.add(new THREE.Mesh(mergeGeometries(handleGeos), handleMat));
-  // one drawer left open, papers poking out — nobody closes anything down here
-  const open = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.24, 0.54), cabMat);
-  open.position.set(7.65, 1.13, -2.46);
-  scene.add(open);
-  const openPapers = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.44), matPaper);
-  openPapers.position.set(7.62, 1.27, -2.46);
-  openPapers.rotation.z = 0.08;
-  scene.add(openPapers);
-}
+// (the fixed cabinet bank became the 'cabinet-bank' placeable, 2026-08-03 —
+// buildCabinetBank in the furniture catalog; the radio is a placeable too and
+// rides wherever the bank goes)
 
-// coat rack with the postmaster's off-duty coat and mail bag (he is never off duty)
-{
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.9, 8), matWood);
-  pole.position.set(8.4, 0.95, -5.35);
-  scene.add(pole);
-  for (let i = 0; i < 3; i++) {
-    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6), matWood);
-    peg.position.set(8.4, 1.72 - i * 0.06, -5.35);
-    peg.rotation.z = Math.PI / 2 - 0.4;
-    peg.rotation.y = i * 2.1;
-    scene.add(peg);
-  }
-  const bag = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 10),
-    new THREE.MeshStandardMaterial({ color: 0x7a6a4c, roughness: 0.95 }));
-  bag.position.set(8.28, 1.28, -5.18);
-  bag.scale.set(1, 1, 0.6);
-  scene.add(bag);
-}
+// (the coat rack — pole, pegs, and the mail bag that never goes out — became
+// the 'coat-rack' placeable, 2026-08-03; buildCoatRack in the catalog)
 
 /* ================= the bookshelf (boring manuals + romance novels) =========== */
 
@@ -1791,33 +1756,8 @@ function bookRowTex(kind) {
     }
   });
 }
-{
-  const SH_X = 8.69, SH_Z = 1.1, SH_W = 1.4, SH_H = 1.88, SH_D = 0.32;
-  const side = (z) => {
-    const m = new THREE.Mesh(uvScale(new THREE.BoxGeometry(SH_D, SH_H, 0.05), 0.3, 1.6), matWood);
-    m.position.set(SH_X, SH_H / 2, z);
-    scene.add(m);
-  };
-  side(SH_Z - SH_W / 2); side(SH_Z + SH_W / 2);
-  const back = new THREE.Mesh(uvScale(new THREE.BoxGeometry(0.04, SH_H, SH_W), 1.2, 1.6), matWood);
-  back.position.set(SH_X + SH_D / 2 - 0.02, SH_H / 2, SH_Z);
-  scene.add(back);
-  const rowKinds = ['manuals', 'manuals', 'romance', 'romance'];
-  for (let s = 0; s < 5; s++) {                       // 5 boards: bottom to top
-    const y = 0.06 + s * (SH_H - 0.12) / 4;
-    const board = new THREE.Mesh(uvScale(new THREE.BoxGeometry(SH_D, 0.045, SH_W), 0.3, 1.4), matWood);
-    board.position.set(SH_X, y, SH_Z);
-    scene.add(board);
-    if (s < 4) {                                      // books above this board
-      const row = new THREE.Mesh(
-        new THREE.PlaneGeometry(SH_W - 0.1, 0.36),
-        new THREE.MeshLambertMaterial({ map: bookRowTex(rowKinds[s]) }));
-      row.position.set(SH_X - SH_D / 2 + 0.09, y + 0.21, SH_Z);
-      row.rotation.y = -Math.PI / 2;
-      scene.add(row);
-    }
-  }
-}
+// (the fixed bookshelf became the 'bookshelf' arrange-mode placeable,
+// 2026-08-03 — buildBookshelf in the furniture catalog section)
 
 /* ================= the archive stacks (2026-07-27, James's brief) ============ */
 
@@ -1962,7 +1902,8 @@ const boxAtlasTex = (() => {
   t.anisotropy = maxAniso;
   return t;
 })();
-const matBoxAtlas = new THREE.MeshLambertMaterial({ map: boxAtlasTex });
+// (matBoxAtlas retired with the cabinet-top strays, 2026-08-03 — furniture
+// items each get their own boxAtlasTex Lambert via furnitureMaterial)
 const matShelfSteel = new THREE.MeshStandardMaterial({ color: 0x4a4f46, roughness: 0.5, metalness: 0.6 });
 
 // remap one BoxGeometry face's unit UVs into an atlas tile
@@ -2005,14 +1946,60 @@ function archiveBoxGeo(rnd) {
 // footprint used for camera keep-outs and the nav-edge warning — plain
 // literals so the Node sim can eval this block straight from source.
 const FURNITURE = {
-  'shelf-double': { label: 'shelf row (2-sided)', len: 3.0, dep: 0.85, h: 2.06, levels: 4, fill: 0.92, double: true, fw: 3.14, fd: 0.99 },
-  'shelf-single': { label: 'wall shelf', len: 1.7, dep: 0.42, h: 2.06, levels: 4, fill: 0.92, double: false, fw: 1.84, fd: 0.56 },
-  'shelf-tall': { label: 'tall shelf', len: 2.2, dep: 0.42, h: 2.62, levels: 5, fill: 0.92, double: false, fw: 2.34, fd: 0.56 },
-  'shelf-sparse': { label: 'half-empty shelf', len: 2.2, dep: 0.42, h: 2.06, levels: 4, fill: 0.45, double: false, fw: 2.34, fd: 0.56 },
+  // the PM's archive shelving (renamed 2026-08-04, James: "I can't tell
+  // what's what" — these are the letter-box stacks he gathers and catalogs)
+  'shelf-double': { label: 'PM shelf: 2-sided row', len: 3.0, dep: 0.85, h: 2.06, levels: 4, fill: 0.92, double: true, fw: 3.14, fd: 0.99 },
+  'shelf-single': { label: 'PM shelf: wall', len: 1.7, dep: 0.42, h: 2.06, levels: 4, fill: 0.92, double: false, fw: 1.84, fd: 0.56 },
+  'shelf-tall': { label: 'PM shelf: tall', len: 2.2, dep: 0.42, h: 2.62, levels: 5, fill: 0.92, double: false, fw: 2.34, fd: 0.56 },
+  'shelf-sparse': { label: 'PM shelf: half-empty', len: 2.2, dep: 0.42, h: 2.06, levels: 4, fill: 0.45, double: false, fw: 2.34, fd: 0.56 },
   'stack-3': { label: 'stack of 3 boxes', n: 3, fw: 0.62, fd: 0.56 },
   'stack-2': { label: 'stack of 2 boxes', n: 2, fw: 0.62, fd: 0.56 },
   'box': { label: 'lone box', n: 1, fw: 0.56, fd: 0.5 },
   'crate': { label: 'wooden crate', fw: 1.0, fd: 0.8 },
+  // the great furnishing expansion (2026-08-03, James: "arrange everything in
+  // a perfectly human way like a man would do it at work down there").
+  // glb entries clone a Meshy prop; table entries are [w, d, h] wood tables;
+  // surf entries are tabletop clutter — no camera keep-out, they carry a y
+  // (surface height) and raycast onto whatever they're dropped on.
+  'chair': { label: 'office chair', glb: 'chair.glb', gh: 0.96, fw: 0.6, fd: 0.6 },
+  'couch': { label: 'the couch', glb: 'couch.glb', gh: 0.8, fw: 2.2, fd: 1.0 },
+  'plant-big': { label: 'plant (floor)', glb: 'plant.glb', gh: 0.72, tint: 0xc9a070, fw: 0.5, fd: 0.5 },
+  'plant-small': { label: 'plant (small)', glb: 'plant.glb', gh: 0.3, tint: 0xd0b088, surf: true, fw: 0.3, fd: 0.3 },
+  'coffee-table': { label: 'coffee table', table: [1.1, 0.5, 0.42], fw: 1.25, fd: 0.65 },
+  'work-table': { label: 'work table', table: [1.15, 0.62, 0.78], fw: 1.3, fd: 0.75 },
+  'big-table': { label: 'big table', table: [1.55, 0.85, 0.78], fw: 1.7, fd: 1.0 },
+  'bookshelf': { label: 'bookshelf', book: 1, fw: 1.55, fd: 0.5 },
+  'desk': { label: 'the desk', glb: 'desk.glb', gh: 1.42, fw: 2.0, fd: 1.0 },
+  'cabinet-bank': { label: 'file cabinets', cab: 1, fw: 3.7, fd: 1.5 },
+  'radio': { label: 'the radio', glb: 'radio.glb', gh: 0.3, surf: true, keepMats: true, radio: true, fw: 0.4, fd: 0.3 },
+  'svc-lamp': { label: "banker's lamp", surf: true, fw: 0.3, fd: 0.3 },
+  'svc-mug': { label: 'coffee mug', glb: 'mug.glb', gh: 0.105, surf: true, fw: 0.15, fd: 0.15 },
+  'svc-papers': { label: 'paper reams', surf: true, fw: 0.3, fd: 0.4 },
+  'svc-rts': { label: 'return-to-sender sign', surf: true, fw: 0.32, fd: 0.1 },
+  'parcel': { label: 'wrapped parcel', surf: true, fw: 0.5, fd: 0.45 },
+  'svc-coffee': { label: 'coffee service', surf: true, fw: 0.45, fd: 0.35 },
+  'svc-donuts': { label: 'box of donuts', surf: true, fw: 0.5, fd: 0.4 },
+  'svc-lunchbox': { label: 'lunchbox', surf: true, fw: 0.35, fd: 0.25 },
+  'svc-scale': { label: 'parcel scale', surf: true, fw: 0.4, fd: 0.4 },
+  'svc-twine': { label: 'ball of twine', surf: true, fw: 0.2, fd: 0.2 },
+  'svc-ledger': { label: 'ledger + ink', surf: true, fw: 0.5, fd: 0.5 },
+  // flat floor pieces: no keep-out (you walk over a rug), wheel still rotates
+  'rug': { label: 'the rug', rug: 1, surf: true, fw: 4.4, fd: 3.2 },
+  'rug-2': { label: 'rug two (oriental)', rug: 2, surf: true, fw: 4.4, fd: 3.06 },
+  'welcome-mat': { label: 'welcome mat', wmat: 1, surf: true, fw: 0.95, fd: 0.55 },
+  'coat-rack': { label: 'coat rack', rack: 1, fw: 0.55, fd: 0.55 },
+  'radiator': { label: 'radiator', radi: 1, fw: 1.15, fd: 0.3 },
+  'oil-tank': { label: 'oil tank', glb: 'oiltank.glb', gh: 2.05, fw: 3.5, fd: 1.15 },
+  // James's Meshy batch (2026-08-04): keepMats = they wear their own textures
+  'bookshelf-2': { label: 'book rack (steel)', glb: 'bookshelf2.glb', gh: 1.55, keepMats: true, fw: 1.85, fd: 1.0 },
+  'coffee-maker': { label: 'coffee maker', glb: 'coffeemaker.glb', gh: 0.32, keepMats: true, surf: true, fw: 0.25, fd: 0.25 },
+  'mug-green': { label: 'mug (green)', glb: 'greenmug.glb', gh: 0.1, keepMats: true, surf: true, fw: 0.12, fd: 0.12 },
+  'lunchbox-2': { label: 'lunchbox (vault-tec)', glb: 'lunchbox2.glb', gh: 0.17, keepMats: true, surf: true, fw: 0.2, fd: 0.12 },
+  'open-book': { label: 'open book', glb: 'openbook.glb', gh: 0.09, keepMats: true, surf: true, fw: 0.42, fd: 0.32 },
+  'wastebasket': { label: 'wastebasket', glb: 'wastebasket.glb', gh: 0.41, keepMats: true, surf: true, wear: { alpha: 0.15, repeat: 2 }, fw: 0.3, fd: 0.3 },
+  'floor-lamp': { label: 'floor lamp', glb: 'floorlamp.glb', gh: 1.7, keepMats: true, fw: 0.45, fd: 0.45 },
+  // the letter rack he files into — its slots ride the item (refreshDynStations)
+  'pigeonholes': { label: 'pigeonholes', pig: 1, fw: 3.25, fd: 0.65 },
 };
 
 function buildShelf(def, rnd) {
@@ -2090,6 +2077,667 @@ function buildCrate(def, rnd) {
   return [{ geo: g, mat: 'wood' }];
 }
 
+/* ---- the furnishing builders (2026-08-03): tables, bookshelf, GLB props,
+   tabletop clutter. Every part material is per-item so shade stays live. ---- */
+
+// per-part material with its own shade base (applyShade owns .color after this)
+function ownMat(color, opts = {}, lambert = false) {
+  const m = lambert
+    ? new THREE.MeshLambertMaterial(opts)
+    : new THREE.MeshStandardMaterial(opts);
+  m.color.setHex(color);
+  m.userData.shadeBase = new THREE.Color(color);
+  return m;
+}
+
+// shared parcel look: brown paper + twine cross (moved up 2026-08-03 — the
+// 'parcel' placeable builds at layout time, before the old definition site)
+const texParcel = canvasBase(128, (g, px) => {
+  g.fillStyle = '#a58a62'; g.fillRect(0, 0, px, px);
+  g.fillStyle = 'rgba(122,98,64,0.5)';
+  g.fillRect(px * 0.44, 0, px * 0.12, px);
+  g.fillRect(0, px * 0.44, px, px * 0.12);
+});
+const matParcel = new THREE.MeshLambertMaterial({ map: texParcel });
+
+function buildTable(def) {
+  const [w, d, h] = def.table;
+  const geos = [];
+  const top = uvScale(new THREE.BoxGeometry(w, 0.06, d), w / WOOD_TILE, d / WOOD_TILE);
+  top.translate(0, h - 0.03, 0);
+  geos.push(top);
+  for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const leg = new THREE.BoxGeometry(0.06, h - 0.06, 0.06);
+    leg.translate(lx * (w / 2 - 0.07), (h - 0.06) / 2, lz * (d / 2 - 0.07));
+    geos.push(leg);
+  }
+  return [{ geo: mergeGeometries(geos), mat: 'wood' }];
+}
+
+// the bookshelf, reborn as a placeable: front faces +z at rotY 0
+function buildBookshelf() {
+  const W = 1.4, H = 1.88, D = 0.32;
+  const woodGeos = [];
+  for (const sx of [-1, 1]) {
+    const g = uvScale(new THREE.BoxGeometry(0.05, H, D), 0.3, 1.6);
+    g.translate(sx * (W / 2), H / 2, 0);
+    woodGeos.push(g);
+  }
+  const back = uvScale(new THREE.BoxGeometry(W, H, 0.04), 1.2, 1.6);
+  back.translate(0, H / 2, -D / 2 + 0.02);
+  woodGeos.push(back);
+  const parts = [];
+  const rowKinds = ['manuals', 'manuals', 'romance', 'romance'];
+  for (let s = 0; s < 5; s++) {                       // 5 boards: bottom to top
+    const y = 0.06 + s * (H - 0.12) / 4;
+    const board = uvScale(new THREE.BoxGeometry(W, 0.045, D), 1.4, 0.3);
+    board.translate(0, y, 0);
+    woodGeos.push(board);
+    if (s < 4) {                                      // books above this board
+      const row = new THREE.PlaneGeometry(W - 0.1, 0.36);
+      row.translate(0, y + 0.21, D / 2 - 0.09);
+      const m = new THREE.MeshLambertMaterial({ map: bookRowTex(rowKinds[s]) });
+      m.userData.shadeBase = new THREE.Color(0xffffff);
+      parts.push({ geo: row, mat: m });
+    }
+  }
+  parts.unshift({ geo: mergeGeometries(woodGeos), mat: 'wood' });
+  return parts;
+}
+
+// the file cabinet bank as one placeable: 5 wide, 2 deep, drawer fronts +z,
+// one drawer left open with papers — nobody closes anything down here
+function buildCabinetBank(def, rnd) {
+  const bodyGeos = [], drawerGeos = [], handleGeos = [];
+  for (let row = 0; row < 2; row++) {
+    const z = row === 0 ? 0.34 : -0.34;
+    for (let i = 0; i < 5; i++) {
+      const lx = (i - 2) * 0.72;
+      const body = new THREE.BoxGeometry(0.66, 1.32, 0.62);
+      body.translate(lx, 0.66, z);
+      bodyGeos.push(body);
+      if (row === 0) {   // only the front row shows drawer fronts
+        for (let d = 0; d < 4; d++) {
+          const dr = new THREE.BoxGeometry(0.56, 0.26, 0.03);
+          dr.translate(lx, 0.24 + d * 0.31, 0.66);
+          drawerGeos.push(dr);
+          const h = new THREE.BoxGeometry(0.16, 0.035, 0.03);
+          h.translate(lx, 0.3 + d * 0.31, 0.69);
+          handleGeos.push(h);
+        }
+      }
+    }
+  }
+  const openAt = (Math.floor(rnd() * 5) - 2) * 0.72;
+  const open = new THREE.BoxGeometry(0.54, 0.24, 0.4);
+  open.translate(openAt, 1.13, 0.8);
+  bodyGeos.push(open);
+  const openPapers = new THREE.BoxGeometry(0.44, 0.05, 0.3);
+  openPapers.rotateZ(0.08);
+  openPapers.translate(openAt - 0.02, 1.27, 0.82);
+  return [
+    { geo: mergeGeometries(bodyGeos), mat: ownMat(0x4e5a54, { roughness: 0.55, metalness: 0.5 }) },
+    { geo: mergeGeometries(drawerGeos), mat: ownMat(0x2b2b2d, { roughness: 0.55, metalness: 0.7 }) },
+    { geo: mergeGeometries(handleGeos), mat: ownMat(0x9a8a5a, { metalness: 0.8, roughness: 0.4 }) },
+    { geo: openPapers, mat: ownMat(0xd8cdae, {}, true) },
+  ];
+}
+
+// the rug: threadbare wool drawn per-item (each one wears differently), flat
+// on whatever it lands on, no keep-out — feet and casters go right over it
+function buildRug(def, rnd) {
+  const texRug = signTexture(512, 340, (g, w, h) => {
+    g.fillStyle = '#5e2f28'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#8a5a3a'; g.lineWidth = 14; g.strokeRect(18, 18, w - 36, h - 36);
+    g.strokeStyle = '#3a5a50'; g.lineWidth = 6; g.strokeRect(38, 38, w - 76, h - 76);
+    g.fillStyle = '#8a5a3a';
+    g.save(); g.translate(w / 2, h / 2); g.rotate(Math.PI / 4);
+    g.fillRect(-60, -60, 120, 120);
+    g.restore();
+    g.fillStyle = '#3a5a50';
+    g.beginPath(); g.arc(w / 2, h / 2, 34, 0, Math.PI * 2); g.fill();
+    for (let k = 0; k < 40; k++) {   // threadbare wear
+      g.fillStyle = `rgba(200,180,150,${0.04 + rnd() * 0.05})`;
+      g.beginPath();
+      g.ellipse(rnd() * w, rnd() * h, 14 + rnd() * 30, 6 + rnd() * 14,
+        rnd() * Math.PI, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+  const geo = new THREE.PlaneGeometry(4.4, 3.2);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0.006, 0);
+  const m = new THREE.MeshLambertMaterial({ map: texRug });
+  m.userData.shadeBase = new THREE.Color(0xffffff);
+  return [{ geo, mat: m }];
+}
+
+// rug two (2026-08-03, James): an old-timey 1920s–30s oriental — deep
+// reddish-maroon and brown field, gold woven through, symmetrical floral
+// filigree. Drawn with strict four-way quadrant symmetry: everything in
+// quadrant() is mirrored across both axes, so the design always reads woven,
+// never scattered.
+function buildRug2(def, rnd) {
+  const tex = signTexture(1024, 712, (g, w, h) => {
+    const maroon = '#4d2026', maroonDeep = '#3a181d', brown = '#5a3a28',
+      gold = '#b08d46', goldPale = '#c9a95e';
+    const FR = 18;                                   // fringe margin, short ends
+    g.fillStyle = maroon; g.fillRect(FR, 0, w - FR * 2, h);
+    // fringe: knotted cream threads off both short ends
+    g.strokeStyle = 'rgba(205,190,158,0.9)'; g.lineWidth = 2.5; g.lineCap = 'round';
+    for (let y = 8; y < h - 4; y += 8) {
+      g.beginPath(); g.moveTo(FR + 1, y); g.lineTo(4, y + (rnd() - 0.5) * 5); g.stroke();
+      g.beginPath(); g.moveTo(w - FR - 1, y); g.lineTo(w - 4, y + (rnd() - 0.5) * 5); g.stroke();
+    }
+    // border bands: brown guard / gold main / brown guard, framing the field
+    const bandRect = (inset, lw, color) => {
+      g.strokeStyle = color; g.lineWidth = lw;
+      g.strokeRect(FR + inset, inset, w - 2 * (FR + inset), h - 2 * inset);
+    };
+    bandRect(10, 10, brown);
+    bandRect(30, 26, maroonDeep);                    // main band ground
+    bandRect(52, 8, brown);
+    // main-band ornament: alternating gold rosettes and diamond leaves
+    const rosette = (x, y, r, color) => {
+      g.fillStyle = color;
+      for (let p = 0; p < 8; p++) {
+        const a = p * Math.PI / 4;
+        g.beginPath();
+        g.ellipse(x + Math.cos(a) * r * 0.55, y + Math.sin(a) * r * 0.55,
+          r * 0.42, r * 0.2, a, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.fillStyle = maroonDeep;
+      g.beginPath(); g.arc(x, y, r * 0.22, 0, Math.PI * 2); g.fill();
+    };
+    const diamond = (x, y, r) => {
+      g.fillStyle = brown;
+      g.beginPath();
+      g.moveTo(x - r, y); g.lineTo(x, y - r * 0.6); g.lineTo(x + r, y); g.lineTo(x, y + r * 0.6);
+      g.closePath(); g.fill();
+    };
+    const bandMid = 30 + 13;
+    for (let i = 0; ; i++) {                         // top + bottom runs
+      const x = FR + 52 + i * 46;
+      if (x > w - FR - 52) break;
+      (i % 2 ? diamond : rosette)(x, bandMid, i % 2 ? 14 : 11, gold);
+      (i % 2 ? diamond : rosette)(x, h - bandMid, i % 2 ? 14 : 11, gold);
+    }
+    for (let i = 1; ; i++) {                         // left + right runs
+      const y = bandMid + i * 46;
+      if (y > h - bandMid - 20) break;
+      (i % 2 ? diamond : rosette)(FR + bandMid, y, i % 2 ? 14 : 11, gold);
+      (i % 2 ? diamond : rosette)(w - FR - bandMid, y, i % 2 ? 14 : 11, gold);
+    }
+    // the field, in strict 4-way symmetry
+    const cx = w / 2, cy = h / 2;
+    const fieldW = w / 2 - FR - 64, fieldH = h / 2 - 64;
+    const quadrant = () => {
+      // corner spandrel: quarter-rosette fan in the field corner
+      g.fillStyle = brown;
+      g.beginPath(); g.moveTo(fieldW, fieldH);
+      g.arc(fieldW, fieldH, 86, Math.PI, Math.PI * 1.5); g.closePath(); g.fill();
+      g.fillStyle = goldPale;
+      g.beginPath(); g.moveTo(fieldW, fieldH);
+      g.arc(fieldW, fieldH, 60, Math.PI, Math.PI * 1.5); g.closePath(); g.fill();
+      g.fillStyle = maroonDeep;
+      g.beginPath(); g.moveTo(fieldW, fieldH);
+      g.arc(fieldW, fieldH, 34, Math.PI, Math.PI * 1.5); g.closePath(); g.fill();
+      // filigree vine: corner toward the medallion, leaves + florets on it
+      g.strokeStyle = gold; g.lineWidth = 4; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(fieldW - 62, fieldH - 62);
+      g.bezierCurveTo(fieldW * 0.62, fieldH * 0.9, fieldW * 0.7, fieldH * 0.42, 176, 96);
+      g.stroke();
+      g.lineWidth = 2.5;
+      g.beginPath();
+      g.moveTo(fieldW * 0.72, fieldH * 0.78);
+      g.bezierCurveTo(fieldW * 0.5, fieldH * 0.95, fieldW * 0.34, fieldH * 0.7, fieldW * 0.3, fieldH * 0.5);
+      g.stroke();
+      for (const [lx, ly, la] of [
+        [fieldW * 0.66, fieldH * 0.74, 0.6], [fieldW * 0.5, fieldH * 0.62, 1.2],
+        [fieldW * 0.38, fieldH * 0.46, 2.0], [fieldW * 0.31, fieldH * 0.58, 2.7],
+      ]) {
+        g.fillStyle = brown;
+        g.beginPath(); g.ellipse(lx, ly, 16, 7, la, 0, Math.PI * 2); g.fill();
+        g.fillStyle = goldPale;
+        g.beginPath(); g.ellipse(lx, ly, 8, 3.2, la, 0, Math.PI * 2); g.fill();
+      }
+      rosette(212, 128, 15, goldPale);
+      rosette(fieldW * 0.62, fieldH * 0.33, 12, gold);
+    };
+    for (const sx of [1, -1]) {
+      for (const sy of [1, -1]) {
+        g.save(); g.translate(cx, cy); g.scale(sx, sy); quadrant(); g.restore();
+      }
+    }
+    // central medallion: lobed gold ring, brown ring, maroon heart, rosette
+    const lobed = (R, lobes, color) => {
+      g.fillStyle = color;
+      g.beginPath();
+      for (let t = 0; t <= Math.PI * 2 + 0.01; t += Math.PI / 64) {
+        const r = R * (1 + 0.09 * Math.cos(lobes * t));
+        const px = cx + Math.cos(t) * r * 1.35, py = cy + Math.sin(t) * r;
+        if (t === 0) g.moveTo(px, py); else g.lineTo(px, py);
+      }
+      g.closePath(); g.fill();
+    };
+    lobed(112, 12, gold);
+    lobed(96, 12, maroonDeep);
+    lobed(64, 8, brown);
+    rosette(cx, cy, 30, goldPale);
+    // threadbare wear, gentler than rug one — it was the good rug once
+    for (let k = 0; k < 34; k++) {
+      g.fillStyle = `rgba(205,185,155,${0.025 + rnd() * 0.04})`;
+      g.beginPath();
+      g.ellipse(rnd() * w, rnd() * h, 12 + rnd() * 28, 5 + rnd() * 12,
+        rnd() * Math.PI, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+  const geo = new THREE.PlaneGeometry(4.4, 3.06);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0.006, 0);
+  const m = new THREE.MeshLambertMaterial({ map: tex });
+  m.userData.shadeBase = new THREE.Color(0xffffff);
+  return [{ geo, mat: m }];
+}
+
+// the welcome mat: coir bristle, worn WELCOME, flat like the rugs
+function buildWelcomeMat(def, rnd) {
+  const texMat = signTexture(384, 224, (g, w, h) => {
+    g.fillStyle = '#6e5b3e'; g.fillRect(0, 0, w, h);       // coir
+    for (let k = 0; k < 2600; k++) {                        // bristle noise
+      g.fillStyle = `rgba(${70 + rnd() * 60},${55 + rnd() * 45},${28 + rnd() * 26},0.5)`;
+      g.fillRect(rnd() * w, rnd() * h, 2, 1);
+    }
+    g.strokeStyle = '#3e3322'; g.lineWidth = 14; g.strokeRect(9, 9, w - 18, h - 18);
+    g.fillStyle = 'rgba(40,32,20,0.82)';
+    g.font = '700 58px Georgia, "Times New Roman", serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('WELCOME', w / 2, h / 2 + 2);
+    for (let k = 0; k < 26; k++) {                          // worn-through patches
+      g.fillStyle = 'rgba(110,91,62,0.5)';
+      g.beginPath();
+      g.ellipse(rnd() * w, rnd() * h,
+        6 + rnd() * 22, 3 + rnd() * 8, rnd() * Math.PI, 0, Math.PI * 2);
+      g.fill();
+    }
+  });
+  const geo = new THREE.PlaneGeometry(0.95, 0.55);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0.007, 0);
+  const m = new THREE.MeshLambertMaterial({ map: texMat });
+  m.userData.shadeBase = new THREE.Color(0xffffff);
+  return [{ geo, mat: m }];
+}
+
+// the coat rack: pole, three pegs, the mail bag (he is never off duty)
+function buildCoatRack() {
+  const woodGeos = [];
+  const pole = new THREE.CylinderGeometry(0.03, 0.045, 1.9, 8);
+  pole.translate(0, 0.95, 0);
+  woodGeos.push(pole);
+  for (let i = 0; i < 3; i++) {
+    const peg = new THREE.CylinderGeometry(0.015, 0.015, 0.22, 6);
+    peg.rotateZ(Math.PI / 2 - 0.4);
+    peg.rotateY(i * 2.1);
+    peg.translate(0, 1.72 - i * 0.06, 0);
+    woodGeos.push(peg);
+  }
+  const bag = new THREE.CapsuleGeometry(0.16, 0.3, 4, 10);
+  bag.scale(1, 1, 0.6);
+  bag.translate(-0.12, 1.28, 0.17);
+  return [
+    { geo: mergeGeometries(woodGeos), mat: 'wood' },
+    { geo: bag, mat: ownMat(0x7a6a4c, { roughness: 0.95 }) },
+  ];
+}
+
+// the radiator: nine fins and a feed pipe, long side along x at rotY 0.
+// Its fins still speak a little Morse. Mostly complaints.
+function buildRadiator() {
+  const fins = [];
+  for (let i = 0; i < 9; i++) {
+    const g = new THREE.CylinderGeometry(0.05, 0.05, 0.78, 8);
+    g.translate(i * 0.115 - 0.46, 0.42, 0);
+    fins.push(g);
+  }
+  const top = new THREE.CylinderGeometry(0.035, 0.035, 1.05, 8);
+  top.rotateZ(Math.PI / 2);
+  top.translate(0, 0.78, 0);
+  fins.push(top);
+  return [{ geo: mergeGeometries(fins), mat: ownMat(0x5a5148, { roughness: 0.6, metalness: 0.5 }) }];
+}
+
+// the pigeonholes, reborn as a placeable: cubbies open toward +z at rotY 0.
+// Slot positions are recorded in LOCAL space; refreshDynStations maps the
+// first placed unit's slots to world space for the filing routine.
+const PIGEON_LOCAL_SLOTS = [];
+function buildPigeonholes(def, rnd) {
+  const COLS = 6, ROWS = 4, CW = 0.5, CH = 0.42, DEEP = 0.4, LEG = 0.86;
+  const W = COLS * CW + 0.08, H = ROWS * CH + 0.08;
+  const woodGeos = [];
+  const back = uvScale(new THREE.BoxGeometry(W, H, 0.04), W / WOOD_TILE, H / WOOD_TILE);
+  back.translate(0, LEG + H / 2, -DEEP / 2);
+  woodGeos.push(back);
+  for (let r = 0; r <= ROWS; r++) {
+    const g = new THREE.BoxGeometry(W, 0.035, DEEP);
+    g.translate(0, LEG + r * CH + 0.02, 0);
+    woodGeos.push(g);
+  }
+  for (let cIdx = 0; cIdx <= COLS; cIdx++) {
+    const g = new THREE.BoxGeometry(0.035, H, DEEP);
+    g.translate(cIdx * CW - W / 2 + 0.04, LEG + H / 2, 0);
+    woodGeos.push(g);
+  }
+  for (const lx of [-W / 2 + 0.1, W / 2 - 0.1]) {      // stout legs
+    const leg = new THREE.BoxGeometry(0.08, LEG, 0.3);
+    leg.translate(lx, LEG / 2, 0);
+    woodGeos.push(leg);
+  }
+  const bundleGeos = [];
+  for (let k = 0; k < 7; k++) {                        // a few resident bundles
+    const cIdx = Math.floor(rnd() * COLS), r = Math.floor(rnd() * ROWS);
+    const b = new THREE.BoxGeometry(0.3, 0.1 + rnd() * 0.14, 0.24);
+    b.rotateY((rnd() - 0.5) * 0.3);
+    b.translate(cIdx * CW - W / 2 + CW / 2 + 0.04, LEG + r * CH + 0.12, 0.02);
+    bundleGeos.push(b);
+  }
+  if (!PIGEON_LOCAL_SLOTS.length) {
+    for (let cIdx = 0; cIdx < COLS; cIdx++) {
+      for (let r = 0; r < ROWS; r++) {
+        PIGEON_LOCAL_SLOTS.push(new THREE.Vector3(
+          cIdx * CW - W / 2 + CW / 2 + 0.04,
+          LEG + r * CH + 0.2,
+          DEEP / 2 - 0.04));
+      }
+    }
+  }
+  return [
+    { geo: uvScale(mergeGeometries(woodGeos), 2, 2), mat: 'wood' },
+    { geo: mergeGeometries(bundleGeos), mat: ownMat(0xd8cdae, {}, true) },
+  ];
+}
+
+let scaleDialTex = null;
+let rtsTex = null;
+const SURFACE_BUILDERS = {
+  'svc-lamp': () => {
+    const brassGeos = [];
+    const base = new THREE.CylinderGeometry(0.07, 0.09, 0.03, 12);
+    base.translate(0, 0.015, 0);
+    brassGeos.push(base);
+    const stem = new THREE.CylinderGeometry(0.014, 0.014, 0.3, 8);
+    stem.rotateZ(0.28);
+    stem.translate(0, 0.16, 0);
+    brassGeos.push(stem);
+    const shade = new THREE.SphereGeometry(0.13, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    shade.scale(1, 0.72, 0.62);
+    shade.translate(-0.06, 0.31, 0);
+    const shadeMat = ownMat(0x1d4a2a, {
+      roughness: 0.3, metalness: 0.2,
+      emissive: 0x2a6b30, emissiveIntensity: 0.7, side: THREE.DoubleSide,
+    });
+    shadeMat.userData.keepEmissive = true;     // the green glow IS the lamp
+    const disc = new THREE.CircleGeometry(0.11, 12);
+    disc.rotateX(-Math.PI / 2);
+    disc.translate(-0.06, 0.29, 0);
+    const discMat = new THREE.MeshBasicMaterial({ color: 0xd8ffb0, side: THREE.DoubleSide });
+    discMat.userData.shadeBase = new THREE.Color(0xd8ffb0);
+    return [
+      { geo: mergeGeometries(brassGeos), mat: ownMat(0x9a8446, { roughness: 0.3, metalness: 0.9 }) },
+      { geo: shade, mat: shadeMat },
+      { geo: disc, mat: discMat },
+    ];
+  },
+  'svc-papers': (rnd) => {
+    const geos = [];
+    let y = 0;
+    for (let i = 0; i < 3; i++) {
+      const th = 0.045;
+      const ream = new THREE.BoxGeometry(0.24, th, 0.32);
+      ream.rotateY((rnd() - 0.5) * 0.22);
+      ream.translate((rnd() - 0.5) * 0.03, y + th / 2, (rnd() - 0.5) * 0.03);
+      geos.push(ream);
+      y += th;
+    }
+    return [{ geo: mergeGeometries(geos), mat: ownMat(0xd8cdae, {}, true) }];
+  },
+  'svc-rts': () => {
+    if (!rtsTex) {
+      rtsTex = signTexture(256, 300, (g, w, h) => {
+        g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);
+        g.fillStyle = '#3a3226';
+        g.font = '700 44px "Courier New", monospace';
+        g.textAlign = 'center';
+        ['RETURN', 'TO', 'SENDER', 'TO', 'NOWHERE'].forEach((t, i) => g.fillText(t, w / 2, 56 + i * 52));
+      });
+    }
+    const g = new THREE.PlaneGeometry(0.3, 0.36);
+    g.rotateZ(0.04);
+    g.translate(0, 0.19, 0);
+    const m = new THREE.MeshLambertMaterial({ map: rtsTex, side: THREE.DoubleSide });
+    m.userData.shadeBase = new THREE.Color(0xffffff);
+    return [{ geo: g, mat: m }];
+  },
+  'parcel': (rnd) => {
+    const w = 0.3 + rnd() * 0.22, h = 0.18 + rnd() * 0.16, d = 0.24 + rnd() * 0.18;
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.rotateY((rnd() - 0.5) * 0.9);
+    g.translate(0, h / 2, 0);
+    const m = new THREE.MeshLambertMaterial({ map: texParcel });
+    m.userData.shadeBase = new THREE.Color(0xffffff);
+    return [{ geo: g, mat: m }];
+  },
+  'svc-coffee': () => {
+    const plate = new THREE.CylinderGeometry(0.11, 0.13, 0.05, 14);
+    plate.translate(-0.1, 0.025, 0);
+    const pot = new THREE.CylinderGeometry(0.09, 0.105, 0.19, 14);
+    pot.translate(-0.1, 0.145, 0);
+    const cups = [];
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.CylinderGeometry(0.035, 0.03, 0.07, 10);
+      c.translate(0.15, 0.035 + i * 0.072, -0.03);
+      cups.push(c);
+    }
+    return [
+      { geo: plate, mat: ownMat(0x2b2b2d, { roughness: 0.55, metalness: 0.7 }) },
+      { geo: pot, mat: ownMat(0x2a1c10, { roughness: 0.25 }) },
+      { geo: mergeGeometries(cups), mat: ownMat(0xd8d2c4, { roughness: 0.6 }) },
+    ];
+  },
+  'svc-donuts': (rnd) => {
+    const box = new THREE.BoxGeometry(0.42, 0.05, 0.3);
+    box.translate(0, 0.025, 0);
+    const boxMat = new THREE.MeshLambertMaterial({ map: texParcel });
+    boxMat.userData.shadeBase = new THREE.Color(0xffffff);
+    const byColor = new Map();
+    const icings = [0xc98a9a, 0x8a5a38, 0xd8c9a0];
+    for (let i = 0; i < 6; i++) {
+      const donut = new THREE.TorusGeometry(0.045, 0.02, 8, 14);
+      donut.rotateX(Math.PI / 2 + 0.1);
+      donut.rotateY(rnd() * Math.PI);
+      donut.translate(-0.11 + (i % 3) * 0.115, 0.065, -0.055 + Math.floor(i / 3) * 0.11);
+      const c = icings[i % 3];
+      if (!byColor.has(c)) byColor.set(c, []);
+      byColor.get(c).push(donut);
+    }
+    const parts = [{ geo: box, mat: boxMat }];
+    for (const [c, geos] of byColor) {
+      parts.push({ geo: mergeGeometries(geos), mat: ownMat(c, { roughness: 0.8 }) });
+    }
+    return parts;
+  },
+  'svc-lunchbox': () => {
+    const body = new THREE.BoxGeometry(0.3, 0.16, 0.14);
+    body.translate(0, 0.08, 0);
+    const handle = new THREE.TorusGeometry(0.05, 0.009, 6, 12, Math.PI);
+    handle.translate(0, 0.16, 0);
+    return [
+      { geo: body, mat: ownMat(0x3e5a48, { roughness: 0.5, metalness: 0.5 }) },
+      { geo: handle, mat: ownMat(0x2b2b2d, { roughness: 0.55, metalness: 0.7 }) },
+    ];
+  },
+  'svc-scale': () => {
+    if (!scaleDialTex) {
+      scaleDialTex = signTexture(128, 128, (g) => {
+        g.clearRect(0, 0, 128, 128);
+        g.fillStyle = '#d8d2c4';
+        g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#26221c'; g.lineWidth = 6;
+        g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.stroke();
+        g.lineWidth = 3;
+        for (let i = 0; i < 12; i++) {
+          const a = i * Math.PI / 6;
+          g.beginPath();
+          g.moveTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44);
+          g.lineTo(64 + Math.cos(a) * 52, 64 + Math.sin(a) * 52);
+          g.stroke();
+        }
+        g.lineWidth = 4;
+        g.beginPath(); g.moveTo(64, 64); g.lineTo(38, 34); g.stroke();   // stuck needle
+      });
+    }
+    const base = new THREE.BoxGeometry(0.3, 0.05, 0.3);
+    base.translate(0, 0.025, 0.05);
+    const col = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8);
+    col.translate(0, 0.2, -0.08);
+    const dial = new THREE.PlaneGeometry(0.2, 0.2);
+    dial.translate(0, 0.42, -0.08);
+    const dialMat = new THREE.MeshLambertMaterial({ map: scaleDialTex, transparent: true, side: THREE.DoubleSide });
+    dialMat.userData.shadeBase = new THREE.Color(0xffffff);
+    return [
+      { geo: mergeGeometries([base, col]), mat: ownMat(0x2b2b2d, { roughness: 0.55, metalness: 0.7 }) },
+      { geo: dial, mat: dialMat },
+    ];
+  },
+  'svc-twine': () => {
+    const g = new THREE.SphereGeometry(0.07, 10, 8);
+    g.translate(0, 0.07, 0);
+    return [{ geo: g, mat: ownMat(0xc9b98a, { roughness: 0.98 }) }];
+  },
+  'svc-ledger': () => {
+    const ledger = new THREE.BoxGeometry(0.3, 0.05, 0.42);
+    ledger.rotateY(-0.2);
+    ledger.translate(0.05, 0.025, 0.02);
+    const ink = new THREE.CylinderGeometry(0.03, 0.035, 0.07, 10);
+    ink.translate(-0.18, 0.035, -0.08);
+    return [
+      { geo: ledger, mat: ownMat(0x5a3a2a, { roughness: 0.7 }) },
+      { geo: ink, mat: ownMat(0x1a2438, { roughness: 0.3 }) },
+    ];
+  },
+};
+
+// GLB placeables clone a Meshy prop (chair / couch / plant) — the source loads
+// once per file, every item gets its own materials so shade stays per-item
+const furnLoader = new GLTFLoader();
+const glbFurnCache = new Map();
+function glbFurnSource(file) {
+  if (!glbFurnCache.has(file)) {
+    glbFurnCache.set(file, new Promise((resolve, reject) => {
+      furnLoader.load(`assets/props/${file}`, (gltf) => {
+        const src = gltf.scene;
+        const box = new THREE.Box3().setFromObject(src);
+        resolve({
+          src,
+          size: box.getSize(new THREE.Vector3()),
+          min: box.min.clone(),
+          center: box.getCenter(new THREE.Vector3()),
+        });
+      }, undefined, reject);
+    }));
+  }
+  return glbFurnCache.get(file);
+}
+// def.wear (2026-08-04, James's ask): stamp a tile over a prop's own texture
+// at light opacity — one composited canvas, one material, no transparency
+// pass. wear: { alpha: 0.15, repeat: 2 } rusts a black wastebasket gently.
+function applyWear(mat, wear) {
+  const srcImg = mat.map?.image;
+  if (!srcImg || !srcImg.width) return;
+  const c = document.createElement('canvas');
+  c.width = srcImg.width; c.height = srcImg.height;
+  const g = c.getContext('2d');
+  g.drawImage(srcImg, 0, 0);
+  g.globalAlpha = wear.alpha ?? 0.15;
+  const n = wear.repeat ?? 2;
+  const tile = texRust.image;                       // the shared rust canvas
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      g.drawImage(tile, i * c.width / n, j * c.height / n, c.width / n, c.height / n);
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = mat.map.colorSpace;
+  t.flipY = mat.map.flipY;
+  t.wrapS = mat.map.wrapS; t.wrapT = mat.map.wrapT;
+  t.anisotropy = mat.map.anisotropy;
+  mat.map = t;
+  if (mat.emissiveMap) mat.emissiveMap = t;         // dual-atlas: wear both copies
+}
+
+function fillGlbFurniture(record, def) {
+  glbFurnSource(def.glb).then(({ src, size, min, center }) => {
+    if (!furnitureRecords.includes(record)) return;   // removed while loading
+    const inst = src.clone(true);
+    const stem = def.glb.match(/(\w+)\.glb/)[1];
+    const mats = [];
+    inst.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      if (def.keepMats) {                             // Meshy-textured props keep their atlas
+        o.material = o.material.clone();
+        if (def.wear) applyWear(o.material, def.wear);
+        if (o.material.emissiveMap) {                 // dual-atlas: faint self-light, not 1.0
+          o.material.emissiveIntensity = 0.25;
+          o.material.userData.keepEmissive = true;
+        }
+      } else {
+        const name = o.material.name || '';
+        let key = Object.keys(PROP_MATERIALS).find((k) => name.startsWith(k));
+        if (!key) key = stem === 'plant' ? 'prop_plant_leaf' : 'prop_' + stem;
+        o.material = PROP_MATERIALS[key] ? PROP_MATERIALS[key]() : o.material.clone();
+      }
+      if (def.tint) o.material.color.multiply(new THREE.Color(def.tint));
+      o.material.userData.shadeBase = o.material.color.clone();
+      mats.push(o.material);
+    });
+    if (def.radio) {                                  // the placeable radio: clickable + glow
+      const meshes = [];
+      inst.traverse((o) => {
+        if (!o.isMesh) return;
+        propClickables.radio.add(o);
+        meshes.push(o);
+        if (o.material.emissiveMap) {
+          o.material.emissiveIntensity = radioOn ? 0.42 : 0.22;
+          o.material.userData.keepEmissive = true;
+          radioGlowMats.push(o.material);
+        }
+      });
+      hoverDirty = true;
+      record.cleanup = () => {
+        for (const o of meshes) {
+          propClickables.radio.delete(o);
+          const gi = radioGlowMats.indexOf(o.material);
+          if (gi >= 0) radioGlowMats.splice(gi, 1);
+        }
+        hoverDirty = true;
+      };
+    }
+    const norm = new THREE.Group();
+    inst.position.set(-center.x, -min.y, -center.z);
+    norm.add(inst);
+    norm.scale.setScalar(def.gh / size.y);
+    if (def.sink) norm.position.y = -def.sink;   // optional floor tuck
+    record.group.add(norm);
+    record.mats.push(...mats);
+    applyShade(record.mats, record.item.shade);
+    record.group.traverse((o) => { o.updateMatrix?.(); o.matrixAutoUpdate = false; });
+    record.group.updateMatrixWorld(true);
+  }).catch(() => console.warn('[dlo] furniture glb failed:', def.glb));
+}
+
 // per-item materials (map shared, color owns the shade) so shade is live-tunable
 const SHADE_BASE = { steel: 0x4a4f46, boxes: 0xffffff, wood: 0xffffff };
 function furnitureMaterial(kind) {
@@ -2104,7 +2752,9 @@ function furnitureMaterial(kind) {
 function applyShade(mats, shade) {
   for (const m of mats) {
     m.color.copy(m.userData.shadeBase).multiplyScalar(shade);
-    m.emissive?.setScalar(0);                       // clears any nav-warning tint
+    // clear any nav-warning tint — except mats whose emissive IS the look
+    // (the banker's-lamp shade, the radio's dial glow)
+    if (!m.userData.keepEmissive) m.emissive?.setScalar(0);
   }
 }
 
@@ -2113,25 +2763,38 @@ function buildFurnitureItem(item) {
   const def = FURNITURE[item.type];
   if (!def) return null;
   const rnd = mulberry32((item.seed ?? 1) * 2654435761 >>> 0 || 1);
-  const parts = def.n !== undefined ? buildStack(def, rnd)
-    : item.type === 'crate' ? buildCrate(def, rnd)
-      : buildShelf(def, rnd);
+  const parts = def.glb ? []                        // filled async below
+    : def.table ? buildTable(def)
+      : def.cab ? buildCabinetBank(def, rnd)
+      : def.book ? buildBookshelf(def, rnd)
+        : def.rug ? (def.rug === 2 ? buildRug2(def, rnd) : buildRug(def, rnd))
+        : def.rack ? buildCoatRack(def, rnd)
+        : def.radi ? buildRadiator(def, rnd)
+        : def.wmat ? buildWelcomeMat(def, rnd)
+          : def.pig ? buildPigeonholes(def, rnd)
+            : SURFACE_BUILDERS[item.type] ? SURFACE_BUILDERS[item.type](rnd)
+              : def.n !== undefined ? buildStack(def, rnd)
+                : item.type === 'crate' ? buildCrate(def, rnd)
+                  : buildShelf(def, rnd);
   const group = new THREE.Group();
   const mats = [];
   for (const part of parts) {
-    const mat = furnitureMaterial(part.mat);
+    const mat = part.mat.isMaterial ? part.mat : furnitureMaterial(part.mat);
     mats.push(mat);
     group.add(new THREE.Mesh(part.geo, mat));
   }
-  group.position.set(item.x, 0, item.z);
+  // surface clutter carries a y (height of whatever it sits on); floor
+  // furniture always sits at 0
+  group.position.set(item.x, def.surf ? (item.y ?? 0) : 0, item.z);
   group.rotation.y = item.rotY;
   group.scale.setScalar(item.scale);
   applyShade(mats, item.shade);
   scene.add(group);
   group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
   group.updateMatrixWorld(true);
-  const record = { item, group, mats };
+  const record = { item, group, mats, surf: Boolean(def.surf) };
   furnitureRecords.push(record);
+  if (def.glb) fillGlbFurniture(record, def);
   return record;
 }
 function removeFurnitureItem(record) {
@@ -2140,6 +2803,7 @@ function removeFurnitureItem(record) {
   const li = archiveLayout.items.indexOf(record.item);
   if (li >= 0) archiveLayout.items.splice(li, 1);
   scene.remove(record.group);
+  record.cleanup?.();                 // radio: deregister clickables + glow mats
   for (const m of record.mats) m.dispose();
 }
 
@@ -2160,6 +2824,44 @@ const DLO_DEFAULT_LAYOUT = {
     { type: 'stack-3', x: 8.62, z: 4.85, rotY: -1.4, scale: 1, shade: 1, seed: 19 },
     { type: 'stack-2', x: -1.7, z: 5.35, rotY: 0.4, scale: 1, shade: 1, seed: 20 },
     { type: 'stack-2', x: -3.95, z: -5.6, rotY: 1.2, scale: 1, shade: 1, seed: 21 },
+    // the classic furnishing, as placeables (2026-08-03) — seeds fresh visitors
+    // only; James's saved layout.js is the real room
+    { type: 'couch', x: -5.0, z: -5.5, rotY: 0, scale: 1, shade: 1, seed: 40 },
+    { type: 'coffee-table', x: -5.2, z: -4.3, rotY: 0.05, scale: 1, shade: 1, seed: 41 },
+    { type: 'chair', x: -6.35, z: -4.35, rotY: 0.16, scale: 1, shade: 0.86, seed: 42 },
+    { type: 'chair', x: -4.0, z: -4.25, rotY: 3.2, scale: 0.98, shade: 0.78, seed: 43 },
+    { type: 'plant-big', x: -3.5, z: -5.25, rotY: 3.6, scale: 1, shade: 1, seed: 44 },
+    { type: 'plant-small', x: -5.2, y: 0.42, z: -4.3, rotY: 1.9, scale: 1, shade: 1, seed: 45 },
+    // west of the desk now — the old spot sat on the walk into his new lane
+    { type: 'work-table', x: -0.5, z: -5.0, rotY: 0, scale: 1, shade: 1, seed: 46 },
+    { type: 'svc-coffee', x: -0.78, y: 0.78, z: -5.05, rotY: 0, scale: 1, shade: 1, seed: 47 },
+    { type: 'svc-donuts', x: -0.22, y: 0.78, z: -4.95, rotY: 0.15, scale: 1, shade: 1, seed: 48 },
+    { type: 'svc-lunchbox', x: -0.84, y: 0.78, z: -4.8, rotY: -0.3, scale: 1, shade: 1, seed: 49 },
+    { type: 'big-table', x: -8.25, z: 4.4, rotY: 0, scale: 1, shade: 1, seed: 50 },
+    { type: 'svc-scale', x: -8.3, y: 0.78, z: 3.8, rotY: Math.PI, scale: 1, shade: 1, seed: 51 },
+    { type: 'svc-twine', x: -8.42, y: 0.78, z: 4.18, rotY: 0, scale: 1, shade: 1, seed: 52 },
+    { type: 'svc-ledger', x: -8.2, y: 0.78, z: 4.95, rotY: 0, scale: 1, shade: 1, seed: 53 },
+    { type: 'parcel', x: -8.3, y: 0.78, z: 4.45, rotY: 0.2, scale: 1, shade: 1, seed: 54 },
+    { type: 'bookshelf', x: 8.69, z: 1.1, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 55 },
+    { type: 'parcel', x: -6.4, z: 5.35, rotY: 0.4, scale: 1.2, shade: 1, seed: 56 },
+    { type: 'parcel', x: 3.9, z: -5.5, rotY: 0.25, scale: 1.2, shade: 1, seed: 57 },
+    // the desk set (flipped: he works behind it), cabinets, radio — placeables
+    // since the same date
+    { type: 'desk', x: 2.5, z: -4.9, rotY: Math.PI, scale: 1, shade: 1, seed: 58 },
+    { type: 'chair', x: 3.05, z: -5.62, rotY: 0.15, scale: 1, shade: 1, seed: 59 },
+    { type: 'svc-lamp', x: 2.12, y: 0.76, z: -4.355, rotY: 3.64, scale: 1, shade: 1, seed: 60 },
+    { type: 'svc-mug', x: 2.92, y: 0.76, z: -4.56, rotY: 2.39, scale: 1, shade: 1, seed: 61 },
+    { type: 'svc-papers', x: 2.66, y: 0.76, z: -4.495, rotY: 0, scale: 1, shade: 1, seed: 62 },
+    { type: 'svc-rts', x: 2.86, y: 0.44, z: -4.44, rotY: 0, scale: 1, shade: 1, seed: 63 },
+    { type: 'cabinet-bank', x: 8.21, z: -2.46, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 64 },
+    { type: 'radio', x: 8.2, y: 1.32, z: -3.55, rotY: -1.16, scale: 1, shade: 1, seed: 65 },
+    // the rug, the pigeonholes (2026-08-03, second pass)
+    { type: 'rug', x: 2.7, z: -4.3, rotY: 0, scale: 1, shade: 1, seed: 66 },
+    { type: 'pigeonholes', x: 6.25, z: -5.74, rotY: 0, scale: 1, shade: 1, seed: 67 },
+    // coat rack + radiator (2026-08-03, third pass — everything movable now)
+    { type: 'coat-rack', x: 8.4, z: -5.35, rotY: 0, scale: 1, shade: 1, seed: 68 },
+    { type: 'radiator', x: -8.68, z: -2.0, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 69 },
+    { type: 'welcome-mat', x: -8.38, z: 2.6, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 70 },
   ],
 };
 const savedLayout = globalThis.DEAD_LETTER_OFFICE_LAYOUT;
@@ -2167,26 +2869,10 @@ const archiveLayout = (savedLayout && savedLayout.kind === 'furniture'
   && Array.isArray(savedLayout.items)) ? savedLayout : DLO_DEFAULT_LAYOUT;
 for (const item of archiveLayout.items) buildFurnitureItem(item);
 
-// cabinet-top strays keep the radio company (surface clutter, not floor layout)
-{
-  const rnd = mulberry32(77);
-  for (const [sx, sz, n, ry] of [[8.45, -1.6, 2, 0.5], [7.95, -2.2, 1, -0.4]]) {
-    const geos = [];
-    for (let i = 0; i < n; i++) {
-      const g = archiveBoxGeo(rnd);
-      const m = new THREE.Matrix4().makeRotationY(ry + (rnd() - 0.5) * 0.35);
-      m.setPosition(sx, 1.32 + 0.005 + BOX_H / 2 + i * (BOX_H + 0.008), sz);
-      g.applyMatrix4(m);
-      geos.push(g);
-    }
-    const mesh = new THREE.Mesh(mergeGeometries(geos), matBoxAtlas);
-    mesh.updateMatrix();
-    mesh.matrixAutoUpdate = false;
-    scene.add(mesh);
-  }
-}
+// (the cabinet-top stray boxes are gone — 2026-08-03 clean-room pass; James
+// re-clutters with placeable boxes and parcels now)
 
-/* ================= tables: donut service + the big door table ================ */
+/* ================= table + parcel helpers (builders use these) ================ */
 
 function mkTable(x, z, w, d, h, ry) {
   const g = new THREE.Group();
@@ -2204,14 +2890,7 @@ function mkTable(x, z, w, d, h, ry) {
   return h;   // tabletop height for dressing
 }
 
-// shared parcel look: brown paper + twine cross
-const texParcel = canvasBase(128, (g, px) => {
-  g.fillStyle = '#a58a62'; g.fillRect(0, 0, px, px);
-  g.fillStyle = 'rgba(122,98,64,0.5)';
-  g.fillRect(px * 0.44, 0, px * 0.12, px);
-  g.fillRect(0, px * 0.44, px, px * 0.12);
-});
-const matParcel = new THREE.MeshLambertMaterial({ map: texParcel });
+// (texParcel/matParcel moved up beside the furnishing builders, 2026-08-03)
 function parcel(x, y, z, w, h, d, ry) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matParcel);
   m.position.set(x, y + h / 2, z);
@@ -2219,107 +2898,13 @@ function parcel(x, y, z, w, h, d, ry) {
   scene.add(m);
 }
 
-// the donut table — coffee service, a box of donuts, his lunchbox (by the desk)
-{
-  const h = mkTable(0.5, -5.05, 1.15, 0.62, 0.78, 0);
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.05, 14), matIron);
-  plate.position.set(0.12, h + 0.025, -5.1);
-  scene.add(plate);
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.105, 0.19, 14),
-    new THREE.MeshStandardMaterial({ color: 0x2a1c10, roughness: 0.25, transparent: true, opacity: 0.85 }));
-  pot.position.set(0.12, h + 0.145, -5.1);
-  scene.add(pot);
-  const cupMat = new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.6 });
-  for (let i = 0; i < 3; i++) {
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.07, 10), cupMat);
-    cup.position.set(0.38, h + 0.035 + i * 0.072, -5.14);
-    scene.add(cup);
-  }
-  // donut box: open cardboard lid + six donuts
-  const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.05, 0.3), matParcel);
-  box.position.set(0.78, h + 0.025, -5.0);
-  box.rotation.y = 0.15;
-  scene.add(box);
-  // (the propped-open cardboard lid is gone — James r12.3: it read as a stray
-  // box balancing on its side behind the donuts)
-  const icings = [0xc98a9a, 0x8a5a38, 0xd8c9a0, 0xc98a9a, 0x8a5a38, 0xd8c9a0];
-  for (let i = 0; i < 6; i++) {
-    const donut = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.02, 8, 14),
-      new THREE.MeshStandardMaterial({ color: icings[i], roughness: 0.8 }));
-    donut.position.set(0.66 + (i % 3) * 0.115, h + 0.065, -5.06 + Math.floor(i / 3) * 0.11);
-    donut.rotation.set(Math.PI / 2 + 0.1, 0, i);
-    scene.add(donut);
-  }
-  // lunchbox: dented green metal, latch, handle
-  const lunch = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.16, 0.14),
-    new THREE.MeshStandardMaterial({ color: 0x3e5a48, roughness: 0.5, metalness: 0.5 }));
-  lunch.position.set(0.16, h + 0.08, -4.85);
-  lunch.rotation.y = -0.3;
-  scene.add(lunch);
-  const lunchHandle = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.009, 6, 12, Math.PI), matIron);
-  lunchHandle.position.set(0.16, h + 0.16, -4.85);
-  lunchHandle.rotation.set(0, -0.3, 0);
-  scene.add(lunchHandle);
-}
+// (the donut table, big door table, coffee table, and every loose parcel are
+// arrange-mode placeables since 2026-08-03 — the builders live in the
+// furniture catalog and reuse mkTableParts/parcel-style geometry)
 
-// the big table by the stairwell door — outgoing that never goes
-{
-  const h = mkTable(-8.25, 4.4, 0.78, 1.55, 0.85, 0);
-  // parcel scale: platform, column, big round dial
-  const scaleBase = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), matIron);
-  scaleBase.position.set(-8.3, h + 0.025, 3.85);
-  scene.add(scaleBase);
-  const scaleCol = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8), matIron);
-  scaleCol.position.set(-8.3, h + 0.2, 3.72);
-  scene.add(scaleCol);
-  const dial = addSign(signTexture(128, 128, (g) => {
-    g.fillStyle = '#d8d2c4';
-    g.beginPath(); g.arc(64, 64, 60, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#26221c'; g.lineWidth = 6;
-    g.beginPath(); g.arc(64, 64, 56, 0, Math.PI * 2); g.stroke();
-    g.lineWidth = 3;
-    for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI / 6;
-      g.beginPath();
-      g.moveTo(64 + Math.cos(a) * 44, 64 + Math.sin(a) * 44);
-      g.lineTo(64 + Math.cos(a) * 52, 64 + Math.sin(a) * 52);
-      g.stroke();
-    }
-    g.lineWidth = 4;
-    g.beginPath(); g.moveTo(64, 64); g.lineTo(38, 34); g.stroke();   // stuck needle
-  }), 0.2, 0.2, -8.3, h + 0.42, 3.72, Math.PI / 2);
-  dial.rotation.z = 0.04;
-  parcel(-8.3, h, 4.45, 0.3, 0.18, 0.24, 0.2);
-  parcel(-8.28, h + 0.18, 4.45, 0.24, 0.14, 0.2, -0.25);
-  parcel(-8.2, h, 4.95, 0.34, 0.22, 0.26, 0.5);
-  const twine = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xc9b98a, roughness: 0.98 }));
-  twine.position.set(-8.42, h + 0.07, 4.18);
-  scene.add(twine);
-  const ledger = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.42),
-    new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.7 }));
-  ledger.position.set(-8.15, h + 0.025, 5.05);
-  ledger.rotation.y = -0.2;
-  scene.add(ledger);
-  const ink = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.07, 10),
-    new THREE.MeshStandardMaterial({ color: 0x1a2438, roughness: 0.3 }));
-  ink.position.set(-8.45, h + 0.035, 4.75);
-  scene.add(ink);
-}
 
-// the couch corner (r12.1, James): a low coffee table in front of the couch,
-// small plant on it, two beat-up chairs flanking — the office's break nook.
-// The chairs reuse chair.glb via PROPS below; camera keep-out is one box in
-// STATIC_BOXES and the couch nav edge routes around it through H8.
-mkTable(-5.2, -4.3, 1.1, 0.5, 0.42, 0.05);
-parcel(8.55, 1.32, -3.6, 0.4, 0.26, 0.34, 0.3);     // on the file bank
-parcel(8.5, 1.32, -3.1, 0.32, 0.2, 0.28, -0.4);
-parcel(8.52, 1.58, -3.45, 0.26, 0.18, 0.24, 0.8);   // stacked
-parcel(3.9, 0, -5.5, 0.5, 0.36, 0.42, 0.25);        // floor, by the pigeonholes
-parcel(3.95, 0.36, -5.45, 0.4, 0.28, 0.34, -0.3);
-parcel(-6.4, 0, 5.35, 0.55, 0.4, 0.45, 0.4);        // southwest corner drift
-parcel(-6.35, 0.4, 5.3, 0.42, 0.3, 0.36, -0.2);
-parcel(-5.9, 0, 5.55, 0.38, 0.26, 0.32, 0.9);
+// (the couch corner set and all the fixed parcels became placeables too —
+// 2026-08-03; parcel() remains for any builder that wants the shared look)
 
 /* ================= posters, calendar, pin-ups, corkboard ================ */
 
@@ -2414,19 +2999,38 @@ const WALL_ART = {
   'art-zip': { label: 'poster: zip directory', w: 0.56, h: 0.74, draw: drawZipPoster },
   'art-delivery': { label: 'poster: mr. delivery', w: 0.5, h: 0.7, draw: drawDeliveryPoster },
   'art-lost': { label: 'poster: lost? cat', w: 0.5, h: 0.66, draw: drawLostPoster },
+  // the house sign is placeable too (2026-08-03, James) — `full` draws the
+  // whole canvas itself, no cream-stock wrapper
+  'art-housesign': { label: 'the house sign', w: 2.4, h: 1.2, px: 1024, full: drawHouseSign },
+  'art-postmaster': { label: 'sign: john dough', w: 0.88, h: 0.25, px: 640, full: drawPostmasterSign },
+  'art-corkboard': { label: 'corkboard', w: 1.05, h: 0.82, px: 512, full: drawCorkboard },
+  // live entries share a runtime-updated texture (the counters keep counting
+  // wherever they hang); glb entries hang a real Meshy mesh on the wall
+  'art-tally-dead': { label: 'counter: dead letters', w: 1.35, h: 0.53, live: 'tallyDead' },
+  'art-tally-claimed': { label: 'counter: claimed', w: 1.35, h: 0.53, live: 'tallyClaimed' },
+  'art-wallclock': { label: 'clock (pendulum)', glb: 'clock2.glb', gh: 0.85, depth: 0.1, w: 0.42 },
+  'art-exitsign': { label: 'exit sign', glb: 'exitsign.glb', gh: 0.3, depth: 0.06, w: 0.47, glow: 0.85 },
 };
 
 const drawnArtTexCache = new Map();
 function wallArtMaterial(type) {
   const def = WALL_ART[type];
   let tex;
+  if (def.live) {
+    // shared live canvas (drum counters): unlit so the digits glow like signs
+    const mat = new THREE.MeshBasicMaterial({ map: LIVE_ART_TEX[def.live] });
+    mat.userData.shadeBase = new THREE.Color(0xffffff);
+    return mat;
+  }
   if (def.img) {
     tex = posterLoader.load(`assets/posters/${def.img}`);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = maxAniso;
   } else {
     if (!drawnArtTexCache.has(type)) {
-      drawnArtTexCache.set(type, signTexture(256, Math.round(256 * def.h / def.w), (g, w, h) => {
+      const px = def.px || 256;
+      drawnArtTexCache.set(type, signTexture(px, Math.round(px * def.h / def.w), (g, w, h) => {
+        if (def.full) { def.full(g, w, h); return; }               // self-contained art
         g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);            // cream stock
         g.strokeStyle = '#8a7d60'; g.lineWidth = 4; g.strokeRect(6, 6, w - 12, h - 12);
         g.fillStyle = '#3a3226';
@@ -2444,21 +3048,52 @@ function wallArtMaterial(type) {
 function buildArtItem(item) {
   const def = WALL_ART[item.type];
   if (!def) return null;
-  const hM = def.img ? def.w * def.aspect : def.h;
-  const mat = wallArtMaterial(item.type);
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(def.w, hM), mat);
-  const rnd = mulberry32((item.seed ?? 1) * 2654435761 >>> 0 || 1);
-  mesh.rotation.z = (rnd() - 0.5) * 0.05;             // pinned slightly askew
   const group = new THREE.Group();
-  group.add(mesh);
+  const mats = [];
+  const record = { item, group, mats, art: true };
+  if (def.glb) {
+    // a real mesh hung on the wall (the pendulum clock): centered on x/y,
+    // pushed off the wall by half its depth, facing +z like every art plane
+    glbFurnSource(def.glb).then(({ src, size, center }) => {
+      if (!furnitureRecords.includes(record)) return;
+      const inst = src.clone(true);
+      inst.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        o.material = o.material.clone();
+        if (o.material.emissiveMap) {           // Meshy dual atlas: faint self-light
+          o.material.emissiveIntensity = def.glow ?? 0.25;   // the EXIT sign earns its glow
+          o.material.userData.keepEmissive = true;
+        }
+        o.material.userData.shadeBase = o.material.color.clone();
+        mats.push(o.material);
+      });
+      const norm = new THREE.Group();
+      inst.position.set(-center.x, -center.y, -center.z);
+      norm.add(inst);
+      norm.scale.setScalar(def.gh / size.y);
+      norm.position.z = (def.depth ?? 0.1) / 2;
+      group.add(norm);
+      applyShade(mats, item.shade);
+      group.traverse((o) => { o.updateMatrix?.(); o.matrixAutoUpdate = false; });
+      group.updateMatrixWorld(true);
+    }).catch(() => console.warn('[dlo] art glb failed:', def.glb));
+  } else {
+    const hM = def.img ? def.w * def.aspect : def.h;
+    const mat = wallArtMaterial(item.type);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(def.w, hM), mat);
+    const rnd = mulberry32((item.seed ?? 1) * 2654435761 >>> 0 || 1);
+    // posters pin askew; signs and instruments hang straight
+    mesh.rotation.z = (def.full || def.live) ? 0 : (rnd() - 0.5) * 0.05;
+    group.add(mesh);
+    mats.push(mat);
+  }
   group.position.set(item.x, item.y ?? 2.0, item.z);
   group.rotation.y = item.rotY;
   group.scale.setScalar(item.scale);
-  applyShade([mat], item.shade);
+  applyShade(mats, item.shade);
   scene.add(group);
   group.traverse((o) => { o.updateMatrix(); o.matrixAutoUpdate = false; });
   group.updateMatrixWorld(true);
-  const record = { item, group, mats: [mat], art: true };
   furnitureRecords.push(record);
   return record;
 }
@@ -2474,14 +3109,25 @@ const DLO_DEFAULT_ART = [
   { type: 'art-happiness', x: ROOM.x1 - 0.02, y: 2.35, z: -2.9, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 37 },
   { type: 'art-delivery', x: ROOM.x1 - 0.02, y: 2.35, z: 1.4, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 38 },
   { type: 'art-wanted', x: ROOM.x0 + 0.03, y: 2.3, z: 4.5, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 39 },
+  { type: 'art-housesign', x: -0.8, y: 2.55, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 30 },
+  { type: 'art-postmaster', x: 2.5, y: 1.8, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 29 },
+  { type: 'art-corkboard', x: ROOM.x0 + 0.03, y: 1.72, z: 0.2, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 28 },
+  { type: 'art-tally-dead', x: -6.9, y: 3.15, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 27 },
+  { type: 'art-tally-claimed', x: -6.9, y: 2.5, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 26 },
+  { type: 'art-wallclock', x: 2.6, y: 2.75, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 25 },
+  { type: 'art-exitsign', x: ROOM.x0 + 0.05, y: 2.62, z: 2.6, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 24 },
 ];
-if (!archiveLayout.items.some((i) => WALL_ART[i.type])) {
+// Seed the classic walls ONLY for a fresh visitor with no layout file at all —
+// a saved layout with no art means James emptied the room on purpose
+// (2026-08-03, the blank-canvas session) and it must stay empty.
+if (archiveLayout === DLO_DEFAULT_LAYOUT && !archiveLayout.items.some((i) => WALL_ART[i.type])) {
   archiveLayout.items.push(...DLO_DEFAULT_ART);
 }
 for (const item of archiveLayout.items) buildArtItem(item);
 
-// west wall: the corkboard with the little stickers (he consults it)
-addSign(signTexture(512, 400, (g, w, h) => {
+// the corkboard with the little stickers (he consults it) — placeable wall
+// art since 2026-08-03; the pm's corkboard routine anchors to wherever it hangs
+function drawCorkboard(g, w, h) {
   g.fillStyle = '#8a6a48'; g.fillRect(0, 0, w, h);           // cork
   for (let k = 0; k < 400; k++) {
     g.fillStyle = `rgba(${100 + Math.random() * 60},${70 + Math.random() * 40},${40 + Math.random() * 30},0.4)`;
@@ -2518,73 +3164,18 @@ addSign(signTexture(512, 400, (g, w, h) => {
     g.moveTo(w - 110, 52 + i * 44); g.lineTo(w - 66, 52 + i * 44);
     g.stroke();
   });
-}), 1.05, 0.82, ROOM.x0 + 0.03, 1.72, 0.2, Math.PI / 2);
+}
 
 // (South-side clutter history: the r1 crates/mail-cart/sacks block lived here.
 // The cart + sphere sacks were cut 2026-07-27 on James's screenshot verdict;
 // the crates became arrange-mode layout items the same night — see the archive
 // stacks section. If a mail cart ever returns it gets built properly.)
 
-/* ================= the rug ================= */
+// (the rug became the 'rug' placeable, 2026-08-03 — buildRug in the furniture
+// catalog section; its texture drawing moved there too)
 
-{
-  const texRug = signTexture(512, 340, (g, w, h) => {
-    g.fillStyle = '#5e2f28'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#8a5a3a'; g.lineWidth = 14; g.strokeRect(18, 18, w - 36, h - 36);
-    g.strokeStyle = '#3a5a50'; g.lineWidth = 6; g.strokeRect(38, 38, w - 76, h - 76);
-    g.fillStyle = '#8a5a3a';
-    g.save(); g.translate(w / 2, h / 2); g.rotate(Math.PI / 4);
-    g.fillRect(-60, -60, 120, 120);
-    g.restore();
-    g.fillStyle = '#3a5a50';
-    g.beginPath(); g.arc(w / 2, h / 2, 34, 0, Math.PI * 2); g.fill();
-    for (let k = 0; k < 40; k++) {   // threadbare wear
-      g.fillStyle = `rgba(200,180,150,${0.04 + Math.random() * 0.05})`;
-      g.beginPath();
-      g.ellipse(Math.random() * w, Math.random() * h, 14 + Math.random() * 30, 6 + Math.random() * 14,
-        Math.random() * Math.PI, 0, Math.PI * 2);
-      g.fill();
-    }
-  });
-  // bigger and moved (2026-07-28, James): it runs under the desk and sticks out
-  // in front of it, with the chair sitting on it too
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 3.2),
-    new THREE.MeshLambertMaterial({ map: texRug }));
-  rug.rotation.x = -Math.PI / 2;
-  rug.rotation.z = 0.02;
-  rug.position.set(2.7, 0.006, -4.3);
-  scene.add(rug);
-}
-
-/* ================= the welcome mat (r12.1, James) ================= */
-
-{
-  const texMat = signTexture(384, 224, (g, w, h) => {
-    g.fillStyle = '#6e5b3e'; g.fillRect(0, 0, w, h);       // coir
-    for (let k = 0; k < 2600; k++) {                        // bristle noise
-      g.fillStyle = `rgba(${70 + Math.random() * 60},${55 + Math.random() * 45},${28 + Math.random() * 26},0.5)`;
-      g.fillRect(Math.random() * w, Math.random() * h, 2, 1);
-    }
-    g.strokeStyle = '#3e3322'; g.lineWidth = 14; g.strokeRect(9, 9, w - 18, h - 18);
-    g.fillStyle = 'rgba(40,32,20,0.82)';
-    g.font = '700 58px Georgia, "Times New Roman", serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('WELCOME', w / 2, h / 2 + 2);
-    for (let k = 0; k < 26; k++) {                          // worn-through patches
-      g.fillStyle = 'rgba(110,91,62,0.5)';
-      g.beginPath();
-      g.ellipse(Math.random() * w, Math.random() * h,
-        6 + Math.random() * 22, 3 + Math.random() * 8, Math.random() * Math.PI, 0, Math.PI * 2);
-      g.fill();
-    }
-  });
-  const mat = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.55),
-    new THREE.MeshLambertMaterial({ map: texMat }));
-  mat.rotation.x = -Math.PI / 2;
-  mat.rotation.z = Math.PI / 2 + 0.03;   // reads for whoever comes down the stairs
-  mat.position.set(ROOM.x0 + 0.62, 0.007, 2.6);
-  scene.add(mat);
-}
+// (the welcome mat became the 'welcome-mat' placeable, 2026-08-04 —
+// buildWelcomeMat in the furniture catalog)
 
 /* ================= ceiling chute over the basket ================= */
 
@@ -2619,6 +3210,15 @@ const propTex = (worldMeters, extra = {}) => {
 };
 
 const PROP_MATERIALS = {
+  // the oil tank wears the Meshy rust tile (UVs cube-projected 0.5m/unit in
+  // the Blender strip pass, so the repeat reads true to scale)
+  prop_oiltank: () => {
+    const t = texRust.clone();
+    t.needsUpdate = true;
+    t.repeat.setScalar(0.4);            // one tile ≈ 1.25 m of steel
+    texRust.userData.clones.push(t);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.72, metalness: 0.38 });
+  },
   prop_desk: () => propTex(WOOD_TILE, { color: 0xb59a78 }),
   prop_chair: () => propTex(WOOD_TILE, { color: 0xa88a68 }),
   prop_basket: () => new THREE.MeshStandardMaterial({ color: 0x5a5c58, roughness: 0.45, metalness: 0.8 }),
@@ -2626,28 +3226,16 @@ const PROP_MATERIALS = {
   prop_plant_leaf: () => new THREE.MeshStandardMaterial({ color: 0x5a6b3a, roughness: 0.9 }),
   prop_plant_pot: () => new THREE.MeshStandardMaterial({ color: 0x9a5a38, roughness: 0.85 }),
   prop_couch: () => new THREE.MeshLambertMaterial({ color: 0x6b7052 }),   // tired olive
+  prop_mug: () => new THREE.MeshStandardMaterial({ color: 0xd8d0be, roughness: 0.55 }),
 };
 
 let basketRimY = 1.1;           // refined from the basket bbox on load
-let deskSurfaceY = 0.76;        // refined by raycast on load
 const raycaster = new THREE.Raycaster();
 
+// (the desk, his chair, and all the desk dressing are placeables since
+// 2026-08-03 — 'desk' / 'chair' / 'svc-lamp' / 'svc-mug' / 'svc-papers' /
+// 'svc-rts' in the furniture catalog. The JOHN DOUGH wall sign stays fixed.)
 const PROPS = [
-  {
-    // r12.3 (James): pushed back until its rear edge is ~1 inch off the north
-    // wall (depth 0.78m → center z −5.585). Chair + every desk item shifted
-    // the same Δ=0.585 so the arrangement holds.
-    file: 'assets/props/desk.glb', height: 1.42, pos: [2.5, 0, -5.585], rotY: 0,
-    then(wrap) {
-      // find the writing surface by dropping a ray at the front-left of the top
-      wrap.updateMatrixWorld(true);
-      raycaster.set(new THREE.Vector3(2.15, 2.4, -5.265), new THREE.Vector3(0, -1, 0));
-      const hit = raycaster.intersectObject(wrap, true)[0];
-      if (hit) deskSurfaceY = hit.point.y;
-      dressDesk();
-    },
-  },
-  { file: 'assets/props/chair.glb', height: 0.98, pos: [3.6, 0, -4.835], rotY: 2.7 },
   {
     file: 'assets/props/basket.glb', height: 1.12, pos: [-4.5, 0, -1.5], rotY: 0,
     then(wrap) {
@@ -2683,39 +3271,10 @@ const PROPS = [
       scene.add(ember);
     },
   },
-  { file: 'assets/props/plant.glb', height: 0.62, pos: [8.55, cabinetTopY, -1.02], rotY: 0.6 },
-  // two more plants (2026-07-22, James): "a little brown and a little sad, but
-  // okay generally" — same mesh, browner tints, different scales/turns
-  { file: 'assets/props/plant.glb', height: 0.5, pos: [8.62, 1.9, 0.72], rotY: 1.8, tint: 0xd8b088 },
-  // the beat-up couch (2026-07-22, Meshy preview 5cr): north wall, aimed square
-  // at the basket so he can sit and watch the letters fall
-  { file: 'assets/props/couch.glb', height: 0.8, pos: [-5.0, 0, -5.5], rotY: 0 },
-  { file: 'assets/props/plant.glb', height: 0.72, pos: [-3.5, 0, -5.25], rotY: 3.6, tint: 0xc9a070 },
-  // the couch corner set (r12.1): small plant on the coffee table, two beat-up
-  // chairs angled in at the table (worn grey-brown tints, r12.1)
-  { file: 'assets/props/plant.glb', height: 0.3, pos: [-5.2, 0.42, -4.3], rotY: 1.9, tint: 0xd0b088 },
-  { file: 'assets/props/chair.glb', height: 0.96, pos: [-6.35, 0, -4.35], rotY: 0.16, tint: 0x9a8878 },
-  { file: 'assets/props/chair.glb', height: 0.94, pos: [-4.0, 0, -4.25], rotY: 3.2, tint: 0x8a7868 },
-  // the AM radio (2026-07-27, Meshy refine 30cr, James's ask): a 1950s bakelite
-  // set on the cabinet bank, angled at the room. Keeps its own Meshy textures —
-  // no material name starts with prop_, so the swap loop passes it by. Clicking
-  // it toggles the music (wired in the sound section).
-  {
-    file: 'assets/props/radio.glb', height: 0.3, pos: [8.2, 1.32, -3.55], rotY: -1.16,
-    then(wrap) {
-      wrap.traverse((o) => {
-        if (!o.isMesh) return;
-        propClickables.radio.add(o);
-        if (o.material && o.material.emissiveMap) {
-          // Meshy dual-atlas: keep the emissive copy ON faintly (the r4 pmGlow
-          // lesson — it must read in a dim corner); brightens while playing
-          o.material.emissiveIntensity = radioOn ? 0.42 : 0.22;
-          radioGlowMats.push(o.material);
-        }
-      });
-      hoverDirty = true;
-    },
-  },
+  // (the couch, plants, chairs, desk set, cabinet bank AND the radio are all
+  // arrange-mode placeables since 2026-08-03 — the radio keeps its Meshy
+  // textures + click-toggle via the def flags keepMats/radio; only the basket
+  // and furnace remain fixed props)
 ];
 
 const furnaceMouth = new THREE.Vector3(6.8 + Math.sin(-2.05) * 0.55, 0.62, 3.5 + Math.cos(-2.05) * 0.55);
@@ -2759,96 +3318,16 @@ for (const spec of PROPS) {
     }
     if (spec.then) spec.then(wrap);
     propsLoaded += 1;
-    if (posterNote) posterNote.textContent = `setting the room… ${propsLoaded}/${PROPS.length + 1}`;
+    const propTotal = PROPS.length + (PM_ENABLED ? 1 : 0);
+    if (posterNote) posterNote.textContent = `setting the room… ${propsLoaded}/${propTotal}`;
+    // with the postmaster benched, the last prop lifts the loading poster
+    if (!PM_ENABLED && propsLoaded >= PROPS.length) posterFadeOut();
   }, undefined, () => console.warn('[dlo] prop failed to load:', spec.file));
 }
 
-// desk dressing: banker's lamp, mug, nameplate, papers — placed on the surface
-// found by raycast, so nothing floats or sinks
-function dressDesk() {
-  const y = deskSurfaceY;
-  const brass = new THREE.MeshStandardMaterial({ color: 0x9a8446, roughness: 0.3, metalness: 0.9 });
-  const lamp = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.03, 12), brass);
-  base.position.y = 0.015;                 // sit ON the surface, not half in it
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.3, 8), brass);
-  stem.position.y = 0.16;
-  stem.rotation.z = 0.28;
-  const shade = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshStandardMaterial({
-      color: 0x1d4a2a, roughness: 0.3, metalness: 0.2,
-      emissive: 0x2a6b30, emissiveIntensity: 0.7, side: THREE.DoubleSide,
-    }));
-  shade.position.set(-0.06, 0.31, 0);
-  shade.scale.set(1, 0.72, 0.62);
-  const glowDisc = new THREE.Mesh(new THREE.CircleGeometry(0.11, 12),
-    new THREE.MeshBasicMaterial({ color: 0xd8ffb0 }));
-  glowDisc.rotation.x = Math.PI / 2;
-  glowDisc.position.set(-0.06, 0.29, 0);
-  lamp.add(base, stem, shade, glowDisc);
-  // moved back toward the desk's rear edge (r12.1 — it half-clipped the desk)
-  lamp.position.set(2.12, y, -5.445);
-  lamp.rotation.y = 0.5;
-  scene.add(lamp);
-  lampLight.position.set(2.09, y + 0.28, -5.445);
-
-  // the coffee mug: a real Meshy prop now (r12.1, James's ask), ceramic in-engine
-  loader.load('assets/props/mug.glb', (gltf) => {
-    const src = gltf.scene;
-    src.traverse((o) => {
-      if (o.isMesh) {
-        o.material = new THREE.MeshStandardMaterial({ color: 0xd8d0be, roughness: 0.55 });
-      }
-    });
-    const box = new THREE.Box3().setFromObject(src);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const wrap = new THREE.Group();
-    src.position.set(-center.x, -box.min.y, -center.z);
-    wrap.add(src);
-    wrap.scale.setScalar(0.105 / size.y);
-    wrap.position.set(2.92, y, -5.24);
-    wrap.rotation.y = -0.75;               // handle toward his chair
-    scene.add(wrap);
-  }, undefined, () => console.warn('[dlo] mug failed to load'));
-
-  // the postmaster's sign, on the wall above the desk now (r12.2, James) —
-  // twice the old plate, and he finally has a name
-  addSign(signTexture(640, 180, (g, w, h) => {
-    g.fillStyle = '#211d16'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#9a8446'; g.lineWidth = 8; g.strokeRect(7, 7, w - 14, h - 14);
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = '#b09a64';
-    g.font = '700 56px "Courier New", monospace';
-    g.fillText('POSTMASTER', w / 2, 54);
-    g.fillStyle = '#d8bd85';
-    g.font = '700 74px "Courier New", monospace';
-    g.fillText('JOHN DOUGH', w / 2, 128);
-  }), 0.88, 0.25, 2.5, 1.8, ROOM.z0 + 0.02, 0);
-
-  // paper reams: one proper stack now — squared-ish, each ream a little askew
-  let reamY = y;
-  for (let i = 0; i < 3; i++) {
-    const th = 0.045;
-    const papers = new THREE.Mesh(new THREE.BoxGeometry(0.24, th, 0.32), matPaper);
-    papers.position.set(
-      2.66 + (Math.random() - 0.5) * 0.03,
-      reamY + th / 2,
-      -5.305 + (Math.random() - 0.5) * 0.03);
-    papers.rotation.y = (Math.random() - 0.5) * 0.22;
-    scene.add(papers);
-    reamY += th;
-  }
-  // RETURN TO SENDER TO NOWHERE — paper sign pinned to the desk's room side
-  const rts = addSign(signTexture(256, 300, (g, w, h) => {
-    g.fillStyle = '#cfc2a0'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#3a3226';
-    g.font = '700 44px "Courier New", monospace';
-    g.textAlign = 'center';
-    ['RETURN', 'TO', 'SENDER', 'TO', 'NOWHERE'].forEach((t, i) => g.fillText(t, w / 2, 56 + i * 52));
-  }), 0.3, 0.36, 2.86, 0.62, -5.17, Math.PI);
-  rts.rotation.z = 0.04;
-}
+// (the desk dressing — banker's lamp, mug, papers, RTS sign — became the
+// svc-* placeables, 2026-08-03; the JOHN DOUGH wall sign is placeable wall
+// art too — WALL_ART 'art-postmaster', drawn by drawPostmasterSign.)
 
 /* ================= the postmaster ================= */
 
@@ -2904,7 +3383,12 @@ function playOneshot(name, done, fade = 0.3) {
   oneshotDone = done || null;
 }
 
-Promise.all([
+// TEMPORARILY BENCHED (James, 2026-08-03): the postmaster stays out of the
+// world while the room is re-furnished from scratch — every pm code path
+// guards on pmModel, so with the loader skipped he simply never exists.
+// Flip PM_ENABLED to true to rehire him (and re-run the nav sim first).
+const PM_ENABLED = true;   // rehired 2026-08-04 against James's new room
+if (PM_ENABLED) Promise.all([
   loader.loadAsync('assets/postmaster/postmaster.glb'),
   loader.loadAsync('assets/postmaster/anim-pack.glb'),
 ]).then(([modelGltf, packGltf]) => {
@@ -2963,8 +3447,11 @@ Promise.all([
     if (done) done();
   });
 
-  pmGroup.position.set(PM_STATIONS.desk.x, 0, PM_STATIONS.desk.z);
-  pmYaw = PM_STATIONS.desk.face;
+  // home is the desk when one is placed; the middle of the room otherwise
+  const homeKey = PM_STATIONS.desk ? 'desk' : 'wander1';
+  pmStationKey = homeKey;
+  pmGroup.position.set(PM_STATIONS[homeKey].x, 0, PM_STATIONS[homeKey].z);
+  pmYaw = PM_STATIONS[homeKey].face;
   pmGroup.rotation.y = pmYaw;
   hoverDirty = true;   // he just joined the click targets
   if (reducedMotion) {
@@ -2987,20 +3474,18 @@ function posterFadeOut() {
 /* ================= navigation graph (verified in tools sim) ================= */
 
 const PM_STATIONS = {
-  desk:      { x: 2.5, z: -4.74, face: Math.PI },   // works at the desk, back to the room
   basket:    { x: -3.3, z: -0.6, face: -2.21 },
   furnace:   { x: 5.7, z: 2.6, face: 0.885 },
   clock:     { x: -7.9, z: 1.2, face: -Math.PI / 2 },
-  coffee:    { x: 0.5, z: -4.25, face: Math.PI },   // the donut table by his desk
-  window:    { x: -7.8, z: -2.9, face: -0.93 },
-  pigeon:    { x: 5.6, z: -4.5, face: Math.PI },
-  corkboard: { x: -8.05, z: 0.2, face: -Math.PI / 2 },
-  cabinets:  { x: 6.9, z: -2.0, face: Math.PI / 2 },
+  // moved to the south-west window 2026-08-04 — James parked the oil tank in
+  // front of the west one, so the postmaster gazes out a different pane now
+  window:    { x: -5.6, z: 4.8, face: 0.05 },
   doorSt:    { x: -8.1, z: 2.6, face: -Math.PI / 2 },
-  couch:     { x: -5.0, z: -4.9, face: 0 },          // seat edge, facing the basket
   wander1:   { x: 0, z: 1.5, face: 0 },
   wander2:   { x: -1.5, z: -2.5, face: Math.PI },
   wander3:   { x: 3.5, z: 1.8, face: 0.4 },
+  // 'desk', 'coffee', 'couch' and 'cabinets' are DYNAMIC since 2026-08-03 —
+  // they anchor to placed items (refreshDynStations) and vanish with them
 };
 
 const NAV_NODES = {
@@ -3010,24 +3495,161 @@ const NAV_NODES = {
   H4: { x: -6.8, z: 2.2 },
   H5: { x: 4.9, z: 3.4 },
   H7: { x: 4.35, z: -3.6 },
-  H8: { x: -3.0, z: -4.9 },   // couch approach lane, south of the coffee table
   ...PM_STATIONS,
 };
 const NAV_EDGES = [
-  ['desk', 'H7'], ['H7', 'H3'], ['H7', 'pigeon'],
-  ['H3', 'H1'], ['H3', 'H5'], ['H3', 'furnace'], ['H3', 'wander3'], ['H3', 'cabinets'],
+  ['H7', 'H3'],
+  ['H3', 'H1'], ['H3', 'H5'], ['H3', 'furnace'], ['H3', 'wander3'],
   ['H5', 'furnace'],
-  ['H1', 'H2'], ['H1', 'wander1'], ['H1', 'wander2'], ['H1', 'basket'], ['H1', 'coffee'],
-  ['desk', 'coffee'],
-  ['H2', 'basket'], ['H2', 'H4'], ['H2', 'window'],
-  ['H4', 'clock'], ['H4', 'window'], ['H4', 'corkboard'], ['H4', 'doorSt'],
-  ['wander2', 'H8'], ['H8', 'couch'],   // around the coffee-table nook (r12.1)
+  ['H1', 'H2'], ['H1', 'wander1'], ['H1', 'wander2'], ['H1', 'basket'],
+  ['H2', 'basket'], ['H2', 'H4'],
+  ['H4', 'clock'], ['H4', 'window'], ['H4', 'doorSt'],
 ];
-const NAV_ADJ = {};
-for (const [a, b] of NAV_EDGES) {
-  (NAV_ADJ[a] = NAV_ADJ[a] || []).push(b);
-  (NAV_ADJ[b] = NAV_ADJ[b] || []).push(a);
+let NAV_ADJ = {};
+let dynNavEdges = [];
+function buildNavAdj() {
+  NAV_ADJ = {};
+  for (const [a, b] of [...NAV_EDGES, ...dynNavEdges]) {
+    (NAV_ADJ[a] = NAV_ADJ[a] || []).push(b);
+    (NAV_ADJ[b] = NAV_ADJ[b] || []).push(a);
+  }
 }
+buildNavAdj();
+
+// Dynamic stations (2026-08-03): his workplaces anchor to whatever James
+// places — the desk, the work table, the couch, the cabinet bank. Each
+// anchors a stand-off point on the item's front side (for the desk that IS
+// his side — its rotY convention faces the user) and wires itself to the
+// nearest hub with a clear straight walk; with no item placed the routine
+// retires. Also re-anchors the banker's-lamp light and the radio position.
+const DYN_STATIONS = {
+  desk:     { type: 'desk', gap: 0.35 },
+  coffee:   { type: 'work-table', gap: 0.45 },
+  couch:    { type: 'couch', gap: 0.45 },
+  cabinets: { type: 'cabinet-bank', gap: 0.45 },
+  pigeon:   { type: 'pigeonholes', gap: 0.5 },
+  corkboard: { type: 'art-corkboard', gap: 0.5 },   // wall art anchors too
+};
+const DYN_HUBS = ['H1', 'H2', 'H3', 'H4', 'H5', 'H7', 'wander1', 'wander2', 'wander3'];
+function refreshDynStations() {
+  dynNavEdges = [];
+  for (const [key, cfg] of Object.entries(DYN_STATIONS)) {
+    const type = cfg.type;
+    delete PM_STATIONS[key];
+    delete NAV_NODES[key];
+    delete NAV_NODES[key + 'Side'];
+    const item = archiveLayout.items.find((i) => i.type === type);
+    if (!item) continue;
+    const def = FURNITURE[type] || WALL_ART[type];   // corkboard is wall art
+    const isArtStation = !FURNITURE[type];
+    const d = ((def.fd ?? 0.05) / 2) * (item.scale ?? 1) + cfg.gap;
+    const st = {
+      x: item.x + Math.sin(item.rotY) * d,
+      z: item.z + Math.cos(item.rotY) * d,
+      face: item.rotY + Math.PI,
+    };
+    // clamp into the room, skip if the stand-off lands buried in a keep-out
+    st.x = Math.min(ROOM.x1 - 0.5, Math.max(ROOM.x0 + 0.5, st.x));
+    st.z = Math.min(ROOM.z1 - 0.5, Math.max(ROOM.z0 + 0.5, st.z));
+    const deepIn = (x, z, [x0, x1, z0, z1]) =>
+      x > x0 + 0.15 && x < x1 - 0.15 && z > z0 + 0.15 && z < z1 - 0.15;
+    // NO exemption for the item's own box — a straight walk that cuts through
+    // the furniture reads as clipping; blocked approaches route via a side point
+    const segClear = (a, b) => {
+      for (let t = 0; t <= 1.0001; t += 0.04) {
+        const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+        for (const rec of furnitureRecords) {
+          if (rec.surf || rec.art || !FURNITURE[rec.item.type]) continue;
+          if (deepIn(x, z, itemKeepOut(rec.item))) return false;
+        }
+        for (const box of STATIC_BOXES) if (deepIn(x, z, box)) return false;
+      }
+      return true;
+    };
+    const nearestHubTo = (p) => {
+      let best = null, bestD = Infinity;
+      for (const hub of DYN_HUBS) {
+        const n = NAV_NODES[hub];
+        if (!n) continue;
+        const dist = Math.hypot(n.x - p.x, n.z - p.z);
+        if (dist < bestD && segClear(n, p)) { bestD = dist; best = hub; }
+      }
+      return best;
+    };
+    const direct = nearestHubTo(st);
+    if (direct) {
+      PM_STATIONS[key] = st;
+      NAV_NODES[key] = st;
+      dynNavEdges.push([direct, key]);
+      continue;
+    }
+    // wall art has no footprint to sidestep — if no hub reaches it, it retires
+    if (isArtStation) continue;
+    // no clean straight shot (e.g. behind the desk): try stepping around the
+    // item's side at station depth, then hub → side → station
+    const [bx0, bx1] = itemKeepOut(item);
+    let wired = false;
+    for (const sx of [bx0 - 0.45, bx1 + 0.45]) {
+      const side = {
+        x: Math.min(ROOM.x1 - 0.5, Math.max(ROOM.x0 + 0.5, sx)),
+        z: st.z,
+      };
+      if (!segClear(side, st)) continue;
+      const hub = nearestHubTo(side);
+      if (!hub) continue;
+      PM_STATIONS[key] = st;
+      NAV_NODES[key] = st;
+      NAV_NODES[key + 'Side'] = side;
+      dynNavEdges.push([hub, key + 'Side'], [key + 'Side', key]);
+      wired = true;
+      break;
+    }
+    if (!wired) continue;                // nowhere clear to approach from
+  }
+  buildNavAdj();
+
+  // the banker's-lamp light follows the first placed lamp (dark when none)
+  const lampItem = archiveLayout.items.find((i) => i.type === 'svc-lamp');
+  lampPlaced = Boolean(lampItem);
+  if (lampItem) {
+    lampLight.position.set(lampItem.x, (lampItem.y ?? 0) + 0.28, lampItem.z);
+  }
+  lampLight.intensity = lampPlaced ? tune.lamp : 0;
+
+  // floor lamps really cast light (James, 2026-08-04) — a pool of two warm
+  // points rides the first two placed 'floor-lamp' items; more lamps than
+  // that still glow by texture but don't add lights (perf)
+  const lampItems = archiveLayout.items.filter((i) => i.type === 'floor-lamp');
+  floorLampLights.forEach((l, i) => {
+    const it = lampItems[i];
+    if (it) {
+      l.position.set(it.x, 1.38 * (it.scale ?? 1), it.z);
+      l.intensity = 1.15;
+    } else {
+      l.intensity = 0;
+    }
+  });
+
+  // the radio's sound source follows the first placed radio
+  const radioItem = archiveLayout.items.find((i) => i.type === 'radio');
+  if (radioItem) RADIO_POS.set(radioItem.x, (radioItem.y ?? 0) + 0.18, radioItem.z);
+
+  // pigeonhole slots follow the first placed unit (local → world); empty
+  // array = nowhere to file, the basket routine burns everything instead
+  pigeonholeSlots.length = 0;
+  const pigItem = archiveLayout.items.find((i) => i.type === 'pigeonholes');
+  if (pigItem && PIGEON_LOCAL_SLOTS.length) {
+    const s = pigItem.scale ?? 1;
+    const cos = Math.cos(pigItem.rotY), sin = Math.sin(pigItem.rotY);
+    for (const p of PIGEON_LOCAL_SLOTS) {
+      pigeonholeSlots.push(new THREE.Vector3(
+        pigItem.x + (p.x * cos + p.z * sin) * s,
+        p.y * s,
+        pigItem.z + (-p.x * sin + p.z * cos) * s));
+    }
+  }
+}
+let lampPlaced = false;
 
 function navRoute(fromKey, toKey) {
   if (fromKey === toKey) return [toKey];
@@ -3065,6 +3687,11 @@ function pmScheduleNext(seconds) {
 }
 
 function pmWalkTo(stationKey, arrived) {
+  if (!NAV_NODES[stationKey]) {   // a dynamic station whose furniture left mid-plan
+    pmState = 'station';
+    pmScheduleNext(4 + Math.random() * 4);
+    return;
+  }
   const route = navRoute(pmStationKey, stationKey);
   pmPath = route.slice(1).map((k) => NAV_NODES[k]);
   pmStationKey = stationKey;
@@ -3122,9 +3749,11 @@ const PM_ROUTINES = [
 
 function pmRoutine() {
   // never re-pick the station he's already standing at (except desk, which has
-  // an in-place work branch) — walking to your own feet was the treadmill bug
+  // an in-place work branch) — walking to your own feet was the treadmill bug.
+  // Dynamic stations (coffee, couch) drop out when their furniture isn't placed.
   const options = PM_ROUTINES.filter((r) =>
-    r.key === 'deskwork' || !r.station || r.station !== pmStationKey);
+    (r.key === 'deskwork' || !r.station || r.station !== pmStationKey)
+    && (!r.station || PM_STATIONS[r.station]));
   let total = 0;
   for (const r of options) total += r.w;
   let roll = Math.random() * total;
@@ -3153,7 +3782,9 @@ function pmRoutine() {
       pmState = 'busy';
       playOneshot('bow', () => {
         pmCarried = makeCarriedEnvelope();
-        const burn = Math.random() < 0.45;
+        // no pigeonholes placed → everything goes in the furnace
+        const burn = Math.random() < 0.45
+          || !PM_STATIONS.pigeon || !pigeonholeSlots.length;
         pmWalkTo(burn ? 'furnace' : 'pigeon', burn ? pmBurnCarried : pmFileCarried);
       });
     });
@@ -3275,6 +3906,7 @@ function pmBurnCarried() {
 }
 
 function pmFileCarried() {
+  if (!pigeonholeSlots.length) { pmBurnCarried(); return; }   // unit vanished mid-walk
   pmState = 'busy';
   pmSpeakFrom(PM_FILE_LINES);
   const slot = pigeonholeSlots[Math.floor(Math.random() * pigeonholeSlots.length)];
@@ -4034,22 +4666,17 @@ const CIRCLES = [
 // Wall-side faces extend ≥2m past the wall so the least-penetration push always
 // resolves into the room (a face just past the wall loses to the wall clamp and
 // traps the camera — the fuzz sim caught it).
-const STATIC_BOXES = [
-  [-0.15, 4.0, -8.0, -4.75],               // desk + donut table + tucked chair (desk
-                                           // at the wall r12.3; east face buried in
-                                           // the pigeonhole box on purpose)
-  [4.45, 9.5, -8.0, -5.05],                // pigeonholes + coat-rack corner
-  [7.45, 11.5, -5.15, 0.15],               // file cabinet bank (overlaps the
-                                           // pigeonhole box so no sliver opens)
-  [-11.5, -8.05, -2.8, -1.2],              // radiator
-  [-11.5, -7.55, 3.6, 5.2],                // big table by the door
-  [-6.1, -3.9, -8.0, -5.2],                // the couch (box face sits behind the
-                                           // cushion so his sit station clears it)
-  [8.2, 11.5, 0.05, 1.9],                  // bookshelf (overlaps the cabinet bank)
-  [-6.65, -3.7, -4.65, -3.95],             // coffee table + flanking chairs (the
-                                           // couch nook; north face buried in the
-                                           // couch box on purpose — no sliver)
-];
+// Every piece of furniture is a placeable now (2026-08-03) — camera keep-outs
+// derive entirely from placed items; nothing is hand-boxed anymore.
+const STATIC_BOXES = [];
+// (desk, couch, tables, bookshelf, cabinet-bank boxes all retired 2026-08-03 —
+// those pieces are placeables now and derive keep-outs from the layout)
+
+// PM_LANES: floor the POSTMASTER may walk though the camera may not. Empty
+// since the desk became a placeable (its station rides the item and dynamic
+// stations aren't in the sim's static edge check) — the machinery stays for
+// any future camera-only zone. The nav sim extracts this; keep in lockstep.
+const PM_LANES = [];
 
 // Arrange-mode furniture derives its keep-out from the item footprint: rotated
 // rect → AABB + body margin; faces near a wall extend well past it (the r2
@@ -4101,8 +4728,11 @@ function mergeItemBoxes(list) {
 let BOXES = [];
 let BOX_PUSHES = [];
 function rebuildKeepOuts() {
+  // surf items are tabletop clutter — no keep-out footprint
   BOXES = [...STATIC_BOXES, ...mergeItemBoxes(
-    archiveLayout.items.filter((i) => FURNITURE[i.type]).map(itemKeepOut))];
+    archiveLayout.items.filter((i) => FURNITURE[i.type] && !FURNITURE[i.type].surf)
+      .map(itemKeepOut))];
+  refreshDynStations();
   BOX_PUSHES = BOXES.map(([x0, x1, z0, z1], bi) => {
   const l = x0 - BODY_R, r = x1 + BODY_R, n = z0 - BODY_R, s = z1 + BODY_R;
   const wx0 = ROOM.x0 + INSET, wx1 = ROOM.x1 - INSET;
@@ -4225,7 +4855,7 @@ stage.addEventListener('pointerup', (e) => {
 });
 
 let dollyImpulse = 0;
-const TOP_SPEED = 3.0;   // motion-sickness cap: stacked wheel dollies obey it too
+const TOP_SPEED = 3.5;   // cap for stacked wheel dollies (raised with the 08-04 walk bump)
 addEventListener('wheel', (e) => {
   if (e.target.closest?.('.es-sound, #tuner, #tuner-btn')) {
     if (e.ctrlKey) e.preventDefault();
@@ -4367,8 +4997,9 @@ for (const [key, min, max] of TUNER_SPEC) {
 
 function applyTune() {
   scene.fog.density = tune.fog;
-  shaftMat.opacity = tune.shaft;
-  lampLight.intensity = tune.lamp;
+  // shaft opacity is per-plane and view-dependent — the tick loop applies
+  // tune.shaft × angle fade every frame, nothing to set here
+  lampLight.intensity = lampPlaced ? tune.lamp : 0;   // dark unless a lamp is placed
   hemi.intensity = tune.ambient;
   for (const l of bulbLights) l.intensity = tune.bulb;
   for (const l of fluorLights) l.intensity = tune.fluor;
@@ -4403,6 +5034,26 @@ function tick() {
     if (punchFlash > 0) punchFlash -= dt;
   }
 
+  // light shafts: each crossed plane fades as it goes edge-on to the camera —
+  // the face-on plane carries the beam, the edge-on one dissolves instead of
+  // reading as a pane of glass
+  for (const sp of shaftPlanes) {
+    shaftToCam.subVectors(camera.position, sp.mesh.position).normalize();
+    const f = Math.abs(shaftToCam.dot(sp.normal));
+    sp.mat.opacity = tune.shaft * Math.min(1, f * 1.7);
+  }
+
+  // ghost-through: only the fixture the eye is inside of fades — everything
+  // else stays fully solid
+  for (const cf of ceilingFixtures) {
+    const near = camera.position.distanceToSquared(cf.pos) < 1.1;   // ~1m bubble
+    const target = near ? 0.1 : 1;
+    if (Math.abs(cf.fade - target) > 0.005) {
+      cf.fade = damp(cf.fade, target, 14, dt);
+      for (const m of cf.mats) m.opacity = cf.fade;
+    }
+  }
+
   // walk + look
   yaw = damp(yaw, tYaw, 22, dt);
   pitch = damp(pitch, tPitch, 22, dt);
@@ -4413,12 +5064,19 @@ function tick() {
   if (keys.has('KeyS') || keys.has('ArrowDown')) wish.sub(fwd);
   if (keys.has('KeyA') || keys.has('ArrowLeft')) wish.sub(right);
   if (keys.has('KeyD') || keys.has('ArrowRight')) wish.add(right);
-  if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(2.2);
+  // 2.78 = 2.2 +10% (08-03) +15% more (08-04, James: still frustratingly slow)
+  if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(2.78);
   if (Math.abs(dollyImpulse) > 0.01) {
-    wish.addScaledVector(fwd, dollyImpulse * 2.2);
+    wish.addScaledVector(fwd, dollyImpulse * 2.78);
     dollyImpulse *= Math.pow(0.0025, dt);
   }
   if (wish.length() > TOP_SPEED) wish.setLength(TOP_SPEED);
+  // shift = sprint (James, 2026-08-04): double, applied after the cap on purpose
+  if (keys.has('ShiftLeft') || keys.has('ShiftRight')) wish.multiplyScalar(2);
+  // R/F: rise and sink (2026-08-04, promoted from arrange-only to the live
+  // view at James's ask) — smooth while held, clamped floor to rafters
+  if (keys.has('KeyR')) pos.y = Math.min(ROOM.h - 0.25, pos.y + 2.4 * dt);
+  if (keys.has('KeyF')) pos.y = Math.max(EYE, pos.y - 2.4 * dt);
   vel.x = damp(vel.x, wish.x, 6, dt);
   vel.z = damp(vel.z, wish.z, 6, dt);
   pos.x += vel.x * dt;
@@ -4493,5 +5151,9 @@ if (new URLSearchParams(location.search).has('arrange') && location.protocol !==
     buildFurnitureItem, buildArtItem, removeFurnitureItem, rebuildKeepOuts,
     fuzzKeepOuts, itemKeepOut, applyShade,
     nav: { nodes: NAV_NODES, edges: NAV_EDGES },
+    // arrange-only crane: raise the working eye height (R/F). Resets on exit
+    // because exit reloads the page.
+    setEye: (h) => { pos.y = Math.min(ROOM.h - 0.25, Math.max(EYE, h)); return pos.y; },
+    getEye: () => pos.y,
   })).catch((err) => console.warn('[dlo] arrange mode failed to load:', err));
 }

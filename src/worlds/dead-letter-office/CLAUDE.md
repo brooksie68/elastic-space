@@ -31,7 +31,9 @@ return addresses still work.
 - `tmp/dead-letter-office/nav-fuzz-sim.mjs` — the durable constraint/nav sim (rebuilt
   2026-07-27; the original was scratchpad-only and lost). Run it after ANY furniture,
   keep-out, or nav change: `node tmp/dead-letter-office/nav-fuzz-sim.mjs`. It reads
-  world.js source directly, so no constant-copying drift.
+  world.js source directly, so no constant-copying drift. (A stray copy lives in
+  `tmp/dead-letter-office/_files/` from a folder shuffle — its relative path is
+  broken there; the canonical one above is the live sim, restored 2026-08-03.)
 - `tmp/dead-letter-office/archive-lookdev.html` — silent look-dev harness for the
   archive stacks (served: `/tmp/dead-letter-office/archive-lookdev.html?view=0..2`).
   Evals the live archive section out of world.js. KEEP IT — it is how archive changes
@@ -106,7 +108,65 @@ the second — the office holds their whole almost-romance). Get his answers fir
   hand-edit item coordinates casually — the layout is his. Camera keep-outs DERIVE
   from item footprints (`itemKeepOut` + `mergeItemBoxes` in world.js — replicated
   verbatim in the sim; change one, change both). Run the sim after any layout,
-  FURNITURE, or keep-out change. Box labels live in `ARCHIVE_LABELS` (James-approved
+  FURNITURE, or keep-out change.
+- The furnishing expansion (r13, 2026-08-03 — James: "arrange everything in a
+  perfectly human way"): nearly everything is a placeable now — the desk, his
+  chair + all the desk dressing (`svc-lamp`/`svc-mug`/`svc-papers`/`svc-rts`),
+  the file cabinet bank, THE RADIO, couch, plants, all three tables, bookshelf,
+  parcels, tabletop `svc-*` clutter, the rug, the pigeonholes, and the house
+  sign + JOHN DOUGH sign as wall art (`art-housesign` / `art-postmaster`).
+  `surf: true` types have NO camera keep-out, carry a `y`, and raycast onto
+  surfaces when dragged (the rug is surf-flagged — walkable — but lives in
+  the furniture palette). GLB types (`glb:` in the def) clone Meshy props; the
+  radio's def flags `keepMats` (Meshy atlas stays) + `radio` (click-toggle,
+  glow mats, RADIO_POS follows the item; removeFurnitureItem calls
+  record.cleanup to deregister). The banker's-lamp light anchors to the first
+  placed `svc-lamp` and goes dark with none. Pigeonhole filing slots ride the
+  first placed `pigeonholes` item (PIGEON_LOCAL_SLOTS → world in
+  refreshDynStations); with none placed the basket routine burns everything.
+  Round-five additions: `rug-2` (1920s oriental, drawn 4-way-symmetric),
+  `coat-rack`, `radiator`, and the corkboard as `art-corkboard` wall art.
+  Fixed set is down to: basket, furnace, clock, drum-counter tallies, STAIRS
+  plate, windows/door/welcome mat. server.mjs `furnitureTypes` must list
+  every type — new placeables need a server entry too (and a server restart).
+- **The desk faces the room since r13** (James, per the original art): John
+  Dough works behind it, back to the north wall, chair in the gap — all as
+  layout items now.
+- **THE POSTMASTER IS REHIRED (2026-08-04)**: `PM_ENABLED = true`, `NAV_WARN
+  = true`, sim 44/44 against James's furnished 60-item layout. His window
+  station lives at the SOUTH-WEST window now (−5.6, 4.8, via H4 only) — the
+  oil tank owns the west window and James's layout always wins; when a
+  placed item lights red, bend the pm's static stations/edges around it and
+  re-run the sim. Art-seeding still fires only when no layout file exists.
+- Arrange mode since 2026-08-04 also has: per-item lock (L key / button,
+  orange outline, `locked` in the layout JSON), spawn-IN-HAND (palette click
+  → item rides cursor, click sets down, Esc cancels), Ctrl+S save, R/F eye
+  height (now a world-level control, live view too), Shift sprint, wall art
+  dragging on wall planes with height in the drag, art mounting on vertical
+  FURNITURE faces, footprint-aware wall clamping, world-click→palette
+  highlight, shade to 2.5 (server caps 2.6). Ceiling fixtures ghost to 10%
+  only while the camera is inside their ~1m bubble (per-fixture mat clones).
+- Prop import pipeline (proven ×8 on 2026-08-03/04): James generates on the
+  Meshy canvas → drops GLBs in `tmp/dead-letter-office/_files/` → headless-
+  Blender render-verify, then bake (decimate only if heavy, 1024 WebP) →
+  `assets/props/*.glb` (no hyphens in filenames — the material-stem regex is
+  `\w+`) → FURNITURE/WALL_ART def (+ server allowlist + restart). `wear:`
+  on a keepMats def composites the rust tile over its atlas at load
+  (wastebasket = 15%). Floor lamps cast real light — pool of FOUR
+  PointLights anchored to the first four placed. rust-tile.jpg was regraded
+  in place (desat + umber) — regrade beats regenerate, zero credits.
+- **Dynamic stations (r13)**: `desk`, `coffee`, `couch`, `cabinets`,
+  `pigeon` and `corkboard` anchor to the first placed desk / work-table /
+  couch / cabinet-bank / pigeonholes / corkboard-art item
+  (`refreshDynStations`, called from rebuildKeepOuts). The stand-off sits on
+  the item's front side (the desk's rotY convention faces its user); if no
+  straight hub walk is clear the wiring routes around the item via a `…Side`
+  node instead of clipping through it. No item placed → the routine drops out
+  of the rotation and the postmaster homes at wander1. `PM_LANES` exists but
+  is empty (camera-only floor machinery, sim-extracted — keep in lockstep).
+- **Arrange mode has "clear the room"** (r13, James's ask): removes every
+  placed item after a native confirm; nothing persists until "save layout".
+- Box labels live in `ARCHIVE_LABELS` (James-approved
   tone includes DICK PICS (CONFISCATED) — do not sanitize; 72 entries since r12, the
   atlas caps at 80 tiles so at most 72 labels + the 8 plain/top tiles). The whole
   archive draws from one canvas atlas: never give boxes per-mesh materials. The
@@ -114,11 +174,13 @@ the second — the office holds their whole almost-romance). Get his answers fir
   key, and its emissive stays faintly on (0.22 off / 0.42 playing).
 - Wall art is placeable (r12, 2026-07-28): `WALL_ART` catalog + `buildArtItem` in
   world.js; art items ride the same layout file with an extra `y` (hang height).
-  `DLO_DEFAULT_ART` seeds the classic placements when a saved layout carries no art
-  — keep it in sync if the catalog changes. In arrange mode art snaps to walls,
+  `DLO_DEFAULT_ART` seeds the classic placements ONLY when no layout file
+  exists at all (a saved art-less layout stays bare on purpose — the
+  blank-canvas rule, 2026-08-03). In arrange mode art snaps to walls,
   wheel = height; furniture wheel-rotation snaps to 8 stops (45°) — James's rule,
-  don't reintroduce free rotation. Fixtures (house sign, clock, drum-counter
-  tallies, corkboard, STAIRS plate) are NOT placeable on purpose. server.mjs
+  don't reintroduce free rotation. Remaining fixtures (clock, drum-counter
+  tallies, STAIRS plate) are NOT placeable on purpose; the house sign, JOHN
+  DOUGH sign, and corkboard moved into the art catalog in r13. server.mjs
   `furnitureTypes` must list every art type.
 - Drag look is swing-only (James 2026-07-28): no grab mode, no toggle — do not
   bring the switch back.
