@@ -8,7 +8,6 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "jerrys-pool/index.html",
   "mandala-shop/index.html",
   "orb-dimension/index.html",
-  "pelagic-lantern-habitat/index.html",
   "singing-plate/index.html",
   "surround/index.html",
   "the-fifteen-sisters/index.html",
