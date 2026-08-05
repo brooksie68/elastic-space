@@ -3388,15 +3388,19 @@ function playOneshot(name, done, fade = 0.3) {
 // guards on pmModel, so with the loader skipped he simply never exists.
 // Flip PM_ENABLED to true to rehire him (and re-run the nav sim first).
 const PM_ENABLED = true;   // rehired 2026-08-04 against James's new room
+// PM_V2: John Dough, the CC5 bake (2026-08-04) — walk clip only so far, all
+// other clips no-op via the missing-action guards. false = Meshy postmaster.
+const PM_V2 = true;
 if (PM_ENABLED) Promise.all([
-  loader.loadAsync('assets/postmaster/postmaster.glb'),
-  loader.loadAsync('assets/postmaster/anim-pack.glb'),
+  loader.loadAsync(PM_V2 ? 'assets/postmaster/john-dough.glb' : 'assets/postmaster/postmaster.glb'),
+  loader.loadAsync(PM_V2 ? 'assets/postmaster/walk-pack.glb' : 'assets/postmaster/anim-pack.glb'),
 ]).then(([modelGltf, packGltf]) => {
   pmModel = modelGltf.scene;
   const bbox = new THREE.Box3().setFromObject(pmModel);
   const size = bbox.getSize(new THREE.Vector3());
-  // 1.70 read small against the furniture (James r5), then +4in more (r7)
-  const PM_HEIGHT = 1.89;
+  // 1.70 read small against the furniture (James r5), then +4in more (r7).
+  // v2 John Dough is deliberately shorter — a round man, not a tall one.
+  const PM_HEIGHT = PM_V2 ? 1.68 : 1.89;
   const scale = PM_HEIGHT / size.y;
   pmModel.scale.setScalar(scale);
   pmModel.position.y = -bbox.min.y * scale;
@@ -3406,6 +3410,9 @@ if (PM_ENABLED) Promise.all([
     // always see him"): the emissive copy stays at PARTIAL strength — he glows
     // with his own colors so the face reads in any corner, and the room's real
     // light still layers on top. pmGlow in the tuner is the knob.
+    // The CC5 bake ships no emissive at all — recreate the Meshy dual-atlas
+    // trick by hand so the pmGlow contract (always visible) holds for v2 too.
+    if (PM_V2 && o.material.map && !o.material.emissiveMap) o.material.emissiveMap = o.material.map;
     if (o.material.emissive) o.material.emissive.set(0xffffff);
     o.material.emissiveIntensity = tune.pmGlow;
     o.material.roughness = 0.85;
@@ -3424,13 +3431,22 @@ if (PM_ENABLED) Promise.all([
     new THREE.MeshBasicMaterial({ visible: false }));
   pmProxy.position.y = 0.92;
   pmGroup.add(pmProxy);
-  headBone = pmModel.getObjectByName('Head');
-  handBone = pmModel.getObjectByName('RightHand');
+  headBone = pmModel.getObjectByName(PM_V2 ? 'CC_Base_Head' : 'Head');
+  handBone = pmModel.getObjectByName(PM_V2 ? 'CC_Base_R_Hand' : 'RightHand');
 
   mixer = new THREE.AnimationMixer(pmModel);
   for (const clip of packGltf.animations) {
     if (clip.name.includes('|')) continue;   // stray unnamed export
     actions[clip.name] = mixer.clipAction(clip);
+  }
+  if (PM_V2 && actions.walk && !actions['idle-1']) {
+    // no idle clips yet: freeze a feet-passing instant of the walk as a
+    // stand-in pose so he doesn't drop to the calibration T-pose at stations
+    const walkClip = actions.walk.getClip();
+    for (const n of IDLES) {
+      const pose = THREE.AnimationUtils.subclip(walkClip, n, 9, 11, 24);
+      actions[n] = mixer.clipAction(pose);
+    }
   }
   mixer.addEventListener('finished', (e) => {
     if (e.action !== oneshotAction) return;

@@ -323,6 +323,18 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Meshy postmaster gets a framed-portrait placeable (render him FIRST).
    Read src/worlds/dead-letter-office/CLAUDE.md before starting — the
    rehire flags, prop pipeline, and dynamic-station rules are all there.
+   2026-08-04: **JOHN DOUGH IS IN THE WORLD** (r14, walk-only test — James's
+   "see him first" call): PM_V2 flag in DLO world.js loads the CC5 bake +
+   Mixamo walk retargeted via headless ARP (explicit bone map REQUIRED —
+   auto-map garbage on CC rigs; scripts in tmp/dead-letter-office/cc5-bake/
+   retarget/). His verdict: height/aesthetic good; fix before animations/
+   voice: hips+moobs+pants (CC5 sliders, he drives), arm-chain clearance
+   (3-joint offset, not plain splay), idle jerk, sashay walk. Other 11 clips
+   retarget only on his explicit go. Beard: Meshy conform experiment parked
+   (worked mechanically, Claude shipped it 2× big + floating, James caught
+   it); he's re-eyeing Beard & Brows Builder vs whitened stock CC. New
+   higher-res ideal reference pasted in chat — NOT saved to disk, get it
+   from him. Full detail: DLO changelog r14.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

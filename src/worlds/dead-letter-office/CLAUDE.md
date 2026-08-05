@@ -77,6 +77,14 @@ the second — the office holds their whole almost-romance). Get his answers fir
   character — new letters must not regress to uniform paragraph-scale.
 - **Face/eyes: hands off** (James, 2026-07-21) — the frozen face ships as-is; the 3D eye-rig
   work stays parked in `tmp/dead-letter-office/meshy/viewer.html` until James reopens it.
+- **PM_V2 (2026-08-04): John Dough, the CC5 bake, is the live postmaster** —
+  `PM_V2` in world.js picks john-dough.glb + walk-pack.glb (walk only so far;
+  missing clips no-op via the action guards, idles are a frozen walk subclip).
+  v2 has no Meshy dual atlas — world.js recreates the emissive trick by hand;
+  bones are CC_Base_* names. Retarget pipeline + explicit mixamo→CC bone map:
+  tmp/dead-letter-office/cc5-bake/retarget/ (ARP auto-map is unreliable on CC
+  skeletons — never trust it). Body fix list before more clips: see r14
+  changelog entry.
 - Postmaster integration facts (learned the hard way, sessions 07-17/18):
   1. Meshy materials carry the color atlas twice — `map` AND `emissiveMap`. Since r4 the
      emissive copy is kept ON at partial strength deliberately (James: he must always be

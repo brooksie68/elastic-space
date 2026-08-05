@@ -3,6 +3,38 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-04 — Claude (Fable 5) — John Dough enters the world (r14, walk-only test)
+
+James's call: before animations/voice, get the CC5 bake in-world to judge presence.
+
+- **PM_V2 flag in world.js** (true): loads `assets/postmaster/john-dough.glb`
+  (CC5 bake, 31.6MB, 177 morphs) + `walk-pack.glb` (walk retargeted from
+  Mixamo via Auto-Rig Pro headless; tmp/dead-letter-office/cc5-bake/retarget/
+  has the scripts + the full explicit mixamo→CC bone map — ARP's auto-mapper
+  is UNRELIABLE on CC skeletons, it sent LeftArm to the forearm and a finger
+  to a toe; always use the explicit map). Flip false = Meshy postmaster back.
+- v2 height 1.68; head/hand bones CC_Base_Head / CC_Base_R_Hand; emissive
+  trick recreated by hand (CC bake ships no emissive — pmGlow contract holds);
+  idles = frozen walk subclip so no T-pose at stations. Nav sim 44/44.
+- **James's verdict:** height good, fits the aesthetic, cartoony enough to
+  belong. Fix list before real animations/voice: feminine hips, giant moobs
+  (CC5 slider fix, his drive), tight pants, hands clip body when walking
+  (3-joint arm-chain offset agreed: upperarm out / elbow out / wrist back in
+  — a plain splay was rejected, "not gonna accept a pose walking around"),
+  jerky in-place dance at stations, sashay walk. Scalp fix landed same night
+  (hair alpha), "hair looking good".
+- The other 11 banked Mixamo clips: retarget approved in principle, NOT run
+  ("i didnt say start") — the batch only fires on his explicit go.
+- **Beard: Meshy conform experiment parked** (complexity retreat). The
+  meshy-v2 beard.glb conformed + jaw-rigged in Blender (scripts in
+  cc5-bake/retarget/, beard-fit.blend) — mechanically works, mouth moves it,
+  but Claude shipped it 2× too big and floating off the face; James caught
+  it. He's reconsidering Reallusion Beard & Brows Builder (~$40–50, dense
+  cards survive our pipeline — tonight's hair proves it) vs whitening/
+  cartoonifying stock CC beards. NEW IDEAL REFERENCE: James pasted a
+  higher-res ChatGPT front turnaround in chat — beard hugs the jaw, compact,
+  not a mane. NOT SAVED TO DISK — get the file from him next session.
+
 ## 2026-08-03 — Claude (Fable 5) — the great furnishing expansion (r13)
 
 James's brief: make (nearly) everything arrangeable, flip the desk, more pipes,
