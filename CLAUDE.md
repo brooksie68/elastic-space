@@ -335,6 +335,21 @@ consistent. `npm run check-worlds` audits every world against the contract.
    it); he's re-eyeing Beard & Brows Builder vs whitened stock CC. New
    higher-res ideal reference pasted in chat — NOT saved to disk, get it
    from him. Full detail: DLO changelog r14.
+   2026-08-05: BEARD/HAIR PACK RESEARCH (research-only, nothing bought) —
+   answering "Beard & Brows Builder vs whitened stock CC" above: CC5's own
+   Smart Hair beard packs (incl. Beard & Brows Builder and the Santa Claus
+   Family's Santa Beard & Hat) are card/strand-based, same tech family as
+   the already-rejected Viking beard — HIGH risk of thinning through the
+   proven CC5→FBX→Blender→GLB pipeline. Lower-risk routes are genuine mesh:
+   Daz3D Rudolf Beard ($23.95, Genesis 8, white/grey color option) or The
+   Strange Man Hair Set ($25.95, toon-styled) via Transformer, or skip CC5
+   hair entirely and conform a Blender mesh beard (Superhive "50 Stylized
+   Beard and Mustache," ~$14-22) directly to the head in the Blender leg
+   already in the pipeline. Claude's rec if James wants to pursue it:
+   50 Stylized Beard and Mustache + Stylized Hair Pro v4.2.1 ($22, MIT,
+   Blender-5.1-compatible build) as a sculpting fallback, ~$36-44 total.
+   Full shortlist (9 options w/ pricing) is in this session's chat only,
+   not saved to disk — ask Claude to redo the search or paste it if needed.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
