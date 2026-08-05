@@ -2,6 +2,118 @@
 
 Newest entries first.
 
+## 2026-08-04 (later same day) — Claude (Sonnet 5) — v4.1: draggable panels + two bugs
+
+James's first-look feedback on v4: panels need to be movable, "try this" has
+no way to collapse and sits in front of the scope, and every panel has both
+scrollbars when it needs neither.
+
+1. **Panels are now draggable by their header**, and remember where you put
+   them — no separate "save" step, position is written to localStorage
+   (`valence-lab-panel-pos-v1`) the instant a drag ends, same philosophy as
+   every tuner slider. `makeDraggable()` tells a click from a drag by
+   movement distance (>6px, the same threshold the vial-click/camera-spin
+   code already uses) so the header still toggles collapse on a plain
+   click. A dragged panel switches to `position:fixed` at the drop point
+   (clamped on-screen) and drops out of its column's flex flow — other
+   panels in that column reflow to fill the gap. "Reset panel positions"
+   (fine tuning panel, separate from "reset to defaults" — one is layout,
+   one is the science sliders) clears it back to the default column layout.
+2. **Real bug: the double scrollbar.** `.hud-col` had `overflow-y: auto` but
+   `overflow-x: visible` — per the CSS spec, mixing a scrolling value on one
+   axis with `visible` on the other forces BOTH axes to compute to `auto`.
+   That's why every panel showed a horizontal scrollbar it never needed.
+   Fixed: `overflow-x: hidden` (we never want horizontal scroll here).
+3. **Real bug found while testing the drag (not from his report): a thrown
+   `releasePointerCapture` would have silently eaten the collapse-toggle
+   click.** Synthetic/edge-case pointer-capture failures now `try/catch` on
+   both `setPointerCapture` and `releasePointerCapture` so a capture failure
+   can never block the fallback click behavior.
+4. **Try this panel** now collapses correctly (it always could via the same
+   header mechanism as every other panel — the real problem was #2 and #3
+   above confusing the interaction, plus no way to relocate it out of the
+   way, which #1 now solves) and, once dragged elsewhere, resizes from the
+   bottom-strip's forced full width back to a normal 22em card
+   (`.hud-panel.dragged` has to out-rank `.hud-col-bottom .hud-panel`'s
+   `width:100%` — same specificity, later in the sheet wins).
+
+Verified live: click-to-collapse and drag-to-move both isolated and
+confirmed correct (drag math checked against expected deltas with a real
+viewport size faked in, since the harness's undisplayed pane reports a 0×0
+viewport and can't be trusted for pixel-perfect checks on its own); position
+persists across reload; reset button clears it. Both sims still green
+(129 + 404) — nothing physics-adjacent changed. Awaiting his hands-on pass.
+
+## 2026-08-04 — Claude (Sonnet 5) — v4: the exhibit rebuild
+
+James's brief, delivered as one long brain-dump: the lab reads "too
+scientific" — one small panel, unexplained shorthand (`1s² 2s² 2p⁶` with no
+translation), a hard click-toggle for shells vs. cloud, two background props
+that didn't earn their place, and materials that "look like a generic 3D
+shape made in Blender." His framing: a museum exhibit fifty years in the
+future, fun and inviting to a smart high-schooler who's never taken
+chemistry. Built solo on his explicit go ("just do something amazing...
+rock on, buddy"), plus a standing consent to spend up to 60 Meshy credits
+without asking again mid-task.
+
+1. **New `content.js`** — plain-English copy, zero physics, zero imports.
+   Per-element and per-molecule "what is this?" overview paragraphs, a
+   `shellBreakdown()` helper that groups an element's raw subshell fill into
+   plain shells ("first shell," "second shell — the outer shell"), s/p shape
+   explanations (including the honest aside that s/p/d/f are 19th-century
+   spectroscopy labels — sharp/principal/diffuse/fundamental — not shape
+   descriptions), a `reactivityBlurb()` keyed off electron count/seeking,
+   and swarm/fog/shells explainer text. Nothing here is asserted by the sims
+   because nothing here is a number; if a paragraph ever states one it must
+   match orbitals.js/valence.js.
+2. **Six floating glass HUD panels**, replacing the old 3-tab scope console:
+   specimen (identity + an enriched valence/reactivity paragraph, not just a
+   one-line status), electron shells (clickable rows, expand to read what
+   "2p" means and why), what is this? (the overview paragraph), viewing
+   modes (swarm vs. fog vs. shells explained in plain terms, plus the
+   swarm/fog toggle), try this (the recipe book, each molecule now carries a
+   one-line friendly hook — "water — the classic, start here"), fine tuning
+   (the detailed slider deck, collapsed by default). Panels are glass cards
+   — blurred backdrop, thin glowing border, a slow few-px float, staggered
+   per panel — built once (`makePanel()`) and refreshed from live
+   `scopeState` via `refreshSpecimenPanel()`/`refreshShellsPanel()`/
+   `refreshAboutPanel()`. `selectTab(name)` no longer switches tabs (there
+   aren't any) — it un-collapses `#panel-name` and gives it a one-shot pulse
+   glow, so a fresh bond or refusal is still always seen.
+3. **The shell↔cloud crossfade is now two big sliders**, not a 3-way
+   click-cycle. "Electron cloud brightness" and "fade in the shells" live
+   front-and-center in the viewing modes panel; `shellVisEnv`/`swarmVisEnv`
+   ease toward the slider values every frame (`* 0.1` per frame) so dragging
+   always reads as a fade, never a pop — James's ask, explicitly: bring
+   shells to 100% and watch them obscure the cloud, then fade back, by drag
+   not by click. The `shellS`/`shellP` s-sphere/p-dumbbell checkboxes moved
+   out of the old tuner and into the electron shells panel itself.
+4. **`labBack` deleted outright** — the two equipment-rack/shelf props added
+   the previous session didn't solve anything and James said to just drop
+   them; no replacement.
+5. **Real materials, no Meshy 3D swap needed.** Vial glass is now a
+   `MeshPhysicalMaterial` with `transmission:1` (actual refractive glass,
+   not a flat translucent color); a small procedural scene fed through
+   `PMREMGenerator` gives `scene.environment` something for metal to
+   reflect, free. On top of that, three Meshy-generated seamless tiles
+   (~27 credits total) now dress the procedural geometry:
+   `assets/textures/metal-panel.png` (brushed steel, riveted), `-dark.png`
+   (dark riveted panel), `glass-frost.png` (frosted etched glass, used as a
+   `roughnessMap`/`bumpMap` on the vials). `tiledTexture()` wraps
+   `RepeatWrapping` + repeat counts. The vials/scope/bench stay procedural
+   three.js geometry — no GLB import, so the hitbox cylinders, sprite
+   labels, and vial click wiring are untouched.
+6. **Verification:** both sims still green (129 + 404 assertions, nothing
+   physics-touching changed). Confirmed in a live tab: zero console errors,
+   every asset (scripts + new textures) 200, and the rendered DOM shows real
+   per-element data (spot-checked against oxygen's actual 1s² 2s² 2p⁴, not a
+   placeholder).
+
+Build stamp `v4 · phase B · the exhibit rebuild · 2026-08-04`. Awaiting
+James's eyes on the whole thing — panel copy/layout, the crossfade feel, and
+the new materials are all first-pass judgment calls, ten-percent tuning
+expected.
+
 ## 2026-08-03/04 — Claude (Sonnet 5) — camera default, drag spins the specimen, lab background hint
 
 Three of James's asks, one false alarm:

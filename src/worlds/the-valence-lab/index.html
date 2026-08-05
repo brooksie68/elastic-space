@@ -14,9 +14,14 @@
     <p>phase b · the bonding bench</p>
   </header>
 
-  <aside id="readout" class="readout" aria-live="polite"></aside>
+  <div id="hud" class="hud" aria-live="polite">
+    <div class="hud-col hud-col-left" id="hud-left"></div>
+    <div class="hud-col hud-col-right" id="hud-right"></div>
+    <div class="hud-col hud-col-bottom" id="hud-bottom"></div>
+    <div class="hud-corner" id="hud-corner"></div>
+  </div>
 
-  <p id="hint" class="hint">feed the scope from the vials — matching atoms bond on contact &nbsp;·&nbsp; drag to orbit &nbsp;·&nbsp; wheel to zoom</p>
+  <p id="hint" class="hint">click a vial to feed the scope — matching atoms bond on contact &nbsp;·&nbsp; drag the specimen to spin it &nbsp;·&nbsp; wheel to zoom</p>
 
   <!-- Draft world: no drift exits yet — they arrive at ship time. -->
   <script src="../../core/dashboard-control.js"></script>

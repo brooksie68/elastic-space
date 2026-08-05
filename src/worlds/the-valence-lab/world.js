@@ -10,9 +10,13 @@ import * as THREE from 'three';
 import { ELEMENTS, getElement, makeAtomSampler, SUBSHELLS, SUBSHELL_COLORS, radialR } from './orbitals.js';
 import { MOLECULES_DATA } from './assets/molecules-data.js';
 import { makeMoleculeSampler, buildIsoMesh } from './density.js';
-import { tryAdd, hintText, displayFormula, accountingLines, RECIPES } from './valence.js';
+import { tryAdd, hintText, displayFormula, RECIPES } from './valence.js';
+import {
+  SUBSHELL_TYPE, LETTER_ORIGIN_NOTE, shellBreakdown, reactivityBlurb,
+  ELEMENT_OVERVIEW, MOLECULE_OVERVIEW, MOLECULE_HOOK, VIEW_MODE_TEXT,
+} from './content.js';
 
-const BUILD = 'v3.2 · phase B · 2026-07-26';
+const BUILD = 'v4 · phase B · the exhibit rebuild · 2026-08-04';
 console.log(`[valence-lab] ${BUILD}`);
 
 // ---------------------------------------------------------------------------
@@ -114,14 +118,55 @@ const atomLight = new THREE.PointLight(0x66d9ff, 0.9, 40, 1.8);
 atomLight.position.copy(ATOM_CENTER);
 scene.add(atomLight);
 
+// A soft procedural environment map — gives metal and glass something to
+// actually reflect instead of flat color, without needing an external HDR.
+// James's ask ("doesn't look like plastic or glass, looks like a generic
+// Blender shape") — this is the free half of the fix; Meshy tile textures
+// are the other half, applied further down once generated.
+{
+  const envScene = new THREE.Scene();
+  envScene.add(new THREE.Mesh(
+    new THREE.SphereGeometry(20, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x1c2f3a, side: THREE.BackSide }),
+  ));
+  const panelCool = new THREE.MeshBasicMaterial({ color: 0x8fd8ee });
+  const panelWarm = new THREE.MeshBasicMaterial({ color: 0xffb36b });
+  const p1 = new THREE.Mesh(new THREE.PlaneGeometry(10, 4), panelCool);
+  p1.position.set(0, 8, -10);
+  envScene.add(p1);
+  const p2 = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), panelWarm);
+  p2.position.set(-9, 2, 4); p2.rotation.y = Math.PI / 3;
+  envScene.add(p2);
+  const p3 = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), panelCool);
+  p3.position.set(9, 2, 4); p3.rotation.y = -Math.PI / 3;
+  envScene.add(p3);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(envScene, 0.05).texture;
+  pmrem.dispose();
+}
+
 // ---------------------------------------------------------------------------
 // The bench
 
 const bench = new THREE.Group();
 scene.add(bench);
 
-const METAL = new THREE.MeshStandardMaterial({ color: 0x7d868f, metalness: 0.85, roughness: 0.42 });
-const METAL_DARK = new THREE.MeshStandardMaterial({ color: 0x3a4148, metalness: 0.8, roughness: 0.55 });
+// Meshy-generated seamless tiles (2026-08-04, James's ask — "doesn't look
+// like plastic or glass, looks like a generic Blender shape"): brushed steel
+// for the bright metal, a dark riveted panel for the housing, both repeated
+// via RepeatWrapping so one 1024px tile covers bench-scale geometry.
+const texLoader = new THREE.TextureLoader();
+function tiledTexture(path, repeatX, repeatY) {
+  const tex = texLoader.load(`./assets/textures/${path}`);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeatX, repeatY);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const metalTex = tiledTexture('metal-panel.png', 2, 1);
+const metalDarkTex = tiledTexture('metal-panel-dark.png', 3, 3);
+const METAL = new THREE.MeshStandardMaterial({ color: 0xaab2b8, map: metalTex, metalness: 0.9, roughness: 0.32 });
+const METAL_DARK = new THREE.MeshStandardMaterial({ color: 0x8a939a, map: metalDarkTex, metalness: 0.85, roughness: 0.42 });
 
 const top = new THREE.Mesh(new THREE.BoxGeometry(30, 1, 12), METAL);
 top.position.y = -0.5;
@@ -225,53 +270,6 @@ scope.add(colFoot);
   }));
   scene.add(dust);
   dust.onBeforeRender = () => { dust.rotation.y += 0.00008; };
-}
-
-// ---------------------------------------------------------------------------
-// A hint of the lab beyond the bench — faint silhouettes past the rear
-// skirt (z < -5.75), off to the sides of the atom. Dim and desaturated on
-// purpose: depth cue, never the focus.
-
-const labBack = new THREE.Group();
-scene.add(labBack);
-
-const labMat = new THREE.MeshStandardMaterial({ color: 0x10151b, metalness: 0.5, roughness: 0.82 });
-const labLitCool = new THREE.MeshBasicMaterial({ color: 0x2f8fae, transparent: true, opacity: 0.2 });
-const labLitWarm = new THREE.MeshBasicMaterial({ color: 0x9a7a3a, transparent: true, opacity: 0.16 });
-
-function buildLabRack(x, z, seed) {
-  const rack = new THREE.Group();
-  rack.position.set(x, 0, z);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 5.4, 1.1), labMat);
-  body.position.y = 2.7;
-  rack.add(body);
-  const lights = [];
-  for (let i = 0; i < 4; i++) {
-    const lit = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.26), (i % 3 === 0 ? labLitWarm : labLitCool).clone());
-    lit.position.set(0, 1.15 + i * 1.05, 0.56);
-    lit.userData.phase = seed + i * 1.7;
-    rack.add(lit);
-    lights.push(lit);
-  }
-  rack.onBeforeRender = () => {
-    const t = performance.now() / 1000;
-    for (const lit of lights) lit.material.opacity = 0.12 + 0.1 * (0.5 + 0.5 * Math.sin(t * 0.6 + lit.userData.phase));
-  };
-  labBack.add(rack);
-}
-buildLabRack(-13.5, -15.5, 0);
-buildLabRack(15, -16, 3.1);
-
-// A dim back shelf with a few canisters — the bench-clutter kit again, pushed
-// back and darkened so it reads as depth, not detail.
-const labShelf = new THREE.Mesh(new THREE.BoxGeometry(8, 0.16, 1.1), labMat);
-labShelf.position.set(-2, 3.1, -15.6);
-labBack.add(labShelf);
-for (let i = 0; i < 4; i++) {
-  const h = 0.6 + (i % 3) * 0.18;
-  const canister = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, h, 12), labMat);
-  canister.position.set(-5.2 + i * 1.2, 3.1 + h / 2 + 0.08, -15.6);
-  labBack.add(canister);
 }
 
 // ---------------------------------------------------------------------------
@@ -716,12 +714,25 @@ function labelSprite(symbol, Z) {
   return sprite;
 }
 
+// Frosted-glass tile (Meshy, 2026-08-04) — subtle etched-circuit relief and
+// roughness variation on the vial glass, low intensity so the transmission
+// underneath still reads clearly.
+const glassFrostTex = tiledTexture('glass-frost.png', 1, 1);
+const glassBumpTex = texLoader.load('./assets/textures/glass-frost.png');
+glassBumpTex.wrapS = glassBumpTex.wrapT = THREE.RepeatWrapping;
+
 ELEMENTS.forEach((el, i) => {
   const g = new THREE.Group();
   g.position.set(-8.6 + i * 1.35, 0, 4.1);
   const glass = new THREE.Mesh(
     new THREE.CylinderGeometry(0.34, 0.34, 1.15, 18),
-    new THREE.MeshStandardMaterial({ color: 0xbfe2ee, transparent: true, opacity: 0.22, roughness: 0.15, metalness: 0.1 }),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xeaf6fb, metalness: 0, roughness: 0.1, roughnessMap: glassFrostTex,
+      transmission: 1, thickness: 0.45,
+      ior: 1.45, transparent: true, clearcoat: 0.7, clearcoatRoughness: 0.18,
+      bumpMap: glassBumpTex, bumpScale: 0.006,
+      attenuationColor: new THREE.Color(0xbfe2ee), attenuationDistance: 1.4,
+    }),
   );
   glass.position.y = 0.62;
   const glow = new THREE.Mesh(
@@ -750,44 +761,137 @@ rack.position.set(-8.6 + (ELEMENTS.length - 1) * 1.35 / 2, 0.07, 4.1);
 bench.add(rack);
 
 // ---------------------------------------------------------------------------
-// Readout panel
+// The exhibit HUD — floating glass panels around the scope, James's 2026-08-04
+// brief: not one config box, but several holographic placards you read like a
+// museum exhibit. Six panels, most open by default, "fine tuning" tucked away:
+// specimen (identity + valence/reactivity), electron shells (clickable,
+// plain-English), what is this? (overview paragraph), viewing modes (swarm/
+// fog/shells explainer + the shell<->cloud crossfade sliders), try this
+// (recipe book), fine tuning (the old detailed slider deck).
 
-const readout = document.getElementById('readout');
+const hud = document.getElementById('hud');
 let fogMode = false;
+// Eased toward the viewing-modes sliders every frame — see frame() below.
+let shellVisEnv = tuner.ghostOpacity;
+let swarmVisEnv = tuner.swarmOpacity;
 
-// Layer A/B: 'both' | 'swarm' | 'shells' — which of the two honest views of
-// the same density is showing. Smoothed so toggling crossfades, not pops.
-let layerMode = 'both';
-let swarmMixEnv = 1;
-let shellMixEnv = 1;
+// Panels are draggable by their header and remember where James puts them
+// (his ask, 2026-08-04: "let me move panels where I want, and record it").
+// Position is auto-saved the moment a drag ends — no separate "save" step —
+// same philosophy as the tuner sliders (every change persists immediately).
+const PANEL_POS_KEY = 'valence-lab-panel-pos-v1';
+let panelPositions = {};
+try { panelPositions = JSON.parse(localStorage.getItem(PANEL_POS_KEY) || '{}'); } catch { /* fresh */ }
+function savePanelPositions() {
+  try { localStorage.setItem(PANEL_POS_KEY, JSON.stringify(panelPositions)); } catch { /* no-op */ }
+}
+function clampPanelPos(left, top, w, h) {
+  return {
+    left: Math.min(Math.max(left, 4), Math.max(4, window.innerWidth - w - 4)),
+    top: Math.min(Math.max(top, 4), Math.max(4, window.innerHeight - Math.min(h, 48))),
+  };
+}
+function pinPanel(panel, left, top) {
+  panel.style.position = 'fixed';
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+  panel.style.right = 'auto';
+  panel.style.bottom = 'auto';
+  panel.style.transform = 'none'; // overrides hud-col-bottom's translateX centering
+  panel.classList.add('dragged');
+}
 
-// The right panel is the scope console (James, 2026-07-25: "it's not a
-// config, it's the scope controls"): three tabs — specimen, controls
-// (all the science levers), recipes (the trap-safe molecule book).
-readout.innerHTML = `
-  <p class="scope-tag">coherence scope · mk iv</p>
-  <div class="rtabs">
-    <button data-tab="specimen" class="active">specimen</button>
-    <button data-tab="controls">controls</button>
-    <button data-tab="recipes">recipes</button>
-  </div>
-  <div class="rtab" id="rtab-specimen"></div>
-  <div class="rtab" id="rtab-controls" hidden></div>
-  <div class="rtab" id="rtab-recipes" hidden></div>`;
-const specimenEl = document.getElementById('rtab-specimen');
+function makeDraggable(panel) {
+  const header = panel.querySelector('.ph');
+  let dragging = false, moved = 0, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  header.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    dragging = true; moved = 0;
+    const rect = panel.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    try { header.setPointerCapture(e.pointerId); } catch { /* no-op */ }
+  });
+  header.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    moved += Math.abs(e.movementX) + Math.abs(e.movementY);
+    if (moved > 6) {
+      const { left, top } = clampPanelPos(
+        startLeft + (e.clientX - startX), startTop + (e.clientY - startY),
+        panel.offsetWidth, panel.offsetHeight,
+      );
+      pinPanel(panel, left, top);
+    }
+  });
+  header.addEventListener('pointerup', (e) => {
+    if (!dragging) return;
+    dragging = false;
+    // releasePointerCapture can throw (pointer already gone, capture never
+    // granted, etc.) — never let that swallow the collapse-toggle below.
+    try { header.releasePointerCapture(e.pointerId); } catch { /* no-op */ }
+    if (moved > 6) {
+      panelPositions[panel.id] = { left: parseFloat(panel.style.left), top: parseFloat(panel.style.top) };
+      savePanelPositions();
+    } else {
+      panel.classList.toggle('collapsed'); // a real click, not a drag — toggle open/closed
+    }
+  });
+}
 
-function selectTab(name) {
-  for (const b of readout.querySelectorAll('.rtabs button')) {
-    b.classList.toggle('active', b.dataset.tab === name);
-  }
-  for (const t of readout.querySelectorAll('.rtab')) {
-    t.hidden = t.id !== `rtab-${name}`;
+// Clears every remembered position — panels fall back to their default
+// column layout on next load. Wired into the fine-tuning panel's reset.
+function resetPanelPositions() {
+  panelPositions = {};
+  try { localStorage.removeItem(PANEL_POS_KEY); } catch { /* no-op */ }
+  for (const panel of document.querySelectorAll('.hud-panel.dragged')) {
+    panel.classList.remove('dragged');
+    panel.style.position = ''; panel.style.left = ''; panel.style.top = '';
+    panel.style.right = ''; panel.style.bottom = ''; panel.style.transform = '';
   }
 }
-readout.querySelector('.rtabs').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-tab]');
-  if (b) selectTab(b.dataset.tab);
+
+function makePanel(column, id, title, { open = true } = {}) {
+  const panel = document.createElement('div');
+  panel.className = `hud-panel${open ? '' : ' collapsed'}`;
+  panel.id = id;
+  panel.innerHTML = `
+    <button class="ph" type="button"><span class="ph-title">${title}</span><span class="ph-chev">⌄</span></button>
+    <div class="pbody"></div>`;
+  document.getElementById(column).appendChild(panel);
+  makeDraggable(panel);
+  const saved = panelPositions[id];
+  if (saved) {
+    const { left, top } = clampPanelPos(saved.left, saved.top, panel.offsetWidth, panel.offsetHeight);
+    pinPanel(panel, left, top);
+  }
+  return panel.querySelector('.pbody');
+}
+
+const pbodySpecimen = makePanel('hud-right', 'panel-specimen', 'specimen');
+const pbodyShells = makePanel('hud-right', 'panel-shells', 'electron shells');
+const pbodyAbout = makePanel('hud-left', 'panel-about', 'what is this?');
+const pbodyViewing = makePanel('hud-left', 'panel-viewing', 'viewing modes');
+const pbodyTry = makePanel('hud-bottom', 'panel-try', 'try this');
+const pbodyFine = makePanel('hud-corner', 'panel-fine', 'fine tuning', { open: false });
+
+// Click-to-expand shell rows (delegated once — the panel's innerHTML gets
+// rebuilt on every atom, so per-row listeners would never survive).
+pbodyShells.addEventListener('click', (e) => {
+  const head = e.target.closest('.shell-sub-head');
+  if (head) head.closest('.shell-sub')?.classList.toggle('expanded');
 });
+
+// A fresh bond or a refusal must always be seen wherever the visitor was
+// looking — expand the specimen panel if it's collapsed and give it a brief
+// attention pulse. (Replaces the old tab-switch now that panels are all
+// visible at once.)
+function selectTab(name) {
+  const panel = document.getElementById(`panel-${name}`);
+  if (!panel) return;
+  panel.classList.remove('collapsed');
+  panel.classList.add('pulse');
+  setTimeout(() => panel.classList.remove('pulse'), 900);
+}
 
 function pips(el) {
   let html = '';
@@ -798,95 +902,243 @@ function pips(el) {
   return html;
 }
 
-const LAYER_CYCLE = ['both', 'swarm', 'shells'];
-
-function btnsHtml() {
-  return `<div class="btns">
-      <button id="btn-view">${fogMode ? 'view: fog' : 'view: swarm'}</button>
-      <button id="btn-layers">show: ${layerMode}</button>
-      <button id="btn-measure">measure</button>
-      <button id="btn-flush">flush</button>
-    </div>`;
-}
-
-function wireButtons() {
-  requestAnimationFrame(() => requestAnimationFrame(() => readout.classList.add('loaded')));
-  document.getElementById('btn-view')?.addEventListener('click', () => {
-    fogMode = !fogMode;
-    document.getElementById('btn-view').textContent = fogMode ? 'view: fog' : 'view: swarm';
-  });
-  document.getElementById('btn-layers')?.addEventListener('click', () => {
-    layerMode = LAYER_CYCLE[(LAYER_CYCLE.indexOf(layerMode) + 1) % LAYER_CYCLE.length];
-    document.getElementById('btn-layers').textContent = `show: ${layerMode}`;
-  });
-  document.getElementById('btn-measure')?.addEventListener('click', measure);
-  document.getElementById('btn-flush')?.addEventListener('click', flushScope);
-}
-
 function hintsHtml() {
   const h = hintText(scopeState.contents);
   return h ? `<p class="hints">${h}</p>` : '';
 }
 
-function renderReadout(el) {
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// --- specimen panel: identity + an enriched valence/reactivity readout -----
+
+function valenceBlockHtml(el) {
+  return `<div class="valence-row"><span class="lbl">outer-shell electrons</span>
+      <span class="valence-count">${el.valence} of ${el.capacity}</span></div>
+    <div class="valence-pips">${pips(el)}</div>
+    <p class="status ${el.seeking === 0 ? 'inert' : 'reactive'}">${reactivityBlurb(el)}</p>`;
+}
+
+function specimenActionsHtml() {
+  return `<div class="btns"><button id="btn-measure">measure</button><button id="btn-flush">flush the scope</button></div>`;
+}
+
+function wireSpecimenButtons() {
+  requestAnimationFrame(() => requestAnimationFrame(() => hud.classList.add('loaded')));
+  document.getElementById('btn-measure')?.addEventListener('click', measure);
+  document.getElementById('btn-flush')?.addEventListener('click', flushScope);
+}
+
+function renderSpecimenAtom(el) {
   const A = el.Z + el.neutrons;
-  const inert = el.seeking === 0;
-  const cfgSpans = SUBSHELLS.filter((k) => el.fill[k]).map((k, idx) => {
-    const color = '#' + SUBSHELL_COLORS[SUBSHELLS.indexOf(k)].toString(16).padStart(6, '0');
-    const sup = el.config.split(' ')[idx];
-    return `<span class="sub" style="transition-delay:${0.25 + idx * 0.3}s">
-      <span class="dot" style="background:${color};color:${color}"></span>${sup}</span>`;
-  }).join('');
-  specimenEl.innerHTML = `
+  pbodySpecimen.innerHTML = `
     <div class="specimen"><span class="sym">${el.symbol}</span><span class="name">${el.name}</span></div>
-    <p class="zna">Z ${el.Z} · N ${el.neutrons} · A ${A}</p>
-    <div class="cfg">${cfgSpans}</div>
-    <div class="valence-row"><span class="lbl">valence</span>${pips(el)}</div>
-    <p class="status ${inert ? 'inert' : 'reactive'}">${
-      inert ? 'shell complete — inert'
-        : `reactive — seeking ${el.seeking} electron${el.seeking > 1 ? 's' : ''}`}</p>
+    <p class="zna">${el.Z} proton${el.Z === 1 ? '' : 's'} · ${el.neutrons} neutron${el.neutrons === 1 ? '' : 's'} ·
+      ${A} particles in the nucleus total <i>(chemists call this the mass number)</i></p>
+    ${valenceBlockHtml(el)}
     ${hintsHtml()}
     <p class="flash" id="flash"></p>
-    ${btnsHtml()}
-    <p class="foot">every dot is one sample of |ψ|² — the electron is the whole dance.<br>
-    nucleus magnified ~2,000× beyond the cloud; at true scale it would be invisible.</p>`;
-  wireButtons();
+    ${specimenActionsHtml()}`;
+  wireSpecimenButtons();
 }
 
-function renderStagedReadout() {
-  const syms = scopeState.staged.map((s) => s.el.symbol).join(' + ');
-  specimenEl.innerHTML = `
+function renderSpecimenStaged() {
+  const names = scopeState.staged.map((s) => s.el.name).join(' + ');
+  pbodySpecimen.innerHTML = `
     <div class="specimen"><span class="sym">${displayFormula(scopeState.contents)}</span>
-      <span class="name">${syms} — staged</span></div>
-    <p class="status reactive">coherence holding ${countStaged()} atoms — unbonded</p>
+      <span class="name">${names} — staged, unbonded</span></div>
+    <p class="status reactive">holding ${countStaged()} atoms in the field — not a molecule yet</p>
     ${hintsHtml()}
     <p class="flash" id="flash"></p>
-    ${btnsHtml()}
-    <p class="foot">every dot is one sample of each staged atom's |ψ|².<br>
-    nucleus magnified ~2,000× beyond the cloud; at true scale it would be invisible.</p>`;
-  wireButtons();
+    ${specimenActionsHtml()}`;
+  wireSpecimenButtons();
 }
 
-function renderMoleculeReadout(rec, recipe) {
-  const acct = accountingLines(recipe)
-    .map((l) => `<span class="sub" style="transition-delay:.3s">${l}</span>`).join('');
+function renderSpecimenMolecule(rec, recipe) {
   const dipoleLine = rec.dipoleD > 0.05
-    ? `<p class="zna">dipole ${rec.dipoleD.toFixed(2)} D — a lopsided molecule</p>` : '';
+    ? `<p class="zna">dipole ${rec.dipoleD.toFixed(2)} D — one side of the molecule is slightly + charged,
+       the other slightly −, which is what "lopsided" means here</p>` : '';
   const noteLine = recipe.note ? `<p class="status reactive">${recipe.note}</p>` : '';
-  specimenEl.innerHTML = `
+  pbodySpecimen.innerHTML = `
     <div class="specimen"><span class="sym">${recipe.display}</span><span class="name">${rec.name}</span></div>
     <p class="zna">${rec.bondWord}</p>
-    <div class="cfg">${acct}</div>
-    <p class="status inert">bonded — released ~${rec.atomizationEv.toFixed(1)} eV vs free atoms (${rec.method} estimate)</p>
+    <p class="status inert">bonded — released ~${rec.atomizationEv.toFixed(1)} eV of energy versus the free atoms
+      <i>(${rec.method} estimate)</i></p>
     ${dipoleLine}
     ${noteLine}
     <p class="flash" id="flash"></p>
-    ${btnsHtml()}
-    <p class="foot">every dot is one sample of the molecule's |Ψ|² — the real ${rec.method} density, solved on this bench.<br>
-    ghost shell: the ρ = ${MOLECULES_DATA.meta.ghostIso} e/a₀³ isosurface of that same density.<br>
-    nuclei magnified ~2,000× beyond the cloud; at true scale they would be invisible.</p>`;
-  wireButtons();
+    ${specimenActionsHtml()}`;
+  wireSpecimenButtons();
 }
+
+function renderSpecimenEmpty() {
+  pbodySpecimen.innerHTML = `
+    <div class="specimen"><span class="sym">—</span><span class="name">scope empty</span></div>
+    <p class="status inert">coherence field idle — feed it an atom from the vials below</p>
+    <p class="flash" id="flash"></p>`;
+  wireSpecimenButtons();
+}
+
+// --- electron shells panel: clickable, plain-English shell breakdown ------
+
+function shellsHtml(el) {
+  const rows = shellBreakdown(el).map((s) => {
+    const full = s.total >= s.capacity;
+    const subRows = s.subshells.map((sub) => {
+      const t = SUBSHELL_TYPE[sub.letter];
+      const color = '#' + SUBSHELL_COLORS[SUBSHELLS.indexOf(sub.key)].toString(16).padStart(6, '0');
+      return `<div class="shell-sub" data-sub="${sub.key}">
+          <button class="shell-sub-head" type="button">
+            <span class="dot" style="background:${color};color:${color}"></span>
+            <span class="shell-sub-label">${sub.key} <i>— ${t.shapeName}</i></span>
+            <span class="shell-sub-count">${sub.count} e⁻</span>
+            <span class="chev">⌄</span>
+          </button>
+          <div class="shell-sub-detail">${t.blurb}</div>
+        </div>`;
+    }).join('');
+    return `<div class="shell-row ${s.isOuter ? 'outer' : ''}">
+        <div class="shell-row-head">
+          <span class="shell-name">${cap(s.ordinal)} shell${s.isOuter ? ' — the outer shell' : ''}</span>
+          <span class="shell-count">${s.total} of ${s.capacity}${full ? ' · full' : ''}</span>
+        </div>
+        ${subRows}
+      </div>`;
+  }).join('');
+  const shapeToggles = `<div class="shell-shapes">
+      <label class="ctl-check"><input type="checkbox" id="chk-shellS" ${tuner.shellS >= 1 ? 'checked' : ''}>
+        show the ball shapes (s)</label>
+      <label class="ctl-check"><input type="checkbox" id="chk-shellP" ${tuner.shellP >= 1 ? 'checked' : ''}>
+        show the dumbbell shapes (p)</label>
+    </div>`;
+  return `${rows}${shapeToggles}<p class="shell-note">${LETTER_ORIGIN_NOTE}</p>`;
+}
+
+function wireShellShapeToggles() {
+  document.getElementById('chk-shellS')?.addEventListener('change', (e) => {
+    tuner.shellS = e.target.checked ? 1 : 0; saveTuner(); rebuildGhosts();
+  });
+  document.getElementById('chk-shellP')?.addEventListener('change', (e) => {
+    tuner.shellP = e.target.checked ? 1 : 0; saveTuner(); rebuildGhosts();
+  });
+}
+
+function renderShellsAtom(el) {
+  pbodyShells.innerHTML = shellsHtml(el);
+  wireShellShapeToggles();
+}
+
+function renderShellsStaged() {
+  pbodyShells.innerHTML = scopeState.staged
+    .map((s) => `<p class="shell-atom-label">${s.el.name}</p>${shellsHtml(s.el)}`)
+    .join('<hr class="shell-divider">');
+  wireShellShapeToggles();
+}
+
+function renderShellsMolecule(rec, recipe) {
+  const rows = Object.entries(recipe.lewis).map(([sym, { bonds, lonePairs }]) => {
+    const total = 2 * bonds + 2 * lonePairs;
+    const lone = lonePairs > 0
+      ? ` + ${lonePairs} lone pair${lonePairs === 1 ? '' : 's'} it keeps entirely to itself` : '';
+    return `<div class="shell-row">
+        <div class="shell-row-head"><span class="shell-name">${getElement(sym).name}</span>
+          <span class="shell-count">${total} outer electrons</span></div>
+        <p class="shell-note">${bonds} shared pair${bonds === 1 ? '' : 's'} — each one a bond holding two
+          nuclei together${lone}.</p>
+      </div>`;
+  }).join('');
+  pbodyShells.innerHTML = `<p class="shell-note">once atoms bond, their outer electrons stop belonging to a
+      single atom. some become <b>shared pairs</b> — the bonds themselves — and some stay <b>lone pairs</b>,
+      kept by one atom alone. here's how ${recipe.display}'s outer electrons are spent:</p>${rows}`;
+}
+
+function renderShellsEmpty() {
+  pbodyShells.innerHTML = '<p class="shell-note">feed the scope an atom to see its electron shells, one cloud at a time.</p>';
+}
+
+// --- "what is this?" panel: the plain-English overview -------------------
+
+function renderAboutAtom(el) {
+  pbodyAbout.innerHTML = `<p class="about-text">${ELEMENT_OVERVIEW[el.symbol]}</p>`;
+}
+
+function renderAboutStaged() {
+  const names = scopeState.staged.map((s) => s.el.name).join(' and ');
+  pbodyAbout.innerHTML = `<p class="about-text">You're holding ${names} in the field, unbonded. Feed a matching
+    combination from the vials and watch them snap together the instant the outer shells line up — see
+    <b>try this</b> below for the full recipe book.</p>`;
+}
+
+function renderAboutMolecule(rec) {
+  pbodyAbout.innerHTML = `<p class="about-text">${MOLECULE_OVERVIEW[rec.id]}</p>`;
+}
+
+function renderAboutEmpty() {
+  pbodyAbout.innerHTML = `<p class="about-text">This is the coherence scope — a window onto the atomic world
+    you can never see with your own eyes. Click a vial below to feed it an atom, and its electron cloud blooms
+    into view right here, in real time. Nothing you're about to see is artist's impression — it's the actual
+    math, solved live on this bench.</p>`;
+}
+
+// --- refresh helpers: re-render whichever panel from the live scopeState --
+
+function refreshSpecimenPanel() {
+  if (scopeState.mode === 'molecule') renderSpecimenMolecule(scopeState.molecule, scopeState.recipe);
+  else if (scopeState.staged.length > 1) renderSpecimenStaged();
+  else if (scopeState.staged.length === 1) renderSpecimenAtom(scopeState.staged[0].el);
+  else renderSpecimenEmpty();
+}
+function refreshShellsPanel() {
+  if (scopeState.mode === 'molecule') renderShellsMolecule(scopeState.molecule, scopeState.recipe);
+  else if (scopeState.staged.length > 1) renderShellsStaged();
+  else if (scopeState.staged.length === 1) renderShellsAtom(scopeState.staged[0].el);
+  else renderShellsEmpty();
+}
+function refreshAboutPanel() {
+  if (scopeState.mode === 'molecule') renderAboutMolecule(scopeState.molecule);
+  else if (scopeState.staged.length > 1) renderAboutStaged();
+  else if (scopeState.staged.length === 1) renderAboutAtom(scopeState.staged[0].el);
+  else renderAboutEmpty();
+}
+
+// --- viewing modes panel: swarm/fog/shells explainer + the crossfade ------
+
+function syncViewingSliders() {
+  const sw = document.getElementById('sl-swarmOpacity');
+  const gh = document.getElementById('sl-ghostOpacity');
+  if (sw) sw.value = tuner.swarmOpacity;
+  if (gh) gh.value = tuner.ghostOpacity;
+  const swv = document.getElementById('val-swarmOpacity');
+  const ghv = document.getElementById('val-ghostOpacity');
+  if (swv) swv.textContent = `${Math.round(tuner.swarmOpacity * 100)}%`;
+  if (ghv) ghv.textContent = `${Math.round(tuner.ghostOpacity * 100)}%`;
+}
+
+function buildViewingPanel() {
+  pbodyViewing.innerHTML = `
+    <p class="view-note"><b>swarm</b> — ${VIEW_MODE_TEXT.swarm}</p>
+    <p class="view-note"><b>fog</b> — ${VIEW_MODE_TEXT.fog}</p>
+    <div class="btns"><button id="btn-view">${fogMode ? 'view: fog' : 'view: swarm'}</button></div>
+    <p class="view-note"><b>shells</b> — ${VIEW_MODE_TEXT.shells}</p>
+    <div class="ctl-row big"><label>electron cloud brightness<span class="val" id="val-swarmOpacity"></span></label>
+      <input type="range" id="sl-swarmOpacity" min="0" max="1" step="0.01" value="${tuner.swarmOpacity}"></div>
+    <div class="ctl-row big"><label>fade in the shells<span class="val" id="val-ghostOpacity"></span></label>
+      <input type="range" id="sl-ghostOpacity" min="0" max="1" step="0.01" value="${tuner.ghostOpacity}"></div>
+    <p class="foot">every glowing point is one real sample of |ψ|² (the electron's wavefunction) — the electron
+      is the whole spread, not any single dot. nuclei are magnified ~2,000× beyond the cloud; at true scale
+      they'd be invisible.</p>`;
+  syncViewingSliders();
+  document.getElementById('btn-view')?.addEventListener('click', () => {
+    fogMode = !fogMode;
+    document.getElementById('btn-view').textContent = fogMode ? 'view: fog' : 'view: swarm';
+  });
+  document.getElementById('sl-swarmOpacity')?.addEventListener('input', (e) => {
+    tuner.swarmOpacity = +e.target.value; saveTuner(); syncViewingSliders();
+  });
+  document.getElementById('sl-ghostOpacity')?.addEventListener('input', (e) => {
+    tuner.ghostOpacity = +e.target.value; saveTuner(); syncViewingSliders();
+  });
+}
+buildViewingPanel();
 
 function flashMsg(msg, bad = false) {
   const f = document.getElementById('flash');
@@ -1010,9 +1262,10 @@ function stageAtom(symbol, contents) {
   });
   layoutStaged();
   rebuildSceneForScope();
-  readout.classList.remove('loaded');
-  if (scopeState.staged.length === 1) renderReadout(el);
-  else renderStagedReadout();
+  hud.classList.remove('loaded');
+  refreshSpecimenPanel();
+  refreshShellsPanel();
+  refreshAboutPanel();
   atomLight.color.set(el.seeking === 0 ? 0x7df0c9 : 0x66d9ff);
   syncVialSelection();
 }
@@ -1032,8 +1285,10 @@ function loadMolecule(recipe) {
   }
   scopeState.fitLimit = 11.0 / (2 * (extent + 2.6));
   rebuildSceneForScope();
-  readout.classList.remove('loaded');
-  renderMoleculeReadout(rec, recipe);
+  hud.classList.remove('loaded');
+  refreshSpecimenPanel();
+  refreshShellsPanel();
+  refreshAboutPanel();
   selectTab('specimen'); // a fresh bond always shows its card
   formFlash.t0 = performance.now() / 1000;
   formFlash.power = THREE.MathUtils.clamp(rec.atomizationEv / 20, 0.35, 1.1);
@@ -1058,13 +1313,10 @@ function flushScope() {
   buildNuclei([]);
   ghostGroup.clear();
   swarmGeo.setDrawRange(0, 0);
-  readout.classList.remove('loaded');
-  specimenEl.innerHTML = `
-    <div class="specimen"><span class="sym">—</span><span class="name">scope empty</span></div>
-    <p class="status inert">coherence field idle — feed it from the vials</p>
-    <p class="flash" id="flash"></p>
-    <p class="foot">stage atoms one vial at a time; the instant they match a recipe, they bond.</p>`;
-  requestAnimationFrame(() => requestAnimationFrame(() => readout.classList.add('loaded')));
+  hud.classList.remove('loaded');
+  refreshSpecimenPanel();
+  refreshShellsPanel();
+  refreshAboutPanel();
   atomLight.color.set(0x66d9ff);
   syncVialSelection();
 }
@@ -1230,24 +1482,19 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ---------------------------------------------------------------------------
-// Scope controls tab — every lever, grouped by what it does to the science.
-// (The old bottom-left ⚙ tuner retired in v3: James's call, these are the
-// scope's own controls, not a config.)
+// Fine tuning panel — the detailed slider deck, collapsed by default. Shell
+// visibility, swarm visibility, and the s/p shape toggles have their own
+// prominent homes now (viewing modes panel, electron shells panel) — this
+// panel is just what's left for anyone who wants to dig deeper.
 
 const CONTROL_GROUPS = [
   ['the cloud', [
     ['points', 'measurement samples', 500, 24000, 100],
-    ['swarmOpacity', 'swarm visibility', 0, 1, 0.01],
     ['dotSize', 'dot size', 0.4, 3, 0.05],
     ['life', 'sample life (s)', 0.4, 5, 0.05],
     ['brightness', 'swarm brightness', 0.2, 2, 0.05],
     ['coreDim', 'core shell dim', 0, 1, 0.05],
     ['timeScale', 'time scale', 0.1, 3, 0.05],
-  ]],
-  ['the shells', [
-    ['ghostOpacity', 'shell visibility', 0, 1, 0.01],
-    ['shellS', 's spheres', 'check'],
-    ['shellP', 'p dumbbells', 'check'],
   ]],
   ['the scope', [
     ['atomScale', 'magnification', 0.8, 2.5, 0.05],
@@ -1260,22 +1507,21 @@ const CONTROL_GROUPS = [
   ]],
 ];
 
-// The console sizes itself off one em base in world.css; everything in it —
-// type, panel width, pips — scales with this.
+// Every panel sizes itself off one em base in world.css; --ui-scale on #hud
+// scales type, panel width, pips, everything, together.
 function applyTextScale() {
-  readout.style.setProperty('--ui-scale', String(tuner.textScale));
+  hud.style.setProperty('--ui-scale', String(tuner.textScale));
 }
 applyTextScale();
 
 function onControlChanged(key, before) {
   saveTuner();
   if (key === 'points' && tuner.points !== before) reseedAll(false);
-  if (key === 'shellS' || key === 'shellP') rebuildGhosts();
   if (key === 'textScale') applyTextScale();
 }
 
 function buildControls() {
-  const host = document.getElementById('rtab-controls');
+  const host = pbodyFine;
   const inputs = {};
   for (const [groupName, rows] of CONTROL_GROUPS) {
     const h = document.createElement('h3');
@@ -1326,8 +1572,16 @@ function buildControls() {
     reseedAll(false);
     rebuildGhosts();
     applyTextScale();
+    syncViewingSliders();
+    refreshShellsPanel(); // shellS/shellP checkboxes live there now
   });
   host.appendChild(reset);
+  const resetPos = document.createElement('button');
+  resetPos.className = 'reset';
+  resetPos.textContent = 'reset panel positions';
+  resetPos.title = "puts every dragged panel back where it started — doesn't touch the sliders above";
+  resetPos.addEventListener('click', resetPanelPositions);
+  host.appendChild(resetPos);
   const stamp = document.createElement('p');
   stamp.className = 'stamp';
   stamp.textContent = `valence lab ${BUILD}`;
@@ -1336,22 +1590,24 @@ function buildControls() {
 buildControls();
 
 // ---------------------------------------------------------------------------
-// Recipe book tab — the nine calibrations, each with a trap-safe feeding
-// order (asserted in molecule-sim). Clicking one flushes and brews it live.
+// "Try this" panel — the nine calibrations, each with a trap-safe feeding
+// order (asserted in molecule-sim), a friendly one-line hook, and a run tag.
 
-function buildRecipes() {
+function buildTryPanel() {
   // Recipes are for READING — the point is building at the vials yourself
   // (James, 2026-07-25). Auto-brew exists but as a small side action, never
   // the primary one: the cards are inert, only the little "run" tag brews.
-  const host = document.getElementById('rtab-recipes');
+  const host = pbodyTry;
   const intro = document.createElement('p');
   intro.className = 'recipe-note';
-  intro.textContent = 'the scope bonds the instant contents match a recipe — order matters. feed the vials left to right:';
+  intro.textContent = 'the scope bonds atoms the instant their outer shells line up — no glue required. '
+    + 'feed the vials below, left to right, and watch:';
   host.appendChild(intro);
   for (const r of RECIPES) {
     const card = document.createElement('div');
     card.className = 'recipe';
-    card.innerHTML = `<span class="rf">${r.display}</span><span class="rn">${r.name}</span>`
+    card.innerHTML = `<span class="rf">${r.display}</span>`
+      + `<span class="rn">${r.name} <i>— ${MOLECULE_HOOK[r.id] || ''}</i></span>`
       + `<span class="ri">${r.path.join(' → ')}</span>`;
     const run = document.createElement('button');
     run.className = 'rbrew';
@@ -1363,10 +1619,11 @@ function buildRecipes() {
   }
   const warn = document.createElement('p');
   warn.className = 'recipe-note';
-  warn.textContent = 'why H before O for peroxide? O + O snaps to O₂ on contact, and O₂ is saturated — the H has to be in the field first.';
+  warn.textContent = 'why H before O for peroxide? two oxygens snap together into O₂ on contact, and O₂ is '
+    + 'saturated — the hydrogen has to already be in the field first.';
   host.appendChild(warn);
 }
-buildRecipes();
+buildTryPanel();
 
 // ---------------------------------------------------------------------------
 // Main loop
@@ -1397,12 +1654,12 @@ function frame() {
   u.uCoreDim.value = tuner.coreDim;
   u.uFogScale.value = tuner.fogScale;
 
-  // Layer A/B crossfade: each layer = its visibility slider x the toggle.
-  swarmMixEnv += ((layerMode !== 'shells' ? 1 : 0) - swarmMixEnv) * 0.14;
-  shellMixEnv += ((layerMode !== 'swarm' ? 1 : 0) - shellMixEnv) * 0.14;
-  const shellVis = tuner.ghostOpacity * shellMixEnv;
-  ghostMat.uniforms.uOpacity.value = shellVis;
-  ghostGroup.visible = shellVis > 0.004;
+  // Shell <-> cloud crossfade (viewing modes panel sliders): both layers ease
+  // toward their slider target rather than jumping, so dragging either one
+  // reads as a fade, never a pop — James's ask, 2026-08-04.
+  shellVisEnv += (tuner.ghostOpacity - shellVisEnv) * 0.1;
+  ghostMat.uniforms.uOpacity.value = shellVisEnv;
+  ghostGroup.visible = shellVisEnv > 0.004;
 
   // Display scale (atomScale clamped so molecules stay inside the ring).
   scopeState.displayScale = Math.min(tuner.atomScale, scopeState.fitLimit || Infinity);
@@ -1421,9 +1678,9 @@ function frame() {
   if (formEnv > 0) ringGlowMat.color.lerp(FORM_WHITE, formEnv * formFlash.power * 0.8);
   atomLight.intensity = 0.5 + 0.5 * tuner.ringGlow
     + 2.2 * formEnv * formFlash.power + 0.8 * refEnv;
-  const swarmVis = tuner.swarmOpacity * swarmMixEnv;
-  u.uAlpha.value = tuner.brightness * swarmVis * (1 + 2.2 * formEnv * formFlash.power);
-  swarm.visible = swarmVis > 0.004;
+  swarmVisEnv += (tuner.swarmOpacity - swarmVisEnv) * 0.1;
+  u.uAlpha.value = tuner.brightness * swarmVisEnv * (1 + 2.2 * formEnv * formFlash.power);
+  swarm.visible = swarmVisEnv > 0.004;
 
   // Vial hover/selection motion.
   for (const v of vials) {

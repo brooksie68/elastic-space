@@ -129,18 +129,51 @@ unexplained. Name is James's.
    place. Camera yaw/pitch (`orbit.tYaw`/`tPitch`) now only move via wheel
    zoom (dist) and the idle auto-orbit timer; don't reintroduce drag→camera
    coupling.
-3. Controls: since v3 there is NO ⚙ tuner — every lever lives in the right
-   panel's scope console, "controls" tab, grouped by science (the cloud /
-   the shells / the scope / this console). James's framing: "it's not a
-   config, it's the scope controls." Persistence is still localStorage key
-   `valence-lab-tuner-v1`; the build stamp sits at the bottom of the
-   controls tab (bump it every session — it catches stale tabs). The
-   "recipes" tab is the recipe book: every entry shows its TRAP-SAFE feeding
-   order (`path` in valence.js, asserted in molecule-sim). PROTECTED INTENT
-   (James, v3.1): recipes are for reading — visitors should build at the
-   vials themselves. Auto-brew (`brewRecipe`/`brewTick`) is deliberately a
-   small "run ▸" tag on each card, never the card itself and never the
-   primary action; don't enlarge it.
+3. Controls: since v3 there is NO ⚙ tuner. **v4 (2026-08-04) replaced the
+   3-tab scope console with six floating glass HUD panels** (James's brief:
+   "not just one little panel... glass panels that float in the air
+   holographically" — museum-exhibit register, not a config screen):
+   specimen, electron shells (clickable, plain-English per-shell rows),
+   what is this? (overview paragraph, `content.js`), viewing modes (swarm/
+   fog/shells explainer + the shell↔cloud crossfade sliders), try this (the
+   recipe book), fine tuning (the detailed slider deck, collapsed by
+   default). Panels are built once in world.js (`makePanel()`, appended into
+   `#hud-left`/`#hud-right`/`#hud-bottom`/`#hud-corner` from index.html) and
+   refreshed via `refreshSpecimenPanel()`/`refreshShellsPanel()`/
+   `refreshAboutPanel()` reading live `scopeState`. `selectTab(name)` no
+   longer switches tabs (there are none) — it expands panel `#panel-${name}`
+   if collapsed and gives it a brief `.pulse` glow, so a fresh bond/refusal
+   is still always seen. Persistence is still localStorage key
+   `valence-lab-tuner-v1`; the build stamp sits at the bottom of the fine
+   tuning panel. The shell↔cloud crossfade (`ghostOpacity`/`swarmOpacity`)
+   now lives as two big, prominent sliders in the viewing modes panel
+   (James: fade all the way to 100% and back, not a click-cycle) — the old
+   3-way "show: both/swarm/shells" button is gone; `shellVisEnv`/
+   `swarmVisEnv` in the frame loop ease toward the slider values every frame
+   so dragging always reads as a fade. `shellS`/`shellP` checkboxes moved
+   into the electron shells panel (rebuilt per-atom, re-wired each render).
+   PROTECTED INTENT (James, v3.1, still in force): recipes are for reading —
+   visitors should build at the vials themselves. Auto-brew (`brewRecipe`/
+   `brewTick`) is deliberately a small "run ▸" tag on each card, never the
+   card itself and never the primary action; don't enlarge it.
+   `content.js` is copy-only (plain-English element/molecule overviews,
+   shell/reactivity/view-mode text) — pure ESM, no physics, not covered by
+   the sims because it asserts no numbers; if a paragraph ever states a
+   number it must match what orbitals.js/valence.js actually compute.
+   **v4.1 (same day): panels are draggable and remember position.**
+   `makeDraggable()` distinguishes a click (toggle collapse) from a drag
+   (reposition) by movement distance, same >6px threshold as the vial-click/
+   camera-spin code. Position auto-saves to localStorage
+   (`valence-lab-panel-pos-v1`) on drag end — no explicit save action, same
+   as every tuner slider. "reset panel positions" (fine tuning panel) is a
+   SEPARATE reset from "reset to defaults" — layout vs. science, don't merge
+   them. Both `setPointerCapture`/`releasePointerCapture` are wrapped in
+   try/catch — a capture failure must never block the click-to-collapse
+   fallback (this actually happened once during testing and silently ate
+   the click). `.hud-col` needs `overflow-x: hidden` explicitly — CSS forces
+   BOTH axes to `auto` if one is a scrolling value and the other is
+   `visible`, which is exactly how the double-scrollbar bug happened; never
+   set `overflow-x: visible` next to an `overflow-y` scrolling value again.
 4. Pixel ratio is capped at 2 (4K fill-rate discipline). The swarm is one
    additive Points draw; keep it that way — no per-dot meshes.
 5. Raycasting hits invisible hitbox cylinders on the vials only — never
@@ -159,14 +192,43 @@ unexplained. Name is James's.
    crossfade envelopes; `swarmOpacity` + `ghostOpacity` tuner keys are the
    per-layer 0–100% visibility sliders. Both layers are views of the same
    density — never let one become decorative.
-7. **Console type scale (v3.2).** Everything inside `.readout` is sized in
-   `em` off one base: `--ui-base` (12px, 10.5px under 900px wide) times
-   `--ui-scale`, which `applyTextScale()` writes from tuner `textScale`
-   (default 1.25 — James found the original 12px panel too small). Never add
-   a px font-size inside the console; the CSS `var(--ui-scale, 1.25)`
-   fallback must be kept equal to DEFAULTS.textScale, since it is what paints
-   before the module runs. The lockup and the bottom hint are outside this
-   and stay px.
+7. **Console type scale (v3.2, moved to `.hud`/`.hud-panel` in v4).**
+   Everything inside a HUD panel is sized in `em` off one base: `--ui-base`
+   (12px, 10.5px under 900px wide, set on `#hud`) times `--ui-scale`, which
+   `applyTextScale()` writes onto `#hud` from tuner `textScale` (default
+   1.25). Never add a px font-size inside a panel; the CSS
+   `var(--ui-scale, 1.25)` fallback must be kept equal to
+   DEFAULTS.textScale, since it is what paints before the module runs. The
+   lockup and the bottom hint are outside this and stay px.
+8. **The HUD panel shell (v4).** `makePanel(column, id, title, {open})` in
+   world.js creates the header-button + `.pbody` structure and returns the
+   body element to fill; index.html owns the four column containers
+   (`#hud-left`/`#hud-right`/`#hud-bottom`/`#hud-corner`) so world.js never
+   creates layout containers, only panels. Collapse is pure CSS
+   (`.hud-panel.collapsed .pbody{max-height:0}`) toggled by the header
+   click — no state persisted per panel (default open/collapsed is fixed
+   per panel, "fine tuning" is the only one that starts collapsed). The
+   `.pulse` class (added by `selectTab`) triggers a one-shot glow via
+   `::after` + `hudPulse` keyframes — never repurpose `::after` on
+   `.hud-panel` for anything else. The float animation (`hudFloat`,
+   staggered per-panel `animation-delay`) is a few px over several seconds —
+   keep it that subtle, it's motion-restraint territory even though it's UI
+   chrome, not camera.
+9. **Materials (v4, 2026-08-04).** Meshy-generated seamless tiles live in
+   `assets/textures/` (`metal-panel.png` brushed steel, `metal-panel-dark.png`
+   dark riveted panel, `glass-frost.png` frosted etched glass — ~27 Meshy
+   credits, James's standing go up to 60cr for this session). `METAL`/
+   `METAL_DARK` carry the metal tiles via `tiledTexture()` (RepeatWrapping);
+   the vial glass is `MeshPhysicalMaterial` with `transmission:1` (real
+   glass, not a flat translucent color) plus the frost tile as a
+   `roughnessMap`/`bumpMap` at low intensity. `scene.environment` is a
+   procedural PMREM env map (three soft panels in a small env scene) so
+   metal actually reflects something — no external HDR needed. If more
+   Meshy assets are added later, keep using image tiles + RepeatWrapping on
+   the existing procedural geometry; do not swap the vials/scope/bench for
+   imported GLBs without a planning conversation (the hitbox cylinders,
+   sprite labels, and vial click wiring are load-bearing on the current
+   procedural layout).
 
 ## Where things stand
 
@@ -180,7 +242,26 @@ entry, no sound.
 
 2026-08-03/04 session: camera default pulled back to 24.5, drag rewired to
 spin the specimen instead of orbiting the camera/bench, faint background lab
-hint added (`labBack` group). Swarm/fog toggle "not working" report turned
-out to be his own swarm-visibility slider at 0 — no code bug, nothing to
-fix. AWAITING JAMES'S EYES on all three changes (drag-spin feel/sign and
-background dimness are first-pass guesses).
+hint added (`labBack` group — REMOVED again same week, see below). Swarm/fog
+toggle "not working" report turned out to be his own swarm-visibility slider
+at 0 — no code bug, nothing to fix.
+
+2026-08-04 session — **v4, the exhibit rebuild** (James's brain-dump brief:
+too scientific, needs floating holographic glass panels not one corner box,
+plain-English shell/valence/reactivity explanations for a curious
+high-schooler, an easy continuous shell↔cloud crossfade, the two `labBack`
+props gone, real materials, "make me go wow"). Built solo on his explicit
+go ("just do something amazing... rock on") plus standing Meshy consent up
+to 60cr for this session: new `content.js` (plain-English copy — element/
+molecule overviews, shell-type explanations incl. the s/p/d/f spectroscopy
+etymology, reactivity blurbs, swarm/fog/shells explainer); the six-panel HUD
+described in the rendering notes above, replacing the 3-tab console;
+`labBack` (the two equipment-rack/shelf props) deleted outright, no
+replacement; real materials — vial glass is now `MeshPhysicalMaterial`
+transmission glass, a procedural PMREM env map gives metal something to
+reflect, and three Meshy-generated seamless tiles (~27cr) dress the metal
+and glass. Both sims still green (129 + 404 — no physics touched, `content.js`
+is copy-only). Verified in a live tab: no console errors, all assets 200,
+DOM shows real per-element data (checked against oxygen's actual 2p⁴).
+AWAITING JAMES'S EYES on the whole rebuild — panel layout/copy tone, the
+crossfade feel, and the new materials are all first-pass judgment calls.

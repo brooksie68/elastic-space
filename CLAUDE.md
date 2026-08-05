@@ -348,6 +348,21 @@ consistent. `npm run check-worlds` audits every world against the contract.
    honest formation animation), C narrated scale-journey chapters (Claude
    scripts, James produces voice), D elephant toothpaste + polymers. Each
    phase needs its own go.
+   2026-08-04 — **v4, THE EXHIBIT REBUILD**, built solo on James's explicit
+   go after a long brain-dump brief ("too scientific," one small corner
+   panel, unexplained shorthand, a hard click-toggle, materials that "look
+   like a generic 3D shape made in Blender" — wants a museum-exhibit register
+   for a curious high-schooler): new `content.js` (plain-English element/
+   molecule overviews, shell/reactivity/view-mode explanations, zero
+   physics); the old 3-tab console replaced by SIX FLOATING GLASS HUD PANELS
+   (specimen, electron shells — clickable, plain-English — what is this?,
+   viewing modes, try this, fine tuning); the shell↔cloud toggle replaced by
+   two big continuous crossfade sliders that always ease, never pop; the two
+   `labBack` background props deleted outright (his call — they "didn't
+   really solve" anything); real materials — transmission glass on the
+   vials, a procedural env map, and three Meshy seamless tiles (~27 of a
+   60cr standing consent) dressing the metal/glass. Both sims still green
+   (129 + 404). AWAITING JAMES'S EYES on the whole rebuild.
 1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
    are live). James supplies audio per bank; Claude wires pads, labels, and icons.
 2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
