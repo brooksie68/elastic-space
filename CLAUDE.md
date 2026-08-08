@@ -609,6 +609,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    LEARNING BENCH (solo-one-effect chip strip from a clean 2002 grid +
    silent 120BPM practice clock) — spec at the top of the world CLAUDE.md
    START HERE.
+   2026-08-08: **JAMES REOPENED THE AUDIO THREAD** ("review your approach...
+   I'll turn a critical eye"). Claude's detection self-review + 6 proposals
+   delivered, HIS PICKS PENDING — Claude's ranking: punch review lane first
+   (detections become proposals his ear ratifies, persisted like
+   BPM_OVERRIDE), then time-varying tempo/confidence ("no beat here"), then
+   offline per-stem lanes (kick/hats as mod sources); also a server analyze
+   endpoint for dropped-in tracks. MP3 auto-discovery confirmed already
+   working (2026-07-28 build); his new Suno tracks land in sound-tracks/ and
+   just play — two arrived untracked (His Dark Orchestra, The Flow), not yet
+   analyzed/committed. NEW DESIGN THREAD, his ask: RELEVANCE DIMMING —
+   controls that can't affect the current look dim (predicate table per
+   control id, sim-enforced coverage); 4 design calls awaiting his answers
+   (dim-only?, dimmed-stays-live?, card headers?, dice rolls inert keys?).
+   His param↔beat easier-wiring ask noted, queued behind it. Two panel fixes
+   shipped: ⓘ popover title black-on-dark (--gold didn't reach
+   document.body) + control rows never wrap (icons stay pinned; track/select
+   is the only elastic element). See the world changelog 2026-08-08.
    The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in

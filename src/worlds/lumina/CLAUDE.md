@@ -23,6 +23,20 @@ Entries in `changelog.md` from before that date use the old names on purpose.
 
 ## START HERE — the wave queue (2026-08-03, James's "to infinity and beyond")
 
+**2026-08-08 UPDATE — THE AUDIO THREAD IS REOPENED (James's explicit ask,
+supersedes the "parked" note below):** he wants the detection stack made
+"more intelligent and dynamic" and is ready to work hard on it. Claude's
+review + proposals are in the 2026-08-08 changelog entry; his picks are
+PENDING. Also pending his answers: the RELEVANCE DIMMING design (controls
+that can't affect the current look dim — 4 design calls in the changelog
+entry) — he called it the starting point, ahead of easier param↔beat
+wiring. New Suno tracks are landing in assets/sound-tracks/ (auto-discovery
+carries them); analyze keepers when he names them. PANEL RULE (2026-08-08):
+control rows NEVER wrap — the slider track/select is the only elastic
+element; label, output, star, ⓘ stay pinned on one line. And the ⓘ popover
+carries its own --gold copies because it lives on document.body — any new
+panel custom property a popover style uses must be duplicated there.
+
 **FIRST, PROPOSED 2026-08-03 late and NOT yet approved — the LEARNING BENCH.**
 James's ask after flying the new FX: a way to learn effects one at a time
 from a clean start ("okay, this one makes them round... this one blurs").

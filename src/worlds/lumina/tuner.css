@@ -317,8 +317,10 @@ body.lum-tuner-page .tuner-head {
 .tuner-speed label,
 .tuner-label {
   color: var(--gold-ember);
+  flex: none;
   font-size: 0.72em;
   letter-spacing: 0.22em;
+  white-space: nowrap;
   text-transform: uppercase;
 }
 
@@ -356,7 +358,7 @@ body.lum-tuner-page .tuner-head {
   display: flex;
   flex: 1;
   max-width: 267px;
-  min-width: 4em;
+  min-width: 3em; /* short enough that a full row always fits a 15em column */
   position: relative;
 }
 
@@ -445,10 +447,13 @@ body.lum-tuner-page .tuner-head {
   grid-template-columns: repeat(auto-fill, minmax(15em, 1fr));
 }
 
+/* Never wraps (James, 2026-08-08: the ⓘ/star broke to a second line in narrow
+   columns and "pushed everything apart"). The TRACK is the give — it shrinks;
+   labels, output, star and ⓘ are rigid and stay pinned on the one line. */
 .tuner-mini {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.6em;
   min-width: 0;
 }
@@ -464,12 +469,15 @@ body.lum-tuner-page .tuner-head {
 
 .tuner-mini label {
   color: var(--gold-ember);
+  flex: none;
   font-size: 0.72em;
   letter-spacing: 0.22em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .tuner-mini output {
+  flex: none;
   min-width: 3.5ch;
 }
 
@@ -744,6 +752,7 @@ body.lum-tuner-page .tuner-head {
   appearance: none;
   background: transparent;
   border: none;
+  flex: none;
   color: rgba(255, 255, 255, 0.28);
   cursor: pointer;
   font-size: 0.8em;
@@ -954,7 +963,14 @@ body.lum-tuner-page .tuner-head {
 }
 
 .tuner-mini--select {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+/* The select is this row's give — it shrinks (clipping long option text)
+   instead of shoving the star/ⓘ off the line. */
+.tuner-mini--select select {
+  flex: 1 1 auto;
+  min-width: 5em;
 }
 
 .tuner-step {
@@ -1116,6 +1132,11 @@ body.lum-tuner-page .tuner-head {
 }
 
 .tuner-infopop {
+  /* The popover hangs off document.body, OUTSIDE .lum-tuner — the panel's
+     custom props don't reach it, so it carries its own copies (without them
+     var(--gold) resolves to nothing and the title painted black). */
+  --gold: #e3b968;
+  --gold-ember: #cc945c;
   background: #2c2c34;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 0.7em;

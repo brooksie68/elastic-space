@@ -3,6 +3,39 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-08 — Claude (Fable 5) — Audio thread reopened (review only) + two panel fixes
+
+- **James reopened the parked audio/beat thread** with a "turn a critical eye"
+  brief. Claude's self-review of the detection stack, proposals awaiting his
+  picks: (1) time-varying tempo/confidence incl. honest "no beat here" (NEXT
+  UP item 1), (2) a PUNCH REVIEW LANE — detector output becomes proposals he
+  auditions and confirms/kills/adds, verdicts persist like BPM_OVERRIDE
+  (Claude's top pick — feeds the rhythm template), (3) per-stem envelope
+  lanes baked offline into the grid (kick/hats/harmonic as mod sources),
+  (4) repetition/self-similarity structure + per-punch confidence,
+  (5) 4/4-only downbeat noted as a limit, (6) a server analyze endpoint so
+  dropped-in tracks can earn a grid without Claude in the loop. No code.
+- Confirmed for him: MP3 auto-discovery already works (drop into
+  assets/sound-tracks/, reload the served page; band reactivity only until
+  analyzed). He has new Suno tracks coming — two landed in the folder
+  untracked this session (His Dark Orchestra, The Flow), not yet analyzed.
+- **Relevance-dimming design conversation opened** (his ask: controls that
+  can't affect the current look get visually deprioritized). Plan on the
+  table: RELEVANCE predicate table keyed by control id, evaluated per
+  snapshot, crisp structural gates + threshold occlusion gates (sceneMix/
+  sceneTiles), sim-enforced coverage. Four calls awaiting his answers: dim
+  only vs sink (rec: dim only), dimmed stays live (rec: yes), card-header
+  dimming without auto-collapse, dice keeps rolling inert keys (rec: yes).
+  His beat-hookup ask (easier param↔beat wiring) noted, held behind this.
+- **Fix: ⓘ popover title painted black** — the popover hangs off
+  document.body, outside .lum-tuner, so var(--gold) resolved to nothing.
+  The popover now carries its own --gold/--gold-ember copies (tuner.css).
+- **Fix: ⓘ/star icons wrapped to a second line in narrow columns** ("pushed
+  everything apart"). Control rows are now nowrap: the slider track (or the
+  select) is the only elastic element (track min 4em→3em), labels/output/
+  star/ⓘ are flex:none with nowrap labels. STANDING RULE from James: nothing
+  in a control row ever line-breaks; everything stays put.
+
 ## 2026-08-03 — Claude (Fable 5) — Jungle Moog Ritual v3: THE REEL (v2 killed same night)
 
 - James flew the deepening ritual and killed the structure on sight: "somehow
