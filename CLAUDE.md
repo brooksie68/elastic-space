@@ -350,6 +350,22 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Blender-5.1-compatible build) as a sculpting fallback, ~$36-44 total.
    Full shortlist (9 options w/ pricing) is in this session's chat only,
    not saved to disk — ask Claude to redo the search or paste it if needed.
+   2026-08-08 (Reallusion Hub session): James BOUGHT Beard & Brows Builder
+   (Smart Hair, his call despite the HIGH-risk flag above) + Uniform
+   Essentials ($27, police-marketed but generic shirt/pants/hat bases —
+   his pick for a postal look, hat decal is swappable for a custom
+   emblem, no modeling risk). Also installed Reallusion's official
+   Blender Pipeline addon both sides: CC5-side plugin via Hub + the
+   Blender-side "CC/iC Tools" addon (zip banked at
+   `ai-projects/_blender-add-ons/cc_blender_tools-2_4_0.zip`, same
+   convention as Faceit/Auto-Rig Pro) — confirmed live, three N-panel
+   tabs (Pipeline/Create/Link). NOT YET TESTED against the proven manual
+   CC5→FBX→Blender→GLB pipeline; CC/iC Pipeline is the one to try.
+   OPEN, mid-verification when the session ended: confirming the two
+   Content Store purchases actually installed into CC5's Content panel
+   (Hair/Cloth categories) — check Hub's Download & Install / Content
+   Store screen first, they may still need an explicit install step like
+   the plugins did.
    2026-08-07/08: **JOHN DOUGH v2 SHIPPED INTO DLO — body, motion, AND
    VOICE** (the breakthrough sessions; James: "the single most significant
    night since Meshy+Blender"). CC5 do-over (head extracted as reusable
