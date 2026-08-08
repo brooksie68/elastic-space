@@ -266,6 +266,17 @@ variations to sneak around and move behind. Built as Surround's sibling: same ne
 aiming + shell dodging). Draft built same day; core sim-tested (556k assertions).
 Biplanes/jets and the full 27-mode matrix remain unbuilt ideas.
 
+### 61. The Galactic Bar & Grill — *several sessions* — `idea`
+James's (2026-08-08, riffing mid-iClone-session the night the character
+pipeline proved out): a spacer dive full of gnarly aliens — alien beverages
+and potions, gambling, talking, live music, and the occasional laser
+disagreement across the room. The natural graduation project for the whole
+character stack: every patron is a CC5/iClone character run with weirder
+sliders, AccuLips speech, iClone motion library for the drinking/arguing/
+dancing, society-sim routines (Orb Dimension lineage) for patron behavior,
+Meshy props for every bottle and slot machine, laser one-shots from the
+Combat/Arachno lineage. Co-build, plan-first — not started.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy

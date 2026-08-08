@@ -350,6 +350,20 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Blender-5.1-compatible build) as a sculpting fallback, ~$36-44 total.
    Full shortlist (9 options w/ pricing) is in this session's chat only,
    not saved to disk — ask Claude to redo the search or paste it if needed.
+   2026-08-07/08: **JOHN DOUGH v2 SHIPPED INTO DLO — body, motion, AND
+   VOICE** (the breakthrough sessions; James: "the single most significant
+   night since Meshy+Blender"). CC5 do-over (head extracted as reusable
+   asset onto standard-height Heavy body, Beard&Brows white beard — the
+   pack has NO morphs, combos+materials only), full-fat bake, THE ICLONE
+   PIPELINE (Send-to-iClone → per-motion FBX → build_pack.py: 8 clips,
+   facing-normalized, treadmill-measured walk), AccuLips viseme speech
+   (build_speech.py → visemes.js; bubbles retired permanently; 1 of 6
+   lines baked). Read DLO changelog r15–r17 + world CLAUDE.md before
+   touching. OPEN: 5 viseme exports, ElevenLabs voice bake, optimization
+   pass (checkpoint exists), morph-normals fidelity lever, Unity-vs-browser
+   fork for future characters (his want: near-readable lips). World Ideas
+   #61 (Galactic Bar & Grill) captured as the character-stack graduation
+   project.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

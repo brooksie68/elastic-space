@@ -471,7 +471,9 @@ Judge each result against viewing distance before the next spend.
      the character's head → it binds to CC_Base_Head and rides all motion. No
      "convert to accessory" step exists or is needed. Detach button = undo.
   39. **Edit Mesh has no keyboard delete.** Select faces → the Modify panel's
-     "Visible Mesh" row → **Hide** button. The wireframe cage keeps drawing
+     "Visible Mesh" row → **Hide** button. (CC 5.12 labels the row **"Visible
+     Brush"** and it lives on the **Face tab only** — Vertex-tab selections
+     don't carry over; reselect in Face mode, 2026-08-07.) The wireframe cage keeps drawing
      hidden faces inside the tool, so it looks like nothing happened — exit
      Edit Mesh to judge. Hide sticks through export; Show All un-hides. Used
      for hair-under-hat and would work for lens removal.
@@ -494,3 +496,35 @@ Judge each result against viewing distance before the next spend.
   44. Heavy-body arm clipping at rest (hands sink into thighs): pose-level fix
      is Edit Pose, rotate upper arms out 5–8°; the real fix comes per-clip at
      the animation layer in iClone. Don't touch bind/proportion tools for it.
+  45. The Export-FBX dialog's **gear icon (top left) opens a second advanced
+     panel** — Mouth Open as Morph lives THERE, not in the main dialog. The
+     v2 checklist (2026-08-07): main dialog stock Blender preset + Embed
+     Textures + Delete Hidden Faces checked; advanced panel = defaults plus
+     Mouth Open as Morph. Leave Bone Name lower-case and T-Pose-as-bind OFF
+     (both would break the existing mixamo→CC retarget pack). Delete Hidden
+     Faces also pre-strips skin under clothes at export (body went 12k→42
+     faces) — better than doing it in the bake.
+  46. CC Pose Offset edits the REST pose only — retargeted clips override it
+     entirely. Runtime clip-level clearance lives in DLO world.js as the
+     pmSplay knob (post-mixer upper-arm local-Z rotation, ±12° default).
+
+  **iClone 8 runbook (first motion session, 2026-08-07):**
+  47. Character transfer is CC5-side: **File → Export → Send to iClone**
+     (select the character first; "All" ships the whole stage). The top-left
+     toolbar icons are NOT it. Never export FBX into iClone — imported FBX
+     is a dumb mesh and every motion refuses with "character not compatible."
+  48. AccuLips hides under **Animation → Create Script → AccuLips** (speech
+     is a "script"). Its clip lands on audio tracks shown via the LIPS icon
+     in the timeline toolbar ("show all audio tracks") — not the track-list
+     (☰) icon, which is object/asset visibility.
+  49. Motion-Plus items (HD Talk_M etc.) are BODY + FULL FACIAL combo clips;
+     double-clicking applies somewhere the track filters may not reveal.
+     Build reels by DRAGGING onto the Motion track. The escape hatch when
+     playback shows animation the timeline won't admit to: select character
+     → **Animation → Remove Object Animation** (strips everything).
+  50. Reset-to-neutral is three stops: body = Motion-Plus → Pose →
+     Calibration item; face = **Animation → Face Key** panel's reset;
+     ambient blinks = Auto Blink dropdown. There is no one reset button.
+  51. Export FPS: force 60 — matches CC project + our exports end-to-end;
+     clip FPS is keyframe density, not web playback cost (three.js mixers
+     interpolate; render rate is rAF).

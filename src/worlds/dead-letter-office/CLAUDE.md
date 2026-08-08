@@ -78,13 +78,52 @@ the second — the office holds their whole almost-romance). Get his answers fir
 - **Face/eyes: hands off** (James, 2026-07-21) — the frozen face ships as-is; the 3D eye-rig
   work stays parked in `tmp/dead-letter-office/meshy/viewer.html` until James reopens it.
 - **PM_V2 (2026-08-04): John Dough, the CC5 bake, is the live postmaster** —
-  `PM_V2` in world.js picks john-dough.glb + walk-pack.glb (walk only so far;
-  missing clips no-op via the action guards, idles are a frozen walk subclip).
-  v2 has no Meshy dual atlas — world.js recreates the emissive trick by hand;
-  bones are CC_Base_* names. Retarget pipeline + explicit mixamo→CC bone map:
-  tmp/dead-letter-office/cc5-bake/retarget/ (ARP auto-map is unreliable on CC
-  skeletons — never trust it). Body fix list before more clips: see r14
-  changelog entry.
+  `PM_V2` in world.js picks john-dough.glb + the animation pack. v2 has no
+  Meshy dual atlas — world.js recreates the emissive trick by hand; bones are
+  CC_Base_* names. (The Mixamo/ARP retarget era ended r16 — its scripts stay
+  in tmp/dead-letter-office/cc5-bake/retarget/ for reference only.)
+- **r15–r16 (2026-08-07/08): the do-over body + THE ICLONE MOTION PIPELINE** —
+  john-dough.glb is the FULL-FAT v2 bake (standard-height skeleton, Beard &
+  Brows white beard, uniform-pack clothes, native 2048 textures, ~88MB —
+  James's "one high-res character in a low-res room" call; bake scripts
+  durable in tmp/dead-letter-office/cc5-bake/bake-v2/, bake_full.py is the
+  shipped one). **Motions come from iClone now**: James auditions/trims in
+  iClone (CC5 → File → Export → Send to iClone; NEVER import an FBX there),
+  exports per-motion FBXs (Blender preset, 60fps, Range brackets, no
+  textures) into tmp/dead-letter-office/iclone-motions/, and build_pack.py
+  turns the folder into assets/postmaster/iclone-pack.glb — it pins walk
+  clips in place AND normalizes each clip's iClone stage yaw by measuring
+  the animated hips vs rest (do not skip that step; every iClone export
+  carries a different yaw). Blender 5.1 note: action.fcurves is gone, use
+  the script's all_fcurves(). Live clips: walk + idle-1/2/3, with talk /
+  walk-think / walk-start / walk-end in the pack unused. **pmSplay defaults
+  0 since r16** (iClone motions fit his body natively; the knob remains for
+  imported clips — it gates on !pmStillOn or it windmills in museum mode).
+  **pmHeight dial** (default 1.90) rescales him live; walk timeScale derives
+  from the clip's measured treadmill speed (0.324 m/s per meter of height —
+  re-measure via the changelog r16 method if the walk clip ever changes).
+  pmStill (FREEZE button) = museum mode: teleports him to open floor,
+  idle-1 held at STILL (never the A-pose), every click force-answers from
+  QA_ROTATION.
+- **r17 (2026-08-08): THE VOICE IS THE ONLY CHANNEL — speech bubbles are
+  DEAD, permanently** (James: "they won't be coming back"; speak() routes
+  to recorded audio only; the line pools are his future recording script).
+  Mouth = the AccuLips viseme pipeline: per-line FBX from iClone (Range
+  bracketed FROM THE AUDIO CLIP START, Delete Unused Morphs UNCHECKED) →
+  tmp/dead-letter-office/iclone-speech/build_speech.py → assets/
+  speech-clips/visemes.js (60fps morph tracks + jaw scalar; script-tag
+  loaded). applyVisemes syncs to audio.currentTime + lipSync dial (James's
+  machine needs ~0.4s — his audio chain's latency, persisted). lipPunch
+  dial = articulation gain. **Post-mixer bone writes must be ABSOLUTE
+  (base × delta), never a bare quaternion multiply** — relative writes
+  compound whenever a near-frozen clip stops rewriting the bone (the
+  swallowed-jaw demon; splay windmill was the same bug). The amplitude
+  jaw-flap survives ONLY as fallback for unbaked lines — James rejected it
+  as a primary on sight. TEMP STATE, restore when speech QA ends:
+  radioOn=false at load, QA_ROTATION=['r-for-regret'] only.
+  Optimization pass is queued (his go given, checkpoint REQUIRED first and
+  exists: tmp/dead-letter-office/checkpoint-2026-08-08/); morph-normals
+  rebuild tabled as the next mouth-fidelity lever.
 - Postmaster integration facts (learned the hard way, sessions 07-17/18):
   1. Meshy materials carry the color atlas twice — `map` AND `emissiveMap`. Since r4 the
      emissive copy is kept ON at partial strength deliberately (James: he must always be

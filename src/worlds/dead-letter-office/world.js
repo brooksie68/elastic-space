@@ -1,5 +1,5 @@
-/*
- * The Dead Letter Office — full 3D room rebuild, 2026-07-21 (claude-fable).
+﻿/*
+ * The Dead Letter Office â€” full 3D room rebuild, 2026-07-21 (claude-fable).
  * A walkable basement mail hall (three.js), twice the floor area of Mandala Shop.
  * The Meshy postmaster (rig + 18-clip anim pack, 2026-07-17) walks his shift:
  * desk work, basket pickups, filing, feeding the furnace, punching the clock,
@@ -23,7 +23,7 @@ import { mergeGeometries } from '../../lib/three/utils/BufferGeometryUtils.js';
 
 /* ============ the letters (first twelve authored 2026-07-04, protected;
    +25 acquisitions and +21 shelf-box strata 2026-07-30, +10 length strata
-   and 3 trims 2026-07-31 — 68 total, the twelve remain verbatim) ============ */
+   and 3 trims 2026-07-31 â€” 68 total, the twelve remain verbatim) ============ */
 
 const LETTERS = [
   {
@@ -44,8 +44,8 @@ const LETTERS = [
     stamp: "Addressee Unknown",
     postmark: ["Dead Letter", "Office", "Jun 1987"],
     body: [
-      "I would like to request one (1) afternoon of light rain from June 1987 — the one that hit the tin roof of my grandmother's porch between roughly two and five o'clock.",
-      "I have completed the enclosed forms as best I could. Where the form asked for coordinates I have written “the porch.”",
+      "I would like to request one (1) afternoon of light rain from June 1987 â€” the one that hit the tin roof of my grandmother's porch between roughly two and five o'clock.",
+      "I have completed the enclosed forms as best I could. Where the form asked for coordinates I have written â€œthe porch.â€",
       "I understand there may be a waiting period.",
     ],
     sign: "Respectfully, D. Okafor",
@@ -59,12 +59,12 @@ const LETTERS = [
       "Your light comes through my window every nine seconds and drags its white sleeve across my dreams. Last night it swept away a staircase I had almost finished climbing.",
       "I am not asking you to stop. I am asking what is at the top.",
     ],
-    sign: "— A neighbor",
+    sign: "â€” A neighbor",
   },
   {
     to: "Cpl. T. Havel\nGeneral Delivery\nWherever the army keeps you now",
     from: "R.\nThe kitchen table",
-    stamp: "Moved — Left No Address",
+    stamp: "Moved â€” Left No Address",
     postmark: ["Dead Letter", "Office", "Feb 1994"],
     body: [
       "Knight to f3.",
@@ -79,7 +79,7 @@ const LETTERS = [
     stamp: "Unclaimed",
     postmark: ["Dead Letter", "Office", "Aug 1975"],
     body: [
-      "On the 14th inst., at approximately noon, your representative — a wave of medium size — removed my hat from my head without provocation. It was a good hat.",
+      "On the 14th inst., at approximately noon, your representative â€” a wave of medium size â€” removed my hat from my head without provocation. It was a good hat.",
       "I demand its return, or a hat of equal value, or an explanation of what the sea is doing with all of them.",
     ],
     sign: "Cordially furious, Adm. B. Whitlock (ret.)",
@@ -94,7 +94,7 @@ const LETTERS = [
       "Do not take the job. Take the trip. Learn the names of trees earlier than I did. The girl at the bakery is going to break your heart and it is worth it.",
       "P.S. We still cannot whistle.",
     ],
-    sign: "— You, later",
+    sign: "â€” You, later",
   },
   {
     to: "The Department of Echoes\nCanyon District",
@@ -105,7 +105,7 @@ const LETTERS = [
       "I write to complain that everything I say to your canyon has been coming back to me. I have said things to that canyon I only ever intended to send one way.",
       "Kindly filter what is returned. Some of it I have heard twice now and cannot stop hearing.",
     ],
-    sign: "— (name withheld, twice)",
+    sign: "â€” (name withheld, twice)",
   },
   {
     to: "Miss E. Farrow\nSeat 14C, the 5:52 evening train\n(northbound)",
@@ -116,7 +116,7 @@ const LETTERS = [
       "Things seen from the window between Halloway and the tunnel, as promised: one heron, standing in a flooded field like a nail. Three dogs, unrelated. A man painting a fence at dusk, badly. Forty-one telegraph poles. Your reflection, for the length of the tunnel.",
       "That last one is the reason I am writing.",
     ],
-    sign: "— The passenger in 14D",
+    sign: "â€” The passenger in 14D",
   },
   {
     to: "The Storm\nlast seen over the dusk field",
@@ -128,7 +128,7 @@ const LETTERS = [
       "We regret to report that your rain has been sent back the way it came. It fell upward all evening, and the flowers were not sure what to make of it.",
       "If you want to see it happen, you will have to stand in the field yourself.",
     ],
-    sign: "— The undersigned wildflowers",
+    sign: "â€” The undersigned wildflowers",
   },
   {
     to: "Whoever maintains the streetlight\nat the end of Vane Street",
@@ -140,7 +140,7 @@ const LETTERS = [
       "Your streetlight has been flickering in a pattern. I wrote the pattern down. It is not random. It spells the same word over and over, and I have begun to see the word in other lights. The elevator. The exit sign. My telephone.",
       "If you want to know where the flicker comes from, the return address is real.",
     ],
-    sign: "— Wide awake on Vane St.",
+    sign: "â€” Wide awake on Vane St.",
   },
   {
     to: "The Tender of Lanterns\nPelagic Habitat\nbelow the shelf",
@@ -152,7 +152,7 @@ const LETTERS = [
       "Your shipment of light arrived damaged. Several lumens had leaked out of the crate and were found swimming in the harbor, where they have since been adopted by the fish. The fish glow now.",
       "We consider the matter resolved, but you may want to look in on your lanterns yourself.",
     ],
-    sign: "— Harbormaster, night shift",
+    sign: "â€” Harbormaster, night shift",
   },
   {
     to: "THE CURRENT OCCUPANT\nOF THIS PAGE",
@@ -164,7 +164,7 @@ const LETTERS = [
       "You have been in the sorting room a while now. That is allowed. The mail is patient, and so is the dark.",
       "But when you are ready: something bioluminescent has been asking after you. It does not use the postal system. It says you know the way, and if you don't, the return address does.",
     ],
-    sign: "— The Office",
+    sign: "â€” The Office",
   },
 
   /* ---- the later acquisitions (2026-07-30, James's ask: 25 more) ---- */
@@ -174,11 +174,11 @@ const LETTERS = [
     stamp: "No Such Station",
     postmark: ["Dead Letter", "Office", "Oct 1951"],
     body: [
-      "I listen every night while I do the ironing, and I have noticed that your announcer says the very same things each night, word for word — the same joke about the accordion, the same fiddle named Wilma, the same two advertisements.",
+      "I listen every night while I do the ironing, and I have noticed that your announcer says the very same things each night, word for word â€” the same joke about the accordion, the same fiddle named Wilma, the same two advertisements.",
       "At first I minded. Now I iron to it like it was scripture. If he ever says something new, I believe it will mean something enormous has happened, and I am not sure I want that.",
       "Please do not change the programme.",
     ],
-    sign: "— Mrs. L. Prue, listening",
+    sign: "â€” Mrs. L. Prue, listening",
   },
   {
     to: "To Whom It May Concern\nc/o Any Farm\nWith Crows",
@@ -189,12 +189,12 @@ const LETTERS = [
       "A reference for my scarecrow, retiring after eleven years on the northeast forty: quiet, punctual, took one day off during the tornado, and came back. The crows respect him, which is more than they ever gave me.",
       "He prefers facing east. I never asked.",
     ],
-    sign: "— E. Tillman",
+    sign: "â€” E. Tillman",
   },
   {
     to: "Miss Ada Kessler\n31 Foundry Street\nLowellville",
     from: "P. Novak\nc/o the Merchant Marine",
-    stamp: "Moved — Left No Address",
+    stamp: "Moved â€” Left No Address",
     postmark: ["Dead Letter", "Office", "Mar 1954"],
     body: [
       "They tell me we sail Tuesday, and I find I cannot go without saying it plainly: it is you. It has been you since the dance at the grange hall, and it will keep on being you in every port they can invent.",
@@ -209,9 +209,9 @@ const LETTERS = [
     postmark: ["Dead Letter", "Office", "Mar 1954"],
     body: [
       "Before you sail: yes. Whatever it was you were working up to say at the grange hall before your ship came in, the answer is yes, and has been for some time.",
-      "I have moved to my sister's on Water Street — the landlady on Foundry would not hold my mail. Write to me there. I will wait, but hurry anyway.",
+      "I have moved to my sister's on Water Street â€” the landlady on Foundry would not hold my mail. Write to me there. I will wait, but hurry anyway.",
     ],
-    sign: "— Ada",
+    sign: "â€” Ada",
   },
   {
     to: "The New Owner\nof the Hallett Upright\nsold at auction, lot 9",
@@ -222,7 +222,7 @@ const LETTERS = [
       "I tuned that instrument for forty years, and I should tell you: middle C is a shade flat and will not hold true no matter what anyone does. I have watched three better men than me try.",
       "The lady of the house used to sing to it in the evenings, and after she passed, the note went down and stayed down. My advice is to leave it. Some things are in tune with something else.",
     ],
-    sign: "— V. Marsh",
+    sign: "â€” V. Marsh",
   },
   {
     to: "The Returns Desk\nCarnegie Free Library\nBranch No. 4",
@@ -234,7 +234,7 @@ const LETTERS = [
       "In my defense, I read it eleven times the first year and once every year after, and it has gotten me through two wars and one marriage, which is more than most books manage.",
       "I have underlined some parts. I understand this is against the rules. So is keeping a book forty-two years.",
     ],
-    sign: "— H. Ostrander, sorry",
+    sign: "â€” H. Ostrander, sorry",
   },
   {
     to: "The gentleman on the\nDaviston exchange, line 4\n(night of the ice storm)",
@@ -243,10 +243,10 @@ const LETTERS = [
     postmark: ["Dead Letter", "Office", "Feb 1957"],
     body: [
       "You will not remember me. I connected you by mistake to a wrong number in Daviston the night the lines iced over. It is my job to disconnect errors, and I did not.",
-      "You talked to that woman for four hours about nothing — dogs, pie, the war, the ice — and I sat with my hand on the key the whole time and listened like a person warming herself at a window.",
+      "You talked to that woman for four hours about nothing â€” dogs, pie, the war, the ice â€” and I sat with my hand on the key the whole time and listened like a person warming herself at a window.",
       "I am writing because I never learned whether you called her back. Somebody should know how it came out. I connected this county for thirty years, and that call is the one I think about.",
     ],
-    sign: "— Operator No. 9",
+    sign: "â€” Operator No. 9",
   },
   {
     to: "The man who waves\nfrom the porch on Route 9\n(white house, red chair)",
@@ -257,7 +257,7 @@ const LETTERS = [
       "For nine years you have waved at my car in the morning, and I have waved back, and I know nothing else about you, and I have told you more with that hand than I have told some family.",
       "This morning the chair was empty, and I drove on to work like a man with the floor gone out from under him. I am writing to the house in the hope that somebody there will tell me the wave has only moved indoors for the winter.",
     ],
-    sign: "— The green Hudson, 7:40 or so",
+    sign: "â€” The green Hudson, 7:40 or so",
   },
   {
     to: "The family that lost TIPPY\n(from the notice at\nthe Red Owl store)",
@@ -269,7 +269,7 @@ const LETTERS = [
       "The news is: he came to my porch in June, ate like a congressman, and stayed. He is asleep on my boot as I write this. He is a good dog. He misses you at suppertime; the rest of the day, I confess, he seems to be getting along.",
       "No reward needed. Come see him, or don't, and know he's well. Either way the porch light is on.",
     ],
-    sign: "— W. Odom",
+    sign: "â€” W. Odom",
   },
   {
     to: "Master Danny Kubek\n722 Cherry Street\n(or wherever he is now)",
@@ -280,7 +280,7 @@ const LETTERS = [
       "Every December I knit you mittens, and every December they come back to me with a different rubber stamp on the envelope. You are somewhere being twenty-six years old, and I am told boys that age do not lose mittens the way they used to.",
       "I knit them anyway. It is not really about the mittens, Danny, but you will not know that for another thirty years, so: they are blue, and there is a dollar in the left one, same as ever.",
     ],
-    sign: "— Grandma",
+    sign: "â€” Grandma",
   },
   {
     to: "Mr. A. Brandt\n(measurements on file)",
@@ -290,9 +290,9 @@ const LETTERS = [
     body: [
       "Your suit is ready. It has been ready since the 9th of March, 1953, when you were called away in the middle of the second fitting.",
       "Styles have changed twice since then; I have quietly kept the lapels current. My son says to sell it. But you paid your deposit, and a deposit is a promise on both ends.",
-      "It will fit you. That is the part I cannot explain to my son — every year I take it in or let it out a little, on a guess, and I have never once doubted the guess.",
+      "It will fit you. That is the part I cannot explain to my son â€” every year I take it in or let it out a little, on a guess, and I have never once doubted the guess.",
     ],
-    sign: "— E. Mandel, of Mandel & Sons",
+    sign: "â€” E. Mandel, of Mandel & Sons",
   },
   {
     to: "Whoever lives at\n40 Linden Street now",
@@ -301,9 +301,9 @@ const LETTERS = [
     postmark: ["Dead Letter", "Office", "Oct 1984"],
     body: [
       "Under the south fence, about a hand deep, there are two hundred daffodil bulbs I planted the autumn before we had to sell. Nobody knows they are there but you and me.",
-      "I am not asking anything. Only — some March, when the yellow comes up out of nowhere in a line clear to the gate, you will wonder. It was on purpose. All of it was on purpose.",
+      "I am not asking anything. Only â€” some March, when the yellow comes up out of nowhere in a line clear to the gate, you will wonder. It was on purpose. All of it was on purpose.",
     ],
-    sign: "— The previous tenant",
+    sign: "â€” The previous tenant",
   },
   {
     to: "The Sexton\nSt. Ambrose (the stone one\non the hill)",
@@ -314,7 +314,7 @@ const LETTERS = [
       "Forty-one years I rang the changes, and the doctors say that is where the hearing went, and I want you to know I signed off on the trade and would again.",
       "My ask is small: Sunday mornings, would you leave the tower door open while they ring? My granddaughter drives me to the bottom of the hill. I cannot hear the bells anymore, but I can feel them in the car door, and that is most of it, if anyone asks.",
     ],
-    sign: "— C. Loach",
+    sign: "â€” C. Loach",
   },
   {
     to: "The Management\nThe Rialto Theater\n(closed Tuesdays)",
@@ -325,18 +325,18 @@ const LETTERS = [
       "For eleven years I have spliced one frame of a sunset into every newsreel. Nobody ever noticed, but the whole house breathes different for a moment, and that was me.",
       "Take it out of my wages.",
     ],
-    sign: "— The booth",
+    sign: "â€” The booth",
   },
   {
     to: "Miss E. Calloway\nc/o the District Schools\n(she taught the 4th grade)",
     from: "R. Pfeiffer\n(a grown man now)",
-    stamp: "Retired — No Forwarding",
+    stamp: "Retired â€” No Forwarding",
     postmark: ["Dead Letter", "Office", "Sep 1981"],
     body: [
       "In October of 1949 the window of Room 6 was broken by a snowball with a rock in it, and Gerald Stroud was kept in for it every recess of that winter. It was not Gerald. I let a boy freeze indoors for my aim.",
       "You told us a man's character is what he does when nobody is looking. I was looking, ma'am. It took thirty-two years, but here is a dollar for the glass, and interest, and this.",
     ],
-    sign: "— R. Pfeiffer, Room 6",
+    sign: "â€” R. Pfeiffer, Room 6",
   },
   {
     to: "The War Department\nMedals Section\nWashington, D.C.",
@@ -347,7 +347,7 @@ const LETTERS = [
       "Enclosed are two medals awarded to me in error. The citation says I held the ridge. The truth is I got lost in the smoke, sat down against what I took for a wall, and it was the ridge, and the war walked past me twice.",
       "I have carried them ten years and they have gotten heavier every year, which is not how metal behaves. Give them to somebody who was where he meant to be. Or to nobody. They were fine ribbons, and I am sorry.",
     ],
-    sign: "— F. Aldous, formerly Sergeant",
+    sign: "â€” F. Aldous, formerly Sergeant",
   },
   {
     to: "The Operator\nThe carousel at\nLakeview Amusement Park",
@@ -358,7 +358,7 @@ const LETTERS = [
       "There was a white horse on the outside ring with a chipped ear and a green saddle, and in 1936 I named him Colonel and told him things I have never told anyone since.",
       "I read they auctioned the horses when the park came down. I am not trying to buy him. I only want whoever winds up with the Colonel to know that he has heard a little girl's whole heart once, and to please dust his ear gently.",
     ],
-    sign: "— M.",
+    sign: "â€” M.",
   },
   {
     to: "Whoever lost a gold ring\nin the sea\n(inscribed: 'til the tide turns)",
@@ -367,9 +367,9 @@ const LETTERS = [
     postmark: ["Dead Letter", "Office", "Mar 1971"],
     body: [
       "On Friday last I opened a cod of ordinary appearance and found your wedding band inside, which the fish had carried, I am told, from anywhere at all.",
-      "The jeweler says 1921 by the hallmark. If the marriage outlived the ring, come to the fish counter Saturdays and describe the hand it fit. If it did not — I polish it Sundays, and it is having a better time than most rings.",
+      "The jeweler says 1921 by the hallmark. If the marriage outlived the ring, come to the fish counter Saturdays and describe the hand it fit. If it did not â€” I polish it Sundays, and it is having a better time than most rings.",
     ],
-    sign: "— Mrs. N. Behan",
+    sign: "â€” Mrs. N. Behan",
   },
   {
     to: "The Town of Peavine\n(all of it)\nformerly off Route 12",
@@ -377,10 +377,10 @@ const LETTERS = [
     stamp: "No Such Town",
     postmark: ["Dead Letter", "Office", "Feb 1963"],
     body: [
-      "In the 1958 edition our draftsman left you off the state map — an error of ink, nothing more, and we apologize. We restored you in 1961.",
+      "In the 1958 edition our draftsman left you off the state map â€” an error of ink, nothing more, and we apologize. We restored you in 1961.",
       "But we are obliged to report that in the meantime your population went from 91 to 40, and our surveyor writes that the hardware store is closed and will not say more. We have put you back exactly where you were. Towns are asked to do the same, and we understand if that is no longer possible.",
     ],
-    sign: "— Overland Atlas Co., Corrections",
+    sign: "â€” Overland Atlas Co., Corrections",
   },
   {
     to: "Mr. O. Quill\nthe yellow house\npast the second bridge",
@@ -391,7 +391,7 @@ const LETTERS = [
       "Sir: in April I counted you. We spoke at your gate about the dry spring, you gave your age as 44 and your occupation as beekeeper, and I wrote it down and tipped my hat.",
       "The office informs me there is no yellow house past the second bridge and no record of any Quill in this county, living or otherwise. I am required to strike you from the rolls. I am striking you from the rolls, sir, but not from anything else. The bees were real. I have the sting to show.",
     ],
-    sign: "— Enumerator, District 11",
+    sign: "â€” Enumerator, District 11",
   },
   {
     to: "The next man to wear\na brown wool overcoat\n(donated, St. Vincent's)",
@@ -399,10 +399,10 @@ const LETTERS = [
     stamp: "Bin Emptied",
     postmark: ["Dead Letter", "Office", "Jan 1986"],
     body: [
-      "The coat was my husband's. Before you ask: yes, the pockets. Left: a theater stub from 1949 and a smooth stone from a beach I could name but won't. Right: a grocery list in his hand — bread, thread, bulbs — which I have decided you should keep.",
+      "The coat was my husband's. Before you ask: yes, the pockets. Left: a theater stub from 1949 and a smooth stone from a beach I could name but won't. Right: a grocery list in his hand â€” bread, thread, bulbs â€” which I have decided you should keep.",
       "He warmed it for thirty-seven years. It runs a little warm still, is my belief. Wear it somewhere he'd approve of: anywhere at all, with weather.",
     ],
-    sign: "— The former Mrs. T.",
+    sign: "â€” The former Mrs. T.",
   },
   {
     to: "Miss Patsy Greer\n(age 9, as of the sending)\nthe Greer farm",
@@ -414,7 +414,7 @@ const LETTERS = [
       "It flew eleven miles. I did not write because eleven seemed a small number for so much string and hope, and I put the tag in a drawer, and the drawer became twenty-four years.",
       "It has bothered me at odd hours ever since. Eleven miles, Patsy. But it cleared two rivers and the county line, and it beat every balloon I ever heard of, and I am sorry to be late.",
     ],
-    sign: "— T. Colby, orchardist",
+    sign: "â€” T. Colby, orchardist",
   },
   {
     to: "The Editor\nThe Old Homestead Almanac\n(in confidence)",
@@ -425,7 +425,7 @@ const LETTERS = [
       "You have paid me thirty dollars a year since 1948 for the long-range forecasts, and the time has come to tell you my method, which my conscience and my doctor both advise. There is no method. I sit on the porch in August and decide how the winter feels.",
       "I am right about as often as the government, which costs considerably more. Still, a man wants to confess something before he goes. Print next year's mild. It feels mild.",
     ],
-    sign: "— Your weather man",
+    sign: "â€” Your weather man",
   },
   {
     to: "The children of\nHarmon Street School\n(1949 through 1974)",
@@ -436,7 +436,7 @@ const LETTERS = [
       "Twenty-five years I walked you across Fifth Street, and by my arithmetic that is one hundred eleven thousand crossings and no losses, which I will put up against any record in this county.",
       "You are bankers and farmers and one of you is a judge now, and you still cross at my corner some mornings, grown huge, checking both ways like I taught you. That checking is mine. That is my monument, and you all carry it.",
     ],
-    sign: "— Albert, the corner of Fifth",
+    sign: "â€” Albert, the corner of Fifth",
   },
   {
     to: "The County Clerk\nCourthouse\nAttn: Records",
@@ -447,12 +447,12 @@ const LETTERS = [
       "Enclosed please find my census of the fireflies in our bottom field, taken the night of July 4th: four thousand and six, or possibly four thousand and seven, as one blinked in a way I could not swear was one or two.",
       "My brother says they are not citizens. Kindly settle a bet: it seems to me anything that shows up every summer, works all night, and asks for nothing should be counted as something.",
     ],
-    sign: "— Miss Birdie Pell, age 8",
+    sign: "â€” Miss Birdie Pell, age 8",
   },
 
   /* ---- the shelf-box strata (2026-07-30, James's ask: what's IN the archive
-     boxes — Santa ×5, chains ×3, divorce ×3, evictions ×3, resignations ×2,
-     confessions ×5) ---- */
+     boxes â€” Santa Ã—5, chains Ã—3, divorce Ã—3, evictions Ã—3, resignations Ã—2,
+     confessions Ã—5) ---- */
   {
     to: "Mr. S. Claus\nThe North Pole\n(the main office)",
     from: "Wendell R. Petty\n(age 8), 14 Ash Street",
@@ -463,7 +463,7 @@ const LETTERS = [
       "I have been good since Halloween by any fair measure, and I would ask that the record reflect it. I want the fire engine with the ladder that cranks.",
       "If the list cannot be amended at this date, I understand, and will pursue the matter next year.",
     ],
-    sign: "— Wendell R. Petty, age 8",
+    sign: "â€” Wendell R. Petty, age 8",
   },
   {
     to: "Santa Claus\nThe North Pole\n(please hurry)",
@@ -474,7 +474,7 @@ const LETTERS = [
       "Do not bring me anything this year. Put it all toward my dad, who is in Korea, which mama shows me on the map with her finger.",
       "If he cannot fit in the sleigh with the toys, I have drawn our house on the back of this letter, with the porch light on, so you can show him what it looks like in case he has trouble remembering. It is the house with the dog.",
     ],
-    sign: "— Alma, age 7 (the house with the dog)",
+    sign: "â€” Alma, age 7 (the house with the dog)",
   },
   {
     to: "Santa Claus\nThe North Pole\n(attention: back orders)",
@@ -485,7 +485,7 @@ const LETTERS = [
       "In December of 1899 I wrote you regarding a red sled with iron runners. I never heard back, and I am following up, as fifty years seems long enough to wait politely.",
       "I no longer require the sled. The hill has houses on it now anyway. I am writing mostly to keep the correspondence open, as you are the only one I ever wrote to who might still be there.",
     ],
-    sign: "— G. Maddox, formerly age 11",
+    sign: "â€” G. Maddox, formerly age 11",
   },
   {
     to: "S. Claus (if applicable)\nThe North Pole",
@@ -496,7 +496,7 @@ const LETTERS = [
       "My friend Carl says you are not real, and my sister says grow up, and my mother says finish your plate, which is not an answer.",
       "I am not asking questions. I am just saying the milk and cookies arrangement continues at our house either way, no hard feelings, whatever the truth turns out to be. A man can leave a light on without knowing who comes.",
     ],
-    sign: "— Roger Blum, age 9",
+    sign: "â€” Roger Blum, age 9",
   },
   {
     to: "Santa Claus\nThe North Pole\n(private)",
@@ -508,7 +508,7 @@ const LETTERS = [
       "So skip us, but here is the important part: tell Petey the sleigh broke down. Do not tell him the true reason. He is five and he thinks the world is good, and I am working hard to keep him that way as long as I can.",
       "If you have anything spare, he likes red.",
     ],
-    sign: "— Dorothy Cade, age 10",
+    sign: "â€” Dorothy Cade, age 10",
   },
   {
     to: "Mrs. H. Plum\n6 Orchard Lane\n(sixth of six)",
@@ -519,18 +519,18 @@ const LETTERS = [
       "This letter has gone around the world eleven times since 1911. Copy it six times within six days and good fortune follows: Mrs. Reese of Joliet copied it and found five dollars in an old coat. Do not break the chain: Mr. Pole of Duluth broke it, and his hat blew into the river, and then his other hat.",
       "Do not ask what the letter is for. The letter is for continuing. It is the oldest kind of letter there is.",
     ],
-    sign: "— (copy exactly)",
+    sign: "â€” (copy exactly)",
   },
   {
     to: "The Sender\nof the six-copies letter\n(up the chain)",
     from: "E. Grandy\n(age 84)",
-    stamp: "Refused — Chain Broken",
+    stamp: "Refused â€” Chain Broken",
     postmark: ["Dead Letter", "Office", "Jun 1957"],
     body: [
       "I received your letter instructing me to copy it six times or invite misfortune. I decline. I am eighty-four years old. I have buried two husbands, outlived a flood, and once shook the hand of a president I did not care for. Whatever is coming for chain-breakers, I would like to see it try.",
       "I am returning your luck unused. Spend it on the young. They frighten easier.",
     ],
-    sign: "— E. Grandy",
+    sign: "â€” E. Grandy",
   },
   {
     to: "Mr. Harold Beemis\n11 Water Street\n(you are the sixth)",
@@ -541,7 +541,7 @@ const LETTERS = [
       "By now you have seen the enclosed letter demanding six copies in six days. Harold, I am sorry. The other five went to strangers out of the phone book, but the instructions were strict about six, and midnight was coming, and yours was the only other name I could think of. I panicked.",
       "You may break the chain and take your chances, or copy it and lose an evening as I did. Either way, please still come Thursdays for cards. Whatever bad luck follows me, it knows about Thursdays, and has always been welcome.",
     ],
-    sign: "— Gus, next door",
+    sign: "â€” Gus, next door",
   },
   {
     to: "Mrs. I. Vance\n(address on file\nno longer good)",
@@ -549,9 +549,9 @@ const LETTERS = [
     stamp: "Addressee Unknown",
     postmark: ["Dead Letter", "Office", "Sep 1962"],
     body: [
-      "He keeps the truck; you keep the piano; the dog alternates. The quilt your mother made for the wedding bed is enclosed — neither party would claim it, and neither would let the other have it. Our firm cannot keep it. It is too warm a thing to file.",
+      "He keeps the truck; you keep the piano; the dog alternates. The quilt your mother made for the wedding bed is enclosed â€” neither party would claim it, and neither would let the other have it. Our firm cannot keep it. It is too warm a thing to file.",
     ],
-    sign: "— Lundgren & Son, Attorneys",
+    sign: "â€” Lundgren & Son, Attorneys",
   },
   {
     to: "The Clerk of Court\nDomestic Filings\nCounty Courthouse",
@@ -562,7 +562,7 @@ const LETTERS = [
       "You will find everything signed where the little pencil marks told me to sign. I have signed away the house, the acreage, and my Sundays, all in blue ink, all legible, as instructed.",
       "I did not complete page four, where the form asks for the reason in the space provided. Twenty-two years, and the space provided is three inches long. I have no reason that fits. Return the form to me when the county prints an honest one.",
     ],
-    sign: "— N. Ostrow",
+    sign: "â€” N. Ostrow",
   },
   {
     to: "Mr. & Mrs. C. Hobb\n(jointly, one last time)\nRural Route 4",
@@ -573,7 +573,7 @@ const LETTERS = [
       "Your final decree has been ready for collection since March of 1949. Eleven years. Neither party has come for it. The county does not presume to know its citizens' hearts, but the clerk notes you were both seen at the fair in August, sharing a candy apple, and that Mrs. Hobb won the pie contest and Mr. Hobb held her coat.",
       "The decree remains in our drawer. It keeps fine. Kindly advise, or kindly don't.",
     ],
-    sign: "— Office of the County Clerk",
+    sign: "â€” Office of the County Clerk",
   },
   {
     to: "Mr. T. Wozniak\nApt. 2 rear, the shoe man\n22 Dill Street",
@@ -585,7 +585,7 @@ const LETTERS = [
       "Paragraph two, from me: ignore paragraph one. Nobody is going anywhere while I am alive. You fixed my roof in '44 for nothing, and a man's ledger has more than one column in it. Pay when the shoe shop pays you.",
       "Do not show my son this letter.",
     ],
-    sign: "— A. Kravitz, the actual landlord",
+    sign: "â€” A. Kravitz, the actual landlord",
   },
   {
     to: "The Swallows\nresident in the eaves\nCounty Courthouse (north)",
@@ -596,7 +596,7 @@ const LETTERS = [
       "You and your issue are hereby directed to vacate the courthouse eaves no later than April the 1st, pursuant to the building committee's resolution of last fall, the same as the resolution of the six falls before it.",
       "The clerk is required to serve this notice and has done so by reading it aloud from the steps, feeling foolish. Enforcement has been attempted twice, by ladder. The committee is aware of your position. You return on or about April the 9th, and the matter is continued another year.",
     ],
-    sign: "— The Town Clerk, resigned to it",
+    sign: "â€” The Town Clerk, resigned to it",
   },
   {
     to: "The Commander\nFORT DEFIANCE\n(the elm, trackside)",
@@ -608,7 +608,7 @@ const LETTERS = [
       "The Land Office acknowledges your reply to the second notice, consisting of one (1) arrowhead and a drawing of the fort's cannon. The railroad finds your counteroffer persuasive but insufficient, and notes for the record that the cannon appears to be a stovepipe.",
       "Our inspector reports the fort is well kept and flies its flag in all weathers. Sixty days, gentlemen. The railroad has been young too.",
     ],
-    sign: "— Land Office, GP&W RR",
+    sign: "â€” Land Office, GP&W RR",
   },
   {
     to: "The Selectmen\nTown Hall\n(all five of them)",
@@ -620,7 +620,7 @@ const LETTERS = [
       "I have come to understand that the dogs and I are engaged in a game, that the game has rules I was never shown, and that the dogs are winning. A man should not hold a public office his heart has changed sides on.",
       "I recommend for the post anyone who runs slower than me. The dogs prefer it close.",
     ],
-    sign: "— H. Pruitt",
+    sign: "â€” H. Pruitt",
   },
   {
     to: "Chief Engineer\nVolunteer Hose Co. No. 1",
@@ -631,7 +631,7 @@ const LETTERS = [
       "Forty-one years with the company, and the doctor and the ladder have come to an agreement over my head: I am done climbing. Consider this my resignation, tendered with a full heart and a bad knee.",
       "One condition, and I will hold the company to it: my boots stay by the engine, third peg. They know the way to a fire by themselves now, and some green kid is going to be glad of boots that pull toward the smoke.",
     ],
-    sign: "— S. Dubcek, badge 4",
+    sign: "â€” S. Dubcek, badge 4",
   },
   {
     to: "The Editor\nThe Weekly Courier\n(letters column)",
@@ -642,7 +642,7 @@ const LETTERS = [
       "For twenty-two winters somebody has stacked split firewood on the porches of this town's widows in the night, and for twenty-two winters your paper has run guesses every February. It was me. The mystery can retire; my back already has.",
       "I am confessing so the town stops crediting angels for what was only a man with a wagon and a reason he never gave. The reason was a porch I sat on cold, once, a long time ago, waiting for help that took its time. That is all the reason there ever is.",
     ],
-    sign: "— (the wagon is sold)",
+    sign: "â€” (the wagon is sold)",
   },
   {
     to: "The Congregation\nFirst Methodist\n(the one with the tower)",
@@ -650,10 +650,10 @@ const LETTERS = [
     stamp: "No Longer in Parish",
     postmark: ["Dead Letter", "Office", "Jun 1963"],
     body: [
-      "The tower clock has said 7:22 since the autumn of 1946, and the town has made its peace with it, and I understand there is now a café called The Seven Twenty-Two. It was me. I climbed up on a dare with my cousin's .22 — the arithmetic of that has not escaped me — and I hit the works with the second shot.",
+      "The tower clock has said 7:22 since the autumn of 1946, and the town has made its peace with it, and I understand there is now a cafÃ© called The Seven Twenty-Two. It was me. I climbed up on a dare with my cousin's .22 â€” the arithmetic of that has not escaped me â€” and I hit the works with the second shot.",
       "I am told the town says the clock stopped the hour the war ended, or the hour old Reverend Miles died, depending who is talking. Both are better stories than mine. Keep either. But I wanted one soul on earth to hold the true one.",
     ],
-    sign: "— L. Fenwick",
+    sign: "â€” L. Fenwick",
   },
   {
     to: "The Membership\nOtter Tail Rod & Gun Club\n(read at the meeting)",
@@ -664,7 +664,7 @@ const LETTERS = [
       "The brass plate over the bar says C. Yost, largemouth bass, eleven pounds four ounces, June 1953. I am writing to report there were three lead sinkers in that fish, and the fish and I both knew it.",
       "Seventeen years that plate has looked at me every Friday night. Take it down, or leave it up as a monument to the sinkers, whichever the membership prefers. Either way I have paid: I have not enjoyed a fish since, and I used to love fish.",
     ],
-    sign: "— C. Yost",
+    sign: "â€” C. Yost",
   },
   {
     to: "The Town of Coulter\nAttn: Historical Society",
@@ -675,7 +675,7 @@ const LETTERS = [
       "Our father cast the statue of your founder, Colonel Coulter, in 1928. Going through his papers we find an envelope marked FOR THE TOWN, WHEN I AM GONE, and in it this: no photograph of the Colonel existed. The face on your statue is our father's father, a tailor from Moravia, who never set foot in your county but had, our father writes, the correct jaw.",
       "For forty-seven years your town has laid wreaths at the feet of a man who mended coats. Our father kept the secret and the commission. We see no reason to unveil anything now, except that the tailor deserves the wreaths on the record somewhere. They would have astonished him.",
     ],
-    sign: "— The Brazda family",
+    sign: "â€” The Brazda family",
   },
   {
     to: "The Choir Director\nFirst Lutheran\n(soprano section)",
@@ -686,11 +686,11 @@ const LETTERS = [
       "Thirty-one years in your choir, and here is my confession: I lost the voice in 1941, after the diphtheria, and never told a soul. I have mouthed every anthem since. Thirty-one years of Holy, Holy, Holy, silent as snow.",
       "I stayed because the robes are warm and the third row is the only place I have ever stood shoulder to shoulder with people and felt the music go through me like weather. You may put me out. But I ask you to consider that nobody has ever once noticed, and what that says about how a choir actually works.",
     ],
-    sign: "— Mrs. G. Sorley",
+    sign: "â€” Mrs. G. Sorley",
   },
 
   /* ---- the length strata (2026-07-31, James: "a lot more variety in the
-     length... that's what would be more realistic" — scraps, notes, one list,
+     length... that's what would be more realistic" â€” scraps, notes, one list,
      and four sagas; the letter panel scrolls past 88vh) ---- */
   {
     to: "Mr. E. Skoglund\n(wherever this finds him)",
@@ -700,7 +700,7 @@ const LETTERS = [
     body: [
       "Come home.",
     ],
-    sign: "— everyone",
+    sign: "â€” everyone",
   },
   {
     to: "Mr. J. Quist\nc/o the Harvest Dance\n(ask anyone)",
@@ -710,7 +710,7 @@ const LETTERS = [
     body: [
       "Yes.",
     ],
-    sign: "— (still yes)",
+    sign: "â€” (still yes)",
   },
   {
     to: "The Clerk of Court\nDomestic Filings",
@@ -720,7 +720,7 @@ const LETTERS = [
     body: [
       "File it before he apologizes again.",
     ],
-    sign: "— Mrs. F.",
+    sign: "â€” Mrs. F.",
   },
   {
     to: "The Milkman\n(route 6, the early one)",
@@ -730,7 +730,7 @@ const LETTERS = [
     body: [
       "Leave one extra bottle from now on, for the cat that is not ours. Bill us as usual and say nothing to the Neelys.",
     ],
-    sign: "— The Hollisters",
+    sign: "â€” The Hollisters",
   },
   {
     to: "Lost & Found\nUnion Depot",
@@ -740,7 +740,7 @@ const LETTERS = [
     body: [
       "One glove, brown leather, left hand, lost on the 4:15 six years ago. I have kept the right. It has become a matter of principle.",
     ],
-    sign: "— O. Lindqvist",
+    sign: "â€” O. Lindqvist",
   },
   {
     to: "Santa Claus\nThe North Pole",
@@ -760,7 +760,7 @@ const LETTERS = [
       "9. No socks. If the elves have already made the socks, fine. But know that I know.",
       "10. Whatever my mom wants. She never says. She fixes everybody's plate and sits down last. Figure it out, you're the professional.",
     ],
-    sign: "— Gene Mackey, age 8",
+    sign: "â€” Gene Mackey, age 8",
   },
   {
     to: "The estate of A. Gorczak\n(the lawyers handling it)",
@@ -774,7 +774,7 @@ const LETTERS = [
       "1936: I painted my side of the fence. He painted his side a better color, which he then would not name. It took me until Easter to match it.",
       "1937: the hailstorm. We did not fight that year. His barn lost its roof and my horses stood in his parlor for six days. The fence stood in water to the second rail.",
       "1938 through 1941: skirmishes too numerous to list. See the diagram. The diagram is his; he drew fences truer than any man in this county, and it is the one thing I ever told him to his face.",
-      "1942: both boys shipped out — his Frank, my Walter. Anton and I mended fence together that spring without one word passing. Best fence we ever built. A man can say a great deal with a post maul, and we said all of it.",
+      "1942: both boys shipped out â€” his Frank, my Walter. Anton and I mended fence together that spring without one word passing. Best fence we ever built. A man can say a great deal with a post maul, and we said all of it.",
       "1943: Frank did not come home. That fall I moved my fence one foot onto my own land, so his cows could reach the creek shade. We never spoke of it. He never moved it back.",
       "1951: the tornado took my fence entire, and Anton Gorczak rebuilt it in three days, on the old true line, to the inch, while I lay with a broken hip cursing him from the window. He billed me one dollar. I did not pay it, on principle, and he sent that bill every Christmas after, and it is how I knew he was well.",
       "1962: too old to farm the back forties, the both of us, we rented to the Lindstrom boy, who took the fence down to run the parcels as one field. Anton and I stood where the line had been and could not find it. He said, 'Well.' I said, 'Well.' We stood there a long time. There has never been a bigger field.",
@@ -782,7 +782,7 @@ const LETTERS = [
       "So, to the lawyers: there is no dispute. There was never a dispute. There was a fence, and two old fools who kept it in perfect repair for thirty-five years, and if your papers require a finding, write down that the line is wherever Anton Gorczak said it was.",
       "Enclosed is one dollar.",
     ],
-    sign: "— E. Piatek",
+    sign: "â€” E. Piatek",
   },
   {
     to: "The buyer of box lot 40\nestate sale, the Hyde place\n(the black tin with roses)",
@@ -790,18 +790,18 @@ const LETTERS = [
     stamp: "Sale Concluded",
     postmark: ["Dead Letter", "Office", "Sep 1980"],
     body: [
-      "You bought my mother's sewing box at the sale on Saturday — lot 40, one dollar fifty. The auctioneer called it 'notions.' I was the woman by the porch rail who could not make herself bid. Before it is only buttons to you, I want one person on earth to have the inventory.",
+      "You bought my mother's sewing box at the sale on Saturday â€” lot 40, one dollar fifty. The auctioneer called it 'notions.' I was the woman by the porch rail who could not make herself bid. Before it is only buttons to you, I want one person on earth to have the inventory.",
       "The needle book, wool felt, shaped like a house: she made it at nine years old, in Norway, before the boat. It is the oldest thing our family owns. Owned.",
       "The blue spool: the thread she basted my wedding dress with, and my sister's. She let mine out twice and took my sister's in once, and what that arithmetic says about our marriages she never once said out loud.",
       "The scissors we were forbidden to touch, which cut paper NEVER, and which every one of us used for paper, and she knew every time. She could hear it from two rooms. Paper has a sound, she said. So do liars.",
       "The pincushion tomato. Science has no explanation for why they are tomatoes. Neither did she, and she distrusted the question.",
-      "The milk-glass button jar. On winter Sundays we sorted it on the rug — by size, then by color, then back in the jar — and I was forty years old before it occurred to me that the sorting was never for anything. It was to keep four children still in one room where she could count us. She was sorting us.",
-      "The darning egg, worn smooth as a chestnut. She held it in her fist the last week, in the hospital, when she did not know our names anymore. She knew the egg. A nurse asked what it was and I said: a tool — you hold it inside the sock, where the hole is, so the mending has something to press against. Write that down somewhere. It is not only for socks.",
+      "The milk-glass button jar. On winter Sundays we sorted it on the rug â€” by size, then by color, then back in the jar â€” and I was forty years old before it occurred to me that the sorting was never for anything. It was to keep four children still in one room where she could count us. She was sorting us.",
+      "The darning egg, worn smooth as a chestnut. She held it in her fist the last week, in the hospital, when she did not know our names anymore. She knew the egg. A nurse asked what it was and I said: a tool â€” you hold it inside the sock, where the hole is, so the mending has something to press against. Write that down somewhere. It is not only for socks.",
       "The thimble, worn through at the top. The hardware man told her a worn-through thimble means ten thousand hours, and she said, 'Then it owes me nothing,' and bought no new one, and pushed the needle sideways with her ring finger for the last eleven years. It is why every sweater this family owns pulls a little to the left. We are a crooked people, and it is documented in wool.",
-      "That is the inventory. Keep it together in the tin, is my only ask. It is one lot. It was one life, a dollar fifty, and the auctioneer was righter than he knew: those were her notions — that a hole is a thing you press against from the inside; that children hold still if you sort them gently; that paper has a sound, and so do liars.",
+      "That is the inventory. Keep it together in the tin, is my only ask. It is one lot. It was one life, a dollar fifty, and the auctioneer was righter than he knew: those were her notions â€” that a hole is a thing you press against from the inside; that children hold still if you sort them gently; that paper has a sound, and so do liars.",
       "Use the scissors for whatever you want. She can hear you.",
     ],
-    sign: "— the woman by the porch rail",
+    sign: "â€” the woman by the porch rail",
   },
   {
     to: "The Town Council\n(for the record)",
@@ -820,9 +820,9 @@ const LETTERS = [
       "4:00. Freight through at 4:11, on time. Waved at the brakeman. I do not know his name; I have waved at him nine years. Somewhere a man I never met says of us, 'that is the town where the fellow waves.' That is a kind of streetlight too, I would argue, and I am arguing.",
       "5:00. First light at the bakery; the smell by 5:20. Gustafson hands the first burnt roll out the back door to whoever is standing there. For nine years that has been me. Starting next week it is nobody. He will hold it out anyway, is my guess. A door gets a habit.",
       "6:00. Rang off at the depot. Handed in the clock and the key. That clock has punched every hour of mine since 1924; we retire disagreeing about how many that is.",
-      "Report ends. All was well. All was almost always well, gentlemen — that was never the news down here. The news was that somebody checked.",
+      "Report ends. All was well. All was almost always well, gentlemen â€” that was never the news down here. The news was that somebody checked.",
     ],
-    sign: "— N. Brozek, badge 1 (there was only ever the one)",
+    sign: "â€” N. Brozek, badge 1 (there was only ever the one)",
   },
   {
     to: "Miss Karin Holm\n(my granddaughter)\nleft no forwarding",
@@ -834,15 +834,15 @@ const LETTERS = [
       "First: two cups of milk, scalded. Watch it. Scalded is the moment before the moment you were about to look away.",
       "The yeast: prove it in a little of the warm milk with a spoon of sugar. If it does not foam, throw it out and start over, and do not mourn yeast. This applies broadly. I was first courted by a man with a borrowed boat and good posture. The boat did not foam. I started over with the man who became your grandfather, and to his last day he thanked that boat.",
       "Cardamom: eleven pods, crushed yourself, in the cloth, with the rolling pin. Not powder from a can. The can is fine for people you like. The pods are for people you love. That is the whole of my philosophy, and now you have it.",
-      "Flour: begin with five cups, but the dough decides. Your mother always fought the dough. You cannot fight dough, Karin — it has no pride, it simply waits. So did I, and she came around, and we baked every Christmas after. She came around late. Bread rises late in a cold house. It rises, though.",
+      "Flour: begin with five cups, but the dough decides. Your mother always fought the dough. You cannot fight dough, Karin â€” it has no pride, it simply waits. So did I, and she came around, and we baked every Christmas after. She came around late. Bread rises late in a cold house. It rises, though.",
       "Butter: the good butter. If the store man tells you the other kind is just the same, he has told you about butter and about himself.",
       "Knead until your arms burn, and then count a hundred more. It is the only part of my life anyone ever called patient. It is not patience if you get to hit something. But I let them call me patient.",
-      "First rise: one hour under the flour-sack towel — the one with the windmill, bottom drawer of the hutch. The hutch is also yours someday. Your aunt does not know yet. This letter is my evidence.",
+      "First rise: one hour under the flour-sack towel â€” the one with the windmill, bottom drawer of the hutch. The hutch is also yours someday. Your aunt does not know yet. This letter is my evidence.",
       "Braid in six strands. Your grandfather said six was showing off, and I said yes, and he lived another forty years and never asked again. Marry someone who understands the first time. Or at least stops asking.",
       "Egg over the top, pearl sugar, hot oven, twenty minutes, turn it once, and take it out when the whole kitchen smells like the inside of a church bell. You will know. You have always known things. You only call long distance to hear them said.",
       "Bake it wherever it is you have landed, and the smell will make the place yours. That is what the recipe is for, Karin. The bread is only how the smell travels.",
     ],
-    sign: "— Grandma Holm (the towel is yours too — show your aunt this letter)",
+    sign: "â€” Grandma Holm (the towel is yours too â€” show your aunt this letter)",
   },
 ];
 
@@ -968,7 +968,7 @@ function fail(msg) {
   if (posterNote) posterNote.textContent = msg;
   console.warn('[dlo]', msg);
 }
-const SERVE_HINT = 'The office needs the local server — one double-click on start-elastic-space.cmd.';
+const SERVE_HINT = 'The office needs the local server â€” one double-click on start-elastic-space.cmd.';
 
 let renderer;
 try {
@@ -976,14 +976,14 @@ try {
     canvas: stage, antialias: true, powerPreference: 'high-performance',
   });
 } catch (e) {
-  fail('WebGL is unavailable here — the letters wait all the same.');
+  fail('WebGL is unavailable here â€” the letters wait all the same.');
   throw e;
 }
 // Dynamic resolution (Mandala Shop pattern): full sharpness at rest, lighter
 // pixel load while the camera moves. ?px=N pins a ratio for perf testing.
 const pxOverride = parseFloat(new URLSearchParams(location.search).get('px'));
 // Caps lowered in the r3 perf pass (2026-07-22): 1.75 at rest was ~4500px wide
-// on James's screen — fill rate was the frame budget. 1.5 still reads sharp.
+// on James's screen â€” fill rate was the frame budget. 1.5 still reads sharp.
 const RES_HIGH = Math.min(devicePixelRatio, 1.5);
 const RES_LOW = Math.min(devicePixelRatio, 1.1);
 let resCurrent = pxOverride > 0 ? pxOverride : RES_HIGH;
@@ -1009,10 +1009,19 @@ const clamp = THREE.MathUtils.clamp;
 
 const ROOM = { x0: -9, x1: 9, z0: -6, z1: 6, h: 4.1 };   // ~2x Mandala Shop's floor
 
-/* ================= tuner (loaded early — lights read it) ================= */
+/* ================= tuner (loaded early â€” lights read it) ================= */
 
 const TUNE_DEFAULTS = {
   pmGlow: 0.42,   // postmaster self-light: 0 = room-lit only, 1 = fully unlit-bright
+  pmSplay: 0,     // outward upper-arm degrees added after every clip. Was 12 as a
+                  // crutch for the retargeted Mixamo walk (v1 arm angles clipped
+                  // the round thighs); iClone motions are animated on HIS body so
+                  // the default is 0 â€” the knob stays for future imported clips.
+  pmStill: 0,     // 1 = museum mode: all clips stopped (bind A-pose), no roaming â€”
+                  // for inspecting the model; 0 resumes the routine
+  pmHeight: 1.9,  // his height in meters (James r15: "a good head taller"), live
+  lipSync: 0.05,  // seconds of extra mouth lead over the audio — trim by ear
+  lipPunch: 1.0,  // viseme intensity multiplier — articulation emphasis
   ambient: 0.95,  // hemisphere fill
   fluor: 1.7,     // fluorescent fixture intensity
   bulb: 1.8,      // hanging-bulb intensity multiplier
@@ -1028,7 +1037,7 @@ const TUNE_DEFAULTS = {
 let tune = { ...TUNE_DEFAULTS };
 // v2 key (2026-07-22 brightness pass): stored v1 values were tuned against the
 // dungeon-dark build and would override the new, much brighter defaults
-try { Object.assign(tune, JSON.parse(localStorage.getItem('dlo-room-tuner-v2') || '{}')); } catch (e) { /* fresh */ }
+try { Object.assign(tune, JSON.parse(localStorage.getItem('dlo-room-tuner-v3') || '{}')); } catch (e) { /* fresh */ }
 
 scene.fog = new THREE.FogExp2(0x0c0e0d, tune.fog);
 
@@ -1038,9 +1047,9 @@ const hemi = new THREE.HemisphereLight(0x9aa89e, 0x3a352c, 0.95);
 scene.add(hemi);
 
 // two hanging bulbs (warm accents): mid-room and the east side. The one that
-// used to hang over the basket is gone — letters fell through it (James); the
+// used to hang over the basket is gone â€” letters fell through it (James); the
 // basket gets a flanking pair of fluorescents instead. Only the mid-room bulb
-// carries a real light (r3 perf pass — every point light is a per-fragment tax
+// carries a real light (r3 perf pass â€” every point light is a per-fragment tax
 // on every Standard material; the east corner is covered by fluor + furnace).
 const BULBS = [
   [0.6, 3.1, 0.6, true],
@@ -1051,7 +1060,7 @@ const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0 });
 const shadeMat = new THREE.MeshStandardMaterial({ color: 0x243026, roughness: 0.6, metalness: 0.4, side: THREE.DoubleSide });
 const cordMat = new THREE.MeshStandardMaterial({ color: 0x14100c, roughness: 0.9 });
 
-// Ghost-through (James, 2026-08-04): fixtures stay fully solid to look at —
+// Ghost-through (James, 2026-08-04): fixtures stay fully solid to look at â€”
 // but the ONE the camera is flying through fades out just while the eye is
 // inside its bubble, so passing never fills the screen with fixture guts.
 // Per-fixture material clones make the fade individual.
@@ -1085,7 +1094,7 @@ for (const [x, y, z, lit] of BULBS) {
 }
 
 // Fluorescent fixtures (2026-07-22, "more light" pass): hanging twin-tube shop
-// lights. STEADY — never flicker these (the 2D world's flicker overlay was a
+// lights. STEADY â€” never flicker these (the 2D world's flicker overlay was a
 // hard James veto). Fixtures with `lit` carry a real PointLight; the rest are
 // emissive-only so the light count stays sane.
 const fluorLights = [];
@@ -1117,8 +1126,8 @@ function fluorFixture(x, y, z, ry, lit) {
     scene.add(pt);
   }
 }
-fluorFixture(-5.6, 3.0, -1.5, Math.PI / 2, true);   // flanking the basket…
-fluorFixture(-3.4, 3.0, -1.5, Math.PI / 2, true);   // …clear of the letter drop
+fluorFixture(-5.6, 3.0, -1.5, Math.PI / 2, true);   // flanking the basketâ€¦
+fluorFixture(-3.4, 3.0, -1.5, Math.PI / 2, true);   // â€¦clear of the letter drop
 fluorFixture(2.5, 3.05, -4.1, 0, true);             // over the desk area
 fluorFixture(0.2, 3.1, 2.9, 0.25, true);            // center-south
 fluorFixture(-7.3, 3.05, 3.4, Math.PI / 2, true);   // door + big table corner
@@ -1132,14 +1141,14 @@ scene.add(lampLight);
 
 // warm pool for the placeable floor lamps (anchored in refreshDynStations;
 // dark until a 'floor-lamp' item exists). Four real lights max (raised from
-// two 2026-08-04 when James hit the cap) — watch the frame rate before more.
+// two 2026-08-04 when James hit the cap) â€” watch the frame rate before more.
 const floorLampLights = [0, 1, 2, 3].map(() => {
   const l = new THREE.PointLight(0xffd9a0, 0, 6, 1.8);
   scene.add(l);
   return l;
 });
 
-// furnace embers — flickers in the loop; flares when a letter goes in
+// furnace embers â€” flickers in the loop; flares when a letter goes in
 const furnaceLight = new THREE.PointLight(0xff7a2e, 1.1, 7, 1.8);
 furnaceLight.position.set(6.4, 0.8, 3.3);
 scene.add(furnaceLight);
@@ -1189,7 +1198,7 @@ function jitter(hex, amt) {
   return `rgb(${Math.round(c.r * 255 * f)},${Math.round(c.g * 255 * f)},${Math.round(c.b * 255 * f)})`;
 }
 
-// painted cinderblock (2026-07-28, James: "low rent but not fully peeling") —
+// painted cinderblock (2026-07-28, James: "low rent but not fully peeling") â€”
 // Meshy seamless tile over a cinderblock-proportioned fallback (blocks are
 // twice as long as tall, running bond)
 const texWall = tileTex('assets/textures/wall.png', (g, px) => {
@@ -1233,7 +1242,7 @@ const texWood = tileTex('assets/textures/wood.png', (g, px) => {
     g.fillRect(x + 1, 0, plank - 2, px);
   }
 });
-// aged rusty iron (2026-08-04, the oil tank — Meshy tile, 3cr): charcoal-brown
+// aged rusty iron (2026-08-04, the oil tank â€” Meshy tile, 3cr): charcoal-brown
 // steel fallback with orange rust blooms until the real tile loads
 const texRust = tileTex('assets/textures/rust-tile.jpg', (g, px) => {
   g.fillStyle = '#3a322c'; g.fillRect(0, 0, px, px);
@@ -1262,8 +1271,8 @@ const matWood = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.8 })
 const matWoodDark = new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.85, color: 0x8a7a66 });
 const matIron = new THREE.MeshStandardMaterial({ color: 0x2b2b2d, roughness: 0.55, metalness: 0.7 });
 const matPipe = new THREE.MeshStandardMaterial({ color: 0x3a3d3c, roughness: 0.5, metalness: 0.75 });
-// paper goods are Lambert (r3 perf pass): dozens of small meshes — envelopes,
-// posters, parcels — don't need a PBR specular lobe times nine lights each
+// paper goods are Lambert (r3 perf pass): dozens of small meshes â€” envelopes,
+// posters, parcels â€” don't need a PBR specular lobe times nine lights each
 const matPaper = new THREE.MeshLambertMaterial({ color: 0xd8cdae });
 
 /* ================= room shell ================= */
@@ -1325,7 +1334,7 @@ const matPaper = new THREE.MeshLambertMaterial({ color: 0xd8cdae });
   pipe(0.07, ROOM.h, -8.6, ROOM.h / 2, -4.6, 0, 0);                // corner downpipe
   pipe(0.045, ROOM.h, 8.55, ROOM.h / 2, -4.9, 0, 0);
   // the heating plant's arteries (2026-08-03, James: "there's a bunch of
-  // radiators upstairs that are probably getting heat from down here") — a fat
+  // radiators upstairs that are probably getting heat from down here") â€” a fat
   // insulated steam main with risers punching up through the ceiling, plus a
   // second bank of runs so the ceiling reads like a working basement
   pipe(0.15, 18, 0, ROOM.h - 0.28, -2.3, 0, Math.PI / 2);          // the steam main, east-west
@@ -1367,8 +1376,8 @@ function addSign(tex, w, h, x, y, z, ry, { lit = false } = {}) {
   return m;
 }
 
-// DEAD LETTER OFFICE — the house sign. Placeable wall art since 2026-08-03
-// (James: control everything on the walls) — the drawing lives here, the
+// DEAD LETTER OFFICE â€” the house sign. Placeable wall art since 2026-08-03
+// (James: control everything on the walls) â€” the drawing lives here, the
 // placement lives in the layout via WALL_ART 'art-housesign'.
 function drawHouseSign(g, w, h) {
   g.fillStyle = '#1c262b'; g.fillRect(0, 0, w, h);
@@ -1384,7 +1393,7 @@ function drawHouseSign(g, w, h) {
   g.fillText('WE  DELIVER  NOWHERE', w / 2, 452);
 }
 
-// POSTMASTER JOHN DOUGH — his name plate, placeable wall art (2026-08-03)
+// POSTMASTER JOHN DOUGH â€” his name plate, placeable wall art (2026-08-03)
 function drawPostmasterSign(g, w, h) {
   g.fillStyle = '#211d16'; g.fillRect(0, 0, w, h);
   g.strokeStyle = '#9a8446'; g.lineWidth = 8; g.strokeRect(7, 7, w - 14, h - 14);
@@ -1397,10 +1406,10 @@ function drawPostmasterSign(g, w, h) {
   g.fillText('JOHN DOUGH', w / 2, 128);
 }
 
-// (the drawn stopped clock is GONE — 2026-08-04, James's call: replaced by
+// (the drawn stopped clock is GONE â€” 2026-08-04, James's call: replaced by
 // the Meshy pendulum wall clock, placeable as 'art-wallclock')
 
-// tally boards — mechanical drum counters (2026-07-28, James: "look mechanical").
+// tally boards â€” mechanical drum counters (2026-07-28, James: "look mechanical").
 // Each digit lives in its own riveted window on a rolling wheel: brushed housing,
 // drum shading, a flap seam across the middle. DEAD LETTERS ticks up live from
 // deep in the hundreds of thousands; CLAIMED reads 17, forever.
@@ -1489,12 +1498,12 @@ function bumpDeadLetters() {
   texTallyDead.needsUpdate = true;
 }
 
-// (The LOST? cat poster moved into the wall-art catalog, 2026-07-28 — all wall
+// (The LOST? cat poster moved into the wall-art catalog, 2026-07-28 â€” all wall
 // art is arrange-mode placeable now; see the posters section.)
 
 /* ================= west wall: window, radiator, door, punch clock ============ */
 
-// high barred windows with cool light shafts — three now (2026-07-22): it's the
+// high barred windows with cool light shafts â€” three now (2026-07-22): it's the
 // dead letter office, not a dungeon; the upstairs world leaks in cozily
 const shaftTex = (() => {
   const c = document.createElement('canvas');
@@ -1524,7 +1533,7 @@ const shaftMatTemplate = () => new THREE.MeshBasicMaterial({
 const shaftPlanes = [];
 const shaftToCam = new THREE.Vector3();
 // a bit of sky outside the panes (2026-07-28, James): pale overcast blue with
-// slow clouds, drawn once — the world upstairs, seen from below the sidewalk
+// slow clouds, drawn once â€” the world upstairs, seen from below the sidewalk
 const skyTex = (() => {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 160;
@@ -1543,7 +1552,7 @@ const skyTex = (() => {
     g.fillStyle = cg;
     g.beginPath(); g.ellipse(cx, cy, cr * 1.5, cr * 0.55, 0, 0, Math.PI * 2); g.fill();
   }
-  // sidewalk-level grass along the sill — thin leaning blades, properly green
+  // sidewalk-level grass along the sill â€” thin leaning blades, properly green
   // (James r12.1: the 2px grey spikes read as spikes)
   g.lineCap = 'round';
   for (let x = 0; x < 256; x += 2 + Math.random() * 3) {
@@ -1608,11 +1617,11 @@ mkShaft(-5.2, 1.85, ROOM.z1 - 1.6, -0.62);
 mkWindow(5.8, ROOM.z1 - 0.06, Math.PI);
 mkShaft(5.5, 1.85, ROOM.z1 - 1.6, -0.62);
 
-// (the radiator became the 'radiator' placeable, 2026-08-03 — buildRadiator
+// (the radiator became the 'radiator' placeable, 2026-08-03 â€” buildRadiator
 // in the furniture catalog. Its fins still speak a little Morse, wherever
 // James parks it.)
 
-// the stairwell door — a drift exit. Metal, wire glass, somewhere above: stairs.
+// the stairwell door â€” a drift exit. Metal, wire glass, somewhere above: stairs.
 const doorMeshes = new Set();
 {
   const door = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.25, 1.12),
@@ -1645,7 +1654,7 @@ const doorMeshes = new Set();
   knob.position.set(ROOM.x0 + 0.13, 1.05, 2.18);
   scene.add(knob);
   doorMeshes.add(knob);
-  // (the drawn STAIRS ↗ plate retired 2026-08-04 — James's Meshy EXIT sign
+  // (the drawn STAIRS â†— plate retired 2026-08-04 â€” James's Meshy EXIT sign
   // is placeable wall art now, 'art-exitsign')
 }
 
@@ -1688,7 +1697,7 @@ const punchClockMeshes = new Set();
 
 // The unit itself is the 'pigeonholes' placeable since 2026-08-03
 // (buildPigeonholes in the furniture catalog). This array holds the WORLD
-// slot positions envelopes fly into — refreshDynStations rebuilds it from
+// slot positions envelopes fly into â€” refreshDynStations rebuilds it from
 // the first placed unit; empty means nowhere to file (he burns instead).
 const pigeonholeSlots = [];
 
@@ -1697,17 +1706,17 @@ const pigeonholeSlots = [];
 // A double-deep bank of green filing cabinets (2026-07-22, James): five wide
 // along the wall, two rows deep. The lone cabinet + coffee hotplate it replaces
 // moved on: coffee service lives on the donut table by the desk now.
-// (the fixed cabinet bank became the 'cabinet-bank' placeable, 2026-08-03 —
+// (the fixed cabinet bank became the 'cabinet-bank' placeable, 2026-08-03 â€”
 // buildCabinetBank in the furniture catalog; the radio is a placeable too and
 // rides wherever the bank goes)
 
-// (the coat rack — pole, pegs, and the mail bag that never goes out — became
+// (the coat rack â€” pole, pegs, and the mail bag that never goes out â€” became
 // the 'coat-rack' placeable, 2026-08-03; buildCoatRack in the catalog)
 
 /* ================= the bookshelf (boring manuals + romance novels) =========== */
 
 // one canvas per shelf row: spines with jittered widths/colors, vertical titles
-// on the fat ones — 1 draw call per row instead of 30 book meshes
+// on the fat ones â€” 1 draw call per row instead of 30 book meshes
 function bookRowTex(kind) {
   return signTexture(512, 128, (g, w, h) => {
     g.fillStyle = '#241a10'; g.fillRect(0, 0, w, h);   // shadow behind the books
@@ -1757,11 +1766,11 @@ function bookRowTex(kind) {
   });
 }
 // (the fixed bookshelf became the 'bookshelf' arrange-mode placeable,
-// 2026-08-03 — buildBookshelf in the furniture catalog section)
+// 2026-08-03 â€” buildBookshelf in the furniture catalog section)
 
 /* ================= the archive stacks (2026-07-27, James's brief) ============ */
 
-// "Like a police archive room" — steel shelving units filled with dated bankers
+// "Like a police archive room" â€” steel shelving units filled with dated bankers
 // boxes: everything the office ever swallowed, filed and labeled. Every box face
 // samples ONE canvas atlas (a single material for the whole archive) and each
 // unit's boxes merge into one geometry, so five units + floor stacks cost about
@@ -1778,7 +1787,7 @@ const ARCHIVE_LABELS = [
   { t: 'WEDDING INVITATIONS', s: 'RETURNED' }, { t: 'PEN PALS', sub: 'LAPSED' },
   { t: 'BIRTHDAY CARDS', sub: 'LATE' }, { t: 'APOLOGIES' },
   { t: 'THREATS', sub: 'VAGUE' }, { t: 'CHAIN RECIPES' },
-  { t: 'SÉANCE REQUESTS' }, { t: 'MANIFESTOS' },
+  { t: 'SÃ‰ANCE REQUESTS' }, { t: 'MANIFESTOS' },
   { t: 'HOMEWORK EXCUSES' }, { t: 'POSTCARDS' },
   { t: 'PRAYERS', sub: 'MISADDRESSED' }, { t: 'UFO REPORTS', s: 'UNVERIFIED' },
   { t: 'BILLS', sub: 'DISPUTED' }, { t: 'FAN MAIL', sub: 'NO SUCH STAR' },
@@ -1836,7 +1845,7 @@ const boxAtlasTex = (() => {
   ARCHIVE_LABELS.forEach((L, i) => {
     const [x, y] = tileXY(i);
     cardboardPatch(g, x, y, AT_TW, AT_TH, jitter('#9a7a52', 0.09));
-    // the label card: manila, typed, slightly crooked — filed in a hurry, kept forever
+    // the label card: manila, typed, slightly crooked â€” filed in a hurry, kept forever
     const lw = 190, lh = 96, lx = x + (AT_TW - lw) / 2, ly = y + 26 + Math.random() * 14;
     g.save();
     g.translate(lx + lw / 2, ly + lh / 2);
@@ -1856,7 +1865,7 @@ const boxAtlasTex = (() => {
       g.font = `700 ${fs}px "Courier New", monospace`;
     }
     const y0 = 1947 + Math.floor(Math.random() * 38);
-    const dates = `${y0}–${Math.min(1991, y0 + 1 + Math.floor(Math.random() * 9))}`;
+    const dates = `${y0}â€“${Math.min(1991, y0 + 1 + Math.floor(Math.random() * 9))}`;
     if (L.sub) {
       g.fillText(L.t, 0, -24);
       g.font = '700 15px "Courier New", monospace';
@@ -1902,7 +1911,7 @@ const boxAtlasTex = (() => {
   t.anisotropy = maxAniso;
   return t;
 })();
-// (matBoxAtlas retired with the cabinet-top strays, 2026-08-03 — furniture
+// (matBoxAtlas retired with the cabinet-top strays, 2026-08-03 â€” furniture
 // items each get their own boxAtlasTex Lambert via furnitureMaterial)
 const matShelfSteel = new THREE.MeshStandardMaterial({ color: 0x4a4f46, roughness: 0.5, metalness: 0.6 });
 
@@ -1943,11 +1952,11 @@ function archiveBoxGeo(rnd) {
 }
 
 // The droppable furniture catalog (arrange mode palette). fw/fd are the
-// footprint used for camera keep-outs and the nav-edge warning — plain
+// footprint used for camera keep-outs and the nav-edge warning â€” plain
 // literals so the Node sim can eval this block straight from source.
 const FURNITURE = {
   // the PM's archive shelving (renamed 2026-08-04, James: "I can't tell
-  // what's what" — these are the letter-box stacks he gathers and catalogs)
+  // what's what" â€” these are the letter-box stacks he gathers and catalogs)
   'shelf-double': { label: 'PM shelf: 2-sided row', len: 3.0, dep: 0.85, h: 2.06, levels: 4, fill: 0.92, double: true, fw: 3.14, fd: 0.99 },
   'shelf-single': { label: 'PM shelf: wall', len: 1.7, dep: 0.42, h: 2.06, levels: 4, fill: 0.92, double: false, fw: 1.84, fd: 0.56 },
   'shelf-tall': { label: 'PM shelf: tall', len: 2.2, dep: 0.42, h: 2.62, levels: 5, fill: 0.92, double: false, fw: 2.34, fd: 0.56 },
@@ -1959,7 +1968,7 @@ const FURNITURE = {
   // the great furnishing expansion (2026-08-03, James: "arrange everything in
   // a perfectly human way like a man would do it at work down there").
   // glb entries clone a Meshy prop; table entries are [w, d, h] wood tables;
-  // surf entries are tabletop clutter — no camera keep-out, they carry a y
+  // surf entries are tabletop clutter â€” no camera keep-out, they carry a y
   // (surface height) and raycast onto whatever they're dropped on.
   'chair': { label: 'office chair', glb: 'chair.glb', gh: 0.96, fw: 0.6, fd: 0.6 },
   'couch': { label: 'the couch', glb: 'couch.glb', gh: 0.8, fw: 2.2, fd: 1.0 },
@@ -1998,7 +2007,7 @@ const FURNITURE = {
   'open-book': { label: 'open book', glb: 'openbook.glb', gh: 0.09, keepMats: true, surf: true, fw: 0.42, fd: 0.32 },
   'wastebasket': { label: 'wastebasket', glb: 'wastebasket.glb', gh: 0.41, keepMats: true, surf: true, wear: { alpha: 0.15, repeat: 2 }, fw: 0.3, fd: 0.3 },
   'floor-lamp': { label: 'floor lamp', glb: 'floorlamp.glb', gh: 1.7, keepMats: true, fw: 0.45, fd: 0.45 },
-  // the letter rack he files into — its slots ride the item (refreshDynStations)
+  // the letter rack he files into â€” its slots ride the item (refreshDynStations)
   'pigeonholes': { label: 'pigeonholes', pig: 1, fw: 3.25, fd: 0.65 },
 };
 
@@ -2090,7 +2099,7 @@ function ownMat(color, opts = {}, lambert = false) {
   return m;
 }
 
-// shared parcel look: brown paper + twine cross (moved up 2026-08-03 — the
+// shared parcel look: brown paper + twine cross (moved up 2026-08-03 â€” the
 // 'parcel' placeable builds at layout time, before the old definition site)
 const texParcel = canvasBase(128, (g, px) => {
   g.fillStyle = '#a58a62'; g.fillRect(0, 0, px, px);
@@ -2146,7 +2155,7 @@ function buildBookshelf() {
 }
 
 // the file cabinet bank as one placeable: 5 wide, 2 deep, drawer fronts +z,
-// one drawer left open with papers — nobody closes anything down here
+// one drawer left open with papers â€” nobody closes anything down here
 function buildCabinetBank(def, rnd) {
   const bodyGeos = [], drawerGeos = [], handleGeos = [];
   for (let row = 0; row < 2; row++) {
@@ -2184,7 +2193,7 @@ function buildCabinetBank(def, rnd) {
 }
 
 // the rug: threadbare wool drawn per-item (each one wears differently), flat
-// on whatever it lands on, no keep-out — feet and casters go right over it
+// on whatever it lands on, no keep-out â€” feet and casters go right over it
 function buildRug(def, rnd) {
   const texRug = signTexture(512, 340, (g, w, h) => {
     g.fillStyle = '#5e2f28'; g.fillRect(0, 0, w, h);
@@ -2212,7 +2221,7 @@ function buildRug(def, rnd) {
   return [{ geo, mat: m }];
 }
 
-// rug two (2026-08-03, James): an old-timey 1920s–30s oriental — deep
+// rug two (2026-08-03, James): an old-timey 1920sâ€“30s oriental â€” deep
 // reddish-maroon and brown field, gold woven through, symmetrical floral
 // filigree. Drawn with strict four-way quadrant symmetry: everything in
 // quadrant() is mirrored across both axes, so the design always reads woven,
@@ -2326,7 +2335,7 @@ function buildRug2(def, rnd) {
     lobed(96, 12, maroonDeep);
     lobed(64, 8, brown);
     rosette(cx, cy, 30, goldPale);
-    // threadbare wear, gentler than rug one — it was the good rug once
+    // threadbare wear, gentler than rug one â€” it was the good rug once
     for (let k = 0; k < 34; k++) {
       g.fillStyle = `rgba(205,185,155,${0.025 + rnd() * 0.04})`;
       g.beginPath();
@@ -2630,7 +2639,7 @@ const SURFACE_BUILDERS = {
   },
 };
 
-// GLB placeables clone a Meshy prop (chair / couch / plant) — the source loads
+// GLB placeables clone a Meshy prop (chair / couch / plant) â€” the source loads
 // once per file, every item gets its own materials so shade stays per-item
 const furnLoader = new GLTFLoader();
 const glbFurnCache = new Map();
@@ -2652,7 +2661,7 @@ function glbFurnSource(file) {
   return glbFurnCache.get(file);
 }
 // def.wear (2026-08-04, James's ask): stamp a tile over a prop's own texture
-// at light opacity — one composited canvas, one material, no transparency
+// at light opacity â€” one composited canvas, one material, no transparency
 // pass. wear: { alpha: 0.15, repeat: 2 } rusts a black wastebasket gently.
 function applyWear(mat, wear) {
   const srcImg = mat.map?.image;
@@ -2752,7 +2761,7 @@ function furnitureMaterial(kind) {
 function applyShade(mats, shade) {
   for (const m of mats) {
     m.color.copy(m.userData.shadeBase).multiplyScalar(shade);
-    // clear any nav-warning tint — except mats whose emissive IS the look
+    // clear any nav-warning tint â€” except mats whose emissive IS the look
     // (the banker's-lamp shade, the radio's dial glow)
     if (!m.userData.keepEmissive) m.emissive?.setScalar(0);
   }
@@ -2807,7 +2816,7 @@ function removeFurnitureItem(record) {
   for (const m of record.mats) m.dispose();
 }
 
-// The layout: assets/layout.js (script tag — file:// safe) when present and
+// The layout: assets/layout.js (script tag â€” file:// safe) when present and
 // furniture-shaped, else the seed below. Arrange mode (?arrange=1, served)
 // edits it live and saves through PUT /api/worlds/dead-letter-office/layout.
 const DLO_DEFAULT_LAYOUT = {
@@ -2824,7 +2833,7 @@ const DLO_DEFAULT_LAYOUT = {
     { type: 'stack-3', x: 8.62, z: 4.85, rotY: -1.4, scale: 1, shade: 1, seed: 19 },
     { type: 'stack-2', x: -1.7, z: 5.35, rotY: 0.4, scale: 1, shade: 1, seed: 20 },
     { type: 'stack-2', x: -3.95, z: -5.6, rotY: 1.2, scale: 1, shade: 1, seed: 21 },
-    // the classic furnishing, as placeables (2026-08-03) — seeds fresh visitors
+    // the classic furnishing, as placeables (2026-08-03) â€” seeds fresh visitors
     // only; James's saved layout.js is the real room
     { type: 'couch', x: -5.0, z: -5.5, rotY: 0, scale: 1, shade: 1, seed: 40 },
     { type: 'coffee-table', x: -5.2, z: -4.3, rotY: 0.05, scale: 1, shade: 1, seed: 41 },
@@ -2832,7 +2841,7 @@ const DLO_DEFAULT_LAYOUT = {
     { type: 'chair', x: -4.0, z: -4.25, rotY: 3.2, scale: 0.98, shade: 0.78, seed: 43 },
     { type: 'plant-big', x: -3.5, z: -5.25, rotY: 3.6, scale: 1, shade: 1, seed: 44 },
     { type: 'plant-small', x: -5.2, y: 0.42, z: -4.3, rotY: 1.9, scale: 1, shade: 1, seed: 45 },
-    // west of the desk now — the old spot sat on the walk into his new lane
+    // west of the desk now â€” the old spot sat on the walk into his new lane
     { type: 'work-table', x: -0.5, z: -5.0, rotY: 0, scale: 1, shade: 1, seed: 46 },
     { type: 'svc-coffee', x: -0.78, y: 0.78, z: -5.05, rotY: 0, scale: 1, shade: 1, seed: 47 },
     { type: 'svc-donuts', x: -0.22, y: 0.78, z: -4.95, rotY: 0.15, scale: 1, shade: 1, seed: 48 },
@@ -2845,7 +2854,7 @@ const DLO_DEFAULT_LAYOUT = {
     { type: 'bookshelf', x: 8.69, z: 1.1, rotY: -Math.PI / 2, scale: 1, shade: 1, seed: 55 },
     { type: 'parcel', x: -6.4, z: 5.35, rotY: 0.4, scale: 1.2, shade: 1, seed: 56 },
     { type: 'parcel', x: 3.9, z: -5.5, rotY: 0.25, scale: 1.2, shade: 1, seed: 57 },
-    // the desk set (flipped: he works behind it), cabinets, radio — placeables
+    // the desk set (flipped: he works behind it), cabinets, radio â€” placeables
     // since the same date
     { type: 'desk', x: 2.5, z: -4.9, rotY: Math.PI, scale: 1, shade: 1, seed: 58 },
     { type: 'chair', x: 3.05, z: -5.62, rotY: 0.15, scale: 1, shade: 1, seed: 59 },
@@ -2858,7 +2867,7 @@ const DLO_DEFAULT_LAYOUT = {
     // the rug, the pigeonholes (2026-08-03, second pass)
     { type: 'rug', x: 2.7, z: -4.3, rotY: 0, scale: 1, shade: 1, seed: 66 },
     { type: 'pigeonholes', x: 6.25, z: -5.74, rotY: 0, scale: 1, shade: 1, seed: 67 },
-    // coat rack + radiator (2026-08-03, third pass — everything movable now)
+    // coat rack + radiator (2026-08-03, third pass â€” everything movable now)
     { type: 'coat-rack', x: 8.4, z: -5.35, rotY: 0, scale: 1, shade: 1, seed: 68 },
     { type: 'radiator', x: -8.68, z: -2.0, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 69 },
     { type: 'welcome-mat', x: -8.38, z: 2.6, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 70 },
@@ -2869,7 +2878,7 @@ const archiveLayout = (savedLayout && savedLayout.kind === 'furniture'
   && Array.isArray(savedLayout.items)) ? savedLayout : DLO_DEFAULT_LAYOUT;
 for (const item of archiveLayout.items) buildFurnitureItem(item);
 
-// (the cabinet-top stray boxes are gone — 2026-08-03 clean-room pass; James
+// (the cabinet-top stray boxes are gone â€” 2026-08-03 clean-room pass; James
 // re-clutters with placeable boxes and parcels now)
 
 /* ================= table + parcel helpers (builders use these) ================ */
@@ -2899,21 +2908,21 @@ function parcel(x, y, z, w, h, d, ry) {
 }
 
 // (the donut table, big door table, coffee table, and every loose parcel are
-// arrange-mode placeables since 2026-08-03 — the builders live in the
+// arrange-mode placeables since 2026-08-03 â€” the builders live in the
 // furniture catalog and reuse mkTableParts/parcel-style geometry)
 
 
-// (the couch corner set and all the fixed parcels became placeables too —
+// (the couch corner set and all the fixed parcels became placeables too â€”
 // 2026-08-03; parcel() remains for any builder that wants the shared look)
 
 /* ================= posters, calendar, pin-ups, corkboard ================ */
 
 /* ---- the wall-art catalog (2026-07-28, James: "add all wall art to the
-   placeables") — every poster is an arrange-mode item now. Image posters are
+   placeables") â€” every poster is an arrange-mode item now. Image posters are
    James's GPT art (assets/posters/*.jpg; source PNGs in repo assets/Dead Letter
    Layers/posters); drawn posters render onto cream stock. Positions live in the
    layout (DLO_DEFAULT_ART seeds when the saved layout has no art yet). The
-   fixtures — house sign, clock, tallies, corkboard, STAIRS plate — stay put. */
+   fixtures â€” house sign, clock, tallies, corkboard, STAIRS plate â€” stay put. */
 
 const posterLoader = new THREE.TextureLoader();
 
@@ -2949,7 +2958,7 @@ function drawZipPoster(g, w) {
 }
 
 function drawDeliveryPoster(g, w, h) {
-  // Mr. Special Delivery — flexing with a parcel
+  // Mr. Special Delivery â€” flexing with a parcel
   g.font = '700 22px "Courier New", monospace';
   g.fillText('MR. SPECIAL', w / 2, 38);
   g.fillText('DELIVERY', w / 2, 64);
@@ -2988,7 +2997,7 @@ function drawLostPoster(g, w, h) {
   g.fillText('reward: none', w / 2, 300);
 }
 
-// img entries size from width × aspect; drawn entries carry explicit w/h meters
+// img entries size from width Ã— aspect; drawn entries carry explicit w/h meters
 const WALL_ART = {
   'art-wesee': { label: 'poster: the eye', img: 'poster-wesee.jpg', w: 1.32, aspect: 1.333 },
   'art-calendar': { label: 'poster: egret calendar', img: 'poster-calendar.jpg', w: 1.44, aspect: 0.8 },
@@ -2999,7 +3008,7 @@ const WALL_ART = {
   'art-zip': { label: 'poster: zip directory', w: 0.56, h: 0.74, draw: drawZipPoster },
   'art-delivery': { label: 'poster: mr. delivery', w: 0.5, h: 0.7, draw: drawDeliveryPoster },
   'art-lost': { label: 'poster: lost? cat', w: 0.5, h: 0.66, draw: drawLostPoster },
-  // the house sign is placeable too (2026-08-03, James) — `full` draws the
+  // the house sign is placeable too (2026-08-03, James) â€” `full` draws the
   // whole canvas itself, no cream-stock wrapper
   'art-housesign': { label: 'the house sign', w: 2.4, h: 1.2, px: 1024, full: drawHouseSign },
   'art-postmaster': { label: 'sign: john dough', w: 0.88, h: 0.25, px: 640, full: drawPostmasterSign },
@@ -3098,7 +3107,7 @@ function buildArtItem(item) {
   return record;
 }
 
-// default placements — where the posters hung before they were placeable
+// default placements â€” where the posters hung before they were placeable
 const DLO_DEFAULT_ART = [
   { type: 'art-wesee', x: -2.75, y: 1.78, z: ROOM.z0 + 0.035, rotY: 0, scale: 1, shade: 1, seed: 31 },
   { type: 'art-calendar', x: 0.85, y: 1.98, z: ROOM.z0 + 0.03, rotY: 0, scale: 1, shade: 1, seed: 32 },
@@ -3117,7 +3126,7 @@ const DLO_DEFAULT_ART = [
   { type: 'art-wallclock', x: 2.6, y: 2.75, z: ROOM.z0 + 0.02, rotY: 0, scale: 1, shade: 1, seed: 25 },
   { type: 'art-exitsign', x: ROOM.x0 + 0.05, y: 2.62, z: 2.6, rotY: Math.PI / 2, scale: 1, shade: 1, seed: 24 },
 ];
-// Seed the classic walls ONLY for a fresh visitor with no layout file at all —
+// Seed the classic walls ONLY for a fresh visitor with no layout file at all â€”
 // a saved layout with no art means James emptied the room on purpose
 // (2026-08-03, the blank-canvas session) and it must stay empty.
 if (archiveLayout === DLO_DEFAULT_LAYOUT && !archiveLayout.items.some((i) => WALL_ART[i.type])) {
@@ -3125,7 +3134,7 @@ if (archiveLayout === DLO_DEFAULT_LAYOUT && !archiveLayout.items.some((i) => WAL
 }
 for (const item of archiveLayout.items) buildArtItem(item);
 
-// the corkboard with the little stickers (he consults it) — placeable wall
+// the corkboard with the little stickers (he consults it) â€” placeable wall
 // art since 2026-08-03; the pm's corkboard routine anchors to wherever it hangs
 function drawCorkboard(g, w, h) {
   g.fillStyle = '#8a6a48'; g.fillRect(0, 0, w, h);           // cork
@@ -3168,13 +3177,13 @@ function drawCorkboard(g, w, h) {
 
 // (South-side clutter history: the r1 crates/mail-cart/sacks block lived here.
 // The cart + sphere sacks were cut 2026-07-27 on James's screenshot verdict;
-// the crates became arrange-mode layout items the same night — see the archive
+// the crates became arrange-mode layout items the same night â€” see the archive
 // stacks section. If a mail cart ever returns it gets built properly.)
 
-// (the rug became the 'rug' placeable, 2026-08-03 — buildRug in the furniture
+// (the rug became the 'rug' placeable, 2026-08-03 â€” buildRug in the furniture
 // catalog section; its texture drawing moved there too)
 
-// (the welcome mat became the 'welcome-mat' placeable, 2026-08-04 —
+// (the welcome mat became the 'welcome-mat' placeable, 2026-08-04 â€”
 // buildWelcomeMat in the furniture catalog)
 
 /* ================= ceiling chute over the basket ================= */
@@ -3215,7 +3224,7 @@ const PROP_MATERIALS = {
   prop_oiltank: () => {
     const t = texRust.clone();
     t.needsUpdate = true;
-    t.repeat.setScalar(0.4);            // one tile ≈ 1.25 m of steel
+    t.repeat.setScalar(0.4);            // one tile â‰ˆ 1.25 m of steel
     texRust.userData.clones.push(t);
     return new THREE.MeshStandardMaterial({ map: t, roughness: 0.72, metalness: 0.38 });
   },
@@ -3233,7 +3242,7 @@ let basketRimY = 1.1;           // refined from the basket bbox on load
 const raycaster = new THREE.Raycaster();
 
 // (the desk, his chair, and all the desk dressing are placeables since
-// 2026-08-03 — 'desk' / 'chair' / 'svc-lamp' / 'svc-mug' / 'svc-papers' /
+// 2026-08-03 â€” 'desk' / 'chair' / 'svc-lamp' / 'svc-mug' / 'svc-papers' /
 // 'svc-rts' in the furniture catalog. The JOHN DOUGH wall sign stays fixed.)
 const PROPS = [
   {
@@ -3272,7 +3281,7 @@ const PROPS = [
     },
   },
   // (the couch, plants, chairs, desk set, cabinet bank AND the radio are all
-  // arrange-mode placeables since 2026-08-03 — the radio keeps its Meshy
+  // arrange-mode placeables since 2026-08-03 â€” the radio keeps its Meshy
   // textures + click-toggle via the def flags keepMats/radio; only the basket
   // and furnace remain fixed props)
 ];
@@ -3319,25 +3328,37 @@ for (const spec of PROPS) {
     if (spec.then) spec.then(wrap);
     propsLoaded += 1;
     const propTotal = PROPS.length + (PM_ENABLED ? 1 : 0);
-    if (posterNote) posterNote.textContent = `setting the room… ${propsLoaded}/${propTotal}`;
+    if (posterNote) posterNote.textContent = `setting the roomâ€¦ ${propsLoaded}/${propTotal}`;
     // with the postmaster benched, the last prop lifts the loading poster
     if (!PM_ENABLED && propsLoaded >= PROPS.length) posterFadeOut();
   }, undefined, () => console.warn('[dlo] prop failed to load:', spec.file));
 }
 
-// (the desk dressing — banker's lamp, mug, papers, RTS sign — became the
+// (the desk dressing â€” banker's lamp, mug, papers, RTS sign â€” became the
 // svc-* placeables, 2026-08-03; the JOHN DOUGH wall sign is placeable wall
-// art too — WALL_ART 'art-postmaster', drawn by drawPostmasterSign.)
+// art too â€” WALL_ART 'art-postmaster', drawn by drawPostmasterSign.)
 
 /* ================= the postmaster ================= */
 
 const IDLES = ['idle-1', 'idle-2', 'idle-3'];
-const STILL = 0.0001;   // never exactly 0 — the mixer stops rewriting bones
+const STILL = 0.0001;   // never exactly 0 â€” the mixer stops rewriting bones
 
 const pmGroup = new THREE.Group();
 scene.add(pmGroup);
 let pmModel = null, mixer = null, headBone = null, handBone = null, pmProxy = null;
-const pmMats = [];   // his materials — pmGlow tuner drives emissiveIntensity
+let pmSizeY = 0, pmMinY = 0;   // raw GLB bounds — applyTune derives scale from pmHeight
+let armBoneL = null, armBoneR = null;   // v2 arm-splay targets (pmSplay tuner)
+let midBone = null;                     // R middle finger — palm anchor for carry
+let jawBone = null;                     // CC_Base_JawRoot — viseme jaw rotation
+const jawBaseQ = new THREE.Quaternion(); // jaw pose from the clip, pre-viseme
+let jawBaseValid = false;
+const CARRY_V = new THREE.Vector3();    // scratch for the palm blend
+const CARRY_W = new THREE.Vector3();    // wrist position scratch
+const CARRY_DIR = new THREE.Vector3();  // wrist->fingers direction scratch
+let pmStillOn = false;                  // pmStill museum-mode latch
+const SPLAY_Q = new THREE.Quaternion(); // scratch â€” one alloc, reused per frame
+const AXIS_Z = new THREE.Vector3(0, 0, 1);
+const pmMats = [];   // his materials â€” pmGlow tuner drives emissiveIntensity
 const actions = {};
 let baseAction = null, oneshotAction = null, oneshotDone = null;
 
@@ -3384,38 +3405,50 @@ function playOneshot(name, done, fade = 0.3) {
 }
 
 // TEMPORARILY BENCHED (James, 2026-08-03): the postmaster stays out of the
-// world while the room is re-furnished from scratch — every pm code path
+// world while the room is re-furnished from scratch â€” every pm code path
 // guards on pmModel, so with the loader skipped he simply never exists.
 // Flip PM_ENABLED to true to rehire him (and re-run the nav sim first).
 const PM_ENABLED = true;   // rehired 2026-08-04 against James's new room
-// PM_V2: John Dough, the CC5 bake (2026-08-04) — walk clip only so far, all
+// PM_V2: John Dough, the CC5 bake (2026-08-04) â€” walk clip only so far, all
 // other clips no-op via the missing-action guards. false = Meshy postmaster.
 const PM_V2 = true;
 if (PM_ENABLED) Promise.all([
   loader.loadAsync(PM_V2 ? 'assets/postmaster/john-dough.glb' : 'assets/postmaster/postmaster.glb'),
-  loader.loadAsync(PM_V2 ? 'assets/postmaster/walk-pack.glb' : 'assets/postmaster/anim-pack.glb'),
+  loader.loadAsync(PM_V2 ? 'assets/postmaster/iclone-pack.glb' : 'assets/postmaster/anim-pack.glb'),
 ]).then(([modelGltf, packGltf]) => {
   pmModel = modelGltf.scene;
   const bbox = new THREE.Box3().setFromObject(pmModel);
   const size = bbox.getSize(new THREE.Vector3());
-  // 1.70 read small against the furniture (James r5), then +4in more (r7).
-  // v2 John Dough is deliberately shorter — a round man, not a tall one.
-  const PM_HEIGHT = PM_V2 ? 1.68 : 1.89;
-  const scale = PM_HEIGHT / size.y;
+  // Height is a tuner dial since r15 (pmHeight, default 1.9 â€” James: the 1.68
+  // round-man read was too small against the furniture). applyTune rescales live.
+  pmSizeY = size.y;
+  pmMinY = bbox.min.y;
+  const scale = tune.pmHeight / size.y;
   pmModel.scale.setScalar(scale);
   pmModel.position.y = -bbox.min.y * scale;
   pmModel.traverse((o) => {
     if (!o.isMesh || !o.material) return;
     // Meshy dual atlas, now on purpose (James r4: "just lighten him up so I can
-    // always see him"): the emissive copy stays at PARTIAL strength — he glows
+    // always see him"): the emissive copy stays at PARTIAL strength â€” he glows
     // with his own colors so the face reads in any corner, and the room's real
     // light still layers on top. pmGlow in the tuner is the knob.
-    // The CC5 bake ships no emissive at all — recreate the Meshy dual-atlas
+    // The CC5 bake ships no emissive at all â€” recreate the Meshy dual-atlas
     // trick by hand so the pmGlow contract (always visible) holds for v2 too.
     if (PM_V2 && o.material.map && !o.material.emissiveMap) o.material.emissiveMap = o.material.map;
     if (o.material.emissive) o.material.emissive.set(0xffffff);
     o.material.emissiveIntensity = tune.pmGlow;
-    o.material.roughness = 0.85;
+    // v1 (Meshy atlas) needed the flat-roughness override; the CC5 bake ships
+    // real per-material roughness â€” flattening it was part of the "looks like
+    // clay" gap, so v2 keeps its own values.
+    if (!PM_V2) o.material.roughness = 0.85;
+    // Hair cards: white strands sit on BLACK transparent texels, so mips
+    // average toward black and the hair reads dark at distance (James, r17).
+    // No mips on the hair maps — crisp white at any range.
+    if (/Hair|Scalp/.test(o.material.name)) {
+      for (const t of [o.material.map, o.material.emissiveMap]) {
+        if (t) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; t.needsUpdate = true; }
+      }
+    }
     o.material.needsUpdate = true;
     pmMats.push(o.material);
     o.frustumCulled = false;   // skinned mesh: bind-pose bounds lie once he walks
@@ -3423,7 +3456,7 @@ if (PM_ENABLED) Promise.all([
   pmGroup.add(pmModel);
   pmGroup.add(blobShadow());
   // Click/hover proxy: raycasting the skinned mesh itself does CPU per-triangle
-  // skinning math every test — it was the r2 "slows down when he's near" lag.
+  // skinning math every test â€” it was the r2 "slows down when he's near" lag.
   // The capsule is never rendered (material.visible=false skips the draw call
   // but Mesh.raycast still tests it).
   pmProxy = new THREE.Mesh(
@@ -3433,6 +3466,26 @@ if (PM_ENABLED) Promise.all([
   pmGroup.add(pmProxy);
   headBone = pmModel.getObjectByName(PM_V2 ? 'CC_Base_Head' : 'Head');
   handBone = pmModel.getObjectByName(PM_V2 ? 'CC_Base_R_Hand' : 'RightHand');
+  // mouth meshes for the voice: body + conforming beard pieces all carry
+  // V_Open / Jaw_Open — drive them together or the whiskers detach from the jaw
+  pmModel.traverse((o) => {
+    if (!o.isMesh || !o.morphTargetDictionary) return;
+    const iMerged = o.morphTargetDictionary.Merged_Open_Mouth;   // THE speaking key
+    const iOpen = o.morphTargetDictionary.V_Open;                // subtle viseme flavor
+    const iJaw = o.morphTargetDictionary.Jaw_Open;
+    if (iMerged !== undefined || iOpen !== undefined || iJaw !== undefined) {
+      pmMouthMeshes.push({ mesh: o, iMerged, iOpen, iJaw });
+    }
+  });
+  // the hand joint IS the wrist — carried letters embedded in the forearm
+  // (r15 "paper bracelet"). Blending toward the middle finger seats the
+  // letter in the palm across any pose.
+  midBone = pmModel.getObjectByName('CC_Base_R_Mid1');
+  jawBone = pmModel.getObjectByName('CC_Base_JawRoot');
+  if (PM_V2) {
+    armBoneL = pmModel.getObjectByName('CC_Base_L_Upperarm');
+    armBoneR = pmModel.getObjectByName('CC_Base_R_Upperarm');
+  }
 
   mixer = new THREE.AnimationMixer(pmModel);
   for (const clip of packGltf.animations) {
@@ -3493,14 +3546,14 @@ const PM_STATIONS = {
   basket:    { x: -3.3, z: -0.6, face: -2.21 },
   furnace:   { x: 5.7, z: 2.6, face: 0.885 },
   clock:     { x: -7.9, z: 1.2, face: -Math.PI / 2 },
-  // moved to the south-west window 2026-08-04 — James parked the oil tank in
+  // moved to the south-west window 2026-08-04 â€” James parked the oil tank in
   // front of the west one, so the postmaster gazes out a different pane now
   window:    { x: -5.6, z: 4.8, face: 0.05 },
   doorSt:    { x: -8.1, z: 2.6, face: -Math.PI / 2 },
   wander1:   { x: 0, z: 1.5, face: 0 },
   wander2:   { x: -1.5, z: -2.5, face: Math.PI },
   wander3:   { x: 3.5, z: 1.8, face: 0.4 },
-  // 'desk', 'coffee', 'couch' and 'cabinets' are DYNAMIC since 2026-08-03 —
+  // 'desk', 'coffee', 'couch' and 'cabinets' are DYNAMIC since 2026-08-03 â€”
   // they anchor to placed items (refreshDynStations) and vanish with them
 };
 
@@ -3533,9 +3586,9 @@ function buildNavAdj() {
 buildNavAdj();
 
 // Dynamic stations (2026-08-03): his workplaces anchor to whatever James
-// places — the desk, the work table, the couch, the cabinet bank. Each
+// places â€” the desk, the work table, the couch, the cabinet bank. Each
 // anchors a stand-off point on the item's front side (for the desk that IS
-// his side — its rotY convention faces the user) and wires itself to the
+// his side â€” its rotY convention faces the user) and wires itself to the
 // nearest hub with a clear straight walk; with no item placed the routine
 // retires. Also re-anchors the banker's-lamp light and the radio position.
 const DYN_STATIONS = {
@@ -3569,7 +3622,7 @@ function refreshDynStations() {
     st.z = Math.min(ROOM.z1 - 0.5, Math.max(ROOM.z0 + 0.5, st.z));
     const deepIn = (x, z, [x0, x1, z0, z1]) =>
       x > x0 + 0.15 && x < x1 - 0.15 && z > z0 + 0.15 && z < z1 - 0.15;
-    // NO exemption for the item's own box — a straight walk that cuts through
+    // NO exemption for the item's own box â€” a straight walk that cuts through
     // the furniture reads as clipping; blocked approaches route via a side point
     const segClear = (a, b) => {
       for (let t = 0; t <= 1.0001; t += 0.04) {
@@ -3599,10 +3652,10 @@ function refreshDynStations() {
       dynNavEdges.push([direct, key]);
       continue;
     }
-    // wall art has no footprint to sidestep — if no hub reaches it, it retires
+    // wall art has no footprint to sidestep â€” if no hub reaches it, it retires
     if (isArtStation) continue;
     // no clean straight shot (e.g. behind the desk): try stepping around the
-    // item's side at station depth, then hub → side → station
+    // item's side at station depth, then hub â†’ side â†’ station
     const [bx0, bx1] = itemKeepOut(item);
     let wired = false;
     for (const sx of [bx0 - 0.45, bx1 + 0.45]) {
@@ -3632,7 +3685,7 @@ function refreshDynStations() {
   }
   lampLight.intensity = lampPlaced ? tune.lamp : 0;
 
-  // floor lamps really cast light (James, 2026-08-04) — a pool of two warm
+  // floor lamps really cast light (James, 2026-08-04) â€” a pool of two warm
   // points rides the first two placed 'floor-lamp' items; more lamps than
   // that still glow by texture but don't add lights (perf)
   const lampItems = archiveLayout.items.filter((i) => i.type === 'floor-lamp');
@@ -3650,7 +3703,7 @@ function refreshDynStations() {
   const radioItem = archiveLayout.items.find((i) => i.type === 'radio');
   if (radioItem) RADIO_POS.set(radioItem.x, (radioItem.y ?? 0) + 0.18, radioItem.z);
 
-  // pigeonhole slots follow the first placed unit (local → world); empty
+  // pigeonhole slots follow the first placed unit (local â†’ world); empty
   // array = nowhere to file, the basket routine burns everything instead
   pigeonholeSlots.length = 0;
   const pigItem = archiveLayout.items.find((i) => i.type === 'pigeonholes');
@@ -3712,7 +3765,7 @@ function pmWalkTo(stationKey, arrived) {
   pmPath = route.slice(1).map((k) => NAV_NODES[k]);
   pmStationKey = stationKey;
   if (!pmPath.length) {
-    // already there — walking to where you stand left him treadmilling forever
+    // already there â€” walking to where you stand left him treadmilling forever
     // (the stuck-in-place bug James saw); arrive immediately instead
     pmState = 'station';
     const st = PM_STATIONS[stationKey];
@@ -3723,7 +3776,11 @@ function pmWalkTo(stationKey, arrived) {
   }
   pmState = 'walking';
   pmArrived = arrived || null;
-  playBase('walk', 0.3, tune.walk / 0.9);
+  // timeScale matches foot speed to ground speed, so skating is impossible by
+  // construction at any slider setting. 0.324 m/s per meter of height is the
+  // clip's measured TREADMILL speed (planted-foot travel integrated over the
+  // full loop — the gait is asymmetric, percentile methods overestimate it).
+  playBase('walk', 0.3, tune.walk / (0.324 * tune.pmHeight));
 }
 let pmArrived = null;
 
@@ -3765,7 +3822,7 @@ const PM_ROUTINES = [
 
 function pmRoutine() {
   // never re-pick the station he's already standing at (except desk, which has
-  // an in-place work branch) — walking to your own feet was the treadmill bug.
+  // an in-place work branch) â€” walking to your own feet was the treadmill bug.
   // Dynamic stations (coffee, couch) drop out when their furniture isn't placed.
   const options = PM_ROUTINES.filter((r) =>
     (r.key === 'deskwork' || !r.station || r.station !== pmStationKey)
@@ -3798,7 +3855,7 @@ function pmRoutine() {
       pmState = 'busy';
       playOneshot('bow', () => {
         pmCarried = makeCarriedEnvelope();
-        // no pigeonholes placed → everything goes in the furnace
+        // no pigeonholes placed â†’ everything goes in the furnace
         const burn = Math.random() < 0.45
           || !PM_STATIONS.pigeon || !pigeonholeSlots.length;
         pmWalkTo(burn ? 'furnace' : 'pigeon', burn ? pmBurnCarried : pmFileCarried);
@@ -3927,7 +3984,7 @@ function pmFileCarried() {
   pmSpeakFrom(PM_FILE_LINES);
   const slot = pigeonholeSlots[Math.floor(Math.random() * pigeonholeSlots.length)];
   setTimeout(() => {
-    if (pmCarried) tossEnvelope(pmCarried, slot.clone(), () => playSfx(sfxFlutter, 0.5));
+    if (pmCarried) tossEnvelope(pmCarried, slot.clone(), () => playFlutter(0.5));
     pmCarried = null;
   }, 700);
   playOneshot('shrug', () => {
@@ -3936,13 +3993,13 @@ function pmFileCarried() {
   });
 }
 
-// flying envelope: hand -> target along a little arc, then gone…
+// flying envelope: hand -> target along a little arc, then goneâ€¦
 const flights = [];
 function tossEnvelope(mesh, target, onLand) {
   const from = mesh.position.clone();
   flights.push({ mesh, from, target, t: 0, dur: 0.7, arc: 0.35, onLand });
 }
-// …or a low slide that keeps the mesh (mound overflow onto the floor)
+// â€¦or a low slide that keeps the mesh (mound overflow onto the floor)
 function slideEnvelope(mesh, target, onLand) {
   const from = mesh.position.clone();
   flights.push({ mesh, from, target, t: 0, dur: 0.55, arc: 0.1, keep: true, onLand });
@@ -3950,6 +4007,30 @@ function slideEnvelope(mesh, target, onLand) {
 
 function pmTick(dt, now) {
   if (!pmModel || reducedMotion) return;
+
+  // pmStill (tuner): museum mode â€” stop all clips (bind A-pose) and hold
+  // position so James can inspect the model. Release resumes the routine.
+  if (tune.pmStill >= 0.5) {
+    if (!pmStillOn) {
+      pmStillOn = true;
+      oneshotAction = null;
+      pmPath.length = 0;
+      pmState = 'station';
+      // out to open floor (wander1, room center) facing the room — the QA
+      // stand can't be behind the desk where the keep-outs block approach
+      pmGroup.position.set(0, 0, 1.5);
+      pmYaw = Math.PI;
+      pmGroup.rotation.y = pmYaw;
+      // natural stance, not the A-pose (James can't look at it): idle-1 held
+      // at ~zero speed — mixer keeps running so face/mouth stay free to move
+      playBase('idle-1', 0.3, STILL);
+    }
+    return;
+  } else if (pmStillOn) {
+    pmStillOn = false;
+    playBase(pickIdle());
+    pmDone(2, 2);
+  }
 
   if (pmAway) {
     if (now >= pmAwayUntil) {              // back down the stairs
@@ -4012,11 +4093,22 @@ function pmTick(dt, now) {
     pmRoutine();
   }
 
-  // carried things ride the right hand
+  // carried things ride the right hand — centered past the FINGERS, not the
+  // wrist (the r16 "paper bracelet"), and pitched with the arm swing so the
+  // letter tilts as the hand does instead of slicing the forearm
   if (pmCarried && handBone) {
-    handBone.getWorldPosition(pmCarried.position);
-    pmCarried.position.y += 0.02;
-    pmCarried.rotation.set(-0.4, pmYaw, 0.2);
+    handBone.getWorldPosition(CARRY_W);
+    if (midBone) {
+      midBone.getWorldPosition(CARRY_V);
+      CARRY_DIR.subVectors(CARRY_V, CARRY_W).normalize();
+      pmCarried.position.copy(CARRY_V).addScaledVector(CARRY_DIR, 0.06);
+      pmCarried.position.y += 0.015;
+      pmCarried.rotation.set(-0.35 + CARRY_DIR.y * 1.1, pmYaw, 0.2);
+    } else {
+      pmCarried.position.copy(CARRY_W);
+      pmCarried.position.y += 0.02;
+      pmCarried.rotation.set(-0.4, pmYaw, 0.2);
+    }
   }
 
   // envelope flights
@@ -4059,11 +4151,192 @@ function drawLine(pool, source) {
 }
 
 function speak(line) {
-  window.clearTimeout(bubbleTimer);
-  bubbleEl.textContent = line;
-  bubbleEl.hidden = false;
-  bubbleUntil = performance.now() + Math.max(3800, line.length * 70);
-  bubbleTimer = window.setTimeout(() => { bubbleEl.hidden = true; }, Math.max(3800, line.length * 70));
+  // Speech bubbles RETIRED 2026-08-08 (James: "get rid of those and they won't
+  // be coming back") — the voice is the only channel now. Lines without a
+  // recorded take go unspoken until their ElevenLabs bake lands; the line pools
+  // stay as the recording script.
+  const vf = VOICE_LINES[line];
+  if (vf) pmSay(vf);
+}
+
+/* ================= the voice (r17) =================
+   Six AccuLips takes in assets/speech-clips/. Short lines ride their existing
+   bubble triggers (VOICE_LINES maps bubble text -> file); the two monologues
+   fire on their own slow clock when the visitor is standing near him.
+   Mouth: V_Open + Jaw_Open driven by live audio amplitude (analyser) on the
+   body AND the conforming beard pieces (same morph names — the whiskers must
+   ride the jaw or they float). ElevenLabs later = same filenames, new mp3s. */
+
+const VOICE_LINES = {
+  "You want the blue ink. Everyone wants the blue ink.": 'blue-ink',
+  "I'm on break. I've been on break since '91.": 'on-break-since-91',
+  "The donuts are from a Tuesday.": 'donuts',
+  "This one goes under R, for regret.": 'r-for-regret',
+};
+const PM_MONOLOGUES = [
+  {
+    file: 'dead-letter-isnt-a-failure',
+    text: "People think a dead letter is a failure. It isn't — it's a promise that ran out of road, and somebody's got to hold the end of it. Every envelope down here got licked shut by a person who believed, for at least one minute, that the world was listening. My job is to be the world, a little late.",
+  },
+  {
+    file: 'long-speech-deepthoughts',
+    text: "Every letter here was written by someone who believed in an address. That's the whole faith of the thing - you fold up a piece of yourself, you name a place in the world where you think a person is standing, and you let go of it. Most of the time the world obliges. But down here we keep the ones where it didn't: the street that got renamed, the apartment that emptied out, the name spelled the way it sounded rather than the way it was. People assume this is a room full of failure. It isn't. It's a room full of intention that outlived its target - which, if you think about it, is most of what any of us leave behind. I don't open them to be nosy. I open them because a letter unread is a question still hanging in the air, and somebody ought to be the one who hears it, even if he's not the one it was meant for.",
+  },
+];
+
+const VOICE_LEVEL = 0.9;
+let voiceVol = 1.0;
+let voiceMouth = 0;
+let voiceStem = null;        // current speech-clip stem — keys into DLO_VISEMES
+let lastVis = null;          // last applied viseme entry, for cleanup on end
+const JAW_Q = new THREE.Quaternion();
+let monologueActive = false;
+let monologueIdx = Math.floor(Math.random() * PM_MONOLOGUES.length);
+let nextMonologueAt = performance.now() + 90000 + Math.random() * 45000;
+let voiceCtx = null, voiceAnalyser = null, voiceData = null;
+const pmMouthMeshes = [];   // { mesh, iOpen, iJaw } — filled at model load
+
+const voiceAudio = new Audio();
+voiceAudio.preload = 'auto';
+
+function voiceBusy() { return !!voiceAudio.src && !voiceAudio.paused && !voiceAudio.ended; }
+
+function voiceFalloff() {
+  if (!pmModel) return 1;
+  const d = pos.distanceTo(pmGroup.position);
+  return clamp(1 - (d - 2.0) / 12, 0.25, 1);
+}
+
+function pmSay(file, force) {
+  if (!soundOn) return false;
+  if (voiceBusy()) {
+    if (!force) return false;
+    voiceAudio.pause();   // QA stand: a new click always wins
+  }
+  if (!voiceCtx) {
+    try {
+      voiceCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = voiceCtx.createMediaElementSource(voiceAudio);
+      voiceAnalyser = voiceCtx.createAnalyser();
+      voiceAnalyser.fftSize = 512;
+      voiceData = new Uint8Array(voiceAnalyser.fftSize);
+      src.connect(voiceAnalyser);
+      voiceAnalyser.connect(voiceCtx.destination);
+    } catch (e) { voiceCtx = null; /* mouth falls back to silence-driven rest */ }
+  }
+  if (voiceCtx && voiceCtx.state === 'suspended') voiceCtx.resume();
+  voiceStem = file;
+  voiceAudio.src = `assets/speech-clips/${file}.mp3`;
+  voiceAudio.volume = clamp(soundVol * voiceVol * VOICE_LEVEL * voiceFalloff(), 0, 1);
+  voiceAudio.currentTime = 0;
+  voiceAudio.onended = null;
+  const p = voiceAudio.play();
+  if (p) p.catch(() => {});
+  return true;
+}
+
+function setMouth(v) {
+  for (const m of pmMouthMeshes) {
+    // Merged_Open_Mouth carries the visible open (3.5cm at 1.0 — V_Open alone
+    // is a 1cm whisper buried under the mustache, the 08-08 frozen-lips bug)
+    if (m.iMerged !== undefined) m.mesh.morphTargetInfluences[m.iMerged] = Math.min(1, v * 0.9);
+    if (m.iOpen !== undefined) m.mesh.morphTargetInfluences[m.iOpen] = v * 0.25;
+    if (m.iJaw !== undefined) m.mesh.morphTargetInfluences[m.iJaw] = v * 0.3;
+  }
+}
+
+function voiceTick(dt) {
+  if (voiceBusy()) {
+    voiceAudio.volume = clamp(soundVol * voiceVol * VOICE_LEVEL * voiceFalloff(), 0, 1);
+    // authored AccuLips visemes when the line has them — the real mouth.
+    // The amplitude flap below is only the fallback for unbaked lines.
+    const vis = (globalThis.DLO_VISEMES || {})[voiceStem];
+    if (vis) {
+      // lead the reported currentTime: decoder + output latency put the sound
+      // in your ears later than the property claims. lipSync tuner = by-ear trim.
+      const lead = (voiceCtx && voiceCtx.outputLatency || 0.04) + tune.lipSync;
+      applyVisemes(vis, voiceAudio.currentTime + lead);
+      lastVis = vis;
+      voiceMouth = 0;
+      return;
+    }
+    let target = 0;
+    if (voiceAnalyser) {
+      voiceAnalyser.getByteTimeDomainData(voiceData);
+      let sum = 0;
+      for (let i = 0; i < voiceData.length; i++) {
+        const x = (voiceData[i] - 128) / 128;
+        sum += x * x;
+      }
+      // normalize by element volume — the analyser sits downstream of it, so
+      // distance falloff would otherwise shut his lips (found 2026-08-08)
+      const rms = Math.sqrt(sum / voiceData.length) / Math.max(0.15, voiceAudio.volume);
+      target = clamp((rms - 0.03) * 7, 0, 1);
+    } else {
+      target = 0.3 + 0.25 * Math.sin(performance.now() * 0.02);   // no-analyser babble
+    }
+    voiceMouth += (target - voiceMouth) * Math.min(1, dt * 14);
+  } else {
+    if (lastVis) { clearVisemes(lastVis); lastVis = null; }
+    // refresh the jaw base while he is silent — the clip owns the bone here
+    if (jawBone) { jawBaseQ.copy(jawBone.quaternion); jawBaseValid = true; }
+    voiceMouth += (0 - voiceMouth) * Math.min(1, dt * 8);
+  }
+  if (voiceMouth > 0.001 || voiceBusy()) setMouth(voiceMouth);
+}
+
+function applyVisemes(vis, t) {
+  const x = clamp(t * vis.fps, 0, vis.n - 1.001);
+  const i = Math.floor(x), f = x - i;
+  for (const name in vis.tracks) {
+    const arr = vis.tracks[name];
+    const j = Math.min(i + 1, arr.length - 1);
+    const v = Math.min(1, (arr[i] + (arr[j] - arr[i]) * f) * tune.lipPunch);
+    for (const m of pmMouthMeshes) {
+      const idx = m.mesh.morphTargetDictionary[name];
+      if (idx !== undefined) m.mesh.morphTargetInfluences[idx] = v;
+    }
+  }
+  if (vis.jaw && vis.jaw.length && jawBone && jawBaseValid) {
+    const j = Math.min(i + 1, vis.jaw.length - 1);
+    const a = vis.jaw[i] + (vis.jaw[j] - vis.jaw[i]) * f;
+    // ABSOLUTE, not multiply: base pose captured while silent × viseme delta.
+    // A bare multiply compounds when a near-frozen clip stops rewriting the
+    // bone — the swallowed-jaw demon of 2026-08-08.
+    jawBone.quaternion.copy(jawBaseQ).multiply(JAW_Q.setFromAxisAngle(AXIS_Z, a));
+  }
+}
+
+function clearVisemes(vis) {
+  for (const name in vis.tracks) {
+    for (const m of pmMouthMeshes) {
+      const idx = m.mesh.morphTargetDictionary[name];
+      if (idx !== undefined) m.mesh.morphTargetInfluences[idx] = 0;
+    }
+  }
+}
+
+function endMonologue() {
+  if (!monologueActive) return;
+  monologueActive = false;
+  if (pmState === 'busy') pmState = 'station';
+  if (mixer) playBase(pickIdle());
+}
+
+function voiceMonologueTick(now) {
+  if (now < nextMonologueAt || monologueActive) return;
+  if (!pmModel || pmAway || letterOpen || pmStillOn || !soundOn) return;
+  if (pmState !== 'station' || voiceBusy()) return;
+  if (pos.distanceTo(pmGroup.position) > 4.5) return;   // needs an audience
+  const mono = PM_MONOLOGUES[monologueIdx % PM_MONOLOGUES.length];
+  monologueIdx += 1;
+  if (!pmSay(mono.file)) { nextMonologueAt = now + 30000; return; }
+  monologueActive = true;
+  pmFaceCamera = 8;
+  pmState = 'busy';
+  if (actions.talk) playBase('talk', 0.4);
+  voiceAudio.onended = endMonologue;
+  nextMonologueAt = now + 240000 + Math.random() * 180000;
 }
 
 const bubbleV = new THREE.Vector3();
@@ -4082,7 +4355,7 @@ function bubbleTick() {
 
 function ambientTick(now) {
   if (now < nextAmbientAt) return;
-  if (letterOpen || pmAway) { nextAmbientAt = now + 8000; return; }
+  if (letterOpen || pmAway || voiceBusy()) { nextAmbientAt = now + 8000; return; }
   const line = drawLine(ambientPool, PM_AMBIENT);
   speak(line);
   if (PM_SIGH_LINES.has(line) && pmState === 'station' && !reducedMotion) {
@@ -4108,8 +4381,17 @@ function shiftTick() {
   }
 }
 
+const QA_ROTATION = ['r-for-regret'];   // viseme-baked lines only while testing
+let qaIdx = 0;
+
 function postmasterClicked() {
   if (pmAway) return;   // he is upstairs; the click hits nothing that answers
+  if (pmStillOn) {
+    // frozen = the QA stand: every click answers, rotating the recorded takes,
+    // no cooldowns, interrupting mid-line — James testing the mouth
+    pmSay(QA_ROTATION[qaIdx++ % QA_ROTATION.length], true);
+    return;
+  }
   speak(drawLine(clickPool, PM_CLICKED));
   nextAmbientAt = performance.now() + 26000;
   pmFaceCamera = 5;
@@ -4279,7 +4561,7 @@ function envelopeTexture(letterIndex) {
 }
 
 const ENV_W = 0.34, ENV_H = 0.2125;
-// one shared geometry + one cached material per letter (r3 perf pass — a fresh
+// one shared geometry + one cached material per letter (r3 perf pass â€” a fresh
 // geometry and Standard material per envelope was pure waste at pile scale)
 const ENV_GEO = new THREE.PlaneGeometry(ENV_W, ENV_H);
 const ENV_BACK_MAT = new THREE.MeshLambertMaterial({ color: 0xcfc5a4 });
@@ -4350,7 +4632,7 @@ function settleIntoBasket(f) {
   const i = falling.indexOf(f);
   if (i !== -1) falling.splice(i, 1);
   bumpDeadLetters();
-  playSfx(sfxFlutter, 0.35);
+  playFlutter(0.35);
   if (Math.random() < spillChance()) {
     // the mound is past the rim: this one slides off onto the floor
     const a = Math.random() * Math.PI * 2;
@@ -4421,7 +4703,7 @@ function mailTick(dt, now) {
     g.position.x += Math.sin(f.phase) * dt * 0.12;
     g.rotation.z = Math.sin(f.phase) * 0.35;
     g.rotation.y += dt * 0.4;
-    // the pile may have grown while this one was falling — land on its live top
+    // the pile may have grown while this one was falling â€” land on its live top
     f.target.y = Math.max(f.target.y, pileTopY() + 0.05);
     // ease toward the basket as it nears the pile
     const kx = clamp(1.6 - (g.position.y - f.target.y) / 2.2, 0.05, 1.4);
@@ -4527,9 +4809,22 @@ ambience.preload = 'auto';
 const sfxThunk = new Audio('assets/audio/stamp-thunk.mp3');
 const sfxWhoosh = new Audio('assets/audio/furnace-whoosh.mp3');
 const sfxPunch = new Audio('assets/audio/punch-clock.mp3');
-const sfxFlutter = new Audio('assets/audio/letter-flutter.mp3');
 const sfxSip = new Audio('assets/audio/coffee-sip.mp3');
-for (const a of [sfxThunk, sfxWhoosh, sfxPunch, sfxFlutter, sfxSip]) a.preload = 'auto';
+// The flutter fires on every basket landing (~every 4.5s, all session) — one
+// verbatim sample reads as a loop (James, r17). A small pool with per-play
+// pitch + volume jitter makes each landing its own little event.
+const FLUTTER_POOL = Array.from({ length: 3 }, () => new Audio('assets/audio/letter-flutter.mp3'));
+let flutterIdx = 0;
+function playFlutter(level) {
+  if (!soundOn) return;
+  const a = FLUTTER_POOL[flutterIdx++ % FLUTTER_POOL.length];
+  try { a.preservesPitch = false; } catch (e) { /* older engines */ }
+  a.playbackRate = 0.8 + Math.random() * 0.45;
+  a.volume = clamp(soundVol * level * (0.7 + Math.random() * 0.55), 0, 1);
+  a.currentTime = 0;
+  a.play().catch(() => {});
+}
+for (const a of [sfxThunk, sfxWhoosh, sfxPunch, sfxSip, ...FLUTTER_POOL]) a.preload = 'auto';
 
 let soundOn = false;
 let soundVol = 0.8;
@@ -4537,14 +4832,14 @@ const AMBIENCE_LEVEL = 0.4;
 
 // The AM radio (2026-07-27, broadcast format 2026-07-30): Suno tracks James
 // authored plus his DJ reads and the KDLO ad spots, all baked through
-// tools/radio-bake.mjs (the -radio.mp3 siblings ARE the radio — never play the
+// tools/radio-bake.mjs (the -radio.mp3 siblings ARE the radio â€” never play the
 // clean sources here). The program is SEQUENTIAL and loops: each DJ bit signs
-// off the tune before it and intros the one after, so order is load-bearing —
+// off the tune before it and intros the one after, so order is load-bearing â€”
 // never shuffle. Plays by default when sound comes on; clicking the set
 // toggles it. Volume falls off with distance from the cabinet-bank corner so it
 // reads as coming from the box, plus its own slider on the sound control.
-// Break format (James): song ends → DJ signs it off (odd dj) → two ads →
-// DJ intros the next number (even dj) → song. dj8 loops the set.
+// Break format (James): song ends â†’ DJ signs it off (odd dj) â†’ two ads â†’
+// DJ intros the next number (even dj) â†’ song. dj8 loops the set.
 const RADIO_PROGRAM = [
   { src: 'assets/radio-music/High-Chapparal-radio.mp3', song: true },
   { src: 'assets/radio-music/dj1-radio.mp3' },
@@ -4574,9 +4869,12 @@ const RADIO_LEVEL = 0.9;
 const radioGlowMats = [];
 const radioAudio = new Audio();
 radioAudio.preload = 'auto';
-let radioOn = true;                 // the office radio plays unless someone turns it off
+// TEMP (James, 2026-08-08, speech-QA sessions): radio starts OFF — he cannot
+// listen to those tracks again right now. Click the radio in-world to start it.
+// Restore to true when the QA grind is over.
+let radioOn = false;
 let radioVol = 0.7;
-// tune in mid-broadcast, but always on a song — never mid-commercial-break
+// tune in mid-broadcast, but always on a song â€” never mid-commercial-break
 let radioIdx = RADIO_SONG_STARTS[Math.floor(Math.random() * RADIO_SONG_STARTS.length)];
 let radioGapT = null;
 
@@ -4586,7 +4884,7 @@ function radioFalloff() {
   const d = pos.distanceTo(RADIO_POS);
   const byDistance = clamp(1 - (d - 2.5) / 14, 0.18, 1);
   // facing factor (2026-07-28, James): the set is loudest when you look at it,
-  // ducks when it's behind you — never fully gone, it's still in the room
+  // ducks when it's behind you â€” never fully gone, it's still in the room
   radioDir.copy(RADIO_POS).sub(pos).normalize();
   camera.getWorldDirection(camFwd);
   const facing = 0.4 + 0.6 * (0.5 + 0.5 * camFwd.dot(radioDir));
@@ -4612,7 +4910,7 @@ function setRadio(on) {
 }
 radioAudio.addEventListener('ended', () => {
   clearTimeout(radioGapT);
-  // dead air after a number, like the real thing; speech runs tighter —
+  // dead air after a number, like the real thing; speech runs tighter â€”
   // the booth cues the next cart fast
   const gap = RADIO_PROGRAM[radioIdx].song
     ? 1800 + Math.random() * 2600
@@ -4642,6 +4940,8 @@ if (window.ElasticSoundControl) {
       soundOn = false;
       ambience.pause();
       radioStop();
+      voiceAudio.pause();
+      endMonologue();   // don't leave him stuck 'busy' mid-sentence
     },
     setVolume: (v) => {
       soundVol = v;
@@ -4652,6 +4952,10 @@ if (window.ElasticSoundControl) {
       label: 'radio',
       value: radioVol,
       setVolume: (v) => { radioVol = v; radioApplyVolume(); },
+    }, {
+      label: 'voice',
+      value: voiceVol,
+      setVolume: (v) => { voiceVol = v; },
     }],
   });
 }
@@ -4672,30 +4976,30 @@ const BODY_R = 0.28;
 
 // Free-standing furniture = keep-out circles; wall-adjacent furniture = boxes
 // resolved by least-penetration push (a circle overlapping a wall can trap the
-// camera between circle push and wall clamp — the fuzz sim caught it).
-// (the desk chair's circle merged into the desk box in r12.3 — tucked back with
+// camera between circle push and wall clamp â€” the fuzz sim caught it).
+// (the desk chair's circle merged into the desk box in r12.3 â€” tucked back with
 // the desk it limit-cycled against the pigeonhole box's west face)
 const CIRCLES = [
   [-4.5, -1.5, 0.95],                      // basket
   [6.8, 3.5, 1.0],                         // furnace
 ];
-// Wall-side faces extend ≥2m past the wall so the least-penetration push always
+// Wall-side faces extend â‰¥2m past the wall so the least-penetration push always
 // resolves into the room (a face just past the wall loses to the wall clamp and
-// traps the camera — the fuzz sim caught it).
-// Every piece of furniture is a placeable now (2026-08-03) — camera keep-outs
+// traps the camera â€” the fuzz sim caught it).
+// Every piece of furniture is a placeable now (2026-08-03) â€” camera keep-outs
 // derive entirely from placed items; nothing is hand-boxed anymore.
 const STATIC_BOXES = [];
-// (desk, couch, tables, bookshelf, cabinet-bank boxes all retired 2026-08-03 —
+// (desk, couch, tables, bookshelf, cabinet-bank boxes all retired 2026-08-03 â€”
 // those pieces are placeables now and derive keep-outs from the layout)
 
 // PM_LANES: floor the POSTMASTER may walk though the camera may not. Empty
 // since the desk became a placeable (its station rides the item and dynamic
-// stations aren't in the sim's static edge check) — the machinery stays for
+// stations aren't in the sim's static edge check) â€” the machinery stays for
 // any future camera-only zone. The nav sim extracts this; keep in lockstep.
 const PM_LANES = [];
 
 // Arrange-mode furniture derives its keep-out from the item footprint: rotated
-// rect → AABB + body margin; faces near a wall extend well past it (the r2
+// rect â†’ AABB + body margin; faces near a wall extend well past it (the r2
 // wall-flush push-face lesson). The Node sim replicates this rule verbatim.
 function itemKeepOut(item) {
   const def = FURNITURE[item.type];
@@ -4711,11 +5015,11 @@ function itemKeepOut(item) {
 }
 
 // Precomputed push faces per box: a face is only a valid push target if it lies
-// inside the walkable rect AND isn't buried inside a neighboring box — pushing
+// inside the walkable rect AND isn't buried inside a neighboring box â€” pushing
 // to an invalid face ping-pongs against the wall clamp or the neighbor (both
 // failure modes caught by the fuzz sim). Rebuilt whenever arrange mode moves
 // furniture; static furniture + the current layout together.
-// Overlapping (or sub-body-gap) ITEM boxes merge into one cluster AABB — two
+// Overlapping (or sub-body-gap) ITEM boxes merge into one cluster AABB â€” two
 // nearly-coincident crates otherwise bury every push face of each other and
 // trap the camera (the sim caught it the night this shipped). Static boxes are
 // hand-tuned L-shapes and never merge: a blanket AABB union would swallow
@@ -4744,7 +5048,7 @@ function mergeItemBoxes(list) {
 let BOXES = [];
 let BOX_PUSHES = [];
 function rebuildKeepOuts() {
-  // surf items are tabletop clutter — no keep-out footprint
+  // surf items are tabletop clutter â€” no keep-out footprint
   BOXES = [...STATIC_BOXES, ...mergeItemBoxes(
     archiveLayout.items.filter((i) => FURNITURE[i.type] && !FURNITURE[i.type].surf)
       .map(itemKeepOut))];
@@ -4845,7 +5149,7 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 
-// drag look — swing only (James 2026-07-28: swing is the default, no switch).
+// drag look â€” swing only (James 2026-07-28: swing is the default, no switch).
 // The old grab/swing toggle and its shared 'elastic-look-mode' key are gone.
 const lookMode = 'swing';
 
@@ -4940,12 +5244,15 @@ function openNearestEnvelope() {
 /* ================= tuner panel ================= */
 
 const TUNER_SPEC = [
-  ['pmGlow', 0.0, 1.0, 0.02],
+  ['pmGlow', 0.0, 1.0, 0.02], ['pmSplay', 0, 25, 1],
   ['ambient', 0.2, 1.8, 0.05], ['fluor', 0.0, 3.5, 0.05],
   ['bulb', 0.4, 3.0, 0.05], ['lamp', 0.0, 4.0, 0.05],
   ['furnace', 0.0, 3.0, 0.05], ['shaft', 0.0, 0.5, 0.01],
   ['fog', 0.0, 0.08, 0.002], ['mailEvery', 2, 15, 0.5],
   ['fallSpeed', 0.15, 1.2, 0.05], ['pace', 0.4, 2.5, 0.05],
+  ['pmHeight', 1.5, 2.2, 0.01],
+  ['lipSync', -0.1, 1.0, 0.005],
+  ['lipPunch', 0.6, 1.5, 0.05],
   ['walk', 0.5, 1.6, 0.05],
 ];
 for (const [key, min, max] of TUNER_SPEC) {
@@ -4958,12 +5265,40 @@ for (const [key, min, max] of TUNER_SPEC) {
   document.body.appendChild(btn);
   const panel = document.createElement('div');
   panel.id = 'tuner';
-  panel.innerHTML = '<div class="grid"></div>' +
+  panel.innerHTML =
+    '<div class="head"><span class="title">tune the office</span>' +
+    '<button type="button" class="freeze">freeze</button>' +
+    '<span class="tsize"><button type="button" class="tminus">Aâˆ’</button>' +
+    '<button type="button" class="tplus">A+</button></span></div>' +
+    '<div class="grid"></div>' +
     '<div class="foot"><span>values:</span><input readonly><button type="button">reset</button></div>';
   document.body.appendChild(panel);
   const grid = panel.querySelector('.grid');
   const jsonOut = panel.querySelector('.foot input');
   const resetBtn = panel.querySelector('.foot button');
+  const freezeBtn = panel.querySelector('.freeze');
+
+  // freeze: museum mode â€” pmStill drives pmTick (clips stop, he holds pose)
+  const syncFreeze = () => freezeBtn.classList.toggle('on', tune.pmStill >= 0.5);
+  freezeBtn.addEventListener('click', () => {
+    tune.pmStill = tune.pmStill >= 0.5 ? 0 : 1;
+    localStorage.setItem('dlo-room-tuner-v3', JSON.stringify(tune));
+    syncFreeze();
+  });
+
+  // Aâˆ’ / A+ text size, persisted per browser
+  let tunerScale = parseFloat(localStorage.getItem('dlo-tuner-scale') || '1') || 1;
+  const applyScale = () => { panel.style.fontSize = (0.95 * tunerScale) + 'rem'; };
+  panel.querySelector('.tminus').addEventListener('click', () => {
+    tunerScale = Math.max(0.7, +(tunerScale - 0.1).toFixed(2));
+    localStorage.setItem('dlo-tuner-scale', tunerScale); applyScale();
+  });
+  panel.querySelector('.tplus').addEventListener('click', () => {
+    tunerScale = Math.min(1.8, +(tunerScale + 0.1).toFixed(2));
+    localStorage.setItem('dlo-tuner-scale', tunerScale); applyScale();
+  });
+  applyScale();
+  syncFreeze();
   const vals = {};
   const refresh = () => {
     for (const [key] of TUNER_SPEC) {
@@ -4984,7 +5319,7 @@ for (const [key, min, max] of TUNER_SPEC) {
     out.className = 'val';
     range.addEventListener('input', () => {
       tune[key] = parseFloat(range.value);
-      localStorage.setItem('dlo-room-tuner-v2', JSON.stringify(tune));
+      localStorage.setItem('dlo-room-tuner-v3', JSON.stringify(tune));
       refresh();
     });
     row.append(label, range, out);
@@ -4993,7 +5328,7 @@ for (const [key, min, max] of TUNER_SPEC) {
   }
   resetBtn.addEventListener('click', () => {
     tune = { ...TUNE_DEFAULTS };
-    localStorage.removeItem('dlo-room-tuner-v2');
+    localStorage.removeItem('dlo-room-tuner-v3');
     refresh();
   });
   btn.addEventListener('click', () => {
@@ -5013,13 +5348,18 @@ for (const [key, min, max] of TUNER_SPEC) {
 
 function applyTune() {
   scene.fog.density = tune.fog;
-  // shaft opacity is per-plane and view-dependent — the tick loop applies
-  // tune.shaft × angle fade every frame, nothing to set here
+  // shaft opacity is per-plane and view-dependent â€” the tick loop applies
+  // tune.shaft Ã— angle fade every frame, nothing to set here
   lampLight.intensity = lampPlaced ? tune.lamp : 0;   // dark unless a lamp is placed
   hemi.intensity = tune.ambient;
   for (const l of bulbLights) l.intensity = tune.bulb;
   for (const l of fluorLights) l.intensity = tune.fluor;
   for (const m of pmMats) m.emissiveIntensity = tune.pmGlow;
+  if (pmModel && pmSizeY > 0) {
+    const s = tune.pmHeight / pmSizeY;
+    pmModel.scale.setScalar(s);
+    pmModel.position.y = -pmMinY * s;
+  }
 }
 
 /* ================= main loop ================= */
@@ -5038,9 +5378,19 @@ function tick() {
   frame++;
 
   if (mixer) mixer.update(dt);
+  // pmSplay: rotate the upper arms outward AFTER the mixer writes bone poses â€”
+  // the retargeted clips bake v1's arm angles, and the round v2 body needs the
+  // extra clearance (hands clipped the thighs mid-stride without it).
+  // (only while clips are writing bone poses â€” with the mixer stopped the add
+  // would compound every frame: the museum-mode windmill of 2026-08-07)
+  if (armBoneL && tune.pmSplay > 0 && !pmStillOn) {
+    const rad = tune.pmSplay * Math.PI / 180;
+    armBoneL.quaternion.multiply(SPLAY_Q.setFromAxisAngle(AXIS_Z, rad));
+    armBoneR.quaternion.multiply(SPLAY_Q.setFromAxisAngle(AXIS_Z, -rad));
+  }
   pmTick(dt, now);
   mailTick(dt, now);
-  bubbleTick();
+  voiceTick(dt);
 
   // furnace flicker + flare decay
   if (!reducedMotion) {
@@ -5050,7 +5400,7 @@ function tick() {
     if (punchFlash > 0) punchFlash -= dt;
   }
 
-  // light shafts: each crossed plane fades as it goes edge-on to the camera —
+  // light shafts: each crossed plane fades as it goes edge-on to the camera â€”
   // the face-on plane carries the beam, the edge-on one dissolves instead of
   // reading as a pane of glass
   for (const sp of shaftPlanes) {
@@ -5059,7 +5409,7 @@ function tick() {
     sp.mat.opacity = tune.shaft * Math.min(1, f * 1.7);
   }
 
-  // ghost-through: only the fixture the eye is inside of fades — everything
+  // ghost-through: only the fixture the eye is inside of fades â€” everything
   // else stays fully solid
   for (const cf of ceilingFixtures) {
     const near = camera.position.distanceToSquared(cf.pos) < 1.1;   // ~1m bubble
@@ -5090,7 +5440,7 @@ function tick() {
   // shift = sprint (James, 2026-08-04): double, applied after the cap on purpose
   if (keys.has('ShiftLeft') || keys.has('ShiftRight')) wish.multiplyScalar(2);
   // R/F: rise and sink (2026-08-04, promoted from arrange-only to the live
-  // view at James's ask) — smooth while held, clamped floor to rafters
+  // view at James's ask) â€” smooth while held, clamped floor to rafters
   if (keys.has('KeyR')) pos.y = Math.min(ROOM.h - 0.25, pos.y + 2.4 * dt);
   if (keys.has('KeyF')) pos.y = Math.max(EYE, pos.y - 2.4 * dt);
   vel.x = damp(vel.x, wish.x, 6, dt);
@@ -5115,7 +5465,7 @@ function tick() {
     stage.style.cursor = hits.length ? 'pointer' : 'grab';
   }
 
-  // radio falloff tracks position AND view direction now — a look-around changes
+  // radio falloff tracks position AND view direction now â€” a look-around changes
   // it, so the throttle is tighter than the old walking-speed one
   if (frame % 3 === 0 && soundOn && radioOn && !radioAudio.paused) radioApplyVolume();
 
@@ -5152,6 +5502,7 @@ if (reducedMotion) {
 window.setInterval(() => {
   shiftTick();
   if (!document.hidden) ambientTick(performance.now());
+  if (!document.hidden) voiceMonologueTick(performance.now());
 }, 1000);
 shiftTick();
 

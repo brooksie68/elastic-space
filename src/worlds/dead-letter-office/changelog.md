@@ -3,6 +3,167 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-08 — Claude (Fable 5) + James — HE SPEAKS: the AccuLips viseme pipeline (r17)
+
+Morning-into-afternoon session before James's wedding trip; same arc as r16.
+
+- **The voice system is live, bubbles are DEAD** (James: "get rid of those and
+  they won't be coming back") — speak() now routes ONLY to recorded audio;
+  the line pools remain as the recording script for future ElevenLabs bakes.
+  Six AccuLips TTS mp3s wired: 4 line-mapped (VOICE_LINES) + 2 monologues
+  (proximity-triggered at stations, talk clip as body base, 4–7min cooldown).
+  Distance falloff, "voice" channel on the sound control.
+- **Amplitude jaw-flap REJECTED on sight** ("muhh muhh muhh... did you really
+  think i was going to accept") → **the AccuLips viseme pipeline**: James
+  re-runs each line's take in iClone against the existing mp3 and exports
+  per-line FBX (Range brackets from the AUDIO CLIP's start; Delete Unused
+  Morphs UNCHECKED; the first export was one frame — Range forgotten).
+  build_speech.py (tmp/dead-letter-office/iclone-speech/) samples the moving
+  viseme morph channels at 60fps + the JawRoot rotation into
+  assets/speech-clips/visemes.js (script-tag loaded, file:// safe).
+  applyVisemes() plays them synced to audio.currentTime; fallback flap only
+  for unbaked lines. r-for-regret is the proof line; five more to export.
+- **The swallowed-jaw demon**: multiplying the jaw quaternion per frame
+  compounds when a near-frozen clip stops rewriting the bone (reproduced in
+  the harness — 120 frames wrapped the jaw fully around). Fix: ABSOLUTE
+  application — base pose captured while silent × viseme delta. Same class
+  of bug as the r16 splay windmill; lesson: post-mixer bone writes must
+  never be relative.
+- **lipSync tuner dial** (mouth lead over audio, −0.1..1.0): James's sweet
+  spot is 0.4s — his audio output chain's real latency, not a data bug (the
+  viseme data starts at frame 1; envelope verified numerically).
+  **lipPunch dial** (0.6–1.5 intensity multiplier) for articulation emphasis.
+- **QA stand**: freeze now teleports him to open floor (wander1), natural
+  idle-1 stance at STILL (the A-pose is banished — James "can't look at it"),
+  click always answers (force-interrupt), QA_ROTATION currently
+  ['r-for-regret'] only. **Radio starts OFF (TEMP)** — restore radioOn=true
+  when the QA grind ends.
+- Mouth fidelity verdict: ~60% of the CC5 stage read ("he's still mumbling...
+  but six weeks ago we had a blender weird shaped muppet"). Remaining gap
+  diagnosed: morph normals stripped from the GLB export (shading doesn't
+  follow the lips), CC's wrinkle/SSS stack. TABLED with the optimization
+  pass (his brief: profile the world, decimate the un-decimated full-fat
+  glasses, tier textures — checkpoint FIRST). **Checkpoint saved**:
+  tmp/dead-letter-office/checkpoint-2026-08-08/ (world files + GLBs +
+  speech clips — one-step restore before any optimizing).
+- Also this session: hair mip-darkening fix (generateMipmaps off on
+  Hair/Scalp maps — white strands averaged black at distance), letter
+  carry recentered past the fingers with arm-swing pitch, walk treadmill
+  divisor corrected twice (final 0.324 m/s·m — integrated planted-foot
+  method; percentile methods overestimate on asymmetric gaits).
+- Bigger-picture conversation recorded: Unity ≈90% mouth fidelity
+  (real-time, item-8 fork), iClone render-out = 100% but film; browser
+  ceiling ~75% with morph normals. His long-term want: near-readable lips.
+- NEXT: five remaining viseme FBX exports (the r-for-regret recipe), then
+  restore QA_ROTATION + radioOn, bake the full line pools with ElevenLabs
+  (voice pick first), the optimization pass, monologue gestures.
+
+## 2026-08-07/08 — Claude (Fable 5) + James — THE ICLONE NIGHT: real motion, full-fat body, museum mode (r16)
+
+Same session as r15, continuing past midnight. James: "the single most
+significant night since we figured out how to use Meshy with Blender."
+
+- **Face bugs found by James's LOOK AT HIS FACE**: corneas exported opaque
+  (alpha 1.0, no wiring — grey-button eyes) and eyelashes rendered as an
+  opaque black mask in three.js. Fix: corneas alpha 0.08 blended, lashes
+  deleted outright (fix_eyes.py). Both fixes carried into every later bake.
+- **FULL-FAT BAKE is the shipped model** (bake_full.py): native 2048 textures,
+  no decimation, WebP q92 — 88MB GLB, James's call ("one high-res character in
+  a low-res room"). His verdict vs the compressed 40MB: face/textures
+  "genuinely look better."
+- **Museum mode**: pmStill tuner toggle + big FREEZE button — stops all clips
+  (bind A-pose), halts roaming, for model inspection. The windmill lesson:
+  pmSplay adds rotation per-frame and compounds when the mixer stops writing
+  bones — splay now gates on !pmStillOn.
+- **The office panel redesigned** (James: "one of the weakest ones we have"):
+  sectioned cards (his look / the room / the mail / his routine), 2× text,
+  real padding, A−/A+ text size control (persisted), FREEZE + reset buttons.
+- **THE ICLONE PIPELINE VALIDATED END-TO-END**: CC5 → File → Export → Send to
+  iClone (NEVER FBX import — "character not compatible"); motions audition
+  on the character; per-motion FBX exports (Blender preset, 60fps, Range =
+  the green play-range brackets, no textures, Delete Unused Morphs) into
+  tmp/dead-letter-office/iclone-motions/. James exported EIGHT: breathe-1/2,
+  idle-and-smile, talk-serious, walk-and-think, walk-relaxed 1-start/2-loop/
+  3-end. Plus SIX speech mp3s via AccuLips TTS into assets/speech-clips/
+  (unwired — voice system is its own session).
+- **build_pack.py** (durable, iclone-motions/): 8 FBX → one 10.6MB
+  animations-only GLB (iclone-pack.glb). Blender 5.1 layered-action API
+  (action.fcurves is GONE — all_fcurves() walks layers/strips/channelbags).
+  Walk clips pinned in place (root X/Z zeroed). **Facing normalization**: every
+  iClone clip carries its stage yaw (64–97° here, split across bones — zeroing
+  root rotation under-corrects); the fix MEASURES the animated hips' world yaw
+  at frame 0 vs rest via thigh-head lateral axis and counter-rotates all
+  BoneRoot keys. World switched to the pack; real idle-1/2/3 retire the
+  frozen-walk stand-in; talk/walk-think/walk-start/walk-end ride along unused.
+- **pmSplay default 12 → 0** (iClone motions are animated on HIS body; knob
+  kept for future imported clips). Tuner storage key bumped v2 → v3.
+- **James's three in-world verdicts, all fixed same night**: (1) too small →
+  pmHeight tuner dial (default 1.90, live rescale in applyTune); (2) ice
+  skating → walk timeScale now derives from the clip's MEASURED treadmill
+  speed (0.324 m/s per meter of height — planted-foot travel integrated over
+  the loop; the gait is asymmetric and percentile methods overestimate; the
+  first fix at 0.442 only closed ~⅔ of the glide). Skate-free by construction
+  at any walk-slider value — the slider now purely picks his energy; (3) the
+  letter "paper bracelet" → carried letters were anchored to the wrist joint;
+  now lerped 70% toward CC_Base_R_Mid1 into the palm.
+- His overall verdict: "semi-pro look... he looks fantastic."
+- NEXT: voice system (six mp3s waiting + the spoken-six list in
+  tmp/dead-letter-office/john-dough-lines.txt, talk clip ready); a real
+  hand-grip pose for the carry; a faster walk option; iClone set-export
+  harness idea parked (DLO as an iClone stage for authored scenes). The
+  GALACTIC BAR & GRILL world idea captured in World Ideas.md as James's.
+
+## 2026-08-07 — Claude (Fable 5) + James — John Dough v2: the do-over body ships (r15)
+
+James's escape-velocity call: stop chasing the reference, build "the actor who's
+reminiscent of the drawing," and move on from this world.
+
+- **Rebuilt in CC5, James driving with Claude coaching**: head extracted from
+  Postmaster-body-01 as a Custom → Head Morph & Skin asset ("postmaster-head" —
+  the save grabs the head off the stage avatar, tree selection is only folder
+  nav), applied to a fresh standard-height base (Apply Character Preset, all
+  three boxes + Head Color to Body = the neck seam fix). Heavy Male preset
+  (found at Actor → Body Morph → CC3+, search beats the tree) + Ultimate
+  sliders; NO height-down this time — standard skeleton so stock retargets fit.
+- **Beard verdict**: Beard & Brows Builder pack is 10 fixed card meshes + 34
+  elements + materials, NO morphs — confirmed against the store page; the big
+  marketing beard (artist showcase render) does not exist in the pack. Sculpt
+  brushes just shove individual cards ("wrecking it"). Landed on the stock
+  combo in white — "distinguished postal veteran." Long solid-mesh beard stays
+  a future Blender-conform project.
+- **Dressed from the uniforms pack**: khaki shirt + black tie + UPS-style
+  trousers + belt + boots + pilot cap (black texture brightened via right-click
+  → Adjust Color on the diffuse, then tinted olive [149,90,23] — multiply
+  can't lighten black, Adjust Color can). Meshy glasses-split + cap attached
+  to CC_Base_Head; hair under hat hidden (Face tab → **Visible Brush** row —
+  the row formerly known as Visible Mesh, item 39 correction).
+- **Export**: `john-dough-v2.Fbx` (120MB) + JSON sidecar; full settings
+  checklist re-derived (gear icon opens the advanced panel — Mouth Open as
+  Morph lives there, plus Delete Hidden Faces checked this time, which
+  pre-stripped nearly all covered skin: body 42 faces, legs 0).
+- **Bake rebuilt as durable scripts** (`tmp/dead-letter-office/cc5-bake/bake-v2/`
+  — inventory.py, bake.py, fix scripts, pm-v2-check/zoom/splay.html harnesses):
+  cut TearLine/EyeOcclusion shells, decimated glasses (35k→8k, lens 36k→2k),
+  tints re-applied from the sidecar (cap/pants/frames/lens/eyes), lens alpha
+  0.06, textures 1024/512 WebP → **40.6MB GLB, 176 body morphs + conforming
+  beard morphs intact**, 1.70m. Render-verified (Blender EEVEE + three.js
+  harness with the live walk clip).
+- **The thigh-patch hunt**: mid-stride skin patches = the HANDS clipping the
+  round thighs (v1 arm angles baked in the retarget; CC Pose Offset can't fix
+  clips). Diagnosed by selective-hide snapshots; axis proven empirically in
+  pm-v2-splay.html. **Fix: pmSplay tuner knob** (default 12°, 0–25) — outward
+  local-Z rotation on both CC_Base_*_Upperarm applied AFTER mixer.update every
+  frame, so it rides every current and future clip.
+- `assets/postmaster/john-dough.glb` REPLACED with the v2 bake (v1 in git);
+  world.js unchanged except the splay (PM_HEIGHT 1.68 normalization absorbs
+  the height change; same CC_Base_* bone names, walk-pack plays as-is).
+  Syntax-checked; nav sim 44/44.
+- NEXT (James's mission statement for this world: baseline postmaster, a few
+  animations, pathing, ~6 spoken lines, then move on): retarget more of the
+  12 banked Mixamo clips on his go (real idles first — the frozen-walk
+  stand-in still runs), then voice lines (ElevenLabs, behavior-weekend spec),
+  then he's done here for a while. AWAITING his in-world look at v2 + walk.
+
 ## 2026-08-04 — Claude (Fable 5) — John Dough enters the world (r14, walk-only test)
 
 James's call: before animations/voice, get the CC5 bake in-world to judge presence.
