@@ -373,13 +373,18 @@ consistent. `npm run check-worlds` audits every world against the contract.
    pack has NO morphs, combos+materials only), full-fat bake, THE ICLONE
    PIPELINE (Send-to-iClone → per-motion FBX → build_pack.py: 8 clips,
    facing-normalized, treadmill-measured walk), AccuLips viseme speech
-   (build_speech.py → visemes.js; bubbles retired permanently; 1 of 6
-   lines baked). Read DLO changelog r15–r17 + world CLAUDE.md before
-   touching. OPEN: 5 viseme exports, ElevenLabs voice bake, optimization
-   pass (checkpoint exists), morph-normals fidelity lever, Unity-vs-browser
-   fork for future characters (his want: near-readable lips). World Ideas
-   #61 (Galactic Bar & Grill) captured as the character-stack graduation
-   project.
+   (build_speech.py → visemes.js; bubbles retired permanently).
+   2026-08-10/11 (r18–r21.5): THE VOICE BATCH LANDED — 13 ElevenLabs lines
+   recorded by James + AccuLips FBXs, all viseme-baked (QA_ROTATION = all
+   13, his verdict pending) — and THE GAIT WAR: foot-anchor locomotion
+   (planted foot mathematically frozen; gait-sim + in-world ?gait=1 meter;
+   the r16 0.324 scale constant was 45% wrong). Read DLO changelog
+   r18–r21.5 + world CLAUDE.md before touching. OPEN: James's speech-QA +
+   walk verdicts, step-turn-left/right iClone exports (the pirouette fix,
+   machinery ready), his shift-pace pick, optimization pass (checkpoint
+   exists), morph-normals fidelity lever, Unity-vs-browser fork for future
+   characters (his want: near-readable lips). World Ideas #61 (Galactic
+   Bar & Grill) captured as the character-stack graduation project.
 0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%

@@ -109,13 +109,13 @@ globalThis.DEAD_LETTER_OFFICE_LAYOUT = {
   },
   {
    "type": "radio",
-   "x": 8.060504390776376,
-   "z": -2.7653806056855665,
-   "rotY": -1.5707963267948966,
+   "x": -8.42,
+   "z": 4.5,
+   "rotY": 1.5707963267948966,
    "scale": 1,
    "shade": 1,
    "seed": 952684763,
-   "y": 1.3200000524520874,
+   "y": 0.819,
    "locked": true
   },
   {
@@ -335,17 +335,6 @@ globalThis.DEAD_LETTER_OFFICE_LAYOUT = {
    "scale": 1.05,
    "shade": 1,
    "seed": 52107483,
-   "locked": true
-  },
-  {
-   "type": "open-book",
-   "x": -4.8948878677198095,
-   "z": -4.101218076221122,
-   "rotY": 15.707963267948966,
-   "scale": 0.6,
-   "shade": 1,
-   "seed": 453606330,
-   "y": 0.4577999857068062,
    "locked": true
   },
   {

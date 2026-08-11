@@ -3,6 +3,333 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-11 — Claude (Fable 5) + James — r21.5: limiter reverted, bearing gate
+
+James on r21.4: "a big step (harhar) backwards... much more glidey."
+Correct — the accel limiter's velocity memory read every lock-engagement
+frame as "brake to zero" (target distance is zero at acquisition) and
+dragged the body at each footfall. REVERTED to the hard lock. The
+plant-jerk gets the principled fix instead: a foot can only become the
+anchor once it is WEIGHT-BEARING — sweeping backward under the body at
+≥35% of the clip's mean pace — so there's no leftover landing motion to
+snatch (this also stops locks during the takes' standing lead/settle,
+where the fallback correctly holds him still). Sims green.
+
+## 2026-08-11 — Claude (Fable 5) + James — r21.4: plant-jerk + the turn verdict
+
+James's flight report on r21.3: genuine improvement ("the foot is planting
+a lot more reliably... heel-toe roll is working a lot better"), with three
+findings:
+- **The plant-jerk** (a quick ~1–2cm backward pull at every footfall): lock
+  engagement is a velocity step. Fixed with a 4 m/s² acceleration limiter
+  on the anchored body — stride surge (~2.6 m/s²) passes untouched,
+  discontinuities ramp over ~3 frames.
+- **"You're getting massively dinged on the turns"** — his call, correct:
+  pivots have NO turn take (feet planted, body rotates — his Skyrim
+  comparison), and the free foot's arc was polluting the drift stats. The
+  gait meter now scores STRAIGHT and TURNING stances separately.
+- **The real turn fix needs iClone**: step-turn-left/right takes (feet
+  actually stepping around) — James exports them per the motion recipe when
+  he's next in iClone; the phase machinery is ready for them. Furnace-area
+  shuffle is the same settle-pivot problem.
+- His pace verdict: honest speed = "incredibly slow... he's so lazy" (in a
+  good way for now); the walk dial picks his shift pace after the last
+  slides die. Left-foot-slips-more noted, unexplained yet.
+
+## 2026-08-11 — Claude (Fable 5) + James — r21.3: the meter finds the real bug
+
+James drove the QA loop with the gait meter (click-to-copy added at his
+ask) and the numbers walked us straight down the stack:
+- ~300mm/stance + lock age 0.05s → **the anchor lock was flickering**: a
+  single altitude gate, and the ankle heel-rolls across it all stance.
+  Fixed with hysteresis (acquire <3cm over the foot's floor, release >6.5cm).
+- Age healthy (0.64s) but err 16–65mm oscillating and drift still ~350mm →
+  meter's own plant gate was timing swing too (fixed self-calibrating), AND
+  the deeper one: **motion-meta was measured BEFORE build_pack's pin step**,
+  so the anchor's foot data described a different animation than the one
+  shipping — verified by sampling the shipped GLB itself
+  (tmp/dead-letter-office/iclone-motions/verify_shipped.py, KEEP): walk off
+  up to 74mm-native, walk-think off by 2.1 METERS (its stage travel — the
+  Miracle on Ice finally explained). Metrics now measured AFTER the pin;
+  rebaked; meta-vs-shipped now 6–12mm mean / ~35mm worst (export
+  quantization). Sims green. James's meter is the referee — awaiting his
+  next click-copy.
+
+## 2026-08-11 — Claude (Fable 5) — r21.2: sub-frame anchor + THE GAIT METER
+
+James on r21.1: "noticeably better... but I can clearly see there is still
+SOME gliding — can you detect it?" Two answers:
+- **Sub-frame interpolation** (real bug fixed): the anchor looked feet up
+  at Math.round(frame) while the renderer interpolates between keyframes —
+  up to ~7mm of 60Hz sawtooth. pmFootAt() now lerps at float frame index.
+- **THE GAIT METER (?gait=1)**: his dispute — "your calculation ability
+  isn't better than eyes" — was correct in a specific way: gait-sim
+  measures the MODEL of the drive, not the rendered man (crossfades, bone
+  re-writes and interpolation live outside it). The world now measures the
+  ACTUAL rendered ankle bones per frame and shows per-stance drift on
+  screen (last / mean / worst mm + stance count, bottom-left). Same truth
+  his eyes see, in numbers.
+Known unfixable-in-code residuals for the meter to quantify: crossfade
+blends (two clips, one anchor), source-take foot creep (~21mm), heel-peel
+(ankle anchored, toe rolls). Sims green.
+
+## 2026-08-10 — Claude (Fable 5) — r21.1: THE SCALE BUG — the glide's actual root
+
+James on r21: "marginally better... still doing a lot of skating." His
+pasted cross-session advice said run the basics: check double-translation
+(clean — walk loop is truly in-place, 0.011 native net) and check the
+speed ratio. THAT was it: **the r16 "0.324 m/s per meter of height"
+constant implies a native→world scale of 1.533, but the model's real
+render scale is pmHeight / raw GLB height = 1.9 / 1.795 = 1.059 — 45%
+off.** Since r16, feet stepped ~45% slower than the ground moved (the
+ever-present glide James kept flagging, now finally measured), and the r21
+anchor over-shoved the body 45% past each planted foot. The sim couldn't
+catch it: it used the same K for drive AND measurement; only the world
+exposed it. Fixes: motionK() = pmHeight/pmSizeY (the actual render
+scale); clipCruise() returns absolute world m/s at timeScale 1 (walk =
+0.425); timeScale call sites drop the pmHeight factor; tune.walk default
+0.95 → 0.6 (0.95 was calibrated against the broken feet — stored 0.95
+migrated away); gait-sim K updated to the measured scale. LESSON for the
+next constant: derive scale from the loaded model's bounds, never bake a
+hand-measured hybrid. Sims green. AWAITING JAMES — with K true, anchor
+compensation is exact for the first time.
+
+## 2026-08-10 — Claude (Fable 5) — r21: THE FOOT ANCHOR (James's foot-plant law)
+
+James spelled out the law: "he plants the foot... it cannot move — forward,
+backward, side to side... it's a complete fail if the foot even slightly
+moves" — and asked whether that's DETECTABLE in code. It is, and it's now a
+harness: **tmp/dead-letter-office/gait-sim.mjs** (KEEP — run after any
+motion-pack or drive-math change). build_pack.py bakes per-frame world foot
+positions (feetL/feetR) into motion-meta.js; the sim replays the drive math
+and scores every stance phase's world drift in mm, four modes compared.
+Measured verdicts: the shipped scalar drive drifted 15mm mean on plain walk
+(24mm worst), 157/237mm on the takes, 662mm on walk-think — his eye was
+exactly calibrated. THE FIX: **anchor drive** — the moment a clip foot
+plants (height gate + hysteresis), its world position is banked and the
+BODY's position is derived from it (group = anchor − clip-foot offset,
+clip plane rotated per-take heading → local +z → live yaw). Planted foot
+drift on the walk loop: **0.0mm — frozen by construction**. Takes: ~21mm
+worst, which is the SOURCE CLIPS' own authored foot-creep (sim caps assert
+walk ≤2mm, takes ≤25mm as the documented ceiling). Turning while anchored
+now pivots the body AROUND the planted foot. Arrival became a pursuit
+(reach slack ~0.24m mid-path, closest-approach guard vs orbiting, no more
+mid-path snapping; final node still settles exact). walk-think still
+benched (135mm source creep). nav-sim 44/44, gait-sim ALL PASS.
+AWAITING JAMES: the walk in-world — this is the one his lecture asked for.
+
+## 2026-08-10 — Claude (Fable 5) — r20.3: the gait pulse (James's walking lecture)
+
+James, watching r20.2's constant-speed walk: a human plants the forward
+foot and it STAYS while the body pulls over it — "step, push forward...
+there's never a time when a human being is gliding forward evenly." He's
+right, and the data agrees: the measured planted-foot curve pulses 0.23 →
+0.62 u/s within every stride (3× swing around the 0.40 mean). Diagnosis of
+the two failed rounds: r20.1 drove the ground from the RAW foot curve
+(right pulse + 60Hz measurement noise = "squishy"); r20.2 threw out the
+pulse with the noise (= conveyor belt). r20.3 is the middle path: loop
+ground motion is curve-driven again, from the smoothed (±3 frames, keeps
+the ~1.7Hz stride) monotonic curve. timeScale stays the tempo command; the
+curve owns the distance; the planted foot is nailed by construction.
+walk-think stays benched. Sim 44/44. AWAITING his eye on the pulse.
+
+## 2026-08-10 — Claude (Fable 5) — r20.2: the curve-drive retreat
+
+James on r20.1: walk-think = "miracle on ice"; even plain walk went
+"squishy... drifts back and forth... the foot just kinda slides." Root
+cause: the fwd curves are per-frame ROOT-travel integrals — the hips surge
+and settle within every stride (and walk-think's pondering gestures swing
+them hard), so curve-driving the ground fed that oscillation straight into
+his position. The retreat (complexity-retreat doctrine):
+- Plain walk loop: CONSTANT-SPEED ground + per-frame timeScale lock again
+  (the r19 setup he called better). Curve-drive removed from loops.
+- **walk-think BENCHED** from the walking rotation — needs a smoothed
+  velocity bake + look-dev pass before it returns; clip stays in the pack.
+- walk-start/walk-end stay curve-driven, but curves are box-smoothed
+  (±6 frames) + forced monotonic at load — travel integrals only go
+  forward, backward wiggle is noise.
+- Station settle pivot slowed (dt·4 → dt·2.2): planted-feet rotation can't
+  not slide without a turn take; slower reads deliberate, not ice-spin.
+Sim 44/44. AWAITING: whether start/end takes still read clean, and the
+pivot feel.
+
+## 2026-08-10 — Claude (Fable 5) — r20.1: James's first-flight punch list
+
+Six calls from his r20 flight, all landed:
+
+- **HAIR IS WHITE** ("should always be white"): the CC Classic_short hair
+  albedo is genuinely dark — the r17 no-mips fix couldn't touch that. Now
+  Hair/Scalp maps get a per-texel lift toward white at load (85% of the way,
+  alpha untouched, canvas remap, both map+emissiveMap swapped per the
+  dual-atlas rule) + material color forced white.
+- **SCOTT HAMILTON FIXED**: the big one — walk-think STOPS mid-take to
+  ponder, but loop translation was constant-speed, so he glided through
+  every pause. Loops are now curve-driven like the takes: pmSpeed/timeScale
+  is only the command, the ground follows the loop's measured foot-travel
+  curve at the clip's live time (motion-meta.js now carries fwd curves for
+  ALL four locomotion clips). Gait-to-gait crossfades tightened 0.25→0.15
+  (long blends between different foot phases read as skating).
+- **Falling letters clickable** + fallSpeed default 0.4→0.7 (his call):
+  every falling letter carries an invisible 2× hit pad (opacity-0 material —
+  visible:false would skip raycast), removed on settle so pile picking
+  stays exact. Stored tuner fallSpeed of exactly 0.4 is migrated away (old
+  default, not a choice); key stays v3.
+- **Radio moved to the big table by the door** (layout.js hand-edit on his
+  explicit ask — backup in tmp/dead-letter-office/layout-backups/), rotY
+  faces the room; RADIO_POS follows the item automatically. The open-book
+  placeable removed ("lose the brown book"). 59 items; sim 44/44.
+- **Spawn updated** to his third capture (x 7.07, yaw −3.96).
+
+## 2026-08-10 — Claude (Fable 5) — r20: all eight clips live (James: "all three")
+
+The pack's four benched clips are wired; the walk is now a three-phase gait.
+
+- **build_pack.py v2**: start/end takes now PINNED like the loops, and every
+  locomotion clip gets measured — but from the PLANTED FOOT (min of the two
+  feet's per-frame travel, integrated), because these iClone exports are
+  already in-place: hip/root travel is centimeters, so root-motion sampling
+  reads ~zero (first attempt did exactly that). Numbers: walk 0.4015 u/s,
+  walk-think 0.265 (34% slower), start take 2.6 u over 6.65s (it's step-out
+  + cruise), end take 0.93 u with a 1.3s standing settle tail. Per-frame
+  forward-progress curves + lead/settle times ship as
+  assets/postmaster/motion-meta.js (script-tag global, like visemes.js);
+  world units convert through the proven 0.324 walk constant — ratios only,
+  immune to unit mismatch. Pack rebuilt (10.6MB, r16 copy backed up at
+  tmp/dead-letter-office/iclone-pack-r16-backup.glb).
+- **walk-start / walk-end in world.js**: pmPhase state machine
+  (start→loop→end). During start/end takes the ground position is DRIVEN
+  from the take's measured curve (feet and floor mathematically locked, even
+  while pivoting — align scales the take's timeScale and the curve follows);
+  the loop phase keeps the r19 per-frame timeScale lock. The stopping take
+  fires when the last leg's remaining distance equals its measured travel;
+  legs too short for it fall back to the r19 brake. Its settle tail plays
+  through as his first idle beat, then fades to a real idle.
+- **walk-think**: 25% of walks are the pondering amble, at its own measured
+  tempo (clipCruise per-clip constants — one constant for all clips would
+  have re-introduced skating at 66% speed).
+- **talk**: plays under ANY spoken line at a station (pmSay hook), back to
+  an idle when the line ends; monologue path unchanged; museum-freeze and
+  gestures are guarded.
+- Sim 44/44; motion-meta + world syntax-checked. AWAITING JAMES'S EYES on
+  step-out feel, stop feel, amble frequency, talk-under-lines.
+
+## 2026-08-10 — Claude (Fable 5) — r19: the zero-skate walk pass
+
+James: "still skating a bit... real walking motions where his feet do not
+slide at all." The r16 timeScale math only matched foot speed to ground
+speed at CRUISE — he still slid during the idle→walk fade (full speed under
+a half-faded clip), waypoint pivots (translating while rotating), and
+arrival (instant halt mid-stride). Now `pmSpeed` is a live eased ground
+speed (accel 2.0 / decel 3.5 m/s²): he accelerates out of a stand, barely
+translates while turning (cos-alignment gate, floor 0.12), brakes into the
+final node (last 0.55m, floor 0.3), and `actions.walk.timeScale` is
+re-locked to pmSpeed EVERY frame — foot speed equals ground speed through
+every ramp by construction. Remaining slide is rotational only (pivot in
+place, brief at 3.2 rad/s); the pack's unused walk-start/walk-end clips are
+the next fidelity lever if James wants footfall-perfect turns. Sim 44/44.
+Same session: the load-time T-pose flash fixed — the first idle used the
+default 0.35 fade, which blends up from the calibration T-pose; first pose
+now lands with zero fade + an immediate mixer.update(0) so bones are
+written before the first rendered frame.
+
+## 2026-08-10 — Claude (Fable 5) — mojibake purge + capture spawn
+
+- **THE ENCODING REPAIR**: world.js (and a check of index.html) carried
+  double-encoded UTF-8 on disk — 216 em-dashes, curly quotes, and ellipses
+  rendering as "â€""-style garbage IN THE LETTERS THEMSELVES, plus the
+  loading line James caught ("setting the roomâ€¦"). Byte-level repair
+  (scratchpad fix_mojibake.py pattern: for each candidate char, replace
+  utf8(cp1252(utf8(c))) with c, longest first); zero suspicious sequences
+  remain; letter texts untouched apart from de-corruption (the protected
+  deck reads as authored now).
+- **capture spawn** (tuner head button, James's ask — he wants to start up
+  in a corner seeing the whole office): banks live camera x/y/z + yaw/pitch
+  into tune.spawn (localStorage, same key), copies the JSON to the clipboard
+  for baking as the default, and load applies it (eye height clamped to
+  [EYE, ceiling]). Reset clears it with the rest of the tuner.
+- Same night: James captured his corner and it is now **SPAWN_DEFAULT**
+  ({x:7.43, y:2.41, z:-4.79, yaw:2.215, pitch:-0.197} — up high, whole
+  office in view); a tuner-captured spawn still overrides. **radioOn=true
+  at load again** (his call; the 08-08 QA silence is over). QA_ROTATION
+  clicks remain until his verdict on the 13 takes.
+
+## 2026-08-10 — Claude (Fable 5) + James — r18: THE THIRTEEN-LINE VOICE BATCH
+
+James recorded the batch solo — ElevenLabs mp3s + the full iClone AccuLips
+pass per line, a dozen new FBXs in one evening (the r17 recipe, now written
+down in tmp/dead-letter-office/iclone-speech/README.md — with his correction:
+Animation → AccuLips is the window with BOTH the mp3 browse and the text box;
+plain import-audio has no text field).
+
+- 13 lines live, all viseme-baked (build_speech.py, one run): r-for-regret,
+  blue-ink, addressed-to-a-lake, can-i-help-you, donuts, duluth, pot-from-79,
+  forget-mothers-state, man-named-earl, urgent, no-snap-decisions,
+  love-letter, on-break-since-91. 10–15 morph tracks + jaw each, 60fps.
+- Four FBXs arrived under different stems than their mp3s (help-you-no,
+  mothers-state, on-break, pot-from-seventy-nine) — renamed to match; the
+  stem is the contract.
+- Six lines were new to the script — added to PM_AMBIENT and VOICE_LINES
+  (duluth, forget-mothers-state, man-named-earl, urgent, no-snap-decisions,
+  love-letter). Three existing pool lines got their takes wired
+  (addressed-to-a-lake, can-i-help-you, pot-from-79).
+- The two r17 TTS-era monologues RETIRED (James deleted their mp3s):
+  PM_MONOLOGUES is empty (tick guards on it — a missing file used to wedge
+  him in 'busy' forever), texts preserved in PM_MONOLOGUE_SCRIPT for
+  re-recording.
+- QA_ROTATION = all 13 (FREEZE + click cycles the whole batch).
+- Still open: James's QA verdict, then restore radioOn=true at load and
+  return clicks to the normal pools.
+
+## 2026-08-10 — Claude (Fable 5) — The pile settles down (James's mid-flight notes)
+
+James flew the world with the pile grown huge ("crazy... but not bad") and
+called four things; all landed:
+
+- **CLAIMED counter 17 → 117** ("a hundred and seventeen in forty years is
+  still a tiny amount. Seventeen is just sad").
+- **THE EULER BUG**: every "lie flat + random spin" placement put the spin in
+  the euler Y slot, which with XYZ order and x=−π/2 *tilts* the letter (up to
+  fully vertical) instead of spinning it in-plane. That was both the letters
+  standing on edge in the basket AND the floor strays digging diagonally into
+  the cement. Spin moved to the Z slot everywhere (pile, spill callback,
+  seedStrays); floor strays are now genuinely flat, pile letters lie at
+  gentle paper-settle jitter (±0.07 rad) only.
+- **Pile compaction** (his "they should stack a little flatter... a lot of
+  empty space down the bottom"): layer height 0.045 → 0.036, per-layer cap
+  ×14 instead of ×8, base radius 0.26 → 0.34, min cap 3. Same tower vibe,
+  denser body.
+- **Hollow-bottom fix**: the PILE_CAP recycler shifted from the BOTTOM layer
+  first, so long sessions emptied the base visibly through the wire cage.
+  Now recycles from the fullest buried layer.
+- **Whole pile clickable**: the top-layer-only gating (setLayerClickable) is
+  gone — every resident letter opens on click (openLetter reads without
+  removing, so the stack never shifts). Raycast picks the nearest face, so
+  you get the letter you're looking at through the cage.
+- nav-fuzz sim 44/44; syntax-checked. Not yet seen by James in-world.
+
+## 2026-08-10 — Claude (Fable 5) — Waltz With My Darling joins the broadcast
+
+- James's new Suno track `Waltz-With-My-Darling.mp3` (instrumental waltz, 2:19,
+  scribe confirms no vocals) spliced into `RADIO_PROGRAM` as the fifth number,
+  between Worn Fiddle Porch's break and the dj8 loop-closer (dj8's "pick it
+  back up" read still lands on High Chaparral untouched).
+- Four new KDLO speech pieces written + generated (voice Bill, eleven_v3,
+  stability 1.0): **dj9** intro (Eddie Sorrel and his Lamplight Orchestra —
+  "if you have to explain a waltz, you're dancing with the wrong person"),
+  **dj10** sign-off (Eddie's Pearl, the hose, forty-one years), **ad9**
+  (Vogel's Fine Jewelry — "she already knows, son"), **ad10** (Marlowe's
+  boxed chocolates). Even/odd dj numbering convention kept: even = intro,
+  odd = sign-off.
+- All five clips baked through the r12 AM chain with `--clip 1`, RMS-matched
+  (limiter ×1.000 across the board). Program is now 25 items, 5 songs.
+- Break format preserved: song → sign-off → two ads → intro next → song.
+- Not yet heard on air by James. NOTE: radioOn=false at load is still the r17
+  speech-QA temp state — flip it back when speech QA ends.
+- Next: James is recording a ~25-line batch of postmaster voice lines with
+  slug filenames (blue-ink, donuts, …); Claude will match slugs to the script
+  and wire them (context lines to their triggers, rest to ambient rotation).
+  Lip sync per line comes later via AccuLips batches.
+
 ## 2026-08-08 — Claude (Fable 5) + James — HE SPEAKS: the AccuLips viseme pipeline (r17)
 
 Morning-into-afternoon session before James's wedding trip; same arc as r16.
