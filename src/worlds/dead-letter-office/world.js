@@ -848,59 +848,40 @@ const LETTERS = [
 
 /* ================= the postmaster's lines (authored) ================= */
 
+// r22 (2026-08-12, James's call): ONE list — the twenty recorded takes are
+// his whole spoken repertoire, shared by the ambient walk-around rotation AND
+// the click responses (each trigger keeps its own no-repeat pool cycle). The
+// old unvoiced TTS-era pool texts live in git history only.
 const PM_AMBIENT = [
-  "Third shift is the only shift.",
-  "That clock is right twice a day. This is one of them.",
-  "We don't lose mail. We keep it differently.",
-  "Everything down here is addressed to someone.",
-  "The blue ones? Couldn't say where they go. Nobody's come back to complain.",
-  "The basket is never full. We checked.",
-  "Some of these are for buildings that burned down before I was born.",
-  "You can read them. They stopped minding years ago.",
-  "ZIP stands for something. I've forgotten what.",
-  "The pigeonholes are alphabetical by regret.",
-  "I stamped one twice, once. Nothing happened.",
-  "The pipes only drip when you listen.",
-  "Mail for the sea gets heavy. We double-bag it.",
-  "Somebody upstairs keeps writing to the weather.",
-  "The plant died in '78. We kept it on. Seniority.",
-  "Requisitioned a new bulb in the spring. Some spring.",
-  "The radiator speaks a little Morse. Mostly complaints.",
-  "Every one of these was somebody's best try.",
-  "The ink bottle is for signatures. Nobody signs.",
-  "Dust is just mail that gave up.",
-  // the 2026-08-10 recorded batch (James's ElevenLabs takes — these six were
-  // written for the recording script and joined the ambient rotation with it)
+  "You want the blue ink. Everyone wants the blue ink.",
+  "I'm on break. I've been on break since '91.",
+  "The donuts are from a Tuesday.",
+  "This one goes under R, for regret.",
+  "This one's addressed to a lake. See my problem?",
+  "Can I help you? No. But ask anyway.",
+  "The pot is from '79. Possibly the coffee too.",
   "Got one last month that was mailed from Duluth to Duluth. Took eleven years. So it saw a little of the country.",
   "You'd be surprised how many people forget what state their mother lives in. Course, sometimes that's deliberate.",
   "People complain the Postal Service is slow. Generally those people have never tried finding a man named Earl with no last name.",
   "Some people put 'URGENT' on the envelope. That's helpful. Gives us an idea how disappointed they'll be.",
   "My supervisor says I ought to clear some of this out. I told him I've only been here fifty years and I don't like making snap decisions.",
   "You can tell a love letter without opening it. Too much postage and absolutely no planning.",
+  "My father sorted mail forty years and never once said he liked it, which around here counts as passion.",
+  "It's not lonely down here so long as you keep your expectations where I keep mine.",
+  "I don't hurry, on account of I tried it once and it didn't take.",
+  "I know a fellow who retired, and to hear him tell it, it's a lot like this but without the mail.",
+  "The union got us a chair with a cushion in '89, so it's not like nothing ever happens.",
+  "Weather down here holds steady at 'basement,' which suits me.",
+  "Some folks find the quiet unnerving, but I find the folks unnerving and the quiet fair.",
 ];
 
-/* saying one of these earns him the sigh */
+/* saying one of these earns him the sigh (remapped r22 to the melancholy takes) */
 const PM_SIGH_LINES = new Set([
-  "Some of these are for buildings that burned down before I was born.",
-  "Every one of these was somebody's best try.",
-  "Dust is just mail that gave up.",
-  "Somebody upstairs keeps writing to the weather.",
+  "My father sorted mail forty years and never once said he liked it, which around here counts as passion.",
+  "It's not lonely down here so long as you keep your expectations where I keep mine.",
 ]);
 
-const PM_CLICKED = [
-  "Yes?",
-  "Can I help you? No. But ask anyway.",
-  "Don't lean on the desk.",
-  "I'm on break. I've been on break since '91.",
-  "Mind the basket.",
-  "If it's about a package: no.",
-  "You want the blue ink. Everyone wants the blue ink.",
-  "I sort. I don't deliver. Delivery is a rumor.",
-  "Poking the postmaster. Bold.",
-  "This one's addressed to a lake. See my problem?",
-  "Forms are in the drawer. The drawer is a lie.",
-  "I'd offer you coffee, but the mug is load-bearing.",
-];
+const PM_CLICKED = PM_AMBIENT;   // same twenty, separate pool cycle
 
 const PM_SHIFT_LINES = [
   { at: 60, line: "One minute in. That's normal. That's fine." },
@@ -4594,17 +4575,17 @@ function drawLine(pool, source) {
   return pool.pop();
 }
 
-function speak(line) {
+function speak(line, force) {
   // Speech bubbles RETIRED 2026-08-08 (James: "get rid of those and they won't
   // be coming back") — the voice is the only channel now. Lines without a
   // recorded take go unspoken until their ElevenLabs bake lands; the line pools
   // stay as the recording script.
   const vf = VOICE_LINES[line];
-  if (vf) pmSay(vf);
+  if (vf) pmSay(vf, force);
 }
 
-/* ================= the voice (r17; r18 batch 2026-08-10) =================
-   Thirteen ElevenLabs takes in assets/speech-clips/, every one viseme-baked.
+/* ========== the voice (r17; r18 batch 2026-08-10; r22 batch 2026-08-12) ==========
+   Twenty ElevenLabs takes in assets/speech-clips/, every one viseme-baked.
    Short lines ride their pool triggers (VOICE_LINES maps line text -> file);
    monologues fire on their own slow clock when the visitor is standing near
    him (none on file since the TTS-era takes retired — see PM_MONOLOGUE_SCRIPT).
@@ -4626,6 +4607,14 @@ const VOICE_LINES = {
   "Some people put 'URGENT' on the envelope. That's helpful. Gives us an idea how disappointed they'll be.": 'urgent',
   "My supervisor says I ought to clear some of this out. I told him I've only been here fifty years and I don't like making snap decisions.": 'no-snap-decisions',
   "You can tell a love letter without opening it. Too much postage and absolutely no planning.": 'love-letter',
+  // the 2026-08-12 recorded seven (from the batch-of-twenty script)
+  "My father sorted mail forty years and never once said he liked it, which around here counts as passion.": 'passion',
+  "It's not lonely down here so long as you keep your expectations where I keep mine.": 'not-lonely-down-here',
+  "I don't hurry, on account of I tried it once and it didn't take.": 'i-dont-hurry',
+  "I know a fellow who retired, and to hear him tell it, it's a lot like this but without the mail.": 'retired',
+  "The union got us a chair with a cushion in '89, so it's not like nothing ever happens.": 'chair-with-a-cushion',
+  "Weather down here holds steady at 'basement,' which suits me.": 'basement-weather',
+  "Some folks find the quiet unnerving, but I find the folks unnerving and the quiet fair.": 'quiet-fair',
 };
 // The two r17 monologue takes were AccuLips-TTS era; James deleted their mp3s
 // with the 2026-08-10 ElevenLabs re-record. The texts stay here as the
@@ -4829,13 +4818,21 @@ function bubbleTick() {
 function ambientTick(now) {
   if (now < nextAmbientAt) return;
   if (letterOpen || pmAway || voiceBusy()) { nextAmbientAt = now + 8000; return; }
-  const line = drawLine(ambientPool, PM_AMBIENT);
+  // r22: the pool is all-voiced (the twenty takes), so every tick speaks;
+  // the guard stays in case an unvoiced line ever sneaks back in.
+  let line = null;
+  for (let i = 0; i < PM_AMBIENT.length && !line; i++) {
+    const cand = drawLine(ambientPool, PM_AMBIENT);
+    if (VOICE_LINES[cand]) line = cand;
+  }
+  if (!line) { nextAmbientAt = now + 20000; return; }
   speak(line);
   if (PM_SIGH_LINES.has(line) && pmState === 'station' && !reducedMotion) {
     pmState = 'busy';
     playOneshot('sigh', () => { pmState = 'station'; });
   }
-  nextAmbientAt = now + 24000 + Math.random() * 22000;
+  // r22 cadence, James's spec: "randomly spout off, like, every twenty seconds"
+  nextAmbientAt = now + 16000 + Math.random() * 8000;
 }
 
 let punchFlash = 0;
@@ -4854,11 +4851,12 @@ function shiftTick() {
   }
 }
 
-// viseme-baked lines only while testing (the full 2026-08-10 batch)
+// viseme-baked lines only while testing (2026-08-10 thirteen + 2026-08-12 seven)
 const QA_ROTATION = ['r-for-regret', 'blue-ink', 'addressed-to-a-lake',
   'can-i-help-you', 'donuts', 'duluth', 'pot-from-79', 'forget-mothers-state',
   'man-named-earl', 'urgent', 'no-snap-decisions', 'love-letter',
-  'on-break-since-91'];
+  'on-break-since-91', 'passion', 'not-lonely-down-here', 'i-dont-hurry',
+  'retired', 'chair-with-a-cushion', 'basement-weather', 'quiet-fair'];
 let qaIdx = 0;
 
 function postmasterClicked() {
@@ -4869,7 +4867,9 @@ function postmasterClicked() {
     pmSay(QA_ROTATION[qaIdx++ % QA_ROTATION.length], true);
     return;
   }
-  speak(drawLine(clickPool, PM_CLICKED));
+  // r22: every click answers, even mid-line (James: clicking him ten times
+  // in a row and hearing ten things is a fine way to visit)
+  speak(drawLine(clickPool, PM_CLICKED), true);
   nextAmbientAt = performance.now() + 26000;
   pmFaceCamera = 5;
   if (pmState === 'station' && !reducedMotion) {

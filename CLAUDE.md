@@ -378,8 +378,20 @@ consistent. `npm run check-worlds` audits every world against the contract.
    recorded by James + AccuLips FBXs, all viseme-baked (QA_ROTATION = all
    13, his verdict pending) — and THE GAIT WAR: foot-anchor locomotion
    (planted foot mathematically frozen; gait-sim + in-world ?gait=1 meter;
-   the r16 0.324 scale constant was 45% wrong). Read DLO changelog
-   r18–r21.5 + world CLAUDE.md before touching. OPEN: James's speech-QA +
+   the r16 0.324 scale constant was 45% wrong). r22 2026-08-12: SEVEN NEW
+   TAKES (from Claude's batch of twenty — James: "there's just these and
+   that's it", the other 13 dropped) + ONE-LIST SPEECH: PM_AMBIENT = the 20
+   recorded takes exactly, PM_CLICKED aliases it, ambient every 16–24s,
+   clicks force-interrupt (ten clicks = ten lines); old unvoiced TTS-era
+   pool texts deleted; "testing page" pill removed (was a dead link) and
+   the Meshy-era eye-rig viewer + face/eyes-hands-off rule RETIRED (James
+   now wants MORE face work). His animation wishlist recorded in world
+   CLAUDE.md behavior-weekend section: real hand gesture, armful-of-letters
+   carry, furnace hopper, mug + donut-chew at stations, camera looks,
+   clips paired to actions; camera eye-tracking during speech agreed as a
+   world.js build (his workbench = iClone, no browser bench — his call).
+   Read DLO changelog r18–r22 + world CLAUDE.md before touching. OPEN:
+   James's speech-QA +
    walk verdicts, step-turn-left/right iClone exports (the pirouette fix,
    machinery ready), his shift-pace pick, optimization pass (checkpoint
    exists), morph-normals fidelity lever, Unity-vs-browser fork for future

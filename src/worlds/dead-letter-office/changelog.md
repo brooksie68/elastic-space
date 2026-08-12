@@ -3,6 +3,42 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-12 — Claude (Fable 5) + James — r22: the batch-of-twenty voice drop + speak-more cadence
+
+James asked for twenty new one-sentence ambient lines (Keillor-influenced —
+dry, stoic, upper-midwestern) and said the speech frequency is too slow.
+Claude wrote the twenty; James recorded SEVEN the same night (ElevenLabs +
+AccuLips, the r18 recipe): passion, not-lonely-down-here, i-dont-hurry,
+retired, chair-with-a-cushion, basement-weather, quiet-fair.
+
+- build_speech.py re-run: visemes.js now holds all 20 takes (13 + 7).
+- The recorded seven map in VOICE_LINES; QA_ROTATION grew 13 → 20. (The
+  other thirteen from the writing batch were dropped — James: "there's just
+  these and that's it" — they live only in this session's chat, not in the
+  code.)
+- **ONE LIST, his call**: PM_AMBIENT is now exactly the twenty recorded
+  takes, and PM_CLICKED aliases it — walking around he spouts one every
+  16–24s ("like, every twenty seconds"), and every click answers from the
+  same twenty, force-interrupting mid-line so rapid clicking always talks.
+  Each trigger keeps its own no-repeat pool cycle. The old unvoiced
+  TTS-era ambient/click texts are deleted (git history has them); shift
+  lines + contextual station pools remain, silent where unrecorded.
+  Sigh lines remapped to the two melancholy takes (passion,
+  not-lonely-down-here). Previously ~half the ambient slots were silent
+  draws (speak() drops unvoiced lines) — that was the "too slow" feel.
+
+His animation wishlist for the next pass (his words, none built): the
+current gestures are "kinda wishy washy" — he wants a REAL hand gesture;
+picking up an armful of letters; a hopper built on the side of the furnace
+for him to drop them into; holding the mug at the coffee station; holding
+a donut up to his mouth with chewing motions; and looking at the camera
+sometimes. Specific speech clips paired with specific actions is the
+frame. Also open: extra facial movement experiments in iClone (his seat,
+Claude shotgun) and eyes tracking the camera during speech (buildable
+browser-side — eye bones/morphs during pmSay). Stray empty
+`speech-clips/TBD/` directory noticed, left alone — James's to keep or
+delete.
+
 ## 2026-08-11 — Claude (Fable 5) + James — r21.5: limiter reverted, bearing gate
 
 James on r21.4: "a big step (harhar) backwards... much more glidey."

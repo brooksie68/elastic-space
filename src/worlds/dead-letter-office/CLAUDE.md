@@ -46,6 +46,12 @@ return addresses still work.
 
 ## Planned (James, 2026-07-22): the behavior weekend
 
+UPDATED 2026-08-12 (r22): James re-upped this with specifics — current gestures are
+"kinda wishy washy"; he wants a real hand gesture, an armful-of-letters carry, a
+hopper built onto the furnace side to drop them into, mug held at the coffee
+station, a donut raised to the mouth with chewing, camera-look moments, and
+speech clips paired to specific actions. See changelog r22.
+
 A dedicated weekend session on the postmaster's behaviors — much more natural: needs-based
 routine picking (coffee level / basket fullness / boredom) instead of weighted random,
 dumping the basket down the furnace chute (chute slot itself still to build, south wall
@@ -80,8 +86,11 @@ the second — the office holds their whole almost-romance). Get his answers fir
   full 68 on 2026-07-31 — the protection now covers the WHOLE deck: additions come only
   from James's explicit ask, rewording never. Length spread is part of the deck's
   character — new letters must not regress to uniform paragraph-scale.
-- **Face/eyes: hands off** (James, 2026-07-21) — the frozen face ships as-is; the 3D eye-rig
-  work stays parked in `tmp/dead-letter-office/meshy/viewer.html` until James reopens it.
+- (The 2026-07-21 "face/eyes: hands off" rule and its parked eye-rig viewer are RETIRED
+  2026-08-12 — that was the Meshy-era head; the CC5 face is fully rigged and James now
+  wants MORE face work: iClone facial experiments + camera eye-tracking, see changelog
+  r22. The old viewer sits in `tmp/dead-letter-office/_files/meshy-OLD/`, admin-panel
+  pill removed.)
 - **PM_V2 (2026-08-04): John Dough, the CC5 bake, is the live postmaster** —
   `PM_V2` in world.js picks john-dough.glb + the animation pack. v2 has no
   Meshy dual atlas — world.js recreates the emissive trick by hand; bones are
@@ -137,7 +146,7 @@ the second — the office holds their whole almost-romance). Get his answers fir
   iclone-speech/README.md; six new lines joined PM_AMBIENT; TTS-era
   monologues retired to PM_MONOLOGUE_SCRIPT pending re-record). radioOn
   restored to true at load 2026-08-10 (James's call). REMAINING TEMP STATE:
-  clicks answer from QA_ROTATION (all 13) while frozen — normal pools resume
+  clicks answer from QA_ROTATION (all 20 since r22) while frozen — normal pools resume
   when his QA verdict lands. SPAWN_DEFAULT is his captured corner
   (2026-08-10); the tuner's capture-spawn button lets him re-bank it.
   Optimization pass is queued (his go given, checkpoint REQUIRED first and
