@@ -1021,9 +1021,10 @@ const TUNE_DEFAULTS = {
   mailEvery: 4.5, // seconds between falling letters
   fallSpeed: 0.7, // m/s base descent (0.4 until 2026-08-10, James's call)
   pace: 1.0,      // postmaster activity gap multiplier (higher = lazier)
-  walk: 0.6,      // postmaster walk speed m/s. 0.95 dated from the r16 scale
-                  // error (feet stepped 45% slow, so speed read low); the
-                  // clip's honest pace is 0.425 — 0.6 is a working shift pace
+  walk: 0.425,    // postmaster walk speed m/s = the clip's authored tempo
+                  // (timeScale 1.0). The 0.6 "working shift pace" was picked
+                  // while the r25 dt-cap slow-mo (~0.6× at 12fps) was masking
+                  // it; at true speed it played the take 41% fast (r25.2).
 };
 let tune = { ...TUNE_DEFAULTS };
 // v2 key (2026-07-22 brightness pass): stored v1 values were tuned against the
@@ -1034,6 +1035,7 @@ try {
   // default, not a choice — drop it so the new default shows (key stays v3)
   if (stored.fallSpeed === 0.4) delete stored.fallSpeed;
   if (stored.walk === 0.95) delete stored.walk;   // r16-era default, not a choice
+  if (stored.walk === 0.6) delete stored.walk;    // r21-era default, tuned under slow-mo
   Object.assign(tune, stored);
 } catch (e) { /* fresh */ }
 
@@ -3808,9 +3810,13 @@ const LOOK_ENABLED = false;     // r23 look-at chain benched (Skyrim-neck verdic
 let pmLookCam = false;          // kept for headLookTick's gate; stays false
 let introTake = false;          // the take is running
 let introLineFired = false;
+let introT0 = 0;                // r25: wall-clock start of the take (perf.now ms)
 let introFrom = null, introDir = null;   // path start + unit heading
 const INTRO_STANDOFF = 2.6;     // stop distance in front of the camera (m)
-const INTRO_LINE_DELAY = 2.3;   // s after the walk settles → arms are crossed
+// r25: the mp3 fires at the take-time where James placed the audio clip on
+// the iClone timeline (00:10:08 @60fps) — his gestures/smile are keyed to it.
+// Replaces the r24 settle+2.3s guess.
+const INTRO_LINE_AT = 10.133;   // s into the take → duluth.mp3 + visemes
 
 function startIntroTake() {
   const cm = motionMeta().clips['intro-address'];
@@ -3832,6 +3838,7 @@ function startIntroTake() {
   nextAmbientAt = performance.now() + (cm.dur + 20) * 1000;
   introTake = true;
   introLineFired = false;
+  introT0 = performance.now();
   playPhaseClip('intro-address', 0, 0);
 }
 
@@ -4350,15 +4357,65 @@ function pmTick(dt, now) {
     const cm = im && im.clips['intro-address'];
     const a = actions['intro-address'];
     if (!cm || !a || !ik) { introTake = false; pmDone(2, 2); return; }
-    const t = Math.min(a.time, cm.dur);
-    const fw = motionCurveAt(cm, t) * ik;
-    pmGroup.position.set(introFrom.x + introDir.x * fw, 0, introFrom.z + introDir.z * fw);
+    // r25: WALL-CLOCK drive — the take plays in real seconds, period. The
+    // mixer's dt accumulation is overridden every frame, so render-loop
+    // timing can never stretch the performance (James: in-world ran ~2x
+    // long vs the identical iClone timeline). Low fps now drops frames,
+    // exactly like iClone's Realtime playback, instead of slowing time.
+    const t = Math.min((performance.now() - introT0) / 1000, cm.dur);
+    a.time = t;
+    // r25.1 FOOT-ANCHOR drive (James: "standing on ice... anybody would
+    // notice") — the smoothed travel curve can't match the baked feet
+    // frame-by-frame (slide into the stop), and the bake's hip pin turned
+    // his authored weight shifts into foot skate. Same lock as the walking
+    // block: while a baked foot is down, the body is DERIVED from that
+    // foot's world anchor, so the planted foot cannot move. Weight shifts
+    // now translate his body over frozen feet — the authored motion,
+    // exactly. Curve replay survives only as the no-foot-data fallback.
+    const ff = t * cm.fps;
+    let introAnchored = false;
+    if (cm.feetL && cm.cphi !== undefined) {
+      const zL = pmFootAt(cm, 'L', ff)[2] - cm.zMinL;
+      const zR = pmFootAt(cm, 'R', ff)[2] - cm.zMinR;
+      const heldL = pmLock && pmLock.clip === 'intro-address' && pmLock.foot === 'L';
+      const heldR = pmLock && pmLock.clip === 'intro-address' && pmLock.foot === 'R';
+      const pL = zL < (heldL ? 0.065 : 0.03);
+      const pR = zR < (heldR ? 0.065 : 0.03);
+      if (pmLock && (pmLock.clip !== 'intro-address'
+          || (pmLock.foot === 'L' && !pL) || (pmLock.foot === 'R' && !pR))) pmLock = null;
+      if (!pmLock && (pL || pR)) {
+        let foot = pL ? 'L' : 'R';
+        if (pL && pR && ff >= 1) {   // both down: the slower foot is the truer stance
+          const sp = (f) => {
+            const a1 = pmFootAt(cm, f, ff), a0 = pmFootAt(cm, f, ff - 1);
+            return Math.hypot(a1[0] - a0[0], a1[1] - a0[1]);
+          };
+          foot = sp('L') <= sp('R') ? 'L' : 'R';
+        }
+        const off = pmFootOffset(cm, foot, ff, ik);
+        pmLock = { clip: 'intro-address', foot,
+          x: pmGroup.position.x + off[0], z: pmGroup.position.z + off[1] };
+      }
+      if (pmLock) {
+        const off = pmFootOffset(cm, pmLock.foot, ff, ik);
+        pmGroup.position.x = pmLock.x - off[0];
+        pmGroup.position.z = pmLock.z - off[1];
+        introAnchored = true;
+        pmLock.age = (pmLock.age || 0) + dt;
+      }
+    }
+    if (!introAnchored) {
+      const fw = motionCurveAt(cm, t) * ik;
+      pmGroup.position.set(introFrom.x + introDir.x * fw, 0, introFrom.z + introDir.z * fw);
+    }
     pmGroup.rotation.y = pmYaw;
-    if (!introLineFired && t >= cm.settle + INTRO_LINE_DELAY) {
+    if (!introLineFired && t >= INTRO_LINE_AT) {
       introLineFired = true;
+      console.log('[intro] line fired at', t.toFixed(2) + 's wall (authored 10.13s)');
       pmSay('duluth', true);   // visemes + James's authored smile ride the audio
     }
     if (t >= cm.dur - 0.08) {
+      console.log('[intro] take done at', t.toFixed(2) + 's wall (authored 22.80s)');
       introTake = false;
       pmState = 'station';
       let bestK = 'wander1', bestD = Infinity;
@@ -4399,11 +4456,17 @@ function pmTick(dt, now) {
     const endReady = !!(meta && k && meta.clips['walk-end'] && actions['walk-end']);
     const endDist = endReady ? meta.clips['walk-end'].total * k : 0;
     let step = 0;
+    // r25.2: the phase takes follow the walk dial too. They used to play at a
+    // hard 1× while only the cruise loop obeyed tune.walk — with the dial off
+    // the clip's honest 0.425 that read as James's "normal for two steps, then
+    // double time" (start take at 1×, loop at dial/cruise). One pace factor
+    // scales every gait phase, so the dial changes tempo, never uniformity.
+    const pace = Math.max(0.1, tune.walk / clipCruise(pmLoopName));
     if (pmPhase === 'start' || pmPhase === 'end') {
       const pn = pmPhase === 'start' ? 'walk-start' : 'walk-end';
       const cm = meta.clips[pn];
       const a = actions[pn];
-      a.timeScale = align;
+      a.timeScale = align * pace;
       const t = Math.min(a.time, cm.dur);
       step = Math.max(0, motionCurveAt(cm, t) - motionCurveAt(cm, pmPhaseT)) * k;
       pmPhaseT = t;
@@ -4729,6 +4792,7 @@ let voiceVol = 1.0;
 let voiceMouth = 0;
 let voiceStem = null;        // current speech-clip stem — keys into DLO_VISEMES
 let lastVis = null;          // last applied viseme entry, for cleanup on end
+let lastVisT = 0;            // r25: playback clock for the post-audio facial tail
 const JAW_Q = new THREE.Quaternion();
 let monologueActive = false;
 let monologueIdx = Math.floor(Math.random() * PM_MONOLOGUES.length);
@@ -4809,7 +4873,9 @@ function voiceTick(dt) {
       // lead the reported currentTime: decoder + output latency put the sound
       // in your ears later than the property claims. lipSync tuner = by-ear trim.
       const lead = (voiceCtx && voiceCtx.outputLatency || 0.04) + tune.lipSync;
-      applyVisemes(vis, voiceAudio.currentTime + lead);
+      if (lastVis && lastVis !== vis) clearVisemes(lastVis);   // interrupted mid-tail
+      lastVisT = voiceAudio.currentTime + lead;
+      applyVisemes(vis, lastVisT);
       lastVis = vis;
       voiceMouth = 0;
       return;
@@ -4830,6 +4896,13 @@ function voiceTick(dt) {
       target = 0.3 + 0.25 * Math.sin(performance.now() * 0.02);   // no-analyser babble
     }
     voiceMouth += (target - voiceMouth) * Math.min(1, dt * 14);
+  } else if (lastVis && lastVisT < lastVis.n / lastVis.fps) {
+    // r25: the audio ended but the baked track hasn't — play out the authored
+    // facial tail (James keys expression fades AFTER the last word; the
+    // Duluth smile eases down for ~2.6s). The old immediate clear snapped
+    // his face to neutral the instant the mp3 stopped.
+    lastVisT += dt;
+    applyVisemes(lastVis, lastVisT);
   } else {
     if (lastVis) { clearVisemes(lastVis); lastVis = null; }
     // refresh the jaw base while he is silent — the clip owns the bone here
@@ -5515,6 +5588,11 @@ const RADIO_PROGRAM = [
   { src: 'assets/radio-music/dj10-radio.mp3' },
   { src: 'assets/radio-music/ad9-radio.mp3' },
   { src: 'assets/radio-music/ad10-radio.mp3' },
+  { src: 'assets/radio-music/dj11-radio.mp3' },
+  { src: 'assets/radio-music/Tiny Birdies-radio.mp3', song: true },
+  { src: 'assets/radio-music/dj12-radio.mp3' },
+  { src: 'assets/radio-music/ad11-radio.mp3' },
+  { src: 'assets/radio-music/ad12-radio.mp3' },
   { src: 'assets/radio-music/dj8-radio.mp3' },
 ];
 const RADIO_SONG_STARTS = RADIO_PROGRAM
@@ -5919,7 +5997,7 @@ const TUNER_SPEC = [
   ['pmHeight', 1.5, 2.2, 0.01],
   ['lipSync', -0.1, 1.0, 0.005],
   ['lipPunch', 0.6, 1.5, 0.05],
-  ['walk', 0.5, 1.6, 0.05],
+  ['walk', 0.3, 1.2, 0.025],
 ];
 for (const [key, min, max] of TUNER_SPEC) {
   if (!(tune[key] >= min && tune[key] <= max)) tune[key] = TUNE_DEFAULTS[key];
@@ -6055,7 +6133,11 @@ let resStillAt = 0;
 
 function tick() {
   requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  // r25: cap was 0.05 — below 20fps that silently plays the whole world in
+  // slow motion (James clocked the 22.8s intro take at 38s ≈ 12fps). 0.25
+  // keeps time honest down to 4fps; the cap now only guards the giant dt
+  // after a background-tab return.
+  const dt = Math.min(clock.getDelta(), 0.25);
   const t = clock.elapsedTime;
   const now = performance.now();
   frame++;

@@ -3,6 +3,105 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-13 — Claude (Fable 5) + James — r25.2: walk pace corrected for the post-slow-mo world
+
+- James's catch after the r25 dt-cap fix: the regular walk now reads "a little
+  bit too fast." It is — `tune.walk` 0.6 m/s vs the clip's measured cruise of
+  0.425 commands timeScale ≈ 1.41×. That 0.6 "working shift pace" was picked
+  while the old dt cap was silently playing his ~12fps flights at ~0.6×, so it
+  LOOKED right; r25 removed the mask and exposed the overdrive.
+- Default `walk` 0.6 → 0.425 (the take's authored tempo, timeScale 1.0), with
+  the usual stored-value migration (a stored 0.6 is the old default, not a
+  choice — deleted on load, key stays v3). Tuner range widened 0.5–1.6 →
+  0.3–1.2 step 0.025 so the authored pace and slower are reachable — the
+  shift-pace pick (open since r16) is now genuinely his dial.
+- gait-sim: all clips pass the foot-plant law; nav-fuzz 44/44.
+- James's flight report nailed the mechanism before the code did: "normal pace
+  for the first two steps, then suddenly double time" — the walk-start/walk-end
+  takes played at a hard 1× (curve-driven) while only the cruise loop obeyed
+  the inflated dial, so every leg of a route showed the seam. Now one `pace`
+  factor (tune.walk / clipCruise) scales all three gait phases: the dial
+  changes tempo, never uniformity. His left-foot back-slip at the fast pace is
+  the r24.1 plant-gate degrading at high timeScale × his ~12fps frame rate —
+  at 1× it should mostly vanish; if any survives, ?gait=1 measures it.
+- AWAITING: his read on uniform 1.0× — if it feels too ambling, the dial goes
+  up from an honest baseline this time, and stays uniform when it does.
+
+## 2026-08-13 — Claude (Fable 5) + James — r25: the expression-tuned intro retake + the facial tail
+
+- **`Intro-joke.fbx` supersedes `intro-address.fbx`** (same clip name in the
+  pack): James's iClone retake with the Duluth audio merged onto the timeline
+  so he could tune expressions against the performance — gesture on the beat,
+  head turn, 20% smile into "to Duluth," bigger smile on the punchline, a
+  keyed ~2s ease back toward neutral, arms behind the back for the tail.
+  22.8s @60fps, walk settles 5.47s, curve-measured + pinned like the other
+  locomotion takes. (His first three exports failed with iClone's bare
+  "FBX Export Failed" — an iClone restart fixed it; late-session exporter
+  flakiness, remember it.)
+- **`duluth.fbx` re-exported from the same timeline** (Range from the audio
+  clip's start through the smile fade) → visemes.js rebuilt: duluth is now
+  734 frames / 12.2s with **33 morph tracks** (typical line: ~15) — the
+  expression morphs ride the viseme bake. The mp3 is unchanged.
+- **The line now fires at James's authored time**: `INTRO_LINE_AT = 10.133`
+  (the audio clip sits at 00:10:08 on his timeline) replaces the r24
+  `settle + 2.3s` guess — his gestures are keyed to the audio's true position.
+- **The post-audio facial tail plays out** (voiceTick): the old code
+  clearVisemes'd the instant the mp3 ended, snapping the face to neutral —
+  which would have eaten the authored smile fade (audio ~9.6s, track 12.2s).
+  Now `lastVisT` keeps the track playing on its own clock past audio-end
+  until the baked frames run out; a new line interrupting mid-tail clears
+  the old track's morphs first (33-track duluth vs 15-track lines — no
+  leftover channels). Applies to every line with a baked tail, not just
+  the intro.
+- **r25 THE SLOW-MOTION BUG, James's catch** ("what my eyeballs and my ears
+  cannot see and hear" — he stopwatched the take at 38s vs iClone's 22.8s,
+  after Claude wrongly blamed iClone's preview and GPU contention): the main
+  loop's dt cap (0.05s) silently plays the WHOLE world at reduced speed
+  whenever the frame rate is under 20fps (~12fps during his flight → ~0.6×).
+  Fixes: (1) the intro take now runs on the WALL CLOCK (a.time set from
+  performance.now each frame — frame drops skip frames, never stretch time;
+  console stamps report fired/done wall times), (2) dt cap raised 0.05→0.25,
+  so every clip world-wide holds authored speed down to 4fps. His verdict:
+  "MUCH better." COROLLARY: the world really renders ~12fps on his powerful
+  machine — the optimization pass just moved up the queue; slow-mo was
+  masking it as smoothness.
+- **r25.1 INTRO FOOT ANCHOR** (James: slides ~a shoe length into the stop,
+  then "standing on ice" — every weight shift skated his feet): the intro
+  was the last path still driving position from the smoothed travel curve,
+  which can't match the baked feet frame-by-frame; worse, the bake's hip
+  pin (zeroing root X/Z) deletes authored weight-shift translation, turning
+  it into foot skate. The intro block now uses the SAME planted-foot anchor
+  as the walking block (lock hysteresis 3cm/6.5cm, slower-foot pick when
+  both are down): body derived from the frozen stance foot, so weight
+  shifts translate the body over planted feet — the authored motion
+  restored exactly (the pin removed pure translation; re-planting the
+  stance foot adds it back). Curve replay kept only as no-foot-data
+  fallback. Sims re-green.
+- Smile verdict IN (James): "the smile is good... not overpowering anymore,
+  and it fades nicely." AWAITING: the anchored feet in-flight, and the
+  frame-rate reality check now that slow-mo isn't hiding it.
+
+## 2026-08-13 — Claude (Fable 5) — Tiny Birdies joins the broadcast
+
+- James's new Suno track `Tiny Birdies.mp3` (upbeat vocal novelty number —
+  wind-up birdies, "all lined up in a row"; the broadcast's first vocal tune)
+  spliced into `RADIO_PROGRAM` as the sixth number, between Waltz With My
+  Darling's break and the dj8 loop-closer (dj8's "pick it back up" read still
+  lands on High Chaparral untouched).
+- Four new KDLO speech pieces written + generated (voice Bill, eleven_v3,
+  stability 1.0): **dj11** intro (the Dooley Sisters with Bob Sorenson
+  trading verses — James's catch: the track is a man/woman duet, so the
+  credit says so — "anybody who's ever lost an argument with a sparrow"),
+  **dj12** sign-off (Bob drives the milk route over in Waupaca; his own tiny
+  birdies in the seed sack — "don't feed anything you're not prepared to keep"),
+  **ad11** (Brubaker's Seed & Feed, down by the grain elevator), **ad12**
+  (Lundgren's Radio & Appliance — "you're hearing this, so somebody's radio
+  works"). dj9/dj10 numbering pattern kept: intro then sign-off.
+- All five clips baked through the r12 AM chain with `--clip 1`, RMS-matched
+  (limiter ×1.000 across the board). Program is now 31 items, 6 songs.
+- Break format preserved: song → sign-off → two ads → intro next → song.
+- Not yet heard on air by James.
+
 ## 2026-08-12/13 — Claude (Fable 5) + James — r24: THE AUTHORED OPENING (intro-address)
 
 The r23 lesson made real: James built the opening IN ICLONE (Claude coaching
