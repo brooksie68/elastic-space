@@ -3,6 +3,176 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-12/13 — Claude (Fable 5) + James — r24: THE AUTHORED OPENING (intro-address)
+
+The r23 lesson made real: James built the opening IN ICLONE (Claude coaching
+click-by-click — his first motion-layer cleanup pass: clip assembly from the
+walk-relaxed family + Talk Serious, Break at a pose-matched frame, IK wrist
+keys walking the arm-cross out of his chest, the "keys are dots, spans need
+both ends" lesson) and the world now just PLAYS it.
+
+- `intro-address.fbx` (27.2s: walk up → stop → cross arms → hold with
+  gestures) joined build_pack.py CLIPS (pinned + measured). Two new
+  measurement guards, intro-address only: a stance-noise gate and a
+  peak-relative walk-end cutoff — without them the 20s talk hold's
+  ankle-roll/gesture creep integrated into ~20cm of phantom forward
+  travel (he'd have moonwalked into the lens). walk/walk-end curves
+  verified UNCHANGED (the first cutoff draft trimmed walk-end's real
+  deceleration tail — gait-sim's shipped numbers restored before ship).
+- world.js r24: startIntroTake() places the take straight down the
+  visitor's ACTUAL spawn gaze (his note: "vector him towards the camera...
+  straight towards the viewer") — stop lands INTRO_STANDOFF (2.6m) in
+  front of the lens; the tick replays the take's own measured curve along
+  the fixed heading; Duluth fires at settle + INTRO_LINE_DELAY (2.3s),
+  visemes + his authored SMILE riding the existing speech system (he
+  re-exported duluth.fbx from AccuLips with Face Key smile keys — baked
+  peak 1.0 at 6.0s, flagged as possibly hot). Clicks are ignored during
+  the take; museum-freeze cancels it; reducedMotion skips it. When the
+  clip ends the normal shift machinery walks him to the furnace.
+- ALL r23 procedural machinery DELETED from world.js (intro state machine,
+  skeleton freeze, hip pin, steering special-cases, arrival-snap gate).
+  headLookTick survives behind LOOK_ENABLED=false, benched.
+- Sims: nav-fuzz 44/44, gait all clips pass. Pack 13.4MB shipped to
+  assets/postmaster/ (the tmp build is not the live file — copy step).
+
+JAMES'S FLIGHT VERDICT (2026-08-13, "two steps forward, one back — the best
+ratio yet"): he walks at the camera ✓. The back-steps, all named:
+1. Abrupt start — he's already mid-walk the instant the world loads; timing
+   reads wrong. (Candidate fixes: delay the take a beat, or start it before
+   the poster fade lifts.)
+2. The smile: creepy at full strength (as flagged) AND snaps to dead flat in
+   <0.5s when the clip ends — the iClone neutral key sits too close to the
+   smile keys. Both are Face Key re-authoring in the duluth AccuLips project.
+3. Talk Serious's canned hand gestures don't track the anecdote's beats at
+   all. Inherent to stock clips; the real fix is authoring gestures against
+   the audio (import duluth.mp3 as a guide track in the intro project), or
+   the unopened AI Video Mocap minutes (film himself telling it).
+4. Sliding during the walk's deceleration — the intro replay is curve-only;
+   it does NOT run the foot-anchor drive (that lives in the walking branch).
+   Claude-side fix available: apply the anchor lock to the intro take's
+   feet data (build_pack already measures feetL/R for it).
+JAMES'S DIRECTION BEFORE NEXT ROUND: he wants to stop building organically
+piece-on-piece and learn the tool properly — CC5/iClone tutorials, animation
+101, practice projects. No further intro iteration until then, most likely.
+
+SAME NIGHT, r24.1 — THE PLANT-BOOP: his regular walk verdict ("much better...
+still skating a little"), with one precise finding: every plant scoots back
+~an inch the instant the foot lands — "boop" — alternating feet, exactly
+when the foot should be most solid. Mechanism: the r21.5 weight-bearing gate
+demanded a ≥35%-pace BACKWARD sweep before the anchor could lock, leaving a
+few unlocked frames after each plant — right when the clip's stance pull is
+fastest and the smoothed drive curve underestimates it, so the fresh plant
+slipped backward before the lock caught it. (gait-sim couldn't see it: its
+anchor model locks at the plant, no bearing gate — the world had drifted
+from the sim.) Fix: the gate now blocks only clear FORWARD (landing) motion
+(v < +0.08·belt); near-still or backward feet lock at the plant itself.
+Sims green. AWAITING his eye — the residual risk is a tiny body jerk if a
+foot locks during its last few mm of landing.
+
+## 2026-08-12 — Claude (Fable 5) + James — r23: the opening sequence + camera-look
+
+James's brief (same night as r22): when the world loads — camera in his
+captured corner spawn, John off to the right at the desk — count of two,
+then John turns, walks across the visitor's view, stops, LOOKS INTO THE
+CAMERA, delivers Duluth, and carries on to the furnace.
+
+- **The opening**: `introPhase` machine in pmTick ('wait' 2s → walk desk→H3
+  → 'turn' 0.5s pivot to the visitor → 'line' = pmSay('duluth', force) →
+  walk H3→furnace, routine resumes). Normal routine + ambient clock hold
+  until it resolves; museum-freeze cancels it; reducedMotion skips it.
+  H3 (4.6, 0.6) is the pause mark — squarely in the spawn camera's view.
+- **Camera-look (head + eyes)**: headLookTick, post-mixer — whenever
+  pmFaceCamera > 0 (the opening line AND every click answer), the head
+  slerps a bounded world-space delta (body-forward → camera, clamped 1 rad)
+  localized per-bone (axis-safe on the CC rig), head at 0.75 weight, eye
+  bones (CC_Base_L/R_Eye) adding ~0.3 on top so the eyes lead. Recomputed
+  from the clip's fresh pose every frame — nothing compounds (the
+  swallowed-jaw discipline). Eases in at 5/s, out at 3/s.
+- Sims: nav-fuzz 44/44, gait-sim all clips pass.
+- **r23.1, James's first flight** ("walked almost all the way over to the
+  furnace... very long time before he stopped"): the H3 pause mark scrapped.
+  He now heads for the furnace on the real route (desk→H7 runs east along
+  the north wall, toward the corner camera) and stops by WALKED DISTANCE —
+  INTRO_STOP_M = 2.2m, his first ~6 steps, before the H7 corner turn. The
+  stop truncates pmPath to one synthetic node a walk-end's travel ahead so
+  the stopping take settles clean; after the line he re-keys pmStationKey
+  to the nearest nav node and carries on to the furnace.
+
+- **r23.2, James's second flight** ("sliding around to the right, stops and
+  adjusts himself, backs up a little... vaguely towards the camera, not into
+  the camera; eyeballs staring straight ahead" — his framing: blind leading
+  the blind, but the standard is absolute now, not relative): THE FREEZE.
+  (1) Straight-lock — 0.6m out (exit pivot done) the path becomes ONE node
+  dead ahead; no corner steering, so no drift toward H3. INTRO_STOP_M back
+  up to 2.6 (six real steps; shorter runs never neared the camera).
+  (2) No arrival snap for the intro stop (introNoSnap) — the settle-position
+  correction read as "backing up". (3) NO body turn at all: pmFaceCamera is
+  out of the intro; pmFaceTarget holds his frozen yaw through the line and
+  pmLookCam turns the HEAD alone. (4) headLookTick head weight 0.75 → 1.0
+  (full aim — partial weight read as talking past you) and eyes 0.3 → 0.35.
+  The arms-cross he half-liked is the talk take (talk-serious) riding pmSay
+  — it comes free with the line. Known gap he'll tolerate for now: forearms
+  sink into the chest on the cross (clip vs the Heavy body).
+
+- **r23.3, James's third + fourth flights** ("slipping around all over the
+  place like a freaking air hockey puck... floating on a pad of air"):
+  DIAGNOSIS — the glide is CROSSFADE SLIDE, not group motion. Walk-end's
+  clamped pose fades into pickIdle and then the talk take, each baked at its
+  own hips offset/yaw, so the blend drags the visible body around while the
+  group never moves. First attempt (a group-level hip counter-pin measuring
+  CC_Base_Hip drift) changed nothing James could see — the drift just moved
+  to the feet. Replaced with THE SKELETON FREEZE, deterministic: at the stop,
+  capture every lower-body bone's LOCAL pose; hard-restore post-mixer every
+  frame until the line ends. Legs/hips/spine-base physically cannot move.
+  Free (live) bones: Head/Neck/Eye/Jaw/Teeth/Tongue + Clavicle/arms/fingers
+  + Spine02 (FREEZE_FREE_RE) — so the camera-look, visemes, and the talk
+  take's arm-cross all still play. If this proves out it likely becomes the
+  GLOBAL station-blend rule, not just the intro's.
+
+- **r23.4, James's fifth flight** ("nothing changed at all... moonwalking...
+  head bent over his neck like a weird character from Skyrim... he does NOT
+  look at the viewer, he just turned towards the person"; plus his honest
+  read: Claude is ~50% on character animation vs 85% on UX prototypes, and
+  his offer of more iClone takes): THE REAL WINDOW FOUND. His detail "all
+  of it without moving his feet" proved the freeze WAS holding — the drama
+  happens BEFORE pmArrived: when the stopping take overshoots the synthetic
+  node, the pursuit steers at a node BEHIND him — align collapses to 0.12,
+  walk-end crawls for seconds, and the yaw chase pivots him around the
+  anchored foot. The freeze/pin only engaged after that dance. Fix: during
+  'stopping', steering is OFF (yaw locked), align forced 1 (take at full
+  rate, ends on its own clock), fallback motion goes straight along pmYaw
+  (a passed node can never pull him backward), both arrival snaps gated.
+  AND the look rewritten as a true LOOK-AT CHAIN: each bone's forward axis
+  measured at load; per frame neck (0.35 shr, 0.4rad cap) → head (0.85,
+  0.7) → eyes (1.0, 0.6) each re-aim from their OWN current forward, so
+  the eyes land exactly on the lens by construction and the swing spreads
+  across the neck instead of the Skyrim head-hinge.
+
+- **r23.5, James's sixth flight — THE PROCEDURAL INTRO IS DEAD** ("still a
+  bunch of uncomfortable shifting and floating... neck cranes way off to the
+  left, eyes roll weirdly... You do not know how to do this. We need a new
+  approach"). His read stands: six rounds of runtime synthesis, no
+  convergence. INTRO_ENABLED=false and LOOK_ENABLED=false (machinery kept
+  for reference; delete most of it once the authored era lands) — the world
+  loads with the normal 6.5s routine again. THE NEW APPROACH, agreed
+  direction: the opening becomes ONE AUTHORED ICLONE TAKE (working name
+  `intro-address`): walk ~6 steps → natural stop → arms cross → authored
+  head turn (~25° left, slight up) → hold ~10s (Duluth is 8.6s; visemes ride
+  on top from the existing duluth bake, the body take carries NO face) →
+  uncross → turn right → walk out, ending mid-stride. Exported like every
+  motion (Blender preset, 60fps, Range), build_pack measures its travel,
+  and the world PLACES the take so the authored head angle lands on the
+  spawn camera, starts the mp3 at the stop-settle frame, and blends the
+  walk-out into the loop toward the furnace. Play authored motion straight
+  — the only thing in this world that has ever looked right.
+
+STANDING LESSON (r23, hard-earned): runtime-synthesized body motion — 
+steering to synthetic nodes, stance crossfades, procedural look-at — reads
+as floating/sliding/craning at close range, every time. Authored takes
+played straight are the house standard for anything the visitor is meant
+to LOOK at. Procedural is for traversal only (the gait drive), never for
+performance beats.
+
 ## 2026-08-12 — Claude (Fable 5) + James — r22: the batch-of-twenty voice drop + speak-more cadence
 
 James asked for twenty new one-sentence ambient lines (Keillor-influenced —

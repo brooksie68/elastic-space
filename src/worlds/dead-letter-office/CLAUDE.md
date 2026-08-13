@@ -152,6 +152,14 @@ the second — the office holds their whole almost-romance). Get his answers fir
   Optimization pass is queued (his go given, checkpoint REQUIRED first and
   exists: tmp/dead-letter-office/checkpoint-2026-08-08/); morph-normals
   rebuild tabled as the next mouth-fidelity lever.
+- **r23 (2026-08-12): the OPENING SEQUENCE + CAMERA-LOOK.** `introPhase` machine in
+  pmTick: 2s after load John walks desk→H3, pivots to the visitor, delivers Duluth
+  with head+eye camera-look, then walks on to the furnace (routine + ambient held
+  until it resolves; freeze cancels; reducedMotion skips). `headLookTick` (post-mixer,
+  after pmTick) aims CC_Base_Head (0.75) + CC_Base_L/R_Eye (0.3) at the camera
+  whenever `pmFaceCamera > 0` — bounded world-delta localized per bone, recomputed
+  from the clip pose every frame (never a compounding write). Click answers get the
+  look for free. Awaiting James's flight verdict.
 - Postmaster integration facts (learned the hard way, sessions 07-17/18):
   1. Meshy materials carry the color atlas twice — `map` AND `emissiveMap`. Since r4 the
      emissive copy is kept ON at partial strength deliberately (James: he must always be

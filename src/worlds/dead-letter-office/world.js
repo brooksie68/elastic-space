@@ -3350,6 +3350,8 @@ let pmSizeY = 0, pmMinY = 0;   // raw GLB bounds — applyTune derives scale fro
 let armBoneL = null, armBoneR = null;   // v2 arm-splay targets (pmSplay tuner)
 let midBone = null;                     // R middle finger — palm anchor for carry
 let jawBone = null;                     // CC_Base_JawRoot — viseme jaw rotation
+let eyeBoneL = null, eyeBoneR = null;   // r23 camera-look targets
+let neckBone = null;                    // CC_Base_NeckTwist01 — look-chain share
 const jawBaseQ = new THREE.Quaternion(); // jaw pose from the clip, pre-viseme
 let jawBaseValid = false;
 const CARRY_V = new THREE.Vector3();    // scratch for the palm blend
@@ -3506,6 +3508,9 @@ if (PM_ENABLED) Promise.all([
   // letter in the palm across any pose.
   midBone = pmModel.getObjectByName('CC_Base_R_Mid1');
   jawBone = pmModel.getObjectByName('CC_Base_JawRoot');
+  eyeBoneL = pmModel.getObjectByName('CC_Base_L_Eye');
+  eyeBoneR = pmModel.getObjectByName('CC_Base_R_Eye');
+  neckBone = pmModel.getObjectByName('CC_Base_NeckTwist01');
   if (PM_V2) {
     armBoneL = pmModel.getObjectByName('CC_Base_L_Upperarm');
     armBoneR = pmModel.getObjectByName('CC_Base_R_Upperarm');
@@ -3554,11 +3559,21 @@ if (PM_ENABLED) Promise.all([
   // scarecrow at load (James, 2026-08-10)
   if (reducedMotion) {
     playBase('idle-2', 0, STILL);
+  } else if (INTRO_ENABLED && actions['intro-address']
+      && motionMeta() && motionMeta().clips['intro-address'] && motionK()) {
+    // r24 THE AUTHORED OPENING: James's iClone take (walk up → stop → cross
+    // arms → hold for Duluth). The world only places it: path aimed straight
+    // down the camera's gaze so he walks AT the viewer (his 2026-08-13 note),
+    // audio fired when the walking settles. No steering, no blends, no
+    // procedural anything — the take is the performance.
+    startIntroTake();
   } else {
     playBase(pickIdle(), 0);
     pmScheduleNext(6.5);   // James: give him another beat before the first round
   }
   mixer.update(0);   // bones written before the next rendered frame
+  pmGroup.updateMatrixWorld(true);
+  captureLookAxes();   // r23.4: measure true bone forward axes in rest pose
   propsLoaded += 1;
   posterFadeOut();
 }).catch(() => fail('Could not load the postmaster. ' + SERVE_HINT));
@@ -3780,6 +3795,45 @@ let pmPath = [];                // remaining [x,z] waypoints
 let pmNextAt = Infinity;        // when to pick the next routine (perf.now ms)
 let pmCarried = null;           // envelope mesh being carried
 let pmFaceCamera = 0;           // >0: seconds left of facing the visitor
+// r24 THE AUTHORED OPENING (the r23 procedural intro — synthetic-node stops,
+// hip pins, skeleton freezes, head-only look — is DELETED; James's verdict
+// after six rounds stands: runtime-synthesized performance always floats.
+// See the changelog's r23 standing lesson). The take is James's iClone
+// export `intro-address` in the motion pack: walk up, stop, cross arms
+// (hand-clipping cleanup keyed by him), hold through Duluth. The world's
+// whole job: place the path straight down the spawn camera's gaze, replay
+// the take's own measured travel curve, fire the mp3 when the walk settles.
+const INTRO_ENABLED = true;
+const LOOK_ENABLED = false;     // r23 look-at chain benched (Skyrim-neck verdict)
+let pmLookCam = false;          // kept for headLookTick's gate; stays false
+let introTake = false;          // the take is running
+let introLineFired = false;
+let introFrom = null, introDir = null;   // path start + unit heading
+const INTRO_STANDOFF = 2.6;     // stop distance in front of the camera (m)
+const INTRO_LINE_DELAY = 2.3;   // s after the walk settles → arms are crossed
+
+function startIntroTake() {
+  const cm = motionMeta().clips['intro-address'];
+  const k = motionK();
+  // aim the whole take down the visitor's actual spawn gaze: he stops
+  // INTRO_STANDOFF in front of the lens, so he starts a walk's travel
+  // beyond that and comes straight AT the viewer
+  const gx = -Math.sin(yaw), gz = -Math.cos(yaw);   // camera forward (fwd convention)
+  const walkD = cm.total * k;
+  const sx = pos.x + gx * INTRO_STANDOFF, sz = pos.z + gz * INTRO_STANDOFF;
+  introFrom = { x: sx + gx * walkD, z: sz + gz * walkD };
+  introDir = { x: -gx, z: -gz };
+  pmYaw = Math.atan2(introDir.x, introDir.z);
+  pmFaceTarget = pmYaw;
+  pmGroup.rotation.y = pmYaw;
+  pmGroup.position.set(introFrom.x, 0, introFrom.z);
+  pmState = 'busy';
+  pmNextAt = Infinity;
+  nextAmbientAt = performance.now() + (cm.dur + 20) * 1000;
+  introTake = true;
+  introLineFired = false;
+  playPhaseClip('intro-address', 0, 0);
+}
 
 function pmScheduleNext(seconds) {
   pmNextAt = performance.now() + seconds * 1000 * tune.pace;
@@ -4258,6 +4312,7 @@ function pmTick(dt, now) {
       pmStillOn = true;
       oneshotAction = null;
       pmPath.length = 0;
+      introTake = false;   // museum mode cancels the opening take
       pmState = 'station';
       // out to open floor (wander1, room center) facing the room — the QA
       // stand can't be behind the desk where the keep-outs block approach
@@ -4282,6 +4337,38 @@ function pmTick(dt, now) {
       hoverDirty = true;
       speak(PM_DOOR_RETURN_LINES[Math.floor(Math.random() * PM_DOOR_RETURN_LINES.length)]);
       pmWalkTo('desk', () => { playBase(pickIdle()); pmDone(8, 8); });
+    }
+    return;
+  }
+
+  // ---- r24 the authored opening: replay the take's own measured travel
+  // along the fixed camera-aimed heading. No steering, no arrival logic —
+  // when the clip ends, the normal shift machinery takes over.
+  if (introTake) {
+    const im = motionMeta();
+    const ik = motionK();
+    const cm = im && im.clips['intro-address'];
+    const a = actions['intro-address'];
+    if (!cm || !a || !ik) { introTake = false; pmDone(2, 2); return; }
+    const t = Math.min(a.time, cm.dur);
+    const fw = motionCurveAt(cm, t) * ik;
+    pmGroup.position.set(introFrom.x + introDir.x * fw, 0, introFrom.z + introDir.z * fw);
+    pmGroup.rotation.y = pmYaw;
+    if (!introLineFired && t >= cm.settle + INTRO_LINE_DELAY) {
+      introLineFired = true;
+      pmSay('duluth', true);   // visemes + James's authored smile ride the audio
+    }
+    if (t >= cm.dur - 0.08) {
+      introTake = false;
+      pmState = 'station';
+      let bestK = 'wander1', bestD = Infinity;
+      for (const [nk, n] of Object.entries(NAV_NODES)) {
+        const d = Math.hypot(n.x - pmGroup.position.x, n.z - pmGroup.position.z);
+        if (d < bestD) { bestD = d; bestK = nk; }
+      }
+      pmStationKey = bestK;
+      nextAmbientAt = performance.now() + 12000;
+      pmWalkTo('furnace', () => { playBase(pickIdle()); pmDone(6, 6); });
     }
     return;
   }
@@ -4393,11 +4480,17 @@ function pmTick(dt, now) {
       if (pmLock && (pmLock.clip !== an
           || (pmLock.foot === 'L' && !pL) || (pmLock.foot === 'R' && !pR))) pmLock = null;
       if (!pmLock && (pL || pR)) {
-        // r21.5: a candidate foot must be WEIGHT-BEARING before it can be
-        // the anchor — sweeping backward under the body at ≥35% of the
-        // clip's mean pace. Locking a foot that is still finishing its
-        // landing snatches its leftover forward motion into the body
-        // (the plant-jerk James called out; the smoothing detour is above).
+        // r21.5: a candidate foot must not be mid-LANDING when it locks —
+        // locking a foot still moving forward snatches its leftover landing
+        // motion into the body (the r21.4-era plant-jerk).
+        // r24.1 (James: every plant scoots back an inch, "boop", right when
+        // the foot should be most solid): the old gate ALSO demanded a
+        // backward sweep ≥35% of pace before locking, which left a few
+        // unlocked frames after each plant — exactly when the clip's stance
+        // pull is fastest and the smoothed curve underestimates it, so the
+        // planted foot visibly slipped back before the lock caught it. The
+        // gate now blocks only clear FORWARD (landing) motion; a near-still
+        // or backward-sweeping foot locks at the plant itself.
         const beltPerFrame = (acm.total / acm.dur) * k / acm.fps;
         const bearing = (f) => {
           if (ff < 1) return false;
@@ -4405,7 +4498,7 @@ function pmTick(dt, now) {
           const o0 = pmFootOffset(acm, f, ff - 1, k);
           const v = (o1[0] - o0[0]) * Math.sin(pmYaw)
             + (o1[1] - o0[1]) * Math.cos(pmYaw);
-          return v < -0.35 * beltPerFrame;
+          return v < 0.08 * beltPerFrame;
         };
         const bL = pL && bearing('L'), bR = pR && bearing('R');
         if (bL || bR) {
@@ -4768,6 +4861,63 @@ function applyVisemes(vis, t) {
   }
 }
 
+/* ===== r23.4: the LOOK-AT CHAIN (he looks INTO the lens) =====
+   The old version rotated bones by a body-relative guess — James's verdict:
+   "vaguely turning his face in the direction of the camera... not the same
+   as him looking at the viewer", plus the all-head swing read as a bent
+   Skyrim neck. Now each bone's TRUE forward axis is measured once at load
+   (rest pose), and every frame each bone in the chain re-aims from its OWN
+   current forward to the camera: neck takes a modest share, head most of
+   the rest, and the EYES solve last from their own residual — so they land
+   exactly on the lens by construction. Per-bone clamps keep it anatomical.
+   All deltas recompute from the clip's fresh pose each frame — nothing
+   compounds (the swallowed-jaw lesson). */
+let pmLookW = 0;
+let lookAxes = null;   // { bone -> local forward vector }, captured at load
+const LOOK_Q = new THREE.Quaternion(), LOOK_D = new THREE.Quaternion(),
+  LOOK_L = new THREE.Quaternion(), LOOK_STEP = new THREE.Quaternion(),
+  LOOK_ID = new THREE.Quaternion();
+const LOOK_P = new THREE.Vector3(), LOOK_T = new THREE.Vector3(),
+  LOOK_F = new THREE.Vector3();
+function captureLookAxes() {
+  // rest pose, model facing pmYaw: forward world = (sin, 0, cos)
+  lookAxes = new Map();
+  LOOK_F.set(Math.sin(pmYaw), 0, Math.cos(pmYaw));
+  for (const bone of [neckBone, headBone, eyeBoneL, eyeBoneR]) {
+    if (!bone) continue;
+    bone.getWorldQuaternion(LOOK_Q);
+    lookAxes.set(bone, LOOK_F.clone().applyQuaternion(LOOK_Q.invert()).normalize());
+  }
+}
+function aimBone(bone, w, maxRad) {
+  if (!bone || w <= 0 || !lookAxes || !lookAxes.has(bone)) return;
+  bone.getWorldQuaternion(LOOK_Q);
+  LOOK_F.copy(lookAxes.get(bone)).applyQuaternion(LOOK_Q);   // current forward
+  bone.getWorldPosition(LOOK_P);
+  LOOK_T.subVectors(camera.position, LOOK_P).normalize();
+  LOOK_D.setFromUnitVectors(LOOK_F, LOOK_T);
+  const ang = 2 * Math.acos(Math.min(1, Math.abs(LOOK_D.w)));
+  if (ang > maxRad) {
+    LOOK_STEP.copy(LOOK_ID).slerp(LOOK_D, maxRad / ang);
+    LOOK_D.copy(LOOK_STEP);
+  }
+  LOOK_L.copy(LOOK_Q).invert().multiply(LOOK_D).multiply(LOOK_Q);
+  bone.quaternion.multiply(LOOK_STEP.copy(LOOK_ID).slerp(LOOK_L, w));
+}
+function headLookTick(dt) {
+  if (!LOOK_ENABLED) return;
+  if (!headBone || !pmModel || pmStillOn || reducedMotion) { pmLookW = 0; return; }
+  const want = ((pmLookCam || pmFaceCamera > 0) && !pmAway) ? 1 : 0;
+  pmLookW += (want - pmLookW) * Math.min(1, dt * (want ? 5 : 3));
+  if (pmLookW < 0.01) return;
+  // the chain: each stage re-measures its own residual, so shares compose
+  // naturally and the eyes finish the job dead-on
+  aimBone(neckBone, pmLookW * 0.35, 0.4);   // a natural neck share
+  aimBone(headBone, pmLookW * 0.85, 0.7);   // most of the rest
+  aimBone(eyeBoneL, pmLookW, 0.6);          // eyes LOCK on the lens
+  aimBone(eyeBoneR, pmLookW, 0.6);
+}
+
 function clearVisemes(vis) {
   for (const name in vis.tracks) {
     for (const m of pmMouthMeshes) {
@@ -4861,6 +5011,7 @@ let qaIdx = 0;
 
 function postmasterClicked() {
   if (pmAway) return;   // he is upstairs; the click hits nothing that answers
+  if (introTake) return;   // r24: the opening take is a performance — no heckling
   if (pmStillOn) {
     // frozen = the QA stand: every click answers, rotating the recorded takes,
     // no cooldowns, interrupting mid-line — James testing the mouth
@@ -5924,6 +6075,7 @@ function tick() {
   pmTick(dt, now);
   mailTick(dt, now);
   voiceTick(dt);
+  headLookTick(dt);   // r23: after pmTick (body yaw) + before render
 
   // furnace flicker + flare decay
   if (!reducedMotion) {
