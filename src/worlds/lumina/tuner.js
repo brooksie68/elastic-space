@@ -1396,6 +1396,12 @@
       const rowB = el("div", "tuner-pattern");
       const rec = button("● record", "Punch in — your moves start recording at the playhead. Click again to punch out and bank the take", () => send({ scope: "music", type: "timeline", cmd: "arm" }), "tuner-btn tuner-rec");
       const count = el("output", "tuner-tlcount", "empty");
+      const saveTake = button("save take", "Save this recording under a name — it appears in the player's set menu", () => {
+        const tl = snap && snap.music.timeline;
+        const name = window.prompt("Save your recording as:", (tl && tl.nextName) || "James 1");
+        if (name !== null) send({ scope: "music", type: "timeline", cmd: "saveTake", name });
+      });
+      saveTake.disabled = true;
       const undoTake = button("undo take", "Throw away the last banked take", () => send({ scope: "music", type: "timeline", cmd: "undoTake" }));
       undoTake.disabled = true;
       const loopClear = button("clear loop", "Drop the loop region", () => send({ scope: "music", type: "timeline", cmd: "loopClear" }));
@@ -1405,7 +1411,7 @@
           send({ scope: "music", type: "timeline", cmd: "clear" });
         }
       });
-      rowB.append(rec, count, undoTake, loopClear, clearAll);
+      rowB.append(rec, count, saveTake, undoTake, loopClear, clearAll);
       {
         const ib = infoBtn("row:timeline-strip", "the strip",
           "click the strip to jump; drag a stretch to loop it — a looping armed pass banks a take every lap. gold ticks are your moves (tall = whole-look jumps, blue = pads). switch the player to “your set” to watch it back");
@@ -1493,7 +1499,8 @@
         strip.classList.toggle("tuner-tlstrip--armed", !!tl.armed);
         count.textContent = tl.armed
           ? `take: ${tl.takeCount} moves`
-          : (tl.count ? `${tl.count} moves` : "empty");
+          : (tl.count ? `${tl.count} moves${tl.unsaved ? " — unsaved" : ""}` : "empty");
+        saveTake.disabled = !!tl.armed || !tl.count;
         undoTake.disabled = !tl.canUndo;
         loopClear.disabled = !tl.loop;
         draw();
@@ -1794,17 +1801,36 @@
       shuffle.type = "checkbox";
       shuffleWrap.append(shuffle, document.createTextNode("shuffle"));
       const djLabel = el("label", "tuner-label", "visual dj");
+      // Rebuilt from snapshots (sig-guarded — house lesson): free play and
+      // claude's set, then a divider and your saved takes for this track.
       const dj = el("select");
-      [["claude", "claude's set"], ["free", "free play"], ["mine", "your set"]].forEach(([v, t]) => {
-        const option = el("option", null, t);
-        option.value = v;
-        dj.appendChild(option);
-      });
-      dj.title = "claude's set plays a composed light show authored for each track; free play hands the field back to your sliders";
+      let djSig = null;
+      const rebuildDj = () => {
+        const tl = snap.music.timeline || {};
+        const tks = tl.takes || [];
+        const sig = tks.map((t) => t.name).join("\n") + (tl.unsaved ? "u" : "");
+        if (sig === djSig || document.activeElement === dj) return;
+        djSig = sig;
+        dj.textContent = "";
+        const opt = (v, t, disabled) => {
+          const option = el("option", null, t);
+          option.value = v;
+          if (disabled) option.disabled = true;
+          dj.appendChild(option);
+        };
+        opt("claude", "claude's set");
+        opt("free", "free play");
+        if (tks.length || tl.unsaved) {
+          opt("", "──────", true);
+          tks.forEach((t, i) => opt("take:" + i, t.name));
+          if (tl.unsaved) opt("mine", "unsaved recording");
+        }
+      };
+      dj.title = "claude's set plays a composed light show authored for each track; free play hands the field back to your sliders; below the line: your recorded sets";
       row.append(play, stopBtn, prev, sel, next, shuffleWrap, djLabel, dj);
       {
         const ib = infoBtn("row:player-dj", "visual dj",
-          "claude's set plays a light show composed for each track — free play hands the field back to you");
+          "claude's set plays a light show composed for each track — free play hands the field back to you. below the divider: your own recorded sets for this track");
         if (ib) row.appendChild(ib);
       }
       sel.addEventListener("change", () => send({ scope: "music", type: "player", cmd: "select", index: Number(sel.value) }));
@@ -1823,7 +1849,9 @@
         safeSet(sel, String(snap.music.trackIndex));
         play.textContent = snap.music.playing ? "pause" : "play";
         shuffle.checked = !!snap.music.shuffle;
-        safeSet(dj, snap.music.dj);
+        rebuildDj();
+        safeSet(dj, snap.music.djValue || snap.music.dj);
+        if (document.activeElement !== dj && dj.selectedIndex < 0) dj.value = "free";
       });
       // Transport: playhead scrubber, time readout, listening volume.
       const transport = el("div", "tuner-transport");

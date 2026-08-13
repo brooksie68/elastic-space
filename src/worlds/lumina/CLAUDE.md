@@ -406,6 +406,20 @@ likely as item 3. Don't re-add it unprompted.
   set" player mode). Run `node tmp/lumina/timeline-sim.mjs` after touching
   any of it. Known limitation: melt rolls record their landing, not the
   glide. Not yet file-backed (localStorage only).
+  **NAMED TAKES (2026-08-12, James's brief after losing a performance to the
+  track-end auto-advance):** recording survives EVERY exit — track end while
+  armed auto-punches-out, commits, prompts to save ("James N" pre-filled;
+  Cancel keeps it as the unsaved working recording), then STAYS on the track
+  rewound + paused and switches the set menu to the take so play replays it
+  (NO auto-advance while recording, his explicit call, round 2 same night);
+  track switch / ■ stop commit silently. Takes live in `lumina-takes` (per track,
+  `bankTake()` in music.js); the SET MENU is the picker (his call): both dj
+  selects list free/claude, then a disabled divider + this track's takes
+  (+ "unsaved recording" when the working recording differs from every
+  take) — zero takes, zero entries; never re-add a bare "your set" entry.
+  The working recording remains the only overdub surface; armed replay
+  always ghosts the WORKING recording. Selects rebuild sig-guarded and
+  reflect from `music.djValue`, not `dj`.
 - `music.js` — audio graph, player, reactivity loop, DJ playback; registers
   with the host and mounts the tuner. `music-dsp.js` — DOM-free DSP + the
   TARGETS table (new modulatable params get an entry there).

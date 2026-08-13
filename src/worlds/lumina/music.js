@@ -84,6 +84,7 @@
   // Free play is the DEFAULT (James, 2026-07-25): entering the world never
   // hands the field to a composed set — claude's set is an explicit opt-in.
   if (store.dj !== "free" && store.dj !== "claude" && store.dj !== "mine") store.dj = "free";
+  store.takeSel = store.takeSel || {}; // per-track: which saved take "your set" plays
   let settings = mergeSettings(store.settings);
   let presetSelected = "";
 
@@ -169,17 +170,24 @@
   }
 
   function loadTrack(i, andPlay) {
+    // A still-armed recording survives a track change (2026-08-12 — a full
+    // performance used to die here): punch out and merge it into the OLD
+    // track's working recording before the index moves.
+    if (tlArmed) {
+      tlArmed = false;
+      tlCommit(audio.currentTime);
+    }
     trackIndex = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length;
     audio.src = DIR + encodeURIComponent(TRACKS[trackIndex].file);
     store.track = TRACKS[trackIndex].file;
     if (store.perTrack) recallPerTrack();
     resetComposition();
-    // Timelines are per track: drop any in-flight take, loop, and session
-    // undo, and point the ghost at the new track's recording.
-    tlArmed = false;
+    // Timelines are per track: drop any in-flight loop and session undo,
+    // and point the ghost at the new track's recording.
     tlTake = [];
     tlLoop = null;
     tlUndo = [];
+    tlDirty = tlComputeDirty();
     tlRebuildPlayer(0);
     saveStore();
     if (andPlay) start().catch(() => {});
@@ -195,6 +203,24 @@
   }
 
   audio.addEventListener("ended", () => {
+    // Recording ran to the end of the song (James, 2026-08-12/13): punch
+    // out, keep everything, offer to save — and STAY on this track, rewound
+    // and paused, switched to the take, so play immediately replays the
+    // performance. No auto-advance while recording, his explicit call.
+    if (tlArmed) {
+      tlArmed = false;
+      tlCommit((isFinite(audio.duration) && audio.duration) || audio.currentTime);
+      const name = window.prompt("Save your recording as:", tlNextName());
+      if (name !== null) bankTake(name);
+      store.dj = "mine";
+      if (name === null) store.takeSel[TRACKS[trackIndex].file] = ""; // the unsaved working recording
+      saveStore();
+      resetComposition();
+      audio.currentTime = 0;
+      tlRebuildPlayer(0);
+      host.emit();
+      return;
+    }
     loadTrack(pickNext(), true);
     host.emit();
   });
@@ -249,6 +275,20 @@
   }
   const tlEvents = () => timelines[TRACKS[trackIndex].file] || [];
 
+  // Named takes (2026-08-12, James's brief after losing a full-track
+  // performance to the auto-advance): each save snapshots the track's working
+  // recording under a name ("James 1", "James 2", ...). They appear in the
+  // player's set menu below a divider — zero takes, zero entries.
+  const TAKES_KEY = "lumina-takes";
+  function loadTakes() {
+    try { return JSON.parse(localStorage.getItem(TAKES_KEY)) || {}; } catch (err) { return {}; }
+  }
+  const takes = loadTakes();
+  function saveTakes() {
+    try { localStorage.setItem(TAKES_KEY, JSON.stringify(takes)); } catch (err) { /* fine */ }
+  }
+  const tlTakes = () => takes[TRACKS[trackIndex].file] || [];
+
   let tlArmed = false;
   let tlTake = [];            // moves captured since punch-in
   let tlIn = 0;               // punch-in time (audio seconds)
@@ -260,8 +300,56 @@
 
   const tlActive = () => store.dj === "mine" || tlArmed;
 
+  // Is the working recording unsaved (differs from every banked take)?
+  const tlComputeDirty = () =>
+    tlEvents().length > 0 &&
+    !tlTakes().some((t) => JSON.stringify(t.events) === JSON.stringify(tlEvents()));
+  let tlDirty = false;
+
+  function tlNextName() {
+    const list = tlTakes();
+    let n = list.length + 1;
+    while (list.some((t) => t.name === "James " + n)) n++;
+    return "James " + n;
+  }
+
+  // Which recording "your set" plays: a named take (per-track selection,
+  // newest by default), or the unsaved working recording ("" sentinel).
+  function tlSelectedTake() {
+    const list = tlTakes();
+    const name = store.takeSel[TRACKS[trackIndex].file];
+    if (name === "") return null;
+    return list.find((t) => t.name === name) || list[list.length - 1] || null;
+  }
+
+  // While armed the ghost always replays the WORKING recording (that's the
+  // overdub); otherwise "your set" plays the selected take.
+  function tlPlayEvents() {
+    if (!tlArmed && store.dj === "mine") {
+      const take = tlSelectedTake();
+      if (take) return take.events;
+    }
+    return tlEvents();
+  }
+
+  function bankTake(rawName) {
+    const evs = clone(tlEvents());
+    if (!evs.length) return;
+    const file = TRACKS[trackIndex].file;
+    const name = String(rawName || "").trim() || tlNextName();
+    const list = (takes[file] = takes[file] || []);
+    const i = list.findIndex((t) => t.name === name);
+    if (i >= 0) list[i] = { name, events: evs };
+    else list.push({ name, events: evs });
+    store.takeSel[file] = name;
+    tlDirty = false;
+    saveTakes();
+    saveStore();
+    tlRebuildPlayer(audio.currentTime);
+  }
+
   function tlRebuildPlayer(seekT) {
-    tlPlayer = TL && tlEvents().length ? TL.makePlayer(tlEvents()) : null;
+    tlPlayer = TL && tlPlayEvents().length ? TL.makePlayer(tlPlayEvents()) : null;
     if (seekT !== undefined) tlSeek(seekT);
   }
 
@@ -281,6 +369,7 @@
     tlUndo.push(clone(tlEvents()));
     if (tlUndo.length > 20) tlUndo.shift();
     timelines[TRACKS[trackIndex].file] = TL.mergeTake(tlEvents(), tlTake, tlIn, tOut);
+    tlDirty = true;
     saveTimelines();
     tlTake = [];
     tlTouched = new Set();
@@ -323,10 +412,20 @@
         shuffle: !!store.shuffle,
         perTrack: !!store.perTrack,
         dj: store.dj,
+        // What the set menu should show as selected: a specific take entry,
+        // or "mine" for the unsaved working recording.
+        djValue: (() => {
+          if (store.dj !== "mine") return store.dj;
+          const take = tlSelectedTake();
+          return take ? "take:" + tlTakes().indexOf(take) : "mine";
+        })(),
         timeline: {
           armed: tlArmed,
           count: tlEvents().length,
           takeCount: tlTake.length,
+          takes: tlTakes().map((t) => ({ name: t.name, count: t.events.length })),
+          unsaved: tlDirty && tlEvents().length > 0,
+          nextName: tlNextName(),
           loop: tlLoop,
           canUndo: tlUndo.length > 0,
           // Compact strip data: [t, kind] with 0 = control move, 1 = whole
@@ -385,6 +484,12 @@
               if (!audio.paused) stop();
               break;
             case "stop":
+              // Stop while armed = punch out and keep the take (no prompt;
+              // it lives on as the working recording).
+              if (tlArmed) {
+                tlArmed = false;
+                tlCommit(audio.currentTime);
+              }
               stop();
               audio.currentTime = 0;
               break;
@@ -409,12 +514,25 @@
               store.shuffle = !!cmd.value;
               saveStore();
               break;
-            case "dj":
-              store.dj = ["free", "claude", "mine"].includes(cmd.value) ? cmd.value : "free";
+            case "dj": {
+              // "take:N" = a named take from the set menu; "mine" = the
+              // unsaved working recording; else free/claude.
+              const v = String(cmd.value);
+              if (v.startsWith("take:")) {
+                const take = tlTakes()[Number(v.slice(5))];
+                store.dj = "mine";
+                if (take) store.takeSel[TRACKS[trackIndex].file] = take.name;
+              } else if (v === "mine") {
+                store.dj = "mine";
+                store.takeSel[TRACKS[trackIndex].file] = "";
+              } else {
+                store.dj = v === "claude" ? "claude" : "free";
+              }
               saveStore();
               resetComposition();
               tlRebuildPlayer(audio.currentTime);
               break;
+            }
           }
           break;
         case "timeline":
@@ -448,14 +566,19 @@
             case "undoTake":
               if (tlUndo.length) {
                 timelines[TRACKS[trackIndex].file] = tlUndo.pop();
+                tlDirty = tlComputeDirty();
                 saveTimelines();
                 tlRebuildPlayer(audio.currentTime);
               }
+              break;
+            case "saveTake":
+              bankTake(cmd.name);
               break;
             case "clear":
               if (tlEvents().length) {
                 tlUndo.push(clone(tlEvents()));
                 timelines[TRACKS[trackIndex].file] = [];
+                tlDirty = false;
                 saveTimelines();
                 tlRebuildPlayer();
               }
@@ -783,16 +906,35 @@
       host.command({ scope: "music", type: "player", cmd: "select", index: Number(trackEl.value) }));
     barEl.appendChild(trackEl);
     let trackSig = "";
+    // The set menu (2026-08-12): free play and claude's set up top, then a
+    // divider and James's saved takes for this track — no takes, no entries.
     const mode = document.createElement("select");
-    mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track";
-    [["free", "free play"], ["claude", "claude's set"], ["mine", "your set"]].forEach(([v, t]) => {
-      const o = document.createElement("option");
-      o.value = v;
-      o.textContent = t;
-      mode.appendChild(o);
-    });
+    mode.title = "free play = the field obeys your sliders (+reactivity); claude's set = the composed light show for this track; below the line: your recorded sets";
     mode.addEventListener("change", () => host.command({ scope: "music", type: "player", cmd: "dj", value: mode.value }));
     barEl.appendChild(mode);
+    let modeSig = null;
+    const rebuildMode = (snap) => {
+      const tl = snap.music.timeline || {};
+      const tks = tl.takes || [];
+      const sig = tks.map((t) => t.name).join("\n") + (tl.unsaved ? "u" : "");
+      if (sig === modeSig || document.activeElement === mode) return;
+      modeSig = sig;
+      mode.innerHTML = "";
+      const opt = (v, t, disabled) => {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = t;
+        if (disabled) o.disabled = true;
+        mode.appendChild(o);
+      };
+      opt("free", "free play");
+      opt("claude", "claude's set");
+      if (tks.length || tl.unsaved) {
+        opt("", "──────", true);
+        tks.forEach((t, i) => opt("take:" + i, t.name));
+        if (tl.unsaved) opt("mine", "unsaved recording");
+      }
+    };
     // Volume (James, 2026-07-31): the shared top-right speaker is hidden in
     // this world — this slider and the panel's command bar ARE the volume.
     // Both drive the shared gain through the host, so they stay in step.
@@ -849,7 +991,11 @@
         });
       }
       if (document.activeElement !== trackEl) trackEl.value = String(snap.music.trackIndex);
-      if (document.activeElement !== mode) mode.value = snap.music.dj;
+      rebuildMode(snap);
+      if (document.activeElement !== mode) {
+        mode.value = snap.music.djValue;
+        if (mode.selectedIndex < 0) mode.value = "free";
+      }
       if (document.activeElement !== volEl && snap.music.volume !== undefined) {
         volEl.value = String(Math.round(snap.music.volume * 1000));
       }

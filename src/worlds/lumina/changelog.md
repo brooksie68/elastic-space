@@ -3,6 +3,46 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-12/13 — Claude (Fable 5) — Named takes + no more lost recordings
+
+- **The bug James hit:** he recorded a full performance over Timber at Sea;
+  when the track ended, the auto-advance called `loadTrack()`, which discarded
+  the in-flight take (`tlArmed = false; tlTake = []`) without committing —
+  the whole performance was silently thrown away. Takes only ever saved on an
+  explicit punch-out.
+- **The fix (his brief, plan approved):** recording now survives every exit
+  path. Track ends while armed → auto punch-out, commit, then a save prompt
+  pre-filled "James 1"/"James 2"/... (Cancel keeps it as the unsaved working
+  recording — nothing is ever lost). Manual track switch or ■ stop while
+  armed → punch out and commit, no prompt.
+- **Named takes** (`lumina-takes` in localStorage, per track): `bankTake()`
+  snapshots the working recording under a name; saving again under the same
+  name overwrites. The working recording stays the overdub surface —
+  record/undo/clear are unchanged.
+- **The set menu is the picker (his call):** both the player bar's mode select
+  and the panel's visual-dj select now list free play + claude's set, then a
+  disabled ────── divider and the current track's takes (plus an "unsaved
+  recording" entry when the working recording differs from every saved take).
+  Zero takes = no divider, no entries. Selecting a take plays it via the
+  existing "mine" ghost path (`tlPlayEvents()` — armed always replays the
+  WORKING recording, that's the overdub contract). Both selects rebuild
+  sig-guarded (the open-dropdown house lesson).
+- Timeline card: new `save take` button (prompt, suggested name from the
+  snapshot's `nextName`) between the move count and undo; count shows
+  "— unsaved" when the working recording isn't banked.
+- Snapshot additions: `music.djValue` (menu selection incl. take index),
+  `timeline.takes/unsaved/nextName`. Sims all green (timeline 24, music 53,
+  composition 335).
+- Still localStorage-only (his call — this isn't shipping to visitors; he may
+  take the whole thing beyond Elastic Space if it keeps getting cooler).
+- **Round 2, same night (James's first live run):** save worked but the next
+  track auto-played through the save dialog, and after saving, play showed
+  only reactivity — he was still on free play and didn't know the set menu
+  was the switch. Fixed: track end while armed now STAYS on the track
+  (rewound, paused — no auto-advance, his explicit call) and switches the
+  set menu to the just-saved take (or "unsaved recording" on Cancel), so
+  pressing play immediately replays the performance.
+
 ## 2026-08-08 — Claude (Fable 5) — Audio thread reopened (review only) + two panel fixes
 
 - **James reopened the parked audio/beat thread** with a "turn a critical eye"
