@@ -84,6 +84,8 @@
     // acknowledgment reach in meters — beings notice the pod inside this,
     // full greeting at 37.5% of it (10m beings: 400 → greet at 150)
     saeNotice: 400,
+    // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
+    bldgGlow: 1.0,
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -168,6 +170,7 @@
     { key: "saelyri", label: "saelyri pop", min: 0, max: 120, step: 5, layout: true },
     { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
+    { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -419,9 +422,13 @@
           </div>
         </section>
         <div class="vs-btns">
-          <button type="button" id="vs-navb" aria-expanded="false" aria-controls="orb-nav">NAV</button>
-          <button type="button" id="vs-tune" aria-expanded="false" aria-controls="orb-tuner">TUNE</button>
-          <button type="button" id="vs-ctrl" aria-expanded="false" aria-controls="orb-controls">CTRL</button>
+          <button type="button" id="vs-navb" aria-expanded="false" aria-controls="orb-nav">NAV [N]</button>
+          <button type="button" id="vs-tune" aria-expanded="false" aria-controls="orb-tuner">TUNE [T]</button>
+          <button type="button" id="vs-ctrl" aria-expanded="false" aria-controls="orb-controls">CTRL [C]</button>
+          <div class="vs-bldg-row">
+            <select id="vs-bldg" class="vs-bldg" aria-label="building to view"><option value="">buildings…</option></select>
+            <button type="button" id="vs-view">VIEW [V]</button>
+          </div>
         </div>
         <div class="vs-wing right"></div>
       </div>
@@ -4038,6 +4045,9 @@ void main() {
     // hands ON anything = the autopilot lets go (N only toggles the panel)
     if (autoNav && e.code !== "KeyN") autoNav = null;
     if (e.code === "KeyN") setOpen("nav");
+    if (e.code === "KeyT") setOpen("tune"); // v58: deck shortcuts on every button
+    if (e.code === "KeyC") setOpen("ctrl");
+    if (e.code === "KeyV") $v("vs-view").click();
     if (e.code === "KeyH") goHome();
     if (e.code === "KeyZ") zoomTarget = 1; // magnifier off, eased back
     if (e.code === "KeyX") {
@@ -5170,6 +5180,201 @@ void main() {
     }
   })();
 
+  // ---- THE BUILDINGS (v58, first article): James's ChatGPT→Meshy tower
+  // "building-01b", lit by the guided pipeline (tmp/orb-dimension/
+  // guide_place2.py → export_bldg.py): a BLDG .bin (same layout as the robot
+  // bins, Y-up, height-normalized to 1.0), a baked surface albedo and a
+  // LIGHT MAP — both in the same cylindrical UV space; RGB = exact emissive
+  // color (amber windows / 1C9BF4 trim / C810BF service), A = window presence
+  // (unlit panes darken to glass). Served-only like the robots. TEST
+  // PLACEMENT: one instance at Mediant, hard-coded — no placement system yet;
+  // James's flight decides whether the other 29 go through the same pipe.
+  const BLDG_VS = `#version 300 es
+layout(location=0) in vec3 aPos;
+layout(location=1) in vec3 aNorm;
+layout(location=2) in vec2 aUV;
+uniform mat4 uVP;
+uniform mat4 uModel;
+out vec3 vN;
+out vec2 vUV;
+out vec3 vP;
+out vec3 vO;   // object-space position (height-normalized) for triplanar surface tiles
+out vec3 vON;  // object-space normal
+void main() {
+  vec4 wp = uModel * vec4(aPos, 1.0);
+  vP = wp.xyz;
+  vN = mat3(uModel) * aNorm;
+  vUV = aUV;
+  vO = aPos;
+  vON = aNorm;
+  gl_Position = uVP * wp;
+}`;
+  const BLDG_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform sampler2D uTex2; // pale ceramic for the struts/conduit (v58)
+uniform sampler2D uLight;
+uniform vec3 uCamPos;
+uniform float uFog;
+uniform float uMelt;
+uniform float uGlow;
+uniform float uTime;
+in vec3 vN;
+in vec2 vUV;
+in vec3 vP;
+in vec3 vO;
+in vec3 vON;
+out vec4 oC;
+${COMM_AER}
+void main() {
+  // surface: TRIPLANAR tile in object space (v58 — the cylindrical bake
+  // sheared on platform edges and annex faces; the tile now runs straight on
+  // every face). ~28 repeats over the tower's height, like the bake did.
+  vec3 an = abs(normalize(vON));
+  an = an / (an.x + an.y + an.z);
+  vec3 q = vO * 28.0;
+  // struts/conduit park on light-map row V≈0.9035 (painted-space 0.0965): pale
+  // ceramic, no windows ever — the guide's inscrutable alien member
+  float isStrut = step(0.902, vUV.y) * (1.0 - step(0.905, vUV.y));
+  vec3 base = texture(uTex, q.zy).rgb * an.x + texture(uTex, q.xz).rgb * an.y + texture(uTex, q.xy).rgb * an.z;
+  vec3 base2 = texture(uTex2, q.zy).rgb * an.x + texture(uTex2, q.xz).rgb * an.y + texture(uTex2, q.xy).rgb * an.z;
+  base = mix(base, base2 * 1.15, isStrut);
+  vec4 lm = texture(uLight, vUV) * (1.0 - isStrut);
+  vec3 N = normalize(vN);
+  // v58: the spire beacon — top 1.2% of the map is red; off, then a bright
+  // quick blink every 3 s (James's spec). Off = no emission at all.
+  float isBeacon = step(0.988, 1.0 - vUV.y) * step(0.5, lm.r) * step(lm.g, 0.3);
+  float blink = step(0.85, fract(uTime / 3.0)) * (1.0 - step(0.97, fract(uTime / 3.0)));
+  lm.rgb = mix(lm.rgb, lm.rgb * blink * 1.6, isBeacon);
+
+  float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
+  float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
+  // dark glass wherever a window exists (lit or not)
+  base = mix(base, vec3(0.015, 0.02, 0.032), lm.a * 0.9);
+  vec3 col = base * (vec3(0.16, 0.17, 0.2)
+    + key * vec3(0.9, 0.95, 1.05) * 0.9
+    + rim * vec3(0.3, 0.4, 0.55) * 0.25);
+  float rd = distance(vP, uCamPos);
+  col *= exp(-rd * uFog * 1.4);
+  col = aerial(col, rd);
+  // windows as NEON (James's spec): the pane's CENTER runs hot toward white,
+  // the OUTSIDE stays fully saturated. Two terms, both hue-exact:
+  //  core  — the pane itself: exact color, lifted toward white by uGlow but
+  //          only where the pane is (never spills), so pink stays C810BF-
+  //          shaped at its edge and whitens only in the middle
+  //  halo  — a soft bleed onto the metal around the pane, gathered from
+  //          the light map's neighborhood at LOWER intensity: the same hue,
+  //          dimmer, which reads MORE saturated, not less. Never clips.
+  // The world has no bloom pass, so both live here. v55 melt: with distance
+  // the crisp pane relaxes into its halo instead of staying razor.
+  float px = fwidth(vUV.x + vUV.y) * 4096.0;
+  float melt = clamp(px * uMelt * 0.35, 0.0, 1.0);
+  vec2 tx = vec2(1.0 / 4096.0);
+  // two kernels: TIGHT for the windows (amber stays a pane), WIDE for the
+  // neon strips (blue/pink glow). The wide kernel only admits accent-colored
+  // texels, so it can never drag pink onto a neighboring dark face.
+  vec3 halo = vec3(0.0);
+  float haloA = 0.0;
+  vec3 haloW = vec3(0.0);
+  for (int j = -2; j <= 2; j++)
+    for (int i = -2; i <= 2; i++) {
+      vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, 0.0);
+      halo += s.rgb; haloA += s.a;
+      vec3 w = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 4.0, 1.5).rgb;
+      float acc = step(w.r + 0.15, w.b + w.g * 0.5) + step(0.5, w.r) * step(0.4, w.b) * step(w.g, 0.35 * w.r);
+      haloW += w * clamp(acc, 0.0, 1.0);
+    }
+  halo *= (1.0 / 25.0);
+  haloW *= (1.0 / 25.0);
+  // hot center: white lift proportional to how far INSIDE the pane we are
+  // (the pane's own alpha at full mip vs its blurred alpha = "centeredness")
+  float inside = clamp((lm.a - haloA * (1.0 / 25.0)) * 2.0, 0.0, 1.0) * step(0.02, dot(lm.rgb, vec3(1.0)));
+  // per-family weight (James: amber windows were blurring into blobs —
+  // they must stay readable as windows; the neon accents keep full halo).
+  // amber = warm hue: r high, b low. weight 0.25 amber / 1.0 accents.
+  float amberness = clamp((lm.r - lm.b) * 3.0, 0.0, 1.0);
+  // James: windows near-crisp (tight kernel, tiny weight); blue/pink strips
+  // glow (wide accent-only kernel, big weight)
+  float wCore = mix(1.0, 0.10, amberness);
+  vec3 core = lm.rgb + vec3(1.0) * inside * inside * uGlow * 0.55 * wCore;   // toward white ONLY in the middle
+  vec3 spread = halo * uGlow * 0.06 + haloW * uGlow * 1.5;                       // pane whisper + neon bloom
+  vec3 glow = mix(core, halo * (1.0 + uGlow), melt * 0.6) + spread;
+  col += glow * exp(-rd * uFog * 0.5);
+  oC = vec4(col, 1.0);
+}`;
+  const BLDG_V = "13"; // bump on every re-export — the browser cached Thursday's light map once already
+  const bldgMesh = { ready: false, count: 0, vao: null, prog: null, list: [], seat: null };
+  (async () => {
+    try {
+      const [mesh, surf, light, surf2] = await Promise.all([
+        loadMeshBin("assets/buildings/building-01b.bin?v=" + BLDG_V, 0x424c4447), // "BLDG"
+        loadImg("assets/buildings/building-01b-surf.jpg?v=" + BLDG_V),
+        loadImg("assets/buildings/building-01b-light.png?v=" + BLDG_V),
+        loadImg("assets/buildings/pale-ceramic.jpg?v=" + BLDG_V),
+      ]);
+      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uTime", "uTex", "uTex2", "uLight"]);
+      const park = (img, unit, alpha) => {
+        const tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, alpha ? gl.RGBA8 : gl.RGB8, alpha ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, img);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.activeTexture(gl.TEXTURE0);
+      };
+      park(surf, 8, false);
+      gl.activeTexture(gl.TEXTURE0 + 8); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); gl.activeTexture(gl.TEXTURE0);
+      park(light, 9, true);
+      // crisp pane edges: NEAREST when magnified (James: "still a little blurry on the edges"), mips for distance
+      gl.activeTexture(gl.TEXTURE0 + 9); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); gl.activeTexture(gl.TEXTURE0);
+      park(surf2, 10, false);
+      gl.activeTexture(gl.TEXTURE0 + 10); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); gl.activeTexture(gl.TEXTURE0);
+      gl.useProgram(pr.p);
+      gl.uniform1i(pr.U.uTex2, 10);
+      gl.uniform1i(pr.U.uTex, 8);
+      gl.uniform1i(pr.U.uLight, 9);
+      gl.useProgram(prog);
+      bldgMesh.prog = pr;
+      bldgMesh.vao = mesh.vao;
+      bldgMesh.count = mesh.count;
+      bldgMesh.ready = true;
+    } catch (e) {
+      // no building bin — the towns stand as before
+    }
+  })();
+  // test seat: one 400 m tower standing off Mediant's core, upright,
+  // ~1.6 shell radii out so it reads against the town, not inside it
+  function seatTestBuildings() {
+    const com = COMMUNITIES[1];
+    if (!com || !com.c) return;
+    // keyed on Mediant's seat: if the ring dials move the town, the tower
+    // re-seats itself next frame (no relayout hook, no init-order coupling)
+    if (bldgMesh.seat === com.c) return;
+    bldgMesh.seat = com.c;
+    const sh = com.shellR || 8000;
+    bldgMesh.list = [{
+      name: "building 01b · tower",
+      pos: [com.c[0] + sh * 1.6, com.c[1] - 200, com.c[2] + sh * 0.4], h: 400, yaw: 0.6,
+      // vantage: James dictates the viewing seat per building (his numbers,
+      // 2026-08-15) — the view button jumps here, nose on the tower's middle
+      vantage: [7167, 2957, 125247],
+    }];
+  }
+  const bldgMat = new Float32Array(16);
+  function bldgModel(b) {
+    const c = Math.cos(b.yaw), s = Math.sin(b.yaw);
+    bldgMat[0] = c * b.h; bldgMat[1] = 0; bldgMat[2] = -s * b.h; bldgMat[3] = 0;
+    bldgMat[4] = 0; bldgMat[5] = b.h; bldgMat[6] = 0; bldgMat[7] = 0;
+    bldgMat[8] = s * b.h; bldgMat[9] = 0; bldgMat[10] = c * b.h; bldgMat[11] = 0;
+    // v49 camera-relative: seat in SHIP space (float64 subtraction here)
+    bldgMat[12] = b.pos[0] - cam.pos[0];
+    bldgMat[13] = b.pos[1] - cam.pos[1];
+    bldgMat[14] = b.pos[2] - cam.pos[2];
+    bldgMat[15] = 1;
+  }
+
   // column-major model matrix for one robot: nose along its smoothed facing
   const robotMat = new Float32Array(16);
   function robotModel(rb, t) {
@@ -5830,6 +6035,27 @@ void main() {
         }
         gl.bindVertexArray(null);
       }
+      if (bldgMesh.ready) seatTestBuildings(); // lazy + self-re-seating; no init-order coupling
+      if (bldgMesh.ready && bldgMesh.list.length) {
+        // the buildings (v58): opaque, own surface + light map, ship space
+        gl.useProgram(bldgMesh.prog.p);
+        gl.bindVertexArray(bldgMesh.vao);
+        gl.uniformMatrix4fv(bldgMesh.prog.U.uVP, false, vp);
+        gl.uniform3fv(bldgMesh.prog.U.uCamPos, [0, 0, 0]);
+        gl.uniform1f(bldgMesh.prog.U.uFog, cfg.haze / 18000);
+        gl.uniform1f(bldgMesh.prog.U.uAer, cfg.aerial / 120000);
+        gl.uniform1f(bldgMesh.prog.U.uMelt, cfg.melt);
+        gl.uniform1f(bldgMesh.prog.U.uGlow, cfg.bldgGlow);
+        gl.uniform1f(bldgMesh.prog.U.uTime, t);
+        for (const b of bldgMesh.list) {
+          const rdx = b.pos[0] - cam.pos[0], rdy = b.pos[1] - cam.pos[1], rdz = b.pos[2] - cam.pos[2];
+          if (rdx * rdx + rdy * rdy + rdz * rdz > 9e10) continue; // > 300 km
+          bldgModel(b);
+          gl.uniformMatrix4fv(bldgMesh.prog.U.uModel, false, bldgMat);
+          gl.drawElements(gl.TRIANGLES, bldgMesh.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.bindVertexArray(null);
+      }
       if (commDraw.length) {
         // the Cadence cores: opaque metal + webbing write depth like the bone
         gl.useProgram(commGL.solid.p);
@@ -6123,7 +6349,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice"] },
+    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice", "bldgGlow"] },
     { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
@@ -6296,7 +6522,62 @@ void main() {
   refreshSpawnUi();
   spawnRow.append(capP, stockP, spawnStat);
   panel.appendChild(spawnRow);
+
   document.body.appendChild(panel);
+
+  // v58: VIEW BUILDING on the deck (James: "put the button directly onto the
+  // control panel"). Dropdown of placed buildings + VIEW; the ship jumps to
+  // the building's DICTATED vantage (his coordinates, per building), nose on
+  // the tower's middle, all motion zeroed (same resets as H). The dropdown
+  // remembers the last pick across reloads: reload → click → looking at it.
+  const bldgSel = $v("vs-bldg");
+  const viewBtn = $v("vs-view");
+  const BLDG_PICK_KEY = "orb-bldg-pick";
+  function refreshBldgUi() {
+    const list = bldgMesh.list || [];
+    const want = bldgSel.value || localStorage.getItem(BLDG_PICK_KEY) || "";
+    bldgSel.innerHTML = "";
+    if (!list.length) {
+      const o = document.createElement("option");
+      o.value = ""; o.textContent = "buildings…";
+      bldgSel.appendChild(o);
+      return;
+    }
+    list.forEach((b, i) => {
+      const o = document.createElement("option");
+      o.value = b.name;
+      o.textContent = b.name;
+      bldgSel.appendChild(o);
+    });
+    if ([...bldgSel.options].some((o) => o.value === want)) bldgSel.value = want;
+  }
+  bldgSel.addEventListener("change", () => localStorage.setItem(BLDG_PICK_KEY, bldgSel.value));
+  bldgSel.addEventListener("focus", refreshBldgUi);
+  bldgSel.addEventListener("mousedown", refreshBldgUi);
+  viewBtn.addEventListener("click", () => {
+    refreshBldgUi();
+    const b = (bldgMesh.list || []).find((x) => x.name === bldgSel.value) || (bldgMesh.list || [])[0];
+    if (!b) return;
+    const mid = [b.pos[0], b.pos[1] + b.h * 0.5, b.pos[2]];
+    let pos;
+    if (b.vantage) pos = b.vantage.slice();
+    else {
+      // no dictated seat yet: level with the middle, 2.6 heights back toward Korrudan
+      let dir = [mid[0], 0, mid[2]]; const dl = Math.hypot(dir[0], dir[2]) || 1; dir = [dir[0] / dl, 0, dir[2] / dl];
+      pos = [mid[0] - dir[0] * b.h * 2.6, mid[1], mid[2] - dir[2] * b.h * 2.6];
+    }
+    const f = [mid[0] - pos[0], mid[1] - pos[1], mid[2] - pos[2]];
+    applySpawnPose({ pos, f, u: [0, 1, 0] });
+    pendingYaw = 0; pendingPitch = 0; lookRateYaw = 0; lookRatePitch = 0;
+    stickLive = false; rollVel = 0; rollShown = 0; leveling = false;
+    thrust = 0; impulse = 0; overdrive = false; autoNav = null;
+    localStorage.setItem(BLDG_PICK_KEY, b.name);
+    viewBtn.blur();
+  });
+  // the list seats lazily after the mesh loads — refresh once it's there
+  const bldgUiTimer = setInterval(() => {
+    if (bldgMesh.list && bldgMesh.list.length) { refreshBldgUi(); clearInterval(bldgUiTimer); }
+  }, 500);
 
   // ---- the controls card (v37) — CTRL on the deck opens the full reference
   const ctrlCard = document.createElement("section");
@@ -6324,7 +6605,8 @@ void main() {
         through the ship; it never changes where you're headed</dd>
       <dt>R</dt><dd>level off</dd>
       <dt>H</dt><dd>return home</dd>
-      <dt>N</dt><dd>nav panel on / off</dd>
+      <dt>N / T / C</dt><dd>nav · tune · controls panels on / off</dd>
+      <dt>V</dt><dd>view building — jump to the picked building's vantage</dd>
       <dt>lock-on</dt><dd>hold your nose on the orange ring 3s until it
         brightens, then click inside it — the ship flies itself there and
         coasts in; touching any control releases it</dd>

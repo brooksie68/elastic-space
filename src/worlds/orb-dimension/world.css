@@ -952,3 +952,26 @@ body::after {
   .mist-a,
   .mist-b { animation: none; }
 }
+
+/* v58: building picker on the deck — four equal rows: NAV / TUNE / CTRL /
+   [dropdown + VIEW]. Every row fills the column height equally so the
+   buttons are tall enough to hit; the select is styled like the buttons and
+   its text is the deck's light blue (browser default black was unreadable). */
+.vs-btns > button,
+.vs-btns > .vs-bldg-row { flex: 1 1 0; min-height: 0; }
+.vs-btns > button { display: flex; align-items: center; justify-content: center; }
+.vs-bldg-row { display: flex; gap: 4px; align-items: stretch; pointer-events: auto; }
+.vs-bldg-row select.vs-bldg {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 1px 6px 2px;
+  font: inherit;
+  color: #cfe3ff;
+  background: linear-gradient(165deg, rgba(32, 52, 78, 0.60), rgba(7, 13, 23, 0.88) 52%, rgba(12, 20, 36, 0.78));
+  border: 1px solid rgba(120, 170, 220, 0.45);
+  border-top-color: rgba(190, 225, 255, 0.55);
+  border-radius: 7px;
+  text-overflow: ellipsis;
+}
+.vs-bldg-row select.vs-bldg option { background: #0b1220; color: #cfe3ff; }
+.vs-bldg-row > button { flex: 0 0 auto; }
