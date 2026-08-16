@@ -3,6 +3,48 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-14/15 — claude-fable (v58 — THE BUILDINGS: building-01b, the reference article)
+
+James's flight verdicts (2026-08-14): the Saelyri are "teensy" (wants 600
+per town, 1,000 at the capital — parked behind the look), and the whole
+station "looks like featureless Blender shapes... everything is getting
+skinned." His plan, executed over two nights: real building/tech meshes
+(ChatGPT concept → Meshy), lit the way a GPT reference paints them, dressed
+in a seamless-tile library. Full recipe + contract + dead ends:
+`buildings.md` (READ IT). Highlights:
+
+- 33 concept images (13 iconic incl. four 01 towers, 7 generic, 10 tech,
+  turret ×2 views); 14-tile Meshy texture library (42 cr, contact sheet).
+- INTAKE: Meshy raw GLB (5.9 M verts) → Node hash weld (1 s; Blender's
+  welds hung 25 min twice) → Blender dissolve+collapse → 45k tris. Meshy's
+  own remesher melts edges at any count — never use it.
+- LIGHTING: the GPT lit image is a GUIDE, not a texture. guide_extract2
+  groups panes into ~150 structures; guide_place2 raycasts them onto the
+  mesh and paints an authored cylindrical light map (own window primitives
+  with unlit panes + life variants; recesses → a column per flute; disc rims
+  → two rows each; annex grids mirrored; cupola rows + blue + pink ring; red
+  spire beacon blinking every 3 s; pink conduits capped below the saucers;
+  landing-pad blue frames on planar pad islands; struts/conduit dead-mapped
+  → pale ceramic, no windows). Colors exact: 1C9BF4 / C810BF / FF2020.
+  Verified pixel-exact. Twenty-three passes with James driving by eye.
+- WORLD: BLDG .bin (robot-bin layout, Y-up, height=1) + light map 4096 +
+  triplanar tile surface; BLDG_VS/FS; neon shading (hot center, saturated
+  outside; tight amber kernel, wide accent-only kernel); `bldgGlow` dial;
+  one instance seated off Mediant at 400 m with a DICTATED vantage
+  (7167/2957/125247); VIEW picker on the deck (dropdown + VIEW [V],
+  persisted), deck shortcuts N/T/C/V with bracket labels, four equal rows.
+  All sims + init-smoke + shader-check + console-fit green.
+- LESSONS (all in buildings.md): the light map was upside-down for two
+  rounds (Blender bottom-up vs browser top-down — export flips V; verify with
+  check_export.py); cache-bust `BLDG_V` on every export; camera matching by
+  silhouette IoU is useless on a round tower; halo KERNEL width smears,
+  WEIGHT dims — don't confuse them; magenta rows adjacent to dead rows bleed
+  through the halo kernel (lip row retired).
+- James, 2026-08-15: "I think we're green. Go. Go. Go on this building."
+  NEXT: run the other 29 through the same pipe (his GPT lit guides per
+  building), then placement system, conduit spurs, flashers, ad atlas +
+  alien script; Saelyri population/crowd design after the look overhaul.
+
 ## 2026-08-01 — claude-fable (v57 — the crust grows up: real buildings)
 
 James's close-up verdict on the v52 crust ("the windows are way too big...

@@ -180,6 +180,20 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   the kind-60 shader divides y by 10. (6) Chords: SAE_CHORDS per family,
   25s per-being + 1.6s global spacing — never let a crowd stack chords.
   Phase B2 (fleet community routes + society sound beds) needs its own go.
+- THE BUILDINGS (v58, 2026-08-14/15): read `buildings.md` in this folder
+  FIRST — it is the whole pipeline (concept → GPT lit guide → Meshy raw GLB →
+  Node weld + Blender decimate → guide_extract2/guide_place2 → export_bldg →
+  BLDG .bin + light map) and the list of dead ends. Load-bearing rules:
+  (1) placement of lights comes from the GPT GUIDE via raycast; we author the
+  panes — never rule systems, never pixel projection, never silhouette sweeps.
+  (2) `BLDG_V` in world.js MUST be bumped on every export (browser caches
+  the light map). (3) The light map is cylindrical with reserved rows (pad
+  strip, dead rows, strut row 0.0965 → pale ceramic + no windows, beacon
+  row) and the export flips V. (4) Neon: tight kernel/whisper weight for
+  amber, wide accent-only kernel/big weight for blue+pink — change weights
+  to dim, never widen amber's kernel. (5) Every building carries a
+  DICTATED `vantage` (James's coordinates); VIEW [V] on the deck jumps to
+  it. Deck shortcuts N/T/C/V, four equal rows, console-fit must stay 0px.
 - THE BEING EDITOR (`src/labs/being-editor/`, v54): the Saelyri look-dev lab,
   promoted from tmp/orb-dimension/saelyri-lab.html (superseded, kept as v53
   reference). A lab, not a world — no drift/registry; linked from the admin

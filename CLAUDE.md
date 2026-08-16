@@ -119,6 +119,26 @@ consistent. `npm run check-worlds` audits every world against the contract.
    work verified good and owned as v56; see memory task-queue-auto-worker.
    AWAITING JAMES: B1 first flight verdicts, crust v57 in-flight look,
    pinned-reticle + roll-dial feel.
+   2026-08-14/15 (JAMES FLEW B1 + v57 — the verdicts): Saelyri "teensy and
+   sparse" → wants ~600/town, 1,000 at the capital, purposeful crowd
+   behavior (groups doing things, pairs, streams — Jerry's Pool-style tuning;
+   PARKED behind the look overhaul at his call). Windows better but the whole
+   station "looks like featureless Blender shapes... everything is getting
+   skinned" (only the Korrudan bone keeps its look). Reticle fine, nebulae
+   fine (crossed off), Being Editor loose end dropped. **v58 THE BUILDINGS
+   — building-01b SHIPPED as the reference article** after two nights and
+   23 lighting passes with James by eye: ChatGPT gray concepts (33 images
+   in tmp/orb-dimension/building models/) → Meshy raw GLB → Node weld +
+   Blender decimate (45k) → GPT-lit image as a GUIDE → structures raycast
+   onto the mesh → authored cylindrical light map (exact 1C9BF4/C810BF/
+   FF2020, unlit panes, neon shading, red 3-s beacon, landing pads, pale
+   ceramic struts) → BLDG .bin in world; VIEW [V] deck picker with James's
+   DICTATED vantage per building; 14-tile texture library (42 cr). His
+   verdict: "I think we're green. Go. Go. Go." THE PIPELINE + CONTRACT +
+   DEAD ENDS: `src/worlds/orb-dimension/buildings.md` — READ IT FIRST for
+   any building work. NEXT: the other 29 buildings through the same pipe
+   (he supplies GPT lit guides), then placement system, conduit spurs,
+   flashers, ad atlas + alien script, then the Saelyri crowd design.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
