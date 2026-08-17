@@ -3,6 +3,92 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-08-16 — claude-fable (v59 — THREE TOWERS, ONE PIPE: 01, 01a, 01b; placer v3; metal; James: "hella good")
+
+The night in one line: James came to run "the resources" (the buildings)
+through the pipe one at a time; the pipe turned out to be hard-wired to 01b
+(his fair call-out: "you promised one or two minutes"), got made repeatable,
+then rebuilt once more into placer v3 after his second call-out ("a nerdy
+sixth grader could look at this and go, there should be windows here, and
+none on that strut") — and ended with three towers standing off Mediant that
+he prefers to the GPT references. Full recipe/contract: `buildings.md`
+(rewritten tonight; READ IT). Working order stays alphabetical: 02-sphere
+next (new family — expect classifier work).
+
+- **renders/ purge** ("I can't stand it"): 120 iteration files deleted;
+  seven kinds of file per building, `<name>-GPT/-back-GPT/-highres/-welded/
+  -local/-guide(-back)/-proof(-back)/-compare`. 01b's `example.png` etc.
+  renamed; scripts repointed. Both nights James saved the raw Meshy GLB as
+  `-local` — Claude renames to `-highres`; watch for it.
+- **The pipe is name-driven**: `weld_bldg.mjs <name>` (the Node weld,
+  finally a script), `decimate_bldg.py -- <name>`, `guide_extract2.py` /
+  `guide_place3.py` / `export_bldg.py` all read `BLDG` (+ `BLDG_SIDE=back`,
+  `BLDG_AZ/EL`, `BLDG_AZ_BACK/EL_BACK`, `BLDG_TILE`), `rot_sheet.py` for the
+  camera pick. Export writes the surface TILE (the 2048 bake was dead
+  weight, gone). Timings: weld 2 s, decimate 25 s, extract 5 s, place+proof
+  5 s, export 7 s.
+- **Back guides**: James shoots the Meshy model from behind, five-word GPT
+  prompt in the same thread — first try, both 01a and 01. (Claude's Blender
+  clay plate for that purpose was "a joke"; dropped.) The extractor takes a
+  side; the placer raycasts the back from its own camera and invents
+  nothing about the back when a guide exists.
+- **PLACER v3 (`guide_place3.py`)** — the structural change of the night,
+  built through three self-critique rounds on 01a with no James in the loop
+  (his ask: "criticize your own output and tune it... without me spending
+  forty-five minutes on every building"): the light map is an ISLAND ATLAS
+  — off-shaft volumes (platforms, drum annexes, pods) get their own patches
+  and are painted in their own space (they had NO light-map real estate in
+  v58; the drum physically couldn't take a window); struts/arms/zig-zag
+  members are STRUCTURE by an inward-thickness test (7% of height) and any
+  guide light on them is rejected; trims are 2 px, edge trims run the whole
+  edge on thin rim patches; curved walls (the drum) are merged from their
+  slim facets and unwrapped around their own axis; structures straddling
+  shaft+drum are SPLIT per surface (were majority-voted); dense sampling
+  along a structure's long axis (3×3 cut shared columns to stubs); the
+  extractor's stacked-merge gap 200→40 px (it was gluing drum columns to
+  shaft columns above them); a disc vs a drum is decided by angular
+  coverage at that height, not a fixed 0.10–0.78 band (01's drum sits
+  high). Fair proof (key light rides each camera) + `<name>-compare.png`
+  is the judged artefact; `DBG=1` for per-island counts.
+- **In-world bugs James caught from the seat, all fixed**: top-down
+  "crazy whack" (flat lids at one height sampled one map row and smeared it
+  — lids now dead-mapped AND the shader masks near-horizontal body faces);
+  everything turned WHITE (my dead row sat inside the strut band the shader
+  paints ceramic — moved to 0.0915); pad frames "too thick by far, kills
+  the sense of size" (6→2 px); pie-wedge highlight on the faceted saucer
+  top (specular scaled down on lids); the mottling on the wear tile read
+  as clouds on flat tops (0.30→0.10).
+- **METAL** ("looks like cardboard... Grid Placeholder texture 001... like
+  upholstery for a rectory"): shader got specular (key + glint light,
+  shininess from tile wear, fresnel sheen), base ×0.55 darker (his read
+  after: "dark gunmetal, not black" — fine), triplanar repeat 28→16
+  (~25 m tiles — "large sheets, not a grid of little panels with rivets").
+  Four Meshy tiles (27 cr, his GPT material brief as the source — "dark
+  architectural metal": blackened steel / gunmetal / carbon alloy, panel-
+  to-panel value variation, restrained aging, no rust): `armor-sheet-a`,
+  `armor-sheet-b-seamless`, `armor-sheet-b-weathered` (B + wear lifted off
+  a worn variant; DEFAULT), `strut-alloy` (replaced pale ceramic on
+  struts). Meshy tiles need a wrap-blend to tile. 01b wears A, 01a/01
+  weathered-B for his comparison — verdict pending.
+- **world.js**: `BLDG_KINDS` table (per-kind VAO + textures, missing kinds
+  skipped), three kinds seated 900 m apart off Mediant; **saved vantages**
+  (his ask: **+** right of VIEW, name prompt, own section under a rule in
+  the dropdown, shift-click deletes; localStorage `orb-vantages`); shader
+  wall mask + metal; BLDG_V 13→26. Nine sims + shader-check + console-fit
+  green throughout.
+- **Verdicts**: 01a first pass "so so very far off... heavy sigh" →
+  after v3 + metal + tiles: "this looks better", "it's a keeper" (the
+  metal); 01 (the tallest, arm + drum + four platforms, both guides): "That
+  actually looks hella good. I'm pleased... I prefer yours to the GPT
+  versions."
+- Lessons banked: state what the pipeline IS ("windows where the guide has
+  windows", never pixel-faithful) before he squints at a proof; tell him
+  WHERE to look (in-world, which building) — "one minute I'm looking at
+  buildings in space, next you're talking about some sheet"; no jargon.
+
+AWAITING JAMES: sheet-A vs weathered-B (01b vs 01a/01), his vantage
+numbers per building (or he saves his own now), then 02-sphere.
+
 ## 2026-08-14/15 — claude-fable (v58 — THE BUILDINGS: building-01b, the reference article)
 
 James's flight verdicts (2026-08-14): the Saelyri are "teensy" (wants 600

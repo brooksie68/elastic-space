@@ -428,6 +428,7 @@
           <div class="vs-bldg-row">
             <select id="vs-bldg" class="vs-bldg" aria-label="building to view"><option value="">buildings…</option></select>
             <button type="button" id="vs-view">VIEW [V]</button>
+            <button type="button" id="vs-vpadd" title="save this vantage by name (shift-click: delete the selected one)">+</button>
           </div>
         </div>
         <div class="vs-wing right"></div>
@@ -5212,7 +5213,7 @@ void main() {
   const BLDG_FS = `#version 300 es
 precision highp float;
 uniform sampler2D uTex;
-uniform sampler2D uTex2; // pale ceramic for the struts/conduit (v58)
+uniform sampler2D uTex2; // strut alloy for the struts/arms/conduit (v59; was pale ceramic v58)
 uniform sampler2D uLight;
 uniform vec3 uCamPos;
 uniform float uFog;
@@ -5232,14 +5233,20 @@ void main() {
   // every face). ~28 repeats over the tower's height, like the bake did.
   vec3 an = abs(normalize(vON));
   an = an / (an.x + an.y + an.z);
-  vec3 q = vO * 28.0;
+  vec3 q = vO * 16.0;   // v59: ~25 m per tile on a 400 m tower — large formed sheets, not a fine grid (James)
   // struts/conduit park on light-map row V≈0.9035 (painted-space 0.0965): pale
   // ceramic, no windows ever — the guide's inscrutable alien member
   float isStrut = step(0.902, vUV.y) * (1.0 - step(0.905, vUV.y));
   vec3 base = texture(uTex, q.zy).rgb * an.x + texture(uTex, q.xz).rgb * an.y + texture(uTex, q.xy).rgb * an.z;
   vec3 base2 = texture(uTex2, q.zy).rgb * an.x + texture(uTex2, q.xz).rgb * an.y + texture(uTex2, q.xy).rgb * an.z;
-  base = mix(base, base2 * 1.15, isStrut);
+  base = mix(base, base2 * 0.8, isStrut);   // v59: machined pale alloy, a notch under the ceramic's brightness
   vec4 lm = texture(uLight, vUV) * (1.0 - isStrut);
+  // v59: the tower BODY is cylindrically mapped, so a near-horizontal face (saucer top, cupola cap, domed lids)
+  // sits at one map row and would smear it across the whole face (James's top-down "crazy whack"). Body rows are
+  // vUV.y < 0.685 (painted V > 0.315); the island atlas above that (platform patches, pads) is planar and exempt.
+  float bodyRow = 1.0 - step(0.685, vUV.y);
+  float wall = 1.0 - smoothstep(0.40, 0.55, abs(normalize(vON).y));
+  lm *= mix(1.0, wall, bodyRow);
   vec3 N = normalize(vN);
   // v58: the spire beacon — top 1.2% of the map is red; off, then a bright
   // quick blink every 3 s (James's spec). Off = no emission at all.
@@ -5247,13 +5254,30 @@ void main() {
   float blink = step(0.85, fract(uTime / 3.0)) * (1.0 - step(0.97, fract(uTime / 3.0)));
   lm.rgb = mix(lm.rgb, lm.rgb * blink * 1.6, isBeacon);
 
-  float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
+  vec3 L1 = normalize(vec3(-0.4, 0.75, 0.5));
+  vec3 L2 = normalize(vec3(0.6, 0.2, -0.75));
+  float key = max(dot(N, L1), 0.0);
   float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
   // dark glass wherever a window exists (lit or not)
   base = mix(base, vec3(0.015, 0.02, 0.032), lm.a * 0.9);
-  vec3 col = base * (vec3(0.16, 0.17, 0.2)
-    + key * vec3(0.9, 0.95, 1.05) * 0.9
-    + rim * vec3(0.3, 0.4, 0.55) * 0.25);
+  // v59 METAL (James: "it looks like cardboard... no reflectivity, no wear"): dark gunmetal with a real specular
+  // response. Roughness follows the tile's wear (bright scuffed corners = polished = tighter/brighter highlight),
+  // two highlight lights (key + a glint from behind-right), and a fresnel rim so silhouettes catch a cool sheen.
+  vec3 Vv = normalize(-vP);                       // camera at the ship-space origin
+  float wear = clamp(dot(base, vec3(0.333)) * 3.0, 0.0, 1.0);
+  float shin = mix(14.0, 40.0, wear);
+  // big flat plates (saucer tops, platforms) are faceted, so a strong highlight snaps wedge-to-wedge — keep the
+  // specular modest there: scale by how vertical the face is (walls glint, lids only sheen)
+  float wallness = 1.0 - smoothstep(0.35, 0.8, abs(normalize(vON).y));
+  float spScale = mix(0.25, 1.0, wallness);
+  float sp1 = pow(max(dot(N, normalize(L1 + Vv)), 0.0), shin) * (0.35 + 0.65 * wear) * spScale;
+  float sp2 = pow(max(dot(N, normalize(L2 + Vv)), 0.0), shin * 0.6) * (0.25 + 0.45 * wear) * spScale;
+  float fres = pow(1.0 - max(dot(N, Vv), 0.0), 4.0);
+  vec3 col = base * 0.55 * (vec3(0.14, 0.15, 0.18)
+    + key * vec3(0.9, 0.95, 1.05) * 0.55
+    + rim * vec3(0.3, 0.4, 0.55) * 0.25)
+    + (sp1 * vec3(0.85, 0.9, 1.0) + sp2 * vec3(0.7, 0.8, 1.0)) * 0.55 * (1.0 - lm.a * 0.7)
+    + fres * vec3(0.18, 0.24, 0.34) * 0.5;
   float rd = distance(vP, uCamPos);
   col *= exp(-rd * uFog * 1.4);
   col = aerial(col, rd);
@@ -5302,65 +5326,81 @@ void main() {
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "13"; // bump on every re-export — the browser cached Thursday's light map once already
-  const bldgMesh = { ready: false, count: 0, vao: null, prog: null, list: [], seat: null };
+  const BLDG_V = "26"; // bump on every re-export — the browser cached Thursday's light map once already
+  // THE BUILDING KINDS (v59): every article that has been through the pipe.
+  // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
+  // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
+  // ceramic (unit 10) is shared. Add a row per export; seatTestBuildings()
+  // seats one test instance per kind. `vantage` = James's DICTATED seat (his
+  // coordinates) — null until he dictates one (VIEW then uses the fallback).
+  const BLDG_KINDS = [
+    { id: "building-01b", label: "building 01b · tower", vantage: [7167, 2957, 125247] },
+    { id: "building-01a-tower", label: "building 01a · tower", vantage: null },
+    { id: "building-01-tower", label: "building 01 · tower", vantage: null },
+  ];
+  const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
     try {
-      const [mesh, surf, light, surf2] = await Promise.all([
-        loadMeshBin("assets/buildings/building-01b.bin?v=" + BLDG_V, 0x424c4447), // "BLDG"
-        loadImg("assets/buildings/building-01b-surf.jpg?v=" + BLDG_V),
-        loadImg("assets/buildings/building-01b-light.png?v=" + BLDG_V),
-        loadImg("assets/buildings/pale-ceramic.jpg?v=" + BLDG_V),
-      ]);
       const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uTime", "uTex", "uTex2", "uLight"]);
-      const park = (img, unit, alpha) => {
+      const mkTex = (img, alpha, nearestMag) => {
         const tex = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.activeTexture(gl.TEXTURE0 + 11); // scratch unit for upload; draw binds per kind
         gl.bindTexture(gl.TEXTURE_2D, tex);
         gl.texImage2D(gl.TEXTURE_2D, 0, alpha ? gl.RGBA8 : gl.RGB8, alpha ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, img);
         gl.generateMipmap(gl.TEXTURE_2D);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        // crisp pane edges: NEAREST when magnified (James: "still a little blurry on the edges"), mips for distance
+        if (nearestMag) gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, alpha ? gl.CLAMP_TO_EDGE : gl.REPEAT);
+        gl.bindTexture(gl.TEXTURE_2D, null);
         gl.activeTexture(gl.TEXTURE0);
+        return tex;
       };
-      park(surf, 8, false);
-      gl.activeTexture(gl.TEXTURE0 + 8); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); gl.activeTexture(gl.TEXTURE0);
-      park(light, 9, true);
-      // crisp pane edges: NEAREST when magnified (James: "still a little blurry on the edges"), mips for distance
-      gl.activeTexture(gl.TEXTURE0 + 9); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST); gl.activeTexture(gl.TEXTURE0);
-      park(surf2, 10, false);
-      gl.activeTexture(gl.TEXTURE0 + 10); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); gl.activeTexture(gl.TEXTURE0);
+      const ceramic = mkTex(await loadImg("assets/buildings/strut-alloy.jpg?v=" + BLDG_V), false, false);
+      gl.activeTexture(gl.TEXTURE0 + 10); gl.bindTexture(gl.TEXTURE_2D, ceramic); gl.activeTexture(gl.TEXTURE0);
+      // load every kind; a missing one is skipped, never fatal (partial fleets are fine mid-pipeline)
+      const loaded = await Promise.all(BLDG_KINDS.map(async (k) => {
+        try {
+          const [mesh, surf, light] = await Promise.all([
+            loadMeshBin("assets/buildings/" + k.id + ".bin?v=" + BLDG_V, 0x424c4447), // "BLDG"
+            loadImg("assets/buildings/" + k.id + "-surf.jpg?v=" + BLDG_V),
+            loadImg("assets/buildings/" + k.id + "-light.png?v=" + BLDG_V),
+          ]);
+          return { ...k, vao: mesh.vao, count: mesh.count, texSurf: mkTex(surf, false, false), texLight: mkTex(light, true, true) };
+        } catch (e) { return null; }
+      }));
+      bldgMesh.kinds = loaded.filter(Boolean);
+      if (!bldgMesh.kinds.length) return;
       gl.useProgram(pr.p);
       gl.uniform1i(pr.U.uTex2, 10);
       gl.uniform1i(pr.U.uTex, 8);
       gl.uniform1i(pr.U.uLight, 9);
       gl.useProgram(prog);
       bldgMesh.prog = pr;
-      bldgMesh.vao = mesh.vao;
-      bldgMesh.count = mesh.count;
       bldgMesh.ready = true;
     } catch (e) {
-      // no building bin — the towns stand as before
+      // no building bins — the towns stand as before
     }
   })();
-  // test seat: one 400 m tower standing off Mediant's core, upright,
-  // ~1.6 shell radii out so it reads against the town, not inside it
+  // test seats: one 400 m tower per kind standing off Mediant's core, upright,
+  // ~1.6 shell radii out so it reads against the town, not inside it; kinds
+  // line up 900 m apart along x so each can be judged on its own
   function seatTestBuildings() {
     const com = COMMUNITIES[1];
     if (!com || !com.c) return;
-    // keyed on Mediant's seat: if the ring dials move the town, the tower
-    // re-seats itself next frame (no relayout hook, no init-order coupling)
+    // keyed on Mediant's seat: if the ring dials move the town, the towers
+    // re-seat themselves next frame (no relayout hook, no init-order coupling)
     if (bldgMesh.seat === com.c) return;
     bldgMesh.seat = com.c;
     const sh = com.shellR || 8000;
-    bldgMesh.list = [{
-      name: "building 01b · tower",
-      pos: [com.c[0] + sh * 1.6, com.c[1] - 200, com.c[2] + sh * 0.4], h: 400, yaw: 0.6,
+    bldgMesh.list = bldgMesh.kinds.map((k, i) => ({
+      name: k.label, kind: k,
+      pos: [com.c[0] + sh * 1.6 + i * 900, com.c[1] - 200, com.c[2] + sh * 0.4], h: 400, yaw: 0.6,
       // vantage: James dictates the viewing seat per building (his numbers,
-      // 2026-08-15) — the view button jumps here, nose on the tower's middle
-      vantage: [7167, 2957, 125247],
-    }];
+      // 2026-08-15 for 01b) — the view button jumps here, nose on the tower's middle
+      vantage: k.vantage,
+    }));
   }
   const bldgMat = new Float32Array(16);
   function bldgModel(b) {
@@ -6039,7 +6079,6 @@ void main() {
       if (bldgMesh.ready && bldgMesh.list.length) {
         // the buildings (v58): opaque, own surface + light map, ship space
         gl.useProgram(bldgMesh.prog.p);
-        gl.bindVertexArray(bldgMesh.vao);
         gl.uniformMatrix4fv(bldgMesh.prog.U.uVP, false, vp);
         gl.uniform3fv(bldgMesh.prog.U.uCamPos, [0, 0, 0]);
         gl.uniform1f(bldgMesh.prog.U.uFog, cfg.haze / 18000);
@@ -6047,12 +6086,24 @@ void main() {
         gl.uniform1f(bldgMesh.prog.U.uMelt, cfg.melt);
         gl.uniform1f(bldgMesh.prog.U.uGlow, cfg.bldgGlow);
         gl.uniform1f(bldgMesh.prog.U.uTime, t);
-        for (const b of bldgMesh.list) {
-          const rdx = b.pos[0] - cam.pos[0], rdy = b.pos[1] - cam.pos[1], rdz = b.pos[2] - cam.pos[2];
-          if (rdx * rdx + rdy * rdy + rdz * rdz > 9e10) continue; // > 300 km
-          bldgModel(b);
-          gl.uniformMatrix4fv(bldgMesh.prog.U.uModel, false, bldgMat);
-          gl.drawElements(gl.TRIANGLES, bldgMesh.count, gl.UNSIGNED_INT, 0);
+        // v59: one VAO + surf/light bind per KIND, then its instances
+        for (const k of bldgMesh.kinds) {
+          let bound = false;
+          for (const b of bldgMesh.list) {
+            if (b.kind !== k) continue;
+            const rdx = b.pos[0] - cam.pos[0], rdy = b.pos[1] - cam.pos[1], rdz = b.pos[2] - cam.pos[2];
+            if (rdx * rdx + rdy * rdy + rdz * rdz > 9e10) continue; // > 300 km
+            if (!bound) {
+              gl.bindVertexArray(k.vao);
+              gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf);
+              gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight);
+              gl.activeTexture(gl.TEXTURE0);
+              bound = true;
+            }
+            bldgModel(b);
+            gl.uniformMatrix4fv(bldgMesh.prog.U.uModel, false, bldgMat);
+            gl.drawElements(gl.TRIANGLES, k.count, gl.UNSIGNED_INT, 0);
+          }
         }
         gl.bindVertexArray(null);
       }
@@ -6533,30 +6584,60 @@ void main() {
   const bldgSel = $v("vs-bldg");
   const viewBtn = $v("vs-view");
   const BLDG_PICK_KEY = "orb-bldg-pick";
+  // v59 (James): SAVED VANTAGES — the + button saves the current pose by name into
+  // its own section of the dropdown (below a rule); VIEW pops to it. localStorage
+  // `orb-vantages` = [{name,pos,f,u}]. Shift-click + deletes the selected one.
+  const VP_KEY = "orb-vantages";
+  const VP_PFX = "vp:";
+  const loadVps = () => { try { return JSON.parse(localStorage.getItem(VP_KEY) || "[]"); } catch (e) { return []; } };
+  const saveVps = (v) => localStorage.setItem(VP_KEY, JSON.stringify(v));
   function refreshBldgUi() {
     const list = bldgMesh.list || [];
+    const vps = loadVps();
     const want = bldgSel.value || localStorage.getItem(BLDG_PICK_KEY) || "";
     bldgSel.innerHTML = "";
-    if (!list.length) {
+    if (!list.length && !vps.length) {
       const o = document.createElement("option");
       o.value = ""; o.textContent = "buildings…";
       bldgSel.appendChild(o);
       return;
     }
-    list.forEach((b, i) => {
+    list.forEach((b) => {
       const o = document.createElement("option");
-      o.value = b.name;
-      o.textContent = b.name;
+      o.value = b.name; o.textContent = b.name;
       bldgSel.appendChild(o);
     });
+    if (vps.length) {
+      const sep = document.createElement("option");
+      sep.disabled = true; sep.textContent = "──────────";
+      bldgSel.appendChild(sep);
+      vps.forEach((v) => {
+        const o = document.createElement("option");
+        o.value = VP_PFX + v.name; o.textContent = v.name;
+        bldgSel.appendChild(o);
+      });
+    }
     if ([...bldgSel.options].some((o) => o.value === want)) bldgSel.value = want;
   }
   bldgSel.addEventListener("change", () => localStorage.setItem(BLDG_PICK_KEY, bldgSel.value));
   bldgSel.addEventListener("focus", refreshBldgUi);
   bldgSel.addEventListener("mousedown", refreshBldgUi);
+  function stopAndPose(pos, f, u) {
+    applySpawnPose({ pos, f, u });
+    pendingYaw = 0; pendingPitch = 0; lookRateYaw = 0; lookRatePitch = 0;
+    stickLive = false; rollVel = 0; rollShown = 0; leveling = false;
+    thrust = 0; impulse = 0; overdrive = false; autoNav = null;
+  }
   viewBtn.addEventListener("click", () => {
     refreshBldgUi();
-    const b = (bldgMesh.list || []).find((x) => x.name === bldgSel.value) || (bldgMesh.list || [])[0];
+    const sel = bldgSel.value;
+    if (sel.startsWith(VP_PFX)) {
+      const v = loadVps().find((x) => VP_PFX + x.name === sel);
+      if (v) { stopAndPose(v.pos.slice(), v.f.slice(), v.u.slice()); localStorage.setItem(BLDG_PICK_KEY, sel); }
+      viewBtn.blur();
+      return;
+    }
+    const b = (bldgMesh.list || []).find((x) => x.name === sel) || (bldgMesh.list || [])[0];
     if (!b) return;
     const mid = [b.pos[0], b.pos[1] + b.h * 0.5, b.pos[2]];
     let pos;
@@ -6567,12 +6648,31 @@ void main() {
       pos = [mid[0] - dir[0] * b.h * 2.6, mid[1], mid[2] - dir[2] * b.h * 2.6];
     }
     const f = [mid[0] - pos[0], mid[1] - pos[1], mid[2] - pos[2]];
-    applySpawnPose({ pos, f, u: [0, 1, 0] });
-    pendingYaw = 0; pendingPitch = 0; lookRateYaw = 0; lookRatePitch = 0;
-    stickLive = false; rollVel = 0; rollShown = 0; leveling = false;
-    thrust = 0; impulse = 0; overdrive = false; autoNav = null;
+    stopAndPose(pos, f, [0, 1, 0]);
     localStorage.setItem(BLDG_PICK_KEY, b.name);
     viewBtn.blur();
+  });
+  const vpAdd = $v("vs-vpadd");
+  vpAdd.addEventListener("click", (ev) => {
+    const vps = loadVps();
+    if (ev.shiftKey) {
+      const sel = bldgSel.value;
+      if (!sel.startsWith(VP_PFX)) { vpAdd.blur(); return; }
+      const name = sel.slice(VP_PFX.length);
+      if (!confirm("delete vantage \"" + name + "\"?")) { vpAdd.blur(); return; }
+      saveVps(vps.filter((x) => x.name !== name));
+      bldgSel.value = ""; refreshBldgUi(); vpAdd.blur();
+      return;
+    }
+    const name = (prompt("name this vantage", "") || "").trim();
+    if (!name) { vpAdd.blur(); return; }
+    const rec = { name, pos: cam.pos.slice(), f: cam.f.slice(), u: cam.u.slice() };
+    const i = vps.findIndex((x) => x.name === name);
+    if (i >= 0) vps[i] = rec; else vps.push(rec);
+    saveVps(vps);
+    refreshBldgUi();
+    bldgSel.value = VP_PFX + name; localStorage.setItem(BLDG_PICK_KEY, bldgSel.value);
+    vpAdd.blur();
   });
   // the list seats lazily after the mesh loads — refresh once it's there
   const bldgUiTimer = setInterval(() => {

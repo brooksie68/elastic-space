@@ -136,8 +136,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
    DICTATED vantage per building; 14-tile texture library (42 cr). His
    verdict: "I think we're green. Go. Go. Go." THE PIPELINE + CONTRACT +
    DEAD ENDS: `src/worlds/orb-dimension/buildings.md` — READ IT FIRST for
-   any building work. NEXT: the other 29 buildings through the same pipe
-   (he supplies GPT lit guides), then placement system, conduit spurs,
+   any building work. **v59 2026-08-16: THREE TOWERS, ONE PIPE** — 01, 01a,
+   01b in-world through PLACER v3 (island atlas: platforms/drums/pods get
+   their own light-map patches; struts dark by thickness test; front + back
+   guides — James shoots the Meshy model from behind, five-word GPT prompt;
+   fair proof + compare sheet as the judged artefact); the pipe is
+   name-driven end to end (`BLDG=<name>`; ~1 min per building for real
+   now); building metal = specular shader + Meshy armor tiles (27 cr; his
+   GPT material brief); saved vantages (+ button by VIEW). His verdict on
+   01: "hella good... I prefer yours to the GPT versions." NEXT: 02-sphere
+   (new family), alphabetically down the folder; his tile pick (sheet-A on
+   01b vs weathered-B on 01a/01); then placement system, conduit spurs,
    flashers, ad atlas + alien script, then the Saelyri crowd design.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
