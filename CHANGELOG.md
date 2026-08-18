@@ -8,6 +8,18 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-17 (Arachno Wars moves out, and gets named)
+
+- Both Arachno Wars worlds removed from Elastic Space at James's call — one level up, not
+  archived: `arachno-wars-2000` (the playable artillery duel) → `C:\Users\brook\ai-projects\
+  arachno-wars\one` ("Arachno Wars One"); `arachno-wars-2500` draft (spider-vision side-scroller)
+  → `...\arachno-wars\infinite` ("Arachno Wars Infinite"); the existing `arachno-wars\two` repo
+  is retitled "Arachno Wars Two". One's drift/registry/dashboard scripts stripped (in-game exits
+  now reload the match), sound-control copied locally; Infinite's movement sim moved with it
+  (27/27). Registry hand-edited (generator draft-leak), admin rows removed, todo items 3+4
+  retired, World Ideas #52 updated. tmp/ working files moved along. Pre-move history stays
+  here. All three live in one family folder C:\Users\brook\ai-projects\arachno-wars\ (James: "one folder").
+
 ## 2026-08-17 (Dropzilla moves out)
 
 - DROPZILLA removed from Elastic Space at James's call ("not a good fit… I don't wanna see

@@ -182,7 +182,7 @@ Numbering continues from Claude's fifty. Added 2026-07-12:
 ### 51. The Hunting Grounds — *a weekend* — `idea`
 An emergence sandbox: populate a space with simple agents running hunting rules — predators, prey, maybe grazers and scavengers — and see what complexity falls out. No script, no goal; the whole world is watching rule sets collide into ecosystems, arms races, and population booms and crashes. Sibling to Murmur (11) and The Underground Post (10), but the point here is the experiment itself: tune the rules, watch what emerges.
 
-### 52. Arachno Wars — *a weekend* — `live 2026-07-12` → `src/worlds/arachno-wars-2000/`
+### 52. Arachno Wars — *a weekend* — `moved out 2026-08-17` → `C:\Users\brook\ai-projects\arachno-wars\one\`
 James's Phaser artillery game, embedded as a world. For fun. A place in Elastic Space where you stop drifting and play something — the framing (arcade cabinet? a web strung between two trees?) is open. Drift exits still apply; the game is the room.
 
 Shipped 2026-07-12 by unarchiving **Arachno-Wars 2000**, the original vanilla-Canvas v1 from
@@ -193,6 +193,11 @@ page corners. Fancier framing (arcade cabinet, web between trees) still open if 
 Forked 2026-07-24: the spider-vision side-scroller (`spider-vision.md`'s "someday" game)
 became **Arachno-Wars 2500** → `src/worlds/arachno-wars-2500/` (draft; graybox movement
 prototype). AW2000 stays live as the artillery duel.
+
+Moved out 2026-08-17 (James's call — standalone game projects, not worlds): AW2000 →
+`ai-projects/arachno-wars/one/` ("Arachno Wars One"), AW2500 → `ai-projects/arachno-wars/infinite/`
+("Arachno Wars Infinite"); the Phaser rebuild in `arachno-wars/two/` is "Arachno Wars Two".
+Both out of the drift and off the admin panel; history stays in this repo's git log.
 
 ### 53. The Picture House — *an evening to start* — `idea`
 Somewhere a video is playing — a movie screen in an empty theater, a TV glowing in a furnished room. You can sit and watch it. Then you can leave. Or you can leave whenever you want; nothing holds you. The world is just the permission to watch, and the door. What's playing is a separate question, and can change.
