@@ -3,6 +3,97 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v60.1 — 2026-08-17 (Claude, James's spec) — hex homes: the Saelyri sun interiors
+
+- **The 11 random node-crystal quads inside every Saelyri sun are gone; in their place
+  the HEX HOME** — James's dictated structure after a long round of failing to get GPT
+  to draw it: FIFTEEN hexagonal plates in three mutually perpendicular stacks of five,
+  every plate centered on the sun's own center. Per stack: full-width plate through the
+  middle, an 87 % pair at ±0.5, a 53 % pair at ±0.85 (a true sphere section — width =
+  √(1−h²); 100/60/40 was rejected on a Blender A/B, it reads boxy). Largest plate =
+  0.95 × sun radius. Same glass shader, aux kind 2 (the throbbing sun glow), so it is
+  the same energy material the suns always had. **Each stack speaks its own family hue**
+  (fam, fam+2, fam+4 mod 5) so the three axes read apart — James's ask for the
+  reference render; easy to collapse to one family if he wants it quieter in-world.
+  Frame is seeded per sun (`frame3(rdir())`) so no two homes sit identically.
+  `hexPlate()` = 6-vertex fan in the glass buffer.
+- society-sim TEST 9 (glass overdraw) now walks TRIANGLES via the index buffer instead
+  of assuming 4-vertex quads at stride 60 (hex fans broke it: NaN). 12/12 green;
+  reef-sim all pass. Shader untouched.
+- Look-dev artefacts: `tmp/orb-dimension/hex-sphere/hex_sphere.py` (headless Blender,
+  three colored stacks, near-frontal camera raised 14° / offset 7°) + its PNGs.
+- **v60.1 postscript, 2026-08-18 early — THE LOOK-DEV GRIND AND ITS VERDICT.**
+  On James's "do it all right this minute, three judged rounds minimum," a
+  Blender look-dev harness went 13 rounds against `glowhome-01.png`:
+  `tmp/orb-dimension/glowhome_look2.py` (full-res welded mesh, planar dissolve,
+  teal by planar PANEL not island — the weld makes one island; alpha-glass
+  material; core-falloff + Facing-edge emission; own edge RIBBONS on crease/
+  boundary edges tiered by panel size — Freestyle cannot run headless in 5.1,
+  linestyle reads None at render even on a cube; bmesh column/heart; Bloom via
+  the Glare node's "Type" input socket; compositor is `scene.compositing_node_
+  group` in 5.x) + `glowhome_compare.py` (side-by-side sheet + contrast /
+  darkface / edges / teal / core / hot metrics; every round has a `-vs.png`).
+  Bugs found the hard way: Layer Weight FRESNEL returns 1.0 on backfacing normals
+  (the soup's winding lit whole plates cream — use Facing); hashed alpha needs
+  emission INSIDE the mix pre-divided by alpha, blended needs it OUTSIDE; blended
+  emission is additive across ~20 stacked surfaces, so per-face body glow must
+  be tiny and edges carry the read. Metrics converged (darkface 0.51 vs 0.50,
+  hot 0.017 vs 0.021) but the LOOK plateaued. JAMES'S VERDICT: aesthetic peak
+  was r2 ("beautiful colors and a nice glow"), none of the later rounds worked,
+  and the model sat rotated ~45° wrong the whole time. His diagnosis is the
+  right one: the Meshy mesh is marching-cubes soup, not sheets of glass — the
+  Bryce approach (clean glass planes, copy/rotate/shrink/stack, a center light)
+  is what to build, and he wants it done in the LIVE Blender window with him
+  watching and stopping me step by step. Next session starts there (his go
+  given). World state unchanged tonight: Meshy homes in the suns, hex fallback.
+- **v60.1 same night — THE GLOW HOMES (James's Meshy route).** He took a GPT concept
+  of the habitat to Meshy (`building models/renders/glowhome-01-highres.glb`, 1.9M
+  tris; `glowhome-01.png` is the 2D target — dim amber glass, bright edges, hot
+  core, a few teal panels) and theorised: keep Meshy's structure, throw away its
+  material, re-light it as glass from inside. Proven in Blender first
+  (`tmp/orb-dimension/glowhome_look.py` → `glowhome-01-look.png`: emission×fresnel
+  + Freestyle amber edges — reads like the PNG). Then in-world: weld_bldg +
+  decimate_bldg by name (45k) → NEW `tmp/orb-dimension/export_home.py` → 14k-tri
+  `assets/homes/glowhome-01.bin` (magic GHOM, big-endian like the others,
+  unit-normalized, Y-up, flat split normals) → world.js `glowHome` loader +
+  `homeMesh()`: every sun gets the structure at 0.45 × nd.r (inside the heart orb),
+  own yaw, drawn by the GLASS program as kind-2 crystal (fresnel = dim faces/bright
+  edges, the sun term glows it from the core, family hue). Served only — the hex
+  plates stay as the file:// / not-loaded fallback (`homeV0/homeI0` mark the glass
+  tail; uploadCommunities cuts there and appends the homes). init-smoke now serves
+  the .bin through its fetch stub and asserts the mesh path ran (HOMES line);
+  society-sim 12/12. AWAITING JAMES'S FLIGHT: fit inside the ball, opacity/edge
+  read at flight distance, whether 14k tris × ~32 suns costs frame rate (drop the
+  export TARGET if so), and the teal-accent question (single family hue for now).
+- James flew it: "pretty cool" — but too many colors, and the plates stuck out of the
+  balls (they always were supposed to be inside; the old random crystals did too and
+  never got called). Fix same session: plates sized to the VISIBLE ball (heart orb
+  fixedR = nd.r × 0.5) → largest plate 0.45 × nd.r; ONE family per sun (nd.fam for
+  all three stacks). society-sim still 12/12. Open: plate opacity face-on (the glass
+  fresnel goes dim head-on; a floor alpha would make it a "uniform force field").
+
+## v60 — 2026-08-17 (Claude, James flying) — attitude jets, head-look, wider eye, building-01c
+
+- **Turn rates +10 %** (yaw 28→31, pitch 20→22, roll 29→32 °/s, arrows 0.7→0.77 rad/s) —
+  James tried 2× first ("turn much faster"), then "put it back and boost it by 10 %".
+  DEFAULTS + james-prefs-01 + a stickModeV<4 migration.
+- **ATTITUDE JETS** ("I'm not a plane"): R/F rise/sink along the pod's OWN up, Q/E slide
+  left/right — free, builds 0.5 s, coasts 3.2 s, X brakes; `rcsTop` 120 m/s (GOD MODE · drive,
+  "jets m/s"). Level-off moved R → **Caps Lock** (his pick). Impulse 240→200 m/s and its
+  coast 3.2→5 s (IMP_COAST — impulse ONLY, he clarified; booster + jets keep 3.2).
+- **THE EYE IS NOT THE NOSE**: `camBasis()` now composes cam + `head` (right-mouse-drag
+  head-look, ±100°/±70°, eases home on release) + `lead` (look-into-the-turn, ≤6° toward the
+  turn, slow ease). Flight/autopilot/stick/rotation all still read `cam` (pod contract intact);
+  movement uses `cam` explicitly. FOV 60→72°. His brief: circling a building felt blind ("my
+  camera has always frozen straight ahead"); NMS-style lock-on ("super goofy") refused; he
+  picked head-look + lean + wider FOV. Note: `locked` on the nav ring is judged in eye space —
+  fine while lead ≤6°, revisit if head-look ever arms lock-on by accident.
+- **building-01c-tower** in-world (BLDG_V 27; kinds row, vantage null): six thin discs down a
+  pipe-bundle shaft — placer v3.2 (see buildings.md): whole-height disc detection off the radius
+  profile + roundness, rim rows sized from the guide's amber extent, dense rims, cyan under-disc
+  trims, collar gated. Camera 0/8 (near-symmetric; Meshy skipped the guide's drum cluster).
+  01/01a/01b re-proved unchanged.
+
 ## 2026-08-16 — claude-fable (v59 — THREE TOWERS, ONE PIPE: 01, 01a, 01b; placer v3; metal; James: "hella good")
 
 The night in one line: James came to run "the resources" (the buildings)

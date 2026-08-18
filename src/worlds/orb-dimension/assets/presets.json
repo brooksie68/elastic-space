@@ -13,10 +13,10 @@
       "fadeSpeed": 3.5,
       "stickDead": 14,
       "stickReach": 260,
-      "stickYawMax": 28,
-      "stickPitchMax": 20,
+      "stickYawMax": 31,
+      "stickPitchMax": 22,
       "stickCurve": 1.7,
-      "impTop": 240,
+      "impTop": 200,
       "boostTop": 1200,
       "overTop": 6000,
       "h2oTank": 240,
@@ -25,7 +25,8 @@
       "overSpool": 3,
       "colonyDist": 250,
       "colonyVert": 0,
-      "colonyJitter": 0.5
+      "colonyJitter": 0.5,
+      "stickModeV": 4
     }
   },
   "default": "james-prefs-01"

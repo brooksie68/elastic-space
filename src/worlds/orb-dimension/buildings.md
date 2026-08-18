@@ -61,6 +61,7 @@ the repo root (bash; Blender = `"/c/Program Files/Blender Foundation/Blender
    | building-01b-tower | -28 / 8 | (no back guide; 152 / 8 proof only) |
    | building-01a-tower | 35 / 8 | 200 / 12 |
    | building-01-tower | 230 / 8 | 50 / 12 |
+   | building-01c-tower | 0 / 8 | (near-symmetric, no back guide; Meshy skipped the guide's hanging drum cluster) |
 7. **Guided placement:** `BLDG=<name> BLDG_AZ=<az> BLDG_EL=<el>
    [BLDG_AZ_BACK=<az> BLDG_EL_BACK=<el>] blender --python
    tmp/orb-dimension/guide_place3.py` (v3 - guide_place2 is the v58
@@ -119,10 +120,27 @@ the repo root (bash; Blender = `"/c/Program Files/Blender Foundation/Blender
   (0.42, 0.30, 0.10) for quiet bands. Verified pixel-exact in a Standard-
   transform, AA-off render (dist 0).
 - Nothing amber below zn 0.10 (the tower sinks into the superstructure).
-- Amber columns live in the flute RECESSES only; disc rims get exactly two
-  continuous rows each; the collar between saucers is erased then given two
+- Amber columns live in the flute RECESSES only; disc rims get continuous
+  rows — two by default, and where the guide painted amber grids/rows on a
+  rim the row count follows the guide's extent (2..5, capped by the rim
+  face; v3.2, 01c's script bands); the collar between saucers is erased then given two
   dark-amber rings; the cupola gets two rows + a blue line between + one
   pink ring at its base; pink conduits stop below the lower saucer.
+- Discs (v3.2, 01c — six thin discs down the whole shaft, only ~1.4× the
+  cage radius): a z-slice is DISC when its max radius stands 1.2× over the
+  shaft baseline (30th percentile of the radius profile, ±0.15 h) AND its
+  outer faces cover >70 % of the circle — OR the v3.0 rule (top third,
+  >90 % of the top-third max) so the 01 family's saucers never move. Rows
+  sit on the RIM (the full-radius slices), never the chamfers; a thin rim
+  gets one row; rim rows are dense (lit 0.95, flip 1.5 %); the collar
+  erase only fires for two discs < 0.08 h apart (01b), a story between two
+  discs is shaft; guide cyan rows landing on a disc drop to the rim's
+  lower edge (the under-disc trim). SHAFT TOP = under the top disc (or
+  under the lower saucer of a < 0.08 h collar stack, 01b): the flute
+  columns run as high as any guide amber on the shaft up to that cap (01c's
+  top stories were dark — the extractor's long strips were all low), and
+  the pink conduits stop there. Re-proved 01/01a/01b identical (rims a hair
+  denser).
 - Face classes, how they're decided (guide_place3.py): shaft radius per
   z-slice = 25th percentile of side-facing radii (NOT the 92nd within 0.14h
   - the platforms inflated that and dead-mapped nothing); FAR = r > 1.45x
@@ -252,7 +270,8 @@ Per-building specifics (append as each is approved):
 ## Next
 
 Run the other buildings through steps 1-9 (01, 01a, 01b done - James
-2026-08-16: "looks hella good... I prefer yours to the GPT versions"; order
+2026-08-16: "looks hella good... I prefer yours to the GPT versions"; 01c
+2026-08-17, four placer rounds, in-world awaiting his eyes; order
 is alphabetical down the folder: 02-sphere next, a new family - expect the
 face classifier to need work, the shaft/flute assumptions don't hold).
 Open polish, no verdict needed: patch pane density vs the guide, the

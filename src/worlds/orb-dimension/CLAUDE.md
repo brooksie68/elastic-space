@@ -194,6 +194,20 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   to dim, never widen amber's kernel. (5) Every building carries a
   DICTATED `vantage` (James's coordinates); VIEW [V] on the deck jumps to
   it. Deck shortcuts N/T/C/V, four equal rows, console-fit must stay 0px.
+- THE GLOW HOMES (v60.1, 2026-08-17): the energy beings' habitat inside every
+  Saelyri sun is a MESHY structure James made from a GPT concept, re-materialed
+  in-world by the glass program (kind-2 crystal: fresnel dims faces / brightens
+  edges, sun term glows from the core, family hue). Pipe, name-driven:
+  `weld_bldg.mjs <name>` → `decimate_bldg.py -- <name>` → `export_home.py --
+  <name> [tris]` → `assets/homes/<name>.bin` (GHOM, big-endian magic, unit
+  radius, Y-up); `glowHome.name` in world.js picks it; bump its `?v=` on every
+  re-export. Fit is `HOME_FIT` = 0.45 × nd.r — the visible ball is the heart orb
+  at 0.5 × nd.r, homes must stay inside it (James's standing correction). The 15
+  hex plates in communityGeometry are the FALLBACK only (file:// / before the
+  fetch lands) — `homeV0/homeI0` mark where they start in the glass tail; keep
+  them last in the glass buffer or the cut breaks. Blender look-dev harness:
+  `tmp/orb-dimension/glowhome_look.py` (judge new homes there before exporting).
+  init-smoke asserts the mesh path (HOMES line).
 - THE BEING EDITOR (`src/labs/being-editor/`, v54): the Saelyri look-dev lab,
   promoted from tmp/orb-dimension/saelyri-lab.html (superseded, kept as v53
   reference). A lab, not a world — no drift/registry; linked from the admin

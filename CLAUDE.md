@@ -148,6 +148,34 @@ consistent. `npm run check-worlds` audits every world against the contract.
    (new family), alphabetically down the folder; his tile pick (sheet-A on
    01b vs weathered-B on 01a/01); then placement system, conduit spurs,
    flashers, ad atlas + alien script, then the Saelyri crowd design.
+   **2026-08-17/18 — THE GLOW HOMES (energy-being habitats inside the suns) +
+   the START-HERE list for the next session:**
+   (a) v60 hex plates → v60.1 James's Meshy structure (`glowhome-01`) in every
+   sun via the glass program — flown, "pretty cool," then a 13-round Blender
+   look-dev grind (`tmp/orb-dimension/glowhome_look2.py` + `glowhome_compare.py`
+   metrics harness — KEEP both) that PLATEAUED; his verdict: aesthetic peak was
+   `renders/glowhome-01-r2.png` ("beautiful colors and a nice glow"), the rest
+   never got there, and the model was rotated ~45° wrong throughout. Lesson
+   owned in memory `call-the-plateau-early`. The Meshy soup is not sheets of
+   glass — stop trying to paint glass onto it.
+   (b) NEXT, HIS GO GIVEN: **LIVE-BLENDER PLANE-STACK SESSION** — the Bryce
+   way: clean glass sheets (real transmission/IOR/tint, thickness), copy /
+   rotate / shrink / stack, ~10% teal, one light at the center — built IN THE
+   LIVE BLENDER WINDOW with James watching and stopping me ("hang on, that
+   texture's not cutting the mustard") before anything multiplies. He's a
+   Bryce/3DS Max hand; x/y/z is native to him. Small steps, his eyes each step,
+   no batch generation. The in-world glow homes stay as they are until then
+   (hex plates are the file:// fallback; `glowHome.name` swaps the model).
+   (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
+   up close. He finished 03-arch (concept) — DO NOT START IT until he says.
+   Ten-ish concepts still to run through the pipe; he wants the pipe faster.
+   (d) NEW DESIGN THREAD — TOWNSHIP KERNELS: the capital has Korrudan (bone
+   + crust, buildings embedded — "gonna get even cooler"); the three satellite
+   towns have nothing solid at the center — "connecting from nothing to
+   nothing." Each needs a kernel to build on: an asteroid/planetoid (needn't be
+   large) OR a metallic enclosed core structure. Design conversation first
+   (asteroid vs metal, one per town or a mix, how bridges/suns/buildings seat
+   on it), then his go.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
@@ -473,21 +501,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
    pre-move history stays in this repo's git log. Never re-add it here.)
 2. (folded into item 1 — the Dropzilla drift-exit re-enable is moot; exits were removed
    for good at the move.)
-3. ARACHNO-WARS: tank-color tuner panel (Chrome Rift tuner pattern) — two color pickers
-   driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
-4. ARACHNO-WARS 2500: the spider-vision side-scroller, forked from AW2000 on 2026-07-24
-   (James: fork, keep 2000 as the intact duel archive). Graybox movement prototype BUILT
-   2026-07-24, then LEG-LOOK ITERATION b2–b12 same night with James driving by eye:
-   light-sky recolor + camera-zoom sizing, 8 legs per AW2000 reference art (tapered
-   segments, knee bulbs, needle tips), perimeter-walk foot targets, LIQUID-METAL leg
-   identity (stretch across gulfs — core lore, see world CLAUDE.md), asymmetric gait
-   (front legs pull, rear legs dig in + power-stroke, anti-realism per James), per-pair
-   leg lengths, +30% barrel. All 27 sim assertions still pass
-   (`node tmp/arachno-wars-2500/movement-sim.mjs`). James engaged and happy with
-   direction. NEXT: more feel passes, then tuner panel → first enemy (pillbox) + firing.
-   Feel questions + agreed pillars in `src/worlds/arachno-wars-2500/CLAUDE.md` (READ
-   IT — it has protected behaviors + hard-won gait lessons). Draft: no
-   drift/registry/sound yet.
+3./4. ARACHNO WARS — MOVED OUT OF ELASTIC SPACE 2026-08-17 (James's call): the artillery
+   duel world (`arachno-wars-2000`) is now `C:\Users\brook\ai-projects\arachno-wars\one\`
+   ("Arachno Wars One") and the spider-vision side-scroller draft (`arachno-wars-2500`) is
+   `C:\Users\brook\ai-projects\arachno-wars\infinite\` ("Arachno Wars Infinite"); the
+   Phaser rebuild `arachno-wars\two\` is "Arachno Wars Two". Each has its own CLAUDE.md +
+   Todo (the tuner panel and feel-pass items moved there). Nothing Arachno remains in
+   this repo except git history and World Ideas #52.
 5. **LUMINA PANEL — START THE NEXT LUMINA SESSION HERE (James, 2026-07-27 wrap).**
    He said it explicitly at wrap: next time we start on optimizing the panel. It is a
    DESIGN CONVERSATION FIRST, not a build — read the "START HERE" section at the top of

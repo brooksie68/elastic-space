@@ -50,7 +50,8 @@
     // booster / overdrive each carry a TOP SPEED (never a sum), a tank in
     // seconds of burn, and a 0-to-full spool time. expansion-spec.md is
     // the contract: 240 / 1,200 (240s, 5s) / 3,600 (360s, 3s).
-    impTop: 240,
+    impTop: 200, // v60: 240 → 200 (James)
+    rcsTop: 120, // v60 attitude jets: R/F up-down, Q/E left-right (m/s, free)
     boostTop: 1200,
     overTop: 3600,
     h2oTank: 240,
@@ -86,6 +87,7 @@
     saeNotice: 400,
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
+    bldgFarBlur: 0, // v60: far-window mip follow (0 = v59 point-sampled twinkle)
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -117,10 +119,11 @@
     stickModeV: 0,
     stickDead: 14,
     stickReach: 260,
-    stickYawMax: 28,  // v48.5: down from 42 — James: "I should turn slower"
-    stickPitchMax: 20, // stays ~70% of yaw
-    rollMax: 29, // v57.2: A/D roll rate on a dial (was hardcoded 0.51 rad/s)
+    stickYawMax: 31,  // v60: +10% (James, after trying 2×); v48.5 was 28
+    stickPitchMax: 22, // stays ~70% of yaw (v60 +10%)
+    rollMax: 32, // v60 +10%; v57.2 put A/D roll on a dial (29 = the old 0.51 rad/s)
     stickCurve: 1.7,
+    stickPull: 2.0, // v60: hard pull — rate multiplier reached at 2× reach
     // v54.2: the grab circle is its own dial — 3× the old reach/2 (James:
     // only-inside-the-reticle made the nose hard to grab). The ghost ring
     // below marks the edge while he tunes it.
@@ -149,9 +152,11 @@
     { key: "stickPitchMax", label: "pitch °/s", min: 6, max: 120, step: 1 },
     { key: "rollMax", label: "roll °/s", min: 6, max: 120, step: 1 },
     { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
+    { key: "stickPull", label: "hard pull ×", min: 1, max: 4, step: 0.1 },
     // v49 GOD MODE (drive) + the ring. layout: true = rebuilds colonies,
     // stations and actors on release (change), not per-tick (input).
     { key: "impTop", label: "impulse m/s", min: 60, max: 720, step: 10 },
+    { key: "rcsTop", label: "jets m/s", min: 20, max: 480, step: 10 },
     { key: "boostTop", label: "booster m/s", min: 300, max: 3000, step: 25 },
     { key: "overTop", label: "overdrive m/s", min: 1200, max: 9000, step: 100 },
     { key: "h2oTank", label: "H2O tank s", min: 60, max: 600, step: 10 },
@@ -171,6 +176,7 @@
     { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
+    { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -222,7 +228,12 @@
       cfg.stickYawMax = DEFAULTS.stickYawMax;
       cfg.stickPitchMax = DEFAULTS.stickPitchMax;
     }
-    cfg.stickModeV = 3;
+    if (stickV < 4) { // v60: +10% turn rates
+      cfg.stickYawMax = DEFAULTS.stickYawMax;
+      cfg.stickPitchMax = DEFAULTS.stickPitchMax;
+      cfg.rollMax = DEFAULTS.rollMax;
+    }
+    cfg.stickModeV = 4;
   }
   sanitizeCfg();
 
@@ -326,7 +337,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · A / D roll · R levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v53";
+    "W / S impulse · R / F rise / sink · Q / E slide · right-drag looks around · A / D roll · caps lock levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v53";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -2213,19 +2224,44 @@ void main() {
           }
         }
       }
-      // node crystals: intersecting glass planes inside each little sun
+      // node crystals (v60, James's hex-home spec — replaces the 11 random
+      // glass quads): FIFTEEN hexagonal plates in three orthogonal stacks of
+      // five, every plate centered on the sun's own center. Per stack: one
+      // full-width plate through the middle, an 87% pair at ±0.5, a 53% pair
+      // at ±0.85 (a true sphere section — width = sqrt(1-h²)). Each stack
+      // speaks its own family hue so the three axes read apart. The frame is
+      // seeded per sun so no two homes sit identically.
+      const HEX_HALF = [[0, 1], [0.5, 0.87], [0.85, 0.53]];
+      const hexPlate = (m, c, ax, e1, e2, rad, aux, ec) => {
+        const b = m.v.length / 15;
+        for (let k = 0; k < 6; k++) {
+          const th = (k / 6) * TAU;
+          const cs = Math.cos(th) * rad, sn = Math.sin(th) * rad;
+          vert(m, [c[0] + e1[0] * cs + e2[0] * sn, c[1] + e1[1] * cs + e2[1] * sn, c[2] + e1[2] * cs + e2[2] * sn],
+            ax, 0.5 + Math.cos(th) * 0.5, 0.5 + Math.sin(th) * 0.5, aux, ec);
+        }
+        for (let k = 1; k < 5; k++) m.i.push(b, b + k, b + k + 1);
+      };
+      // v60.1: the hex plates are the file:// / not-yet-loaded fallback — once
+      // the glow-home mesh arrives (assets/homes/, served only) uploadCommunities
+      // cuts the glass at homeV0/homeI0 and draws the Meshy home instead.
+      const homeV0 = glass.v.length, homeI0 = glass.i.length;
       for (const nd of nodes) {
-        for (let i = 0; i < 11; i++) {
-          const [a, b] = [rdir(), rdir()];
-          const eu = norm3(cross3(a, b));
-          const ev = norm3(cross3(a, eu));
-          const h1 = rr(0.35, 0.8) * nd.r, h2 = rr(0.35, 0.8) * nd.r;
-          const c = [
-            nd.p[0] + (R() - 0.5) * nd.r * 1.1,
-            nd.p[1] + (R() - 0.5) * nd.r * 1.1,
-            nd.p[2] + (R() - 0.5) * nd.r * 1.1];
-          quad(glass, c, [eu[0] * h1, eu[1] * h1, eu[2] * h1],
-            [ev[0] * h2, ev[1] * h2, ev[2] * h2], [2, nd.phase, nd.r, nd.fam], nd.p);
+        const [f0, f1, f2] = frame3(rdir());
+        const axes = [[f0, f1, f2], [f1, f2, f0], [f2, f0, f1]];
+        // INSIDE the ball: the sun's visible sphere is the heart orb at
+        // fixedR = nd.r * 0.5 (makeCommunityOrbs) — corners stay under it.
+        // One family per sun (James: the three-hue version was too many colors).
+        const big = nd.r * 0.5 * 0.9;
+        for (let s = 0; s < 3; s++) {
+          const [ax, e1, e2] = axes[s];
+          const fam = nd.fam;
+          for (const [h, w] of HEX_HALF) {
+            for (const sg of (h === 0 ? [1] : [1, -1])) {
+              const c = [nd.p[0] + ax[0] * big * h * sg, nd.p[1] + ax[1] * big * h * sg, nd.p[2] + ax[2] * big * h * sg];
+              hexPlate(glass, c, ax, e1, e2, big * w, [2, nd.phase, nd.r, fam], nd.p);
+            }
+          }
         }
       }
       // -- bridges: each node to its 2 nearest neighbors AROUND the shell —
@@ -2338,7 +2374,7 @@ void main() {
       // envelope radius (orbits and standoffs key off it), not the (absent)
       // machine cloud's envelope
       com.coreR = isCap ? 7400 : Math.max(ex[0], ex[1], ex[2]);
-      out.push({ solid, glass, bridge, nodes, edges, feeds, shellR, coreR: com.coreR });
+      out.push({ solid, glass, bridge, nodes, edges, feeds, shellR, coreR: com.coreR, homeV0, homeI0 });
     }
     return out;
   }
@@ -3941,6 +3977,20 @@ void main() {
   // exactly equals the drag distance; it just arrives like a ship, not a
   // laser pointer. (James: "a space ship wouldn't fly like that.")
   let lookRateYaw = 0;   // rad/s, smoothed
+  // v60 HEAD-LOOK + LOOK-INTO-THE-TURN (James: "I cannot look off to my
+  // left as I go around the building"): the EYE is not the NOSE anymore.
+  // head.* = right-mouse-drag swivel of the view off the boresight (target
+  // returns to zero on release, both eased); lead.* = a few degrees of
+  // view lean toward the direction the ship is turning, eased slowly.
+  // Neither ever touches cam — flight, autopilot, the stick and every
+  // rotation stay pure ship-frame; only camBasis() (what the eye/render/
+  // clicks use) is composed from cam + these offsets. Movement uses cam.
+  const head = { yaw: 0, pitch: 0, tYaw: 0, tPitch: 0, on: false, lastX: 0, lastY: 0 };
+  const lead = { yaw: 0, pitch: 0 };
+  const HEAD_YAW_MAX = 100 * Math.PI / 180, HEAD_PITCH_MAX = 70 * Math.PI / 180;
+  const HEAD_SENS = 0.0035;      // rad per pixel of right-drag
+  const LEAD_GAIN = 0.19;        // s — turn rate (rad/s) → lean (rad): 31°/s ≈ 6°
+  const LEAD_MAX = 6 * Math.PI / 180;
   let lookRatePitch = 0;
   // v48 drag-stick: where the press planted the stick center, and whether
   // the pilot's hand is "on". Beyond-deadzone pointer motion arms it;
@@ -3955,6 +4005,7 @@ void main() {
   let leveling = false;
   let thrust = 0;       // current thruster speed, m/s
   let impulse = 0;      // impulse-drive speed, m/s — coasts on release (v44)
+  let rcsU = 0, rcsR = 0; // v60 attitude jets: ship-frame up / right velocity (m/s)
   let overdrive = false;
   let allStop = false;  // X: brake to a halt (v37)
   // the tanks (v38): fractions 0..1. H2O feeds the booster, deuterium feeds
@@ -4029,7 +4080,8 @@ void main() {
     rollShown = 0; // spawn pose = zero commanded roll (v55.3)
     leveling = false;
     thrust = 0;
-    impulse = 0;
+    impulse = 0; rcsU = 0; rcsR = 0;
+    head.yaw = head.pitch = head.tYaw = head.tPitch = 0; lead.yaw = lead.pitch = 0;
     overdrive = false;
     autoNav = null;
   }
@@ -4058,7 +4110,7 @@ void main() {
       overdrive = false;
     }
     // any fresh thrust input releases the all-stop
-    if (["ShiftLeft", "ShiftRight", "Space", "KeyW", "KeyS"].includes(e.code)) allStop = false;
+    if (["ShiftLeft", "ShiftRight", "Space", "KeyW", "KeyS", "KeyR", "KeyF", "KeyQ", "KeyE"].includes(e.code)) allStop = false;
     if (e.code === "Space") {
       e.preventDefault();
       if (!overdrive && fuel.deu <= 0) {
@@ -4083,7 +4135,16 @@ void main() {
   const drag = { on: false, downX: 0, downY: 0, downT: 0 };
   const mouse = { x: -1, y: -1 };
 
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault()); // v60: right button is head-look
   canvas.addEventListener("pointerdown", (e) => {
+    if (e.button === 2) {
+      // v60 head-look: hold the right button and drag — the view swivels
+      // off the nose; let go and it eases back to boresight
+      head.on = true; head.lastX = e.clientX; head.lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
+    if (e.button !== 0) return;
     drag.on = true;
     drag.downX = e.clientX;
     drag.downY = e.clientY;
@@ -4096,6 +4157,11 @@ void main() {
   canvas.addEventListener("pointermove", (e) => {
     mouse.x = e.clientX;
     mouse.y = e.clientY;
+    if (head.on) {
+      head.tYaw = clamp(head.tYaw - (e.clientX - head.lastX) * HEAD_SENS, -HEAD_YAW_MAX, HEAD_YAW_MAX);
+      head.tPitch = clamp(head.tPitch - (e.clientY - head.lastY) * HEAD_SENS, -HEAD_PITCH_MAX, HEAD_PITCH_MAX);
+      head.lastX = e.clientX; head.lastY = e.clientY;
+    }
     // v48 drag-stick: nothing accumulates here anymore — the frame loop
     // reads the live offset. Crossing the deadzone while holding is the
     // "hands on" signal that arms the stick and releases the autopilot /
@@ -4116,6 +4182,8 @@ void main() {
     }
   });
   canvas.addEventListener("pointerup", (e) => {
+    if (e.button === 2) { head.on = false; head.tYaw = 0; head.tPitch = 0; return; }
+    if (e.button !== 0) return;
     drag.on = false;
     stickLive = false; // v48.2: arming is per-hold — release always neutrals
     canvas.classList.remove("dragging");
@@ -4140,14 +4208,23 @@ void main() {
     location.reload();
   });
 
-  const camBasis = () => ({ f: cam.f, r: cam.r, u: cam.u });
+  const camBasis = () => {
+    const y = head.yaw + lead.yaw, p = head.pitch + lead.pitch;
+    if (y === 0 && p === 0) return { f: cam.f, r: cam.r, u: cam.u };
+    // yaw about ship-up, then pitch about the swung right — same order as
+    // the ship's own turns, so head-look reads exactly like turning would
+    let f = vrot(cam.f, cam.u, y), r = vrot(cam.r, cam.u, y);
+    const u = vrot(cam.u, r, p);
+    f = vrot(f, r, p);
+    return { f, r, u };
+  };
 
   // ---- matrices -----------------------------------------------------------------
 
   const proj = new Float32Array(16);
   const view = new Float32Array(16);
   const vp = new Float32Array(16);
-  const FOV = (60 * Math.PI) / 180;
+  const FOV = (72 * Math.PI) / 180; // v60: 60 → 72 (James: NMS cockpit width; the fisheye is the price)
   // v55.1 the magnifier (James's ask): wheel zooms the view 1×–8× by
   // narrowing the effective FOV; Z snaps back. zoom eases toward zoomTarget
   // in the frame loop (never snaps — motion restraint), and every
@@ -4749,6 +4826,42 @@ void main() {
     gl.bindVertexArray(null);
     return { vao, vb, ib, count: mesh.i.length };
   }
+  // v60.1 THE GLOW HOMES: James's Meshy structure (GPT concept → Meshy →
+  // weld/decimate → tmp/orb-dimension/export_home.py → assets/homes/<name>.bin,
+  // magic GHOM, unit-normalized, Y-up) stands inside every sun as the energy
+  // beings' habitat, drawn by the glass program as a kind-2 node crystal —
+  // fresnel makes the faces dim and the edges bright, the sun term glows it
+  // from the core. Served only: on file:// (or before it arrives) the hex
+  // plates in communityGeometry stand in. Each sun gets its own yaw.
+  const glowHome = { mesh: null, name: "glowhome-01" };
+  const HOME_FIT = 0.5 * 0.9; // largest vertex radius vs nd.r — inside the heart orb (fixedR = 0.5 nd.r)
+  function homeMesh(g, ci) {
+    const src = glowHome.mesh;
+    const nv = src.nv, ni = src.ni, P = src.verts;
+    const nN = g.nodes.length;
+    const v = new Float32Array(nv * 15 * nN);
+    const idx = new Uint32Array(ni * nN);
+    const R = mulberry32(SOCIETY_SEED ^ 0x40e5 ^ (ci * 7919));
+    let vo = 0, io = 0, base = 0;
+    for (const nd of g.nodes) {
+      const s = nd.r * HOME_FIT;
+      const yaw = R() * TAU, cy = Math.cos(yaw), sy = Math.sin(yaw);
+      for (let k = 0; k < nv; k++) {
+        const o = k * 8;
+        const x = P[o], y = P[o + 1], z = P[o + 2], nx = P[o + 3], ny = P[o + 4], nz = P[o + 5];
+        v[vo++] = nd.p[0] + (x * cy - z * sy) * s;
+        v[vo++] = nd.p[1] + y * s;
+        v[vo++] = nd.p[2] + (x * sy + z * cy) * s;
+        v[vo++] = nx * cy - nz * sy; v[vo++] = ny; v[vo++] = nx * sy + nz * cy;
+        v[vo++] = 0; v[vo++] = 0;
+        v[vo++] = 2; v[vo++] = nd.phase; v[vo++] = nd.r; v[vo++] = nd.fam;
+        v[vo++] = nd.p[0]; v[vo++] = nd.p[1]; v[vo++] = nd.p[2];
+      }
+      for (let k = 0; k < ni; k++) idx[io++] = base + src.idx[k];
+      base += nv;
+    }
+    return { v, i: idx };
+  }
   function uploadCommunities() {
     if (!commGL.inited) return; // first relayout runs before GL init; init re-calls
     for (const m of commGL.meshes) {
@@ -4758,12 +4871,38 @@ void main() {
         gl.deleteBuffer(part.ib);
       }
     }
-    commGL.meshes = COMM_GEO.map((g) => ({
-      solid: makeCommVao(g.solid),
-      glass: makeCommVao(g.glass),
-      bridge: makeCommVao(g.bridge),
-    }));
+    commGL.meshes = COMM_GEO.map((g, ci) => {
+      if (!glowHome.mesh) {
+        return { solid: makeCommVao(g.solid), glass: makeCommVao(g.glass), bridge: makeCommVao(g.bridge) };
+      }
+      // homes in: cut the hex fallback off the glass tail, append the meshes
+      const glass = { v: g.glass.v.slice(0, g.homeV0), i: g.glass.i.slice(0, g.homeI0) };
+      const home = homeMesh(g, ci);
+      const gv = new Float32Array(glass.v.length + home.v.length);
+      gv.set(glass.v, 0); gv.set(home.v, glass.v.length);
+      const gi = new Uint32Array(glass.i.length + home.i.length);
+      gi.set(glass.i, 0);
+      const vb = glass.v.length / 15;
+      for (let k = 0; k < home.i.length; k++) gi[glass.i.length + k] = vb + home.i[k];
+      return { solid: makeCommVao(g.solid), glass: makeCommVao({ v: gv, i: gi }), bridge: makeCommVao(g.bridge) };
+    });
   }
+  (async () => {
+    try {
+      const url = "assets/homes/" + glowHome.name + ".bin?v=2";
+      const buf = await fetch(url).then((r) => {
+        if (!r.ok) throw new Error(url + " " + r.status);
+        return r.arrayBuffer();
+      });
+      const dv = new DataView(buf);
+      if (dv.getUint32(0, false) !== 0x47484f4d) throw new Error("bad magic " + url);
+      const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
+      glowHome.mesh = { nv, ni, verts: new Float32Array(buf, 12, nv * 8), idx: new Uint32Array(buf, 12 + nv * 32, ni) };
+      uploadCommunities();
+    } catch (e) {
+      console.warn("glow homes: hex plates stand in —", e.message);
+    }
+  })();
   {
     const fams = new Float32Array(SOC_FAMS.map(([a, b]) => (a + b) / 2));
     commGL.solid = makeProg(COMM_VS, COMM_FS_SOLID, COMM_US);
@@ -5218,7 +5357,9 @@ uniform sampler2D uLight;
 uniform vec3 uCamPos;
 uniform float uFog;
 uniform float uMelt;
+uniform float uFarBlur;
 uniform float uGlow;
+uniform float uLidMask;
 uniform float uTime;
 in vec3 vN;
 in vec2 vUV;
@@ -5246,7 +5387,7 @@ void main() {
   // vUV.y < 0.685 (painted V > 0.315); the island atlas above that (platform patches, pads) is planar and exempt.
   float bodyRow = 1.0 - step(0.685, vUV.y);
   float wall = 1.0 - smoothstep(0.40, 0.55, abs(normalize(vON).y));
-  lm *= mix(1.0, wall, bodyRow);
+  lm *= mix(1.0, wall, bodyRow * uLidMask);   // v60: uLidMask 0 for the sphere family (every face is a wall)
   vec3 N = normalize(vN);
   // v58: the spire beacon — top 1.2% of the map is red; off, then a bright
   // quick blink every 3 s (James's spec). Off = no emission at all.
@@ -5300,11 +5441,20 @@ void main() {
   vec3 halo = vec3(0.0);
   float haloA = 0.0;
   vec3 haloW = vec3(0.0);
+  // v60 (three rounds with James, all "blurry"): the v59 look IS the LOD-0
+  // point-sampled kernel — far windows stay individual points and twinkle as
+  // the view slides (aliasing, but it "gives a feeling of realness"). It
+  // stays the default. uFarBlur (GOD MODE dial, 0 = v59) lets the taps
+  // follow the pixel footprint by that many mips: smoother far read, less
+  // twinkle. Tap SPACING always stays in texels — a halo is a fixed size on
+  // the building (scaling it with distance smeared towers into blobs).
+  float lod0 = clamp(log2(max(px * 0.7, 1.0)), 0.0, 9.0);
+  float lodT = min(lod0, uFarBlur);
   for (int j = -2; j <= 2; j++)
     for (int i = -2; i <= 2; i++) {
-      vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, 0.0);
+      vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, lodT);
       halo += s.rgb; haloA += s.a;
-      vec3 w = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 4.0, 1.5).rgb;
+      vec3 w = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 4.0, 1.5 + lodT).rgb;
       float acc = step(w.r + 0.15, w.b + w.g * 0.5) + step(0.5, w.r) * step(0.4, w.b) * step(w.g, 0.35 * w.r);
       haloW += w * clamp(acc, 0.0, 1.0);
     }
@@ -5326,7 +5476,7 @@ void main() {
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "26"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "29"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
@@ -5337,11 +5487,13 @@ void main() {
     { id: "building-01b", label: "building 01b · tower", vantage: [7167, 2957, 125247] },
     { id: "building-01a-tower", label: "building 01a · tower", vantage: null },
     { id: "building-01-tower", label: "building 01 · tower", vantage: null },
+    { id: "building-01c-tower", label: "building 01c · tower", vantage: null }, // v60
+    { id: "building-02-sphere", label: "building 02 · sphere", vantage: null, body: "sphere" }, // v60: second family
   ];
   const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
     try {
-      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uTime", "uTex", "uTex2", "uLight"]);
+      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
       const mkTex = (img, alpha, nearestMag) => {
         const tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 11); // scratch unit for upload; draw binds per kind
@@ -5510,6 +5662,8 @@ void main() {
     // expansion-spec.md — defaults 240 / 1,200 / 3,600, tanks 240s / 360s,
     // spools 5s / 3s). The booster BUILDS, overdrive SLAMS.
     const VMAX = cfg.boostTop, VOVER = cfg.overTop;
+    const COAST_TAU = 3.2; // release-coast time constant: booster + the jets (v37/v44)
+    const IMP_COAST = 5.0; // v60: impulse alone coasts longer (James: "last longer" — impulse only)
     // the booster drinks water; overdrive burns deuterium (v38). Tanks are
     // generous and impulse is always free — a dry tank means limping (a long
     // limp, out in the gulf), never stranding.
@@ -5541,7 +5695,7 @@ void main() {
       if (ang > 0.0005) {
         rotateCam(vnorm(vcross(cam.f, dir)), Math.min(ang, 0.5 * dt));
       }
-      if (dist <= autoNav.standoff + (Math.abs(thrust) + Math.abs(impulse)) * 3.2 + 40) {
+      if (dist <= autoNav.standoff + (Math.abs(thrust) * COAST_TAU + Math.abs(impulse) * IMP_COAST) + 40) {
         autoNav = null; // release — the coast carries you to the doorstep
       } else {
         // v49: the autopilot cruises at up to overdrive speed for the long
@@ -5564,7 +5718,7 @@ void main() {
     } else {
       // free coast (v37: 1.6 → 3.2 per James — the drift after a burn should
       // carry you a good while; X is there when you want to stop)
-      thrust *= Math.exp(-dt / 3.2);
+      thrust *= Math.exp(-dt / COAST_TAU);
       if (Math.abs(thrust) < 4) thrust = 0;
     }
 
@@ -5572,7 +5726,7 @@ void main() {
     // your gaze, S to back out. Burns nothing.
     // v44: releasing the key COASTS (same 3.2s constant as the thruster —
     // it's space, this speed doesn't just vanish); X still brakes everything.
-    const IMPULSE = cfg.impTop; // m/s (80 → 120 v38; 240 + GOD MODE v49)
+    const IMPULSE = cfg.impTop; // m/s (80 → 120 v38; 240 + GOD MODE v49; 200 v60)
     const dolly = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
     if (dolly !== 0) {
       impulse += (dolly * IMPULSE - impulse) * (1 - Math.exp(-dt / 0.5));
@@ -5580,7 +5734,7 @@ void main() {
       impulse *= Math.exp(-dt / 0.35);
       if (Math.abs(impulse) < 2) impulse = 0;
     } else {
-      impulse *= Math.exp(-dt / 3.2);
+      impulse *= Math.exp(-dt / IMP_COAST);
       if (Math.abs(impulse) < 2) impulse = 0;
     }
     // v49 FLAT ladder (James: "each mode should have a flat top speed.
@@ -5590,12 +5744,33 @@ void main() {
     const speed = Math.abs(thrust) >= Math.abs(impulse) ? thrust : impulse;
     if (sound.on && sound.engine) updateEngine(thrust, dolly !== 0);
     if (speed !== 0) {
-      const bd = camBasis();
+      const bd = cam; // v60: the ship glides along its NOSE, not the eye
       // flight bounds are the REAL space now (v49) — the core spreads only
       // size the neighborhood, not the cage
       const bounds = [SPACE_X * 0.95, SPACE_Y * 0.95, SPACE_Z * 0.95];
       for (let i = 0; i < 3; i++) {
         cam.pos[i] = clamp(cam.pos[i] + bd.f[i] * speed * dt, -bounds[i], bounds[i]);
+      }
+    }
+    // -- ATTITUDE JETS (v60, James: "I'm not a plane"): R/F rise and sink,
+    // Q/E slide left and right — straight along the pod's OWN up and right
+    // (pod contract: ship frame, never world axes). Same manners as impulse:
+    // free, builds over half a second, coasts on release (3.2s), X brakes.
+    // Orthogonal to the ladder, so it rides alongside forward speed rather
+    // than competing with it — the ladder stays flat.
+    const jetU = (keys.has("KeyR") ? 1 : 0) - (keys.has("KeyF") ? 1 : 0);
+    const jetR = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
+    const jetTop = cfg.rcsTop;
+    const jetK = 1 - Math.exp(-dt / 0.5);
+    if (jetU !== 0) rcsU += (jetU * jetTop - rcsU) * jetK;
+    else { rcsU *= Math.exp(-dt / (allStop ? 0.35 : COAST_TAU)); if (Math.abs(rcsU) < 2) rcsU = 0; }
+    if (jetR !== 0) rcsR += (jetR * jetTop - rcsR) * jetK;
+    else { rcsR *= Math.exp(-dt / (allStop ? 0.35 : COAST_TAU)); if (Math.abs(rcsR) < 2) rcsR = 0; }
+    if (rcsU !== 0 || rcsR !== 0) {
+      const bd = cam;
+      const bounds = [SPACE_X * 0.95, SPACE_Y * 0.95, SPACE_Z * 0.95];
+      for (let i = 0; i < 3; i++) {
+        cam.pos[i] = clamp(cam.pos[i] + (bd.u[i] * rcsU + bd.r[i] * rcsR) * dt, -bounds[i], bounds[i]);
       }
     }
 
@@ -5656,7 +5831,13 @@ void main() {
         // radial curve, direction preserved — gentle near center for aim,
         // full authority at the rim. v55.1: /zoom — magnified turn rates
         // shrink to match, so the view never whips while zoomed.
-        const gain = Math.pow(stickMag, cfg.stickCurve) / (mag * zoom);
+        // v60 THE HARD PULL (James: "I need to be able to pull a little
+        // harder"): the rim is no longer a wall. Past reach the stick keeps
+        // giving — linearly up to stickPull× the max rate at TWICE the reach,
+        // then it saturates. Inside the rim nothing changed.
+        const over = Math.min(1, Math.max(0, mag - cfg.stickReach) / Math.max(1, cfg.stickReach));
+        const pull = 1 + over * (cfg.stickPull - 1);
+        const gain = Math.pow(stickMag, cfg.stickCurve) * pull / (mag * zoom);
         pendingYaw -= dx * gain * cfg.stickYawMax * DEG * dt;
         pendingPitch -= dy * gain * cfg.stickPitchMax * DEG * dt;
       }
@@ -5713,7 +5894,7 @@ void main() {
       stickGrabRing.classList.toggle("on", grabOn);
     }
 
-    const ROT = 0.7 / zoom; // rad/s (arrow keys; v55.1: slower while magnified)
+    const ROT = 0.77 / zoom; // rad/s (arrow keys; v60 +10% from 0.7; v55.1: slower while magnified)
     if (keys.has("ArrowLeft")) { pendingYaw += ROT * dt; leveling = false; }
     if (keys.has("ArrowRight")) { pendingYaw -= ROT * dt; leveling = false; }
     if (keys.has("ArrowUp")) { pendingPitch += ROT * dt; leveling = false; }
@@ -5740,6 +5921,21 @@ void main() {
     // that is what makes the tilt he sets robotically hold while dragging.
     if (yawStep !== 0) rotateCam(cam.u, yawStep);
     if (pitchStep !== 0) rotateCam(cam.r, pitchStep);
+    // v60 the eye: head-look eases toward its drag target (and home on
+    // release); the turn-lean swells slowly toward a few degrees in the
+    // direction the ship is turning and settles when it stops. Both are
+    // view-only — see camBasis().
+    {
+      const kh = 1 - Math.exp(-dt * 8);
+      head.yaw += (head.tYaw - head.yaw) * kh;
+      head.pitch += (head.tPitch - head.pitch) * kh;
+      if (!head.on && Math.abs(head.yaw) < 1e-4 && Math.abs(head.pitch) < 1e-4) { head.yaw = 0; head.pitch = 0; }
+      const kl = 1 - Math.exp(-dt * 3);
+      lead.yaw += (clamp(lookRateYaw * LEAD_GAIN, -LEAD_MAX, LEAD_MAX) - lead.yaw) * kl;
+      lead.pitch += (clamp(lookRatePitch * LEAD_GAIN, -LEAD_MAX, LEAD_MAX) - lead.pitch) * kl;
+      if (Math.abs(lead.yaw) < 1e-4) lead.yaw = 0;
+      if (Math.abs(lead.pitch) < 1e-4) lead.pitch = 0;
+    }
 
     // -- roll: A/D bank while held and STAY banked (per James, NMS pilot —
     // moved off Q/E 2026-07-17 so he can bank + point the nose with the mouse;
@@ -5781,10 +5977,11 @@ void main() {
       rotateCam([0, 1, 0], TURN_RATE * Math.sin(bankRad) * authority * (1 - stickMag) * dt);
     }
 
-    // -- R: glide back to the plane of the ecliptic (level roll and pitch,
-    // keep heading) over about a second
-    if (keys.has("KeyR")) {
-      if (!leveling) stickLive = false; // v48: R takes the stick until the hand moves again
+    // -- CAPS LOCK: glide back to the plane of the ecliptic (level roll and
+    // pitch, keep heading) over about a second (was R until v60; R is a jet
+    // now, James picked caps lock — a tap is enough, leveling runs to done)
+    if (keys.has("CapsLock")) {
+      if (!leveling) stickLive = false; // v48: leveling takes the stick until the hand moves again
       leveling = true;
     }
     if (leveling) {
@@ -5794,6 +5991,11 @@ void main() {
       const k = 1 - Math.exp(-dt * 2.5);
       cam.f = vnorm(vlerp(cam.f, fl, k));
       cam.u = vnorm(vlerp(cam.u, [0, 1, 0], k));
+      // v60 BUG FIX (James: "I also want to straighten out"): orthonormalize()
+      // rebuilds up FROM right, and right was never touched here — so the
+      // roll survived every level-off and only the pitch came home. Rebuild
+      // right from the leveled pair so the roll actually levels.
+      cam.r = vnorm(vcross(cam.f, cam.u));
       rollShown *= 1 - k; // the reticle glides home with the ship (v55.3)
       if (vdot(cam.f, fl) > 0.99995 && cam.u[1] > 0.99995) leveling = false;
     }
@@ -6085,6 +6287,7 @@ void main() {
         gl.uniform1f(bldgMesh.prog.U.uAer, cfg.aerial / 120000);
         gl.uniform1f(bldgMesh.prog.U.uMelt, cfg.melt);
         gl.uniform1f(bldgMesh.prog.U.uGlow, cfg.bldgGlow);
+        gl.uniform1f(bldgMesh.prog.U.uFarBlur, cfg.bldgFarBlur);
         gl.uniform1f(bldgMesh.prog.U.uTime, t);
         // v59: one VAO + surf/light bind per KIND, then its instances
         for (const k of bldgMesh.kinds) {
@@ -6098,6 +6301,7 @@ void main() {
               gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf);
               gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight);
               gl.activeTexture(gl.TEXTURE0);
+              gl.uniform1f(bldgMesh.prog.U.uLidMask, k.body === "sphere" ? 0 : 1); // v60
               bound = true;
             }
             bldgModel(b);
@@ -6391,16 +6595,16 @@ void main() {
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed"] },
-    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "rollMax", "stickCurve"] },
+    { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "rollMax", "stickCurve", "stickPull"] },
     // v49 GOD MODE (James's tally: top speed + tank length are the key
     // ones) — physics/feel knobs, forever tunable. The ring dials freeze
     // with the geography when the layout finalizes.
-    { label: "GOD MODE · drive", keys: ["impTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
+    { label: "GOD MODE · drive", keys: ["impTop", "rcsTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
     { label: "GOD MODE · the ring", keys: ["colonyDist", "colonyVert", "colonyJitter"] },
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice", "bldgGlow"] },
+    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice", "bldgGlow", "bldgFarBlur"] },
     { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
@@ -6626,7 +6830,7 @@ void main() {
     applySpawnPose({ pos, f, u });
     pendingYaw = 0; pendingPitch = 0; lookRateYaw = 0; lookRatePitch = 0;
     stickLive = false; rollVel = 0; rollShown = 0; leveling = false;
-    thrust = 0; impulse = 0; overdrive = false; autoNav = null;
+    thrust = 0; impulse = 0; rcsU = 0; rcsR = 0; overdrive = false; autoNav = null;
   }
   viewBtn.addEventListener("click", () => {
     refreshBldgUi();
@@ -6693,7 +6897,7 @@ void main() {
         and pull: the farther from center, the harder the turn, maxing out
         at "reach" px. Park the cursor to hold a turn; release to fly
         straight. TUNE → "the stick" adjusts the feel</dd>
-      <dt>W / S</dt><dd>impulse — glide forward / back (240 m/s, free)</dd>
+      <dt>W / S</dt><dd>impulse — glide forward / back (200 m/s, free)</dd>
       <dt>shift</dt><dd>booster — hold to burn (1,200 m/s, drinks H2O, full in 5s)</dd>
       <dt>space</dt><dd>overdrive on / off (3,600 m/s, burns deuterium, slams in 3s — the crossing tier; TUNE → GOD MODE retunes the whole ladder)</dd>
       <dt>S + shift</dt><dd>reverse booster</dd>
@@ -6703,7 +6907,13 @@ void main() {
         to 1×</dd>
       <dt>A / D</dt><dd>roll — a pure spin around the nose, like a pencil
         through the ship; it never changes where you're headed</dd>
-      <dt>R</dt><dd>level off</dd>
+      <dt>right-drag</dt><dd>head-look — hold the right button and drag to
+        look off the nose while the ship keeps its line; let go and the
+        view eases back</dd>
+      <dt>R / F</dt><dd>attitude jets — rise / sink straight up or down
+        along the pod's own up (120 m/s, free, coasts on release)</dd>
+      <dt>Q / E</dt><dd>attitude jets — slide left / right</dd>
+      <dt>caps lock</dt><dd>level off (tap it)</dd>
       <dt>H</dt><dd>return home</dd>
       <dt>N / T / C</dt><dd>nav · tune · controls panels on / off</dd>
       <dt>V</dt><dd>view building — jump to the picked building's vantage</dd>
