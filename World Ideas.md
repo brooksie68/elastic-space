@@ -284,6 +284,9 @@ colorful fart soundboard to make his daughter laugh. 36 ElevenLabs-generated far
 button. Status: `built`. 2026-07-15: reimagined as **DROPZILLA** (`src/worlds/dropzilla/`), a
 shock-jock sample deck styled like pad-controller hardware — bank tabs (10 slots), FX knobs,
 censor bleep, looper. The 36 farts live on as its TOOTS bank; ~9 more banks to come.
+Status 2026-08-17: **moved out of Elastic Space** to its own project,
+`C:\Users\brook\ai-projects\dropzilla` (James: not a fit here; still in active development,
+heading for an Android mobile UI). Removed from the registry and admin panel; not archived.
 
 ## Selected for build — 2026-07-10
 

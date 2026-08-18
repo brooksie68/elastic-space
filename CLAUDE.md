@@ -466,10 +466,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
    vials, a procedural env map, and three Meshy seamless tiles (~27 of a
    60cr standing consent) dressing the metal/glass. Both sims still green
    (129 + 404). AWAITING JAMES'S EYES on the whole rebuild.
-1. DROPZILLA: keep filling the soundboard tabs — banks 3–10 are open (GAS and CHUCK OPINES
-   are live). James supplies audio per bank; Claude wires pads, labels, and icons.
-2. DROPZILLA: re-enable the drift exits (sticker, note, cable) — temporarily commented out
-   in index.html on 2026-07-16; James found them distracting during the soundboard build-out.
+1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
+   wanna see it in here anymore", not archived. It is now its own project at
+   `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile
+   UI on his Android phone. World folder, admin row, and registry entry removed here;
+   pre-move history stays in this repo's git log. Never re-add it here.)
+2. (folded into item 1 — the Dropzilla drift-exit re-enable is moot; exits were removed
+   for good at the move.)
 3. ARACHNO-WARS: tank-color tuner panel (Chrome Rift tuner pattern) — two color pickers
    driving `HULL_TINT` live, localStorage-persisted. Approved 2026-07-19, build later.
 4. ARACHNO-WARS 2500: the spider-vision side-scroller, forked from AW2000 on 2026-07-24

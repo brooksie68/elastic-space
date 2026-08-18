@@ -8,6 +8,14 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-08-17 (Dropzilla moves out)
+
+- DROPZILLA removed from Elastic Space at James's call ("not a good fit… I don't wanna see
+  it in here anymore"; not archived, still active). Now its own project at
+  `C:\Users\brook\ai-projects\dropzilla` (own repo) heading for an Android mobile UI. World
+  folder deleted, admin-panel row and registry entry removed, CLAUDE.md todo + World Ideas
+  updated. Pre-move history remains in this repo's log.
+
 ## 2026-08-01 (Lumina: panel becomes a board, the performance timeline)
 
 - Panel passes 6–7: user-owned row layout engine (1–5 cards/row, drag + row
