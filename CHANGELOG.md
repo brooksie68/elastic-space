@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-01/02 (The Fifteen Sisters: the "church bell" was the Tibetan bowl — gone for good)
+
+- **The Fifteen Sisters — the sour bell found and removed.** James, third complaint since July: a church bell "rings occasionally... a tiny bit off from one of the notes in the actual sisters... sour." The distant-bell mp3 had been silent since 07-20 and deleted since 07-28, so FFT forensics on the three remaining files (`tmp/the-fifteen-sisters/bell-hunt.mjs`) convicted the ElevenLabs Tibetan bowl: 538 Hz, C5 + 48 cents, a quarter-tone sharp of sister #11, second partial 25 cents sharp of sister #7, struck every 2.7 s by the longest sister in the default Blend voice and blooming 0.62 s late. Removed outright: the mp3, the audio element, the Voices cabinet group, `playBowl()`, the voices state and the strike branch — every sister is a glass sine now, in every tuning and register.
+- Proof by offline A/B render (`chime-render.mjs`, the chime graph sample-exact with and without the bowl): new build 342/342 pentatonic and 622/622 chromatic sustained tones on the sisters' grid, zero off; old build 90 and 135 off-grid, every one the bowl. World rule added: no sampled bells or bowls, ever. James after a fresh load (he had been refreshing the GitHub-hosted copy): "so pleasant to listen to now... it's been driving me crazy for literally months."
+
 ## 2026-09-01/02 (Orb Dimension v61: the Saelyri crowds; the glow-home plane-stack session)
 
 - **Orb Dimension v61 — THE CROWDS** (James's go after the eight-question design, all recs taken): 1,000 beings at the capital / 600 per town rolled as GROUPS doing six verbs (congregation, stream, pair, gathering, home traffic, play), sized to headcount at 15–40 m spacing, tidal assemble/disperse, kind-66 crowd clouds as the far read, ripple greeting, "the crowds" dial group; every pose closed-form and sim-proved (society-sim TESTS 12–15, 33k capital poses vs Korrudan). `crowds.md` rubric; `tmp/orb-dimension/crowd-lab.html` harness (two self-critique rounds). James flew it: "it looks dope!"

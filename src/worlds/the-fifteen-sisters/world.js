@@ -61,7 +61,6 @@
   let viewPos = 1;             // continuous camera position, eases toward vantage
   let friction = false;        // Fading momentum: swings decay to stillness
   let chimesOn = true;         // whether the sisters speak at all
-  let voices = "blend";        // glass (synth) | bowls (pitched bowl scale) | blend
   const FRICTION_TAU = 40;     // seconds for amplitude to fall to 1/e
   let pattern = "together";
   let pendingAfterGather = null;
@@ -147,7 +146,6 @@
   const ctx2d = canvas.getContext("2d");
   const ambience = document.getElementById("ambience");
   const citybed = document.getElementById("citybed");
-  const bowl = document.getElementById("bowl");
   const doorExit = document.querySelector(".exit-door");
   const starExit = document.querySelector(".exit-star");
   const mothExit = document.querySelector(".exit-moth");
@@ -467,22 +465,6 @@
     o2.stop(t + 2.2);
   }
 
-  function playBowl(vel, semis = 0) {
-    if (!soundOn) return;
-    try {
-      const strike = bowl.cloneNode();
-      if (semis !== 0) {
-        // pitch the one bowl sample along the scale (down too, for Deep register)
-        strike.preservesPitch = false;
-        strike.webkitPreservesPitch = false;
-        strike.playbackRate = Math.pow(2, semis / 12);
-      }
-      const shrill = 1 / (1 + Math.max(0, semis) / 24); // upper strikes come in softer
-      strike.volume = Math.min(1, 0.4 * masterVol * (0.5 + 0.5 * vel) * shrill);
-      strike.play().catch(() => {});
-    } catch (e) { /* the bowl rests */ }
-  }
-
   function applyVolume() {
     ambience.volume = 0.55 * masterVol;
     citybed.volume = 0.37 * masterVol; // 0.49 cut 25% (2026-07-20); 0.7 cut 30% (2026-07-18)
@@ -557,7 +539,6 @@
       if (setting === "cycle") cycleT = Number(value); // waveU keeps phase continuity
       if (setting === "friction") friction = value === "fading";
       if (setting === "chimes") chimesOn = value === "singing";
-      if (setting === "voices") voices = value;
       if (setting === "scale") scaleName = value;
       if (setting === "register") register = value === "deep" ? -12 : 0;
       if (setting === "pattern") {
@@ -1008,7 +989,8 @@
     draw(nowS, viewPos);
 
     // chimes: a sister hums as she passes centre, swinging away from us.
-    // The longest sister strikes the low Tibetan bowl instead of her sine.
+    // Every sister is a glass sine on the freqFor() grid — no sampled bowls or
+    // bells in this world, ever (see CLAUDE.md).
     if (chimesOn) {
       for (let i = 0; i < N; i++) {
         const s = sisters[i];
@@ -1016,11 +998,7 @@
         if (s.prevTheta > 0 && s.theta <= 0) {
           const vel = Math.min(1, Math.abs(s.theta - s.prevTheta) /
             (AMP * 2 * Math.PI * s.n * (dt / cycleT) + 1e-9));
-          if (vel > 0.3) {
-            if (voices === "bowls") playBowl(vel, semisFor(i) + register);
-            else if (voices === "blend" && i === 0) playBowl(vel, register);
-            else playChime(i, vel);
-          }
+          if (vel > 0.3) playChime(i, vel);
         }
       }
     }

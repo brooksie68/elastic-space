@@ -1,5 +1,44 @@
 # The Fifteen Sisters — changelog
 
+## 2026-09-01 — claude-fable (the bowl was the "church bell" — gone for good)
+
+- James, for the third time: a church bell "rings occasionally... a tiny bit off
+  from one of the notes in the actual sisters... sour... ruins the effect." The
+  distant-bell mp3 has been silent since 07-20 and deleted since 07-28, so what he
+  kept hearing was never that file. Measured the three remaining audio files
+  (`tmp/the-fifteen-sisters/bell-hunt.mjs`: audio-decode + FFT): the ElevenLabs
+  Tibetan bowl — struck by the longest sister at centre in the default Blend
+  voice, ringing 5.6 s to -40 dB — has its strongest partial at 538 Hz, C5 + 48
+  cents, a quarter-tone sharp of sister #11, and its second at 298 Hz, D4 + 25
+  cents, sharp of sister #7. It never voiced the C3 root it was meant to; it was
+  a sour bell tolling against two sisters every 2.7 s. The city bed and the
+  crickets carry no sustained tonal events (scanned; none).
+- Removed outright: `tibetan-bowl.mp3` (git rm), the `<audio id="bowl">` element,
+  the Voices cabinet group (Glass / Bowls / Blend — meaningless without the bowl),
+  `playBowl()`, the `voices` state and its setting handler, and the strike branch
+  in `frame()`. Every sister is a glass sine now, in every tuning and register.
+  Rule added to CLAUDE.md: no sampled bells or bowls in this world, ever. Earlier
+  entries below still mention the bowl as history — left as written, per the
+  changelog rule.
+- Same night, James's follow-up (still listening): "an errant tone... separate from
+  any of the other tones... on the major scale, the pentatonic, chromatic, the
+  seventh, the harmonic... chiming, not even in time with them... as soon as I stop
+  them, it stops." That is the bowl's exact signature: in Blend it played at its own
+  fixed pitch on every tuning, and the sample's ring swells to its peak 0.62 s after
+  the strike, so it bloomed off the sisters' beat. Proved by offline A/B render
+  (`tmp/the-fifteen-sisters/chime-render.mjs`: the chime graph sample-exact — two
+  sines, envelope, lowpass, echo, compressor — 60 s with and without the bowl, same
+  tonal scan at 1.46 Hz resolution): NEW build, pentatonic 342/342 and chromatic
+  622/622 sustained tones on the sisters' grid, zero off; OLD build, 90 and 135
+  off-grid tones, every one the bowl (297 Hz +17c, 538 Hz +43c). The server sends
+  Cache-Control: no-store, so any page loaded after ~22:05 on 09-01 is bowl-free;
+  only a tab opened before then still has it. Visible tell: the cabinet no longer
+  has a Voices row.
+- James’s verdict after a fresh load: "so pleasant to listen to now... it’s been
+  driving me crazy for literally months. I could never figure out why I didn’t
+  really like this that much." (He had been refreshing the GitHub-hosted copy, which
+  keeps the bowl until the next push — the Voices-row tell caught it.)
+
 ## 2026-07-28 — claude-fable (bell fully purged)
 
 - James: the bell is out of tune with the sisters and sours the music — delete it
