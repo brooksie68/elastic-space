@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-01/02 (Orb Dimension v61: the Saelyri crowds; the glow-home plane-stack session)
+
+- **Orb Dimension v61 — THE CROWDS** (James's go after the eight-question design, all recs taken): 1,000 beings at the capital / 600 per town rolled as GROUPS doing six verbs (congregation, stream, pair, gathering, home traffic, play), sized to headcount at 15–40 m spacing, tidal assemble/disperse, kind-66 crowd clouds as the far read, ripple greeting, "the crowds" dial group; every pose closed-form and sim-proved (society-sim TESTS 12–15, 33k capital poses vs Korrudan). `crowds.md` rubric; `tmp/orb-dimension/crowd-lab.html` harness (two self-critique rounds). James flew it: "it looks dope!"
+- Tuner renamed **configuration** everywhere but old changelog entries ("GOD MODE" retired, James's call).
+- **Glow homes — live Blender plane-stack session** (~20 renders, his word each step): landed a seeded generator of ~95 zero-thickness force-field polygons with real boundary ribbons, rendered on black — "actually pretty cool... good progress," held at `tmp/orb-dimension/glowhome-fields-v1.blend` + `glowhome_fields.py`. His corrections now standing: the balls are SHELLS not suns (dark inside), fields have no thickness, fine detail kills km scale.
+
 ## 2026-09-01/02 (The Valence Lab: the rethink, Snap, the grown mock; Powers of Ten draft)
 
 - James on v4: "frumpy, boring, hard to understand." His brief: step way back, roll the

@@ -14,6 +14,8 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 - The full suite (run all of it after any world.js change; ~20s):
   `init-smoke society-sim reef-sim crust-sim nebula-sim wisp-atlas-check v47-sim
   ladder-sim stick-sim` plus `tmp/orb-dimension/shader-check.html` in the browser
+  (v61: society-sim carries the crowd tests 12–15; `crowd-lab.html` is the crowds'
+  look-dev harness — capture a sheet after any crowd change)
   (it compiles every shader — it has caught real runtime-killers the Node sims
   cannot see). Guard sims must be DETERMINISTIC: reef-sim's fuel probes were
   unseeded and failed on unlucky rolls until v53 seeded them; if you add sampling,
@@ -26,11 +28,15 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   in the camera/flight section — inline the math instead.
 - `expansion-spec.md` — "the big dimension" phase spec (2026-07-23, James's numbers):
   1,000×1,000×250 km, flat speed ladder, stargates, depot grid. PHASE 1 (flight-feel
-  expansion: space + ladder + ring colonies + GOD MODE) BUILT 2026-07-23 as v49 with
+  expansion: space + ladder + ring colonies + configuration) BUILT 2026-07-23 as v49 with
   James's go — awaiting his first flight. Stargates, depot grid, grown reefs, hub
   society, luminous region: still spec-only, still need discussion.
 
 ## World-specific rules
+
+- NAMING: the tuner panel is the "configuration" panel — never "GOD MODE" (James retired
+  that phrase 2026-09-01: a one-off he said once, "goofy"; every world has a config
+  panel and this is just this world's). Old changelog entries keep the old name.
 
 - Flight feel is heavily matured (v14–v33) — do not retune acceleration, damping, or camera
   behavior casually; check the changelog history first.
@@ -54,7 +60,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   translation or world-coord instance uploads: float32 jitter at 250km+ was the reason.
   ladder-sim source-guards both lines.
 - Flight is a FLAT ladder as of v49 (James: never a sum — max-magnitude of impulse vs
-  thrust). Tops/tanks/spools live in cfg (GOD MODE tuner group): defaults 240 / 1,200
+  thrust). Tops/tanks/spools live in cfg (configuration tuner group): defaults 240 / 1,200
   (240s H2O, 5s spool) / 3,600 (360s DEU, 3s spool). `tmp/orb-dimension/ladder-sim.mjs`
   guards the shipped lines and the spec math — run it after touching flight or fuel.
 - Dust is CAMERA-LOCAL as of v49: motes recycle through a box around the ship (wrap
@@ -73,7 +79,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   (James's report, confirmed by screenshot). Halos are long-range only (v49.1 gate,
   40→140 radii). If wall/glow brightness reads wrong, those are the tune points.
 - The reef colonies ring the core at ~250 km (v49): colonyLayout(LAYOUT_SEED) computes
-  seats from the GOD MODE ring dials (colonyDist/Vert/Jitter, defaults 250/0/0.5);
+  seats from the configuration ring dials (colonyDist/Vert/Jitter, defaults 250/0/0.5);
   applyColonyLayout() writes REEF_COLONIES[i].c; relayout() re-seats colonies + doorstep
   stations + actors without re-rolling the field pools. Ring dials are tuning-phase
   only — they freeze with the geography. Each colony has a heart-flagged beacon (fog-proof
@@ -160,7 +166,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 - THE SAELYRI IN-WORLD (v56, Phase B1 — James's go on the 11-point plan +
   "ten times the populations"): kind-65 orb actors, 10m beings, 140 at
   default dials (`saelyri` capital pop ×0.6 satellites, `citizens` per-caste
-  robots, `saeNotice` greet range — GOD MODE · the societies). Rules:
+  robots, `saeNotice` greet range — configuration · the societies). Rules:
   (1) the look is the Being Editor's shader with preset james-being-01
   BAKED as FS constants — look changes happen in the editor first, then
   re-bake the constants (they're commented at the kind-65 block); never
@@ -180,6 +186,27 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   the kind-60 shader divides y by 10. (6) Chords: SAE_CHORDS per family,
   25s per-being + 1.6s global spacing — never let a crowd stack chords.
   Phase B2 (fleet community routes + society sound beds) needs its own go.
+- THE CROWDS (v61, 2026-09-01 — James's go on the eight-point design): the
+  Saelyri are rolled as GROUPS doing six verbs (congregation / stream / pair /
+  gathering / home traffic / play), sized to their HEADCOUNT at 15–40 m
+  spacing — never to the sun (crowd-lab round 1: rings sized to the sun put
+  beings 300 m apart and nothing read as a crowd). Read `crowds.md` FIRST.
+  Rules: (1) `saelyriLayout` / `saelyriPose` / `saelyriMorph` / `saeCloud` live
+  INSIDE the society-sim extraction markers and may only use what the block
+  declares (TAU, Math, mulberry32, SKULL_EL, COMMUNITIES) — no `clamp`, no
+  flight helpers; `SAE_TOWERS` restates BLDG_KINDS.length (TEST 15). (2) Every
+  pose is a pure function of t; nothing integrates. (3) Capital discipline:
+  rings/orbits re-roll clear of the bone, stream routes reject bridges that cut
+  the ellipsoid, home lanes face outward, and EVERY capital pose is pushed to
+  en ≥ 1.04 last — TEST 13 samples 33k poses and bars the pushed share at 5%;
+  if it climbs, fix the roll, don't raise the bar. (4) Crowd clouds (kind 66)
+  are gated OFF inside 2.5 radii and collapse their quad to a point under the
+  gate (a zero-alpha quad still costs pixels); TEST 14 bars cloud fill at 6
+  screens. (5) The verb mix is dealt exactly to the weights — tune weights,
+  never the draw. (6) Judge every crowd look change in
+  `tmp/orb-dimension/crowd-lab.html` first (T toggles forced/natural tide).
+  Dials live in the configuration panel's "the crowds" group; `saelyri` is
+  retired (saved cfgs carrying it are ignored).
 - THE BUILDINGS (v58, 2026-08-14/15): read `buildings.md` in this folder
   FIRST — it is the whole pipeline (concept → GPT lit guide → Meshy raw GLB →
   Node weld + Blender decimate → guide_extract2/guide_place2 → export_bldg →
@@ -195,7 +222,8 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   DICTATED `vantage` (James's coordinates); VIEW [V] on the deck jumps to
   it. Deck shortcuts N/T/C/V, four equal rows, console-fit must stay 0px.
 - THE GLOW HOMES (v60.1, 2026-08-17): the energy beings' habitat inside every
-  Saelyri sun is a MESHY structure James made from a GPT concept, re-materialed
+  Saelyri SHELL (James, 2026-09-01: the glowing balls are shells, not suns — the
+  inside is dark; force fields have zero thickness — see changelog 2026-09-01/02) is a MESHY structure James made from a GPT concept, re-materialed
   in-world by the glass program (kind-2 crystal: fresnel dims faces / brightens
   edges, sun term glows from the core, family hue). Pipe, name-driven:
   `weld_bldg.mjs <name>` → `decimate_bldg.py -- <name>` → `export_home.py --

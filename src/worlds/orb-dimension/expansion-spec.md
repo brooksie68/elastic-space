@@ -4,7 +4,7 @@ James's settled numbers from the 2026-07-23 riffing session.
 
 STATUS 2026-07-23 (later that session): PHASE 1 — "the flight-feel expansion" — BUILT
 as v49 with James's explicit go: space + camera-relative renderer + flat ladder +
-ring colonies + doorstep fuel + camera-local dust + GOD MODE tuner. See the world
+ring colonies + doorstep fuel + camera-local dust + configuration tuner. See the world
 changelog. Everything NOT in that list (stargates, gulf depot grid, grown reefs, hub
 society, luminous region) is still spec-only and still needs its own DISCUSS → PLAN →
 go before code.
@@ -20,6 +20,47 @@ place... a hundred at least"). Fleet routes + society sound split off as B2. Sam
 session: THE RESONANCE TRADE designed and agreed (section below) — it becomes
 PHASE C'S SPINE. Threats/defense and the wider-world threads recorded below, all
 still spec-only.
+
+STATUS 2026-09-01: THE SAELYRI CROWDS designed and agreed (section below — James took
+every Claude recommendation); BUILT the same day as v61 on his go — awaiting his flight. Same
+session the tuner panel lost its "GOD MODE" name — it is the configuration panel.
+
+## The Saelyri crowds (consensus 2026-09-01 — the populations item, build plan awaiting go)
+
+James's verdict after flying B1 (2026-08-14/15): 140 beings read "teensy and sparse";
+he wants ~600 per satellite town, ~1,000 at the capital, and PURPOSEFUL crowd
+behavior — groups doing things, pairs, streams, tuned by feel like Jerry's Pool.
+The scale fact that shapes everything: the capital shell is ~20 km across, its suns
+~1 km, a being 10 m — 1,000 beings spread evenly on orbits still sit ~80 m apart per
+sun ring. The count alone never reads as a crowd; the crowd reads from CLUSTERING
+(dense knots and streams with thin space between). Eight questions, all Claude recs
+accepted:
+
+1. THE VERBS — six group behaviors, all exist, weighted per town, each sim-proven:
+   CONGREGATIONS (a ring or spiral around a sun, morphing in unison — a chorus),
+   STREAMS (rivers of commuters along the bridges, both directions), PAIRS (two
+   beings circling each other), GATHERINGS (at the buildings and the Korrudan
+   crust), HOME TRAFFIC (beings entering and leaving the glow homes through the sun
+   cores), PLAY (chases and loops).
+2. WHERE — capital crowds favor the crust and the sun cores; satellites favor suns
+   and bridges.
+3. TIDAL, not static — crowds form, swell, and disperse on schedules (a gathering
+   builds at one sun, then streams away over a bridge to the next). Still closed-
+   form: a group is ONE path, members are offsets; determinism holds.
+4. GROUP LOD — a group carries a collective glow at distance (a soft cloud) that
+   resolves into individuals on approach. Also the fill-rate lever.
+5. THE CADENCE — modest bump only; robots at work sites, not crowds.
+6. GREETING IN A CROWD — the nearest six greet fully (the glyph pool stays six
+   sprites); a brightening ripple runs through the rest; chords keep their spacing.
+7. THE GATE — James's laptop IS his gaming machine (No Man's Sky maxed, no drops).
+   Real near-range raymarch is affordable; LOD tiers are for distance reads, not
+   rescue.
+8. DIALS — per-town population, group size, group count, stream density, gathering
+   cadence, all in the configuration panel, plus a rubric doc (the Jerry's Pool
+   denizen-frequency pattern) so he tunes by feel from a working default.
+
+Discipline: a look-dev harness first (crowd-lab, same as the crust and nebula labs),
+Claude's own critique rounds, sims extended, then his flight.
 
 ## The resonance trade (consensus 2026-07-31 — Phase C's spine, needs its build go)
 
@@ -189,7 +230,7 @@ and building until the whole thing is really full and vibrant."
   Orb Dimension. (Reading: the 3 ring colonies ARE Yth-Alune / Sorrek Bloom / Vhal-Imir,
   relocated and grown — confirm naming/identity in the plan.)
 
-## GOD MODE — tuner controls running tally (James's list, keep appending)
+## Configuration panel — tuner controls running tally (James's list, keep appending; the panel was called "configuration" until 2026-09-01 — James retired the phrase, "goofy", a one-off he never meant as the name. It is the world configuration panel; every world has one)
 
 New tuner group(s) for the expansion. Same discipline as existing groups (cfg-backed,
 localStorage presets, sliders) — but these are the play-with-the-universe knobs.
@@ -201,12 +242,12 @@ Started 2026-07-23; James will keep adding as he explores.
 4. (Claude seeds, unconfirmed: depot catch radius, depot grid spacing, dust density
    at speed, fog/fade distances — strike any James doesn't want.)
 
-CONSTRAINT (James, 2026-07-23): GOD MODE is not everything. Overall space size and the
+CONSTRAINT (James, 2026-07-23): the configuration panel is not everything. Overall space size and the
 locations of key points of interest (skull, colonies, gates, the Lantern, …) will at
 some point FINALIZE and become immutable — same discipline as v38's "the space is
 static" rule (sanitizeCfg() force-restores SPACE_X/Z/Y today). They may ride sliders
 during the build/tuning phase, but they graduate to constants and come OFF the panel.
-GOD MODE's permanent residents are the physics/feel knobs (speeds, tanks, spools, …),
+The configuration panel's permanent residents are the physics/feel knobs (speeds, tanks, spools, …),
 not the geography.
 
 ## Someday ideas (riffed, unsettled, not in the phase scope unless James says so)

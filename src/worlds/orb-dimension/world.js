@@ -45,7 +45,7 @@
     spreadX: CORE_X,
     spreadZ: CORE_Z,
     spreadY: CORE_Y,
-    // v49 GOD MODE — the physics/feel knobs (James's running tally: top
+    // v49 configuration — the physics/feel knobs (James's running tally: top
     // speed and tank length are the key ones). The flat ladder: impulse /
     // booster / overdrive each carry a TOP SPEED (never a sum), a tank in
     // seconds of burn, and a 0-to-full spool time. expansion-spec.md is
@@ -75,13 +75,24 @@
     commSat: 0.66,
     nodeGlow: 1,
     pulseTempo: 1,
-    // v56 Phase B1 (James: "a living place... it'd be like a hundred at
-    // least"): population dials. saelyri = beings at the capital (satellites
-    // carry 60%); citizens = Cadence per caste per town at the capital
-    // (satellites 2/3). Both closed-form seeded — hundreds cost nothing on
-    // the CPU; the GPU pays only for what's near (see kind 65 in the FS).
-    saelyri: 50,
-    citizens: 9,
+    // v56 Phase B1 → v61 THE CROWDS (James after B1: "teensy and sparse";
+    // his numbers: ~600 per town, 1,000 at the capital): saeCap / saeSat =
+    // beings per town; saeGroup scales group sizes; saeKnot = the share of
+    // the population living in groups (the rest are solos); saeStream
+    // scales the river share of groups; saeTide multiplies the assemble /
+    // disperse clock; saeCloud = the crowd-cloud strength (the far read).
+    // citizens = Cadence per caste at the capital (satellites 2/3) — v61
+    // bumped 9 → 12, robots stay at work sites, not in crowds. All
+    // closed-form seeded — thousands cost trig; the GPU pays only for
+    // what's near (kind 65/66 in the FS).
+    saeCap: 1000,
+    saeSat: 600,
+    saeGroup: 1,
+    saeKnot: 0.85,
+    saeStream: 1,
+    saeTide: 1,
+    saeCloud: 1,
+    citizens: 12,
     // acknowledgment reach in meters — beings notice the pod inside this,
     // full greeting at 37.5% of it (10m beings: 400 → greet at 150)
     saeNotice: 400,
@@ -153,7 +164,7 @@
     { key: "rollMax", label: "roll °/s", min: 6, max: 120, step: 1 },
     { key: "stickCurve", label: "response", min: 1, max: 3, step: 0.05 },
     { key: "stickPull", label: "hard pull ×", min: 1, max: 4, step: 0.1 },
-    // v49 GOD MODE (drive) + the ring. layout: true = rebuilds colonies,
+    // v49 configuration (drive) + the ring. layout: true = rebuilds colonies,
     // stations and actors on release (change), not per-tick (input).
     { key: "impTop", label: "impulse m/s", min: 60, max: 720, step: 10 },
     { key: "rcsTop", label: "jets m/s", min: 20, max: 480, step: 10 },
@@ -172,7 +183,15 @@
     { key: "commJitter", label: "societies jitter", min: 0, max: 1, step: 0.05, layout: true },
     { key: "nodeGlow", label: "node glow", min: 0, max: 2, step: 0.05 },
     { key: "pulseTempo", label: "pulse tempo", min: 0.2, max: 3, step: 0.05 },
-    { key: "saelyri", label: "saelyri pop", min: 0, max: 120, step: 5, layout: true },
+    // v61 the crowds — pops and group rolls rebuild the layout; tide and
+    // cloud are live feel knobs. Ceilings are what society-sim proves.
+    { key: "saeCap", label: "capital beings", min: 0, max: 1500, step: 50, layout: true },
+    { key: "saeSat", label: "town beings", min: 0, max: 900, step: 50, layout: true },
+    { key: "saeGroup", label: "group size ×", min: 0.5, max: 2.5, step: 0.1, layout: true },
+    { key: "saeKnot", label: "in groups", min: 0, max: 1, step: 0.05, layout: true },
+    { key: "saeStream", label: "streams ×", min: 0, max: 2, step: 0.1, layout: true },
+    { key: "saeTide", label: "tide speed ×", min: 0.25, max: 3, step: 0.05 },
+    { key: "saeCloud", label: "crowd glow", min: 0, max: 2, step: 0.05 },
     { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
@@ -679,6 +698,22 @@ void main() {
   vec3 ec2 = hsl2rgb(vA.y / 360.0, satE, 0.60);
 
   // ---- standalone kinds: no glass, they ARE the whole sprite --------------
+  if (kind == 66) { // v61 a Saelyri crowd from afar: one soft breathing cloud per group
+    // vD.z = strength (tide × crowd size × distance gate, JS-driven). Torn by
+    // noise so it never reads as a disc — the crowd resolves into beings as
+    // the gate takes it away inside 2.5 radii.
+    // round-1 lab lesson: a smooth blob read as a bigger sun. GRAIN — a
+    // speckle field under a soft envelope — reads as many small lights.
+    float mc = pow(smoothstep(1.0, 0.0, r), 1.5);
+    vec2 sp = vUv * 34.0 + vec2(seed * 13.1, seed * 7.7);
+    float g1 = vnoise(sp + uTime * 0.11);
+    float g2 = vnoise(sp * 1.9 + 3.7 - uTime * 0.07);
+    float grain = pow(g1, 5.0) * 2.6 + pow(g2, 7.0) * 2.2;
+    float ac = mc * (0.16 + grain) * vD.z * 0.42;
+    vec3 cc = mix(ec1, vec3(1.0), 0.35);
+    frag = vec4(cc * ac * 1.2, ac * 0.85) * fogF;
+    return;
+  }
   if (kind == 65) { // a Saelyri (v56 Phase B1): light held in a shape
     // vD.y = morph blend 0..1 (resting humanoid -> whim shape), vB.y = which
     // whim shape (1..6), vD.z = acknowledgment 0..1, act = the v47 LOD glide.
@@ -2378,91 +2413,429 @@ void main() {
     }
     return out;
   }
-  // ---- v56 Phase B1: the Saelyri themselves -------------------------------
-  // Deterministic member roll for every community: capPop beings at the
-  // capital, 60% at each satellite (James: "a hundred at least" — defaults
-  // give 50 + 3x30 = 140). Each member is a CLOSED-FORM motion recipe — a
-  // loose orbit around its home sun; ~30% are travelers that ping-pong one
-  // light bridge with long dwells at each end. Morph life: resting humanoid,
-  // one whim excursion per cycle, 12s melt each way (James: 10-15s), short
-  // hold at the whim shape. All numbers seeded — society-sim asserts them.
-  function saelyriLayout(geoList, capPop) {
+  // ---- v56 Phase B1 → v61 THE CROWDS: the Saelyri themselves ----------------
+  // v61 (James after flying B1 — "teensy and sparse" — and the design he
+  // agreed 2026-09-01): a town's people are rolled as GROUPS, each doing one
+  // of six verbs, because a crowd reads from CLUSTERING, never from the
+  // count (1,000 beings spread evenly on orbits sit ~80 m apart per sun).
+  //   0 CONGREGATION — a ring around a sun, morphing in unison (a chorus)
+  //   1 STREAM       — a river of commuters riding one light bridge
+  //   2 PAIR         — two beings circling each other on a shared orbit
+  //   3 GATHERING    — a knot loitering at a landmark: the Korrudan crust at
+  //                    the capital, the test towers off Mediant, a bridge-side
+  //                    plaza anywhere else
+  //   4 HOME TRAFFIC — beings diving into and rising out of the sun's core
+  //   5 PLAY         — a chase line looping a sun
+  // Congregations and gatherings are TIDAL (saeTide): the group assembles,
+  // holds, disperses to private orbits, and comes back. Every pose is a pure
+  // function of t (saelyriPose) — nothing integrates, so four thousand
+  // beings cost trig and society-sim can prove all of them. The rest of the
+  // population (1 − saeKnot) are solos on v56 orbits. At the capital every
+  // pose is pushed clear of Korrudan as a last step (the v56 orbit guard,
+  // generalized) — society-sim TEST 13 samples it.
+  const SAE_VERBS = 6;
+  // the test towers stand off Mediant (seatTestBuildings): restated here
+  // because BLDG_KINDS is declared later in the file (TDZ at init) and the
+  // sim needs this block to stand alone — society-sim counts them
+  const SAE_TOWERS = 5;
+  const saeSmooth = (x) => { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); };
+  // an orthonormal pair perpendicular to ax
+  const saeFrame = (ax) => {
+    const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+    let e1 = [
+      ref[1] * ax[2] - ref[2] * ax[1],
+      ref[2] * ax[0] - ref[0] * ax[2],
+      ref[0] * ax[1] - ref[1] * ax[0]];
+    const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
+    e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
+    const e2 = [
+      ax[1] * e1[2] - ax[2] * e1[1],
+      ax[2] * e1[0] - ax[0] * e1[2],
+      ax[0] * e1[1] - ax[1] * e1[0]];
+    return [e1, e2];
+  };
+  const saeEn = (p) => Math.hypot(p[0] / SKULL_EL[0], p[1] / SKULL_EL[1], p[2] / SKULL_EL[2]);
+  // closest approach of an orbit circle (center c, axis ax, radius rad) to
+  // the bone, in en units (1 = the surface)
+  const saeOrbitEnMin = (c, ax, rad) => {
+    const [e1, e2] = saeFrame(ax);
+    let mn = Infinity;
+    for (let s = 0; s < 48; s++) {
+      const th = (s / 48) * TAU;
+      const ct = Math.cos(th), st = Math.sin(th);
+      mn = Math.min(mn, saeEn([
+        c[0] + (e1[0] * ct + e2[0] * st) * rad,
+        c[1] + (e1[1] * ct + e2[1] * st) * rad,
+        c[2] + (e1[2] * ct + e2[2] * st) * rad]));
+    }
+    return mn;
+  };
+  function saelyriLayout(geoList, capPop, satPop, groupMul, knotFrac, streamMul) {
     const R = mulberry32(SOCIETY_SEED ^ 0x5ae111);
     const rr = (a, b) => a + R() * (b - a);
-    // closest approach of an orbit circle to the skull ellipsoid, in en
-    // units (1 = the bone surface) — capital orbits must never dip inside
-    const orbitEnMin = (nd, ax, rad) => {
-      const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
-      let e1 = [
-        ref[1] * ax[2] - ref[2] * ax[1],
-        ref[2] * ax[0] - ref[0] * ax[2],
-        ref[0] * ax[1] - ref[1] * ax[0]];
-      const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
-      e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
-      const e2 = [
-        ax[1] * e1[2] - ax[2] * e1[1],
-        ax[2] * e1[0] - ax[0] * e1[2],
-        ax[0] * e1[1] - ax[1] * e1[0]];
-      let mn = Infinity;
-      for (let s = 0; s < 48; s++) {
-        const th = (s / 48) * TAU;
-        const px = nd.p[0] + (e1[0] * Math.cos(th) + e2[0] * Math.sin(th)) * rad;
-        const py = nd.p[1] + (e1[1] * Math.cos(th) + e2[1] * Math.sin(th)) * rad;
-        const pz = nd.p[2] + (e1[2] * Math.cos(th) + e2[2] * Math.sin(th)) * rad;
-        mn = Math.min(mn, Math.hypot(px / SKULL_EL[0], py / SKULL_EL[1], pz / SKULL_EL[2]));
-      }
-      return mn;
+    const unit = (yMax) => {
+      const a = [rr(-1, 1), rr(-yMax, yMax), rr(-1, 1)];
+      const l = Math.hypot(a[0], a[1], a[2]) || 1e-6;
+      return [a[0] / l, a[1] / l, a[2] / l];
     };
-    const out = [];
+    const mem = [], grp = [];
     for (let ci = 0; ci < COMMUNITIES.length; ci++) {
       const geo = geoList[ci];
-      const list = [];
-      out.push(list);
+      const list = [], groups = [];
+      mem.push(list);
+      grp.push(groups);
       if (!geo || !geo.nodes.length) continue;
-      const nMem = ci === 0 ? Math.round(capPop) : Math.round(capPop * 0.6);
-      for (let i = 0; i < nMem; i++) {
-        let ndI = (R() * geo.nodes.length) | 0;
-        let nd = geo.nodes[ndI];
-        let ax = [rr(-1, 1), rr(-0.5, 0.5), rr(-1, 1)];
-        let al = Math.hypot(ax[0], ax[1], ax[2]) || 1;
-        ax = [ax[0] / al, ax[1] / al, ax[2] / al];
-        // orbit clears the node's crystal planes (they reach ~1.35 radii)
-        let rad = nd.r * rr(1.45, 2.6);
-        // capital only: an orbit around a bone-hugging sun may swing INTO
-        // Korrudan — deterministic re-rolls (same R stream, so still
-        // sim-provable) until the whole circle clears the ellipsoid
-        if (ci === 0) {
-          for (let tries = 0; tries < 24 && orbitEnMin(nd, ax, rad) < 1.03; tries++) {
-            ndI = (R() * geo.nodes.length) | 0;
-            nd = geo.nodes[ndI];
-            const ax2 = [rr(-1, 1), rr(-0.5, 0.5), rr(-1, 1)];
-            const al2 = Math.hypot(ax2[0], ax2[1], ax2[2]) || 1;
-            ax = [ax2[0] / al2, ax2[1] / al2, ax2[2] / al2];
+      const isCap = ci === 0;
+      const nN = geo.nodes.length;
+      const pop = Math.max(0, Math.round(isCap ? capPop : satPop));
+      // a bridge carries a stream only if its sagged line clears the bone —
+      // a river through the skull would be the v56 orbit bug all over again
+      const routes = [];
+      for (let ei = 0; ei < geo.edges.length; ei++) {
+        const a = geo.nodes[geo.edges[ei][0]].p, b = geo.nodes[geo.edges[ei][1]].p;
+        let ok = true;
+        for (let s = 0; s <= 24 && ok && isCap; s++) {
+          const u = s / 24;
+          if (saeEn([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u - Math.sin(u * Math.PI) * 20, a[2] + (b[2] - a[2]) * u]) < 1.03) ok = false;
+        }
+        if (ok) routes.push(ei);
+      }
+      // how big a sphere around sun ndI clears the bone (meters; Infinity
+      // away from the capital) — a bound, from the ellipsoid ratio
+      const clearA = (ndI) => {
+        if (!isCap) return Infinity;
+        const en = saeEn(geo.nodes[ndI].p);
+        return Math.max(0, Math.min(SKULL_EL[0], SKULL_EL[1], SKULL_EL[2]) * (en / 1.02 - 1));
+      };
+      const pickSun = (need) => {
+        let ndI = (R() * nN) | 0;
+        for (let tries = 0; tries < 24 && clearA(ndI) < need(geo.nodes[ndI]); tries++) ndI = (R() * nN) | 0;
+        return ndI;
+      };
+      // a private orbit around sun ndI (the v56 orbit — every being has one:
+      // solos live on it, group members disperse to it at low tide)
+      const privateOrbit = (ndI) => {
+        const nd = geo.nodes[ndI];
+        let axis = unit(0.5), rad = nd.r * rr(1.45, 2.6);
+        if (isCap) {
+          for (let tries = 0; tries < 24 && saeOrbitEnMin(nd.p, axis, rad) < 1.03; tries++) {
+            axis = unit(0.5);
             rad = nd.r * rr(1.45, 2.6);
           }
         }
-        const traveler = geo.edges.length > 0 && R() < 0.3;
-        list.push({
-          ndI,
-          rad,
-          axis: ax, // normalized above (and re-rolled clear of the bone at home)
-          w: TAU / rr(200, 600), // one lap in 200-600s: drift, not traffic
-          ph: rr(0, TAU),
-          fam: nd.fam,
-          traveler,
-          edge: traveler ? (R() * geo.edges.length) | 0 : -1,
-          tw: TAU / rr(180, 420), // travel cycle: long dwells, brief crossings
-          tph: rr(0, TAU),
-          mLen: rr(60, 180),  // seconds between whim excursions
-          mOff: rr(0, 1000),
-          mMelt: 12,          // melt time each way
-          mHold: rr(6, 14),   // held at the whim shape
+        return { axis, rad, w: TAU / rr(200, 600), ph: rr(0, TAU) };
+      };
+      const member = (gi, k, n, ndI) => {
+        const po = privateOrbit(ndI);
+        return {
+          gi, k, u: n > 0 ? k / n : 0,
+          ndI, fam: geo.nodes[ndI].fam,
+          off: unit(1), // a personal direction: lateral slot, home radial, loiter seat
+          rad2: po.rad, axis2: po.axis, w2: po.w, ph2: po.ph,
+          mLen: rr(60, 180), mOff: rr(0, 1000), mMelt: 12, mHold: rr(6, 14),
           seed: rr(0, 100),
-        });
+        };
+      };
+      // verb weights per town: the capital gathers on the crust and dives
+      // into its suns; satellites live on their suns and bridges (James's
+      // pick). The stream dial scales the river share.
+      const W = isCap
+        ? [0.22, 0.20 * streamMul, 0.13, 0.25, 0.12, 0.08]
+        : [0.28, 0.28 * streamMul, 0.12, 0.10, 0.14, 0.08];
+      if (!routes.length) W[1] = 0;
+      const target = pop * Math.min(1, Math.max(0, knotFrac));
+      let inGroups = 0;
+      let guard = 0;
+      // the verb mix follows the weights EXACTLY (largest-deficit pick with a
+      // seeded tie-break) — a random draw left one seed's capital with twice
+      // its share of rivers; James tunes weights, so the roll must honor them
+      const wSum = W[0] + W[1] + W[2] + W[3] + W[4] + W[5];
+      const dealt = [0, 0, 0, 0, 0, 0];
+      while (target - inGroups >= 2 && guard++ < 4000) {
+        let verb = 0, best = -Infinity;
+        const jit = R() * 0.001;
+        for (let v = 0; v < SAE_VERBS; v++) {
+          if (W[v] <= 0) continue;
+          const deficit = (W[v] / wSum) * (groups.length + 1) - dealt[v] + (v === 0 ? jit : 0);
+          if (deficit > best) { best = deficit; verb = v; }
+        }
+        dealt[verb]++;
+        const n0 = verb === 0 ? rr(12, 40) : verb === 1 ? rr(20, 40) : verb === 2 ? 2
+          : verb === 3 ? rr(10, 40) : verb === 4 ? rr(6, 20) : rr(3, 8);
+        let n = verb === 2 ? 2 : Math.max(2, Math.round(n0 * groupMul));
+        n = Math.min(n, Math.max(2, Math.round(target - inGroups)));
+        const g = { verb, n, gi: groups.length, seed: rr(0, 100), period: rr(140, 320), tOff: rr(0, 1), ndI: 0, fam: 0 };
+        if (verb === 0) {
+          // a ring around a sun, slowly turning; the whole ring shares one
+          // morph clock (the chorus). Guarded like an orbit at the capital.
+          g.ndI = pickSun((nd) => nd.r * 2.3);
+          const nd = geo.nodes[g.ndI];
+          // the ring is TIGHT — beings ~22 m apart, a knot of light (the
+          // crowd-lab round-1 lesson: a ring sized to the sun put them 300 m
+          // apart and nothing read as a crowd). The ring's CENTER rides an
+          // orbit around the sun; the ring itself turns in its own plane.
+          g.ringR = Math.max(60, (n * 22) / TAU);
+          g.axis = unit(0.5);
+          g.rad = nd.r * rr(1.3, 2.2);
+          if (isCap) {
+            for (let tries = 0; tries < 24 && saeOrbitEnMin(nd.p, g.axis, g.rad) < 1.03 + g.ringR / SKULL_EL[0]; tries++) {
+              g.axis = unit(0.5);
+              g.rad = nd.r * rr(1.3, 2.2);
+            }
+          }
+          g.w = TAU / rr(240, 700);
+          g.ph = rr(0, TAU);
+          g.axis2 = unit(1); // the ring's own plane
+          g.w2 = TAU / rr(90, 220); // the ring turns in place
+          g.mLen = rr(45, 120);
+          g.mOff = rr(0, 1000);
+          g.mHold = rr(6, 14);
+        } else if (verb === 1) {
+          // a column of commuters riding one bridge, one way; the column is
+          // a fraction of the span so it reads as a river, not a picket
+          g.edge = routes[(R() * routes.length) | 0];
+          g.dir = R() < 0.5 ? -1 : 1;
+          g.ndI = geo.edges[g.edge][g.dir > 0 ? 0 : 1];
+          g.period = rr(90, 200);
+          g.col = rr(0.12, 0.2); // ~30–60 m apart in the column (round-1 lab: 0.22–0.34 read as a picket)
+        } else if (verb === 2) {
+          // two beings on a shared private orbit, circling each other
+          g.ndI = pickSun((nd) => nd.r * 2.7);
+          const po = privateOrbit(g.ndI);
+          g.axis = po.axis; g.rad = po.rad; g.w = po.w; g.ph = po.ph;
+          g.sep = rr(9, 16);
+          g.w2 = TAU / rr(14, 34);
+        } else if (verb === 3) {
+          // a knot at a landmark. Capital: a standoff seat on the bone,
+          // never on the face (the face stays bare — the Knowhere rule).
+          // Mediant: mostly the towers. Elsewhere: a plaza beside a bridge.
+          let anchor;
+          if (isCap) {
+            let dir = unit(1);
+            for (let tries = 0; tries < 24 && dir[2] > 0.45; tries++) dir = unit(1);
+            const en = rr(1.08, 1.14);
+            anchor = [dir[0] * SKULL_EL[0] * en, dir[1] * SKULL_EL[1] * en, dir[2] * SKULL_EL[2] * en];
+            g.spread = Math.min(110, 12 * Math.sqrt(n)); // sized to the headcount (~25 m apart); ≤110 keeps the bone guard honest
+          } else if (ci === 1 && R() < 0.7) {
+            const k = (R() * SAE_TOWERS) | 0;
+            const sh = geo.shellR;
+            anchor = [sh * 1.6 + k * 900 + rr(-60, 60), -200 + rr(120, 340), sh * 0.4 + rr(-60, 60)];
+            g.spread = 12 * Math.sqrt(n);
+          } else {
+            const e = geo.edges[(R() * geo.edges.length) | 0];
+            const a = geo.nodes[e[0]].p, b = geo.nodes[e[1]].p;
+            const u = rr(0.35, 0.65);
+            const side = unit(0.3);
+            const off = geo.shellR * 0.06;
+            anchor = [
+              a[0] + (b[0] - a[0]) * u + side[0] * off,
+              a[1] + (b[1] - a[1]) * u + side[1] * off,
+              a[2] + (b[2] - a[2]) * u + side[2] * off];
+            g.spread = 12 * Math.sqrt(n);
+          }
+          g.anchor = anchor;
+          // home sun = the nearest (the dispersed pose orbits it)
+          let best = 0, bd = Infinity;
+          for (let i = 0; i < nN; i++) {
+            const p = geo.nodes[i].p;
+            const d = Math.hypot(p[0] - anchor[0], p[1] - anchor[1], p[2] - anchor[2]);
+            if (d < bd) { bd = d; best = i; }
+          }
+          g.ndI = best;
+        } else if (verb === 4) {
+          // traffic into and out of the sun's core along personal radials;
+          // the outer turn is bounded by what clears the bone
+          g.ndI = pickSun((nd) => nd.r * 1.4);
+          g.period = rr(50, 110);
+          g.outer = Math.max(0.6, Math.min(1.32, clearA(g.ndI) / geo.nodes[g.ndI].r));
+          // one LANE per group (round-1 lab lesson: personal radials scattered
+          // the traffic over the whole ball; a shared lane reads as a column
+          // of lights streaming in and out). Outward at the capital.
+          g.lane = unit(1);
+          if (isCap) {
+            const p = geo.nodes[g.ndI].p;
+            const l = Math.hypot(p[0], p[1], p[2]) || 1;
+            for (let tries = 0; tries < 24 && (g.lane[0] * p[0] + g.lane[1] * p[1] + g.lane[2] * p[2]) / l < 0.25; tries++) g.lane = unit(1);
+          }
+        } else {
+          // a chase line on a lissajous loop around a sun
+          g.ndI = pickSun((nd) => nd.r * 2.5);
+          const nd = geo.nodes[g.ndI];
+          g.amp = Math.min(nd.r * rr(1.2, 2.0), Math.max(nd.r * 0.7, clearA(g.ndI)));
+          const f = TAU / rr(60, 140);
+          g.fa = f; g.fb = f * 1.37; g.fc = f * 0.71;
+          g.lag = rr(0.5, 1.1);
+        }
+        g.fam = geo.nodes[g.ndI].fam;
+        for (let k = 0; k < n; k++) {
+          list.push(member(g.gi, k, n, g.ndI));
+        }
+        groups.push(g);
+        inGroups += n;
+      }
+      // solos: the remainder on private orbits (the v56 life, minus the
+      // travelers — the streams took that job)
+      for (let i = inGroups; i < pop; i++) list.push(member(-1, 0, 0, pickSun((nd) => nd.r * 2.7)));
+    }
+    return { mem, grp };
+  }
+  // ---- the crowd's clocks: pure functions of t ------------------------------
+  // tide: 0 = dispersed to private orbits, 1 = assembled (congregations and
+  // gatherings). Assembled about half the cycle, apart about a third, easing
+  // between. The saeTide dial multiplies the clock.
+  function saeTide(g, t, tideMul) {
+    const ph = (((t * tideMul) / g.period + g.tOff) % 1 + 1) % 1;
+    return saeSmooth(ph / 0.16) * (1 - saeSmooth((ph - 0.66) / 0.18));
+  }
+  // the private orbit (community-local)
+  function saePrivate(m, geo, t, out) {
+    const nd = geo.nodes[m.ndI];
+    const [e1, e2] = saeFrame(m.axis2);
+    const th = t * m.w2 + m.ph2;
+    const ct = Math.cos(th), st = Math.sin(th);
+    out[0] = nd.p[0] + (e1[0] * ct + e2[0] * st) * m.rad2;
+    out[1] = nd.p[1] + (e1[1] * ct + e2[1] * st) * m.rad2;
+    out[2] = nd.p[2] + (e1[2] * ct + e2[2] * st) * m.rad2;
+  }
+  const saePB = [0, 0, 0];
+  // where member m of group g (null = solo) is at time t, community-local.
+  // Returns the assembled amount: 1 for the always-on verbs, the tide for
+  // congregations and gatherings, 0 for solos. isCap pushes the pose clear
+  // of Korrudan as the last step (a chord between two exterior points can
+  // still cut the bone — the low-tide blend is one).
+  function saelyriPose(g, m, geo, t, tideMul, out, isCap) {
+    let tide = 0;
+    if (!g) {
+      saePrivate(m, geo, t, out);
+    } else {
+      const nd = geo.nodes[g.ndI];
+      tide = 1;
+      if (g.verb === 0) {
+        tide = saeTide(g, t, tideMul);
+        const [e1, e2] = saeFrame(g.axis);
+        const th = t * g.w + g.ph;
+        const ct = Math.cos(th), st = Math.sin(th);
+        const [r1, r2] = saeFrame(g.axis2);
+        const th2 = t * g.w2 + m.u * TAU;
+        const c2 = Math.cos(th2) * g.ringR, s2 = Math.sin(th2) * g.ringR;
+        out[0] = nd.p[0] + (e1[0] * ct + e2[0] * st) * g.rad + r1[0] * c2 + r2[0] * s2;
+        out[1] = nd.p[1] + (e1[1] * ct + e2[1] * st) * g.rad + r1[1] * c2 + r2[1] * s2;
+        out[2] = nd.p[2] + (e1[2] * ct + e2[2] * st) * g.rad + r1[2] * c2 + r2[2] * s2;
+      } else if (g.verb === 1) {
+        const [ea, eb] = geo.edges[g.edge];
+        const na = geo.nodes[g.dir > 0 ? ea : eb], nb = geo.nodes[g.dir > 0 ? eb : ea];
+        const a = na.p, b = nb.p;
+        const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+        const L = Math.hypot(dx, dy, dz) || 1;
+        // the column emerges from inside a's heart and vanishes into b's —
+        // a being appears where the ball's own glow hides the seam
+        const ua = (na.r * 0.45) / L, ub = 1 - (nb.r * 0.45) / L;
+        const u = (((t * tideMul) / g.period + m.u * g.col + g.tOff) % 1 + 1) % 1;
+        const uu = ua + u * (ub - ua);
+        // lateral slot across the span, a little sag under the bridge line
+        const [s1, s2] = saeFrame([dx / L, dy / L, dz / L]);
+        const lat = m.off[0] * 10, lift = m.off[1] * 6 - Math.sin(uu * Math.PI) * 20;
+        out[0] = a[0] + dx * uu + s1[0] * lat + s2[0] * lift;
+        out[1] = a[1] + dy * uu + s1[1] * lat + s2[1] * lift;
+        out[2] = a[2] + dz * uu + s1[2] * lat + s2[2] * lift;
+      } else if (g.verb === 2) {
+        const [e1, e2] = saeFrame(g.axis);
+        const th = t * g.w + g.ph;
+        const ct = Math.cos(th), st = Math.sin(th);
+        const th2 = t * g.w2 + (m.k ? Math.PI : 0);
+        const c2 = Math.cos(th2) * g.sep * 0.5, s2 = Math.sin(th2) * g.sep * 0.5;
+        out[0] = nd.p[0] + (e1[0] * ct + e2[0] * st) * g.rad + e1[0] * c2 + e2[0] * s2;
+        out[1] = nd.p[1] + (e1[1] * ct + e2[1] * st) * g.rad + e1[1] * c2 + e2[1] * s2;
+        out[2] = nd.p[2] + (e1[2] * ct + e2[2] * st) * g.rad + e1[2] * c2 + e2[2] * s2;
+      } else if (g.verb === 3) {
+        tide = saeTide(g, t, tideMul);
+        const sp = g.spread * (0.35 + 0.65 * m.u);
+        out[0] = g.anchor[0] + m.off[0] * sp + Math.sin(t * 0.21 + m.seed) * 6;
+        out[1] = g.anchor[1] + m.off[1] * sp * 0.6 + Math.sin(t * 0.17 + m.seed * 1.3) * 4;
+        out[2] = g.anchor[2] + m.off[2] * sp + Math.cos(t * 0.19 + m.seed) * 6;
+      } else if (g.verb === 4) {
+        // in and out of the core: cosine, so the being dwells at both ends
+        const s = (((t * tideMul) / g.period + m.u) % 1 + 1) % 1;
+        const r = nd.r * (0.12 + (g.outer - 0.12) * (0.5 - 0.5 * Math.cos(TAU * s)));
+        // the lane, with a personal lateral slot (off across the lane, ~18 m)
+        const dl = m.off[0] * g.lane[0] + m.off[1] * g.lane[1] + m.off[2] * g.lane[2];
+        out[0] = nd.p[0] + g.lane[0] * r + (m.off[0] - g.lane[0] * dl) * 18;
+        out[1] = nd.p[1] + g.lane[1] * r + (m.off[1] - g.lane[1] * dl) * 18;
+        out[2] = nd.p[2] + g.lane[2] * r + (m.off[2] - g.lane[2] * dl) * 18;
+      } else {
+        const tt = t * tideMul - m.k * g.lag;
+        out[0] = nd.p[0] + Math.sin(g.fa * tt + g.seed) * g.amp;
+        out[1] = nd.p[1] + Math.sin(g.fb * tt + g.seed * 1.7) * g.amp * 0.45;
+        out[2] = nd.p[2] + Math.sin(g.fc * tt + g.seed * 0.6) * g.amp;
+      }
+      if (tide < 0.999) {
+        // low tide: ease out to the private orbit and back
+        saePrivate(m, geo, t, saePB);
+        const k = 1 - tide;
+        out[0] += (saePB[0] - out[0]) * k;
+        out[1] += (saePB[1] - out[1]) * k;
+        out[2] += (saePB[2] - out[2]) * k;
       }
     }
-    return out;
+    if (isCap) {
+      const en = saeEn(out);
+      if (en < 1.04) { const k = 1.04 / Math.max(en, 1e-6); out[0] *= k; out[1] *= k; out[2] *= k; }
+    }
+    out[1] += Math.sin(t * 0.4 + m.seed) * 1.2; // breathing bob
+    return tide;
   }
+  // the whim wheel: rest as the humanoid, one melt per cycle into one of the
+  // six shapes. Congregations share their group's clock (the chorus).
+  // out = [blend 0..1, shape 1..6]
+  function saelyriMorph(g, m, t, out) {
+    const chorus = !!g && g.verb === 0;
+    const len = chorus ? g.mLen : m.mLen, off = chorus ? g.mOff : m.mOff;
+    const hold = chorus ? g.mHold : m.mHold, seed = chorus ? g.seed : m.seed;
+    const melt = m.mMelt;
+    const cyc = (t + off) / len;
+    const cn = Math.floor(cyc);
+    const us = (cyc - cn) * len;
+    const h = Math.sin(cn * 12.9898 + seed) * 43758.5453;
+    const kt = 1 + (Math.floor((h - Math.floor(h)) * 6) % 6);
+    const dur = melt * 2 + hold;
+    let ms = 0;
+    if (us < dur) {
+      ms = us < melt ? us / melt : us > melt + hold ? (dur - us) / melt : 1;
+      ms = ms * ms * (3 - 2 * ms);
+    }
+    out[0] = ms;
+    out[1] = kt;
+  }
+  // the crowd cloud (kind 66): one soft glow per assembling group — the
+  // long-range read that resolves into beings as you close. Center + radius,
+  // community-local; 0 for pairs and streams (a pair is two lights, a river
+  // reads as its own line of motes).
+  function saeCloud(g, geo, out) {
+    if (g.verb === 1 || g.verb === 2) return 0;
+    const nd = geo.nodes[g.ndI];
+    if (g.verb === 3) { out[0] = g.anchor[0]; out[1] = g.anchor[1]; out[2] = g.anchor[2]; return g.spread * 2.2; }
+    if (g.verb === 4) {
+      // the lane's midpoint, half its length
+      const mid = nd.r * (0.12 + g.outer) * 0.5;
+      out[0] = nd.p[0] + g.lane[0] * mid; out[1] = nd.p[1] + g.lane[1] * mid; out[2] = nd.p[2] + g.lane[2] * mid;
+      return nd.r * (g.outer - 0.12) * 0.55;
+    }
+    if (g.verb === 0) {
+      // the ring's center at t = 0 is as good as any — the cloud is a hint
+      // from kilometers away, and the ring's orbit is slow
+      const [e1, e2] = saeFrame(g.axis);
+      const ct = Math.cos(g.ph), st = Math.sin(g.ph);
+      out[0] = nd.p[0] + (e1[0] * ct + e2[0] * st) * g.rad;
+      out[1] = nd.p[1] + (e1[1] * ct + e2[1] * st) * g.rad;
+      out[2] = nd.p[2] + (e1[2] * ct + e2[2] * st) * g.rad;
+      return g.ringR * 2.5;
+    }
+    out[0] = nd.p[0]; out[1] = nd.p[1]; out[2] = nd.p[2];
+    return g.amp * 1.2;
+  }
+  // its strength at distance d: gone inside 2.5 radii (the near-fade IS the
+  // frame rate — the v53 nebula rule), full beyond 4; scaled by crowd size
+  const saeCloudGate = (d, R, n) => saeSmooth((d - R * 2.5) / (R * 1.5)) * Math.min(1, Math.max(0.35, n / 24));
   // society hues: the same five families the reefs speak — one dimension, one
   // language of light. (Shared deliberately: the Saelyri and the reef life
   // are relatives; the plan's later phases lean on that.)
@@ -3074,6 +3447,7 @@ void main() {
   const robotFleet = { list: [], nodes: null };
   const cadenceBots = []; // v51: the citizen castes, re-seated by makeActors
   const saeBeings = []; // v56: the Saelyri — closed-form members over kind-65 orbs
+  const saeGroups = []; // v61: the crowd groups — ripple/chord state + the kind-66 cloud
   const saeGlyphs = []; // v56: greeting glyph pool, shared by whoever is greeting
   let saeChordLast = -1e9; // global chord spacing — a crowd must not stack chords
 
@@ -3221,26 +3595,50 @@ void main() {
       }
     }
 
-    // -- the Saelyri (v56 Phase B1): light-beings at home around their suns.
-    // saelyriLayout rolls the deterministic members; here they become kind-65
-    // orb actors. Motion is closed-form in updateActors — hundreds are free.
+    // -- the Saelyri (v56 Phase B1, v61 the crowds): light-beings living in
+    // groups around their suns. saelyriLayout rolls the deterministic groups
+    // and members; here they become kind-65 orb actors, and every assembling
+    // group gets one kind-66 crowd cloud (its long-range read). Motion is
+    // closed-form in updateActors — thousands are free.
     saeBeings.length = 0;
     saeGlyphs.length = 0;
-    const sae = saelyriLayout(COMM_GEO, cfg.saelyri);
+    saeGroups.length = 0;
+    const sae = saelyriLayout(COMM_GEO, cfg.saeCap, cfg.saeSat, cfg.saeGroup, cfg.saeKnot, cfg.saeStream);
+    const cc = [0, 0, 0];
     for (let ci = 0; ci < COMMUNITIES.length; ci++) {
       const com = COMMUNITIES[ci];
       const geo = COMM_GEO[ci];
       if (!com.c || !geo || !geo.nodes.length) continue;
-      for (const m of sae[ci]) {
+      const states = sae.grp[ci].map((g) => {
+        const gs = { g, ci, dmin: Infinity, near: null, trigT: -1, seedPos: [0, 0, 0], lastChord: -1e9, cloud: null, R: 0 };
+        const R = saeCloud(g, geo, cc);
+        if (R > 0) {
+          const [h1, h2] = SOC_FAMS[g.fam];
+          const o = actorBase(66, 1, (h1 + h2) / 2, (h1 + h2) / 2);
+          o.sat = 80;
+          o.halo = 0;
+          o.fadeDur = rand(8, 16);
+          o.fix = [com.c[0] + cc[0], com.c[1] + cc[1], com.c[2] + cc[2]]; // seated, never origin
+          o.fixedR = 0.01; // the frame gate brings it up to its radius
+          o.p0 = g.seed;
+          o.p1 = 0;
+          actorOrbs.push(o);
+          gs.cloud = o;
+          gs.R = R;
+        }
+        return gs;
+      });
+      for (const gs of states) saeGroups.push(gs);
+      for (const m of sae.mem[ci]) {
         const [h1, h2] = SOC_FAMS[m.fam];
         const o = actorBase(65, 5, rand(h1, h2), rand(h1, h2)); // 10m beings (James: "they're not giants")
         o.quadScale = 1.35;
         o.halo = 0.6;
         o.fadeDur = rand(4, 8);
         const nd = geo.nodes[m.ndI];
-        o.fix = [com.c[0] + nd.p[0] + m.rad, com.c[1] + nd.p[1], com.c[2] + nd.p[2]]; // seated, never origin
+        o.fix = [com.c[0] + nd.p[0] + m.rad2, com.c[1] + nd.p[1], com.c[2] + nd.p[2]]; // seated, never origin
         actorOrbs.push(o);
-        saeBeings.push(Object.assign({ ci, o, ack: 0, d: 1e9, lastChord: -1e9 }, m));
+        saeBeings.push({ ci, o, m, gs: m.gi >= 0 ? states[m.gi] : null, ack: 0, d: 1e9, lastChord: -1e9, seed: m.seed });
       }
     }
     // the greeting glyph pool: six sprites, assigned to whoever is greeting
@@ -3484,85 +3882,68 @@ void main() {
       }
     }
 
-    // -- the Saelyri (v56): closed-form drift, then acknowledgment.
-    // Every position is a pure function of t — no state integrates, so 140
-    // beings (or 400 at the dial's top) cost a few trig calls each and can
-    // never drift apart from a determinism sim.
+    // -- the Saelyri (v56, v61 the crowds): closed-form poses, then
+    // acknowledgment. Every position is a pure function of t (saelyriPose)
+    // — nothing integrates, so a thousand beings at the capital cost a few
+    // trig calls each and can never drift apart from society-sim's proofs.
     {
       const notice = cfg.saeNotice;
       const full = notice * 0.375;
-      const frameOf = (ax) => {
-        const ref = Math.abs(ax[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
-        let e1 = [
-          ref[1] * ax[2] - ref[2] * ax[1],
-          ref[2] * ax[0] - ref[0] * ax[2],
-          ref[0] * ax[1] - ref[1] * ax[0]];
-        const l1 = Math.hypot(e1[0], e1[1], e1[2]) || 1;
-        e1 = [e1[0] / l1, e1[1] / l1, e1[2] / l1];
-        const e2 = [
-          ax[1] * e1[2] - ax[2] * e1[1],
-          ax[2] * e1[0] - ax[0] * e1[2],
-          ax[0] * e1[1] - ax[1] * e1[0]];
-        return [e1, e2];
-      };
-      const seatAt = (sb, geo, com, ndI, th, out) => {
-        const nd = geo.nodes[ndI % geo.nodes.length];
-        const [e1, e2] = frameOf(sb.axis);
-        const cth = Math.cos(th), sth = Math.sin(th);
-        out[0] = com.c[0] + nd.p[0] + (e1[0] * cth + e2[0] * sth) * sb.rad;
-        out[1] = com.c[1] + nd.p[1] + (e1[1] * cth + e2[1] * sth) * sb.rad;
-        out[2] = com.c[2] + nd.p[2] + (e1[2] * cth + e2[2] * sth) * sb.rad;
-      };
-      const pa = [0, 0, 0], pb = [0, 0, 0];
+      const tideMul = cfg.saeTide;
+      const pa = [0, 0, 0], mm = [0, 0];
+      for (const gs of saeGroups) { gs.dmin = Infinity; gs.near = null; }
       for (const sb of saeBeings) {
         const com = COMMUNITIES[sb.ci];
         const geo = COMM_GEO[sb.ci];
         if (!com.c || !geo || !geo.nodes.length) { sb.o.fixedR = 0; continue; }
-        const th = t * sb.w + sb.ph;
-        seatAt(sb, geo, com, sb.ndI, th, pa);
-        if (sb.traveler && geo.edges.length) {
-          // ping-pong one light bridge: long dwells (76% of the cycle), a
-          // brief smooth crossing — commuting, not orbiting the whole town
-          const [ea, eb] = geo.edges[sb.edge % geo.edges.length];
-          const u = 0.5 + 0.5 * Math.sin(t * sb.tw + sb.tph);
-          const e = (() => { const c2 = clamp((u - 0.38) / 0.24, 0, 1); return c2 * c2 * (3 - 2 * c2); })();
-          if (e > 0) {
-            seatAt(sb, geo, com, sb.ndI === eb ? ea : eb, th, pb);
-            pa[0] += (pb[0] - pa[0]) * e;
-            pa[1] += (pb[1] - pa[1]) * e - Math.sin(e * Math.PI) * 20; // sag under the bridge line
-            pa[2] += (pb[2] - pa[2]) * e;
+        const g = sb.gs ? sb.gs.g : null;
+        saelyriPose(g, sb.m, geo, t, tideMul, pa, sb.ci === 0);
+        sb.o.fix[0] = com.c[0] + pa[0];
+        sb.o.fix[1] = com.c[1] + pa[1];
+        sb.o.fix[2] = com.c[2] + pa[2];
+        saelyriMorph(g, sb.m, t, mm);
+        sb.o.spin = mm[1]; // rides the spin slot — kind 65 never spins glass
+        sb.o.p0 = mm[0];
+        const dx = cam.pos[0] - sb.o.fix[0], dy = cam.pos[1] - sb.o.fix[1], dz = cam.pos[2] - sb.o.fix[2];
+        sb.d = Math.hypot(dx, dy, dz);
+        if (sb.gs && sb.d < sb.gs.dmin) { sb.gs.dmin = sb.d; sb.gs.near = sb; }
+      }
+      // the ripple (James's pick for a crowd): a group notices you through
+      // its nearest member and the greeting spreads outward from there at
+      // ~45 m/s — the nearest few greet fully, the rest brighten in a wave
+      for (const gs of saeGroups) {
+        if (gs.dmin < notice) {
+          if (gs.trigT < 0) {
+            gs.trigT = t;
+            gs.seedPos[0] = gs.near.o.fix[0];
+            gs.seedPos[1] = gs.near.o.fix[1];
+            gs.seedPos[2] = gs.near.o.fix[2];
+          }
+        } else gs.trigT = -1;
+      }
+      for (const sb of saeBeings) {
+        if (!COMMUNITIES[sb.ci].c) continue;
+        // acknowledgment: notice at the dial, full greeting at 37.5% of it
+        const raw = clamp((notice - sb.d) / (notice - full), 0, 1);
+        let gate = 1;
+        if (sb.gs) {
+          if (sb.gs.trigT < 0) gate = 0;
+          else {
+            const sp = sb.gs.seedPos;
+            const lag = Math.hypot(sb.o.fix[0] - sp[0], sb.o.fix[1] - sp[1], sb.o.fix[2] - sp[2]) / 45;
+            gate = clamp((t - sb.gs.trigT - lag) / 0.8, 0, 1);
           }
         }
-        pa[1] += Math.sin(t * 0.4 + sb.seed) * 1.2; // breathing bob
-        sb.o.fix[0] = pa[0];
-        sb.o.fix[1] = pa[1];
-        sb.o.fix[2] = pa[2];
-        // morph life: rest as the humanoid, one whim excursion per cycle
-        const cyc = (t + sb.mOff) / sb.mLen;
-        const cn = Math.floor(cyc);
-        const us = (cyc - cn) * sb.mLen; // seconds into this cycle
-        const h = Math.sin(cn * 12.9898 + sb.seed) * 43758.5453;
-        const kt = 1 + (Math.floor((h - Math.floor(h)) * 6) % 6);
-        const dur = sb.mMelt * 2 + sb.mHold;
-        let ms = 0;
-        if (us < dur) {
-          ms = us < sb.mMelt ? us / sb.mMelt
-             : us > sb.mMelt + sb.mHold ? (dur - us) / sb.mMelt : 1;
-          ms = ms * ms * (3 - 2 * ms);
-        }
-        sb.o.spin = kt; // rides the spin slot — kind 65 never spins glass
-        sb.o.p0 = ms;
-        // acknowledgment: notice at the dial, full greeting at 37.5% of it
-        const dx = cam.pos[0] - pa[0], dy = cam.pos[1] - pa[1], dz = cam.pos[2] - pa[2];
-        sb.d = Math.hypot(dx, dy, dz);
-        const raw = clamp((notice - sb.d) / (notice - full), 0, 1);
-        sb.ack += (raw - sb.ack) * (1 - Math.exp(-dt * 2.2));
+        sb.ack += (raw * gate - sb.ack) * (1 - Math.exp(-dt * 2.2));
         sb.o.p1 = sb.ack;
-        // the chord: once per being per long while, never two at once
-        if (raw > 0.6 && sb.ack > 0.55 && t - sb.lastChord > 25 && t - saeChordLast > 1.6) {
+        // the chord: once per being per long while, never two at once, and
+        // a knot answers as one voice (per-group spacing) — never a shop bell
+        if (raw > 0.6 && sb.ack > 0.55 && t - sb.lastChord > 25 && t - saeChordLast > 1.6 &&
+            (!sb.gs || t - sb.gs.lastChord > 6)) {
           sb.lastChord = t;
           saeChordLast = t;
-          saelyriChord(sb.fam, 1 - sb.d / notice);
+          if (sb.gs) sb.gs.lastChord = t;
+          saelyriChord(sb.m.fam, 1 - sb.d / notice);
         }
       }
       // glyph pool: the nearest greeters get the six sprites
@@ -3595,6 +3976,22 @@ void main() {
         gp.o.fix[2] = sb.o.fix[2] + (tc[2] / tl) * 4;
         gp.o.fixedR = 4;
         gp.o.p1 = clamp((sb.ack - 0.5) / 0.4, 0, 1) * (0.78 + 0.22 * Math.sin(t * 2.1 + sb.seed));
+      }
+      // the crowd clouds: one soft glow per assembling group, the read from
+      // afar — gone inside 2.5 radii (fill-rate discipline) and scaled by
+      // the tide, so a dispersed crowd shows no cloud. Below the gate the
+      // quad collapses to a point: a zero-alpha quad still costs its pixels.
+      for (const gs of saeGroups) {
+        const o = gs.cloud;
+        if (!o) continue;
+        const com = COMMUNITIES[gs.ci];
+        if (!com.c) { o.fixedR = 0.01; o.p1 = 0; continue; }
+        const g = gs.g;
+        const tide = g.verb === 0 || g.verb === 3 ? saeTide(g, t, tideMul) : 1;
+        const dx = cam.pos[0] - o.fix[0], dy = cam.pos[1] - o.fix[1], dz = cam.pos[2] - o.fix[2];
+        const s = saeCloudGate(Math.hypot(dx, dy, dz), gs.R, g.n) * tide * cfg.saeCloud;
+        o.p1 = s;
+        o.fixedR = s > 0.002 ? gs.R : 0.01;
       }
     }
 
@@ -5444,7 +5841,7 @@ void main() {
   // v60 (three rounds with James, all "blurry"): the v59 look IS the LOD-0
   // point-sampled kernel — far windows stay individual points and twinkle as
   // the view slides (aliasing, but it "gives a feeling of realness"). It
-  // stays the default. uFarBlur (GOD MODE dial, 0 = v59) lets the taps
+  // stays the default. uFarBlur (configuration dial, 0 = v59) lets the taps
   // follow the pixel footprint by that many mips: smoother far read, less
   // twinkle. Tap SPACING always stays in texels — a halo is a fixed size on
   // the building (scaling it with distance smeared towers into blobs).
@@ -5483,6 +5880,7 @@ void main() {
   // ceramic (unit 10) is shared. Add a row per export; seatTestBuildings()
   // seats one test instance per kind. `vantage` = James's DICTATED seat (his
   // coordinates) — null until he dictates one (VIEW then uses the fallback).
+  // (SAE_TOWERS in the society block restates this list's length — the crowds gather at the towers)
   const BLDG_KINDS = [
     { id: "building-01b", label: "building 01b · tower", vantage: [7167, 2957, 125247] },
     { id: "building-01a-tower", label: "building 01a · tower", vantage: null },
@@ -5658,7 +6056,7 @@ void main() {
     // -- the thruster: hold shift to burn toward full speed; release and you
     // coast down over a few seconds. Velocity always follows the gaze, so
     // steering with the mouse curves the flight. Space toggles OVERDRIVE.
-    // v49 GOD MODE: tops, tanks and spools all live in cfg (flat ladder,
+    // v49 configuration: tops, tanks and spools all live in cfg (flat ladder,
     // expansion-spec.md — defaults 240 / 1,200 / 3,600, tanks 240s / 360s,
     // spools 5s / 3s). The booster BUILDS, overdrive SLAMS.
     const VMAX = cfg.boostTop, VOVER = cfg.overTop;
@@ -5726,7 +6124,7 @@ void main() {
     // your gaze, S to back out. Burns nothing.
     // v44: releasing the key COASTS (same 3.2s constant as the thruster —
     // it's space, this speed doesn't just vanish); X still brakes everything.
-    const IMPULSE = cfg.impTop; // m/s (80 → 120 v38; 240 + GOD MODE v49; 200 v60)
+    const IMPULSE = cfg.impTop; // m/s (80 → 120 v38; 240 + configuration v49; 200 v60)
     const dolly = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
     if (dolly !== 0) {
       impulse += (dolly * IMPULSE - impulse) * (1 - Math.exp(-dt / 0.5));
@@ -6596,16 +6994,18 @@ void main() {
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
     { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed"] },
     { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "rollMax", "stickCurve", "stickPull"] },
-    // v49 GOD MODE (James's tally: top speed + tank length are the key
+    // v49 configuration (James's tally: top speed + tank length are the key
     // ones) — physics/feel knobs, forever tunable. The ring dials freeze
     // with the geography when the layout finalizes.
-    { label: "GOD MODE · drive", keys: ["impTop", "rcsTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
-    { label: "GOD MODE · the ring", keys: ["colonyDist", "colonyVert", "colonyJitter"] },
+    { label: "drive", keys: ["impTop", "rcsTop", "boostTop", "overTop", "h2oTank", "deuTank", "boostSpool", "overSpool"] },
+    { label: "the ring", keys: ["colonyDist", "colonyVert", "colonyJitter"] },
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "GOD MODE · the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "saelyri", "citizens", "saeNotice", "bldgGlow", "bldgFarBlur"] },
-    { label: "GOD MODE · the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur"] },
+    // v61: the Saelyri crowds get their own group (James tunes these by feel)
+    { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeTide", "saeCloud", "saeNotice"] },
+    { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
   groupsRow.className = "tuner-groups";
@@ -6899,7 +7299,7 @@ void main() {
         straight. TUNE → "the stick" adjusts the feel</dd>
       <dt>W / S</dt><dd>impulse — glide forward / back (200 m/s, free)</dd>
       <dt>shift</dt><dd>booster — hold to burn (1,200 m/s, drinks H2O, full in 5s)</dd>
-      <dt>space</dt><dd>overdrive on / off (3,600 m/s, burns deuterium, slams in 3s — the crossing tier; TUNE → GOD MODE retunes the whole ladder)</dd>
+      <dt>space</dt><dd>overdrive on / off (3,600 m/s, burns deuterium, slams in 3s — the crossing tier; TUNE → configuration retunes the whole ladder)</dd>
       <dt>S + shift</dt><dd>reverse booster</dd>
       <dt>X</dt><dd>all-stop — brake to a halt</dd>
       <dt>wheel / Z</dt><dd>magnifier — scroll to zoom the view up to 8×
@@ -7309,7 +7709,7 @@ void main() {
     const mag = Math.abs(thrust);
     const rv = thrust < -1 ? 0.82 : 1; // reverse burn: everything detunes down
     set(e.thGain.gain, dollyActive ? 0.05 : 0, 0.12);
-    // v49: the voices normalize to the GOD MODE tops — same sound envelope
+    // v49: the voices normalize to the configuration tops — same sound envelope
     // at full burn whatever the ladder is tuned to
     const bo = !overdrive && mag > 6 ? clamp(mag / cfg.boostTop, 0, 1) : 0;
     set(e.boGroup.gain, bo * 0.55, 0.22);

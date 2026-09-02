@@ -3,6 +3,111 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-01/02 — Claude with James in the live Blender window — THE GLOW HOMES: the plane-stack session
+
+Live co-drive (his format, one step and his word each time). Where it landed and
+what it taught, in order — James's verdicts in quotes:
+
+- Step 1–3 slabs of glass on a stage floor: "plastic," "frosted." Glass reads through
+  reflections; on black there is nothing to reflect. The MCP render shortcut skips the
+  compositor (a "bloom" render was the plain image) — render through
+  `bpy.ops.render.render(write_still=True)`.
+- Real scale matters ("large sheets of glass look different"): the scene went to world
+  size — homes are 330–900 m across (0.45 × shell radius, Mediant to capital). Beings
+  10 m are the scale reference.
+- "It's not supposed to be inside a sun. They're SHELLS" — the glowing balls are shells,
+  not suns, and the inside is dark. Render on black.
+- THE GENERATOR (his brief: hundreds of pieces, Fortress of Solitude 50 / Frank Lloyd
+  Wright 30 / Claude 20, lots of randomness): seeded roll — four repeated-with-variation
+  terrace arms, giant diagonal cantilevers, crossing fins, three shard clusters with
+  jagged multi-point tips, rings, dials with spokes, a core beam. Roll 1 "a messy
+  carpenter's backyard" (uniform lumber, daylight); roll 2 better (dark, hierarchy);
+  roll 3–4 "sheets of marble" (my rim term painted every face — Blender's Layer Weight
+  Facing spreads unless raised to a high power; four rounds went by before I read the
+  node values back instead of guessing).
+- Circuit traces on the faces (parallel runs, 45°/90° turns, 10% jagged — drawn as a
+  tileable PNG, `tmp/orb-dimension/gh-traces.png`): "kills the scale" — fine detail says
+  small object. Traces off.
+- "Force fields have no thickness" — every piece became a single 2D face; boundary glow
+  as REAL 0.8 m emissive ribbons inset along each outline (the Wireframe node draws the
+  triangulation seams). Faces: transparent + fresnel glossy skin + faint tint, hue by
+  object color, 10% teal. Transparent bounces 128 so twenty layers stay see-through.
+  Verdict on the result: "actually pretty cool... good progress. I'd like to hold here."
+- FILES (all in `tmp/orb-dimension/`, outside git like every world .blend):
+  `glowhome-fields-v1.blend` (the held state, 190 objects, seed 31),
+  `glowhome-stack.blend` (the working file), renders `glowhome-roll-*.png`
+  (`-s31-2d-b.png` is the held look). Reference target from GPT: James has it in chat;
+  asked him to save it as `building models/renders/glowhome-02-GPT.png`.
+- NEXT (his go): thin/dim the core beam (it splits the frame), honey not tan, then the
+  export route — the generator's fields as GHOM into every shell via the home pipe (the
+  world's glass program already does transparent faces + hot edges), new seeds as a dial.
+  The generator code lives only in this session's Blender history — write it to
+  `tmp/orb-dimension/glowhome_fields.py` before rolling again.
+
+## v61 — 2026-09-01 (Claude, James's go: "great plan. let it rip!") — THE CROWDS
+
+James's verdict after flying B1 (2026-08-14/15): the Saelyri were "teensy and
+sparse" — he wants ~600 per town, 1,000 at the capital, and purposeful crowd
+behavior. Design conversation 2026-09-01: eight questions, he took every rec
+(spec: `expansion-spec.md` "The Saelyri crowds"). Built solo the same session.
+Rubric: `crowds.md` (READ IT before touching any number below).
+
+- **The one rule that shaped everything:** a crowd reads from CLUSTERING, never
+  from the count — the capital shell is ~20 km across and a being is 10 m, so
+  1,000 spread evenly sit ~80 m apart per sun. Every group is now sized to its
+  headcount at 15–40 m spacing.
+- **The group roll** (`saelyriLayout` → `{ mem, grp }`, inside the society-sim
+  extraction markers): 85% of each population dealt into groups doing one of six
+  verbs — CONGREGATION (a tight ring, n × 22 m / 2π, whose center orbits a sun;
+  the ring morphs on ONE clock, the chorus), STREAM (a column of commuters riding
+  one bridge, emerging from one sun's heart and vanishing into the other's),
+  PAIR (two circling each other), GATHERING (a knot at a landmark — the bone at
+  1.08–1.14 × the skull ellipsoid and never the face cap at the capital, the
+  test towers off Mediant, a bridge-side plaza elsewhere), HOME TRAFFIC (one
+  lane per group in and out of the sun's core), PLAY (a chase line on a
+  lissajous loop). The verb mix follows the weights exactly (largest-deficit
+  deal — a random draw gave one seed's capital twice its share of rivers).
+  Solos keep the v56 private orbit; every member owns one too.
+- **Tidal:** congregations and gatherings assemble ~50% of a 140–320 s cycle,
+  disperse to private orbits, and come back (`saeTide`). Every pose is a pure
+  function of t (`saelyriPose`, `saelyriMorph` — also in the markers), so 4,000
+  beings cost trig and the sim can prove all of them.
+- **Korrudan discipline, generalized:** capital rings/orbits re-roll until clear
+  of the bone (v56 guard + ring radius), stream routes reject bridges that cut
+  the ellipsoid, home lanes face outward, play/lane reach is bounded by the sun's
+  clearance, and EVERY capital pose is pushed to en ≥ 1.04 as a last step (a
+  low-tide blend between two exterior points can still chord through the bone).
+  society-sim TEST 13 samples 33k capital poses: min en 1.040, pushed share 1.3%.
+- **Crowd clouds (kind 66):** one grainy glow per assembling group, the far read
+  that resolves into beings as you close — gone inside 2.5 radii (the near-fade
+  IS the frame rate), full beyond 4, scaled by tide and headcount; under the gate
+  the quad collapses to a point. TEST 14 bars cloud fill at 6 screens (0.77).
+- **Greeting in a crowd (James's pick):** a group notices you through its nearest
+  member; acknowledgment ripples outward at ~45 m/s; the six glyphs go to the
+  six nearest greeters; chords add a 6 s per-group spacing (a knot answers as
+  one voice).
+- **Dials:** the tuner's new "the crowds" group — capital beings 0–1,500 (1,000),
+  town beings 0–900 (600), group size ×, in groups, streams ×, tide speed ×,
+  crowd glow, greet range. `saelyri` (0–120) retired; `citizens` 9 → 12.
+- **THE LAB — `tmp/orb-dimension/crowd-lab.html`** (KEEP): the real orb VS/FS +
+  the real roll, six vantages, sheet via /api/dev-snapshot. Two self-critique
+  rounds before James sees anything: round 1 — clouds read as bigger suns
+  (smooth blobs) and "inside a congregation" was 300 m gaps (rings sized to the
+  sun); round 2 — rings/knots sized to headcount, one lane per home group,
+  denser stream columns, grainy speckle clouds → knots read as crowds, streams
+  as roads of light, clouds as faint grain.
+- Sims: society-sim TESTS 12–15 rewritten/added (the roll, the poses, cloud
+  overdraw, the tower count restated — `SAE_TOWERS` must equal BLDG_KINDS),
+  v47-sim kind coverage grew 65 + 66; the nine-sim suite green; shader-check
+  ALL SHADERS PASS (kind 66 lives in the main orb FS).
+- Same session: the tuner is the **configuration panel** — "GOD MODE" retired
+  everywhere but old changelog entries (James: "that's goofy... it's my fault").
+- JAMES FLEW IT the same day: "it looks dope!"
+- Still open from that flight: crowd feel at the capital and Mediant, the ripple
+  greeting inside a knot, whether clouds read honest from the approach, frame
+  rate at 2,800 beings (his gaming laptop is the gate), and his dial picks.
+  Not built, by design: approach behavior (a later personality pass).
+
 ## v60.1 — 2026-08-17 (Claude, James's spec) — hex homes: the Saelyri sun interiors
 
 - **The 11 random node-crystal quads inside every Saelyri sun are gone; in their place

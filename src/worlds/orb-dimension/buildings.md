@@ -182,7 +182,7 @@ the repo root (bash; Blender = `"/c/Program Files/Blender Foundation/Blender
   weight (1.5). Never widen the kernel to change amber's brightness — the
   kernel is what smears, the weight is what dims (lesson, pass 12→13).
 - Light map: mag filter NEAREST (crisp pane edges), mips for distance,
-  WRAP_T clamped. `bldgGlow` dial (GOD MODE · the societies) scales core
+  WRAP_T clamped. `bldgGlow` dial (configuration · the societies) scales core
   lift + halos, never hue.
 - Beacon: off, then a bright quick blink (~0.36 s) every 3 s (`uTime`).
 - **VIEW picker on the deck** (dropdown + VIEW [V], persisted last pick in
