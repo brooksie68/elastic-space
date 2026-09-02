@@ -17,7 +17,8 @@
 //       { label: "Music", value: 0.5, setVolume: (v) => { ... } },
 //     ]});
 //
-// attach() also tries autoplay once. If the browser allows it (site sound
+// attach() also tries autoplay once — unless the world passes `autoplay: false`
+// (Lumina does: it must open silent). If the browser allows it (site sound
 // permission granted, or enough media engagement), sound starts immediately
 // and the icon shows "on". Otherwise the icon stays "off" and waits for a click.
 
@@ -217,7 +218,12 @@
 
     // One autoplay attempt: succeeds when the visitor has granted the site
     // sound permission (or earned it); otherwise the button is the way in.
-    Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {});
+    // A world can opt out with `autoplay: false` (Lumina, James 2026-09-01:
+    // it opens silent, he picks the track and presses play) — every other
+    // world keeps the attempt.
+    if (options.autoplay !== false) {
+      Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {});
+    }
 
     // setVolume lets a world with its own volume UI drive this control too,
     // keeping the hover slider honest.

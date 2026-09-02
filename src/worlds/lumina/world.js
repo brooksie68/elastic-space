@@ -661,9 +661,13 @@
     if (on) {
       tuner.hidden = true;
       toggle.setAttribute("aria-expanded", "false");
-      toggle.title = "Controls are open in their own window — click to close them. The window's dock buttons bring them into this page instead";
+      toggle.title = "Controls are open in their own tab — click to close them";
+      // The player card folds to its wordmark whenever the configuration
+      // panel opens (James, 2026-09-01: "closed and off to the left"). He
+      // unfolds it himself if he wants it; closing the panel leaves it be.
+      command({ scope: "music", type: "player", cmd: "mini", value: true });
     } else {
-      toggle.title = "Open the configuration window";
+      toggle.title = "Open the configuration tab";
     }
     syncDock();
   }
@@ -705,8 +709,12 @@
       return;
     }
     if (channel) {
-      // setDetached(true) follows on the window's "hello" handshake.
-      window.open("./tuner.html", "lumina-tuner", "width=1060,height=920");
+      // A plain browser TAB, not a popup (James, 2026-09-01: the popup
+      // "doesn't appear the same as other windows and gets lost" — a tab he
+      // can drag out and park wherever). The name reuses an already-open
+      // tab. setDetached(true) follows on the tab's "hello" handshake.
+      const w = window.open("./tuner.html", "lumina-tuner");
+      if (w) w.focus();
     } else {
       // No BroadcastChannel (ancient browser) — fall back to the in-page panel.
       tuner.hidden = false;

@@ -3,6 +3,125 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-01 — Claude (Fable 5.1) — The test track + the beat-lock showcase set
+
+- **The conversation first (James thinking out loud, verbatim spine):** he
+  loves Lumina and wants it to exist (party TV, screens), and the dice keeps
+  finding looks "I haven't seen before ever" — but live play is "like Dance
+  Dance Revolution": 500 controls, by the time you find the one that matters
+  the section is gone; recording performances "is really challenging and not
+  fun"; and the music sensing "flails" — beat divisions do nothing, never
+  pulses with the beat, no section sense. Target named again: Synesthesia
+  (scene previews, the few key knobs per scene at your fingertips, actually
+  responsive). Also: an app called Lumen exists, a rename may come, not now.
+- **Claude's read, agreed as direction (not a build):** the panel problem and
+  the music problem are one problem — Lumina is a generic instrument (any
+  source → any of 30 targets, every knob exposed); Synesthesia is a curated
+  one (each scene authored to hit on specific events, 5–6 knobs). Plan shape:
+  (1) HARVEST MODE — dice auto-rolls, one key banks, one key skips (his idea,
+  he does it by feel); (2) macro extraction per banked look — **his correction:
+  Claude's perturbation pass can only find which sliders do NOTHING for a look;
+  which of the rest look cool is his eye, not a metric**; (3) ONSET AUDIO —
+  per-register kick/snare/hat detectors, no grid required, authored default
+  wiring per look at depths that read; (4) PLAY MODE — thumbnail grid + one
+  card of that look's knobs + transport + dice, the current panel behind an
+  advanced door; (5) auto-dice as "re-roll one macro every N kicks", counted
+  not tempo-derived. Retires relevance dimming, the learning bench,
+  performance recording, tick-lock/structure lane. Nothing of this built.
+- **Why it flails, from the code:** three of eight tracks (His Dark
+  Orchestra, The Flow, Delta Funk) have NO grid, so pulse/bar/phrase are silent
+  on them and every beat-division control is inert; the live detector is one
+  bass spike over a 0.6s average (kick ≈ bass note ≈ snare); the stock matrix
+  drives subtle geometry at moderate depth through the 2.1s ramp — wobble,
+  not hits.
+- **THE TEST TRACK:** James asked for a Suno prompt for a skeletal 130 BPM
+  four-minute bed (kick/snare/hat/bass/two chords, nothing else) so beat
+  response can be judged against a known pulse. Prompt in the session (the
+  "no build, no drop, no breakdown" lines, dry mix, no sidechain, drum voices
+  in separate registers). He dropped `assets/sound-tracks/Viz Test Track
+  01.mp3` — his ears: "fine... it didn't do anything crazy." Analyzer:
+  **130 BPM detected exactly, lock 4.1× chance (the tightest of any track),
+  23ms on-grid error**, downbeat 1.432s, 129 bars, 239.7s. Suno still added a
+  two-bar breath at b43–44 and a breakdown b53–60 with the drop back at b61
+  (112s). Nine punches (b10 b17 b43 build, b45 drop, b57 build, b60 drop,
+  b83 groove, b85 break-return, b101 build). Baked into TRACKS + track-grid.
+- **THE SET — "the beat-lock showcase"** (`VIZ_REEL` in compositions.js,
+  chassis VBASE/vl/vr, crisp defaults: 10ms attack, 100ms release, 90ms pulse
+  decay): 36 cuts, no look repeated, every cut demonstrates ONE rhythmic idea
+  and its comment says what to watch for. Section A walks the accent
+  vocabulary one per cut (four → backbeat → offbeat → eighths → downbeat →
+  sixteenths → gallop → clave → stutter), then the bar ramp alone (b33
+  barsaw), swing (b37), phrase (b41). All nine punches land; b45 whiteout is
+  the inversion, b53 void is the blackness, b57 emberrise glides 7s out of it,
+  b61 supernova is the drop. **The A/B block, b65–77:** b65 `livekick` = the
+  live bass-spike detector, no grid; b69 `bandsonly` = envelopes only (the old
+  flail); b73 `kickrings` = back on the grid, same wiring as b1; b77
+  `syncsnake` = no matrix at all, syncBeats alone. If b1/b73 hit and b65/b69
+  don't, the grid path is the answer; if b1 doesn't hit, the clock is off.
+- composition-sim 335 → 359 (new set passes every signature check),
+  music-sim 58, timeline-sim 24 — all green. Not viewed in a browser (sound
+  world, pane rule). **AWAITING JAMES'S FLIGHT:** claude's set on Viz Test
+  Track 01 — does b1 hit on every kick, does b5 snap on 2 and 4 only, does the
+  A/B block separate cleanly.
+- Analyzer TRACKS list gained the test track (tmp/lumina/track-analyze.mjs).
+- **NO AUTOPLAY, permanent (his order before testing anything):** Lumina now
+  opens with the remembered track loaded and paused. The shared sound control
+  gained an `autoplay: false` option (src/core/sound-control.js — every other
+  world keeps its one start attempt); music.js passes it. He opens the panel,
+  picks the track, sets up, presses play. Rule recorded in the world CLAUDE.md
+  and the project CLAUDE.md sound-control section.
+- **THE TRANSPORT CONTRACT (his second and third orders, same message):**
+  new player command `top` — first press rewinds to 0 and STOPS; pressed
+  again while already stopped at the top = previous track, loaded stopped at
+  its top (his refinement after Claude flagged that ◀◀ used to be previous
+  track). `prev`/`next` now always load STOPPED (▶▶ "goes up to the next
+  track, but it does not play"); the track dropdown keeps playing through a
+  switch and the end-of-track auto-advance is unchanged. The panel's command
+  bar now carries the full deck in order — ◀◀ ▶ ❚❚ ■ ▶▶ — with separate
+  play and pause (the play/pause toggle is gone from the bar; the panel's
+  player card still has its toggle); pause lights while paused mid-track,
+  same as the player bar.
+- **ONE BOARD — the audio tab is gone (his fourth order):** "There shouldn't
+  be an audio tab... I can't be moving over to some audio tab and configuring
+  this stuff in the middle of a song. I was looking for the scrub for the
+  track... only had two beats to do it. Too late. It's just not fun." Every
+  card now lives on one board (stock order: looks, player, perform, timeline,
+  reactivity, mod matrix + react presets, then the field cards); the head row
+  reads "configuration" + the tools; the SCRUB ROW (playhead + time) sits in
+  the sticky head under the transport; the player card is reduced to track /
+  shuffle / set menu (its own transport, scrubber and volume were duplicates
+  of the head). `lumina-layout` is v2 — a v1 two-pane store migrates by
+  appending its audio rows under its visual rows, so his arrangement
+  survives. The gear's ⇄ is gone; its list reads in board order. Applied as
+  a 23-anchor exact-match patch; detached tuner.html loads clean (console
+  empty). The player card's old play/pause toggle went with it.
+- **HIS FLIGHT OF THE SHOWCASE SET — VERDICT:** "It's terrible. The
+  switching is fine... it still looks cool. But you're completely not on the
+  beat. You're not switching at the right times. And the software is not
+  reacting to these very basic repetitive things... There's a snare drum hit.
+  There's a bass drum hit. It's like a drum machine. But you're still
+  flapping around... Doesn't seem like the software knows where the beat is
+  at all. Not even slightly." (On the panel: "I definitely like the interface
+  better like that.") He asked for NO suggestions yet — first a plain-words
+  USER MANUAL, one section at a time, Hemingway register, no invented terms:
+  `manual.md` in this folder, mod matrix section written 2026-09-01, every
+  claim checked against music-dsp.js. Next section on his say-so.
+- **HIS MATRIX VERDICT, recorded not built:** "Looking at this mod matrix, I
+  can't relate to it. High, desync 30%, level, speed 25% — none of it means
+  anything. It doesn't give me any information... no instruction manual, no
+  visualizations... you just threw all this stuff in there and now the
+  visualization is no fun anymore." This is the play-mode / authored-wiring
+  half of the 2026-09-01 direction reset; the matrix as a control surface is
+  on notice.
+- **Two more panel orders (after the manual's first section):** (1) the
+  configuration panel opens as a plain browser TAB, not a popup — "it sort of
+  doesn't appear the same as other windows and it gets lost" (world.js +
+  tuner.js detach button: `window.open(url, "lumina-tuner")`, no feature
+  string, focus on reuse); (2) whenever the panel opens, the player card
+  folds to its wordmark automatically (new player cmd `mini`; fired from
+  setDetached on the hello handshake, so a reload with the tab already open
+  folds it too). Unfolding is his; closing the panel leaves it folded.
+
 ## 2026-08-12/13 — Claude (Fable 5) — Named takes + no more lost recordings
 
 - **The bug James hit:** he recorded a full performance over Timber at Sea;

@@ -8,6 +8,25 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-01 (Lumina: the direction reset, the test track, the panel orders)
+
+- James's verdict on Lumina as an instrument: live play is "Dance Dance Revolution",
+  recording "is not fun", the music sensing "flails". Agreed direction, nothing built:
+  a curated Synesthesia-style instrument — harvest looks by dice, per-look macros (his eye
+  picks; Claude only finds dead knobs), onset audio, a play-mode surface.
+- His Suno test bed `Viz Test Track 01.mp3` (skeletal 130 BPM) analyzed (130 exact, lock
+  4.1×) and composed as the 36-cut "beat-lock showcase" set with an A/B block (live
+  detector vs band-only vs grid). His flight verdict: "terrible... not on the beat. Not
+  even slightly." Diagnosis parked at his request — he wants a plain-words manual first.
+- Panel orders, all built: Lumina NEVER autoplays (shared sound control gained
+  `autoplay: false`); the transport contract (◀◀ = top, then previous track; ▶▶ = next;
+  all load stopped; full ◀◀ ▶ ❚❚ ■ ▶▶ deck at the top of the panel); the audio tab
+  deleted — one board, scrubber in the sticky head; configuration opens as a browser
+  tab, not a popup; the player card folds when the panel opens.
+- `src/worlds/lumina/manual.md` started — mod matrix section, Hemingway register, every
+  claim checked against the code. Next sections one at a time on his say-so.
+- Sims: composition 359, music 58, timeline 24 — green.
+
 ## 2026-08-17 (Arachno Wars moves out, and gets named)
 
 - Both Arachno Wars worlds removed from Elastic Space at James's call — one level up, not

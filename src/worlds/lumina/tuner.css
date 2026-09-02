@@ -169,6 +169,36 @@ body.lum-tuner-page .tuner-head {
   width: 7em;
 }
 
+/* One board since 2026-09-01 (the visual|audio tabs are gone): the head row
+   is the panel's name on the left and the tools on the right. */
+.tuner-headtitle {
+  color: var(--gold);
+  font-size: 0.78em;
+  letter-spacing: 0.28em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+/* The scrub row: the track's playhead + time, in the sticky head right under
+   the transport (James, 2026-09-01: he lost two beats hunting for it on the
+   audio tab). The one slider allowed to run wide — it maps a whole song. */
+.tuner-cmdscrub {
+  align-items: center;
+  display: flex;
+  gap: 0.7em;
+}
+
+.lum-tuner .tuner-cmdscrub input[type="range"] {
+  flex: 1 1 auto;
+  max-width: 32em;
+  min-width: 8em;
+  width: auto;
+}
+
+.tuner-cmdscrub .tuner-time {
+  min-width: 11ch;
+}
+
 /* The gear's dropdown: which cards are on the board at all. */
 .tuner-gearmenu {
   background: #303038;

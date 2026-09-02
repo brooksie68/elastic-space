@@ -28,6 +28,7 @@
     { file: "Timber at Sea.mp3", label: "Timber at Sea" },
     { file: "Spore Circuit.mp3", label: "Spore Circuit" },
     { file: "Zion Rips.mp3", label: "Zion Rips" },
+    { file: "Viz Test Track 01.mp3", label: "Viz Test Track 01" },
   ];
 
   // Served only — file:// keeps the baked list. Discovered tracks join the
@@ -154,6 +155,9 @@
   // --- track player ---------------------------------------------------------
 
   let trackIndex = Math.max(0, TRACKS.findIndex((t) => t.file === store.track));
+  // Folds the player card to its wordmark (assigned by the player builder
+  // below; world.js sends player cmd "mini" when the configuration opens).
+  let playerMini = () => {};
 
   function resetComposition() {
     const comp = store.dj === "claude" ? COMPS[TRACKS[trackIndex].file] : null;
@@ -483,6 +487,21 @@
             case "pause":
               if (!audio.paused) stop();
               break;
+            case "top":
+              // ◀◀ (James, 2026-09-01): first press = back to the top and
+              // STOP. Pressed again while already stopped at the top = the
+              // PREVIOUS track, loaded stopped at ITS top. Never plays.
+              if (!audio.paused || audio.currentTime > 0.25) {
+                if (tlArmed) {
+                  tlArmed = false;
+                  tlCommit(audio.currentTime);
+                }
+                stop();
+                audio.currentTime = 0;
+              } else {
+                loadTrack(trackIndex - 1, false);
+              }
+              break;
             case "stop":
               // Stop while armed = punch out and keep the take (no prompt;
               // it lives on as the working recording).
@@ -501,14 +520,22 @@
             case "volume":
               soundUI.setVolume(Math.max(0, Math.min(1, Number(cmd.value) || 0)));
               break;
+            // prev / next load the track STOPPED at its top (James,
+            // 2026-09-01: ▶▶ "goes up to the next track, but it does not
+            // play"). Only play starts playback.
             case "prev":
-              loadTrack(trackIndex - 1, !audio.paused);
+              loadTrack(trackIndex - 1, false);
               break;
             case "next":
-              loadTrack(pickNext(), !audio.paused);
+              loadTrack(pickNext(), false);
               break;
             case "select":
               loadTrack(cmd.index, !audio.paused);
+              break;
+            case "mini":
+              // Fold / unfold the player card (world.js folds it whenever the
+              // configuration panel opens — James, 2026-09-01).
+              playerMini(!!cmd.value);
               break;
             case "shuffle":
               store.shuffle = !!cmd.value;
@@ -627,12 +654,15 @@
     },
   });
 
-  // Set the src BEFORE attaching the sound control — its one autoplay attempt
-  // calls start(), which needs a loaded track to succeed for visitors who've
-  // granted the site sound permission.
+  // Load the remembered track silently. LUMINA NEVER AUTOPLAYS (James,
+  // 2026-09-01, permanent): the page opens with a track loaded and paused,
+  // he opens the configuration panel, picks the track, sets everything up,
+  // and presses play himself. `autoplay: false` switches off the shared
+  // control's one start attempt; nothing else here starts the audio.
   loadTrack(trackIndex, false);
 
   const soundUI = ElasticSoundControl.attach({
+    autoplay: false,
     start,
     stop,
     setVolume: (v) => {
@@ -873,6 +903,7 @@
     let startMini = false;
     try { startMini = localStorage.getItem(MINI_KEY) === "1"; } catch (err) { /* fine */ }
     setMini(startMini);
+    playerMini = setMini;
 
     const barEl = document.createElement("div");
     barEl.className = "lum-transport-bar";
@@ -891,7 +922,9 @@
     };
     const player = (cmd) => () => host.command({ scope: "music", type: "player", cmd });
 
-    btn("prev", "Previous track", player("prev"));
+    // ◀◀ = back to the top and STOP (James, 2026-09-01) — not previous track
+    // any more; that lives in the panel's player card and the dropdown.
+    btn("prev", "Back to the top — rewind to the beginning and stop; press play when you're ready", player("top"));
     const playBtn = btn("play", "Play", player("play"));
     const pauseBtn = btn("pause", "Pause — the field keeps whatever it's doing", player("pause"));
     btn("stop", "Stop — rewind to the top; the field goes back to your sliders", player("stop"));

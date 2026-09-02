@@ -23,6 +23,34 @@ Entries in `changelog.md` from before that date use the old names on purpose.
 
 ## START HERE — the wave queue (2026-08-03, James's "to infinity and beyond")
 
+**2026-09-01 — THE DIRECTION RESET (supersedes the wave queue and the
+2026-08-08 audio proposals below as the frame; read the changelog entry
+first).** James's verdict on the whole instrument: live play is "Dance Dance
+Revolution" (500 controls, the section is gone before you find the knob),
+recording performances "is not fun", and the music sensing "flails." Agreed
+DIRECTION, nothing built: Lumina becomes a CURATED instrument the Synesthesia
+way — harvest mode (auto-dice, bank/skip by feel, HIS job), per-look macros
+(Claude's perturbation pass may only find which sliders do NOTHING; which of
+the rest look cool is HIS eye — his explicit correction), onset audio
+(kick/snare/hat detectors, no grid needed, authored wiring per look), a PLAY
+MODE surface (thumbnails + one knob card + transport + dice; today's panel
+behind an advanced door), and auto-dice as "re-roll one macro every N
+kicks." This retires relevance dimming, the learning bench, performance
+recording, tick-lock and the structure lane. Each step needs its own go.
+THE TEST BED: `assets/sound-tracks/Viz Test Track 01.mp3` (his Suno,
+skeletal 130 BPM, analyzer lock 4.1×) + the "beat-lock showcase" set
+(`VIZ_REEL`, 36 cuts, one rhythmic idea each, A/B block b65–77 pits the
+live detector and band-only wiring against the grid). HE FLEW IT — verdict:
+"terrible... completely not on the beat... doesn't seem like the software
+knows where the beat is at all. Not even slightly." He asked for NO
+suggestions yet: first a plain-words USER MANUAL (`manual.md` here — mod
+matrix section done, Hemingway register, every claim checked against the
+code), one section at a time, next section only on his say-so. When the
+audio diagnosis is asked for: the grid itself was right on this track
+(130 exact, 23ms error), so the miss is downstream — what the pulse drives,
+how far, how visibly, and whether the field's own ramp/hold smears it.
+MEASURE (frame-by-frame at a known kick) before proposing anything.
+
 **2026-08-08 UPDATE — THE AUDIO THREAD IS REOPENED (James's explicit ask,
 supersedes the "parked" note below):** he wants the detection stack made
 "more intelligent and dynamic" and is ready to work hard on it. Claude's
@@ -92,7 +120,15 @@ minimum has never been swept.
   player (music.js, bottom-left, `.lum-player` since 2026-07-27) stays
   always visible — a two-row card: brand row (SVG logo + LUMINA wordmark)
   over the transport row ◀◀ ▶ ❚❚ ■ ▶▶ (separate play and pause; SVG icons
-  only — text transport glyphs go color-emoji on Windows), track name, set
+  only — text transport glyphs go color-emoji on Windows). **THE TRANSPORT
+  CONTRACT (James, 2026-09-01, permanent):** ◀◀ (player cmd `top`) = first
+  press rewinds to 0 and STOPS; pressed again while already stopped at the
+  top = the PREVIOUS track, loaded stopped at its top. ▶▶ (`next`) loads the
+  next track STOPPED at its top (`prev` survives as a command under the same
+  rule; no button sends it since the player card lost its transport in the
+  one-board merge). Nothing but play (or the track dropdown while already playing, and the
+  end-of-track auto-advance) ever starts playback. The panel's command bar
+  carries the same five in deck order: ◀◀ ▶ ❚❚ ■ ▶▶. Then track name, set
   switch, the labelled `configuration` button (music.js seats
   `#lum-tuner-toggle` there, world.js owns its behavior), then the ❄
   animation freeze ({scope:"field", type:"freeze"} → field.setFrozen: dt→0,
@@ -118,7 +154,13 @@ minimum has never been swept.
   (`lumina-player-mini`; "always visible" now means at least the wordmark).
   (3) **The controls open DETACHED by default** (James, 2026-07-27, second
   call of the day — supersedes the in-page-first flow): the configuration
-  button opens/closes the `tuner.html` window. THE DOCK PICKER UI WAS
+  button opens/closes the `tuner.html` window. **2026-09-01: it is a plain
+  browser TAB now, not a popup** (`window.open(url, "lumina-tuner")` with no
+  feature string — James: the popup "doesn't appear the same as other windows
+  and gets lost"); the named target reuses an open tab. **And whenever the
+  panel opens, the player card FOLDS to its wordmark** (world.js sends player
+  cmd `mini` on the hello handshake → music.js `playerMini`); he unfolds it
+  himself, and closing the panel leaves it folded. THE DOCK PICKER UI WAS
   REMOVED 2026-07-31 (James: "kill the dock icons... I'm only gonna ever use
   this as a remote") — do not resurrect it. The host still understands
   {scope:"page", type:"dock"/"attach"} and the `lumina-dock` /
@@ -316,8 +358,10 @@ likely as item 3. Don't re-add it unprompted.
   full-window frame on James's screen (~2560)** — below that the whole GL
   path upscales and reads as blur (the 2026-07-28 "blur every roll" bug;
   1600 was fine only inside the old 1024px staging frame).
-- `tuner.js` + `tuner.css` — the whole control surface (two tabs: visual |
-  audio), bus-driven, no state of its own. Runs embedded (index.html shell
+- `tuner.js` + `tuner.css` — the whole control surface (ONE BOARD since
+  2026-09-01 — the visual|audio tabs are gone, James: "There shouldn't be an
+  audio tab... I can't be moving over to some audio tab and configuring this
+  stuff in the middle of a song"), bus-driven, no state of its own. Runs embedded (index.html shell
   `#lum-tuner`) and detached (`tuner.html` + `tuner-remote.js`, over
   BroadcastChannel "lumina-ctl"). New field/music params get their control
   HERE, in the right tab — inside the right CARD: since 2026-07-31 (pass 4)
@@ -347,8 +391,13 @@ likely as item 3. Don't re-add it unprompted.
   New controls automatically join the deck system via the factory BUILDERS
   registry; bypass the factories and you lose starring.
 - **Panel pass 6 (2026-07-31): the layout engine + command bar.** The sticky
-  header is `.tuner-head` = tabs row + COMMAND BAR (play/pause, stop, freeze,
-  dice, melt, back, volume — SVG transport icons, reflect from snapshots).
+  header is `.tuner-head` = the HEAD ROW (the word "configuration" on the
+  left; text size, edit layout, gear, detach on the right — no tabs since
+  2026-09-01) + the COMMAND BAR (the full deck ◀◀ ▶ ❚❚ ■ ▶▶ — separate play
+  and pause, no toggle — then freeze, dice, melt, back, volume) + the SCRUB
+  ROW (playhead + time readout; the one slider allowed to run wide, capped
+  at 32em, because it maps a whole song) — SVG transport icons, reflect from
+  snapshots.
   Cards register in a per-pane registry (`CARDS` in tuner.js via `card(pane,
   title, summary, opts)` — pane is the string "visual"|"audio", cards never
   append themselves); panes render from `lumina-layout` (per window): rows of
@@ -358,11 +407,16 @@ likely as item 3. Don't re-add it unprompted.
   THE EXTENSIBILITY CONTRACT: register a card and it appears as its own row
   at the end for stores that predate it; ids that stop existing drop
   silently. Never hand a card a fixed width — width is always the row share.
-  CARDS ARE TAB-AGNOSTIC (2026-07-31, James: the visual tab must be able to
-  host reactivity/matrix): the registration pane is only the card's HOME
-  (default placement + adoption); the gear's ⇄ sends any card to the other
-  tab's board, renderLayout resolves ids across both registries and dedupes.
-  Reactivity's stock home is the VISUAL board (full-width, under perform).
+  ONE BOARD (2026-09-01; supersedes the 07-31 tab-agnostic card rule):
+  card()'s pane argument is vestigial (kept so call sites didn't churn), the
+  registry is one Map, `lumina-layout` is v2 `{rows, hidden}` and a v1
+  two-pane store migrates by appending its audio rows under its visual rows
+  so an arranged board survives; the gear's ⇄ is gone, its list reads in
+  board order. Stock order: looks, player, perform, timeline, reactivity,
+  mod matrix + react presets, structure + scene, pattern, pulse/grid/corners,
+  margins/canvas, fx rack/beat lock. The player card is now only the track
+  select, shuffle and the set menu — its transport, scrubber and volume all
+  moved into the sticky head.
 - **The panel is sized in `em` off ONE base (2026-07-27).** `.lum-tuner` sets
   `--ui-base: 21px` (16px until 2026-07-31, then 26px for an hour; James
   dialed the final size by eye — "the current eighty percent becomes the new
@@ -444,6 +498,13 @@ likely as item 3. Don't re-add it unprompted.
 
 ## World-specific rules
 
+- **LUMINA NEVER AUTOPLAYS (James, 2026-09-01, permanent).** The page opens
+  with the remembered track loaded and PAUSED; he opens the configuration
+  panel, picks the track, sets everything, and presses play himself. music.js
+  passes `autoplay: false` to `ElasticSoundControl.attach` (the option was
+  added to the shared control for this) and nothing else may start the audio
+  on load — no preset, no set, no discovered-track list landing, no
+  "resume where I was". Track-end auto-advance during playback is unaffected.
 - **Architecture is deliberate:** `lumina-field.js` is a standalone renderer
   (`LuminaField.mount(container, config)`) that knows nothing about the page, tuner,
   or localStorage. The final setting is undecided (James is thinking a TV in a scene —
@@ -486,9 +547,10 @@ likely as item 3. Don't re-add it unprompted.
   state is never applied silently on load — it's reachable as the "last
   session" entry (value `last`, "auto" optgroup) in the field preset menu.
   Don't reintroduce apply-on-load.
-- Both tuner tabs have a reset: visual's resets field + frame (`resetAll`,
-  field scope), audio's resets reactivity/matrix/shuffle/per-track/DJ mode
-  (`resetAll`, music scope — leaves playback and volume alone).
+- Two resets on the one board: the canvas card's reset (field + frame,
+  `resetAll` field scope) and the react presets card's reset (reactivity/
+  matrix/shuffle/per-track/DJ mode, `resetAll` music scope — leaves playback
+  and volume alone).
 - Player transport (2026-07-25): play/pause, stop (pause + rewind), prev/next,
   seek scrubber + time readout, volume slider (drives the shared sound control
   via `soundUI.setVolume`, so the speaker's hover slider stays in sync).

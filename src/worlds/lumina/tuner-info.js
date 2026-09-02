@@ -761,7 +761,7 @@
 
     // --- my deck ------------------------------------------------------------
     "card:my deck": {
-      t: "Your pinned controls. Hit the ☆ on any control anywhere and a copy appears here — on top, visible from both tabs. The original stays where it lives; this is a second handle on it. Un-star to remove.",
+      t: "Your pinned controls. Hit the ☆ on any control anywhere and a copy appears here — on top of the board. The original stays where it lives; this is a second handle on it. Un-star to remove.",
     },
 
     // --- audio: player ------------------------------------------------------
@@ -808,7 +808,7 @@
 
     // --- audio: react presets ----------------------------------------------
     "card:react presets": {
-      t: "Save and recall complete reactivity setups — the envelope knobs plus the whole mod matrix — separate from the visual presets. “per track” remembers the current settings for whichever song is playing and brings them back whenever that song comes on. reset returns the audio tab to stock and leaves playback alone.",
+      t: "Save and recall complete reactivity setups — the envelope knobs plus the whole mod matrix — separate from the visual presets. “per track” remembers the current settings for whichever song is playing and brings them back whenever that song comes on. reset returns the music side — reactivity, matrix, shuffle, per track, set choice — to stock and leaves playback alone.",
     },
     "row:react-pertrack": {
       t: "per track ties the current reactivity settings to the playing song: switch tracks and each one recalls its own setup. Great once a track has a personality — Angular's likes aren't Timber's.",

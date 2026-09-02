@@ -79,7 +79,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
    v56 2026-07-31 (PHASE B1 BUILT — James's go on Claude's 11-question plan,
    his overrides: 10m beings, populations 10× "a living place... a hundred at
    least"): THE SAELYRI IN-WORLD — 140 beings default (dials saelyri/
-   citizens/saeNotice in GOD MODE · the societies), kind-65 raymarched orb
+   citizens/saeNotice in configuration · the societies), kind-65 raymarched orb
    actors with james-being-01 baked, mote↔body LOD (far = 2-line glow),
    closed-form orbits + bridge travelers + whim-morph schedule (rest
    humanoid, 12s melts), respond-in-place acknowledgment (face + brighten +
@@ -122,7 +122,8 @@ consistent. `npm run check-worlds` audits every world against the contract.
    2026-08-14/15 (JAMES FLEW B1 + v57 — the verdicts): Saelyri "teensy and
    sparse" → wants ~600/town, 1,000 at the capital, purposeful crowd
    behavior (groups doing things, pairs, streams — Jerry's Pool-style tuning;
-   PARKED behind the look overhaul at his call). Windows better but the whole
+   was parked behind the look overhaul — UNPARKED 2026-09-01, now START-HERE
+   item (e) below). Windows better but the whole
    station "looks like featureless Blender shapes... everything is getting
    skinned" (only the Korrudan bone keeps its look). Reticle fine, nebulae
    fine (crossed off), Being Editor loose end dropped. **v58 THE BUILDINGS
@@ -158,7 +159,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
    never got there, and the model was rotated ~45° wrong throughout. Lesson
    owned in memory `call-the-plateau-early`. The Meshy soup is not sheets of
    glass — stop trying to paint glass onto it.
-   (b) NEXT, HIS GO GIVEN: **LIVE-BLENDER PLANE-STACK SESSION** — the Bryce
+   (b) **PLANE-STACK SESSION RAN 2026-09-01/02** (live co-drive, ~20 renders):
+   ended at a held state James called "actually pretty cool... good progress" —
+   `tmp/orb-dimension/glowhome-fields-v1.blend`: a seeded generator of ~95
+   ZERO-THICKNESS force-field polygons (four terrace arms repeated with
+   variation, giant cantilevers, fins, jagged shard clusters, rings, dials)
+   with real emissive boundary ribbons, rendered on black. His corrections
+   that now stand: the balls are SHELLS not suns and the inside is dark;
+   fields have no thickness; fine surface detail kills the km scale; Fortress
+   50 / Wright 30 / Claude 20. NEXT with his go: core beam thinner, honey
+   tint, then export via the home pipe + write the generator to
+   `tmp/orb-dimension/glowhome_fields.py`. Full log: world changelog
+   2026-09-01/02. The original brief follows for the record —
+   LIVE-BLENDER PLANE-STACK SESSION — the Bryce
    way: clean glass sheets (real transmission/IOR/tint, thickness), copy /
    rotate / shrink / stack, ~10% teal, one light at the center — built IN THE
    LIVE BLENDER WINDOW with James watching and stopping me ("hang on, that
@@ -176,6 +189,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    large) OR a metallic enclosed core structure. Design conversation first
    (asteroid vs metal, one per town or a mix, how bridges/suns/buildings seat
    on it), then his go.
+   (e) THE SAELYRI POPULATIONS (James, 2026-09-01: "many, many, many more" —
+   put on the list as its own item, no longer parked): ~600 beings per
+   satellite town, ~1,000 at the capital (v56 ships 140 total), and PURPOSEFUL
+   crowd behavior — groups doing things, pairs, streams, Jerry's Pool-style
+   tuning by feel. DESIGN AGREED 2026-09-01: James took every Claude rec on
+   the eight questions (six group verbs, capital favors crust + sun cores,
+   tidal schedules, group cloud LOD, modest Cadence bump, ripple greeting
+   with six glyphs, his gaming laptop is the gate, per-town dials + rubric
+   doc) — recorded in expansion-spec.md "The Saelyri crowds". **BUILT SAME
+   DAY AS v61 on his go ("let it rip")**: group roll + closed-form poses in
+   the society block, kind-66 crowd clouds, ripple greeting, "the crowds"
+   dial group, `crowds.md` rubric, `tmp/orb-dimension/crowd-lab.html` (two
+   self-critique rounds — KEEP), society-sim TESTS 12–15; nine sims + shader-
+   check green. JAMES FLEW IT SAME DAY: "it looks dope!" Still open: his
+   frame-rate read at 2,800 beings and any dial picks. Same session: "GOD MODE" RETIRED —
+   the tuner is the configuration panel everywhere but old changelog entries
+   (memory call-it-configuration).
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
@@ -494,6 +524,48 @@ consistent. `npm run check-worlds` audits every world against the contract.
    vials, a procedural env map, and three Meshy seamless tiles (~27 of a
    60cr standing consent) dressing the metal/glass. Both sims still green
    (129 + 404). AWAITING JAMES'S EYES on the whole rebuild.
+   2026-09-01 — **THE RETHINK ("HANDS"), proposal only, nothing built.** James
+   lived with v4 and called it "not very fun... frumpy, boring, hard to
+   understand"; his brief: huge step back, roll the dice ten times, reimagine
+   from zero for high-schoolers, keep or scrap anything, show a spec and a
+   Claude Design prompt. Delivered (plan agreed first, visuals with the
+   writing at his ask): `src/worlds/the-valence-lab/reimagine.md` — the
+   diagnosis (an instrument not a toy; the truth shown first and wasted;
+   reading before doing), TEN DICE ROLLS, the pick "Hands" (Snap + Octet's
+   ring-of-seats anatomy + Chords' sound + the Foundry's display case as the
+   hold-to-reveal X-RAY where the real HF cloud lives; whispers replace all
+   six panels; recipe rail + trophy shelf, no timer/score), keep/scrap
+   ledger (physics modules, solver, sims, honesty contract KEPT; bench,
+   vials, scope, panels, sliders, Meshy tiles SCRAPPED), five gates each
+   needing a go, the paste-ready prompt, his seven calls. Published page with
+   a LIVE FEEL SKETCH (2D canvas, nine elements, hands/snap/grip/ionic
+   handoff/refusal/cards/chords): `tmp/the-valence-lab/reimagine/
+   valence-reimagined.html` (KEEP — serve via 4174) + artifact link in the
+   session/changelog. JAMES'S READ (same night): "Nice presentation. Good set of
+   considered options. You chose the best." Roll 7 (Powers of Ten) SPUN OFF as
+   its own world draft via the drafts API ("Powers of Ten (it ends somewhere
+   silly)") — his twist: every zoom bottoms out somewhere ridiculous (a
+   Wendy's, below the Planck length is the mall, a clown face, a cookie, a big
+   turtle, other ES worlds). THEN THE GROWN VERSION, his real riff question
+   ("what does the advanced version look like when it loads... many more
+   elements... chains"): answered in reimagine.md §9 (seven zones, scaling to
+   118 via a third bond type + flexible metals + decay, chains via blocks +
+   pour) and BUILT AS A MOCK on his go — "Snap, fully grown" on the page: full
+   table shelf, chaptered rail, made column, arena pre-loaded with octane /
+   benzene / salt crystal / water drop, hold-for-X-ray, heat dial (weakest
+   bonds go first; verified headless via dev-snapshot). His word fixes: the
+   tendril visual stays, "hands" is only the word, the name is Snap. HANDOFF
+   AGREED: mock here → prompt (updated) to Claude Design for the look → code
+   the look onto the engine. Decay: vision yes, mock no. HIS FIRST LOOK (2026-09-02,
+   after midnight): the long page confused him ("all that other crap"), the
+   clear button was missing — so the mock now exists ALONE, full window, with
+   clear/reload/heat/mute: tmp/the-valence-lab/reimagine/snap.html,
+   verified headless, NOT YET PUBLISHED (he stopped for the night). START
+   HERE: publish snap.html as its own link, get his read, then his go to
+   send the prompt to Design; still open, his calls (reimagine.md §8). Until
+   then v4 stands as-is. NOTE: the page sits
+   twice in the artifact gallery (a resumed session republished it); the link
+   in reimagine.md is the canonical one.
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
    `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile
@@ -711,6 +783,37 @@ consistent. `npm run check-worlds` audits every world against the contract.
    shipped: ⓘ popover title black-on-dark (--gold didn't reach
    document.body) + control rows never wrap (icons stay pinned; track/select
    is the only elastic element). See the world changelog 2026-08-08.
+   **2026-09-01 — THE DIRECTION RESET.** James's verdict after living with
+   it: live play is "Dance Dance Revolution," recording "is not fun," the
+   music sensing "flails." Agreed direction (nothing built, each step its
+   own go): Lumina becomes a CURATED instrument the Synesthesia way —
+   harvest mode (auto-dice, bank/skip, his job) → per-look macros (Claude
+   only finds what does NOTHING; what looks cool is HIS eye, his explicit
+   correction) → onset audio (kick/snare/hat detectors, no grid needed,
+   authored wiring per look) → PLAY MODE (thumbnails + one knob card +
+   transport + dice) → auto-dice per N kicks. Retires relevance dimming,
+   learning bench, performance recording, tick-lock/structure lane. BUILT
+   SAME NIGHT: his Suno test bed `Viz Test Track 01.mp3` (skeletal 130 BPM;
+   analyzer 130 exact, lock 4.1×) analyzed + baked, and the BEAT-LOCK
+   SHOWCASE set (36 cuts, one rhythmic idea each, A/B block b65–77: live
+   detector vs band-only vs grid). Sims 359/58/24 green. SAME NIGHT, his
+   panel orders, all built: NO AUTOPLAY (permanent; the shared sound control
+   gained `autoplay: false`), THE TRANSPORT CONTRACT (◀◀ = top, then previous
+   track; ▶▶ = next; all load STOPPED; the full ◀◀ ▶ ❚❚ ■ ▶▶ deck at the top
+   of the panel), and ONE BOARD (the audio tab deleted, every card on one
+   board, the scrubber in the sticky head; configuration opens as a browser
+   TAB, not a popup; the player card folds when the panel opens). HE FLEW THE
+   SHOWCASE SET — verdict: "terrible... completely not on the beat... doesn't
+   seem like the software knows where the beat is at all. Not even
+   slightly." (Interface: "I definitely like it better.") His matrix verdict:
+   "none of it means anything." HE ASKED FOR NO SUGGESTIONS YET — first a
+   plain-words USER MANUAL, one section at a time, Hemingway register:
+   `src/worlds/lumina/manual.md`, mod matrix section written, he reads it
+   next session. NEXT, in order: he reads the manual and asks for the next
+   section; the audio diagnosis only when he asks (the grid was RIGHT on
+   this track — 130 exact, 23ms error — so the miss is downstream of the
+   grid: what the pulse drives and how visibly; measure before proposing).
+   Details: world changelog 2026-09-01 + world CLAUDE.md START HERE.
    The rest of the Lumina item is #5.5 below.
 5.5. SPASTIC SPACE REVIVALS: recreate `pork.html` and `scary_corndog.html` as two new worlds,
    approved 2026-07-19. Full analysis + GIF timing data + build plan in
@@ -951,7 +1054,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
   `ElasticSoundControl.attach({ start, stop, setVolume })` for Web Audio synthesis.
 - It renders the standard speaker button top right (pulses twice on load, tooltip, on/off states,
   hover volume slider) and makes one autoplay attempt — sound starts immediately for visitors who
-  have granted the site sound permission, and waits for the button otherwise.
+  have granted the site sound permission, and waits for the button otherwise. A world can pass
+  `autoplay: false` to skip that attempt entirely (added 2026-09-01 for Lumina, which must open
+  silent — James picks the track and presses play himself; every other world keeps the attempt).
 - Worlds needing a second volume channel (e.g. music separate from SFX) pass
   `channels: [{ label, value, setVolume }]` to `attach()` — each renders as a labelled slider
   below the main one on hover (added 2026-07-13 for Arachno-Wars 2000's music).

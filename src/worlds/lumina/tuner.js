@@ -343,7 +343,9 @@
     // Card registry (2026-07-31): card() registers every card here by pane;
     // the layout engine below parents them into user-arranged rows. Cards
     // never append themselves — the stored layout decides where they live.
-    const CARDS = { visual: new Map(), audio: new Map() };
+    // ONE BOARD since 2026-09-01 (James: "There shouldn't be an audio tab") —
+    // a single registry; card()'s pane argument is vestigial and ignored.
+    const CARDS = new Map();
 
     function saveFavs() {
       try { localStorage.setItem(FAVS_KEY, JSON.stringify(favs)); } catch (err) { /* fine */ }
@@ -581,7 +583,8 @@
     // Each section is a CARD: gold title, a one-sentence plain-language
     // summary of what the group does (James, 2026-07-31 — "what does this set
     // of controls do?"), then the controls. Cards live in user-arranged ROWS
-    // (the layout engine below) — pane is "visual" or "audio".
+    // (the layout engine below). The pane argument is vestigial since the
+    // 2026-09-01 one-board merge — every card lands on the same board.
     // opts.group wires the card to a LuminaRandom.GROUPS key-group: it gets
     // its own 🎲 (roll just this card) and a 🔒 (every dice roll leaves the
     // card alone — host-enforced). All cards collapse to their header (▾),
@@ -592,7 +595,7 @@
       // Edit-mode grip: drag a card by this bar to move it between rows.
       const grip = el("div", "tuner-grip", "⠿ drag");
       grip.addEventListener("pointerdown", (e) => {
-        if (editMode) startCardDrag(e, pane, o.id || title, c);
+        if (editMode) startCardDrag(e, o.id || title, c);
       });
       c.appendChild(grip);
       const head = el("div", "tuner-cardhead");
@@ -645,7 +648,7 @@
       head.appendChild(tools);
       c.appendChild(head);
       if (collapsedIds.includes(cardId)) setFold(true);
-      CARDS[pane].set(cardId, c);
+      CARDS.set(cardId, c);
       return c;
     }
 
@@ -664,14 +667,17 @@
       return b;
     }
 
-    // --- root + tabs --------------------------------------------------------
+    // --- root + head row ----------------------------------------------------
+    // ONE BOARD (James, 2026-09-01: "There shouldn't be an audio tab... I
+    // can't be moving over to some audio tab and configuring this stuff in
+    // the middle of a song"). The visual|audio tabs are gone; every card
+    // lives on the same board, and the track scrubber sits in the sticky
+    // head with the transport so it is never more than a glance away.
 
     container.textContent = "";
     const header = el("div", "tuner-tabs");
-    const tabVisual = button("visual", "The field: structure, patterns, geometry, colors, FX rack", () => setTab("visual"), "tuner-tab");
-    const tabAudio = button("audio", "The music: player, DJ sets, reactivity, mod matrix", () => setTab("audio"), "tuner-tab");
-    // Right side of the tab bar: dock side, text size, then detach. Sticky
-    // with the tabs, so it's reachable from either tab.
+    header.appendChild(el("p", "tuner-headtitle", "configuration"));
+    // Right side of the head row: text size, edit layout, gear, detach.
     const headRight = el("div", "tuner-headright");
 
     // (The dock picker died 2026-07-31 — James: "kill the dock icons. There's
@@ -739,16 +745,19 @@
       gearMenu.hidden = true;
     });
 
-    header.append(tabVisual, tabAudio, headRight);
+    header.appendChild(headRight);
     if (embedded) {
-      headRight.appendChild(button("detach ⧉", "Pop the controls out into their own window — drag it to another screen", () => {
-        window.open("./tuner.html", "lumina-tuner", "width=1060,height=920");
+      headRight.appendChild(button("detach ⧉", "Open the controls in their own browser tab — drag it out to another screen", () => {
+        // A plain tab, not a popup (James, 2026-09-01: the popup "doesn't
+        // appear the same as other windows and gets lost").
+        const w = window.open("./tuner.html", "lumina-tuner");
+        if (w) w.focus();
       }, "tuner-btn tuner-detach"));
     }
 
     // --- the command bar (2026-07-31, James: "I prominently need stop and
     // pause... freeze and dice and melt") — transport + the big performance
-    // verbs + volume, sticky under the tabs, visible from both tabs.
+    // verbs + volume, sticky in the head.
     const svgIcon = (paths) =>
       `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">${paths}</svg>`;
     const DIE_PATHS =
@@ -767,6 +776,10 @@
         '<defs><filter id="lum-cmd-soft" x="-30%" y="-30%" width="160%" height="160%">' +
         '<feGaussianBlur stdDeviation="0.75"/></filter></defs>' +
         `<g filter="url(#lum-cmd-soft)">${DIE_PATHS}</g>`),
+      // ◀◀ / ▶▶ (James, 2026-09-01): back to the top and STOP (again while
+      // stopped at the top = previous track, stopped) / next track, stopped.
+      top: svgIcon('<path d="M9 2 2 8l7 6zM15 2 8 8l7 6z"/>'),
+      next: svgIcon('<path d="M1 2l7 6-7 6zM7 2l7 6-7 6z"/>'),
     };
     const cmdbar = el("div", "tuner-cmdbar");
     const cmdBtn = (html, title, onClick) => {
@@ -778,8 +791,15 @@
       cmdbar.appendChild(b);
       return b;
     };
-    const cPlay = cmdBtn(CMD_ICONS.play, "Play", () => send({ scope: "music", type: "player", cmd: "toggle" }));
-    cmdBtn(CMD_ICONS.stop, "Stop — rewind to the top; the field goes back to your sliders", () => send({ scope: "music", type: "player", cmd: "stop" }));
+    // Deck order, same as the player bar (James, 2026-09-01: "back, play,
+    // pause, stop, and double forward" — separate play and pause, nothing
+    // here ever starts playback except play itself).
+    const playerCmd = (cmd) => () => send({ scope: "music", type: "player", cmd });
+    cmdBtn(CMD_ICONS.top, "Back to the top — rewind and stop; press again while stopped at the top for the previous track (also stopped)", playerCmd("top"));
+    const cPlay = cmdBtn(CMD_ICONS.play, "Play", playerCmd("play"));
+    const cPause = cmdBtn(CMD_ICONS.pause, "Pause — the field keeps whatever it's doing", playerCmd("pause"));
+    cmdBtn(CMD_ICONS.stop, "Stop — rewind to the top; the field goes back to your sliders", playerCmd("stop"));
+    cmdBtn(CMD_ICONS.next, "Next track — loads it stopped at the top; press play when you're ready", playerCmd("next"));
     cmdbar.appendChild(el("span", "tuner-cmdsep"));
     const cFreeze = cmdBtn(CMD_ICONS.freeze, "Freeze the picture — the music plays on", () => send({ scope: "field", type: "freeze" }));
     cmdBtn(CMD_ICONS.dice, "Roll the dice — a whole new look", () => send({ scope: "field", type: "randomize" }));
@@ -805,27 +825,58 @@
     }
     onReflect(() => {
       const playing = !!snap.music.playing;
-      cPlay.innerHTML = playing ? CMD_ICONS.pause : CMD_ICONS.play;
-      cPlay.title = playing ? "Pause" : "Play";
       cPlay.classList.toggle("on", playing);
+      // Pause lights while paused mid-track — same rule as the player bar.
+      cPause.classList.toggle("on", !playing && (snap.music.time || 0) > 0);
       cFreeze.classList.toggle("on", !!snap.frozen);
       cBack.disabled = !snap.fieldPresets.canUndo;
     });
 
-    // One sticky unit: tabs row + command bar (+ the gear's dropdown).
+    // The scrub row (2026-09-01, James: "I was looking for the scrub for the
+    // track... how do I move back to the beginning?"): playhead + time
+    // readout in the sticky head, right under the transport. The track is
+    // the one slider allowed to run wide — it maps a whole song.
+    const scrubRow = el("div", "tuner-cmdscrub");
+    {
+      const seek = el("input");
+      seek.type = "range";
+      seek.min = "0";
+      seek.max = "1000";
+      seek.step = "1";
+      seek.title = "Scrub through the track — double-click rewinds to the top";
+      const time = el("output", "tuner-time", "0:00 / 0:00");
+      scrubRow.append(seek, time);
+      seek.addEventListener("input", () => {
+        if (snap && snap.music.duration) {
+          send({ scope: "music", type: "player", cmd: "seek", value: (Number(seek.value) / 1000) * snap.music.duration });
+        }
+      });
+      // Release focus after a scrub so the playhead resumes following playback
+      // (reflect skips whichever control is focused).
+      seek.addEventListener("change", () => seek.blur());
+      seek.addEventListener("dblclick", () => send({ scope: "music", type: "player", cmd: "seek", value: 0 }));
+      const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+      onReflect(() => {
+        const d = snap.music.duration || 0;
+        safeSet(seek, d ? String(Math.round(((snap.music.time || 0) / d) * 1000)) : "0");
+        time.textContent = `${fmtTime(snap.music.time || 0)} / ${fmtTime(d)}`;
+      });
+    }
+
+    // One sticky unit: head row + command bar + scrub row (+ the gear's dropdown).
     const headWrap = el("div", "tuner-head");
-    headWrap.append(header, cmdbar, gearMenu);
+    headWrap.append(header, cmdbar, scrubRow, gearMenu);
     container.appendChild(headWrap);
 
-    // My deck — pinned favorites, above the tabs' panes so it shows on BOTH.
-    // Hidden until something is starred.
+    // My deck — pinned favorites, above the board. Hidden until something is
+    // starred.
     const deck = el("div", "tuner-card tuner-deck");
     {
       const head = el("div", "tuner-cardhead");
       head.appendChild(el("p", "tuner-section", "my deck"));
       const tools = el("div", "tuner-cardtools");
       const ib = infoBtn("card:my deck", "my deck",
-        "Your pinned controls — hit the ☆ on any control to keep a copy here, on top, on both tabs.");
+        "Your pinned controls — hit the ☆ on any control to keep a copy here, on top.");
       if (ib) tools.appendChild(ib);
       head.appendChild(tools);
       deck.appendChild(head);
@@ -845,90 +896,78 @@
       if (snap) reflectors.forEach((fn) => fn());
     };
 
-    const panes = {
-      visual: el("div", "tuner-pane"),
-      audio: el("div", "tuner-pane"),
-    };
-    container.append(panes.visual, panes.audio);
+    const pane = el("div", "tuner-pane");
+    container.appendChild(pane);
 
     // --- the layout engine (2026-07-31): rows you own -----------------------
-    // Each pane is a list of ROWS, 1–5 cards per row, equal shares of the
+    // The board is a list of ROWS, 1–5 cards per row, equal shares of the
     // width; any row can pin its own height. Stored per window. Cards the
     // store has never seen (future features) get their own row at the end —
     // extending the panel needs zero migration. Unknown stored ids drop out.
+    // ONE BOARD since 2026-09-01: the v1 store had two panes (visual|audio);
+    // a v1 store migrates by appending its audio rows under its visual rows,
+    // so an arranged board survives the merge with the old audio cards below.
     const LAYOUT_KEY = "lumina-layout";
     const MAX_PER_ROW = 5;
-    // A card can live on EITHER tab (James, 2026-07-31: "the visual tab
-    // should have access to the audio tab cards") — the gear's ⇄ moves it.
-    // Registration pane is only the card's HOME: where it lands by default
-    // and where a store that's never seen it adopts it. Reactivity starts on
-    // the visual board — it shapes the picture as much as any visual card.
-    const DEFAULT_LAYOUT = {
-      visual: [["looks"], ["perform"], ["timeline"], ["reactivity"], ["structure", "scene"], ["pattern"],
-        ["pulse", "grid", "corners"], ["margins", "canvas"], ["fx rack", "beat lock"]],
-      audio: [["player"], ["mod matrix", "react presets"]],
-    };
+    const DEFAULT_LAYOUT = [
+      ["looks"], ["player"], ["perform"], ["timeline"], ["reactivity"],
+      ["mod matrix", "react presets"], ["structure", "scene"], ["pattern"],
+      ["pulse", "grid", "corners"], ["margins", "canvas"], ["fx rack", "beat lock"],
+    ];
     function defaultLayout() {
-      const p = {};
-      for (const pn in DEFAULT_LAYOUT) p[pn] = DEFAULT_LAYOUT[pn].map((r) => ({ c: r.slice(), h: 0 }));
-      return { v: 1, panes: p, hidden: [] };
+      return { v: 2, rows: DEFAULT_LAYOUT.map((r) => ({ c: r.slice(), h: 0 })), hidden: [] };
     }
+    const cleanRows = (rows) => (Array.isArray(rows) ? rows : [])
+      .map((r) => ({ c: Array.isArray(r.c) ? r.c.slice(0, MAX_PER_ROW) : [], h: Number(r.h) || 0 }))
+      .filter((r) => r.c.length);
     let layout = defaultLayout();
     try {
       const s = JSON.parse(localStorage.getItem(LAYOUT_KEY));
-      if (s && s.v === 1 && s.panes && s.panes.visual && s.panes.audio) {
-        layout = { v: 1, panes: {}, hidden: Array.isArray(s.hidden) ? s.hidden.slice() : [] };
-        ["visual", "audio"].forEach((pn) => {
-          layout.panes[pn] = (Array.isArray(s.panes[pn]) ? s.panes[pn] : [])
-            .map((r) => ({ c: Array.isArray(r.c) ? r.c.slice(0, MAX_PER_ROW) : [], h: Number(r.h) || 0 }))
-            .filter((r) => r.c.length);
-        });
+      if (s && s.v === 2 && Array.isArray(s.rows)) {
+        layout = { v: 2, rows: cleanRows(s.rows), hidden: Array.isArray(s.hidden) ? s.hidden.slice() : [] };
+      } else if (s && s.v === 1 && s.panes && s.panes.visual && s.panes.audio) {
+        layout = {
+          v: 2,
+          rows: cleanRows(s.panes.visual).concat(cleanRows(s.panes.audio)),
+          hidden: Array.isArray(s.hidden) ? s.hidden.slice() : [],
+        };
       }
     } catch (err) { /* stock layout */ }
     function saveLayout() {
       try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (err) { /* fine */ }
     }
 
-    const paneRows = { visual: el("div", "tuner-rows"), audio: el("div", "tuner-rows") };
-    panes.visual.appendChild(paneRows.visual);
-    panes.audio.appendChild(paneRows.audio);
+    const boardRows = el("div", "tuner-rows");
+    pane.appendChild(boardRows);
     let editMode = false;
 
-    const cardById = (id) => CARDS.visual.get(id) || CARDS.audio.get(id);
+    const cardById = (id) => CARDS.get(id);
 
     function renderLayout() {
-      // A card lives on exactly one tab — whichever the layout says. Dedupe
-      // (first placement wins), drop dead ids, then adopt never-stored cards
-      // onto their home tab.
+      // Dedupe (first placement wins), drop dead ids, then adopt never-stored
+      // cards onto their own row at the end.
       const seen = new Set();
-      ["visual", "audio"].forEach((pn) => {
-        layout.panes[pn].forEach((r) => {
-          r.c = r.c.filter((id) => cardById(id) && !seen.has(id));
-          r.c.forEach((id) => seen.add(id));
-        });
-        layout.panes[pn] = layout.panes[pn].filter((r) => r.c.length);
+      layout.rows.forEach((r) => {
+        r.c = r.c.filter((id) => cardById(id) && !seen.has(id));
+        r.c.forEach((id) => seen.add(id));
       });
-      ["visual", "audio"].forEach((pn) => {
-        CARDS[pn].forEach((cEl, id) => {
-          if (!seen.has(id)) { layout.panes[pn].push({ c: [id], h: 0 }); seen.add(id); }
-        });
+      layout.rows = layout.rows.filter((r) => r.c.length);
+      CARDS.forEach((cEl, id) => {
+        if (!seen.has(id)) { layout.rows.push({ c: [id], h: 0 }); seen.add(id); }
       });
-      ["visual", "audio"].forEach((pn) => {
-        const host = paneRows[pn];
-        host.textContent = "";
-        layout.panes[pn].forEach((row) => {
-          const visible = row.c.filter((id) => !layout.hidden.includes(id));
-          if (!visible.length) return;
-          const rowEl = el("div", "tuner-row");
-          rowEl._model = row;
-          if (row.h > 0) {
-            rowEl.style.height = `${row.h}em`;
-            rowEl.classList.add("tuner-row--fixed");
-          }
-          visible.forEach((id) => rowEl.appendChild(cardById(id)));
-          if (editMode) rowEl.appendChild(rowGrip(rowEl));
-          host.appendChild(rowEl);
-        });
+      boardRows.textContent = "";
+      layout.rows.forEach((row) => {
+        const visible = row.c.filter((id) => !layout.hidden.includes(id));
+        if (!visible.length) return;
+        const rowEl = el("div", "tuner-row");
+        rowEl._model = row;
+        if (row.h > 0) {
+          rowEl.style.height = `${row.h}em`;
+          rowEl.classList.add("tuner-row--fixed");
+        }
+        visible.forEach((id) => rowEl.appendChild(cardById(id)));
+        if (editMode) rowEl.appendChild(rowGrip(rowEl));
+        boardRows.appendChild(rowEl);
       });
       deck.hidden = favs.length === 0 || layout.hidden.includes("my deck");
       saveLayout();
@@ -977,10 +1016,10 @@
       if (dropMark && dropMark.parentNode) dropMark.parentNode.removeChild(dropMark);
       dropMark = null;
     }
-    function startCardDrag(e, pane, id, cardEl) {
+    function startCardDrag(e, id, cardEl) {
       e.preventDefault();
       cardEl.classList.add("tuner-dragging");
-      const host = paneRows[pane];
+      const host = boardRows;
       let target = null; // {row, index} joins a row; {newAt} makes a new one
       const move = (ev) => {
         clearMark();
@@ -1024,7 +1063,7 @@
         cardEl.classList.remove("tuner-dragging");
         clearMark();
         if (!target) { renderLayout(); return; }
-        const rowsArr = layout.panes[pane];
+        const rowsArr = layout.rows;
         const src = rowsArr.find((r) => r.c.includes(id));
         if (src) src.c.splice(src.c.indexOf(id), 1);
         if (target.row) {
@@ -1048,9 +1087,7 @@
     // they last lived. Reset restores the stock rows, heights and visibility.
     function buildGearMenu() {
       gearMenu.textContent = "";
-      const homeOf = (id) =>
-        (layout.panes.visual.some((r) => r.c.includes(id)) ? "visual" : "audio");
-      const addRow = (id, labelText, movable) => {
+      const addRow = (id, labelText) => {
         const lab = el("label", "tuner-gearrow");
         const cb = el("input");
         cb.type = "checkbox";
@@ -1063,35 +1100,16 @@
           deckRefresh();
         });
         lab.append(cb, document.createTextNode(labelText));
-        if (movable) {
-          // ⇄ moves the card to the OTHER tab's board (its own row at the
-          // end — drag it into place from there). James, 2026-07-31: the
-          // visual tab must be able to host reactivity/matrix/etc.
-          const other = homeOf(id) === "visual" ? "audio" : "visual";
-          const mv = el("button", "tuner-gearmove", `⇄ ${other}`);
-          mv.type = "button";
-          mv.title = `Move this card to the ${other} tab's board`;
-          mv.addEventListener("click", (e) => {
-            e.preventDefault(); // inside a <label> — don't toggle the checkbox
-            layout.panes[homeOf(id)].forEach((r) => {
-              const i = r.c.indexOf(id);
-              if (i >= 0) r.c.splice(i, 1);
-            });
-            layout.panes[other].push({ c: [id], h: 0 });
-            renderLayout();
-            buildGearMenu();
-          });
-          lab.appendChild(mv);
-        }
         gearMenu.appendChild(lab);
       };
-      addRow("my deck", "my deck", false);
-      const allIds = [...CARDS.visual.keys(), ...CARDS.audio.keys()];
-      [["visual", "on the visual tab"], ["audio", "on the audio tab"]].forEach(([pn, cap]) => {
-        gearMenu.appendChild(el("p", "tuner-gearcap", cap));
-        allIds.filter((id) => homeOf(id) === pn).forEach((id) => addRow(id, id, true));
-      });
-      gearMenu.appendChild(button("reset layout", "Back to the stock board — rows, heights, tab homes, and hidden cards", () => {
+      addRow("my deck", "my deck");
+      gearMenu.appendChild(el("p", "tuner-gearcap", "on the board"));
+      // Listed in board order so the menu reads like the panel.
+      const ordered = [];
+      layout.rows.forEach((r) => r.c.forEach((id) => { if (!ordered.includes(id)) ordered.push(id); }));
+      CARDS.forEach((cEl, id) => { if (!ordered.includes(id)) ordered.push(id); });
+      ordered.forEach((id) => addRow(id, id));
+      gearMenu.appendChild(button("reset layout", "Back to the stock board — rows, heights, and hidden cards", () => {
         layout = defaultLayout();
         renderLayout();
         deckRefresh();
@@ -1099,16 +1117,8 @@
       }, "tuner-btn tuner-gearreset"));
     }
 
-    function setTab(name) {
-      panes.visual.hidden = name !== "visual";
-      panes.audio.hidden = name !== "audio";
-      tabVisual.classList.toggle("tuner-tab--on", name === "visual");
-      tabAudio.classList.toggle("tuner-tab--on", name === "audio");
-      try { localStorage.setItem("lumina-tuner-tab", name); } catch (err) { /* fine */ }
-    }
-
     // ========================================================================
-    // VISUAL tab
+    // The board, part 1: the field
     // ========================================================================
 
     // Full-width top card: whole-look management + the three hero sliders.
@@ -1783,19 +1793,19 @@
     }
 
     // ========================================================================
-    // AUDIO tab
+    // The board, part 2: the music (no audio tab since 2026-09-01)
     // ========================================================================
 
-    // Full-width top card, like the visual tab's "looks".
+    // The player card: which track, which set. The transport lives in the
+    // sticky head (2026-09-01) — the ◀◀ ▶ ❚❚ ■ ▶▶ deck, the scrubber and the
+    // volume all moved up there, so this card is only the two choices.
     const cPlayer = card("audio", "player",
-      "What's playing, and who's driving the visuals — claude's authored set or your sliders.");
+      "Which track, and who's driving the visuals — claude's authored set or your sliders.");
     {
       const row = el("div", "tuner-pattern");
-      const play = button("play", "Play / pause — same switch as the speaker on the visual page", () => send({ scope: "music", type: "player", cmd: "toggle" }));
-      const stopBtn = button("stop", "Stop — pause and rewind to the top of the track", () => send({ scope: "music", type: "player", cmd: "stop" }));
-      const prev = button("◀", "Previous track", () => send({ scope: "music", type: "player", cmd: "prev" }), "tuner-step");
+      const trackLabel = el("label", "tuner-label", "track");
       const sel = el("select");
-      const next = button("▶", "Next track", () => send({ scope: "music", type: "player", cmd: "next" }), "tuner-step");
+      sel.title = "Track — pick any loaded one; it loads stopped unless music is already playing";
       const shuffleWrap = el("label", "tuner-check");
       const shuffle = el("input");
       shuffle.type = "checkbox";
@@ -1827,7 +1837,7 @@
         }
       };
       dj.title = "claude's set plays a composed light show authored for each track; free play hands the field back to your sliders; below the line: your recorded sets";
-      row.append(play, stopBtn, prev, sel, next, shuffleWrap, djLabel, dj);
+      row.append(trackLabel, sel, shuffleWrap, djLabel, dj);
       {
         const ib = infoBtn("row:player-dj", "visual dj",
           "claude's set plays a light show composed for each track — free play hands the field back to you. below the divider: your own recorded sets for this track");
@@ -1847,48 +1857,11 @@
           });
         }
         safeSet(sel, String(snap.music.trackIndex));
-        play.textContent = snap.music.playing ? "pause" : "play";
         shuffle.checked = !!snap.music.shuffle;
         rebuildDj();
         safeSet(dj, snap.music.djValue || snap.music.dj);
         if (document.activeElement !== dj && dj.selectedIndex < 0) dj.value = "free";
       });
-      // Transport: playhead scrubber, time readout, listening volume.
-      const transport = el("div", "tuner-transport");
-      const seek = el("input");
-      seek.type = "range";
-      seek.min = "0";
-      seek.max = "1000";
-      seek.step = "1";
-      seek.title = "Scrub through the track — double-click rewinds to the top";
-      const time = el("output", "tuner-time", "0:00 / 0:00");
-      const volLab = el("label", "tuner-label", "vol");
-      const vol = el("input", "tuner-vol");
-      vol.type = "range";
-      vol.min = "0";
-      vol.max = "1000";
-      vol.step = "1";
-      vol.title = "Listening volume — same knob as the speaker's hover slider. Double-click restores full";
-      transport.append(seek, time, volLab, vol);
-      seek.addEventListener("input", () => {
-        if (snap && snap.music.duration) {
-          send({ scope: "music", type: "player", cmd: "seek", value: (Number(seek.value) / 1000) * snap.music.duration });
-        }
-      });
-      // Release focus after a scrub so the playhead resumes following playback
-      // (reflect skips whichever control is focused).
-      seek.addEventListener("change", () => seek.blur());
-      seek.addEventListener("dblclick", () => send({ scope: "music", type: "player", cmd: "seek", value: 0 }));
-      vol.addEventListener("input", () => send({ scope: "music", type: "player", cmd: "volume", value: Number(vol.value) / 1000 }));
-      vol.addEventListener("dblclick", () => send({ scope: "music", type: "player", cmd: "volume", value: 1 }));
-      const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
-      onReflect(() => {
-        const d = snap.music.duration || 0;
-        safeSet(seek, d ? String(Math.round(((snap.music.time || 0) / d) * 1000)) : "0");
-        time.textContent = `${fmtTime(snap.music.time || 0)} / ${fmtTime(d)}`;
-        if (snap.music.volume !== undefined) safeSet(vol, String(Math.round(snap.music.volume * 1000)));
-      });
-      cPlayer.appendChild(transport);
     }
 
     const beatDot = el("span");
@@ -1978,7 +1951,7 @@
       ptWrap.append(perTrack, document.createTextNode("per track"));
       ptWrap.title = "Remember these reactivity settings for the current track and recall them whenever it plays";
       row.append(save, del, ptWrap);
-      row.appendChild(button("reset", "Reset the audio tab — reactivity, matrix, shuffle, per-track, DJ mode — back to stock", () => send({ scope: "music", type: "resetAll" }), "tuner-reset"));
+      row.appendChild(button("reset", "Reset the music side — reactivity, matrix, shuffle, per-track, DJ mode — back to stock", () => send({ scope: "music", type: "resetAll" }), "tuner-reset"));
       {
         const ib = infoBtn("row:react-pertrack", "react presets",
           "per track remembers these settings for whichever song is playing");
@@ -2056,9 +2029,6 @@
     renderLayout();
     deckRefresh();
 
-    let tab = "visual";
-    try { tab = localStorage.getItem("lumina-tuner-tab") || "visual"; } catch (err) { /* fine */ }
-    setTab(tab === "audio" ? "audio" : "visual");
     bus.requestSnapshot();
   }
 

@@ -1270,12 +1270,300 @@
     [133, "void", "none", { __ramp: 1.5 }],       // PUNCH — gone for good
   ];
 
+  // ==========================================================================
+  // VIZ TEST TRACK 01 — 130 BPM (detected, lock 4.1x — the tightest grid we
+  // have; 23ms on-grid error), bar 1.846s, 129 bars, 239.7s. James's Suno
+  // test bed (2026-09-01): kick / snare / hat / bass / two chords, nearly
+  // static on purpose so beat response can be judged against a known pulse.
+  // Suno still snuck in a breath at b43-44 and a breakdown b53-60 with the
+  // drop back at b61 (112s); the analyzer found nine punches, all landed.
+  //
+  // THE BEAT-LOCK SHOWCASE. 36 cuts, no look repeated, and every cut
+  // demonstrates ONE rhythmic idea — the comment on each says what to watch
+  // for. Three cuts are deliberately wired the OLD ways for comparison:
+  //   b65 livekick  — the live bass-spike detector (source "beat"), no grid
+  //   b69 bandsonly — band envelopes only, no detector, no grid ("the flail")
+  //   b73 kickrings — back on the grid, same wiring as b1, different look
+  // If b1/b73 hit and b65/b69 don't, the grid path is the answer. If b1
+  // doesn't hit either, the clock is off and nothing else matters.
+  // Tune by bar label ("b25 claveslits").
+  // ==========================================================================
+  const VBASE = {
+    rows: 8, cols: 8, tileSize: 40, gapX: 16, gapY: 16,
+    marginTop: 0, marginRight: 0, marginBottom: 0, marginLeft: 0, inset: 10,
+    speed: 1, holdScale: 0.2, desync: 0, ease: 0.2, border: 0,
+    low: "#050505", high: "#f0f0f0", bg: "#020202", palette: "duo",
+    layout: "grid", shape: "square", waveform: "triangle",
+    pattern: "unison", spread: 1, twist: 0, blur: 0, hueShift: 0, sceneHue: 0,
+    rotate: 0, spin: 0, displace: 0, sizePulse: 0, merge: 0, counter: 0, nest: 0,
+    fill: true, radiusTile: 0, radiusRow: 0, radiusOuter: 0,
+    fxBloom: 0.15, fxIris: 0, fxGrain: 0.1,
+    fxKaleido: 0, fxKalRing: 0, fxKalIter: 0, fxKalSpin: 0,
+    fxTrails: 0, fxShutter: 0, fxRgb: 0, fxPixel: 0,
+    fxZoom: 0, fxZoomRot: 0, fxWarp: 0, fxSlit: 0, fxCrt: 0,
+    scene: "none", scenePalette: "duo", sceneMix: 0.5, sceneTiles: 1,
+    sceneSpeed: 0.8, sceneScale: 0.5, sceneDrive: 0.5, sceneWarp: 0.5,
+    sceneGenome: "amber globe", accent: "four", syncBeats: 1,
+  };
+  const vl = (over, react) => ({ base: Object.assign({}, VBASE, over), react });
+  // Crisp by default: 10ms attack, 100ms release, 90ms pulse decay. A kick is
+  // a spike, not a swell — anything slower than this reads as wobble.
+  const vr = (rows, over) => Object.assign({ master: 1.4, attack: 0.01, release: 0.1,
+    beatSense: 0.8, beatDecay: 0.14, accentDecay: 0.09, rows }, over || {});
+
+  // [bar, name, react, overrides, ramp?]
+  const VIZ_REEL = [
+    // --- section A: the grid vocabulary, one accent pattern per cut --------
+    [1, "kickwall", vr([R("pulse", "tileSize", 1), R("pulse", "fxBloom", 0.4), OFF, OFF, OFF, OFF]), {
+      // THE REFERENCE: six by six white squares; every tile jumps on every kick.
+      rows: 6, cols: 6, tileSize: 70, gapX: 30, gapY: 30, holdScale: 0,
+      low: "#0a0a0a", high: "#ffffff", waveform: "square", pattern: "unison",
+      fxBloom: 0.3, accent: "four", syncBeats: 1 }],
+    [5, "backbeat", vr([R("pulse", "tileSize", 0.9), R("pulse", "displace", 0.4), OFF, OFF, OFF, OFF],
+      { accentDecay: 0.12 }), {
+      // Snap on 2 and 4 ONLY. The kicks on 1 and 3 should do nothing.
+      rows: 10, cols: 10, tileSize: 30, gapX: 20, gapY: 20, shape: "circle", radiusTile: 0.5,
+      holdScale: 0, low: "#180000", high: "#ff2020", bg: "#050000",
+      pattern: "checkerboard", accent: "backbeat", syncBeats: 2 }],
+    [9, "offbeatink", vr([R("pulse", "sceneDrive", 0.9), R("pulse", "tileSize", 0.6), R("pulse", "fxBloom", 0.3), OFF, OFF, OFF]), {
+      // The ands: ink surges BETWEEN the kicks, never on them.
+      rows: 6, cols: 10, tileSize: 24, gapX: 30, gapY: 30, shape: "bar",
+      low: "#000913", high: "#7fd4ff", bg: "#000913", palette: "ocean", pattern: "sweep-right",
+      scene: "ink", scenePalette: "ocean", sceneMix: 0.9, sceneTiles: 0.5, sceneSpeed: 0.7,
+      sceneDrive: 0.3, sceneWarp: 0.7, accent: "offbeat", syncBeats: 2 }],
+    [10, "eighthshex", vr([R("pulse", "tileSize", 0.8), R("pulse", "fxRgb", 0.4), OFF, OFF, OFF, OFF],
+      { accentDecay: 0.06 }), {
+      // PUNCH (build). Eight hits per bar, the downbeats bigger.
+      rows: 12, cols: 12, tileSize: 34, gapX: 10, gapY: 10, layout: "hex", shape: "hexagon",
+      holdScale: 0, low: "#0a1400", high: "#c8ff1e", bg: "#000000", palette: "acid",
+      waveform: "square", pattern: "sparkle", border: 0.5, fxCrt: 0.3,
+      accent: "eighths", syncBeats: 1 }],
+    [13, "downbeatslabs", vr([R("pulse", "tileSize", 0.55), R("pulse", "blur", 0.3), R("pulse", "fxBloom", 0.5), OFF, OFF, OFF],
+      { accentDecay: 0.2 }), {
+      // ONE slam per bar, one flash cycle per bar. Four giant molten slabs.
+      rows: 2, cols: 2, tileSize: 180, gapX: 10, gapY: 10, holdScale: 0.3, ease: 0.8,
+      low: "#180400", high: "#ff7a20", bg: "#050100", waveform: "sine", pattern: "unison",
+      merge: 0.95, blur: 4, accent: "downbeat", syncBeats: 4 }],
+    [17, "sixteenthdust", vr([R("pulse", "sizePulse", 0.8), R("pulse", "tileSize", 0.4), R("pulse", "fxBloom", 0.3), OFF, OFF, OFF],
+      { accentDecay: 0.05 }), {
+      // PUNCH (build). Constant sixteenth shimmer, strong on 1 and 3.
+      rows: 20, cols: 20, tileSize: 6, gapX: 22, gapY: 22, shape: "circle", radiusTile: 0.5,
+      fill: false, low: "#000000", high: "#7adfc0", bg: "#000303", pattern: "scatter",
+      spread: 1.9, desync: 0.6, fxBloom: 0.5, accent: "sixteenths", syncBeats: 1 }],
+    [21, "gallopflame", vr([R("pulse", "sceneDrive", 0.9), R("pulse", "tileSize", 0.7), R("pulse", "fxBloom", 0.4), OFF, OFF, OFF]), {
+      // Flame kicks in a gallop: 1, the a, 2, the a.
+      rows: 5, cols: 5, tileSize: 14, gapX: 40, gapY: 40, fill: false, shape: "diamond",
+      low: "#000000", high: "#ff2f10", bg: "#0a0101", palette: "lava", pattern: "x-cross",
+      scene: "flame", scenePalette: "genome", sceneGenome: "gold phoenix", sceneMix: 1,
+      sceneTiles: 0.3, sceneSpeed: 1, sceneScale: 0.55, sceneDrive: 0.7, sceneWarp: 0.4,
+      accent: "gallop", syncBeats: 1 }],
+    [25, "claveslits", vr([R("pulse", "displace", 0.85), R("pulse", "tileSize", 0.5), R("pulse", "fxRgb", 0.4), OFF, OFF, OFF]), {
+      // Son clave in the lattice: the slits kick sideways on the 3-side.
+      rows: 5, cols: 14, tileSize: 66, gapX: 8, gapY: 26, shape: "slit", waveform: "square",
+      holdScale: 0, low: "#0c0c14", high: "#e8e8f2", bg: "#040408", pattern: "bounce-x",
+      accent: "clave", syncBeats: 2 }],
+    [29, "stutterstrobe", vr([R("pulse", "fxShutter", 0.6), R("pulse", "tileSize", 0.6), OFF, OFF, OFF, OFF],
+      { accentDecay: 0.06 }), {
+      // The hit builds INTO the bar line: 1 ... then 3 e & a, louder each step.
+      rows: 8, cols: 8, tileSize: 120, gapX: 4, gapY: 4, holdScale: 0,
+      low: "#101010", high: "#f4f4f4", waveform: "square", pattern: "unison",
+      fxShutter: 0.35, fxPixel: 0.2, fxGrain: 0.3, accent: "stutter", syncBeats: 1 }],
+    [33, "barsaw", vr([R("bar", "tileSize", -0.6), R("bar", "hueShift", 0.35), OFF, OFF, OFF, OFF],
+      { master: 1.3 }), {
+      // NO pulse at all: tiles shrink steadily through the bar and snap back on the 1.
+      rows: 6, cols: 8, tileSize: 150, gapX: 12, gapY: 12, holdScale: 0.5, ease: 1,
+      low: "#0c0016", high: "#ff9d5c", bg: "#0c0016", palette: "sunset", waveform: "sine",
+      pattern: "sweep-down", accent: "none", syncBeats: 4 }],
+    [37, "swingtwins", vr([R("swing", "hueShift", 0.5), R("swing", "spread", 0.4), R("pulse", "tileSize", 0.6), R("pulse", "fxBloom", 0.3), OFF, OFF]), {
+      // Every other bar flips color (swing); the kicks still hit the size.
+      rows: 2, cols: 8, tileSize: 110, gapX: 30, gapY: 80, layout: "radial", shape: "circle",
+      radiusTile: 0.5, fill: false, low: "#140500", high: "#ffcf5c", bg: "#070200",
+      palette: "sunset", waveform: "sine", pattern: "checkerboard", counter: 0.6,
+      accent: "four", syncBeats: 1 }],
+    [41, "phrasebreath", vr([R("phrase", "sceneScale", 0.7), R("phrase", "sceneHue", 0.5), R("bar", "sceneDrive", 0.2), OFF, OFF, OFF],
+      { master: 1.0, attack: 0.03, release: 0.3 }), {
+      // No hits: the nebula breathes across the 12-bar phrase. Slow on purpose.
+      rows: 3, cols: 3, tileSize: 12, gapX: 80, gapY: 80, fill: false, shape: "circle",
+      radiusTile: 0.5, waveform: "sine", speed: 0.5, ease: 1,
+      low: "#040210", high: "#8a7ad8", bg: "#010008", pattern: "unison", fxBloom: 0.4,
+      scene: "nebula", scenePalette: "genome", sceneGenome: "violet veil", sceneMix: 1,
+      sceneTiles: 0.1, sceneSpeed: 0.6, sceneScale: 0.3, sceneDrive: 0.6,
+      accent: "none", syncBeats: 8 }],
+    [43, "breath", vr([R("bass", "tileSize", 0.5), R("pulse", "fxBloom", 0.3), OFF, OFF, OFF, OFF],
+      { master: 0.9, attack: 0.03, release: 0.3 }), {
+      // PUNCH (build) + the b43-44 breath: nearly dark rings, bass only.
+      rows: 4, cols: 4, tileSize: 60, gapX: 40, gapY: 40, fill: false, shape: "ring",
+      low: "#050208", high: "#3a2a55", bg: "#000000", waveform: "sine", speed: 0.5, ease: 0.9,
+      pattern: "rings", blur: 6, fxIris: 0.5, accent: "downbeat", syncBeats: 4 }],
+    // --- section A': the drop ----------------------------------------------
+    [45, "whiteout", vr([R("pulse", "tileSize", 1), R("pulse", "fxShutter", 0.3), R("pulse", "blur", 0.5), OFF, OFF, OFF],
+      { master: 1.6, attack: 0.008, release: 0.08 }), {
+      // PUNCH (drop). The inversion: white room, gated on every kick.
+      rows: 8, cols: 8, tileSize: 120, gapX: 4, gapY: 4, speed: 4.8, holdScale: 0,
+      low: "#ffffff", high: "#101010", bg: "#f2ede2", waveform: "square", pattern: "unison",
+      fxShutter: 0.75, fxRgb: 0.2, accent: "four", syncBeats: 1 }],
+    [49, "foldkick", vr([R("pulse", "fxKalRing", 0.5), R("pulse", "tileSize", 0.7), R("swing", "fxKalSpin", 0.3), R("bar", "hueShift", 0.4), OFF, OFF]), {
+      // Kaleidoscope: every kick pushes the rings outward.
+      rows: 7, cols: 7, tileSize: 58, gapX: 18, gapY: 18, shape: "triangle",
+      low: "#0c0c14", high: "#e8e8f2", bg: "#040408", palette: "rainbow", pattern: "diagonal",
+      rotate: 0.4, fxKaleido: 0.85, fxKalRing: 0.4, fxKalIter: 0.5, fxKalSpin: 0.2,
+      fxWarp: 0.3, fxBloom: 0.35, accent: "four", syncBeats: 1 }],
+    // --- section B: the breakdown (quiet 97-111s) --------------------------
+    [53, "void", vr([R("lowmid", "fxBloom", 0.3), R("level", "tileSize", 0.3), OFF, OFF, OFF, OFF],
+      { master: 0.6, attack: 0.05, release: 0.5 }), {
+      // The breakdown: near black, iris shut, only the pad glows.
+      rows: 1, cols: 1, tileSize: 30, gapX: 100, gapY: 100, fill: false, shape: "circle",
+      radiusTile: 0.5, waveform: "sine", speed: 0.25, ease: 1,
+      low: "#010102", high: "#0a0a14", bg: "#000000", pattern: "unison",
+      blur: 90, fxIris: 0.95, fxTrails: 0.5, accent: "none", syncBeats: 0 }],
+    [57, "emberrise", vr([R("pulse", "fxBloom", 0.4), R("bass", "sceneDrive", 0.4), R("bar", "sceneScale", 0.2), OFF, OFF, OFF],
+      { master: 1.1, attack: 0.02, release: 0.25 }), {
+      // PUNCH (build). Embers rise out of the dark over four bars (7s glide).
+      rows: 12, cols: 12, tileSize: 8, gapX: 24, gapY: 24, fill: false, shape: "circle",
+      radiusTile: 0.5, waveform: "sine", speed: 0.8, ease: 0.7, desync: 0.5,
+      low: "#000000", high: "#ff9f27", bg: "#000000", pattern: "scatter", spread: 1.5,
+      blur: 0, fxIris: 0.2, fxTrails: 0.3, fxBloom: 0.5,
+      scene: "flame", scenePalette: "genome", sceneGenome: "ember cathedral", sceneMix: 0.8,
+      sceneTiles: 0.6, sceneSpeed: 0.7, sceneScale: 0.5, sceneDrive: 0.7,
+      accent: "downbeat", syncBeats: 4 }, 7],
+    [60, "riser", vr([R("pulse", "fxShutter", 0.5), R("pulse", "tileSize", 0.5), R("bar", "fxPixel", 0.5), OFF, OFF, OFF],
+      { accentDecay: 0.05 }), {
+      // PUNCH. One bar of tightening strobe into the drop.
+      rows: 16, cols: 16, tileSize: 20, gapX: 6, gapY: 6, holdScale: 0,
+      low: "#0a0a0a", high: "#d8ffd8", bg: "#000000", palette: "crt", waveform: "square",
+      pattern: "unison", fxShutter: 0.5, fxPixel: 0.4, fxCrt: 0.4,
+      accent: "stutter", syncBeats: 1 }],
+    // --- section A'': the drop back, then the A/B comparisons ---------------
+    [61, "supernova", vr([R("pulse", "sceneDrive", 0.8), R("pulse", "tileSize", 1), R("pulse", "fxBloom", 0.5), R("bar", "sceneHue", 0.3), OFF, OFF],
+      { master: 1.6, attack: 0.008, release: 0.08 }), {
+      // THE DROP (112s). Gold fire through full rings; detonates on the 1, then every kick.
+      rows: 9, cols: 9, tileSize: 14, gapX: 30, gapY: 30, layout: "radial", shape: "star",
+      fill: false, speed: 2.4, holdScale: 0.1, ease: 0.2,
+      low: "#000000", high: "#ffe9b0", bg: "#000000", pattern: "drops",
+      fxBloom: 0.6, fxShutter: 0.25, fxKaleido: 0.65, fxKalRing: 0.9, fxKalIter: 0.5, fxKalSpin: 0.45,
+      scene: "flame", scenePalette: "genome", sceneGenome: "firebird", sceneMix: 1,
+      sceneTiles: 0.15, sceneSpeed: 1.2, sceneScale: 0.55, sceneDrive: 1,
+      accent: "four", syncBeats: 1 }],
+    [65, "livekick", vr([R("beat", "tileSize", 1), R("beat", "fxBloom", 0.4), OFF, OFF, OFF, OFF],
+      { beatSense: 0.75, beatDecay: 0.14 }), {
+      // A/B #1 — same wiring as b1 but from the LIVE bass-spike detector, not the
+      // grid. Tiles free-run (no sync). Compare the hits to b1 and b73.
+      rows: 6, cols: 6, tileSize: 70, gapX: 30, gapY: 30, holdScale: 0,
+      low: "#0a0a0a", high: "#4bff5e", bg: "#001200", waveform: "square", pattern: "unison",
+      fxBloom: 0.3, accent: "none", syncBeats: 0, speed: 1 }],
+    [69, "bandsonly", vr([R("bass", "tileSize", 0.8), R("mid", "spread", 0.5), R("high", "desync", 0.5), R("level", "speed", 0.3), OFF, OFF],
+      { attack: 0.03, release: 0.25 }), {
+      // A/B #2 — the OLD way: band envelopes only, no detector, no grid. This is the flail.
+      rows: 8, cols: 8, tileSize: 40, gapX: 16, gapY: 16,
+      low: "#1a0030", high: "#ff2fd6", bg: "#0a0014", palette: "neon", pattern: "ripple",
+      accent: "none", syncBeats: 0, speed: 1 }],
+    [73, "kickrings", vr([R("pulse", "tileSize", 1), R("pulse", "fxBloom", 0.4), OFF, OFF, OFF, OFF]), {
+      // A/B #3 — back ON the grid: same wiring as b1, different look. Rings jump on every kick.
+      rows: 8, cols: 8, tileSize: 60, gapX: 20, gapY: 20, shape: "ring", holdScale: 0,
+      low: "#000000", high: "#ffffff", bg: "#000000", waveform: "square", pattern: "rings",
+      fxBloom: 0.3, accent: "four", syncBeats: 1 }],
+    [77, "syncsnake", vr([OFF, OFF, OFF, OFF, OFF, OFF]), {
+      // No matrix at all: the tiles' OWN flash cycle is locked to two beats (syncBeats).
+      rows: 10, cols: 16, tileSize: 30, gapX: 8, gapY: 8, layout: "spiral", holdScale: 0,
+      low: "#000000", high: "#37f07f", bg: "#02120a", palette: "acid", pattern: "snake",
+      accent: "none", syncBeats: 2 }],
+    [81, "sync8", vr([R("pulse", "tileSize", 0.5), R("pulse", "blur", 0.4), R("bar", "hueShift", 0.2), OFF, OFF, OFF],
+      { master: 1.2, accentDecay: 0.25 }), {
+      // One slow flash cycle per TWO bars; a soft downbeat hit once a bar.
+      rows: 3, cols: 5, tileSize: 160, gapX: 30, gapY: 30, shape: "hexagon", waveform: "sine",
+      ease: 1, holdScale: 0.6, low: "#000913", high: "#1e88b8", bg: "#000913", palette: "ocean",
+      pattern: "pinwheel", blur: 10, fxIris: 0.3, accent: "downbeat", syncBeats: 8 }],
+    [83, "graveyard", vr([R("pulse", "fxRgb", 0.6), R("pulse", "tileSize", 0.6), R("pulse", "fxCrt", 0.3), R("swing", "spread", 0.3), OFF, OFF]), {
+      // PUNCH (groove). A wall of dying televisions: backbeat snaps with sync tear.
+      rows: 6, cols: 9, tileSize: 78, gapX: 14, gapY: 20, waveform: "square", pattern: "rows-alt",
+      low: "#061006", high: "#9fe89a", bg: "#020402", border: 2, fxCrt: 0.8, fxGrain: 0.5,
+      fxRgb: 0.2, holdScale: 0.4, accent: "backbeat", syncBeats: 2 }],
+    [85, "confetti", vr([R("pulse", "sizePulse", 0.6), R("pulse", "displace", 0.5), R("bar", "hueShift", 0.5), OFF, OFF, OFF],
+      { accentDecay: 0.05 }), {
+      // PUNCH (break returns). The ceiling opens: sixteenth shimmer, everything falls.
+      rows: 16, cols: 16, tileSize: 18, gapX: 14, gapY: 14, shape: "diamond", pattern: "scatter",
+      palette: "rainbow", low: "#0a0a0a", high: "#f2f2f2", bg: "#030303",
+      desync: 0.92, sizePulse: 0.9, rotate: 0.5, displace: 0.35, fill: false,
+      accent: "sixteenths", syncBeats: 1 }],
+    [89, "gears", vr([R("pulse", "tileSize", 0.6), R("pulse", "rotate", 0.5), R("swing", "spin", 0.3), R("bar", "merge", 0.25), OFF, OFF]), {
+      // Chevron gears: gallop accents twist the whole field.
+      rows: 9, cols: 11, tileSize: 48, gapX: 12, gapY: 12, shape: "chevron", pattern: "tempo-cols",
+      low: "#120c02", high: "#d8a848", bg: "#060401", border: 1, nest: 2, rotate: 0.15,
+      fxGrain: 0.25, accent: "gallop", syncBeats: 2 }],
+    [93, "lavaridge", vr([R("pulse", "sceneDrive", 0.9), R("pulse", "sceneWarp", 0.4), R("pulse", "tileSize", 0.6), R("phrase", "sceneHue", 0.3), OFF, OFF]), {
+      // Ridge scene: clave kicks push the lava.
+      rows: 5, cols: 5, tileSize: 18, gapX: 30, gapY: 30, fill: false,
+      low: "#000000", high: "#4a0d0a", bg: "#000000", pattern: "rings", blur: 6,
+      fxBloom: 0.3, fxIris: 0.25, scene: "ridge", scenePalette: "lava", sceneMix: 0.9,
+      sceneTiles: 0.4, sceneSpeed: 0.5, sceneScale: 0.4, sceneDrive: 0.4, sceneWarp: 0.6,
+      accent: "clave", syncBeats: 2 }],
+    [97, "xray", vr([R("pulse", "counter", 0.9), R("pulse", "tileSize", 0.6), R("swing", "displace", 0.4), OFF, OFF, OFF],
+      { master: 1.5 }), {
+      // Counter layer: offbeat hits invert the bones.
+      rows: 5, cols: 14, tileSize: 66, gapX: 8, gapY: 26, shape: "slit", waveform: "square",
+      holdScale: 0, pattern: "bounce-x", low: "#dce8f2", high: "#0a1420", bg: "#c4d4e0",
+      counter: 0.2, fxRgb: 0.3, spread: 0.7, accent: "offbeat", syncBeats: 2 }],
+    [101, "prism", vr([R("pulse", "fxKalRing", 0.6), R("pulse", "tileSize", 0.6), R("bar", "hueShift", 0.4), R("phrase", "fxKalSpin", 0.3), OFF, OFF],
+      { accentDecay: 0.06 }), {
+      // PUNCH (build). Eighths through the fold: every eighth refolds the glass.
+      rows: 7, cols: 7, tileSize: 40, gapX: 18, gapY: 18, shape: "triangle", pattern: "anti-diagonal",
+      palette: "neon", low: "#0a0014", high: "#ff9de8", bg: "#0a0014",
+      fxKaleido: 0.7, fxKalIter: 1, fxKalSpin: 0.3, fxWarp: 0.35, fxBloom: 0.4, rotate: 0.3,
+      accent: "eighths", syncBeats: 1 }],
+    [105, "barwipe", vr([R("bar", "fxZoom", 0.7), R("swing", "fxZoomRot", 0.4), R("bar", "hueShift", 0.25), OFF, OFF, OFF],
+      { master: 1.3 }), {
+      // No pulse: the tunnel pulls in once per bar and resets on the 1; spin flips per bar.
+      rows: 8, cols: 8, tileSize: 50, gapX: 16, gapY: 16,
+      low: "#000000", high: "#ff8c1a", bg: "#000000", palette: "lava", pattern: "quarters",
+      fxZoom: 0.1, fxTrails: 0.3, accent: "none", syncBeats: 4 }],
+    [109, "phrasehue", vr([R("phrase", "sceneHue", 1), R("pulse", "tileSize", 0.8), R("pulse", "sceneDrive", 0.5), OFF, OFF, OFF]), {
+      // The nebula's whole color wheel turns once per 12-bar phrase; kicks still hit the size.
+      rows: 6, cols: 6, tileSize: 20, gapX: 40, gapY: 40, fill: false, shape: "circle",
+      radiusTile: 0.5, waveform: "sine", low: "#000000", high: "#7fd4ff", bg: "#000000",
+      pattern: "ripple", fxBloom: 0.4, scene: "nebula", scenePalette: "neon", sceneMix: 0.95,
+      sceneTiles: 0.4, sceneSpeed: 0.9, sceneScale: 0.6, sceneDrive: 0.6, sceneWarp: 0.5,
+      sceneGenome: "pink plume", accent: "four", syncBeats: 2 }],
+    [113, "pixelgate", vr([R("pulse", "fxPixel", 0.7), R("pulse", "tileSize", 0.5), R("pulse", "fxShutter", 0.4), OFF, OFF, OFF],
+      { accentDecay: 0.07 }), {
+      // Stutter into mosaic: the picture coarsens with each hit of the stutter.
+      rows: 10, cols: 10, tileSize: 44, gapX: 10, gapY: 10, holdScale: 0,
+      low: "#02120a", high: "#f6ffd0", bg: "#02120a", palette: "acid", waveform: "square",
+      pattern: "columns-alt", fxPixel: 0.15, fxShutter: 0.3, accent: "stutter", syncBeats: 1 }],
+    [117, "eclipse", vr([R("pulse", "counter", 0.3), R("pulse", "tileSize", 0.5), R("pulse", "fxBloom", 0.4), R("swing", "hueShift", 0.3), OFF, OFF]), {
+      // Nine counter-phased suns: the backbeat eclipses them.
+      rows: 3, cols: 3, tileSize: 200, gapX: 40, gapY: 40, shape: "ring", waveform: "sine",
+      ease: 0.5, pattern: "checkerboard", low: "#0c0016", high: "#e0447c", bg: "#0c0016",
+      palette: "sunset", counter: 0.9, sizePulse: 0.3, fxBloom: 0.5,
+      accent: "backbeat", syncBeats: 2 }],
+    [121, "afterimage", vr([R("pulse", "fxBloom", 0.5), R("pulse", "sizePulse", 0.6), R("bar", "hueShift", 0.35), R("swing", "spin", 0.25), OFF, OFF],
+      { accentDecay: 0.05 }), {
+      // Neon burns: every sixteenth leaves a trail on the retina.
+      rows: 12, cols: 12, tileSize: 20, gapX: 22, gapY: 22, shape: "circle", pattern: "sparkle",
+      palette: "neon", low: "#060606", high: "#e8e8e8", bg: "#010101",
+      fxTrails: 0.6, fxBloom: 0.45, spin: 0.25, desync: 0.5, fill: false, radiusTile: 0.5,
+      accent: "sixteenths", syncBeats: 1 }],
+    [125, "fade", vr([R("level", "fxBloom", 0.2), OFF, OFF, OFF, OFF, OFF],
+      { master: 0.5, attack: 0.05, release: 0.5 }), {
+      // Gone: the iris closes over six seconds, scene off.
+      rows: 1, cols: 1, tileSize: 30, gapX: 100, gapY: 100, fill: false, shape: "circle",
+      radiusTile: 0.5, waveform: "sine", speed: 0.25, ease: 1,
+      low: "#000000", high: "#050508", bg: "#000000", pattern: "unison",
+      blur: 60, fxIris: 0.95, fxTrails: 0.4, scene: "none", sceneMix: 0,
+      accent: "none", syncBeats: 0 }, 6],
+  ];
+  const VIZ_LOOKS = {};
+  const VIZ_SCORE = VIZ_REEL.map(([bar, name, react, over, ramp]) => {
+    VIZ_LOOKS[name] = vl(over, react);
+    return ramp ? [bar, name, "none", { __ramp: ramp }] : [bar, name];
+  });
+
   globalThis.LUMINA_COMPOSITIONS = {
     "Angular Ritual.mp3": build("Angular Ritual.mp3", ANGULAR_LOOKS, ANGULAR_SCORE),
     "Jungle Moog Ritual.mp3": build("Jungle Moog Ritual.mp3", JUNGLE_LOOKS, JUNGLE_SCORE),
     "Timber at Sea.mp3": build("Timber at Sea.mp3", TIMBER_LOOKS, TIMBER_SCORE),
     "Spore Circuit.mp3": build("Spore Circuit.mp3", SPORE_LOOKS, SPORE_SCORE),
     "Zion Rips.mp3": build("Zion Rips.mp3", ZION_LOOKS, ZION_SCORE),
+    "Viz Test Track 01.mp3": build("Viz Test Track 01.mp3", VIZ_LOOKS, VIZ_SCORE),
   };
   globalThis.LUMINA_LOOKS = {
     "Angular Ritual.mp3": ANGULAR_LOOKS,
@@ -1283,5 +1571,6 @@
     "Timber at Sea.mp3": TIMBER_LOOKS,
     "Spore Circuit.mp3": SPORE_LOOKS,
     "Zion Rips.mp3": ZION_LOOKS,
+    "Viz Test Track 01.mp3": VIZ_LOOKS,
   };
 })();
