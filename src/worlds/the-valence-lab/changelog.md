@@ -2,6 +2,101 @@
 
 Newest entries first.
 
+## 2026-09-01 (later still) — Claude (Fable 5.1) — Snap, fully grown: the loaded-screen mock + the Design handoff
+
+James's real riff question: what does the advanced version look like when it
+loads, what features, what about the whole table and chains of molecules, how
+does it stay fun. Answered in reimagine.md section 9 (anatomy in seven zones,
+scaling to 118 with a third bond type + flexible metals + decay, chains via
+blocks and a pour gesture, the verbs stay few). His corrections along the way:
+"hands" is only a word for the reach, the tendril visual stays as it is; the
+name is Snap.
+
+1. **The mock, on his go**: "Snap, fully grown" section on the page, a 16:9
+   loaded screen on the sketch's engine: full periodic table shelf (first
+   eighteen spawn), chaptered recipe rail, made column of tiny live renders,
+   arena pre-loaded with octane, benzene, a 4x4 salt crystal and a seven-water
+   drop. Drag, hold-for-X-ray (benzene halo), heat dial. Verified headless
+   through the dev-snapshot route (the pane would not composite): 76 atoms /
+   75 bonds at load with sub-pixel bond error, no console errors; at full heat
+   octane shatters while benzene and the crystal hold; at half heat nothing
+   breaks. Snapshots: tmp/snapshots/snap-arena2.png, snap-heat2.png,
+   snap-minis2.png, snap-xray.png.
+2. **Engine additions**: per-scene center pull and break scale, heat kicks +
+   heat-only break rule (weakest first), hydrogen-bond attraction and dotted
+   tethers between waters, explicit bond order in link() for rings,
+   projected-tetrahedral slot angles for four-domain atoms (the fix that made
+   octane read as a chain instead of a blob), per-scene whisper target and a
+   made-card hook, nine more elements (Li Be B Mg Al Si P S Ar).
+3. **The Claude Design prompt updated** (page + reimagine.md) to the grown
+   version: whole-table shelf, chapters, the made column as blocks, the heat
+   dial, chains and rings, a seventh deliverable frame (mid-heat).
+4. **Handoff agreed**: mock here for anatomy and feel, Claude Design for the
+   look, then code the look onto the engine. Decay stays in the vision, out of
+   the mock. AWAITING JAMES: his read of the grown mock, then his go to send
+   the prompt to Design.
+5. **James's first look at the mock (2026-09-02, after midnight)**: the long
+   spec page confused him ("why do I have to scroll down through all that other
+   crap to get to this one section"), the mock had lost the clear button, and
+   something read to him as the arena obscuring the flipped cards (not
+   reproduced; the columns and canvas don't overlap by measurement). Built on
+   the spot: tmp/the-valence-lab/reimagine/snap.html, the mock ALONE, full
+   window, clear + reload + heat + mute in one bar, same engine (extracted from
+   the page by a build script in the session scratchpad; rebuild it from the
+   page if the engine changes). Verified
+   headless (76 atoms, no overlaps, clear/reload work, no console errors) and
+   NOT YET PUBLISHED — he called it a night. NEXT: publish snap.html as its own
+   artifact link, get his read, then the Design handoff go.
+
+## 2026-09-01 (later) — Claude (Fable 5.1) — James's read + the Powers of Ten spin-off
+
+1. James on the rethink page: "Nice presentation. Good set of considered
+   options. You chose the best." Snap stands as the direction; the riff on it
+   starts now (design conversation, nothing built).
+2. Roll 7, Powers of Ten, is worth its own world in his view, with a twist:
+   every zoom ends somewhere silly (a Wendy's, below the Planck length is the
+   mall, a clown face, a cookie, a big turtle, other Elastic Space worlds).
+   Added to the admin panel's page drafts through the drafts API as "Powers
+   of Ten (it ends somewhere silly)"; reimagine.md roll 7 points at it.
+3. Housekeeping: the published page now exists twice in the artifact gallery
+   (a resumed session republished the same file). The link in reimagine.md is
+   the canonical one.
+
+## 2026-09-01 — Claude (Fable 5.1) — the rethink: "Hands" (proposal, nothing built)
+
+James, after living with v4: "not very fun... frumpy, boring, hard to
+understand... it should be cool." His brief: take a huge step back, roll the
+dice ten times, reimagine it from zero for high-schoolers, scrap or keep
+anything, show a spec, maybe a Claude Design prompt. Plan agreed before any
+code; he asked for visuals alongside the writing.
+
+1. **`reimagine.md` (this folder) is the proposal**: the diagnosis (an
+   instrument, not a toy; the truth shown first and wasted; reading before
+   doing), ten dice rolls, the pick ("Hands": Snap + Octet's anatomy + Chords'
+   sound + the Foundry's display case as the hold-to-reveal X-ray where the
+   real HF cloud lives), the atom in five states, the five moments (snap, grip,
+   handoff, refusal, X-ray), keep/scrap ledger, five gates each with its own
+   go, the paste-ready Claude Design prompt, and his seven calls.
+2. **The published page with the live feel sketch**:
+   `tmp/the-valence-lab/reimagine/valence-reimagined.html` (gitignored — KEEP
+   it, serve via 4174) and an Elastic Space artifact (link recorded in
+   reimagine.md). The sketch: 2D canvas, nine elements (H He C N O F Ne Na
+   Cl), Lewis-model electrons, unpaired electrons drawn as reaching hands,
+   snap with lens + chord, bond order = hands available (capped at three),
+   yank to break, sodium→chlorine/fluorine electron handoff with a charge
+   tether, full-shell bounce with ripple + thud, ten recipe cards, element
+   pitches. Physics lessons from building it: the stiff bond spring was
+   unstable at a 60 Hz step (bond lengths exploded to 10× — caught by the
+   headless summary, not by eye) → sub-stepped at 240 Hz with the length
+   spring split from a soft angular spring; break limits were set from
+   MEASURED drag-transient stretch, scaled by how much molecule is dragged
+   behind the bond; a broken bond re-snapped in the next sub-step until a
+   0.9 s re-bond cooldown + separation impulse made pops real; fresh bonds
+   are exempt from breaking for 0.8 s so a snap mid-drag can't pop.
+3. Nothing in the world changed: physics modules, sims, honesty contract all
+   untouched. AWAITING JAMES: his calls (reimagine.md §8) and his go on gate 1
+   (the hands lab harness in tmp/, three.js, judged by his eye).
+
 ## 2026-08-04 (later same day) — Claude (Sonnet 5) — v4.1: draggable panels + two bugs
 
 James's first-look feedback on v4: panels need to be movable, "try this" has

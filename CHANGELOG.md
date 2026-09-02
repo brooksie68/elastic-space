@@ -8,6 +8,24 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-01/02 (The Valence Lab: the rethink, Snap, the grown mock; Powers of Ten draft)
+
+- James on v4: "frumpy, boring, hard to understand." His brief: step way back, roll the
+  dice ten times, reimagine from zero for high-schoolers, show a spec and a Claude Design
+  prompt. Delivered as `src/worlds/the-valence-lab/reimagine.md` + a published page with a
+  live feel sketch: ten rolls, the pick (Snap: unpaired electrons as reaching tendrils,
+  a snap with lens + chord, the ionic handoff, the refusal, hold-for-X-ray where the real
+  HF cloud lives), keep/scrap ledger, five gates, the prompt. His read: "you chose the best."
+- The grown version on his riff question (loaded screen, seven zones, scaling to 118 via a
+  third bond type + flexible metals + decay, chains via blocks + pour) and a MOCK of it on
+  the sketch's engine: full-table shelf, chaptered rail, made column, octane + benzene +
+  salt crystal + water drop pre-loaded, heat dial (weakest bonds go first). Then, on his
+  first look, the mock alone on its own page (`tmp/.../snap.html`, unpublished tonight).
+- Handoff agreed: mock here for feel, Claude Design for the look, code the look onto the
+  engine. Nothing in the world folder changed; sims untouched.
+- Powers of Ten spun off as its own world draft (every zoom ends somewhere silly);
+  World Ideas #62; `world-drafts.json` via the drafts API.
+
 ## 2026-09-01 (Lumina: the direction reset, the test track, the panel orders)
 
 - James's verdict on Lumina as an instrument: live play is "Dance Dance Revolution",

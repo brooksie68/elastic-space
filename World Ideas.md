@@ -282,6 +282,10 @@ dancing, society-sim routines (Orb Dimension lineage) for patron behavior,
 Meshy props for every bottle and slot machine, laser one-shots from the
 Combat/Arachno lineage. Co-build, plan-first — not started.
 
+### 62. Powers of Ten (it ends somewhere silly) — *one session* — `draft`
+
+James, 2026-09-01, spun off roll 7 of the Valence Lab rethink: a continuous, scrubbable zoom from a glass of water down through the molecule, the atom, the electron cloud, past the Planck length, and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world (those endings double as drift exits). The honest middle of the zoom can reuse the Valence Lab's baked Hartree-Fock densities. In the admin panel's page drafts as "Powers of Ten (it ends somewhere silly)".
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy

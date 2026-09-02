@@ -1,5 +1,17 @@
 [
   {
+    "id": "powers-of-ten-it-ends-somewhere-silly",
+    "title": "Powers of Ten (it ends somewhere silly)",
+    "synopsis": "A continuous zoom from something ordinary, a glass of water, down through the molecule, the atom, the electron cloud, past the Planck length... and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world.",
+    "vibe": "wonder, then deadpan. Eames's Powers of Ten with a Far Side panel at the bottom. Cosmic awe that never gets to keep a straight face.",
+    "links": "https://en.wikipedia.org/wiki/Powers_of_Ten_(film)  |  src/worlds/the-valence-lab (baked Hartree-Fock densities for the honest middle of the zoom)  |  src/worlds/the-valence-lab/reimagine.md (roll 7 of the ten, where this came from)",
+    "sound": "a rising drone that thins as the scale falls; dead silence and a room tone (or a drive-thru speaker) at the punchline",
+    "ideas": "James, 2026-09-01, spun off the Valence Lab rethink: powers of ten would be cool enough to be worth doing separately... and every time it ends up somewhere silly or funny like a Wendy's... below the Planck length is the mall... a clown face... a cookie... a big turtle... etc. lol... other ES worlds.\n\nClaude notes: the zoom's honest middle (glass of water > one water molecule > the oxygen atom > the electron cloud) can reuse the Valence Lab's baked densities, so the science stretch is real before the joke lands. The punchline is a random draw from a list that only ever grows (same growth model as Otis's floors). Endings that are other Elastic Space worlds double as drift exits: zoom past the Planck length and you simply arrive somewhere. Zoom should be continuous and scrubbable, not chaptered, so the joke can be re-run.",
+    "updated": "2026-09-02T01:26:21.806Z",
+    "status": "draft",
+    "created": "2026-09-02T01:26:21.806Z"
+  },
+  {
     "id": "cute-animal-overload",
     "title": "Cute Animal Overload",
     "synopsis": "It's nothing but kittens and puppies and capybaras and owl babies in a beautiful vale full of sunlight, flowers, and rich, green grass",
