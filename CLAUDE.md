@@ -566,6 +566,39 @@ consistent. `npm run check-worlds` audits every world against the contract.
    then v4 stands as-is. NOTE: the page sits
    twice in the artifact gallery (a resumed session republished it); the link
    in reimagine.md is the canonical one.
+   2026-09-02/03 — **SNAP! IS THE PLAN, AND STEP 1 IS BUILT.** James, excited
+   ("suuuch a cool new direction"), gave the curriculum brief (names always
+   on, start empty, an inviting offer to teach, single atoms → simple →
+   complex → ions onward, self-paced, jump anywhere, free + guided, data on
+   any element/molecule; Elastic Space scope, not an encyclopedia), the
+   guided-mode brief (happy arrow, badges on the table, table as a pull-up
+   mini app, close-up animation, corner target map, never a puzzle), the UI
+   brief (toolbar + 24-molecule panel landing atoms apart, full names on
+   the table, 1.5 s hover cards, Jerry's Pool register, wheel zoom any
+   time) — all recorded whole in reimagine.md §10–12; twelve-chapter
+   outline §11; the ELEVEN-STEP PLAN §13 (each step his eyes before the
+   next; step 10.5 = the hold-view electron cloud, near the end at his
+   ask). STEP 8 RAN FIRST: the "Snap!" Claude Design prompt (§14, open
+   runway: Smithsonian + NPR exhibit, mild sci-fi, flat 2D bench, dark
+   primary; his correction — the first draft dictated the Claude house
+   look he was steering away from) → pass two accepted: sharp corners,
+   warm gray, DOT MATRIX (stays, subtle, obscured by panels + atom auras),
+   navbar + icons layout ("crucial"), three-voice type (Instrument Serif /
+   Instrument Sans / JetBrains Mono), the table, the panels. Package:
+   `tmp/snap/design/` (README = full spec with oklch tokens + atom label
+   rules — everything needed, nothing to reverse-engineer). Bench rendering
+   + copy stay ours (Design's whisper came back in pure Claude register;
+   docent voice instead). STEP 1 BUILT in `tmp/snap/` (fresh dir, his call;
+   tmp is gitignored, it lives only on his machine): index/snap.css/app.js
+   + engine.js (the mock's 2D engine reskinned to the tokens) + elements.js
+   (all 118) + local fonts; the 2a screen live — rail, corner cluster,
+   invitation + amber arrow, dot matrix on the camera, 118 named tiles,
+   drag-a-tile-to-land, wheel zoom 0.5–4×, hold for X-ray. URL
+   http://127.0.0.1:4174/tmp/snap/index.html . EXECUTIVE DECISIONS: DARK
+   ONLY (light theme removed); the step-1 X-ray schematic is not loved —
+   the mock's cloud-glow hold view is (step 10.5). NEXT: step 2, the table
+   mini app, on his go. Also: memory `no-flags-after-the-answer` ("flagging
+   things is like a compulsion with you").
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
    `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile

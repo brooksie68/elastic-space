@@ -373,3 +373,222 @@ motion, physics or sound, so nothing about the feel is delegated to it.
 Links: canonical page https://claude.ai/code/artifact/965700f7-bf75-45a6-b2d5-4ac6c1d65966
 (a duplicate exists at .../d2b559a7-76a9-4ae1-8f8e-6accfeef7926 from a resumed
 session; ignore it).
+
+## 10. The curriculum brief (2026-09-02, James)
+
+His words, kept whole because they are the brief:
+
+1. Element names showing all the time.
+2. Start with nothing.
+3. It offers to teach you about the elements and valences in an inviting way.
+4. A path from simple molecules to very advanced molecules. A curriculum you
+   take at your own pace, that you can jump around at will. Free mode, guided
+   mode, your choice. "Not like a university course or anything. More like a
+   fun learning experience that feels like a game and like a story and like a
+   science lesson all in one."
+5. The order: basics about individual atoms and the neat, different things
+   they can do by themselves; then simple molecules; then more complex ones;
+   then ions; on and on, each with a cool visual example to look at and relate
+   to.
+6. Data at hand for any element the user clicks on in the window, and data at
+   hand for molecules and molecular compounds.
+7. Scope: "obviously we cannot build a comprehensive encyclopedia of atomic
+   and particle physics. This is Elastic Space." Appropriate to that, but cool,
+   fun, rich with information, hands-on manipulation of atoms.
+
+What this changes from section 9: the loaded screen is empty (no pre-built
+octane / benzene / crystal), the recipe rail becomes a chaptered curriculum
+with a guided mode, and the whisper grows a data card. Nothing built yet;
+design conversation next.
+
+## 11. Guided mode, his way, and the twelve chapters (2026-09-02)
+
+**James's guided-mode brief.** It invites you: "Do you want to learn about
+atoms?" and next to it a happy arrow. Click the arrow and text comes up, with a
+close-up animation in the middle of the screen of the thing being talked about
+(this is hydrogen: the atom up close, and it lights up on the table). Each
+step: information worth knowing about the element or molecule, a short
+animation, then the expectation that you take those atoms and snap them
+together yourself before moving on. When you click the arrow for the next
+step, the thing you just did gets a small bright badge on the periodic table
+(a tiny picture of that atom). The table is a mini app of its own: grab its
+top edge and pull it up and it grows, full names come out, then data about all
+the elements; let it fall back to a strip. Easy at first, a little harder
+later, but never a puzzle: when the target is complex, a small map of what
+you are shooting for sits in the upper corner. Breezy, fun, easy; satisfying
+because of the snap and the click and the learning coming in smoothly.
+
+**The twelve chapters (draft, one or two lines each).** The progression is:
+one atom alone, then the two ways atoms join (sharing and giving), then what
+sharing can build (chains, rings, the big molecules of life), then the
+strangeness at the edges. Each chapter is one hands-on snap and one visual
+you keep.
+
+1. **Hydrogen, the simplest.** One proton, one electron, one hand reaching.
+   Bring two together and they pair: H2, the first molecule.
+2. **Helium, the one that says no.** A full shell, no hands at all. Try to
+   snap it to anything; it politely refuses. Full shells are the whole rule.
+3. **The shells.** Lithium through neon in a row: watch the hands appear one
+   by one and vanish again at neon. Reading the table left to right is
+   watching an outer shell fill.
+4. **Water.** Oxygen has two hands, hydrogen has one; two hydrogens fill
+   oxygen. The bent shape is real, and it is why water does everything it
+   does.
+5. **Double and triple.** O2 shares two pairs, N2 shares three; the lens
+   thickens. The stronger the bond, the harder the heat dial has to work.
+6. **Giving instead of sharing.** Sodium wants to lose one, chlorine wants to
+   gain one; the electron hands over and the pair become ions that cling.
+   Salt is a crystal, not a molecule: build the little lattice.
+7. **Ions on their own.** Pull the electron off, watch the charge glow.
+   Hydrogen without its electron is a bare proton, and that is what "acid"
+   means.
+8. **Carbon, the builder.** Four hands, patient, bonds to itself. Methane,
+   then ethane, then a chain; the projected-tetrahedral shape makes the
+   zigzag.
+9. **Rings.** Six carbons close into benzene and the electrons smear into a
+   halo (the X-ray shows it). Rings are stiffer than chains under heat.
+10. **The oxygen family of molecules.** Alcohol, sugar: carbon chains wearing
+    OH groups. Same hands, new behavior: sugar dissolves because water grabs
+    those groups.
+11. **Chains of life.** Amino acids snap head to tail into a peptide; the
+    corner map shows the target. Big molecules are just the same small snaps,
+    many times.
+12. **Metals, and the edges.** A block of copper shares its electrons with
+    everyone at once, a sea instead of pairs; that is why it conducts. Past
+    this: the rest of the table dimly lit, a promise of more.
+
+Free mode is the same arena with the whole shelf lit and the twelve as a map
+you can jump around. Nothing built; awaiting James's read of the list.
+
+## 12. The UI brief (2026-09-02, James, stream of consciousness)
+
+1. A toolbar that opens panels. One panel is THE MOLECULES: about
+   twenty-four to start. Click one and the atoms for one molecule land in the
+   action area, spaced so they do not snap at once; you bring them together
+   and see how it works. Click again and another set comes out from those
+   spots. If some snap on their own because they land near each other, or
+   form imperfect molecules, that is a learning experience too (tunable
+   later).
+2. The action area needs a word.
+3. The table of elements: names must be there, full names, small type, more
+   space is fine.
+4. Element info on a long hover over the element name: 1.5 seconds to start,
+   a few key pieces of information. Same for the molecules panel. Improve
+   after he sees it.
+5. Aesthetic reference for both panels: the Jerry's Pool control panel (little
+   pictures, a nice look).
+6. Maybe a reference panel of electron-shell information.
+7. He likes the long-press X-ray view. Zoom with the mouse wheel, any time,
+   not only while holding; the numbers on held atoms are too small to read,
+   and he wants to look closely at the structure of something complex.
+
+## 13. The plan (2026-09-02, comprehensive outline, awaiting his go per step)
+
+Every step ends with James's eyes on it before the next starts. Built in
+tmp/the-valence-lab/reimagine/snap.html on the existing engine until step 9,
+then moved into the world.
+
+1. **The bench, bare.** Loads empty. Element names on every atom, always.
+   Mouse-wheel zoom any time; the held X-ray view scales with the zoom so the
+   numbers read. Clear, reload, heat, mute stay in the bar.
+2. **The table of elements, as a mini app.** A strip along the bottom: real
+   layout, symbol and full name in small type, tinted by appetite. Grab the
+   top edge and pull up: it grows, more data per tile appears, let go and it
+   falls back. Drag a tile to the bench to spawn an atom. 1.5-second hover
+   card with a few key facts. Badge slot on every tile for guided mode.
+3. **The toolbar and the molecules panel.** A small toolbar opens panels. The
+   molecules panel: twenty-four molecules with little pictures, Jerry's Pool
+   register. Click one and its atoms land on the bench spaced apart; click
+   again for another set. Same 1.5-second hover card. An electron-shell
+   reference panel opens from the same toolbar.
+4. **The data.** content.js grows to hold the element cards (the 18 lit now,
+   then all 118 in a lighter form), the 24 molecule cards, and the shell
+   reference: a plain paragraph, a few numbers, one interesting thing. Elastic
+   Space scope, not an encyclopedia.
+5. **Guided mode.** The invitation and the happy arrow. Each step: a line of
+   text, a close-up animation in the middle of the bench, the tile lights on
+   the table, the atoms are handed to you, you snap them, the arrow, and a
+   bright badge lands on the tile. Chapters 1 to 6 first (single atoms
+   through salt).
+6. **Chapters 7 to 12.** Ions, carbon, rings, sugar, peptide, metals. The
+   corner map appears for anything past four atoms.
+7. **Free mode and the map.** Whole shelf lit, the twelve chapters as a map
+   you can jump around in, your badges and your made column persist between
+   visits.
+8. **Claude Design, the experiment.** With the anatomy real (steps 1 to 7
+   give it every screen), the section 6 prompt is rewritten around the
+   bench, the table mini app, the two panels, the guided step, and the hover
+   cards, and sent to Claude Design for updated look-and-feel screens. James
+   judges them. If he likes them, the world is themed from those screens
+   (type, color, panel chrome, the badge, the arrow). If not, the mock's own
+   look is refined by eye and the step is closed.
+9. **The look coded onto the engine.** Whichever look won in step 8, applied
+   to the mock: panels, table, cards, arrow, badges, the bench itself.
+   Sound: the greeting chords from the Snap sketch, one per family, kept.
+10. **Into the world.** snap.html becomes src/worlds/the-valence-lab (v4
+    retired to archive; the physics modules, HF data and sims kept); a
+    curriculum sim asserts every chapter's target molecule is buildable
+    from its handed atoms and every panel entry lands without an instant
+    snap; drift exits, sound control, changelog, CLAUDE.md, check-worlds.
+10.5. **The hold view, explored.** James liked the mock's hold view (the
+    dark veil and the layered soft glow, a first try at the electron cloud)
+    more than step 1's dashed-shell X-ray. Bring the cloud back and explore
+    it properly as its own thread. (Added 2026-09-03 at his wrap; he asked
+    for it near the end, not before step 2.)
+11. **Tune by eye.** Hover delay, spacing of landed atoms, the "imperfect
+    molecule" behavior, hover card content, zoom range: his ten-percent
+    steps.
+
+## 14. Step 8 moved to the front: the Claude Design prompt (2026-09-02)
+
+James: do the Design experiment now, before the build, and see what comes
+back. The name is "Snap!" with the bang. His correction on the first draft:
+his stream-of-consciousness description of dark blue rounded panels was a
+description of the Claude house look he was steering AWAY from, and the
+first prompt dictated exactly that. The prompt gives Design an open runway:
+a Smithsonian group working with an NPR media group on an interactive
+exhibit for intelligent people of all ages, loosely youthful, mild
+science-fiction feel, and let it interpret. No dictated corners, colors or
+type. Dark primary, one light screen. Paste-ready:
+
+---
+
+Design the screens for "Snap!", an interactive molecule-building bench inside Elastic Space, a collection of strange, beautiful browser worlds. It teaches what atoms are and how they join, by letting people grab atoms and snap them together. Desktop-first at 1920 by 1080. It will be built in WebGL and HTML; you are designing the look, the screen anatomy and the key moments, not the code.
+
+THE REGISTER
+
+This was designed by a group of people at the Smithsonian working with a media group at NPR to create an interactive exhibit, one station in a science hall, that intelligent people of all ages can view and enjoy. It is loosely aimed at a slightly youthful audience and has a mild science-fiction feel. Interpret that freely. The look is yours to invent: materials, shapes, type, color, the character of the panels and controls. Dark is the primary theme; also deliver one light-theme version of the main screen.
+
+WHAT IT IS
+
+The bench is a flat, two-dimensional space seen straight on, as if from above; atoms float and snap together in that plane. It is not a 3D tank and the interface should not add depth. Every atom shows its element name at all times. An atom's unpaired outer electrons reach out as thin tendrils of light. Bring two atoms with open tendrils near each other and they snap: the tendrils find each other, the electrons pair, and a small bright lens of shared light appears where the two outer rings overlap. Double bonds show two shared pairs, triple bonds three; the lens gets thicker and brighter. A full outer shell has no tendrils and refuses everyone; the refusal is a soft push and a short line of text, never an error. Ionic joins are a handoff: one atom passes an electron to another and the two glow with opposite charge and cling. The mouse wheel zooms any time. Holding the mouse down on an atom opens an X-ray: the same atom drawn as data, its shells, its electron count, its charge, readable at any zoom.
+
+It loads empty. One line of text and a happy arrow invite you: "Do you want to learn about atoms?" Click the arrow and guided mode begins.
+
+THE ANATOMY
+
+1. The bench: the whole window, flat. Electrons are the brightest thing on screen; everything else is quieter than they are.
+2. The table of elements: a strip along the bottom edge in the real periodic layout, every tile showing symbol and full name, tinted by how hungry the element is to bond. It is a mini app of its own: grab its top edge and pull it upward and it grows into a full reference with more data on every tile; let go and it falls back to a strip. Drag a tile up onto the bench to spawn an atom. Tiles you have learned in guided mode wear a small bright badge, a tiny picture of that atom.
+3. A toolbar that opens panels: the molecules panel (twenty-four molecules, each a small picture and a name; click one and its atoms land on the bench spaced apart so you bring them together yourself), an electron-shell reference panel, and your collection (things you have made, as tiny live renders).
+4. Hover cards: hover on an element tile or a molecule for a moment and a small card appears with a plain paragraph, a few numbers, and one interesting thing. Same card family everywhere.
+5. The guided step: a short line of text, a close-up of the thing being talked about in the middle of the bench, the matching tile lit on the table, and the happy arrow to continue. When the target is complex, a small map of the finished molecule sits in a corner as the thing you are shooting for.
+6. The free-mode map: twelve chapters as a path you can jump around in (single atoms, helium refusing, the shells filling, water, double and triple bonds, salt and the handoff, ions alone, carbon chains, benzene rings, sugar, a peptide chain, metals). Badges mark what you have done.
+7. A corner cluster: heat dial, mute, clear, and the theme switch.
+
+WHAT MATTERS
+
+Color carries meaning (appetite, charge, bond strength). Everything a visitor must read to proceed is easy to read from a step back; data can be small. The atoms are alive and the camera is calm. The happy arrow is a character of its own, the one thing on screen that is clearly the way forward.
+
+DELIVERABLES, as separate screens
+
+1. The empty load: the bench, the table strip, the invitation and the arrow.
+2. A guided step in progress: "This is hydrogen", the close-up in the middle, hydrogen lit on the table, the arrow.
+3. The snap: the exact frame a water molecule completes, oxygen's two tendrils taking two hydrogens, the lens, the line of text.
+4. The table pulled up: the full reference open, with badges on the learned tiles, one hover card showing.
+5. The molecules panel open, with a hover card on one molecule, and a set of atoms just landed on the bench.
+6. Free mode, zoomed in on a benzene ring under X-ray, the chapter map open, the collection panel showing three things made.
+7. The light theme version of screen 1.
+
+Design the system too: the panel, the card, the tile, the badge, the arrow, the text line, the dial, in both themes.
+
+---

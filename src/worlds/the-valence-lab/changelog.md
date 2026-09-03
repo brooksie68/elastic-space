@@ -2,6 +2,84 @@
 
 Newest entries first.
 
+## 2026-09-02 — Claude (Fable 5.1) — The curriculum brief (recorded, nothing built)
+
+James, excited by the Snap direction, gave the next brief: names always
+showing, start with nothing, an inviting offer to teach, a path from single
+atoms to simple molecules to complex ones to ions and onward, a self-paced
+curriculum you can jump around in (free mode / guided mode / your choice),
+"a game and a story and a science lesson all in one," data at hand for any
+element or molecule clicked, scoped to Elastic Space (not an encyclopedia).
+Recorded whole in reimagine.md section 10. Same session: his guided-mode
+brief (happy arrow, badges on the table, pull-up table mini app, close-up
+animation, corner target map) and the twelve-chapter outline (section 11),
+his UI brief (toolbar, 24-molecule panel, names on the table, 1.5 s hover
+cards, Jerry's Pool register, wheel zoom any time; section 12), the
+eleven-step plan (section 13), and the CLAUDE DESIGN EXPERIMENT MOVED TO THE
+FRONT: the "Snap!" prompt (section 14, open runway: Smithsonian + NPR
+exhibit, mild sci-fi, dark primary, flat 2D bench; his correction that the
+first draft dictated the Claude house look he was steering away from). He
+pasted it into Claude Design: first run produced "relatively cool looking
+beginning stuff" then crashed mid-run; second run in progress. Nothing
+built in code.
+
+**The Design package landed (2026-09-03, after midnight)**, pass two after
+James pushed it off the house look: `tmp/snap/design/` (README = full spec
+with oklch tokens, atom label-placement rules, interactions; Snap.dc.html +
+Snap.standalone.html + support.js; ten 1920x1080 screenshots 2a-2h + 3a
+shells + 3b collection). James: pass one was "80% the same as what you
+already designed because it's Claude"; pass two "much improved." Claude's
+read: CARRIES INTO THE BUILD: the three-voice type (Instrument Serif for
+the line you must read / Instrument Sans labels / JetBrains Mono data), the
+table strip with full names + appetite tint + pull-up full reference, the
+24-molecule panel with ring icons and the hover-card family (paragraph, four
+numbers, one italic line), amber for the arrow only, the map panel path, the
+X-ray readout + dashed-ring drawing, the label rules (name + ledger outside
+the ring, symbol in the nucleus). STAYS OURS: the bench rendering (Design's
+atoms are static schematics; tendrils, breathing, lens glow are the engine),
+the copy (Design's whisper came back in pure Claude register, James laughed;
+docent voice instead), the dot matrix kept faint and fading under molecules.
+Panels/cards are still house-Claude chrome (2px radius, mono kickers) but
+workable. Decision: enough to theme from. Fresh build dir agreed: tmp/snap/.
+JAMES'S VERDICT: sharp corners and the lean into gray are the difference
+from pass one and he likes it; the DOT MATRIX STAYS, present but subtle,
+obscured by panels and by the aura around atoms and electrons; the SCREEN
+LAYOUT (top navbar + icons, corner cluster, table strip) is "crucial" and
+stands as the anatomy.
+
+**STEP 1 BUILT (2026-09-03, ~01:30): the bench, bare.** `tmp/snap/`
+(fresh dir, James's call): index.html + snap.css (the Design tokens
+distilled once into CSS variables, both themes) + app.js + engine.js (the
+2D engine lifted out of tmp/the-valence-lab/reimagine/snap.html and
+reskinned: appetite tints via an oklch-to-sRGB converter, electron
+#f3f8ff with the blue glow, symbol in the nucleus, name + ledger outside
+the ring pointed away from the molecule, X-ray as dashed shells + nucleus
+dot + data line) + elements.js (all 118: symbol, name, Z, mass, period,
+group, shells, appetite) + the three faces downloaded to fonts/ (no
+Google Fonts at runtime). Loads empty on the 2a screen: rail with the four
+tabs (inert until step 3, they say so), mode readout, corner cluster
+(heat dial drag/wheel, mute, clear, dark/light), invitation + amber
+arrow, the dot matrix on the bench (scales and pans with the camera,
+fades under panels and under a dark halo around every atom), the table
+strip with all 118 named tiles in real layout + the La-Lu / Ac-Lr
+placeholders, HUD zoom readout. Wheel zooms 0.5x-4x about the cursor,
+drag empty bench pans when zoomed, hold 350 ms for X-ray (scales with
+the zoom), drag a tile up to land an atom where you drop it (click lands
+it near centre). Atom scale S=1.5. Verified in the pane at 1920x1080:
+water + salt bond when stepped (the pane barely ticks rAF, physics
+proven by stepping 500 frames), no console errors. KNOWN: the light
+theme washes the atoms out (additive drawing on paper) and needs its own
+ink render path; parked, dark is the primary. URL:
+http://127.0.0.1:4174/tmp/snap/index.html . JAMES'S FIRST LOOK (same night, wrap): the step-1 HOLD VIEW is a step
+back from the mock's. The mock's hold view (tmp/the-valence-lab/reimagine/
+snap.html drawSnapXray: the dark veil + the layered soft glow blobs, an
+attempt at the electron cloud) is the one he "really liked"; the step-1
+X-ray (Design's dashed-shell schematic) he does "not love." He wants the
+electron-cloud idea "really explored" as its own thread, near the END of
+the plan, not before step 2 ("something I'd like to consider... put it
+near the end"). Added to the plan as step 10.5. NEXT SESSION: step 2 (the
+table mini app) on his go.
+
 ## 2026-09-01 (later still) — Claude (Fable 5.1) — Snap, fully grown: the loaded-screen mock + the Design handoff
 
 James's real riff question: what does the advanced version look like when it

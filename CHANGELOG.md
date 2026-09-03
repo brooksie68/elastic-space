@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-02/03 (The Valence Lab → Snap!: the curriculum brief, the Claude Design experiment, step 1 built)
+
+- **Snap! is the plan.** James's briefs recorded whole in `src/worlds/the-valence-lab/reimagine.md` §10–12 (curriculum, guided mode with the happy arrow and table badges, the UI: toolbar, 24-molecule panel, pull-up table, hover cards, wheel zoom), the twelve-chapter outline (§11), and the eleven-step plan (§13) with his eyes gating every step.
+- **The Claude Design experiment (step 8, run first at his call).** Prompt §14 — open runway, Smithsonian + NPR exhibit, flat 2D bench, dark primary; his correction: draft one dictated the Claude house look he was steering away from. Pass two accepted: sharp corners, warm gray, the dot matrix (stays, subtle), the navbar layout ("crucial"), Instrument Serif / Instrument Sans / JetBrains Mono, the table and panels. Package in `tmp/snap/design/` with a complete token + geometry spec.
+- **Step 1 built: the bench, bare** (`tmp/snap/`, gitignored, local only): the 2a screen live on the mock's engine reskinned to the tokens, all 118 named tiles, drag-to-land, wheel zoom, hold for X-ray. Dark only (light theme dropped, his executive decision). Next: step 2, the table mini app, on his go; the hold-view electron cloud parked as step 10.5.
+
 ## 2026-09-01/02 (The Fifteen Sisters: the "church bell" was the Tibetan bowl — gone for good)
 
 - **The Fifteen Sisters — the sour bell found and removed.** James, third complaint since July: a church bell "rings occasionally... a tiny bit off from one of the notes in the actual sisters... sour." The distant-bell mp3 had been silent since 07-20 and deleted since 07-28, so FFT forensics on the three remaining files (`tmp/the-fifteen-sisters/bell-hunt.mjs`) convicted the ElevenLabs Tibetan bowl: 538 Hz, C5 + 48 cents, a quarter-tone sharp of sister #11, second partial 25 cents sharp of sister #7, struck every 2.7 s by the longest sister in the default Blend voice and blooming 0.62 s late. Removed outright: the mp3, the audio element, the Voices cabinet group, `playBowl()`, the voices state and the strike branch — every sister is a glass sine now, in every tuning and register.
