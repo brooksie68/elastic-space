@@ -214,7 +214,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
    word ("just say open this thing up and look at the balls"): all 23 procedural
    interiors are volumes** (chord march + a recipe per kind, paintings flat);
    Sphere Lab promoted to src/labs/sphere-lab (admin Labs), `?sheet=interiors`.
-   AWAITING HIS LOOK. World changelog v63–v64 + world CLAUDE.md START HERE.
+   HE LOOKED (same night, row by row): v64.1–v64.4 by his eye — the water
+   ball ("a button") refilled + sun-lit with small head-first fish, ball
+   edge default 0.12; patterned shells (frosted/swirl/banded) live on the
+   ball in world axes with a real spin axis, pattern laid on triplanar (no
+   seam); THE BAKED HIGHLIGHT IS GONE FOR GOOD (highlight-free copy of each
+   shell render at load — min across its rotations — layers 4–7, balls
+   only); the galaxy on the ecliptic with a rigid arm pattern + differential
+   dust. Sphere Lab is an admin Lab (src/labs/sphere-lab, typeset page,
+   ?sheet=interiors). Remaining reads on the ball sheet: 1, 2, 6, 8 pass;
+   the interiors sheet is next for his eyes. World changelog v63–v64.4.
    (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.

@@ -8,6 +8,19 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-04 (Orb Dimension: THE BALL v63 → Phase 2 volumes v64, the day by James's eye)
+
+- Orb Dimension v63 THE BALL: every eligible orb a per-pixel sphere impostor (real depth
+  test, key light from its nearest sun, worldlets as true globes, beings in world axes);
+  "real spheres" + "ball edge" dials; new sphere-sim; Sphere Lab promoted to src/labs.
+- v63.1–v63.9 by his flights: highlight/rim passes, crowd clouds RETIRED and the
+  FORMATIONS built in their place, field homes re-centred on their bulk (bbox bug),
+  worldlet facing fix, configuration panel opens right + grab handle + save feedback,
+  cache tags on world.js/css.
+- v64 Phase 2: all 23 procedural interiors are volumes (chord march, a recipe per kind);
+  v64.1–v64.4 on his sheet reads (water, patterned shells, the baked highlight erased,
+  galaxy on the ecliptic). Next: his read of the interiors sheet.
+
 ## 2026-09-03/04 (Snap!: steps 2–3 built and read, prose register, the world folder)
 
 - Snap! step 2 (the table mini app) built and reworked through James's reads: one-line fit tiles in Atkinson Hyperlegible, chevron-bar click toggle (drag gone), a fully collapsed state, WCAG-AA contrast pass, seven zoom stops, locked tiles, click-to-land.

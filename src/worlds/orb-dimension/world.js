@@ -91,7 +91,6 @@
     saeKnot: 0.85,
     saeStream: 1,
     saeTide: 1,
-    saeCloud: 1,
     citizens: 12,
     // acknowledgment reach in meters — beings notice the pod inside this,
     // full greeting at 37.5% of it (10m beings: 400 → greet at 150)
@@ -106,6 +105,8 @@
     nebScale: 1.6,
     homeSeed: 0, // v62: rotates which field-home roll each shell gets (0–5)
     heartOp: 0.3, // v62.1: opacity of the Saelyri heart balls (James: "reduce considerably")
+    sphere: 1, // v63: 1 = real balls, 0 = the pre-v63 discs
+    ballRim: 0.12, // v64.1 down from 0.25 (the water read as a button under a white ring); v63.3: how much edge a ball shows — the atlas ring + fresnel (James: dark orbs want almost none)
     homeBlur: 0.7, // v62.2: the field homes' glow pass — 0 sharp, 1 all haze
     sizeMin: 18,
     sizeMax: 70,
@@ -194,7 +195,6 @@
     { key: "saeKnot", label: "in groups", min: 0, max: 1, step: 0.05, layout: true },
     { key: "saeStream", label: "streams ×", min: 0, max: 2, step: 0.1, layout: true },
     { key: "saeTide", label: "tide speed ×", min: 0.25, max: 3, step: 0.05 },
-    { key: "saeCloud", label: "crowd glow", min: 0, max: 2, step: 0.05 },
     { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
@@ -210,6 +210,10 @@
     // v62 the field homes: six baked rolls; the dial re-deals them across the shells
     { key: "homeSeed", label: "home roll", min: 0, max: 5, step: 1, homes: true },
     { key: "heartOp", label: "heart ball opacity", min: 0, max: 1, step: 0.05 },
+    // v63: every orb is a real ball (per-pixel sphere hit, depth, key light,
+    // refracted interiors); the dial fades the old camera-facing disc back in
+    { key: "sphere", label: "real spheres", min: 0, max: 1, step: 0.05 },
+    { key: "ballRim", label: "ball edge", min: 0, max: 1, step: 0.05 },
     { key: "homeBlur", label: "home glow blur", min: 0, max: 1, step: 0.05 },
   ];
   const cfg = Object.assign({}, DEFAULTS);
@@ -363,7 +367,7 @@
   const hint = document.createElement("p");
   hint.id = "flight-hint";
   hint.textContent =
-    "W / S impulse · R / F rise / sink · Q / E slide · right-drag looks around · A / D roll · caps lock levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v53";
+    "W / S impulse · R / F rise / sink · Q / E slide · right-drag looks around · A / D roll · caps lock levels · shift = booster · space = overdrive · drag = stick (park it, the turn holds) · X stops · H home · CTRL on the console lists everything · v64.4";
   document.body.appendChild(hint);
   setTimeout(() => hint.classList.add("faded"), 14000);
 
@@ -524,6 +528,7 @@ layout(location=2) in vec4 i1; // h1, h2, sat, fadeDur
 layout(location=3) in vec4 i2; // fadePhase, spin, variant, halo
 layout(location=4) in vec4 i3; // seed, portal, veil, quadScale
 layout(location=5) in vec4 i4; // kind, p0, p1, activity (v47)
+layout(location=6) in vec4 i5; // v63 key light dir (ship space), ball flag (0 disc, 1 ball, 2 ball + lit)
 uniform mat4 uVP;
 uniform vec3 uRight;
 uniform vec3 uUp;
@@ -533,6 +538,9 @@ flat out vec4 vB;
 flat out vec4 vC; // seed, portal, dist, radius
 flat out vec2 vMisc; // veil flag, quad scale
 flat out vec4 vD; // kind, p0, p1, activity
+out vec3 vWp;          // v63 the quad point in ship space — the per-pixel ray
+flat out vec3 vCen;    // v63 the orb center in ship space
+flat out vec4 vL;      // v63 key light dir + ball flag
 void main() {
   // v49 camera-relative: i0.xyz arrives already relative to the ship
   // (float64 subtraction in JS), so distance is just its length
@@ -545,13 +553,24 @@ void main() {
   radius = min(radius, d * 0.8);
   // per-instance quad size: orbs carry a wide halo margin, veils and dust use
   // tight quads — huge dim washes must not multiply full-screen blended pixels
-  vec3 wp = i0.xyz + (uRight * aQuad.x + uUp * aQuad.y) * radius * i3.w;
-  vUv = aQuad * i3.w;
+  // v63: a ball's silhouette is wider than its radius up close (1/sqrt(1 -
+  // (r/d)^2) — 1.57x at 1.3 radii); the card grows to hold it so the limb is
+  // never clipped while the near-fade is still showing it
+  float qs = i3.w;
+  if (i5.w > 0.5) {
+    float rn = radius / max(d, 1e-3);
+    qs = max(qs, 1.04 / sqrt(max(1.0 - rn * rn, 0.05)));
+  }
+  vec3 wp = i0.xyz + (uRight * aQuad.x + uUp * aQuad.y) * radius * qs;
+  vUv = aQuad * qs;
   vA = i1;
   vB = i2;
   vC = vec4(i3.x, i3.y, d, radius);
-  vMisc = vec2(i3.z, i3.w);
+  vMisc = vec2(i3.z, qs);
   vD = i4;
+  vWp = wp;
+  vCen = i0.xyz;
+  vL = i5;
   gl_Position = uVP * vec4(wp, 1.0);
 }`;
 
@@ -563,6 +582,14 @@ flat in vec4 vB;
 flat in vec4 vC;
 flat in vec2 vMisc;
 flat in vec4 vD; // kind, p0, p1, activity (v47)
+in vec3 vWp;       // v63
+flat in vec3 vCen; // v63
+flat in vec4 vL;   // v63
+uniform mat4 uVP;    // v63 the hit point's real depth
+uniform vec3 uRight; // v63 billboard frame in the fragment stage
+uniform vec3 uUp;
+uniform float uSphere; // v63 the A/B dial: 0 = the old camera-facing disc, 1 = a real ball
+uniform float uBallRim; // v63.3 the edge a ball shows: 0 = no ring, no fresnel; 1 = the full atlas ring
 uniform mediump sampler2DArray uShells;
 uniform mediump sampler2DArray uArt;   // interior paintings + planet maps
 uniform sampler2D uGlyphs;             // 8x8 rune atlas, canvas-drawn
@@ -589,6 +616,24 @@ float vnoise(vec2 p) {
   f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x),
              mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y);
+}
+// v63.4 speckle: soft dots at jittered cell points, not every cell lit, sizes
+// rolled per dot — summed over three unrelated layers it has no lattice to
+// read (James, magnified ×4.9 on a crowd cloud: "it looks like burlap")
+float speck(vec2 p, float k) {
+  vec2 ip = floor(p), fp = fract(p);
+  float a = 0.0;
+  for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+    vec2 o = vec2(float(x), float(y));
+    vec2 c = ip + o;
+    float h3 = h21(c * 1.3 + k);
+    if (h3 < 0.45) continue;
+    float h1 = h21(c + k * 17.3), h2 = h21(c + k * 31.7 + 4.2);
+    vec2 d = o + vec2(h1, h2) - fp;
+    float rr = 0.10 + 0.22 * h21(c + 8.8 + k);
+    a += pow(smoothstep(rr, 0.0, length(d)), 1.5) * (0.5 + 0.5 * h1);
+  }
+  return a;
 }
 
 // ---- v56 the Saelyri (kind 65): 3D field helpers for the being raymarch.
@@ -667,6 +712,337 @@ float shape65(float k, vec3 p) {
   return length(p) - 0.52 + (fbm3(p * 3.4 + uTime * 0.25) - 0.5) * 0.55;
 }
 
+
+// ---- v64 PHASE 2: THE INTERIORS AS VOLUMES ---------------------------------
+// Inside a ball the refracted ray walks the chord through the unit sphere in
+// VOL_N steps; each interior kind is a 3-D recipe — what glows at this point
+// in the ball right now — returning emission (rgb) and density (a). Far orbs
+// keep the flat v47 picture (the march only runs when the orb covers real
+// screen area); the two crossfade so nothing pops. p is in the orb's own
+// axes (world axes turned by a per-orb yaw), y up, |p| <= 1.
+const int VOL_N = 20; // round 2: 12 steps skipped 0.02-wide rings into dots
+float volSph(vec3 p, vec3 c, float r) { return length(p - c) - r; }
+float volBox(vec3 p, vec3 b) { vec3 q = abs(p) - b; return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0); }
+float volTor(vec3 p, float R, float r) { return length(vec2(length(p.xz) - R, p.y)) - r; }
+float volSeg(vec3 p, vec3 a, vec3 b, float r) { vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
+float volShell(float sd, float w) { return smoothstep(w, 0.0, abs(sd)); } // a thin surface
+float volSolid(float sd, float w) { return smoothstep(w, -w, sd); }        // a filled body
+vec3 volRotY(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(c * p.x - s * p.z, p.y, s * p.x + c * p.z); }
+vec3 volRotX(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(p.x, c * p.y - s * p.z, s * p.y + c * p.z); }
+vec3 volRotZ(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(c * p.x - s * p.y, s * p.x + c * p.y, p.z); }
+// glowing points: at most one per cell, jittered, hashed on/off — one tap
+float volPts(vec3 p, float cell, float rad, float k, float fill) {
+  vec3 ip = floor(p * cell), fp = fract(p * cell);
+  float h = h31(ip + k);
+  if (h > fill) return 0.0;
+  vec3 j = vec3(h31(ip + 1.1 + k), h31(ip + 2.2 + k), h31(ip + 3.3 + k)) * 0.6 + 0.2;
+  return smoothstep(rad, 0.0, length(fp - j)) * (0.5 + 0.5 * h31(ip + 4.4 + k));
+}
+// a lit solid: emission from the body colour, shaded by the sun direction
+vec3 volLit(vec3 p, vec3 c, vec3 col, vec3 L) { vec3 n = normalize(p - c + 1e-5); return col * (0.35 + 0.65 * max(dot(n, L), 0.0)); }
+vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed, vec3 L) {
+  vec3 e = vec3(0.0); float d = 0.0;
+  float r = length(p);
+  float rr = length(p.xz);
+  float ang = atan(p.z, p.x);
+  float ss = seed * 3.7;
+  if (kind == 1) { // swirling lights: two ribbons of light spiralling through the ball
+    // two helical tubes of light winding up through the ball, counter-turning
+    float th1 = t * 1.1 + p.y * 5.0, th2 = -t * 0.8 + p.y * 3.5 + 2.4;
+    float rad1 = 0.42 + 0.12 * sin(p.y * 2.0 + t * 0.5), rad2 = 0.3 + 0.15 * cos(p.y * 3.0 - t * 0.4);
+    vec2 h1 = vec2(cos(th1), sin(th1)) * rad1, h2 = vec2(cos(th2), sin(th2)) * rad2;
+    float g1 = exp(-dot(p.xz - h1, p.xz - h1) / 0.012), g2 = exp(-dot(p.xz - h2, p.xz - h2) / 0.008);
+    float env = smoothstep(1.0, 0.7, r);
+    d = (g1 + g2) * env * 3.0;
+    e = (c1 * g1 * 1.2 + c2 * g2) * env * 4.0;
+  } else if (kind == 2) { // water with fish: a dim blue fill, caustics, four fish, bubbles
+    // v64.1 (James: "they look like buttons" — a white ring meeting a dark
+    // limb): the water is FULL now (density 1.6, the chord saturates well
+    // before the limb) and scatters the sun — the lit side glows, the far
+    // side is deep — so the ball reads as a ball of water, not a rim.
+    float dp = p.y * 0.5 + 0.5;
+    float sunS = 0.55 + 0.45 * max(dot(normalize(p + 1e-5), L), 0.0);
+    e = mix(vec3(0.012, 0.08, 0.16), vec3(0.05, 0.3, 0.42), dp) * 0.55 * sunS;
+    float ca = sin(p.x * 9.0 + t * 1.3) * sin(p.z * 7.0 - t * 0.9) * sin(p.y * 6.0 + t * 0.7);
+    e += vec3(0.06, 0.16, 0.18) * smoothstep(0.5, 1.0, ca) * 0.6 * sunS;
+    d = 1.6;
+    // four small fish, HEAD FIRST: the body lies along the path's own velocity
+    for (int i = 0; i < 4; i++) {
+      float fs = seed + float(i) * 13.7;
+      float w1 = 0.22 + 0.06 * h11(fs), w2 = 0.31 + 0.05 * h11(fs + 1.0), w3 = w1 * 0.8;
+      vec3 fp = vec3(sin(t * w1 + fs) * 0.55, sin(t * w2 + fs * 2.0) * 0.4, cos(t * w3 + fs * 1.3) * 0.5);
+      vec3 fv = vec3(cos(t * w1 + fs) * 0.55 * w1, cos(t * w2 + fs * 2.0) * 0.4 * w2, -sin(t * w3 + fs * 1.3) * 0.5 * w3);
+      vec3 fd = fv / max(length(fv), 1e-4);
+      float body = volSeg(p, fp, fp - fd * 0.07, 0.012);
+      float tail = volSeg(p, fp - fd * 0.07, fp - fd * 0.1 + vec3(0.0, 0.0, 0.0), 0.004 + 0.008 * abs(sin(t * 9.0 + fs)));
+      float fish = volSolid(min(body, tail), 0.012);
+      e += (vec3(0.25, 0.6, 0.65) + c1 * 0.3) * fish * 4.0;
+      d += fish * 10.0;
+    }
+    float bub = volPts(vec3(p.x, p.y - t * 0.12, p.z), 9.0, 0.16, ss, 0.12) * clamp(act - 1.0, 0.0, 1.0);
+    e += vec3(0.5, 0.8, 0.9) * bub * 2.0; d += bub * 3.0;
+  } else if (kind == 4) { // kaleidoscope: the ball folded into a mirrored cell, a lattice of light inside
+    vec3 q = abs(volRotY(p, t * 0.15));
+    if (q.x < q.y) q.xy = q.yx;
+    if (q.y < q.z) q.yz = q.zy;
+    if (q.x < q.y) q.xy = q.yx;
+    float f = sin(q.x * 18.0 + t) * sin(q.y * 18.0 - t * 0.7) * sin(q.z * 18.0 + t * 0.4);
+    float k1 = smoothstep(0.65, 0.98, f), k2 = smoothstep(0.65, 0.98, -f);
+    d = (k1 + k2) * 1.2 * (1.0 - r * 0.5);
+    e = (c1 * k1 + c2 * k2) * 2.6 * (1.0 - r * 0.5);
+  } else if (kind == 5) { // weird blobs: four metaballs oozing through each other
+    float m = 0.0;
+    for (int i = 0; i < 4; i++) {
+      float fi = float(i) * 1.7 + ss;
+      vec3 c = vec3(sin(t * 0.31 + fi), sin(t * 0.23 + fi * 2.0), cos(t * 0.27 + fi * 0.7)) * 0.42;
+      float dd = length(p - c) + fbm3(p * 4.0 + t * 0.3) * 0.12;
+      m += 0.09 / (dd * dd + 0.02);
+    }
+    float blob = smoothstep(0.8, 1.8, m);
+    d = blob * 4.0;
+    e = mix(c2, c1, smoothstep(1.0, 3.0, m)) * blob * 2.4;
+  } else if (kind == 6) { // orrery: a sun, four planets on tilted rings
+    float sun = volSolid(volSph(p, vec3(0.0), 0.2), 0.04);
+    e = mix(c1, vec3(1.0), 0.4) * sun * 6.0 + c1 * exp(-r * r * 8.0) * 0.5; d = sun * 9.0 + exp(-r * r * 8.0) * 0.4;
+    for (int i = 0; i < 4; i++) {
+      float fi = float(i);
+      float R = 0.3 + fi * 0.16;
+      vec3 q = volRotX(volRotZ(p, fi * 0.35 + ss), fi * 0.5);
+      float ring = volShell(volTor(q, R, 0.0), 0.035);
+      float a = t * (0.9 - fi * 0.17) + fi * 2.0;
+      vec3 pc = vec3(cos(a) * R, 0.0, sin(a) * R);
+      float pl = volSolid(volSph(q, pc, 0.07 + fi * 0.012), 0.03);
+      e += c2 * ring * 1.2 + volLit(q, pc, mix(c2, vec3(1.0), 0.3), L) * pl * 4.0;
+      d += ring * 1.2 + pl * 9.0;
+    }
+  } else if (kind == 7) { // reactor core: a pulsing core, two containment rings, energy rising
+    float pulse = 0.8 + 0.2 * sin(t * 4.0);
+    float core = volSolid(volSph(p, vec3(0.0), 0.18 * pulse), 0.06);
+    float halo = exp(-r * r * 9.0) * 0.6;
+    float r1 = volShell(volTor(volRotX(p, t * 0.5), 0.45, 0.0), 0.045);
+    float r2 = volShell(volTor(volRotZ(volRotX(p, 1.57), t * 0.35), 0.6, 0.0), 0.045);
+    float fil = smoothstep(0.6, 1.0, n3(vec3(p.x * 6.0, p.y * 3.0 - t * 1.5, p.z * 6.0) + ss)) * (1.0 - r);
+    e = mix(c1, vec3(1.0), 0.5) * core * 8.0 + c1 * halo * 2.0 + c2 * (r1 + r2) * 2.0 + c1 * fil * 1.5;
+    d = core * 10.0 + halo * 1.2 + (r1 + r2) * 1.5 + fil * 1.4;
+  } else if (kind == 8) { // data rain: columns of glyphs falling through the ball
+    vec3 q = vec3(p.x, p.y + t * 0.35, p.z);
+    vec3 ip = floor(q * vec3(7.0, 12.0, 7.0));
+    float on = step(0.72, h31(ip + ss)) * step(0.35, h31(vec3(ip.x, 0.0, ip.z) + ss + 9.0)); // some columns rain, some cells lit
+    vec3 fp = fract(q * vec3(7.0, 12.0, 7.0)) - 0.5;
+    float cellD = smoothstep(0.42, 0.2, max(abs(fp.x), abs(fp.z))) * smoothstep(0.45, 0.3, abs(fp.y));
+    float head = step(0.93, h31(ip + ss + 3.0));
+    d = on * cellD * 3.0 * (1.0 - r * 0.4);
+    e = mix(c1, vec3(1.0), head) * on * cellD * (2.0 + head * 3.0) * (1.0 - r * 0.4);
+  } else if (kind == 9) { // radar sweep: a thin disc, range rings, the sweep, a blip
+    p = volRotZ(volRotX(p, 0.9 + 0.3 * sin(ss)), 0.5 * cos(ss)); rr = length(p.xz); ang = atan(p.z, p.x);
+    float disc = smoothstep(0.05, 0.0, abs(p.y)) * (1.0 - rr);
+    float rings = smoothstep(0.7, 1.0, sin(rr * 31.0)) * 0.5;
+    float sw = fract((ang - t * 0.9) / 6.28318);
+    float sweep = pow(1.0 - sw, 6.0) * 1.6 + smoothstep(0.985, 1.0, 1.0 - sw) * 3.0;
+    vec3 bp = vec3(cos(ss) * 0.55, 0.0, sin(ss) * 0.55);
+    float blip = volSolid(volSph(p, bp, 0.035), 0.02) * (0.4 + 0.6 * pow(1.0 - fract((atan(bp.z, bp.x) - t * 0.9) / 6.28318 + 1.0), 3.0));
+    e = mix(c1, vec3(0.5, 1.0, 0.6), 0.5) * disc * (0.5 + rings * 1.5 + sweep) * 2.5 + vec3(1.0, 0.9, 0.6) * blip * 6.0;
+    d = disc * (0.6 + rings + sweep * 0.5) * 2.5 + blip * 9.0;
+  } else if (kind == 10) { // gyroscope: three nested rings, each tumbling on its own axis
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      vec3 q = volRotZ(volRotX(volRotY(p, t * (0.4 + fi * 0.2) + fi), t * (0.3 - fi * 0.1) + ss), fi * 1.1);
+      float ring = volShell(volTor(q, 0.75 - fi * 0.2, 0.0), 0.05 + fi * 0.006);
+      e += mix(c1, c2, fi * 0.5) * ring * 3.5;
+      d += ring * 4.0;
+    }
+    float hub = volSolid(volSph(p, vec3(0.0), 0.07), 0.02);
+    e += vec3(1.0) * hub * 4.0; d += hub * 8.0;
+  } else if (kind == 11) { // circuitry: traces on three floating boards, pulses running them
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      vec3 q = volRotX(volRotY(p, fi * 1.05 + ss), 0.4 + fi * 0.7); // each board on its own tilt — three planes, never all edge-on
+      float yb = -0.4 + fi * 0.4;
+      float board = smoothstep(0.02, 0.0, abs(q.y - yb)) * smoothstep(0.85, 0.6, length(q.xz));
+      vec2 g = q.xz * 7.0;
+      vec2 gf = abs(fract(g) - 0.5);
+      float onx = step(0.5, h21(vec2(floor(g.y), fi) + ss)), onz = step(0.5, h21(vec2(floor(g.x), fi) + ss + 5.0));
+      float trace = max(smoothstep(0.12, 0.03, gf.y) * onx, smoothstep(0.12, 0.03, gf.x) * onz);
+      float pulse = smoothstep(0.8, 1.0, sin(g.x * 2.0 + g.y - t * 6.0 + fi));
+      e += (c1 * 1.2 + c2 * pulse * 4.0) * trace * board * 3.0 + c2 * board * 0.15;
+      d += (trace * (1.2 + pulse) + 0.2) * board * 3.0;
+    }
+  } else if (kind == 12) { // snow-globe city: towers on the floor of the ball, lit windows, snow
+    float floorY = -0.35;
+    vec2 cell = floor(p.xz * 6.0 + 0.5);
+    vec2 cf = p.xz * 6.0 + 0.5 - cell - 0.5;
+    float hgt = 0.15 + 0.5 * h21(cell + ss) * smoothstep(0.9, 0.4, length(cell / 6.0));
+    float tower = volSolid(volBox(vec3(cf.x / 6.0, p.y - floorY - hgt * 0.5, cf.y / 6.0), vec3(0.055, hgt * 0.5, 0.055)), 0.012) * step(0.15, h21(cell + ss + 2.0));
+    float win = step(0.6, h31(vec3(floor(cf.x * 30.0), floor((p.y - floorY) * 28.0), floor(cf.y * 30.0)) + ss)) * smoothstep(0.045, 0.05, max(abs(cf.x), abs(cf.y)) / 6.0 * 6.0);
+    float ground = smoothstep(0.02, 0.0, abs(p.y - floorY)) * smoothstep(0.95, 0.5, rr);
+    float snow = volPts(vec3(p.x + sin(t * 0.3 + p.y * 3.0) * 0.05, p.y + t * 0.08, p.z), 10.0, 0.14, ss, 0.2) * step(floorY, p.y);
+    e = vec3(0.03, 0.035, 0.06) * tower * 2.0 + vec3(1.0, 0.85, 0.5) * win * tower * 2.2 + c1 * ground * 0.6 + vec3(0.9, 0.95, 1.0) * snow * 1.5;
+    d = tower * 12.0 + ground * 1.2 + snow * 2.5;
+  } else if (kind == 13) { // storm orb: a churning cloud with lightning inside it
+    float cl = fbm3(p * 3.0 + vec3(t * 0.25, -t * 0.1, 0.0) + ss);
+    float cloud = smoothstep(0.35, 0.75, cl) * (1.0 - r * 0.8);
+    float flashT = floor(t * 1.3 + ss);
+    float flash = step(0.75, h11(flashT)) * pow(1.0 - fract(t * 1.3 + ss), 4.0);
+    vec3 fa = vec3(h11(flashT + 1.0) - 0.5, 0.6, h11(flashT + 2.0) - 0.5), fb = vec3(h11(flashT + 3.0) - 0.5, -0.5, h11(flashT + 4.0) - 0.5);
+    float bolt = volShell(volSeg(p + (n3(p * 9.0 + flashT) - 0.5) * 0.08, fa, fb, 0.0), 0.025) * flash;
+    e = mix(vec3(0.16, 0.18, 0.24), c1 * 0.8, 0.4) * cloud * 1.2 + vec3(0.8, 0.85, 1.0) * (bolt * 6.0 + cloud * flash * 1.5);
+    d = cloud * 2.6 + bolt * 6.0;
+  } else if (kind == 14) { // ember hive: a dark honeycombed mass with embers drifting up out of it
+    float mass = volSolid(volSph(p, vec3(0.0), 0.5) + (n3(p * 7.0 + ss) - 0.5) * 0.14, 0.04);
+    float pores = smoothstep(0.55, 0.8, n3(p * 12.0 + ss + 3.0));
+    float hot = smoothstep(0.45, 0.2, r) * (0.7 + 0.3 * sin(t * 2.0 + r * 20.0));
+    float emb = volPts(vec3(p.x + sin(t * 0.7 + p.y * 4.0) * 0.03, p.y - t * 0.09, p.z), 11.0, 0.15, ss, 0.15) * smoothstep(0.35, 0.6, r);
+    e = mass * (vec3(0.07, 0.035, 0.02) * (1.0 - pores) + mix(c1, vec3(1.0, 0.6, 0.2), 0.5) * pores * (0.6 + hot) * 4.0) + vec3(1.0, 0.6, 0.25) * emb * 5.0;
+    d = mass * 10.0 * (1.0 - pores * 0.3) + emb * 5.0;
+  } else if (kind == 15) { // clockwork: three toothed gears meshing, turning
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      vec3 gc = vec3(cos(fi * 2.09 + ss) * 0.35, sin(fi * 2.09 + ss) * 0.3, (fi - 1.0) * 0.12);
+      vec3 q = volRotZ(p - gc, t * (fi == 1.0 ? -0.9 : 0.6) + fi);
+      float R = 0.26 + fi * 0.06;
+      float teeth = 0.04 * step(0.0, sin(atan(q.y, q.x) * (12.0 + fi * 4.0)));
+      float gear = volShell(length(q.xy) - R - teeth, 0.06) * smoothstep(0.07, 0.02, abs(q.z));
+      float spoke = smoothstep(0.05, 0.0, abs(sin(atan(q.y, q.x) * 2.0)) * length(q.xy)) * step(length(q.xy), R) * smoothstep(0.07, 0.02, abs(q.z));
+      e += mix(c1, vec3(0.9, 0.7, 0.35), 0.5) * (gear + spoke * 0.6) * 6.0;
+      d += (gear + spoke * 0.6) * 7.0;
+    }
+    float tick = smoothstep(0.9, 1.0, sin(t * 3.14159 * 2.0)) * volSolid(volSph(p, vec3(0.0, -0.55, 0.0), 0.06), 0.02);
+    e += vec3(1.0) * tick * 3.0; d += tick * 4.0;
+  } else if (kind == 16) { // galaxy: a thin spiral disc with a bright bulge, dust lanes, stars
+    // v64.4 (James: "fully vertical... a vertical thing turning rather than
+    // the galaxy swirling around itself"): the disc lies near the ecliptic —
+    // a gentle seeded tilt (12–30°) and a small roll — and the arms turn
+    // DIFFERENTIALLY about the disc's own axis, inner faster than outer, so
+    // it swirls in place instead of tumbling
+    vec3 q = volRotZ(volRotX(p, 0.36 + 0.16 * sin(ss)), 0.18 * cos(ss));
+    float rq = length(q.xz);
+    // the arm PATTERN turns rigidly (a density wave — it never winds up);
+    // the dust and stars stream through it differentially, inner faster
+    float th = atan(q.z, q.x) - t * 0.15;
+    float thD = atan(q.z, q.x) - t * (0.15 + 0.4 / (rq + 0.3));
+    float arm = smoothstep(0.1, 0.9, 0.5 + 0.5 * cos(th * 2.0 - rq * 9.0 + 1.0));
+    float dust = fbm3(vec3(cos(thD) * rq * 5.0, sin(thD) * rq * 5.0, 0.0) + ss);
+    float disc = exp(-q.y * q.y / (0.004 + rq * 0.03)) * smoothstep(1.0, 0.2, rq);
+    float bulge = exp(-length(q * vec3(1.0, 2.2, 1.0)) * 7.0);
+    float stars = volPts(vec3(cos(thD) * rq, q.y * 4.0, sin(thD) * rq), 14.0, 0.18, ss, 0.35) * disc;
+    e = c1 * disc * (0.25 + arm * (0.6 + dust * 0.8)) * 1.6 + vec3(1.0, 0.95, 0.85) * bulge * 4.0 + vec3(1.0) * stars * 2.0;
+    d = disc * (0.5 + arm * (0.8 + dust)) * 1.4 + bulge * 6.0 + stars * 3.0;
+  } else if (kind == 17) { // the eye that opens: an eyeball facing out, the lid parting as you close in
+    float open = 0.15 + 0.85 * smoothstep(0.2, 1.6, act) * (0.8 + 0.2 * sin(t * 0.7));
+    vec3 q = volRotY(p, ss);
+    float ball = volShell(volSph(q, vec3(0.0), 0.55), 0.07);
+    float front = smoothstep(0.55, 0.95, q.z / max(length(q), 1e-4));
+    float irisA = acos(clamp(q.z / max(length(q), 1e-4), -1.0, 1.0));
+    float iris = smoothstep(0.42, 0.36, irisA) * front;
+    float pupil = smoothstep(0.17, 0.12, irisA);
+    float lid = smoothstep(open * 0.5, open * 0.5 - 0.06, abs(q.y) / max(length(q), 1e-4));
+    float fib = 0.6 + 0.4 * sin(atan(q.y, q.x) * 24.0 + irisA * 30.0);
+    vec3 col = mix(vec3(0.9, 0.9, 0.85), c1 * fib * 1.6, iris) * (1.0 - pupil);
+    e = ball * (col * lid * 1.4 + vec3(0.12, 0.06, 0.05) * (1.0 - lid)) * 2.5;
+    d = ball * 12.0;
+  } else if (kind == 20) { // the forge: an anvil block, a molten pool glowing under it, sparks
+    float anvil = volSolid(volBox(p - vec3(0.0, -0.2, 0.0), vec3(0.3, 0.09, 0.14)), 0.015);
+    float pool = smoothstep(0.03, 0.0, abs(p.y + 0.42)) * smoothstep(0.55, 0.25, rr) * (0.7 + 0.3 * sin(t * 2.0 + rr * 12.0));
+    float sparks = volPts(vec3(p.x + sin(t + p.y * 6.0) * 0.06, p.y - t * 0.35, p.z), 12.0, 0.12, ss + floor(t * 0.5), 0.1) * step(-0.4, p.y) * step(rr, 0.5);
+    float heat = exp(-length(p - vec3(0.0, -0.4, 0.0)) * 3.5) * 0.5;
+    e = vec3(0.06, 0.05, 0.05) * anvil * 2.0 + vec3(1.0, 0.45, 0.1) * (pool * 3.0 + heat) + vec3(1.0, 0.7, 0.3) * sparks * 5.0;
+    d = anvil * 12.0 + pool * 3.0 + heat * 0.8 + sparks * 4.0;
+  } else if (kind == 21) { // singing crystals: five shards standing at angles, each pulsing on its own note
+    for (int i = 0; i < 5; i++) {
+      float fi = float(i);
+      vec3 c = vec3(cos(fi * 1.257 + ss) * 0.35, -0.1 + 0.1 * sin(fi * 2.0), sin(fi * 1.257 + ss) * 0.35);
+      vec3 q = volRotZ(volRotX(p - c, 0.5 * sin(fi + ss)), 0.4 * cos(fi * 1.3 + ss));
+      float sd = volBox(q, vec3(0.05, 0.25 + 0.1 * h11(fi + ss), 0.05)) - 0.02;
+      float body = volSolid(sd, 0.02), edge = volShell(sd, 0.02);
+      float note = 0.5 + 0.5 * sin(t * (1.5 + fi * 0.37) + fi * 2.0);
+      e += mix(c2, c1, fi * 0.25) * (body * (0.3 + note * 1.2) + edge * 1.5) * 1.6;
+      d += body * 3.0 + edge * 2.0;
+    }
+  } else if (kind == 22) { // moons around a hearth: a warm hearth, three moons lit by it
+    float hearth = volSolid(volSph(p, vec3(0.0), 0.16), 0.04);
+    e = vec3(1.0, 0.6, 0.3) * hearth * 6.0 + vec3(1.0, 0.5, 0.2) * exp(-r * r * 6.0) * 0.5;
+    d = hearth * 9.0 + exp(-r * r * 6.0) * 0.6;
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      float a = t * (0.45 - fi * 0.1) + fi * 2.1 + ss;
+      vec3 q = volRotX(p, fi * 0.6 + ss);
+      vec3 mc = vec3(cos(a), 0.0, sin(a)) * (0.4 + fi * 0.18);
+      float moon = volSolid(volSph(q, mc, 0.07 + fi * 0.015), 0.02);
+      vec3 n = normalize(q - mc + 1e-5);
+      float lit = max(dot(n, -normalize(mc)), 0.0);
+      e += mix(c2, vec3(0.8), 0.5) * moon * (0.12 + lit * 1.4) * 3.0;
+      d += moon * 9.0;
+    }
+  } else if (kind == 23) { // signal beacon: a mast, a lamp, spherical pulses spreading out
+    float mast = volSolid(volSeg(p, vec3(0.0, -0.8, 0.0), vec3(0.0, 0.45, 0.0), 0.03), 0.02);
+    float lamp = volSolid(volSph(p, vec3(0.0, 0.5, 0.0), 0.07), 0.03) * (0.6 + 0.4 * sin(t * 6.0));
+    float pr = fract(t * 0.35 + ss);
+    float pulse = volShell(length(p - vec3(0.0, 0.5, 0.0)) - pr * 0.9, 0.03) * (1.0 - pr);
+    float pr2 = fract(t * 0.35 + 0.5 + ss);
+    pulse += volShell(length(p - vec3(0.0, 0.5, 0.0)) - pr2 * 0.9, 0.03) * (1.0 - pr2);
+    e = vec3(0.2, 0.22, 0.28) * mast * 2.0 + mix(c1, vec3(1.0), 0.4) * lamp * 8.0 + c1 * pulse * 2.0;
+    d = mast * 8.0 + lamp * 10.0 + pulse * 1.6;
+  } else if (kind == 24) { // metronome: a pendulum swinging from the top, the tick flashes at the ends
+    float ph = sin(t * 2.2);
+    vec3 pivot = vec3(0.0, 0.62, 0.0);
+    vec3 bob = pivot + vec3(sin(ph * 0.7) * 0.85, -cos(ph * 0.7) * 0.85, 0.0);
+    float rod = volSolid(volSeg(p, pivot, bob, 0.03), 0.02);
+    float bobS = volSolid(volSph(p, bob, 0.09), 0.03);
+    float tick = smoothstep(0.92, 1.0, abs(ph));
+    float frame = volSolid(volBox(p - vec3(0.0, 0.66, 0.0), vec3(0.3, 0.03, 0.05)), 0.01);
+    e = c2 * (rod + frame) * 2.0 + mix(c1, vec3(1.0), tick) * bobS * (3.0 + tick * 5.0);
+    d = (rod + frame) * 8.0 + bobS * 10.0;
+  } else if (kind == 25) { // the lone jellyfish: a pulsing bell and trailing tentacles in dim water
+    e = vec3(0.01, 0.03, 0.06) * 0.8; d = 0.3;
+    float by = 0.15 + 0.12 * sin(t * 0.6 + ss);
+    float pulse = 0.5 + 0.5 * sin(t * 1.9);
+    vec3 q = p - vec3(sin(t * 0.2 + ss) * 0.2, by, cos(t * 0.17 + ss) * 0.2);
+    float bellR = 0.24 + 0.04 * pulse;
+    float bell = volShell(volSph(q * vec3(1.0, 1.5 - 0.3 * pulse, 1.0), vec3(0.0), bellR), 0.03) * step(-0.02, q.y);
+    float tent = 0.0;
+    for (int i = 0; i < 6; i++) {
+      float fi = float(i) * 1.047;
+      vec3 a = vec3(cos(fi) * 0.16, 0.0, sin(fi) * 0.16);
+      vec3 b = a + vec3(sin(t * 1.3 + fi * 3.0) * 0.12, -0.7, cos(t * 1.1 + fi * 2.0) * 0.12);
+      tent += volShell(volSeg(q + vec3(0.0, 0.0, 0.0), a, b, 0.0) - 0.008 + sin(q.y * 20.0 + t * 3.0 + fi) * 0.006, 0.012);
+    }
+    e += (c1 * 0.7 + vec3(0.3, 0.5, 0.7)) * (bell * 2.2 + tent * 1.4) * (0.6 + 0.4 * pulse);
+    d += bell * 3.0 + tent * 2.0;
+  } else if (kind == 26) { // the library: rings of shelves around a reading lamp
+    float lamp = volSolid(volSph(p, vec3(0.0, -0.1, 0.0), 0.06), 0.03);
+    float warm = exp(-length(p - vec3(0.0, -0.1, 0.0)) * 2.4) * 0.35;
+    e = vec3(1.0, 0.8, 0.5) * (lamp * 6.0 + warm); d = lamp * 9.0 + warm * 0.5;
+    float wall = smoothstep(0.55, 0.62, rr) * smoothstep(0.92, 0.85, rr);
+    float shelfY = fract(p.y * 5.0 + 0.5);
+    float shelf = smoothstep(0.1, 0.02, abs(shelfY - 0.5) - 0.02) * wall * step(abs(p.y), 0.75);
+    vec3 bk = vec3(floor(ang * 14.0), floor(p.y * 5.0), 0.0);
+    float bookOn = step(0.15, h31(bk + ss));
+    float bookCol = h31(bk + ss + 2.0);
+    float book = wall * step(abs(p.y), 0.75) * (1.0 - shelf) * bookOn * smoothstep(0.5, 0.35, abs(fract(ang * 14.0) - 0.5));
+    vec3 bcol = mix(mix(vec3(0.45, 0.12, 0.1), vec3(0.1, 0.25, 0.4), bookCol), vec3(0.5, 0.4, 0.15), step(0.7, bookCol));
+    e += vec3(0.35, 0.25, 0.15) * shelf * 1.2 + bcol * book * (0.5 + warm * 3.0) * 2.0;
+    d += shelf * 6.0 + book * 6.0;
+  }
+  return vec4(e, d);
+}
+vec4 volMarch(int kind, vec3 e0, vec3 dd, float L, float t, float act, vec3 c1, vec3 c2, float seed, vec3 Lw) {
+  float ds = L / float(VOL_N);
+  vec3 acc = vec3(0.0);
+  float aa = 0.0;
+  float ya = seed * 2.1;
+  float ca = cos(ya), sa = sin(ya);
+  vec3 Lr = vec3(ca * Lw.x - sa * Lw.z, Lw.y, sa * Lw.x + ca * Lw.z);
+  for (int i = 0; i < VOL_N; i++) {
+    vec3 p = e0 + dd * (ds * (float(i) + 0.5));
+    p = vec3(ca * p.x - sa * p.z, p.y, sa * p.x + ca * p.z);
+    vec4 s = volKind(kind, p, t, act, c1, c2, seed, Lr);
+    float a = clamp(s.a * ds, 0.0, 1.0);
+    acc += (1.0 - aa) * s.rgb * ds * 3.0 * min(1.0, s.a + 0.35);
+    aa += (1.0 - aa) * a;
+    if (aa > 0.985) break;
+  }
+  return vec4(acc, aa);
+}
 void main() {
   float r = length(vUv);
   int kind = int(vD.x + 0.5);
@@ -691,6 +1067,69 @@ void main() {
   if (vMisc.x > 0.5) fogF = exp(-dist * uFog * 0.05);
   float nearF = vMisc.x > 0.5 ? 1.0 : smoothstep(radius * 0.7, radius * 1.8, dist);
 
+  // ---- v63 THE BALL (James, 2026-09-03: "it has to") ---------------------
+  // Every orb used to be a camera-facing disc with a gradient. Now every
+  // eligible one (vL.w > 0: glass orbs, hearts, worldlets, beings — never
+  // dust, veils, glyphs, creatures, crowd clouds) is hit per pixel by the
+  // real perspective ray: a true surface point, normal and depth. uSphere
+  // crossfades the disc back in (the "real spheres" dial). The camera is
+  // the origin of ship space, so the ray is just the quad point's direction.
+  // gl_FragDepth is written on EVERY path (the GLSL ES rule); misses keep
+  // the card's depth. The math runs in a distance-normalized frame: at
+  // 100 km the plain |c|^2 - r^2 form loses the radius entirely in float32.
+  gl_FragDepth = gl_FragCoord.z;
+  float ballK = uSphere * step(0.5, vL.w) * (1.0 - step(0.5, vMisc.x));
+  vec3 rd = normalize(vWp);
+  vec3 rd0 = normalize(vCen);
+  vec3 N = vec3(0.0, 0.0, 1.0); // billboard-frame normal (right, up, toward camera)
+  vec3 Nw = -rd0;               // ship-space normal
+  vec3 P = vCen;                // hit point, ship space
+  float hitF = 0.0;
+  float bnz = 1.0;              // facing term of the hit normal
+  float hqn = 0.0;              // discriminant (normalized frame) — the chord for the beings
+  vec2 qRef = vUv;              // where the light inside gets sampled (refracted)
+  vec3 volE0 = vec3(0.0), volD = vec3(0.0, 0.0, -1.0); // v64: the refracted chord through the unit ball
+  float volL = 0.0;
+  if (ballK > 0.001) {
+    float inv = 1.0 / max(dist, 1e-3);
+    vec3 cn = vCen * inv;
+    float rn = radius * inv;
+    vec3 perp = cn - rd * dot(cn, rd);
+    hqn = rn * rn - dot(perp, perp);
+    // the silhouette on the quad plane is bigger than the radius up close
+    float sil = 1.0 / sqrt(max(1.0 - rn * rn, 1e-6));
+    if (hqn > 0.0) {
+      float tn = dot(cn, rd) - sqrt(hqn);
+      P = rd * (tn * dist);
+      Nw = (P - vCen) / radius;
+      // facing is measured against THIS pixel's ray, not the center
+      // direction: under perspective the silhouette normal is not
+      // perpendicular to the center line (at 3 radii it still faces the
+      // center by 0.33), and measuring it that way never reached the
+      // atlas rim and magnified everything. N is the billboard-frame
+      // normal with its magnitude corrected to the true facing.
+      bnz = max(dot(Nw, -rd), 0.0);
+      vec2 nxy = vec2(dot(Nw, uRight), dot(Nw, uUp));
+      nxy = nxy / max(length(nxy), 1e-5) * sqrt(max(1.0 - bnz * bnz, 0.0));
+      N = vec3(nxy, bnz);
+      hitF = 1.0;
+      vec4 cp = uVP * vec4(P, 1.0);
+      gl_FragDepth = mix(gl_FragCoord.z, cp.z / cp.w * 0.5 + 0.5, ballK);
+      // the light inside sits on the plane through the center; the ray
+      // bends at the glass, so the picture slides and bulges with the angle
+      vec3 rr = refract(rd, Nw, 0.84); // a mild glass — the picture magnifies a little, not a marble
+      float tp = dot(vCen - P, rd0) / max(dot(rr, rd0), 1e-4);
+      vec3 Q = P + rr * tp - vCen;
+      qRef = mix(vUv, vec2(dot(Q, uRight), dot(Q, uUp)) / radius, ballK);
+      volE0 = (P - vCen) / radius;
+      volD = rr;
+      volL = max(0.0, -2.0 * dot(volE0, rr)); // exit of a unit-sphere chord from a point ON the sphere
+      r = mix(r, sqrt(max(1.0 - bnz * bnz, 0.0)), ballK);
+    } else {
+      r = mix(r, r / sil, ballK); // halo distances measured from the true limb
+    }
+  }
+
   // the three states (v47): act 0 = a vague glowing nothing from far away,
   // act 1 = the scene stirs as you close in, act 2 = fully awake beside you.
   // JS smooths act by distance, so the states GLIDE into each other.
@@ -713,11 +1152,14 @@ void main() {
     // round-1 lab lesson: a smooth blob read as a bigger sun. GRAIN — a
     // speckle field under a soft envelope — reads as many small lights.
     float mc = pow(smoothstep(1.0, 0.0, r), 1.5);
-    vec2 sp = vUv * 34.0 + vec2(seed * 13.1, seed * 7.7);
-    float g1 = vnoise(sp + uTime * 0.11);
-    float g2 = vnoise(sp * 1.9 + 3.7 - uTime * 0.07);
-    float grain = pow(g1, 5.0) * 2.6 + pow(g2, 7.0) * 2.2;
-    float ac = mc * (0.16 + grain) * vD.z * 0.42;
+    // v63.4: value noise on a 34-cell grid read as a woven lattice at a
+    // group's size (never right in-world); three jittered speckle layers now
+    vec2 sp = vUv * 11.0 + vec2(seed * 13.1, seed * 7.7);
+    float grain = speck(sp + uTime * 0.05, 0.0)
+                + speck(rot2(sp, 1.1) * 1.7 + 5.3 - uTime * 0.04, 1.0) * 0.8
+                + speck(rot2(sp, 2.3) * 2.9 + 9.1, 2.0) * 0.6;
+    grain *= 1.6;
+    float ac = mc * (0.10 + grain) * vD.z * 0.42;
     vec3 cc = mix(ec1, vec3(1.0), 0.35);
     frag = vec4(cc * ac * 1.2, ac * 0.85) * fogF;
     return;
@@ -738,14 +1180,28 @@ void main() {
       frag = vec4(mix(hueA, vec3(1.0), 0.3) * aM * 1.1, aM) * fogF * nearF;
       return;
     }
-    if (r2 > 1.0) discard;
-    // near LOD: orthographic raymarch through the unit sphere (a 10m being
-    // is effectively parallel-projected; entry and exit are analytic)
-    float tz = sqrt(1.0 - r2);
+    // v63: with the ball on, inside = the real hit; the disc test otherwise
+    if (mix(r2, hitF > 0.5 ? 0.0 : 2.0, ballK) > 1.0) discard;
+    // near LOD: raymarch through the unit sphere. Orthographic by default (a
+    // 10m being is effectively parallel-projected; entry and exit are
+    // analytic); v63 blends to the true perspective entry point and chord
+    // in the same local frame (right, up, away from the camera).
+    float tz = sqrt(max(1.0 - r2, 0.0));
     const int SN = 18;
-    float dstep = (2.0 * tz) / float(SN);
+    vec3 e0 = vec3(vUv, -tz);
+    vec3 dl = vec3(0.0, 0.0, 1.0);
+    float chord = 2.0 * tz;
+    if (hitF > 0.5 && ballK > 0.5) {
+      // world axes: the being stands in the world, not on the card
+      e0 = (P - vCen) / radius;
+      dl = rd;
+      chord = 2.0 * sqrt(hqn) * dist / radius;
+    }
+    float dstep = chord / float(SN);
     // being greeted turns the being: its idle sway eases to face the pod
-    float angY = mix(uTime * 0.22 + seed * 11.0, 0.0, smoothstep(0.15, 0.8, ack));
+    // v63: in world space (ball on) "facing the pod" is a yaw toward the camera
+    float faceAng = mix(0.0, atan(rd0.x, rd0.z), step(0.5, hitF * ballK));
+    float angY = mix(uTime * 0.22 + seed * 11.0, faceAng, smoothstep(0.15, 0.8, ack));
     float ca = cos(angY), sa = sin(angY);
     float kt = max(vB.y, 1.0);
     float ms = vD.y;
@@ -756,8 +1212,7 @@ void main() {
     vec3 accB = vec3(0.0);
     float alphaB = 0.0;
     for (int i = 0; i < SN; i++) {
-      float z = -tz + dstep * (float(i) + 0.5);
-      vec3 p0 = vec3(vUv, z);
+      vec3 p0 = e0 + dl * (dstep * (float(i) + 0.5));
       vec3 p = vec3(ca * p0.x - sa * p0.z, p0.y, sa * p0.x + ca * p0.z);
       float d = being65(p);
       if (ms > 0.001) d = mix(d, shape65(kt, p), ms);
@@ -846,17 +1301,30 @@ void main() {
   }
   if (kind >= 50) { // worldlet: a living planet in the dark (p0 = map layer)
     if (r < 1.0) {
-      float nz = sqrt(max(0.0, 1.0 - r * r));
-      vec3 n = vec3(vUv, nz);
+      // v63: a worldlet is a true globe — the map lives in the globe's own
+      // frame, so flying around one shows its far side; the disc form keeps
+      // the old view-locked mapping under the dial
+      float nz0 = sqrt(max(0.0, 1.0 - r * r));
+      vec3 nb = vec3(vUv, nz0);
+      vec3 n = normalize(mix(nb, N, ballK));
+      // v63.8 (James: "a lot of the worlds are not sitting in the center of
+      // their globes"): facing is the VIEW component — for the ball that is
+      // bnz (normal · toward the eye), never N.z, which is world z
+      float nz = mix(max(nb.z, 0.0), bnz, ballK);
+      vec3 nbW = uRight * nb.x + uUp * nb.y - rd0 * nb.z;
+      vec3 nG = normalize(mix(nbW, Nw, ballK));
       float rspd = 0.006 + 0.018 * h11(seed);
-      float lon = atan(n.x, nz) / 6.28318 + uTime * rspd;
-      float lat = asin(clamp(n.y, -1.0, 1.0)) / 3.14159 + 0.5;
+      float lon = mix(atan(n.x, nz), atan(nG.x, nG.z), ballK) / 6.28318 + uTime * rspd;
+      float lat = mix(asin(clamp(n.y, -1.0, 1.0)), asin(clamp(nG.y, -1.0, 1.0)), ballK) / 3.14159 + 0.5;
       // mirror-wrapped longitude: the map never shows a seam
       float mu = abs(fract(lon) * 2.0 - 1.0);
       vec3 surf = texture(uArt, vec3(mix(0.035, 0.965, mu), mix(0.965, 0.035, lat), vD.y)).rgb;
       float la = seed * 2.4;
       vec3 L = normalize(vec3(cos(la) * 0.8, 0.45, 0.55 + 0.3 * sin(la)));
-      float dif = max(dot(n, L), 0.0);
+      // v63: lit by its nearest sun when the ball is on — the dot is taken in
+      // WORLD axes for the ball (Nw against a world light), in view axes for the disc
+      vec3 Lw = normalize(mix(uRight * L.x + uUp * L.y - rd0 * L.z, vL.xyz, ballK * clamp(vL.w - 1.0, 0.0, 1.0)));
+      float dif = mix(max(dot(nb, L), 0.0), max(dot(Nw, Lw), 0.0), ballK);
       vec3 pc = surf * (0.05 + 1.05 * dif) * (0.5 + 0.5 * nz);
       // night-side city lights wake as you come close
       float night = clamp(0.25 - dif, 0.0, 0.25) * 4.0;
@@ -906,7 +1374,7 @@ void main() {
   // As act rises the scene crossfades in over it, animating faster and
   // showing its act-2-only extras when you're truly close.
   if (kind > 0 && act > 0.01) {
-    vec2 q = vUv;
+    vec2 q = qRef; // v63: the refracted point on the center plane
     vec3 scn = vec3(0.0);
     float sca = 0.0;
     if (kind == 1) { // swirling lights
@@ -1215,6 +1683,16 @@ void main() {
       float mote = step(0.997, h21(floor(q * 40.0) + floor(t0 * 2.0)));
       scn += mote * full2 * 0.25;
     }
+    // v64 PHASE 2: up close the flat picture gives way to the VOLUME — the
+    // refracted chord marched through the ball. Gate on screen size (radius
+    // over distance: nothing under ~2° of view marches) and on the ball.
+    float volK = ballK * hitF * smoothstep(0.016, 0.04, radius / max(dist, 1e-3)) * (kind < 40 ? 1.0 : 0.0);
+    if (volK > 0.001 && volL > 0.0) {
+      vec3 Lw = vL.w > 1.5 ? normalize(vL.xyz) : normalize(vec3(0.3, 0.8, 0.5));
+      vec4 V = volMarch(kind, volE0, volD, volL, t0 * spd, act, c1, c2, seed, Lw);
+      scn = mix(scn, V.rgb, volK);
+      sca = mix(sca, V.a, volK);
+    }
     // crossfade the scene in over the plain glow, held inside the glass
     float mixK = vis * smoothstep(1.0, 0.9, r);
     coreP = mix(coreP, scn, mixK);
@@ -1224,18 +1702,85 @@ void main() {
   // the glass shell over the light
   vec4 shell = vec4(0.0);
   if (r < 1.02 && vMisc.x < 0.5) {
-    vec2 uv = vUv;
-    if (vB.y != 0.0) {
+    vec2 uv = mix(vUv, N.xy, ballK); // v63: the glass (a rendered ball) by the true normal
+    // v64.2/v64.4 (James: "swirling and turning are not the same thing";
+    // then "a seam in the middle... a black line"): a PATTERNED shell
+    // (frosted / swirl / banded) lives on the ball in WORLD axes and turns
+    // about a real tilted axis. v64.2 wrapped the render's whole disc onto
+    // each hemisphere — its rim ring met itself at the equator as a black
+    // line. Now the ball takes shading + rim from the CLEAN GLASS by the view
+    // normal (below, like plain glass) and the pattern is laid on separately:
+    // the render's flat centre sampled from three directions in the ball's
+    // frame, blended by the normal — no seam anywhere.
+    float patK = ballK * step(0.5, vB.z);
+    vec3 nB = Nw;
+    if (patK > 0.5) {
+      vec3 ax = normalize(vec3(sin(seed * 1.3), 0.6 + 0.4 * cos(seed * 2.1), cos(seed * 1.7)));
+      float sp = vB.y * uTime * 0.6 + seed;
+      float cs = cos(sp), sn = sin(sp);
+      nB = Nw * cs + cross(ax, Nw) * sn + ax * dot(ax, Nw) * (1.0 - cs);
+    }
+    if (ballK > 0.5) {
+      // v63.1 (James, lab read: "a strange white pill... turning with the
+      // world"): the atlas is a lit render with its highlight baked at
+      // lower-left; on a ball it is TURNED TO FACE THE KEY LIGHT so the lit
+      // side and the highlight belong to the orb's sun, and never spun —
+      // glass does not visibly rotate, only its reflection would, wrongly.
+      // Self-lit balls (hearts, eyes, beings) hold the highlight up.
+      vec2 D = vL.w > 1.5 ? normalize(vec2(dot(vL.xyz, uRight), dot(vL.xyz, uUp)) + vec2(1e-4, 0.0)) : vec2(0.0, 1.0);
+      // the baked highlight sits at -126° in atlas uv (measured on the PNGs);
+      // this mat2 is a rotation by -ang, so ang = light angle - highlight angle
+      float ang = atan(D.y, D.x) + 2.199;
+      float ca = cos(ang), sa = sin(ang);
+      uv = mat2(ca, -sa, sa, ca) * uv;
+    } else if (vB.y != 0.0) {
       float ang = vB.y * uTime + seed;
       float ca = cos(ang), sa = sin(ang);
       uv = mat2(ca, -sa, sa, ca) * uv;
     }
-    shell = texture(uShells, vec3(0.5 + uv * 0.401, vB.z));
+    shell = textureGrad(uShells, vec3(0.5 + uv * 0.401, mix(vB.z + 4.0 * step(0.5, ballK), 4.0, patK)), dFdx(vUv) * 0.401, dFdy(vUv) * 0.401); // v64.3: balls sample the highlight-free copy; v64.4: a patterned ball takes its shading from the clean glass
+    if (patK > 0.5) {
+      // the pattern: the highlight-free render's centre (|uv| ≤ 0.55, where its
+      // baked shading is flat) sampled on the three planes of the ball's frame,
+      // divided by the clean glass at the same spots (so only the streaks
+      // remain), blended by the normal, laid over the clean shading
+      vec3 w = pow(abs(nB), vec3(4.0));
+      w /= max(w.x + w.y + w.z, 1e-4);
+      float Lp = vB.z + 4.0;
+      vec3 pat = w.x * texture(uShells, vec3(0.5 + nB.yz * 0.22, Lp)).rgb + w.y * texture(uShells, vec3(0.5 + nB.xz * 0.22, Lp)).rgb + w.z * texture(uShells, vec3(0.5 + nB.xy * 0.22, Lp)).rgb;
+      vec3 ref = w.x * texture(uShells, vec3(0.5 + nB.yz * 0.22, 4.0)).rgb + w.y * texture(uShells, vec3(0.5 + nB.xz * 0.22, 4.0)).rgb + w.z * texture(uShells, vec3(0.5 + nB.xy * 0.22, 4.0)).rgb;
+      shell.rgb *= clamp(pat / max(ref, vec3(0.04)), 0.0, 2.5);
+    } // v63: the disc's gradients — the limb compresses uv and would mip the rim ring away
     shell = min(shell * uShellOp, vec4(1.0));
+    // v63.2 (James: "the border is way too bright... ruins the effect" on every
+    // dark orb): on a ball the atlas's baked rim ring is halved — the limb
+    // already reads as an edge from the shading, it does not need a white line
+    shell *= 1.0 - ballK * (1.0 - uBallRim) * smoothstep(0.80, 0.97, length(uv)); // v63.3 dialed (ballRim)
   }
   vec3 outP = shell.rgb + coreP * (1.0 - shell.a);
   float outA = shell.a + coreA * (1.0 - shell.a);
   if (portal > 1.5 && portal < 2.5) { outP *= uHeartOp; outA *= uHeartOp; } // v62.1 heart balls: a veil, not a container (halo untouched — the long-range read)
+
+  // v63 the sun on the glass: one key light per orb (its nearest heart,
+  // JS-picked) — a soft lit side, a fresnel rim that brightens toward the
+  // light, and one hot pin. Modest: the light inside is still the subject.
+  // Hearts, eyes and beings are lights themselves (vL.w = 1: ball, unlit).
+  {
+    float lightK = clamp(vL.w - 1.0, 0.0, 1.0) * ballK * hitF;
+    if (lightK > 0.001) {
+      vec3 Ld = normalize(vL.xyz);
+      float fres = pow(1.0 - bnz, 2.5);
+      float ndl = max(dot(Nw, Ld), 0.0);
+      vec3 Hh = normalize(Ld - rd);
+      float spec = pow(max(dot(Nw, Hh), 0.0), 48.0) * (0.3 + 0.7 * ndl);
+      vec3 tint = mix(c1, c2, 0.5);
+      float fr = 0.16 * uBallRim; // v63.3 the fresnel edge rides the dial (0.08 at 0.5)
+      vec3 lit = tint * (0.07 * ndl + fr * fres * (0.35 + 0.65 * ndl)) + vec3(1.0) * spec * 0.35;
+      lit *= lightK * (0.5 + 0.5 * uShellOp);
+      outP += lit;
+      outA = min(1.0, outA + (0.07 * ndl + fr * fres + spec * 0.35) * lightK * 0.5);
+    }
+  }
 
   // halo: v49.1 — a LONG-RANGE effect now (James: the near-field version
   // read as ghost balls, and this is space, not the old cave — no medium to
@@ -1278,7 +1823,7 @@ void main() {
   }
   gl.useProgram(prog);
   const U = {};
-  for (const name of ["uVP", "uRight", "uUp", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uHeartOp", "uFadeScale", "uArt", "uGlyphs"]) {
+  for (const name of ["uVP", "uRight", "uUp", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uHeartOp", "uFadeScale", "uArt", "uGlyphs", "uSphere", "uBallRim"]) {
     U[name] = gl.getUniformLocation(prog, name);
   }
 
@@ -1286,6 +1831,27 @@ void main() {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
   gl.clearColor(0, 0, 0, 0);
+
+  // v63 the key-light pick: an orb's sun is its nearest heart (hearts are
+  // the community node suns, the colony beacons, the Lantern). Direction
+  // only — unit, ship space is world-rotation-free so world dirs are fine.
+  const heartIdx = [];
+  let lightTick = 0;
+  function pickLight(o, i) {
+    const x = wp[i * 3], y = wp[i * 3 + 1], z = wp[i * 3 + 2];
+    let best = -1, bd = Infinity;
+    for (let h = 0; h < heartIdx.length; h++) {
+      const j = heartIdx[h];
+      if (j === i) continue;
+      const dx = wp[j * 3] - x, dy = wp[j * 3 + 1] - y, dz = wp[j * 3 + 2] - z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < bd) { bd = d2; best = j; }
+    }
+    if (best < 0) { o.lx = 0.3; o.ly = 0.9; o.lz = 0.3; return; }
+    const dx = wp[best * 3] - x, dy = wp[best * 3 + 1] - y, dz = wp[best * 3 + 2] - z;
+    const l = Math.sqrt(bd) || 1;
+    o.lx = dx / l; o.ly = dy / l; o.lz = dz / l;
+  }
 
   // unit quad
   const quadBuf = gl.createBuffer();
@@ -1296,10 +1862,11 @@ void main() {
 
   // instance buffer: 5 vec4 per orb (v47: i4 = kind, p0, p1, activity — the
   // interior/worldlet/creature channel)
-  const FLOATS = 20;
+  // v63: i5 = key light dir + ball flag (6 vec4 per orb)
+  const FLOATS = 24;
   const instBuf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
-  for (let a = 1; a <= 5; a++) {
+  for (let a = 1; a <= 6; a++) {
     gl.enableVertexAttribArray(a);
     gl.vertexAttribPointer(a, 4, gl.FLOAT, false, FLOATS * 4, (a - 1) * 16);
     gl.vertexAttribDivisor(a, 1);
@@ -1312,12 +1879,43 @@ void main() {
   const shellTex = gl.createTexture();
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, shellTex);
-  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 10, gl.RGBA8, TEXSIZE, TEXSIZE, 4);
+  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 10, gl.RGBA8, TEXSIZE, TEXSIZE, 8); // v64.3: layers 4–7 = the highlight-free copies balls sample
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.uniform1i(U.uShells, 0);
+  // v64.3 (James, twice: "a white pill... looks like a physical object inside
+  // the sphere"): the shell renders carry a baked highlight, and no amount of
+  // turning it toward the light made it belong to the ball. Balls now sample a
+  // HIGHLIGHT-FREE copy: the per-pixel minimum of the render across its own
+  // rotations — anything that sits at one angle only (both highlights) is
+  // erased, anything symmetric (the shading, the rim ring) survives. Plain
+  // glass folds 4 ways (pure clean shading); patterned shells fold 2 ways so
+  // half their streaks survive. The only highlight left on a ball is the one
+  // the shader's own sun puts there. Discs keep the originals.
+  function cleanShellCopy(source, folds) {
+    const c = document.createElement("canvas");
+    c.width = c.height = TEXSIZE;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(source, 0, 0, TEXSIZE, TEXSIZE);
+    const img = x.getImageData(0, 0, TEXSIZE, TEXSIZE);
+    const d = img.data, W = TEXSIZE, out = new Uint8ClampedArray(d.length);
+    for (let y = 0; y < W; y++) for (let xx = 0; xx < W; xx++) {
+      const i = (y * W + xx) * 4;
+      // the same pixel after 90° / 180° / 270° turns about the center
+      const i90 = ((W - 1 - xx) * W + y) * 4, i180 = ((W - 1 - y) * W + (W - 1 - xx)) * 4, i270 = (xx * W + (W - 1 - y)) * 4;
+      for (let k = 0; k < 4; k++) {
+        let v = Math.min(d[i + k], d[i180 + k]);
+        if (folds === 4) v = Math.min(v, d[i90 + k], d[i270 + k]);
+        out[i + k] = v;
+      }
+    }
+    img.data.set(out);
+    x.putImageData(img, 0, 0);
+    return c;
+  }
+
 
   // fallback shell drawn in canvas 2D — used when a PNG can't load or WebGL
   // refuses the upload (file:// tainting); the world degrades, not dies
@@ -1366,6 +1964,7 @@ void main() {
       const img = new Image();
       const finish = (source) => {
         uploadShell(layer, source);
+        try { uploadShell(layer + 4, cleanShellCopy(source, layer === 0 ? 4 : 2)); } catch { uploadShell(layer + 4, source); } // file:// taint → the original stands in
         if (++done === 4) {
           gl.bindTexture(gl.TEXTURE_2D_ARRAY, shellTex);
           gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
@@ -2442,7 +3041,7 @@ void main() {
   // population (1 − saeKnot) are solos on v56 orbits. At the capital every
   // pose is pushed clear of Korrudan as a last step (the v56 orbit guard,
   // generalized) — society-sim TEST 13 samples it.
-  const SAE_VERBS = 6;
+  const SAE_VERBS = 7; // v63.6: + formations
   // the test towers stand off Mediant (seatTestBuildings): restated here
   // because BLDG_KINDS is declared later in the file (TDZ at init) and the
   // sim needs this block to stand alone — society-sim counts them
@@ -2479,6 +3078,151 @@ void main() {
     }
     return mn;
   };
+
+  // ---- v63.6 THE FORMATIONS (verb 6, James: "a variety of shapes... not just
+  // a ring... you could be creative"): a group flies to the seats of a shape,
+  // hangs there breathing and slowly turning, trades the odd seat, then breaks
+  // away on the tide like a ring. Six shapes, rolled per group, sized to the
+  // headcount at ~25 m spacing. Returns { pts: n seats (meters, centered), R }.
+  // Pure math (the sim extracts this block).
+  function saeFormation(shape, n, R) {
+    const S = 25; // the seat spacing
+    const pts = [];
+    const PHI = (1 + Math.sqrt(5)) / 2;
+    // a polyhedron's seats: its vertices, then points along its edges, subdivided
+    // until there are enough; n picked by stride so a thin crowd still shows the shape
+    const poly = (verts) => {
+      let mn = Infinity;
+      for (let i = 0; i < verts.length; i++) for (let j = i + 1; j < verts.length; j++) {
+        const d = Math.hypot(verts[i][0] - verts[j][0], verts[i][1] - verts[j][1], verts[i][2] - verts[j][2]);
+        if (d < mn) mn = d;
+      }
+      const edges = [];
+      for (let i = 0; i < verts.length; i++) for (let j = i + 1; j < verts.length; j++) {
+        const d = Math.hypot(verts[i][0] - verts[j][0], verts[i][1] - verts[j][1], verts[i][2] - verts[j][2]);
+        if (d < mn * 1.02) edges.push([i, j]);
+      }
+      let k = 0, list = verts.slice();
+      while (list.length < n && k < 6) {
+        k++;
+        list = verts.slice();
+        for (const [i, j] of edges) for (let s = 1; s <= k; s++) {
+          const u = s / (k + 1);
+          list.push([
+            verts[i][0] + (verts[j][0] - verts[i][0]) * u,
+            verts[i][1] + (verts[j][1] - verts[i][1]) * u,
+            verts[i][2] + (verts[j][2] - verts[i][2]) * u]);
+        }
+      }
+      const scale = (S * (k + 1)) / mn; // seats S apart along an edge
+      let Rm = 0;
+      for (let i = 0; i < n; i++) {
+        const p = list[Math.min(list.length - 1, Math.floor((i * list.length) / n))];
+        const q = [p[0] * scale, p[1] * scale, p[2] * scale];
+        pts.push(q);
+        Rm = Math.max(Rm, Math.hypot(q[0], q[1], q[2]));
+      }
+      return Rm;
+    };
+    const evenPerms = (a, b, c) => [[a, b, c], [b, c, a], [c, a, b]];
+    const signs = (v, out) => {
+      for (let sx = -1; sx <= 1; sx += 2) for (let sy = -1; sy <= 1; sy += 2) for (let sz = -1; sz <= 1; sz += 2) {
+        const p = [v[0] * sx, v[1] * sy, v[2] * sz];
+        if (!out.some((q) => Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) + Math.abs(q[2] - p[2]) < 1e-6)) out.push(p);
+      }
+    };
+    let Rm = 0;
+    if (shape === 0) {
+      // a hollow sphere on the Fibonacci spiral
+      const r = Math.max(40, S * Math.sqrt(n / (4 * Math.PI)));
+      const ga = Math.PI * (3 - Math.sqrt(5));
+      for (let i = 0; i < n; i++) {
+        const y = 1 - (2 * (i + 0.5)) / n, rad = Math.sqrt(Math.max(0, 1 - y * y)), th = i * ga;
+        pts.push([Math.cos(th) * rad * r, y * r, Math.sin(th) * rad * r]);
+      }
+      Rm = r;
+    } else if (shape === 1) {
+      // the Bucky ball (truncated icosahedron) for a big crowd, the dodecahedron
+      // or icosahedron for a small one — beings on the vertices, then tracing the edges
+      const verts = [];
+      if (n >= 50) {
+        for (const v of evenPerms(0, 1, 3 * PHI)) signs(v, verts);
+        for (const v of evenPerms(1, 2 + PHI, 2 * PHI)) signs(v, verts);
+        for (const v of evenPerms(PHI, 2, 2 * PHI + 1)) signs(v, verts);
+      } else if (n >= 24) {
+        signs([1, 1, 1], verts);
+        for (const v of evenPerms(0, 1 / PHI, PHI)) signs(v, verts);
+      } else {
+        for (const v of evenPerms(0, 1, PHI)) signs(v, verts);
+      }
+      Rm = poly(verts);
+    } else if (shape === 2) {
+      // a cube, a pattern on each face (ring / grid / X, rolled per face)
+      const q = Math.max(2, Math.ceil(n / 6));
+      const side = S * Math.max(2.2, Math.sqrt(q) * 1.35);
+      const h = side / 2;
+      const faces = [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 1, 0], [0, 0, -1]], [[0, 1, 0], [1, 0, 0], [0, 0, -1]],
+        [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, -1, 0]], [[0, 0, -1], [1, 0, 0], [0, 1, 0]]];
+      const face = [];
+      for (let f = 0; f < 6; f++) {
+        const pat = (R() * 3) | 0;
+        const uv = [];
+        if (pat === 0) for (let i = 0; i < q; i++) { const a = (i / q) * TAU; uv.push([Math.cos(a) * 0.36, Math.sin(a) * 0.36]); }
+        else if (pat === 1) { const g = Math.ceil(Math.sqrt(q)); for (let i = 0; i < q; i++) uv.push([((i % g) / Math.max(1, g - 1) - 0.5) * 0.74, (Math.floor(i / g) / Math.max(1, g - 1) - 0.5) * 0.74]); }
+        else for (let i = 0; i < q; i++) { const a = (i / q) * TAU + Math.PI / 4, rr2 = (i % 2) ? 0.34 : 0.22; uv.push([Math.cos(a) * rr2, Math.sin(a) * rr2]); } // a diamond ring
+        const [nrm, e1, e2] = faces[f];
+        for (const [u, v] of uv) face.push([
+          nrm[0] * h + (e1[0] * u + e2[0] * v) * side, nrm[1] * h + (e1[1] * u + e2[1] * v) * side, nrm[2] * h + (e1[2] * u + e2[2] * v) * side]);
+      }
+      for (let i = 0; i < n; i++) pts.push(face[Math.min(face.length - 1, Math.floor((i * face.length) / n))]);
+      Rm = h * Math.sqrt(3);
+    } else if (shape === 3) {
+      // a five-pointed star spun into three dimensions: two pentagrams in
+      // perpendicular planes, beings along the lines
+      // the two planes share an axis, so seats from both can land on one spot:
+      // seats closer than half a spacing are dropped, and the lines are
+      // subdivided finer until the headcount fits
+      let star = [];
+      let r = 40;
+      for (let k = Math.max(1, Math.ceil(n / 10)); k < 12 && star.length < n; k++) {
+        r = Math.max(40, (S * k) / 1.9);
+        star = [];
+        for (let plane = 0; plane < 2; plane++) {
+          for (let i = 0; i < 5; i++) {
+            const rot = Math.PI / 2 + plane * (Math.PI / 5);
+            const a0 = (i / 5) * TAU + rot, a1 = (((i + 2) % 5) / 5) * TAU + rot;
+            for (let s = 0; s < k; s++) {
+              const u = s / k;
+              const x = (Math.cos(a0) + (Math.cos(a1) - Math.cos(a0)) * u) * r, y = (Math.sin(a0) + (Math.sin(a1) - Math.sin(a0)) * u) * r;
+              const p = plane ? [x, 0, y] : [x, y, 0];
+              if (!star.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) < S * 0.5)) star.push(p);
+            }
+          }
+        }
+      }
+      for (let i = 0; i < n; i++) pts.push(star[Math.min(star.length - 1, Math.floor((i * star.length) / n))]);
+      Rm = r;
+    } else if (shape === 4) {
+      // a hexagonal prism, edges traced
+      const verts = [];
+      for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; verts.push([Math.cos(a), 0.5, Math.sin(a)], [Math.cos(a), -0.5, Math.sin(a)]); }
+      Rm = poly(verts);
+    } else {
+      // the lazy cloud: a loose ball where nobody is too near or too far —
+      // jittered cells inside a sphere, seeded, in a shuffled order
+      const cell = S * 1.25;
+      const r = cell * Math.cbrt((3 * n) / (4 * Math.PI)) * 1.25 + cell * 0.5;
+      const cells = [];
+      const m = Math.ceil(r / cell);
+      for (let x = -m; x <= m; x++) for (let y = -m; y <= m; y++) for (let z = -m; z <= m; z++) {
+        const p = [(x + 0.5 + (R() - 0.5) * 0.7) * cell, (y + 0.5 + (R() - 0.5) * 0.7) * cell, (z + 0.5 + (R() - 0.5) * 0.7) * cell];
+        if (Math.hypot(p[0], p[1], p[2]) <= r) cells.push(p);
+      }
+      for (let i = cells.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; const t = cells[i]; cells[i] = cells[j]; cells[j] = t; }
+      for (let i = 0; i < n; i++) { const p = cells[i % cells.length]; pts.push(p); Rm = Math.max(Rm, Math.hypot(p[0], p[1], p[2])); }
+    }
+    return { pts, R: Rm };
+  }
   function saelyriLayout(geoList, capPop, satPop, groupMul, knotFrac, streamMul) {
     const R = mulberry32(SOCIETY_SEED ^ 0x5ae111);
     const rr = (a, b) => a + R() * (b - a);
@@ -2549,8 +3293,8 @@ void main() {
       // into its suns; satellites live on their suns and bridges (James's
       // pick). The stream dial scales the river share.
       const W = isCap
-        ? [0.22, 0.20 * streamMul, 0.13, 0.25, 0.12, 0.08]
-        : [0.28, 0.28 * streamMul, 0.12, 0.10, 0.14, 0.08];
+        ? [0.20, 0.20 * streamMul, 0.11, 0.21, 0.10, 0.06, 0.12]
+        : [0.24, 0.26 * streamMul, 0.10, 0.09, 0.12, 0.06, 0.13]; // v63.6: [6] = formations
       if (!routes.length) W[1] = 0;
       const target = pop * Math.min(1, Math.max(0, knotFrac));
       let inGroups = 0;
@@ -2558,8 +3302,9 @@ void main() {
       // the verb mix follows the weights EXACTLY (largest-deficit pick with a
       // seeded tie-break) — a random draw left one seed's capital with twice
       // its share of rivers; James tunes weights, so the roll must honor them
-      const wSum = W[0] + W[1] + W[2] + W[3] + W[4] + W[5];
-      const dealt = [0, 0, 0, 0, 0, 0];
+      let towerSeated = false;
+      const wSum = W[0] + W[1] + W[2] + W[3] + W[4] + W[5] + W[6];
+      const dealt = [0, 0, 0, 0, 0, 0, 0];
       while (target - inGroups >= 2 && guard++ < 4000) {
         let verb = 0, best = -Infinity;
         const jit = R() * 0.001;
@@ -2570,7 +3315,7 @@ void main() {
         }
         dealt[verb]++;
         const n0 = verb === 0 ? rr(12, 40) : verb === 1 ? rr(20, 40) : verb === 2 ? 2
-          : verb === 3 ? rr(10, 40) : verb === 4 ? rr(6, 20) : rr(3, 8);
+          : verb === 3 ? rr(10, 40) : verb === 4 ? rr(6, 20) : verb === 6 ? rr(14, 40) : rr(3, 8);
         let n = verb === 2 ? 2 : Math.max(2, Math.round(n0 * groupMul));
         n = Math.min(n, Math.max(2, Math.round(target - inGroups)));
         const g = { verb, n, gi: groups.length, seed: rr(0, 100), period: rr(140, 320), tOff: rr(0, 1), ndI: 0, fam: 0 };
@@ -2625,7 +3370,8 @@ void main() {
             const en = rr(1.08, 1.14);
             anchor = [dir[0] * SKULL_EL[0] * en, dir[1] * SKULL_EL[1] * en, dir[2] * SKULL_EL[2] * en];
             g.spread = Math.min(110, 12 * Math.sqrt(n)); // sized to the headcount (~25 m apart); ≤110 keeps the bone guard honest
-          } else if (ci === 1 && R() < 0.7) {
+          } else if (ci === 1 && (!towerSeated || R() < 0.7)) {
+            towerSeated = true; // v63.6: Mediant's first gathering is always at the towers (the roll moved when formations joined the deal)
             const k = (R() * SAE_TOWERS) | 0;
             const sh = geo.shellR;
             anchor = [sh * 1.6 + k * 900 + rr(-60, 60), -200 + rr(120, 340), sh * 0.4 + rr(-60, 60)];
@@ -2666,6 +3412,33 @@ void main() {
             const l = Math.hypot(p[0], p[1], p[2]) || 1;
             for (let tries = 0; tries < 24 && (g.lane[0] * p[0] + g.lane[1] * p[1] + g.lane[2] * p[2]) / l < 0.25; tries++) g.lane = unit(1);
           }
+        } else if (verb === 6) {
+          // v63.6 a formation: the shape's seats, its center on a slow orbit
+          // around a sun (guarded like a ring at the capital by the shape's
+          // radius), the whole shape turning in place, a chorus morph clock,
+          // and a seat-trade clock so it never freezes
+          g.shape = (R() * 6) | 0;
+          const fm = saeFormation(g.shape, n, R);
+          g.seats = fm.pts;
+          g.formR = fm.R;
+          g.ndI = pickSun((nd) => nd.r * 2.3 + fm.R);
+          const nd = geo.nodes[g.ndI];
+          g.axis = unit(0.5);
+          g.rad = nd.r * rr(1.4, 2.3);
+          if (isCap) {
+            for (let tries = 0; tries < 24 && saeOrbitEnMin(nd.p, g.axis, g.rad) < 1.03 + g.formR / SKULL_EL[0]; tries++) {
+              g.axis = unit(0.5);
+              g.rad = nd.r * rr(1.4, 2.3);
+            }
+          }
+          g.w = TAU / rr(300, 800);
+          g.ph = rr(0, TAU);
+          g.axis2 = unit(1);
+          g.w2 = (TAU / rr(140, 320)) * (R() < 0.5 ? -1 : 1);
+          g.swapLen = rr(34, 70);
+          g.mLen = rr(45, 120);
+          g.mOff = rr(0, 1000);
+          g.mHold = rr(6, 14);
         } else {
           // a chase line on a lissajous loop around a sun
           g.ndI = pickSun((nd) => nd.r * 2.5);
@@ -2677,7 +3450,9 @@ void main() {
         }
         g.fam = geo.nodes[g.ndI].fam;
         for (let k = 0; k < n; k++) {
-          list.push(member(g.gi, k, n, g.ndI));
+          const mm = member(g.gi, k, n, g.ndI);
+          if (verb === 6) mm.seat = g.seats[k];
+          list.push(mm);
         }
         groups.push(g);
         inGroups += n;
@@ -2771,6 +3546,34 @@ void main() {
         out[0] = nd.p[0] + g.lane[0] * r + (m.off[0] - g.lane[0] * dl) * 18;
         out[1] = nd.p[1] + g.lane[1] * r + (m.off[1] - g.lane[1] * dl) * 18;
         out[2] = nd.p[2] + g.lane[2] * r + (m.off[2] - g.lane[2] * dl) * 18;
+      } else if (g.verb === 6) {
+        // v63.6 the formation: center on its orbit, the seat turned about the
+        // shape's own axis, a breath, a seat trade with the partner (k ^ 1)
+        // on the pair's own clock, and a slow personal drift in the lazy cloud
+        tide = saeTide(g, t, tideMul);
+        const [e1, e2] = saeFrame(g.axis);
+        const th = t * g.w + g.ph;
+        const ct = Math.cos(th), st = Math.sin(th);
+        const cx = nd.p[0] + (e1[0] * ct + e2[0] * st) * g.rad;
+        const cy = nd.p[1] + (e1[1] * ct + e2[1] * st) * g.rad;
+        const cz = nd.p[2] + (e1[2] * ct + e2[2] * st) * g.rad;
+        const j = (m.k ^ 1) < g.n ? m.k ^ 1 : m.k;
+        const pairPh = (((t / g.swapLen) + (m.k >> 1) * 0.173 + g.tOff) % 1 + 1) % 1;
+        const sw = saeSmooth((pairPh - 0.42) / 0.1) * (1 - saeSmooth((pairPh - 0.86) / 0.1));
+        const sa = m.seat, sb = g.seats[j];
+        let px = sa[0] + (sb[0] - sa[0]) * sw, py = sa[1] + (sb[1] - sa[1]) * sw, pz = sa[2] + (sb[2] - sa[2]) * sw;
+        if (g.shape === 5) {
+          px += Math.sin(t * 0.13 + m.seed) * 6; py += Math.sin(t * 0.11 + m.seed * 1.7) * 5; pz += Math.cos(t * 0.12 + m.seed * 0.6) * 6;
+        }
+        const br = 1 + 0.05 * Math.sin(t * 0.25 + g.seed);
+        // turn about axis2 by a = t * w2 (Rodrigues)
+        const a = t * g.w2, ca = Math.cos(a), sn = Math.sin(a);
+        const ax = g.axis2;
+        const d = ax[0] * px + ax[1] * py + ax[2] * pz;
+        const rx = px * ca + (ax[1] * pz - ax[2] * py) * sn + ax[0] * d * (1 - ca);
+        const ry = py * ca + (ax[2] * px - ax[0] * pz) * sn + ax[1] * d * (1 - ca);
+        const rz = pz * ca + (ax[0] * py - ax[1] * px) * sn + ax[2] * d * (1 - ca);
+        out[0] = cx + rx * br; out[1] = cy + ry * br; out[2] = cz + rz * br;
       } else {
         const tt = t * tideMul - m.k * g.lag;
         out[0] = nd.p[0] + Math.sin(g.fa * tt + g.seed) * g.amp;
@@ -2797,7 +3600,7 @@ void main() {
   // six shapes. Congregations share their group's clock (the chorus).
   // out = [blend 0..1, shape 1..6]
   function saelyriMorph(g, m, t, out) {
-    const chorus = !!g && g.verb === 0;
+    const chorus = !!g && (g.verb === 0 || g.verb === 6); // rings and formations morph together
     const len = chorus ? g.mLen : m.mLen, off = chorus ? g.mOff : m.mOff;
     const hold = chorus ? g.mHold : m.mHold, seed = chorus ? g.seed : m.seed;
     const melt = m.mMelt;
@@ -2820,7 +3623,7 @@ void main() {
   // community-local; 0 for pairs and streams (a pair is two lights, a river
   // reads as its own line of motes).
   function saeCloud(g, geo, out) {
-    if (g.verb === 1 || g.verb === 2) return 0;
+    if (g.verb === 1 || g.verb === 2 || g.verb === 6) return 0;
     const nd = geo.nodes[g.ndI];
     if (g.verb === 3) { out[0] = g.anchor[0]; out[1] = g.anchor[1]; out[2] = g.anchor[2]; return g.spread * 2.2; }
     if (g.verb === 4) {
@@ -3621,7 +4424,14 @@ void main() {
       const states = sae.grp[ci].map((g) => {
         const gs = { g, ci, dmin: Infinity, near: null, trigT: -1, seedPos: [0, 0, 0], lastChord: -1e9, cloud: null, R: 0 };
         const R = saeCloud(g, geo, cc);
-        if (R > 0) {
+        // v63.5 THE CROWD CLOUDS ARE RETIRED (James, in flight: the beings
+        // already resolve from far dots to energy bodies "very well"; the
+        // cloud was "fuzzy puffballs from any distance" that beings flew
+        // straight through — "the whole thing just isn't working at all").
+        // saeCloud/saeCloudGate stay for the sim's geometry; no cloud orb is
+        // ever made, the dial is gone, saved cfgs carrying saeCloud are ignored.
+        const CROWD_CLOUDS = false;
+        if (CROWD_CLOUDS && R > 0) {
           const [h1, h2] = SOC_FAMS[g.fam];
           const o = actorBase(66, 1, (h1 + h2) / 2, (h1 + h2) / 2);
           o.sat = 80;
@@ -3996,9 +4806,9 @@ void main() {
         const com = COMMUNITIES[gs.ci];
         if (!com.c) { o.fixedR = 0.01; o.p1 = 0; continue; }
         const g = gs.g;
-        const tide = g.verb === 0 || g.verb === 3 ? saeTide(g, t, tideMul) : 1;
+        const tide = g.verb === 0 || g.verb === 3 || g.verb === 6 ? saeTide(g, t, tideMul) : 1;
         const dx = cam.pos[0] - o.fix[0], dy = cam.pos[1] - o.fix[1], dz = cam.pos[2] - o.fix[2];
-        const s = saeCloudGate(Math.hypot(dx, dy, dz), gs.R, g.n) * tide * cfg.saeCloud;
+        const s = saeCloudGate(Math.hypot(dx, dy, dz), gs.R, g.n) * tide;
         o.p1 = s;
         o.fixedR = s > 0.002 ? gs.R : 0.01;
       }
@@ -5457,7 +6267,33 @@ void main() { oC = texture(uTex, vT) * uAmt; }`;
         const magic = dv.getUint32(0, false);
         if (magic !== 0x47484f4d && magic !== 0x47484d32) throw new Error("bad magic " + url);
         const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
-        return { nv, ni, fields: magic === 0x47484d32, verts: new Float32Array(buf, 12, nv * 8), idx: new Uint32Array(buf, 12 + nv * 32, ni) };
+        const verts = new Float32Array(buf, 12, nv * 8);
+        if (magic === 0x47484d32) {
+          // v63.9 (James: "most of the glow home is up and to the right...
+          // almost half the globe is empty"): the bakes were centred on their
+          // BOUNDING BOX, and the spears drag that box off the body — roll 04
+          // sat 0.72 bulk radii off. Re-centre on the bulk (iterated 85th-
+          // percentile trimmed mean) and re-normalize so the bulk radius is 1
+          // about the new centre. Idempotent: a bake centred this way stays put.
+          let c = [0, 0, 0];
+          const d = new Float32Array(nv);
+          let cut = Infinity;
+          for (let it = 0; it < 4; it++) {
+            for (let k = 0; k < nv; k++) d[k] = Math.hypot(verts[k * 8] - c[0], verts[k * 8 + 1] - c[1], verts[k * 8 + 2] - c[2]);
+            const srt = Float32Array.from(d).sort();
+            cut = srt[Math.floor(srt.length * 0.85)];
+            let sx = 0, sy = 0, sz = 0, n = 0;
+            for (let k = 0; k < nv; k++) if (d[k] <= cut) { sx += verts[k * 8]; sy += verts[k * 8 + 1]; sz += verts[k * 8 + 2]; n++; }
+            if (n) c = [sx / n, sy / n, sz / n];
+          }
+          const inv = 1 / (cut || 1);
+          for (let k = 0; k < nv; k++) {
+            verts[k * 8] = (verts[k * 8] - c[0]) * inv;
+            verts[k * 8 + 1] = (verts[k * 8 + 1] - c[1]) * inv;
+            verts[k * 8 + 2] = (verts[k * 8 + 2] - c[2]) * inv;
+          }
+        }
+        return { nv, ni, fields: magic === 0x47484d32, verts, idx: new Uint32Array(buf, 12 + nv * 32, ni) };
       }));
       glowHome.meshes = loaded;
       uploadCommunities();
@@ -6586,6 +7422,7 @@ void main() {
 
     // -- orb world positions + depth sort (back to front)
     const n = orbs.length;
+    heartIdx.length = 0; // v63: this frame's suns, for the key-light pick
     if (wp.length !== n * 3) wp = new Float32Array(n * 3);
     const sx = cfg.spreadX, sy = cfg.spreadY, sz = cfg.spreadZ;
     const actEase = 1 - Math.exp(-dt / 0.9);
@@ -6624,6 +7461,7 @@ void main() {
         z = o.n[2] * sz + wander(o.wz, t) * amp;
       }
       wp[i * 3] = x; wp[i * 3 + 1] = y; wp[i * 3 + 2] = z;
+      if (o.heart) heartIdx.push(i);
       const dx = x - cam.pos[0], dy = y - cam.pos[1], dz = z - cam.pos[2];
       dists[i] = dx * dx + dy * dy + dz * dz;
       if (!o.dust && !o.veil && !o.reef && !o.actor && dists[i] < 6250000) contacts++;
@@ -6711,6 +7549,7 @@ void main() {
     }
 
     let m = 0;
+    lightTick++;
     for (let s = 0; s < n; s++) {
       const i = order[s];
       const o = orbs[i];
@@ -6742,6 +7581,16 @@ void main() {
       instData[off + 17] = o.p0;
       instData[off + 18] = o.p1;
       instData[off + 19] = o.act;
+      // v63 the ball flag + key light: 0 = stays a disc (dust, veils, glyphs,
+      // creatures, crowd clouds), 1 = a ball that is its own light (hearts,
+      // eyes, beings), 2 = a ball lit by its nearest heart — re-picked every
+      // 24 frames, staggered, so a fleet of thousands costs nothing per frame
+      const lw = o.dust || o.veil || (o.kind >= 60 && o.kind !== 65) ? 0 : (o.heart || o.eye || o.kind === 65) ? 1 : 2;
+      if (lw === 2 && (o.lx === undefined || (i + lightTick) % 24 === 0)) pickLight(o, i);
+      instData[off + 20] = lw === 2 ? o.lx : 0;
+      instData[off + 21] = lw === 2 ? o.ly : 1;
+      instData[off + 22] = lw === 2 ? o.lz : 0;
+      instData[off + 23] = lw;
     }
 
     // -- draw
@@ -7002,6 +7851,8 @@ void main() {
       gl.uniform1f(U.uGlow, cfg.glow);
       gl.uniform1f(U.uShellOp, cfg.shellOp);
       gl.uniform1f(U.uHeartOp, cfg.heartOp);
+      gl.uniform1f(U.uSphere, cfg.sphere);
+      gl.uniform1f(U.uBallRim, cfg.ballRim);
       gl.uniform1f(U.uFadeScale, cfg.fadeSpeed);
       gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, instData);
@@ -7154,6 +8005,42 @@ void main() {
   panel.hidden = true;
   panel.setAttribute("role", "group");
   panel.setAttribute("aria-label", "Dimension tuning");
+  // v63.7 the grab handle (James: the panel sat over what he was tuning):
+  // drag the header anywhere; the position holds until the panel is closed
+  // and opened again (it reopens at the right)
+  const tHead = document.createElement("div");
+  tHead.className = "tuner-head";
+  const tGrip = document.createElement("span");
+  tGrip.className = "grip";
+  tGrip.textContent = "⋮⋮";
+  const tTitle = document.createElement("span");
+  tTitle.textContent = "configuration";
+  const tHint = document.createElement("span");
+  tHint.className = "hint";
+  tHint.textContent = "drag here to move";
+  tHead.append(tGrip, tTitle, tHint);
+  panel.appendChild(tHead);
+  let tDrag = null;
+  tHead.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    const r = panel.getBoundingClientRect();
+    tDrag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    try { tHead.setPointerCapture(e.pointerId); } catch {}
+    e.preventDefault();
+  });
+  tHead.addEventListener("pointermove", (e) => {
+    if (!tDrag) return;
+    const r = panel.getBoundingClientRect();
+    const x = Math.max(0, Math.min(window.innerWidth - r.width, e.clientX - tDrag.dx));
+    const y = Math.max(0, Math.min(window.innerHeight - 48, e.clientY - tDrag.dy));
+    panel.style.left = x + "px";
+    panel.style.top = y + "px";
+    panel.style.right = "auto";
+  });
+  const tDrop = () => { tDrag = null; };
+  tHead.addEventListener("pointerup", tDrop);
+  tHead.addEventListener("pointercancel", tDrop);
+  const resetPanelPos = () => { panel.style.left = ""; panel.style.top = ""; panel.style.right = ""; };
 
   function makeSliderEl(s) {
     const wrap = document.createElement("div");
@@ -7235,7 +8122,7 @@ void main() {
     // 1,000×1,000×250km and it is STILL not a slider. Geography is law.)
     { label: "the field", keys: ["count", "dust", "grouping"] },
     { label: "the orbs", keys: ["sizeMin", "sizeMax", "shellOp", "glow"] },
-    { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed"] },
+    { label: "the air", keys: ["haze", "aerial", "melt", "fadeSpeed", "sphere", "ballRim"] },
     { label: "the stick", keys: ["stickMode", "stickDead", "stickReach", "stickGrab", "stickYawMax", "stickPitchMax", "rollMax", "stickCurve", "stickPull"] },
     // v49 configuration (James's tally: top speed + tank length are the key
     // ones) — physics/feel knobs, forever tunable. The ring dials freeze
@@ -7247,7 +8134,7 @@ void main() {
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
     { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
-    { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeTide", "saeCloud", "saeNotice"] },
+    { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");
@@ -7335,19 +8222,37 @@ void main() {
     return b;
   }
 
+  // v63.7 the status line (James: "I don't know if it's saving or not"):
+  // every preset button says what it did, and whether what was saved is
+  // the preset that loads on start
+  const status = document.createElement("div");
+  status.className = "tuner-status";
+  let statusT = 0;
+  function say(msg) {
+    status.textContent = msg;
+    tHint.textContent = msg; // the header never scrolls out of view — the message shows there too
+    clearTimeout(statusT);
+    statusT = setTimeout(() => { status.textContent = ""; tHint.textContent = "drag here to move"; }, 9000);
+  }
   const saveP = presetButton("save", () => {
     const name = nameInput.value.trim() || presetSel.value;
-    if (!name) return;
+    if (!name) { say("type a name, or pick a preset to overwrite, then save"); return; }
     presetStore.presets[name] = cfgSnapshot();
     savePresetStore();
     refreshPresets();
     presetSel.value = name;
     nameInput.value = "";
+    saveP.textContent = "saved ✓";
+    setTimeout(() => { saveP.textContent = "save"; }, 1600);
+    say(presetStore.default === name
+      ? `saved "${name}" — it is the start preset, so this is what loads next time`
+      : `saved "${name}" — NOT the start preset${presetStore.default ? ` ("${presetStore.default}" loads next time)` : ""}; press "set as start" to load it on start`);
   });
   const applyP = presetButton("apply", () => {
     const p = presetStore.presets[presetSel.value];
-    if (!p) return;
+    if (!p) { say("pick a preset first"); return; }
     applyPresetSnapshot(p);
+    say(`applied "${presetSel.value}" — the dials show it now`);
   });
   // v54.3: one path for "apply" and the late start-preset arrival. A preset
   // without a pose means stock spawn (pre-clear, don't inherit); a preset
@@ -7367,11 +8272,12 @@ void main() {
   }
   lateApplyStart = applyPresetSnapshot;
   const startP = presetButton("set as start", () => {
-    if (!presetStore.presets[presetSel.value]) return;
+    if (!presetStore.presets[presetSel.value]) { say("pick a preset first"); return; }
     presetStore.default = presetSel.value;
     savePresetStore();
     refreshPresets();
     presetSel.value = presetStore.default;
+    say(`"${presetStore.default}" is the start preset now — it loads on every start`);
   });
   const deleteP = presetButton("delete", () => {
     if (!presetStore.presets[presetSel.value]) return;
@@ -7390,6 +8296,7 @@ void main() {
 
   presetRow.append(presetSel, nameInput, saveP, applyP, startP, deleteP, copyP);
   panel.appendChild(presetRow);
+  panel.appendChild(status);
 
   // v54.3: the spawn row — capture the ship's position + facing as the
   // start condition. Part of the preset snapshot: capture, then save a
@@ -7703,6 +8610,7 @@ void main() {
   function setOpen(which) {
     for (const k in PANELS) {
       const open = k === which ? PANELS[k].el.hidden : false;
+      if (k === "tune" && open) resetPanelPos(); // v63.7: reopens at the right
       PANELS[k].el.hidden = !open;
       PANELS[k].btn.setAttribute("aria-expanded", String(open));
       PANELS[k].btn.classList.toggle("lit", open);

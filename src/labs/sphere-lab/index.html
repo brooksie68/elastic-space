@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sphere-lab — the ball</title>
+<style>
+  /* the page is typeset (James, 2026-09-04: "organize this page, typographically, into
+     something readable") — a header in normal flow, column heads on a grid that shares
+     the canvas's column widths, row labels in the gutter, a one-sentence status bar */
+  html, body { margin: 0; background: #06070c; color: #cfd6e6; font: 16px/1.45 system-ui, sans-serif; }
+  #head { padding: 22px 28px 14px; max-width: 1400px; }
+  #head h1 { margin: 0 0 4px; font: 600 28px/1.2 system-ui, sans-serif; color: #ffe9d6; letter-spacing: 0.01em; }
+  #head p { margin: 0 0 6px; color: #b4bccf; max-width: 70ch; }
+  #head .keys { color: #8b94a8; font-size: 15px; }
+  #head .keys b { color: #cfd6e6; font-weight: 600; }
+  #cols { display: grid; align-items: end; padding: 14px 0 6px; border-top: 1px solid rgba(140,160,210,.14); }
+  #cols div { padding: 0 14px; font: 600 18px/1.2 system-ui, sans-serif; color: #ffe9d6; text-align: center; }
+  #cols div.gut { color: #8b94a8; font-weight: 400; font-size: 15px; text-align: left; padding-left: 28px; }
+  #wrap { position: relative; }
+  #c { display: block; } /* 1:1 — one canvas pixel per device pixel, never stretched to the window; scroll to see the rest */
+  #labels { position: absolute; left: 0; top: 0; pointer-events: none; }
+  #labels .row { position: absolute; display: flex; gap: 12px; align-items: baseline; }
+  #labels .n { color: #8b94a8; font: 600 15px/1.2 system-ui, sans-serif; min-width: 1.6em; text-align: right; }
+  #labels .t { color: #e6ebf5; font: 600 20px/1.2 system-ui, sans-serif; }
+  #labels .s { display: block; color: #8b94a8; font: 400 15px/1.3 system-ui, sans-serif; margin-top: 3px; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 28px; background: rgba(4,5,9,.86); color: #b4bccf; font-size: 15px; border-top: 1px solid rgba(140,160,210,.14); }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1 id="title">Sphere Lab</h1>
+  <p id="blurb"></p>
+  <p class="keys"><b>C</b> saves the sheet to tmp/snapshots &nbsp;·&nbsp; <b>1–9</b> shows one row alone, turning &nbsp;·&nbsp; <b>T</b> disc / ball in that view &nbsp;·&nbsp; <b>0</b> back to the sheet</p>
+  <div id="cols"></div>
+</header>
+<div id="wrap"><canvas id="c"></canvas><div id="labels"></div></div>
+<div id="bar">loading the world's shaders…</div>
+<script>
+// sphere-lab (v63): where THE BALL gets judged before it flies. Pulls the
+// real orb VS/FS from world.js, stands one orb of each family at the origin
+// with a real depth-writing beam through it, and renders four cells per
+// row: the old disc (dial 0) at camera angle 0°, then the ball at 0°, 45°
+// and 90° around it. A disc looks the same from every angle; a ball does
+// not — that is the whole test. Key light is fixed in the world, so the
+// rim and the pin move across the glass as the camera orbits.
+// Keys: C capture (posts to tmp/snapshots/), 1–8 solo a row (animated,
+// orbiting), T toggle the dial in solo, 0 back to the sheet.
+"use strict";
+const TAU = Math.PI * 2;
+(async () => {
+  const bar = document.getElementById("bar");
+  const BASE = "../../worlds/orb-dimension/"; // promoted from tmp/orb-dimension/sphere-lab.html 2026-09-04 (James: "add it to the labs")
+  const src = await fetch(BASE + "world.js?t=" + Date.now()).then((r) => r.text());
+  const grab = (tag) => {
+    const i = src.indexOf(tag + " = `");
+    const j = src.indexOf("`;", i);
+    return src.slice(src.indexOf("`", i) + 1, j);
+  };
+  const canvas = document.getElementById("c");
+  // ?sheet=interiors — every interior kind at full proximity (v64 Phase 2: the volumes)
+  const SHEET = new URLSearchParams(location.search).get("sheet") || "ball";
+  const COLS = 4, CW = 600, CH = 270, GUT = 420;
+  let ROWS = SHEET === "interiors" ? 24 : 8; // GUT: a label gutter left of the cells (James: readable, nothing zoomed)
+  canvas.width = GUT + COLS * CW;
+  canvas.height = ROWS * CH;
+  canvas.style.width = (canvas.width / devicePixelRatio) + "px";
+  canvas.style.height = (canvas.height / devicePixelRatio) + "px";
+  const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: false });
+  const sh = (type, s) => {
+    const o = gl.createShader(type);
+    gl.shaderSource(o, s);
+    gl.compileShader(o);
+    if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));
+    return o;
+  };
+  const link = (vs, fs) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  };
+  const prog = link(grab("VS"), grab("FS"));
+  gl.useProgram(prog);
+  const U = {};
+  for (const n of ["uVP", "uRight", "uUp", "uTime", "uFog", "uGlow", "uShellOp", "uHeartOp", "uFadeScale", "uShells", "uArt", "uGlyphs", "uSphere", "uBallRim"]) U[n] = gl.getUniformLocation(prog, n);
+
+  // ---- textures: the real shells + art, the world's own files
+  const loadImg = (p) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = p; });
+  const TEXSIZE = 768;
+  const shellTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, shellTex);
+  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 10, gl.RGBA8, TEXSIZE, TEXSIZE, 8);
+  // v64.3 (James, twice: "a white pill... looks like a physical object inside
+  // the sphere"): the shell renders carry a baked highlight, and no amount of
+  // turning it toward the light made it belong to the ball. Balls now sample a
+  // HIGHLIGHT-FREE copy: the per-pixel minimum of the render across its own
+  // rotations — anything that sits at one angle only (both highlights) is
+  // erased, anything symmetric (the shading, the rim ring) survives. Plain
+  // glass folds 4 ways (pure clean shading); patterned shells fold 2 ways so
+  // half their streaks survive. The only highlight left on a ball is the one
+  // the shader's own sun puts there. Discs keep the originals.
+  function cleanShellCopy(source, folds) {
+    const c = document.createElement("canvas");
+    c.width = c.height = TEXSIZE;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(source, 0, 0, TEXSIZE, TEXSIZE);
+    const img = x.getImageData(0, 0, TEXSIZE, TEXSIZE);
+    const d = img.data, W = TEXSIZE, out = new Uint8ClampedArray(d.length);
+    for (let y = 0; y < W; y++) for (let xx = 0; xx < W; xx++) {
+      const i = (y * W + xx) * 4;
+      // the same pixel after 90° / 180° / 270° turns about the center
+      const i90 = ((W - 1 - xx) * W + y) * 4, i180 = ((W - 1 - y) * W + (W - 1 - xx)) * 4, i270 = (xx * W + (W - 1 - y)) * 4;
+      for (let k = 0; k < 4; k++) {
+        let v = Math.min(d[i + k], d[i180 + k]);
+        if (folds === 4) v = Math.min(v, d[i90 + k], d[i270 + k]);
+        out[i + k] = v;
+      }
+    }
+    img.data.set(out);
+    x.putImageData(img, 0, 0);
+    return c;
+  }
+
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+  const SHELLS = ["glass", "frosted", "swirl", "banded"];
+  for (let i = 0; i < 4; i++) {
+    const im = await loadImg(BASE + "assets/orbs/orb-" + SHELLS[i] + ".png");
+    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, TEXSIZE, TEXSIZE, 1, gl.RGBA, gl.UNSIGNED_BYTE, im);
+    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i + 4, TEXSIZE, TEXSIZE, 1, gl.RGBA, gl.UNSIGNED_BYTE, cleanShellCopy(im, i === 0 ? 4 : 2)); // v64.3
+  }
+  gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+  const ART_SIZE = 1024;
+  const ART = ["interior-art/bear-reading", "interior-art/terrarium", "interior-art/workshop", "planetoids/planet-lava", "planetoids/planet-ice", "planetoids/planet-gas", "planetoids/planet-ocean", "planetoids/planet-desert"];
+  const artTex = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D_ARRAY, artTex);
+  gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 10, gl.RGBA8, ART_SIZE, ART_SIZE, ART.length);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = ART_SIZE;
+  const cx = cv.getContext("2d");
+  for (let i = 0; i < ART.length; i++) {
+    try {
+      const im = await loadImg(BASE + "assets/" + ART[i] + ".png");
+      const ins = 0.035;
+      cx.drawImage(im, im.width * ins, im.height * ins, im.width * (1 - 2 * ins), im.height * (1 - 2 * ins), 0, 0, ART_SIZE, ART_SIZE);
+    } catch { cx.fillStyle = "#335"; cx.fillRect(0, 0, ART_SIZE, ART_SIZE); }
+    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, ART_SIZE, ART_SIZE, 1, gl.RGBA, gl.UNSIGNED_BYTE, cv);
+  }
+  gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+  const glyph = gl.createTexture();
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, glyph);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.useProgram(prog);
+  gl.uniform1i(U.uShells, 0); gl.uniform1i(U.uArt, 3); gl.uniform1i(U.uGlyphs, 2);
+  gl.uniform1f(U.uGlow, 1); gl.uniform1f(U.uShellOp, 1); gl.uniform1f(U.uHeartOp, 0.3); gl.uniform1f(U.uFadeScale, 1);
+  gl.uniform1f(U.uFog, 0.45 / 18000);
+
+  // ---- the beam: a real depth-writing solid through the orb
+  const beamProg = link(`#version 300 es
+layout(location=0) in vec3 aP;
+uniform mat4 uVP;
+out vec3 vP;
+void main() { vP = aP; gl_Position = uVP * vec4(aP, 1.0); }`, `#version 300 es
+precision highp float;
+in vec3 vP;
+uniform float uR;
+out vec4 frag;
+void main() {
+  float band = step(0.5, fract(vP.x / uR * 2.0));
+  vec3 c = mix(vec3(0.42, 0.46, 0.55), vec3(0.62, 0.55, 0.40), band);
+  frag = vec4(c, 1.0);
+}`);
+  const BU = { uVP: gl.getUniformLocation(beamProg, "uVP"), uR: gl.getUniformLocation(beamProg, "uR") };
+  const beamVao = gl.createVertexArray();
+  gl.bindVertexArray(beamVao);
+  const bb = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, bb);
+  const box = (R) => {
+    const L = 1.75 * R, w = 0.09 * R, y0 = 0.18 * R;
+    const v = [];
+    const q = (a, b, c, d) => v.push(...a, ...b, ...c, ...a, ...c, ...d);
+    const p = (x, y, z) => [x, y, z];
+    q(p(-L, y0 - w, -w), p(L, y0 - w, -w), p(L, y0 + w, -w), p(-L, y0 + w, -w));
+    q(p(-L, y0 - w, w), p(-L, y0 + w, w), p(L, y0 + w, w), p(L, y0 - w, w));
+    q(p(-L, y0 + w, -w), p(L, y0 + w, -w), p(L, y0 + w, w), p(-L, y0 + w, w));
+    q(p(-L, y0 - w, -w), p(-L, y0 - w, w), p(L, y0 - w, w), p(L, y0 - w, -w));
+    q(p(-L, y0 - w, -w), p(-L, y0 + w, -w), p(-L, y0 + w, w), p(-L, y0 - w, w));
+    q(p(L, y0 - w, -w), p(L, y0 - w, w), p(L, y0 + w, w), p(L, y0 + w, -w));
+    return new Float32Array(v);
+  };
+  const R = 40;
+  gl.bufferData(gl.ARRAY_BUFFER, box(R), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.bindVertexArray(null);
+
+  // ---- the orb instance
+  const quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  const inst = gl.createBuffer();
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+  const FLOATS = 24;
+  for (let a = 1; a <= 6; a++) {
+    gl.enableVertexAttribArray(a);
+    gl.vertexAttribPointer(a, 4, gl.FLOAT, false, FLOATS * 4, (a - 1) * 16);
+    gl.vertexAttribDivisor(a, 1);
+  }
+  gl.bindVertexArray(null);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+  // ---- rows: one orb of each family. lw: 1 = ball (own light), 2 = ball + lit
+  const INTERIORS = [[1, "Swirling lights"], [2, "Water, with fish"], [4, "Kaleidoscope"], [5, "Weird blobs"], [6, "Orrery"], [7, "Reactor core"], [8, "Data rain"], [9, "Radar sweep"], [10, "Gyroscope rings"], [11, "Circuitry"], [12, "Snow-globe city"], [13, "Storm orb"], [14, "Ember hive"], [15, "Clockwork"], [16, "Galaxy"], [17, "The eye that opens"], [20, "The forge"], [21, "Singing crystals"], [22, "Moons around a hearth"], [23, "Signal beacon"], [24, "Metronome"], [25, "The lone jellyfish"], [26, "The library"], [40, "The bear"]];
+  // every row has a title and a one-line sub (what it is, in plain words)
+  const ROWDEF = SHEET === "interiors" ? INTERIORS.map(([kind, name], i) => ({ name, sub: kind === 40 ? "a painting — stays a flat picture" : "interior kind " + kind + " — a volume up close", kind, shell: 0, spin: 0, h1: (i * 47) % 360, h2: (i * 47 + 30) % 360, sat: 70, lw: 2, p0: 0 })) : [
+    { name: "Glass orb", sub: "plain shell glass; a beam passes through it", kind: 0, shell: 0, spin: 0, h1: 200, h2: 230, sat: 70, lw: 2, beam: true },
+    { name: "Swirl orb", sub: "the swirl shell, spinning", kind: 0, shell: 2, spin: 0.35, h1: 30, h2: 330, sat: 75, lw: 2 },
+    { name: "Water, with fish", sub: "interior kind 2", kind: 2, shell: 1, spin: 0, h1: 190, h2: 210, sat: 70, lw: 2 },
+    { name: "Galaxy", sub: "interior kind 16", kind: 16, shell: 0, spin: 0, h1: 270, h2: 300, sat: 70, lw: 2 },
+    { name: "The bear", sub: "a painting, kind 40 — stays flat", kind: 40, shell: 0, spin: 0, h1: 40, h2: 50, sat: 60, lw: 2, p0: 0 },
+    { name: "Lava worldlet", sub: "a true globe, kind 50", kind: 50, shell: 0, spin: 0, h1: 20, h2: 40, sat: 70, lw: 2, p0: 3 },
+    { name: "Heart ball", sub: "a sun's veil (no home inside it here); a beam passes through", kind: 0, shell: 0, spin: 0, h1: 300, h2: 340, sat: 80, lw: 1, portal: 2, halo: 1, beam: true },
+    { name: "A Saelyri", sub: "kind 65, awake", kind: 65, shell: 0, spin: 0, h1: 280, h2: 300, sat: 90, lw: 1, halo: 0.6, qs: 1.35, r: 5 },
+  ];
+  const LIGHT = (() => { const v = [0.6, 0.5, 0.62]; const l = Math.hypot(...v); return v.map((x) => x / l); })();
+  const data = new Float32Array(FLOATS);
+
+  const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const persp = (aspect) => {
+    const fv = 72 * Math.PI / 180, f = 1 / Math.tan(fv / 2), n = 1, fa = 2e6;
+    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (fa + n) / (n - fa), -1, 0, 0, (2 * fa * n) / (n - fa), 0]);
+  };
+  const view = (r, u, f) => new Float32Array([r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, 0, 0, 0, 1]);
+  const mul = (a, b) => {
+    const o = new Float32Array(16);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      let s = 0;
+      for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k];
+      o[i * 4 + j] = s;
+    }
+    return o;
+  };
+
+  function drawCell(row, angle, sphere, t, vx, vy, vw, vh) {
+    const rr = row.r || R;
+    const dist = rr * 3.0;
+    const cam = [Math.sin(angle) * dist, rr * 0.35, Math.cos(angle) * dist];
+    const f = norm([-cam[0], -cam[1], -cam[2]]);
+    const r = norm(cross(f, [0, 1, 0]));
+    const u = cross(r, f);
+    const vp = mul(persp(vw / vh), view(r, u, f));
+    gl.viewport(vx, vy, vw, vh);
+    gl.scissor(vx, vy, vw, vh);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.clearColor(0.012, 0.014, 0.03, 1);
+    gl.depthMask(true);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    if (row.beam) {
+      gl.disable(gl.BLEND);
+      gl.enable(gl.DEPTH_TEST);
+      gl.useProgram(beamProg);
+      // ship space: beam vertices minus the camera
+      const vpb = mul(vp, new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -cam[0], -cam[1], -cam[2], 1]));
+      gl.uniformMatrix4fv(BU.uVP, false, vpb);
+      gl.uniform1f(BU.uR, rr);
+      gl.bindVertexArray(beamVao);
+      gl.drawArrays(gl.TRIANGLES, 0, 36);
+      gl.bindVertexArray(null);
+    }
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    gl.useProgram(prog);
+    gl.uniformMatrix4fv(U.uVP, false, vp);
+    gl.uniform3fv(U.uRight, r);
+    gl.uniform3fv(U.uUp, u);
+    gl.uniform1f(U.uTime, t);
+    gl.uniform1f(U.uSphere, sphere);
+    gl.uniform1f(U.uBallRim, 0.12); // the world default
+    data[0] = -cam[0]; data[1] = -cam[1]; data[2] = -cam[2]; data[3] = rr;
+    data[4] = row.h1; data[5] = row.h2; data[6] = row.sat / 100; data[7] = 9;
+    data[8] = 0; data[9] = row.spin; data[10] = row.shell; data[11] = row.halo || 0.6;
+    data[12] = 17.3; data[13] = row.portal || 0; data[14] = 0; data[15] = row.qs || 1.4;
+    data[16] = row.kind; data[17] = row.p0 || 0; data[18] = row.p1 || 0; data[19] = 2;
+    data[20] = LIGHT[0]; data[21] = LIGHT[1]; data[22] = LIGHT[2]; data[23] = row.lw;
+    gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+    gl.bindVertexArray(vao);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, 1);
+    gl.bindVertexArray(null);
+    gl.disable(gl.SCISSOR_TEST);
+  }
+  const ANGLES = [0, 0, Math.PI / 4, Math.PI / 2];
+  {
+    // the header: what this sheet is, then column heads on a grid that shares
+    // the canvas's column widths (CSS px = canvas px / dpr; the canvas is 1:1)
+    const k = 1 / devicePixelRatio;
+    document.getElementById("title").textContent = SHEET === "interiors" ? "Sphere Lab — the interiors" : "Sphere Lab — the ball";
+    document.getElementById("blurb").textContent = SHEET === "interiors"
+      ? "Every interior kind up close, where the flat picture has given way to the volume. Column one is the old disc for comparison; the other three are the ball seen from three camera angles. The key light is fixed in the world, upper right and in front."
+      : "One orb of each family. Column one is the old camera-facing disc; the other three are the ball seen from three camera angles, so anything truly round changes and anything flat does not. The key light is fixed in the world, upper right and in front.";
+    const cols = document.getElementById("cols");
+    cols.style.gridTemplateColumns = GUT * k + "px repeat(4, " + CW * k + "px)";
+    [["gut", "camera →"], ["", "Old disc"], ["", "Ball · 0°"], ["", "Ball · 45°"], ["", "Ball · 90°"]].forEach(([cls, txt]) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = txt; cols.appendChild(d); });
+    // row labels in the gutter, vertically centred on their row
+    const L = document.getElementById("labels");
+    L.style.width = canvas.style.width;
+    ROWDEF.forEach((row, ri) => {
+      const d = document.createElement("div");
+      d.className = "row";
+      d.style.left = 22 * k + "px";
+      d.style.top = (ri * CH + CH / 2 - 22) * k + "px";
+      d.style.width = (GUT - 44) * k + "px";
+      const n = document.createElement("span"); n.className = "n"; n.textContent = String(ri + 1);
+      const t = document.createElement("span"); t.className = "t"; t.textContent = row.name;
+      const sub = document.createElement("span"); sub.className = "s"; sub.textContent = row.sub || "";
+      t.appendChild(sub);
+      d.append(n, t);
+      L.appendChild(d);
+    });
+  }
+  let solo = -1, soloSphere = 1;
+  function draw(t) {
+    if (solo >= 0) { drawCell(ROWDEF[solo], t * 0.35, soloSphere, t, 0, 0, canvas.width, canvas.height); return; }
+    for (let ri = 0; ri < ROWS; ri++) for (let ci = 0; ci < COLS; ci++) {
+      drawCell(ROWDEF[ri], ANGLES[ci], ci === 0 ? 0 : 1, t, GUT + ci * CW, (ROWS - 1 - ri) * CH, CW, CH);
+    }
+  }
+  // the close sheet: three families at real size, disc beside ball, so the
+  // rim, the pin and the limb can be judged pixel by pixel
+  const CLOSE = [0, 1, 2, 5];
+  function drawClose(t) {
+    const W2 = canvas.width / 2, H3 = canvas.height / 4;
+    CLOSE.forEach((ri, k) => {
+      drawCell(ROWDEF[ri], 0.35, 0, t, 0, (3 - k) * H3, W2, H3);
+      drawCell(ROWDEF[ri], 0.35, 1, t, W2, (3 - k) * H3, W2, H3);
+    });
+  }
+  const T0 = 31.7;
+  const post = async (name) => {
+    const dataUrl = canvas.toDataURL("image/png");
+    return fetch("/api/dev-snapshot", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, dataUrl }),
+    }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+  };
+  async function capture(name) {
+    if (SHEET === "interiors") name = "sphere-lab-interiors";
+    draw(T0);
+    const r = await post(name);
+    const where = (x) => (x && x.saved) ? x.saved : "not saved (" + ((x && x.error) || "server not reached") + ")";
+    if (SHEET === "interiors") { bar.textContent = "Sheet saved: " + where(r); return; }
+    drawClose(T0);
+    const r2 = await post(name.replace("sheet", "close"));
+    bar.textContent = "Sheet saved: " + where(r) + "   ·   close view: " + where(r2);
+  }
+  const loop = (now) => { draw(T0 + now * 0.001); requestAnimationFrame(loop); };
+  loop(0);
+  addEventListener("keydown", (e) => {
+    if (e.code === "KeyC") capture("sphere-lab-sheet");
+    if (e.code === "KeyT") soloSphere = soloSphere > 0.5 ? 0 : 1;
+    if (/^Digit[1-9]$/.test(e.code) && Number(e.code[5]) <= ROWS) solo = Number(e.code[5]) - 1;
+    if (e.code === "Digit0") solo = -1;
+  });
+  globalThis.LAB = { capture, draw, ROWDEF };
+  setTimeout(() => capture("sphere-lab-sheet"), 900);
+})().catch((e) => {
+  document.getElementById("bar").textContent = "sphere-lab error: " + e.message;
+  console.error(e);
+});
+</script>
+</body>
+</html>

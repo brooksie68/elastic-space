@@ -3,6 +3,313 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v64.4 — 2026-09-04 (Claude, James on the swirl orb and the galaxy)
+
+- **The swirl seam.** v64.2 wrapped the render's whole disc onto each hemisphere, so its rim
+  ring met itself at the spin equator as a black line with a dark band beside it. Now a
+  patterned ball takes shading + rim from the CLEAN GLASS by the view normal (like plain
+  glass) and the pattern is laid on separately: the highlight-free render's flat centre
+  (|uv| ≤ 0.55) sampled on the three planes of the ball's frame, divided by the clean glass
+  at the same spots so only the streaks remain, blended by the normal. No seam anywhere.
+- **The galaxy.** James: "fully vertical... a vertical thing turning rather than the galaxy
+  swirling around itself." The lost-stretch recipe had tilted it 66° and rolled it. Now a
+  gentle seeded ecliptic tilt (12–30°) and a small roll; the ARM PATTERN turns rigidly (a
+  density wave that never winds up — the first cut with differential arms wound them into
+  rings within a minute) while the dust and stars stream through it differentially, inner
+  faster. Sheet: two-arm spiral face-on, an inclined disc at 45°, a streak near its plane.
+- Build stamp v64.4, cache tag ?v=644; sphere-sim, init-smoke, shader-check green.
+
+## v64.2–v64.3 — 2026-09-04 (Claude, James reading the ball sheet row by row)
+
+His reads: rows 1, 2 pass; row 3 (water) "looks like a button" — fixed as v64.1 (full water,
+sun-lit scatter, small head-first fish; ballRim default 0.25 → 0.12; the retired crowd-cloud
+row left the lab). Then: "why is the lava world the only one that turns correctly? ... swirling
+and turning are not the same thing" and, on the galaxy in the solo view, "a white pill... it
+looks like a physical object inside the sphere."
+
+- **v64.2 patterned shells live on the ball.** The glass atlas was sampled by the VIEW normal,
+  so a pattern stayed facing the eye as the camera orbited and the spin was a flat twist — a
+  polar cap turning under him. Frosted / swirl / banded shells now sample by the WORLD normal
+  turned about a seeded tilted axis (mirrored onto the far hemisphere like the worldlet maps):
+  orbit one and you see its side; the spin is a real rotation. Plain glass keeps facing the sun.
+- **v64.3 the baked highlight leaves the ball for good.** Every fix so far only moved it. Now
+  each shell render gets a HIGHLIGHT-FREE copy at load — the per-pixel minimum across its own
+  rotations (4-fold for plain glass, 2-fold for patterned shells so half their streaks survive);
+  anything that sits at one angle only is erased, the symmetric shading and rim ring survive.
+  Layers 4–7 of the shell array; balls sample them, discs keep the originals; the file://
+  taint case falls back to the original. The only highlight on a ball is the shader's own sun.
+  Verified on the sheet: no pill on glass, swirl or galaxy from any angle. Cache tag ?v=643,
+  build stamp v64.3; sphere-sim guards the copy, init-smoke + shader-check green.
+- Also this round: the Sphere Lab page typeset (header in flow, gridded column heads, structured
+  row labels, one-line status) on his "organize this page, typographically."
+
+## v64 — 2026-09-04 (Claude, PHASE 2 built unjudged on James's "open this thing up and look at the balls")
+
+**THE INTERIORS AS VOLUMES.** Every procedural interior (23 kinds; the paintings stay flat
+pictures) is a 3-D scene inside the ball now. One shared renderer: the refracted ray walks
+the chord through the unit sphere in 20 steps (`volMarch`), and each kind is a recipe
+(`volKind`) saying what glows at a point in the ball right now — emission + density. Far
+orbs keep the flat v47 picture; the march runs only when the orb covers real screen area
+(radius/distance above ~2°) and crossfades in over the picture. Scenes live in the orb's own
+axes (world axes turned by a per-orb yaw), so flying around one shows its far side.
+
+- Recipes, in the family plan's words: swirling lights = two counter-turning helical tubes;
+  water = a see-through fill with caustics, four fish as lit capsules, bubbles up close;
+  kaleidoscope = the ball folded into a mirrored cell; weird blobs = four metaballs;
+  orrery = a sun and four planets on tilted rings (lit from the world's key light); reactor =
+  pulsing core, two turning containment rings, rising filaments; data rain = falling glyph
+  columns; radar = a tilted thin disc with range rings, sweep and blip; gyroscope = three
+  tumbling rings; circuitry = three tilted boards with hashed traces and running pulses;
+  snow-globe city = hashed towers on a floor with lit windows and falling snow; storm =
+  churning fbm cloud with hashed lightning bolts; ember hive = a porous dark mass with
+  embers drifting up; clockwork = three toothed gears meshing; galaxy = a tilted thin spiral
+  disc, bulge, dust, stars; the eye = a solid eyeball with iris/pupil whose lid opens with
+  proximity; forge = anvil block, molten pool, sparks; singing crystals = five shards pulsing
+  on their own notes; moons around a hearth = three moons lit by the hearth; signal beacon =
+  mast, lamp, spreading spherical pulses; metronome = a swinging pendulum with the tick
+  flash; jellyfish = a pulsing bell with six tentacles; library = rings of shelves and
+  hashed book spines around a lamp.
+- Three self-critique rounds in the Sphere Lab's new `?sheet=interiors` (24 rows × disc /
+  ball 0° / 45° / 90°): round 1 — 12 steps skipped 0.02-wide rings into dots, the water was
+  an opaque blue ball, the swirl read as a plume; round 2 — 20 steps, thicker thin things,
+  see-through water, helical ribbons, scale-ups; round 3 — radar / circuitry boards /
+  galaxy tilted so they never sit edge-on to a viewer, gears brighter.
+- Guards: sphere-sim TEST 1 now checks the march, its gate, and a recipe for every one of
+  the 23 kinds; init-smoke + v47-sim green; shader-check green. Cache tag ?v=640, stamp v64.
+- NOT eye-judged in the world (sound world). James's call: look, then tell me. Open: the
+  frame rate with many near interiors marching at once (20 steps × the covered pixels;
+  the gate keeps far orbs flat).
+
+## 2026-09-04 (later) — the sphere lab is a Lab (Claude, James: "add it to the labs")
+
+`tmp/orb-dimension/sphere-lab.html` → `src/labs/sphere-lab/index.html` (the tmp file now
+redirects), linked from the admin panel's Labs section as "Sphere Lab". Same page: it pulls
+the orb shaders live out of world.js, so it is always the world's current look. This is
+where Phase 2 (the interiors as volumes) gets judged, kind by kind. James on the homes at
+wrap of this stretch: "really happy with the glow homes. They look very nice."
+
+## v63.9 — 2026-09-04 (Claude, James in flight: the glow homes "not centered inside the sphere")
+
+James, two angles of one home near Korrudan: most of the structure up and to the right,
+almost half the ball empty, a lot of it outside. Measured on the six bakes: the export
+centred each roll on its BOUNDING BOX, and the spears drag that box off the body — bulk
+centres sat 0.22 / 0.46 / 0.41 / 0.72 / 0.22 / 0.47 bulk radii off the origin (roll 04 the
+worst, the one he was looking at). Fix in two places: the loader re-centres every GHM2
+roll on its bulk (iterated 85th-percentile trimmed mean) and re-normalizes the bulk radius
+to 1 about that centre, so the six existing bakes are right without re-baking (verified:
+residual offset 0.000, bulk radius 1.000 on all six); `export_fields.py` centres on the
+bulk the same way for every future roll (idempotent with the loader). The home look is
+untouched — his verdict stands: "the home itself looks fantastic." Cache tag ?v=639, build
+stamp v63.9; init-smoke (HOMES line) green.
+
+## v63.8 — 2026-09-04 (Claude, James in flight: "a lot of the worlds are not sitting in the center of their globes")
+
+A worldlet showed as a lit patch on ~40% of one side of its ball, the rest dark, "sticking
+off into space." Cause, in the v63 globe branch: "facing the camera" was `N.z` — the
+normal's WORLD z — and the sun dot mixed a view-frame light against a world-frame normal.
+Both are only right when the camera looks down world z, which is exactly the lab's 0°
+column, so the lab sheet looked fine and the 45°/90° columns were quietly half-dark.
+Now: facing = `bnz` (normal · toward the eye) for the ball, view z for the disc; the
+light dot is Nw against a world light (the nearest sun, or the fixed key light rotated
+into world axes). Sheet re-shot: all four angles a full centred globe. sphere-sim guards
+both lines. Cache tag ?v=638, build stamp v63.8.
+
+## v63.7 — 2026-09-04 (Claude, James's panel brief)
+
+James: the configuration panel "keeps being in the way of the thing I'm trying to tune";
+he wants it opening at the right, a grab handle to put it anywhere, holding there until
+closed and reopened — and he could not tell whether "save" saved anything, or to what.
+
+- **Position:** opens top-right (20 px in, 64 px down), 700 wide instead of 1080 centred
+  over the reticle. A header — "⋮⋮ configuration · drag here to move" — is the grab handle
+  (pointer capture, clamped to the window). The position holds until the panel is closed;
+  opening it again resets to the right.
+- **Save feedback:** a status line under the preset row. "save" now says exactly what
+  happened: `saved "name" — it is the start preset, so this is what loads next time`, or
+  `saved "name" — NOT the start preset ("x" loads next time); press "set as start"`. The
+  button flashes "saved ✓". "apply" and "set as start" report too; an empty name says so
+  instead of silently doing nothing.
+- **Addendum, same hour:** James pressed "set as start" on v63.7 and saw nothing. Two
+  causes fixed: index.html loaded world.js/world.css with NO cache tag (a normal reload
+  could serve the old file) — both now carry `?v=637`, bump it with every build stamp; and
+  the status line sat at the bottom of a scrolling panel — every message now also shows in
+  the header hint, which never scrolls away.
+- Rule kept (memory name-the-panel-section): every dial pointer from Claude is
+  "section → dial"; ship defaults, not more sliders. Build stamp v63.7; init-smoke green.
+
+## v63.6 — 2026-09-04 (Claude, James's go: "just do what you just said, and it'll be cool")
+
+**THE FORMATIONS** — a seventh crowd verb, in place of the retired cloud. James's riff:
+groups come together into a variety of shapes, not just a ring — a 3-D pentagram, a
+hexagon, a Bucky ball, a cube with patterns on its faces, or just an amorphous floaty
+cloud where they settle in and hang out.
+
+- `saeFormation(shape, n, R)` (inside the society block, pure math): six seat generators
+  at ~25 m spacing — (0) hollow sphere on the Fibonacci spiral; (1) polyhedron by
+  headcount: icosahedron < 24, dodecahedron < 50, Bucky ball (truncated icosahedron)
+  from 50 — vertices first, then the edges traced with as many subdivisions as the crowd
+  needs, seats picked by stride so a thin crowd still shows the shape; (2) cube, a
+  pattern per face rolled from ring / grid / diamond; (3) five-pointed star in two
+  perpendicular planes, the second turned 36°, seats at the plane crossings deduplicated;
+  (4) hexagonal prism, edges traced; (5) the lazy cloud — jittered cells inside a ball,
+  seeded shuffle, plus a slow personal drift in the pose.
+- The group: verb 6, 14–40 beings, center on a slow orbit around a sun (1.4–2.3 radii,
+  capital guarded by the shape's radius like a ring), the shape turning about its own
+  axis (Rodrigues, 140–320 s either way), a ±5% breath, partners (k, k^1) trading seats
+  on a 34–70 s clock staggered per pair, the chorus morph clock, tidal assembly and
+  break-away like a congregation. Weights: capital 0.12, satellites 0.13 (the others
+  moved to make room; Mediant's first gathering is now always at the towers because the
+  deal's RNG order moved and TEST 12 caught the towers going dark).
+- society-sim TEST 16: 22 formation groups across the default + ceiling rolls, seats =
+  headcount, nearest-seat spacing 12.8–56.7 m (bars 8/95; the star's crossings were the
+  2.2 m offender before the dedupe), all six shapes rolled, radii 30–420 m, and the pose
+  reproduces the seat geometry at full tide. All nine sims green. Not judged by eye —
+  James's call ("this time I don't think I need to judge it"). Build stamp v63.6.
+- `crowds.md`: the verb table has seven rows; the cloud section reads RETIRED.
+
+## v63.5 — 2026-09-04 (Claude, James in flight: "the whole thing just isn't working at all")
+
+**THE CROWD CLOUDS ARE RETIRED.** James's read after v63.4: the individual beings already
+work — tiny dots from far away that "naturally turn into these amorphous glowing cloud
+energy beings" up close, rings and lines, glyphs, the break-away — "no complaints." The
+cloud stand-in was "fuzzy puffballs from any distance," a repeating texture, bright only
+in the middle, that turned with him, faded as he neared, and that beings flew straight
+through on their missions. No stand-in can beat the real thing here, so none is drawn:
+no kind-66 orb is ever made (`CROWD_CLOUDS = false` at the group roll), the "crowd glow"
+dial is gone from the panel, saved cfgs carrying `saeCloud` are ignored. The kind-66
+shader, `saeCloud()`/`saeCloudGate()` and society-sim TEST 14 stay (the sim's geometry
+contract; sphere-lab row 9 still shows the retired look). Build stamp v63.5; society-sim,
+init-smoke, v47-sim, sphere-sim green.
+
+## v63.4 — 2026-09-04 (Claude, James in flight: "it looks like burlap. See for yourself.")
+
+James flew v63.3 and found "faded pieces of fabric... tiling" floating in space around
+every sun in the town's colour, parallaxing, fading to nothing up close, and at MAG ×4.9
+a plain woven lattice of plus-shaped blobs. Claude first read it as the v61 crowd clouds
+(kind 66) and it was — but his point stands: they were never right at a group's size.
+The grain was value noise on a 34-cell grid; blown up to a 300 m group it IS a weave.
+
+- **The speckle.** New `speck()` in the orb FS: soft dots at jittered cell points, not
+  every cell lit (55%), size rolled per dot, summed over three layers at unrelated pitches
+  and rotations — no lattice survives. Cloud = `0.10 + 1.6 × speckle`, envelope and gate
+  unchanged. Judged at real size in sphere-lab (new row 9, a crowd cloud in the close
+  sheet; crop tmp/snapshots/cloud-crop.png): many small lights of uneven size, no weave.
+- **The crowd lab** was still on the 20-float stride from before v63 (it would have
+  bound nothing to i5 and drawn every cloud as a self-lit ball): FLOATS 24, attribute 6,
+  beings flag 1 / clouds flag 0, uSphere + uBallRim set. Sheet re-captured.
+- Kill switch stays: "crowd glow" in "the crowds" group. Build stamp v63.4; shader-check,
+  sphere-sim, init-smoke green.
+
+## v63.3 — 2026-09-04 (Claude, James's third lab read: "much improved")
+
+- **"ball edge" dial** (`ballRim`, 0–1, default 0.25, "the air" group): how much edge a
+  ball shows — the atlas ring past |uv| 0.80 keeps only `ballRim` of itself and the
+  fresnel term is 0.16 × ballRim. 0 = no ring, no fresnel; 1 = the full atlas ring.
+  James: the blue, red and purple orbs "are not reacting well" to any bright outline;
+  the lava globe is different (a glowing world). Discs never touched by it.
+- **The lab**, his readability brief: cells 600 wide with a 420 px label gutter (nothing
+  zoomed — the vertical FOV is fixed, so the balls stay the same size), 22 px labels, the
+  bar 19 px, row names wrapping inside the gutter (an absolutely positioned label inside
+  a zero-width layer wraps after every word — the layer now has the canvas width).
+- Build stamp v63.3; sphere-sim (dial in the contract), init-smoke, shader-check green.
+
+## v63.2 — 2026-09-04 (Claude, James's second lab read)
+
+- **The highlight, for real.** v63.1 turned the atlas by the wrong sign (the shader's
+  mat2 is a rotation by −ang) and guessed the baked highlight at −135°; measured on the
+  PNGs it sits at −126° in atlas uv. Now `ang = atan(D) + 2.199` — the close sheet shows
+  the highlight on the lit side (upper-right, the lab's fixed light) at every camera
+  angle. Column 1 is the OLD DISC, whose highlight still spins with the spin dial — that
+  is the pre-v63 world, kept as the reference, not a bug.
+- **The rim** (James: "way too bright... ruins the effect" on every dark orb): on a ball
+  the atlas's baked white ring is halved past |uv| 0.86, the fresnel term 0.24→0.08,
+  the diffuse 0.10→0.07, the pin 0.45→0.35. Discs untouched.
+- **The lab:** 1:1 device pixels (no stretch to the window; scroll), column and row
+  labels drawn over the sheet. Build stamp v63.2; sphere-sim green.
+
+## v63.1 — 2026-09-04 (Claude, while James flew v63; his lab read)
+
+James read the sheet: the four columns were unexplained (disc / ball with the beam at 0° /
+45° / 90°); "a strange white cloud, oval pill-shaped thing in the bottom left" on every
+ball, turning with the world on the spinning swirl orb; the water ball reads well, the
+galaxy and the bear still read 2D, the lava worldlet is the most effective, the heart
+ball "neutral gray", the Saelyri fine — "about sixty percent effective."
+
+- **The pill was the atlas.** The four glass shells are Blender renders with a big
+  highlight baked at lower-left (upper-left of the PNG), and a ball sampled the atlas by
+  its true normal, so the highlight sat at a fixed screen place on every ball and spun
+  with the spin dial. Now on a ball the atlas is TURNED TO FACE THE KEY LIGHT (the
+  baked highlight direction rotated onto the light's screen direction) and never spun;
+  self-lit balls (hearts, eyes, beings) hold it up. Discs keep the old look exactly.
+  sphere-sim TEST 1 guards both lines. Sheet re-shot: the highlight sits on the lit
+  side in all three angles, the swirl orb's holds still.
+- **The gray heart is the lab, not the world:** a heart ball is a near-white veil at
+  uHeartOp 0.3 by design (v62.1) and its white-hot read in-world comes from the field
+  home glowing inside it; the lab puts nothing inside. Left as is.
+- **Galaxy + bear flat:** correct — every interior is still a 2D picture behind curved
+  glass; Phase 2 starts with the galaxy and the swirl. His new thread, recorded as a
+  placeholder in the world CLAUDE.md START HERE: real MESHY MODELS inside the glass for
+  interiors not worth doing in-shader (the bear first). Not now.
+- Build stamp v63.1. Shader-check, sphere-sim, init-smoke, v47-sim green.
+
+## v63 — 2026-09-04 (Claude, solo on James's "you choose... make it all the way through") — THE BALL, PHASE 1
+
+Every orb is a real three-dimensional shape now. James's 2026-09-03 verdict ("circular TV
+screens facing you... it has to") had a two-phase plan; he sent Phase 1 off unattended with
+two choices left to me (dust/veils/crowd clouds stay discs; one key light per orb from its
+nearest sun) and one gate kept: his flight.
+
+- **THE BALL.** The orb fragment shader hits a real sphere per pixel with the true
+  perspective ray (the camera is the origin of ship space, so the ray is the quad point's
+  direction — lens shift, zoom and aspect come for free). A hit gives a surface point, a
+  normal, and `gl_FragDepth` at the real surface; misses keep the card's depth. Orbs still
+  never WRITE depth (they are glass), but they now test per pixel against the geometry:
+  a field home's spears stand in front of the shell where they pierce it and behind it
+  where they don't — the "weird and suss" heart balls are fixed at the root. The math runs
+  in a distance-normalized frame: the plain `|c|² − r²` form loses a 30 m radius
+  entirely at 200 km in float32 (sphere-sim TEST 3 proves it).
+- **Eligibility** (`i5.w`, a sixth instance vec4 — FLOATS 24, attribute 6): 0 = stays a
+  disc (dust, veils, glyphs, creatures 61–64, crowd clouds), 1 = a ball that is its own
+  light (hearts, eyes, the Saelyri), 2 = a ball lit by its nearest heart. The JS picks each
+  lit orb's nearest heart every 24 frames, staggered — the whole field costs ~10k distance
+  checks a frame.
+- **The glass** samples the same rendered-ball atlas by the true normal, with the disc's
+  own screen gradients (`textureGrad`) so the thin rim ring survives the limb's uv
+  compression. The atlas is a rendered ball with baked reflections, so it stays
+  view-locked on purpose (reflections do not rotate with a ball); its spin is unchanged.
+- **The sun on the glass:** a soft lit side, a fresnel rim that brightens toward the light,
+  one hot pin (pow 48). Modest — the light inside stays the subject.
+- **Interiors** (all 26 + the paintings) are still 2D scenes, sampled at the point where
+  the refracted ray (eta 0.84) crosses the center plane: they bulge and magnify a little
+  and slide with the angle. Phase 2 makes them volumes.
+- **Worldlets are true globes:** the map lives in the globe's own frame (fly around one
+  and see its far side), lit by its nearest sun.
+- **The Saelyri** raymarch in world axes with the ball on: a being has a real front and
+  back; "facing the pod" is a world-space yaw toward the camera. The far mote LOD is
+  untouched.
+- **The card grows to hold the silhouette** up close (a ball's outline is wider than its
+  radius under perspective — 1.57× at 1.3 radii); untouched beyond a few radii, so the
+  overdraw discipline at distance is exactly v62's.
+- **The dial:** `sphere` ("real spheres", 0–1) in "the air" — 1 by default; 0 is the
+  pre-v63 disc per pixel, so a screenshot A/B in flight is one slider.
+- **Lab:** `tmp/orb-dimension/sphere-lab.html` (KEEP — where the ball gets judged): eight
+  families × (disc 0° / ball 0° / 45° / 90°) with a real depth-writing beam through the
+  glass, plus a close sheet at real size. Three self-critique rounds: (1) the sheet
+  worked first try except the rim; (2) beings put in world axes; (3) THE FIX — facing was
+  measured against the center line, not the pixel's ray, so at 3 radii the silhouette
+  still "faced" by 0.33 and the atlas rim (0.94–0.985) was never reached — everything read
+  magnified and rimless (sphere-sim TEST 4 keeps it). Sheets in tmp/snapshots/
+  sphere-lab-sheet.png + sphere-lab-close.png.
+- **Guards:** new `sphere-sim` (6 tests: source contract, hit exactness 2e-14, the
+  float32 case, the rim, card coverage from 0.7 radii out, the key-light pick); v47-sim
+  TEST 4 restated to the 24-float stride; init-smoke, the other eight sims and
+  shader-check green. Build stamp v63.
+- NOT IN-WORLD-VERIFIED BY EYE: the world has sound, so no pane pass (house rule); the lab
+  and the guards stand in. AWAITING JAMES'S FLIGHT: heart balls with homes inside, a
+  worldlet flyaround, a Saelyri up close, frame rate (one sqrt per covered pixel plus the
+  refract; `gl_FragDepth` costs early-z on the orb pass), and the "real spheres" A/B.
+  NEXT (his go, kind by kind): Phase 2, the interiors as volumes.
+
 ## v62 — 2026-09-03 (Claude, James's go after the lab round: "nice. these look great. go for the next step") — THE FIELD HOMES IN-WORLD
 
 The generator's rolls now stand inside every Saelyri shell.

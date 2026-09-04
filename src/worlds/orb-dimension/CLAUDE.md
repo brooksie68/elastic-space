@@ -13,7 +13,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   viewport heights and must report 0px everywhere.
 - The full suite (run all of it after any world.js change; ~20s):
   `init-smoke society-sim reef-sim crust-sim nebula-sim wisp-atlas-check v47-sim
-  ladder-sim stick-sim` plus `tmp/orb-dimension/shader-check.html` in the browser
+  ladder-sim stick-sim sphere-sim` plus `tmp/orb-dimension/shader-check.html` in the browser
   (v61: society-sim carries the crowd tests 12–15; `crowd-lab.html` is the crowds'
   look-dev harness — capture a sheet after any crowd change)
   (it compiles every shader — it has caught real runtime-killers the Node sims
@@ -34,15 +34,50 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
-- **EVERY SPHERE BECOMES A REAL 3-D SHAPE (2026-09-03, "it has to").** Every orb —
-  hearts, veils, dust, beacons, actors, crowd clouds, interiors — is a camera-facing disc
-  with a gradient today. Phase 1 = sphere impostors for every orb (ray-sphere per pixel,
-  real normal + depth, rim/specular, wrapped shell, refraction parallax; worldlets as true
-  globes). Phase 2 = the 26 procedural interiors go volumetric kind by kind, sequenced with
-  him. Not started; root todo 0 (f); changelog 2026-09-03.
+- **EVERY SPHERE BECOMES A REAL 3-D SHAPE (2026-09-03, "it has to") — PHASE 1 BUILT
+  2026-09-04 (v63, THE BALL), AWAITING HIS FLIGHT.** Every eligible orb is a per-pixel
+  sphere impostor now (real normal + depth test, key light from its nearest heart,
+  refracted 2D interiors, worldlets as true globes, beings in world axes); dust, veils
+  and crowd clouds stay discs by design. Dial "real spheres" in "the air" (0 = the old
+  disc). Judge in `src/labs/sphere-lab/index.html`; guard with `sphere-sim`.
+  He flew v63 ("pretty good"); the day's fixes are v63.1–v63.9. **PHASE 2 BUILT AS v64
+  (2026-09-04, unjudged at his word): the 23 procedural interiors are VOLUMES** —
+  `volMarch`/`volKind` in the orb FS, 20-step chord march gated on screen size, one
+  recipe per kind, paintings flat. Judge in `src/labs/sphere-lab/index.html?sheet=interiors`.
+  He read the BALL sheet row by row the same night → v64.1–v64.4 (water refilled, ball edge
+  0.12, patterned shells world-locked + triplanar pattern, the baked highlight erased from
+  balls via the min-over-rotations copy, galaxy on the ecliptic with a rigid arm pattern);
+  rows 1/2/6/8 pass. NEXT: his read of the INTERIORS sheet, kind by kind.
+  Rules: a recipe is emission + density at a point in the unit ball
+  (orb axes, y up); thin features must be ≥ ~0.045 wide or 20 steps dot them; disc-like
+  scenes get a real tilt so no viewer sees them edge-on; every kind must keep a `kind == N`
+  branch (sphere-sim TEST 1 counts them). Changelog v63 + v64.
+- **MESHY 3-D THINGS INSIDE THE BALLS (James, 2026-09-04, after reading the lab: "we will.
+  In fact, definitely put that down") — PLACEHOLDER, NOT NOW.** Some interiors (the bear
+  painting and its kin) are not worth making volumetric in-shader; the plan is real
+  Meshy models inside the glass instead. Unscoped; his go when.
 
 ## World-specific rules
 
+- THE BALL (v63): orbs are per-pixel sphere impostors. The rules that hold it up —
+  (1) the fragment shader writes `gl_FragDepth` on EVERY path (default
+  `gl_FragCoord.z` at the top; a path that skips it makes depth undefined);
+  (2) the hit runs in the distance-normalized frame (`cn = vCen/dist`, `rn = radius/dist`)
+  — never the plain `|c|²−r²` form, it loses the radius in float32 at world distances;
+  (3) facing (`bnz`) is measured against the PIXEL'S ray `rd`, never the center line
+  `rd0` — the atlas rim is unreachable otherwise (round-3 bug); (4) the glass atlas is
+  sampled with `textureGrad` on the disc's gradients, or the limb mips its rim away;
+  (5) orbs never write depth — the orb pass keeps `depthMask(false)`; (6) the instance
+  stride is 6 vec4 (FLOATS 24) — `i5` = key light dir + ball flag 0/1/2, set in the fill
+  loop, guarded by v47-sim TEST 4; (7) dust, veils, glyphs, creatures and crowd clouds
+  are flag 0 — do not make them balls, they are washes; (8) any new screen↔world
+  math in the shader must use `vWp` (the quad point) for its ray — it already carries
+  the v55.4 lens shift. Run `sphere-sim` after touching any of it; judge looks in
+  sphere-lab.html before the world.
+
+- CACHE TAGS (v63.7): index.html loads `world.js?v=NNN` and `world.css?v=NNN` — bump
+  both with every build stamp, or James's reload serves him the old file and he reports a
+  build as broken that he has never run.
 - NAMING: the tuner panel is the "configuration" panel — never "GOD MODE" (James retired
   that phrase 2026-09-01: a one-off he said once, "goofy"; every world has a config
   panel and this is just this world's). Old changelog entries keep the old name.
@@ -196,8 +231,10 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   25s per-being + 1.6s global spacing — never let a crowd stack chords.
   Phase B2 (fleet community routes + society sound beds) needs its own go.
 - THE CROWDS (v61, 2026-09-01 — James's go on the eight-point design): the
-  Saelyri are rolled as GROUPS doing six verbs (congregation / stream / pair /
-  gathering / home traffic / play), sized to their HEADCOUNT at 15–40 m
+  Saelyri are rolled as GROUPS doing seven verbs (congregation / stream / pair /
+  gathering / home traffic / play / FORMATION — v63.6, six shapes from
+  `saeFormation()`, society-sim TEST 16 bars seat spacing 8–95 m, all six
+  shapes rolled, and the pose reproducing the shape), sized to their HEADCOUNT at 15–40 m
   spacing — never to the sun (crowd-lab round 1: rings sized to the sun put
   beings 300 m apart and nothing read as a crowd). Read `crowds.md` FIRST.
   Rules: (1) `saelyriLayout` / `saelyriPose` / `saelyriMorph` / `saeCloud` live
@@ -215,7 +252,11 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   never the draw. (6) Judge every crowd look change in
   `tmp/orb-dimension/crowd-lab.html` first (T toggles forced/natural tide).
   Dials live in the configuration panel's "the crowds" group; `saelyri` is
-  retired (saved cfgs carrying it are ignored).
+  retired (saved cfgs carrying it are ignored). (7) v63.5: THE CROWD CLOUDS (kind 66) ARE
+  RETIRED — James: the beings themselves resolve from far dots to bodies "very well";
+  every stand-in read as fuzzy puffballs. `CROWD_CLOUDS = false` at the group roll, no
+  dial. Do not bring back a far-LOD proxy for a crowd; if far towns read empty, make the
+  far MOTES brighter — never a blob.
 - THE BUILDINGS (v58, 2026-08-14/15): read `buildings.md` in this folder
   FIRST — it is the whole pipeline (concept → GPT lit guide → Meshy raw GLB →
   Node weld + Blender decimate → guide_extract2/guide_place2 → export_bldg →
@@ -240,7 +281,9 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   judged on a three-seed sheet (`gh_sheet.py`) BEFORE re-baking; (2) re-bake only
   in `--export` mode and keep each roll ≤ ~50k tris (the first bake was 157k —
   bevels + ring segments on the small tier); (3) bump `glowHome.v` on every
-  re-bake; (4) the glass program's kind 3 + class/4 branch is the in-world
+  re-bake; (3b, v63.9) a roll is centred on its BULK (iterated p85 trimmed mean), never its
+  bbox — spears drag a bbox centre off the body and the home sits half outside its ball;
+  the loader re-centres every GHM2 file the same way, so the two are idempotent together; (4) the glass program's kind 3 + class/4 branch is the in-world
   material — panes carry their own opacity, ribbons/filaments are hot lines;
   (5) each shell deals itself a roll + a random orientation from SOCIETY_SEED —
   `homeSeed` rotates the deal and only re-uploads the communities; (6) the hex

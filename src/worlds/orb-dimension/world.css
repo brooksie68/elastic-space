@@ -825,12 +825,13 @@ body::after {
 }
 
 .orb-tuner {
+  /* v63.7 (James): opens at the RIGHT, out of the way of what he is tuning;
+     the header is a grab handle — drag it anywhere, it stays until closed */
   position: fixed;
-  left: 50%;
-  bottom: calc(var(--console-h, 0px) + 54px);
-  transform: translateX(-50%);
+  right: 20px;
+  top: 64px;
   z-index: 7;
-  width: min(1080px, calc(100vw - 40px));
+  width: min(700px, calc(100vw - 40px));
   padding: 14px 16px 12px;
   border-radius: 12px;
   border: 1px solid rgba(140, 160, 210, 0.18);
@@ -898,6 +899,39 @@ body::after {
   border-radius: 6px;
   padding: 3px 6px;
   font: 12px system-ui, sans-serif;
+}
+.orb-tuner .tuner-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -6px -8px 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(140, 160, 210, 0.14);
+  color: #dfe6f6;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.orb-tuner .tuner-head:active {
+  cursor: grabbing;
+}
+.orb-tuner .tuner-head .grip {
+  opacity: 0.55;
+  letter-spacing: -2px;
+}
+.orb-tuner .tuner-head .hint {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 11px;
+  opacity: 0.55;
+}
+.orb-tuner .tuner-status {
+  margin-top: 6px;
+  min-height: 1.3em;
+  font-size: 12px;
+  color: #ffe9d6;
 }
 .orb-tuner .tuner-actions {
   display: flex;
