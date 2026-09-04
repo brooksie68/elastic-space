@@ -24,26 +24,31 @@ const CAP=[2,8,18,32];
 let deps=null, panel=null, ladder=null, walk=null, walkName=null, current='O';
 
 // ---------- the ladder ----------
-function buildLadder(){
-  ladder.innerHTML='';
+function buildLadderInto(box){
+  box.innerHTML='';
   for(let i=0;i<4;i++){ const row=document.createElement('div'); row.className='lrow'; row.dataset.shell=i+1;
     row.innerHTML='<span class="ltag">Shell '+(i+1)+'</span><span class="lplaces"></span><span class="lcount"></span>';
     const pl=row.querySelector('.lplaces'); for(let k=0;k<CAP[i];k++){ const s=document.createElement('i'); pl.appendChild(s); }
-    ladder.appendChild(row); }
-  const extra=document.createElement('div'); extra.className='lextra'; ladder.appendChild(extra);
+    box.appendChild(row); }
+  const extra=document.createElement('div'); extra.className='lextra'; box.appendChild(extra);
 }
-function showElement(sym){
-  const el=deps.ELS.find(e=>e.sym===sym); if(!el) return; current=sym;
-  const sh=el.shells.split('·').map(Number); const n=sh.length; const tint=deps.tintOf(sym);
-  ladder.style.setProperty('--lt', tint);
-  ladder.querySelectorAll('.lrow').forEach((row,i)=>{ const have=sh[i]||0; const cap=CAP[i]; row.classList.toggle('empty', have===0);
+function buildLadder(){ buildLadderInto(ladder); }
+// light a ladder (any container built by buildLadderInto) for one element — shared with the element panel (step 4)
+function lightLadder(box, el, tint){
+  const sh=el.shells.split('·').map(Number); const n=sh.length;
+  box.style.setProperty('--lt', tint);
+  box.querySelectorAll('.lrow').forEach((row,i)=>{ const have=sh[i]||0; const cap=CAP[i]; row.classList.toggle('empty', have===0);
     row.querySelectorAll('.lplaces i').forEach((p,k)=>{ p.classList.toggle('lit', k<have); });
     const outer = i===n-1; let c = have===0 ? '' : have+' of '+cap;
     if(outer){ if(el.app==='full') c+=' · full'; else if(el.app.startsWith('wants')) c+=' · '+el.app; else if(el.app==='gives 2+') c+=' · gives 2, sometimes more'; else c+=' · '+el.app; }
     else if(have){ c+=' · full'; }
     row.querySelector('.lcount').textContent=c; row.classList.toggle('outer', outer); });
-  const extra=ladder.querySelector('.lextra'); const more=sh.slice(4);
+  const extra=box.querySelector('.lextra'); const more=sh.slice(4);
   extra.textContent = more.length ? 'And '+more.join(', ')+' more in shell'+(more.length>1?'s ':' ')+more.map((_,k)=>5+k).join(', ')+'. Past the fourth shell the filling order gets complicated; the outer shell still reads as above.' : '';
+}
+function showElement(sym){
+  const el=deps.ELS.find(e=>e.sym===sym); if(!el) return; current=sym;
+  const tint=deps.tintOf(sym); lightLadder(ladder, el, tint);
   walkName.innerHTML='<b style="color:'+tint+'">'+el.sym+'</b> '+el.name+' <span>· '+el.Z+' electron'+(el.Z>1?'s':'')+' · '+el.shells.replace(/·/g,' · ')+'</span>';
   if(el.Z<=20) walk.value=el.Z;
 }
@@ -109,5 +114,5 @@ function build(panelEl, d){ deps=d; panel=panelEl; ladder=panel.querySelector('#
   ringDrawing(panel.querySelector('#way1')); cloud(panel.querySelector('#way2'),2,1,'p',21,{rmax:14}); cloud(panel.querySelector('#way3'),2,1,'p',22,{rmax:14,fog:true,count:1800});
   tableShape(panel.querySelector('#tableShape')); showElement('O');
 }
-window.SnapShells = { build, show:showElement, current:()=>current };
+window.SnapShells = { build, show:showElement, current:()=>current, buildLadderInto, lightLadder };
 })();

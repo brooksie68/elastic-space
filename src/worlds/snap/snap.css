@@ -35,8 +35,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .tab.round i{border-radius:50%}
 .tab:hover{border-color:var(--border-strong);color:var(--ink)}
 .tab.active{background:var(--tab-active-bg);color:var(--tab-active-fg);border-color:var(--tab-active-bg)}
-.mode{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--dim);margin-left:24px;text-transform:uppercase;white-space:nowrap}
-.cluster{margin-left:auto;display:flex;align-items:center;gap:6px}
+.mode{display:none;font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--dim);margin-left:24px;text-transform:uppercase;white-space:nowrap}
+.cluster{margin-left:auto;margin-right:72px;display:flex;align-items:center;gap:6px} /* clear of the Elastic Space dashboard + speaker icons in the corner (James, 2026-09-04) */
 .cluster>*{height:40px;border:1px solid var(--border);border-radius:2px;display:flex;align-items:center;justify-content:center}
 .heat{gap:10px;padding:0 12px 0 6px;cursor:ns-resize;user-select:none}
 .heat .dial{position:relative;width:30px;height:30px;border-radius:50%;background:conic-gradient(from 225deg, var(--heat) 0deg, var(--heat) var(--heat-deg,108deg), transparent var(--heat-deg,108deg))}
@@ -106,6 +106,24 @@ body.table-open .invite{top:min(380px, calc(var(--strip-top) - 280px))} /* keeps
 .tile.locked:hover{opacity:.85}
 .tile.lit{background:color-mix(in oklch, var(--tc) 45%, transparent);border-color:#fff;box-shadow:0 0 22px var(--tc)}
 .tile.ph{cursor:default}
+/* buttonified tiles (James, 2026-09-04 — group 1 preview): two buttons in one tile. Symbol opens the card, name lands an atom.
+   The symbol button is one fixed width per letter count (--sw1 / --sw2, fit at runtime) so the column reads as a grid.
+   Divider = darker step of the tint + a 1px darker shadow line to its right. Hover lights each half on its own; the outer border stays. */
+.tile.bt{gap:0;padding:0}
+.tile.bt b{flex:none;box-sizing:border-box;width:var(--sw2);text-align:center;padding:0;border-right:1px solid var(--td);box-shadow:1px 0 0 var(--td2);background:color-mix(in oklch, var(--tc) 9%, transparent);cursor:pointer}
+.tile.bt .nm{flex:1;padding:0 6px 0 7px}
+.tile.bt b:hover{background:color-mix(in oklch, var(--tc) 20%, transparent);box-shadow:1px 0 0 var(--td2), inset 0 0 0 1px var(--th)}
+.tile.bt .nm:hover{background:color-mix(in oklch, var(--tc) 8%, transparent);box-shadow:inset 0 0 0 1px var(--th)}
+.tile.bt:hover,.tile.bt.lit-hover{border-color:var(--tb)}
+.strip.up .tile.bt{padding:0}
+.strip.up .tile.bt .z,.strip.up .tile.bt .m{top:5px}
+.strip.up .tile.bt b{width:auto;text-align:left;padding:17px 7px 6px;margin-top:0;border-right:0;border-bottom:1px solid var(--td);box-shadow:0 1px 0 var(--td2)}
+.strip.up .tile.bt b:hover{box-shadow:0 1px 0 var(--td2), inset 0 0 0 1px var(--th)}
+.strip.up .tile.bt .nm{padding:5px 7px 0}
+.strip.up .tile.bt .sh,.strip.up .tile.bt .ap{padding:0 7px}
+.strip.up .tile.bt .ap{padding-bottom:4px}
+.strip.up .grid.compact-rows .tile.bt b{padding-top:15px}
+.card.pinned{pointer-events:auto}
 .tile.ph b{color:var(--tile-2nd)}
 .tile .badge{position:absolute;right:4px;top:50%;margin-top:-5px;width:10px;height:10px;border-radius:50%;border:1px solid var(--electron);background:var(--bg);display:none}
 .tile.learned .badge,.tile.badge-on .badge{display:block}
@@ -165,6 +183,89 @@ body.panel-open.mol-open .line{left:calc(var(--inset) + 600px);padding:0 60px}
 .strip.up .hidebtn,.strip.collapsed .hidebtn{display:none}
 .strip.collapsed .grid{visibility:hidden}
 .strip.collapsed{padding-bottom:0}
+
+/* ---- the mode toggle + where-you-are chip (James, 2026-09-04: "a real clear toggle between guided and free") ---- */
+.modes{display:flex;align-items:center;gap:4px;margin-left:8px} /* the same 4px the rail tabs use */
+.modesw{display:flex;border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.msw{appearance:none;background:none;border:0;padding:9px 14px;font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);cursor:pointer;line-height:1}
+.msw+.msw{border-left:1px solid var(--border)}
+.msw:hover{color:var(--ink)}
+.msw.active{background:var(--tab-active-bg);color:var(--tab-active-fg)}
+.pos{appearance:none;display:flex;align-items:center;gap:10px;background:none;border:1px solid var(--border);border-radius:2px;padding:9px 12px;height:auto;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);cursor:pointer;line-height:1;white-space:nowrap}
+.pos:hover{color:var(--ink);border-color:var(--border-strong)}
+.pos[hidden]{display:none}
+.pos i{display:block;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid currentColor;opacity:.7}
+.pos.active{color:var(--ink);border-color:var(--border-strong)}
+/* the contents panel */
+.panel.contents{width:640px}
+.panel.contents .ph .gpause{margin-left:auto}
+.toc{display:flex;flex-direction:column;gap:4px}
+.tocch{display:flex;flex-direction:column}
+.tocch h3{margin:10px 0 6px;font-family:var(--serif);font-weight:400;font-size:20px;line-height:1.1;display:flex;align-items:baseline;gap:12px;color:var(--ink)}
+.tocch h3 small{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;color:var(--muted);text-transform:uppercase}
+.tocch h3 .done{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;color:var(--amber);text-transform:uppercase;margin-left:auto}
+.tocch.locked h3{color:var(--muted)}
+.tocstep{appearance:none;display:grid;grid-template-columns:58px 1fr;gap:8px;align-items:baseline;text-align:left;background:none;border:1px solid transparent;border-radius:2px;padding:6px 10px;font-family:var(--sans);font-size:14px;line-height:1.35;color:var(--ink);cursor:pointer}
+.tocstep small{font-family:var(--mono);font-size:10px;letter-spacing:0.04em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.tocstep:hover{border-color:var(--border);background:oklch(0.19 0.008 60)}
+.tocstep.now{border-color:var(--amber);color:var(--ink)}
+.tocstep{color:var(--muted)}
+.tocstep.seen{color:var(--ink)}
+.tocstep small{display:inline-flex;align-items:center;gap:6px}
+.tocstep small::before{content:'';flex:none;width:8px;height:8px;visibility:hidden;transform:translateY(-1.5px)} /* caps sit above the line box's centre; lift the mark to the middle of the digits */ /* every row reserves the mark's room so the numbers line up */
+.tocstep.seen small::before{visibility:visible;background:none;border-radius:0;
+  /* a tiny amber check: a 2px stroke drawn as an SVG data URI, centred on the text's middle */
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M1.5 5.5 L4 8 L8.5 2.5' fill='none' stroke='%23FFC43C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-size:8px 8px;background-repeat:no-repeat}
+.tocstub{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase;padding:2px 10px 8px}
+
+/* ---- guided mode (step 5): the strip at the top of the bench, the close-up in the middle ---- */
+.guide{position:absolute;left:0;right:0;top:96px;text-align:center;z-index:6;padding:0 240px;opacity:0;pointer-events:none;transition:opacity .35s ease}
+.guide.on{opacity:1;pointer-events:auto}
+.guide .kicker{margin-bottom:12px}
+.guide p{margin:0 auto 22px;max-width:940px;font-family:var(--serif);font-size:29px;line-height:1.3;color:var(--ink);text-wrap:pretty}
+.guide .grow{display:flex;align-items:center;justify-content:center;gap:26px}
+.guide .arrow{gap:18px;transition:opacity .3s ease}
+.guide .arrow.wait{opacity:.38}
+.guide .arrow.wait svg{filter:none}
+.guide .arrow.pulse svg{animation:gpulse 1.4s ease}
+@keyframes gpulse{0%{transform:translateX(0)}20%{transform:translateX(10px)}45%{transform:translateX(0)}65%{transform:translateX(8px)}100%{transform:translateX(0)}}
+.gpause{appearance:none;background:none;border:1px solid var(--border);border-radius:2px;padding:6px 10px;font-family:var(--mono);font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.gpause:hover{color:var(--ink);border-color:var(--border-strong)}
+.guide.min p,.guide.min .kicker{display:none}
+.guide.min{top:82px}
+.guide.min .arrow{opacity:1}
+.guide.min .gpause{display:none}
+/* the target drawing lives in the strip, under the text and above the arrow — never over the bench atoms (James, 2026-09-04) */
+.closeup{display:none;width:260px;height:130px;margin:-6px auto 10px;pointer-events:none;opacity:0;transition:opacity .4s ease}
+.closeup.on{display:block;opacity:1}
+/* the badge: a tiny drawn atom in the element's tint */
+.tile.badge-on .badge{border:1px solid var(--tt);background:radial-gradient(circle, var(--tt) 0 28%, transparent 32%) var(--bg);box-shadow:0 0 7px var(--tc)}
+.tile.lit{background:color-mix(in oklch, var(--tc) 38%, transparent);border-color:color-mix(in oklch, var(--tc) 80%, white);box-shadow:0 0 16px color-mix(in oklch, var(--tc) 70%, transparent)}
+
+/* ---- the element panel: the per-element card set (step 4) ---- */
+.panel.elem{width:560px;padding:22px 26px 24px}
+.eh{display:flex;align-items:center;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--hair)}
+.esym{flex:none;width:64px;height:64px;display:flex;align-items:center;justify-content:center;font-family:var(--tiny);font-weight:600;font-size:30px;color:var(--et);border:1px solid color-mix(in oklch, var(--et) 45%, transparent);border-radius:2px;background:color-mix(in oklch, var(--et) 12%, transparent)}
+.ett{flex:1;min-width:0}
+.ett h2{margin:0 0 6px;font-family:var(--serif);font-weight:400;font-size:30px;line-height:1}
+.ez{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;color:var(--dim);text-transform:uppercase}
+.enav{display:flex;gap:6px}
+.enav .sq{width:30px;height:30px;font-size:14px;color:var(--ink)}
+.etabs{display:flex;gap:2px;margin:14px 0 18px;border-bottom:1px solid var(--hair)}
+.etab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:8px 12px;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.etab:hover{color:var(--ink)}
+.etab.active{color:var(--ink);border-bottom-color:var(--et)}
+.etab[disabled]{opacity:.4;cursor:default}
+.epage[hidden]{display:none}
+.ep{margin:0;font-size:15.5px;line-height:1.55;color:var(--ink)}
+.eline{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--hair);font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.4;color:oklch(0.8 0.012 80)}
+.eline:empty{display:none}
+.epage .ladder{margin-top:16px}
+.enums{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin:0}
+.enums div{padding:10px 12px;border:1px solid var(--border);border-radius:2px;background:oklch(0.19 0.008 60)}
+.enums dt{font-family:var(--mono);font-size:10px;letter-spacing:0.16em;color:var(--muted);text-transform:uppercase}
+.enums dd{margin:6px 0 0;font-family:var(--mono);font-size:15px;font-weight:500;color:var(--ink)}
+.enums dd small{font-size:11px;color:var(--muted);margin-left:4px}
 
 /* ---- the shells panel: a short reader ---- */
 .panel.shells{width:900px;left:50%;transform:translateX(-50%);padding:28px 48px 32px;scrollbar-color:oklch(0.38 0.01 60) oklch(0.2 0.008 60);scrollbar-width:thin}

@@ -6,7 +6,7 @@
 <!-- Snap!: the molecule-building bench. Draft — no drift exits yet (they arrive at ship). Contract: docs/building-a-world.md -->
 <title>Snap!</title>
 <link rel="stylesheet" href="fonts.css?v=2">
-<link rel="stylesheet" href="snap.css?v=31">
+<link rel="stylesheet" href="snap.css?v=43">
 </head>
 <body>
 
@@ -20,9 +20,9 @@
   <nav class="tabs" id="tabs">
     <button class="tab round" data-tab="molecules"><i></i>Molecules</button>
     <button class="tab round" data-tab="shells"><i></i>Shells</button>
-    <button class="tab" data-tab="collection"><i></i>Collection</button>
-    <button class="tab" data-tab="map"><i></i>Map</button>
   </nav>
+  <div class="modes"><div class="modesw" id="modesw"><button class="msw active" data-m="free">Free</button><button class="msw" data-m="guided">Guided</button></div>
+  <button class="pos" id="pos" title="where you are · open the contents" hidden><span id="posText">Not started</span><i></i></button></div>
   <div class="mode" id="mode">Free · the bench is empty</div>
   <div class="cluster">
     <div class="heat" id="heat" title="heat: drag up or down"><div class="dial"><b></b></div><label id="heatLabel">HEAT 0.0</label></div>
@@ -49,6 +49,29 @@
   <section class="ssec" data-sec="s5"><h3></h3><div class="stext"></div><figure class="tshape"><canvas id="tableShape"></canvas></figure></section>
 </aside>
 
+<aside class="panel contents" id="panelContents" hidden>
+  <div class="ph"><h2>Contents</h2><span class="pcount" id="tocCount"></span><button class="gpause" id="tocRestart" title="back to chapter 1, badges cleared">start over</button></div>
+  <div class="toc" id="toc"></div>
+</aside>
+
+<aside class="panel elem" id="panelElement" hidden>
+  <div class="eh">
+    <b class="esym" id="eSym"></b>
+    <div class="ett"><h2 id="eName"></h2><span class="ez" id="eZ"></span></div>
+    <div class="enav"><button class="sq" id="ePrev" title="previous element">&#9666;</button><button class="sq" id="eNext" title="next element">&#9656;</button></div>
+  </div>
+  <nav class="etabs" id="etabs">
+    <button class="etab active" data-et="over">Overview</button>
+    <button class="etab" data-et="shells">Shells</button>
+    <button class="etab" data-et="num">Numbers</button>
+    <button class="etab" data-et="world">In the world</button>
+  </nav>
+  <section class="epage" data-et="over"><p class="ep" id="eOver"></p><p class="eline" id="eLine0"></p></section>
+  <section class="epage" data-et="shells" hidden><p class="ep" id="eShellText"></p><div class="ladder" id="eLadder"></div><p class="eline" id="eLine1"></p></section>
+  <section class="epage" data-et="num" hidden><dl class="enums" id="eNums"></dl><p class="eline" id="eLine2"></p></section>
+  <section class="epage" data-et="world" hidden><p class="ep" id="eWorld"></p><p class="eline" id="eLine3"></p></section>
+</aside>
+
 <section class="invite" id="invite">
   <div class="kicker">The bench is empty</div>
   <h1>Do you want to learn about atoms?</h1>
@@ -56,6 +79,16 @@
     <svg viewBox="0 0 120 64"><path d="M10 32 H94 M70 10 L98 32 L70 54"/></svg>
     <span class="cap">Begin</span>
   </button>
+</section>
+
+<section class="guide" id="guide">
+  <div class="kicker" id="gKicker"></div>
+  <p id="gText"></p>
+  <canvas class="closeup" id="closeup" width="260" height="130" aria-hidden="true"></canvas>
+  <div class="grow">
+    <button class="arrow sm" id="gArrow"><svg viewBox="0 0 120 64"><path d="M10 32 H94 M70 10 L98 32 L70 54"/></svg><span class="cap" id="gCap">next</span></button>
+    <button class="gpause" id="gPause" title="pause the guide and use the bench freely">pause</button>
+  </div>
 </section>
 
 <div class="line" id="line"><div class="kicker" id="lineWho"></div><p id="lineText"></p></div>
@@ -90,8 +123,10 @@
 <script src="elements.js"></script>
 <script src="facts.js"></script>
 <script src="molecules.js"></script>
-<script src="shells.js?v=2"></script>
-<script src="engine.js?v=6"></script>
-<script src="app.js?v=32"></script>
+<script src="content.js?v=2"></script>
+<script src="shells.js?v=3"></script>
+<script src="engine.js?v=16"></script>
+<script src="guide.js?v=15"></script>
+<script src="app.js?v=46"></script>
 </body>
 </html>

@@ -198,16 +198,23 @@ consistent. `npm run check-worlds` audits every world against the contract.
    no batch generation. The in-world glow homes stay as they are until then
    (hex plates are the file:// fallback; `glowHome.name` swaps the model).
    (f) **EVERY SPHERE BECOMES A REAL 3-D SHAPE (James, 2026-09-03, "it has
-   to" — recorded, NOT NOW, his call when):** every orb in the world (hearts,
-   veils, dust, beacons, actors, crowd clouds, the interiors) is a camera-
-   facing disc with a gradient — "circular TV screens facing you." Agreed
-   two-phase plan awaiting his go: PHASE 1 sphere impostors for every orb
-   (per-pixel ray-sphere hit, real normal, real depth write, rim/specular,
-   shell texture wrapped, refraction parallax; worldlets become true globes)
-   — one build; PHASE 2 the 26 procedural interiors go volumetric kind by
-   kind (raymarched like the Saelyri), sequenced with him, paintings may stay
-   flat. See world changelog 2026-09-03 (the honest answer) + world CLAUDE.md
-   START HERE.
+   to"): PHASE 1 BUILT 2026-09-04 as v63 "THE BALL"** — his "you choose...
+   as few stops as possible" go, built solo through three lab self-critique
+   rounds: every eligible orb is a per-pixel sphere impostor (true ray,
+   normal + depth test against the homes/bone, key light from its nearest
+   heart with rim + pin, refracted 2D interiors, worldlets as true globes,
+   Saelyri in world axes); dust/veils/crowd clouds stay discs (Claude's
+   pick); dial "real spheres" (0 = the old disc) in "the air". Lab
+   src/labs/sphere-lab/index.html (KEEP), new sphere-sim, ten sims +
+   shader-check green, NOT eye-verified in-world (sound world, no pane).
+   HE FLEW IT ("pretty good") → v63.1–v63.9 same day by his eye (highlight to the
+   light, ball edge dial, crowd clouds RETIRED → THE FORMATIONS, glow homes
+   re-centred on their bulk, worldlet facing fix, panel grab handle + save
+   feedback, cache tags). **PHASE 2 BUILT AS v64 the same night, unjudged at his
+   word ("just say open this thing up and look at the balls"): all 23 procedural
+   interiors are volumes** (chord march + a recipe per kind, paintings flat);
+   Sphere Lab promoted to src/labs/sphere-lab (admin Labs), `?sheet=interiors`.
+   AWAITING HIS LOOK. World changelog v63–v64 + world CLAUDE.md START HERE.
    (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.
@@ -235,6 +242,12 @@ consistent. `npm run check-worlds` audits every world against the contract.
    frame-rate read at 2,800 beings and any dial picks. Same session: "GOD MODE" RETIRED —
    the tuner is the configuration panel everywhere but old changelog entries
    (memory call-it-configuration).
+   2026-09-04: the v61 crowd CLOUDS (kind 66 far-LOD blobs) RETIRED on his
+   flight ("fuzzy puffballs... a fail") and replaced by THE FORMATIONS (v63.6,
+   his riff, built unjudged on his go): a seventh verb — groups assemble into
+   a hollow sphere / Bucky ball / patterned cube / 3-D star / hex prism / lazy
+   cloud, turn, breathe, trade seats, break away on the tide; society-sim
+   TEST 16. Awaiting his flight.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
@@ -668,7 +681,30 @@ consistent. `npm run check-worlds` audits every world against the contract.
    THE BENCH — pull the lab's coherence scope out over a molecule on the
    Snap bench (real HF electron cloud + shells at separate brightness,
    nucleus, proton cloud); recorded in reimagine.md §15 item 3, unscoped.
-   NEXT: step 4 (the data + the per-element tabbed card set) on his go.
+   **2026-09-04 (later): BUTTONIFIED TILES + STEP 4 BUILT.** James's "buttonify"
+   brief (three rounds by eye on group 1, then "nice. looks great."): every tile is
+   two buttons — symbol (one fixed width for all 118) opens the element panel, name
+   lands an atom; darker divider + 1px shadow line; per-half hover, no white border.
+   Then STEP 4 solo on his "move on... try not to ask me": `content.js` (18 elements
+   × Overview + In the world paragraphs + 3 one-liners + boil/density/found) and
+   the ELEMENT PANEL (four tabs, ◂ ▸ by Z; opens from the symbol button or a click
+   on a landed atom; then ALL 118 written on his "thought you were going to add in
+   data for every element" — the other 100 in the lighter form). His read: "nice.
+   looks great." **STEP 5 BUILT same night on his "take a rip"** (his brief: "don't
+   get too cutesy... calm, pleasant"): GUIDED MODE chapters 1–6 in `guide.js` (chapters
+   as data; close-up drawing; atoms handed; the arrow waits for the snap via engine
+   hooks onMade/onRefuse/onBreak; badges on the tiles; localStorage resume; pause).
+   Engine whispers rewritten out of the mock's hands-and-rings voice. HE FLEW IT the
+   same night, many rounds by eye (changelog): two-line ledger naming every shell, the
+   charge-balance sum line "3 P⁺ + 3 E⁻ = 0" (whittling), molecule name tags for the
+   24, FREE | GUIDED toggle + position chip + CONTENTS panel (a table of contents, not a
+   gate; step addresses `#chN-M`), chapter 3's nucleus step (proton dots, "3 protons"
+   with an arrow), Collection + Map tabs DROPPED (later: trophies on the Molecules
+   panel, not built). **STEP 6 BUILT same night** ("copper real block… be creative"):
+   chapters 7–12 — right-click IONIZE on the bench, COPPER as the first metal with the
+   electron sea, carbon chains, ethene, methanol, ammonia; benzene/glucose/glycine/
+   peptide as drawings + text. AWAITING HIS READ of 7–12.
+   NEXT on his go: step 9 the look, step 10 ship, 10.5 the hold view.
    Also queued, his gos: bench editing (box-select/Delete/Ctrl-C-V-D/
    right-click), the Scope, the pullback. Also: memory `no-flags-after-the-answer` ("flagging
    things is like a compulsion with you").
@@ -1042,12 +1078,42 @@ consistent. `npm run check-worlds` audits every world against the contract.
    instruments; zoom gate with hysteresis so bobbing pilots never see it
    pump. ROUND TWO BUILT the same night (renderer rebuilt, shell rebuilt,
    sim 66,900 green). HE FLEW ROUND TWO: "this looks cool and makes me feel
-   nostalgic." ROUND THREE AGREED, NOT BUILT — START HERE at the top of
-   the world CLAUDE.md: ship flatter ("samurai hat"), faint circle +
-   triangle for direction, fuel pads (1–2 per moonscape), EARNED LANDING
-   TECH on a 4X/5X (not a score bonus; parachute out; twelve ideas listed,
-   his six-pick pending), flatter NASA-plausible moonscape with plateaus.
-   Not built from the eight: surface dressing
+   nostalgic." **ROUND THREE BUILT 2026-09-04** (his picks 1/2/4/5/7 of
+   the twelve, plan approved with two corrections — the ship is NOT
+   flattened, "the opposite, but not too much": a two-stage LEM read, pod
+   over descent stage, NASA 2036; and "some jagginess here and there. its
+   a game"): the new ship outline (no flying changes), faint circle +
+   triangle direction indicator, the ZONED MOONSCAPE (maria/plateaus/
+   hills/1–2 real mountains/rationed rough), FUEL PADS (1–2 per
+   moonscape, +150/+200), and LANDING TECH — shock legs → spider legs →
+   gyro → landing radar → auto-throttle (a PERFECT on a 5X with the other
+   four), a crash loses the newest, each drawn on the ship, five HUD
+   drawings under the fuel bar. Sim 75,718 green (TESTS 10–12); shell
+   driven headless through engage/level/perfect/earn/lose. His pre-flight
+   notes done the same night: ship 20% smaller, third back range, Space
+   burns like W (abort X), the aid ring far out + barely visible, 1979
+   tells pulled back (DOM pad labels/tallies, no flame triangle) — HIS
+   STANDING WORD: "this is NOT a faithful recreation of the 1979 atari
+   game." Same night, his 2026-look ask (five recs, he took 1–3: max-blend
+   lines, tight glow, ship as object; 4 palette + 5 motion await his go),
+   the instruments into ONE CONSOLE with the big hash-marked fuel bar,
+   feet-on-the-line fix, wheel trim in thrust %, tune auto-pauses, tech
+   hover cards, type up a step. **ROUND FOUR BUILT the same night, his
+   go: THE ENDLESS MOON** — 4,000 ft chunks hashed + kept for the life,
+   per-chunk DEALS (standard/sparse/rich/dry/jackpot), pads pay once per
+   life (refuel still), the RING ACCELERATOR launch after every landing
+   (angle dial, default 60°, "be prepared to adjust"), crash drops in
+   above the wreck, the wide camera scrolls (core cameraFollow), RANGE
+   readout. HE FLEW IT ALL and drove a dozen feel notes the same night
+   (aim-clear launch, continuous ride speed with real acceleration, camera
+   pull-back rules incl. below-1× zoom for a high ship, ship-side HUD in the
+   zoomed view, launcher rises from / sinks into the ground, attitude ball →
+   a little lander that greens toward level). His verdict: "I really like
+   this. It's fun. I think I'm ready to publish it." **SHIPPED 2026-09-04**:
+   four diegetic exits (drive-through door, relay tower, horizon ring, the
+   wreck's hatch), registry + drift wired, admin row under Completed
+   ("unwired" note removed on his word). Sim 336,287 green. NEXT, his go: MISSIONS;
+   the 2026-look items 4–5 (palette, motion); the feature round. Not built from the eight: surface dressing
    (craters/wreck/flag/beacons), Earth + meteors, two-colour phosphor, drone bed
    + radio chatter; then the feature round (multi-stage descents, moving pad,
    meteor showers, fuel crates, co-op tow, terrain sets), then drift exits +

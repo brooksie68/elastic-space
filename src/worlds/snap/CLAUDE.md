@@ -9,14 +9,16 @@ only what is specific to this world.
    (§1), the ten rolls and the pick (§2–3), the curriculum, guided-mode and UI briefs
    (§10–12), THE ELEVEN-STEP PLAN (§13, each step needs James's eyes before the next),
    the Design prompt (§14), and §15: THE PROSE REGISTER + the parked ideas.
-2. **Where the plan stands (2026-09-04):** steps 1 (bench), 2 (table mini app), 3
-   (toolbar + Molecules panel, all 24 lit + Shells panel) and 8 (Claude Design) are
-   built. NEXT: step 4 — the data + the per-element tabbed card set — on his go. Then
-   5–7 guided mode and the map, 9 the look onto the engine, 10 ship (part one done:
-   the world folder), 10.5 the hold view, 11 tune by eye. Also his: bench editing
-   (box-select, Delete, Ctrl-C/V/D, right-click menu — reliable via contextmenu
-   preventDefault), THE SCOPE on the bench (the Valence Lab's visualizer over a
-   molecule), the pullback. Each needs its own go.
+2. **Where the plan stands (2026-09-04, night):** steps 1 (bench), 2 (table mini app), 3
+   (toolbar + Molecules panel, all 24 lit + Shells panel), 4 (the element card set, all
+   118 — `content.js` + `#panelElement`), 5 + 6 (GUIDED MODE, all twelve chapters — `guide.js`, see
+   rule 13) and 8 (Claude Design) are built. Tiles are BUTTONIFIED (rule 11). NEXT: his
+   read of chapters 7–12, right-click ions and copper (built 2026-09-04 night), 7 (the contents panel and the Free | Guided toggle cover it; the Collection and Map
+   tabs were DROPPED 2026-09-04 — later, the Molecules panel marks made molecules with a
+   trophy, not built), 9 the look onto the engine, 10 ship (part one done: the world folder), 10.5 the
+   hold view, 11 tune by eye. Also his: bench editing (box-select, Delete, Ctrl-C/V/D,
+   right-click menu — reliable via contextmenu preventDefault), THE SCOPE on the bench
+   (the Valence Lab's visualizer over a molecule), the pullback. Each needs its own go.
 3. Local URL: http://127.0.0.1:4174/src/worlds/snap/index.html (`?mute=1` opens muted).
    `tmp/snap/index.html` redirects here. The Design package (Claude Design's frames,
    spec README with the oklch tokens) is `tmp/snap/design/` — the look's source of truth.
@@ -53,7 +55,9 @@ italic one-line facts on the cards (he likes those; he wants more later).
    angle springs' net torque is cancelled per molecule each substep and whole-body spin
    decays at ROT_DAMP 4/s (propane used to rotate forever). Labels: away from the
    molecule's centre with a 0.5R dead zone, 30° hysteresis, 10%/frame ease (the boron
-   flicker). The ledger reads the outer shell against its room ("6 of 8 · wants 2").
+   flicker). The ledger is two lines and names every shell: "SHELL 1 FULL · SHELL 2: 6 OF
+   8" then "WANTS 2" (James, 2026-09-04: "2 · 1 of 8" was too obscure — the point is that
+   the reader keeps seeing which shell is the outer one).
 7. **Zoom** steps through 50/75/100/125/150/175/200%; the dot matrix runs at 3/4 of the
    bench zoom (dots scale WITH zoom, cap 12% alpha) under the vignette mask.
 8. **Molecules land apart:** every chord of the landing ring ≥ 1.4× the engine's
@@ -64,13 +68,48 @@ italic one-line facts on the cards (he likes those; he wants more later).
    the rail mute and the speaker are one state). Never add a second toggle.
 10. **Draft:** no drift exits, no registry entry, until ship. The registry generator
     includes drafts — restore `src/core/world-registry.js` if you regenerate.
+11. **Buttonified tiles (James, 2026-09-04, approved "looks great"):** every tile is two
+    buttons. The symbol button is ONE fixed width for all 118 (`--sw2`, the widest
+    two-letter symbol at the current type size + 6px each side, set in `fitType()`);
+    the divider is the tint at oklch L 0.40 (`--td`) with a 1px L 0.08 shadow line to
+    its right (`--td2`) — darker than the border, never brighter. Hover lights each half
+    on its own (inset ring `--th`); the outer border does NOT go white. Hover anywhere on
+    the tile = the card after 600ms. Symbol click = `openElement`, name click = land,
+    drag from either half = land at the drop.
+12. **The element panel** (`.panel.elem`, step 4): four tabs. All 118 have hand-written
+    content in `content.js` (register §15): the 18 bench elements get Overview + In the
+    world + three lines + numbers; the other 100 get In the world + one line + numbers
+    (Overview and Shells generated). Numbers rows without data are absent, never dashes. Three one-liners per element go to Overview / Shells / In the world. The
+    Shells tab shares `SnapShells.buildLadderInto` / `lightLadder` with the Shells panel.
+13. **Guided mode** (`guide.js`, step 5): chapters are DATA — text, `show` (a SNAP_MINI
+    pic drawn as the close-up), `light` (tiles), `hand` (atoms landed apart, below the
+    close-up; `row:true` = landRow), `wait` (`made:KEY`, `made:KEY×N`, `refuse`,
+    `break`, or none) + `hint` (the arrow's caption while waiting). The engine reports
+    through `sc.onMade` / `sc.onRefuse` / `sc.onBreak`. A chapter starts on a cleared
+    bench and ends by badging its `tiles`. State persists in localStorage `snap-guide`.
+    Waits also: `ion:SYM` (right-click made that ion) and `metal:N` (a copper block of N).
+    RIGHT-CLICK on a lone atom = `E.ionize` (givers/H/Cu/C lose an electron, N–Cl gain;
+    again = neutral). COPPER is kind `metal`: no hands, bonds only to copper (≤6 each),
+    metallic bonds draw the electron sea, break under heat like singles. Benzene is NOT a
+    hands-on target (the min-free-hands bond rule makes a hand-built ring a puzzle).
+    Copy register: calm, brief, rule first — James: "don't get too cutesy." Every engine
+    whisper is in the same register now; never bring back the mock's hands-and-rings
+    voice. MODES: the rail toggle GUIDED | FREE is the one switch (no other way in or
+    out); the chip beside it shows the position and opens the CONTENTS panel — a table of
+    contents, NOT a gate: every step is a click away, reached steps (`state.reached`) are
+    highlighted, `goTo` lands the chapter's earlier hands first. Every step has an
+    address `#chN-M`; a link opens straight into the guide there. Progress is
+    localStorage only (`snap-guide`); no server, no accounts — never build one here. The rail's mode
+    note is hidden (`.mode{display:none}`) until James decides about notes.
 
 ## Files
 
 `index.html` · `snap.css` (tokens + every panel) · `app.js` (bench, table, panels,
 cards) · `engine.js` (the 2D bench: atoms, bonds, physics, labels, chords) ·
-`elements.js` (118) · `facts.js` (en/melt/one-liners) · `molecules.js` (24) ·
-`shells.js` (the Shells reader) · `fonts/` · `reimagine.md` · `changelog.md`.
+`elements.js` (118) · `facts.js` (en/melt/one-liners) · `content.js` (all 118 element
+cards) · `molecules.js` (24) ·
+`shells.js` (the Shells reader) · `guide.js` (guided mode: the chapters as data + the
+guide) · `fonts/` · `reimagine.md` · `changelog.md`.
 
 ## Relations
 

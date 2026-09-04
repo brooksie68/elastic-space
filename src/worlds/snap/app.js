@@ -23,7 +23,9 @@ sc.inkRGBA = a => 'rgba('+INK[0]+','+INK[1]+','+INK[2]+','+a+')';
 const lineEl=$('line'), whoEl=$('lineWho'), textEl=$('lineText'); let lineTimer=0;
 function say(who, text, hold){ whoEl.textContent = who||''; textEl.innerHTML = text; lineEl.classList.add('on'); clearTimeout(lineTimer); if(!hold) lineTimer=setTimeout(()=>lineEl.classList.remove('on'), 7000); }
 sc.say = say;
-sc.onMade = (key, nm) => { $('mode').textContent = 'Free · you made '+nm; };
+sc.onMade = (key, nm) => { if(guide && guide.active()) guide.onMade(key); else $('mode').textContent = 'Free · you made '+nm; };
+sc.onRefuse = ()=>{ if(guide) guide.onRefuse(); }; sc.onBreak = ()=>{ if(guide) guide.onBreak(); }; sc.onIon = a=>{ if(guide) guide.onIon(a); }; sc.onMetal = n=>{ if(guide) guide.onMetal(n); };
+let guide=null;
 
 // ---------- layout ----------
 function layout(){
@@ -54,24 +56,29 @@ function hud(){ $('hud').textContent = 'Zoom '+Math.round(sc.zoomT*100)+'% · '+
 // ---------- pointer on the bench: drag after 6px, X-ray after 350ms of stillness ----------
 let down=null, holdTimer=0;
 function spt(e){ const r=cv.getBoundingClientRect(); return toWorld(e.clientX-r.left, e.clientY-r.top); }
-cv.addEventListener('pointerdown', e=>{ E.audio(); const p=spt(e); const a=E.hit(sc,p); down={a,p,sx:e.clientX,sy:e.clientY}; sc.pointer=p; try{ cv.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); clearTimeout(holdTimer);
+cv.addEventListener('pointerdown', e=>{ if(e.button===2) return; E.audio(); const p=spt(e); const a=E.hit(sc,p); down={a,p,sx:e.clientX,sy:e.clientY}; sc.pointer=p; try{ cv.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); clearTimeout(holdTimer);
   if(a) holdTimer=setTimeout(()=>{ if(down && !sc.drag){ sc.xray=E.component(a); sc.lastX=sc.xray; hud(); } },350); });
 cv.addEventListener('pointermove', e=>{ if(!down) return; const p=spt(e); sc.pointer=p;
   if(!sc.drag && down.a && !sc.xray && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)>6){ sc.drag=down.a; cv.classList.add('dragging'); clearTimeout(holdTimer); }
   if(!down.a && !sc.xray && sc.zoom>1){ // pan the camera when dragging empty bench
     const dx=(e.clientX-down.sx)/sc.zoom, dy=(e.clientY-down.sy)/sc.zoom; down.sx=e.clientX; down.sy=e.clientY; sc.camx-=dx; sc.camy-=dy; clampCam(); dots(); } });
-function release(e){ clearTimeout(holdTimer); down=null; sc.drag=null; sc.xray=null; cv.classList.remove('dragging'); hud(); try{ if(e&&e.pointerId!=null) cv.releasePointerCapture(e.pointerId); }catch(err){} }
+function release(e){ clearTimeout(holdTimer); const click = down && down.a && !sc.drag && !sc.xray && e && e.type==='pointerup' && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)<=6; const sym = click ? down.a.sym : null; down=null; sc.drag=null; sc.xray=null; if(sym) openElement(sym); cv.classList.remove('dragging'); hud(); try{ if(e&&e.pointerId!=null) cv.releasePointerCapture(e.pointerId); }catch(err){} }
+cv.addEventListener('contextmenu', e=>{ e.preventDefault(); const a=E.hit(sc, spt(e)); if(a){ E.audio(); E.ionize(sc, a); } }); // right-click an atom: it loses or gains an electron (chapter 7)
 cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release); cv.addEventListener('lostpointercapture', ()=>{ if(down) release(null); });
 
 // ---------- the table strip: a mini app (step 2, reworked on James's first read 2026-09-03) ----------
 const strip=$('strip'), grid=$('grid'), handle=$('handle'); const tiles={};
 const FACTS = window.SNAP_FACTS||{};
 function hexA(hex,a){ const n=parseInt(hex.slice(1),16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
-function tint(t, app){ const c=E.appetiteHex(app, false); t.style.setProperty('--tc',c); t.style.setProperty('--tt', E.oklchHex(0.82, app==='full'?0.015:0.15, E.APP_HUE ? (E.APP_HUE[app]||265) : 265)); /* text tint: L 0.82 clears WCAG 4.5:1 on the tinted tile */ t.style.setProperty('--tf',hexA(c,0.16)); t.style.setProperty('--tb',hexA(c,0.45)); return c; }
+function tint(t, app){ const c=E.appetiteHex(app, false); t.style.setProperty('--tc',c); t.style.setProperty('--tt', E.oklchHex(0.82, app==='full'?0.015:0.15, E.APP_HUE ? (E.APP_HUE[app]||265) : 265)); /* text tint: L 0.82 clears WCAG 4.5:1 on the tinted tile */ t.style.setProperty('--tf',hexA(c,0.16)); t.style.setProperty('--tb',hexA(c,0.45)); const h=E.APP_HUE ? (E.APP_HUE[app]||265) : 265, C=app==='full'?0.015:0.15;
+  t.style.setProperty('--td', E.oklchHex(0.40, C, h));            // the divider: same hue, darker than the border reads
+  t.style.setProperty('--td2', E.oklchHex(0.08, Math.min(C,0.03), h)); // the 1px shadow line to its right, darker than the tile fill
+  t.style.setProperty('--th', hexA(c,0.78));                        // hover ring: the border tint, a little brighter
+  return c; }
 function buildTable(){
   grid.innerHTML='';
   const fi={6:0,7:0};
-  for(const el of ELS){ const t=document.createElement('button'); t.type='button'; t.className='tile'+(el.f?' f':'')+(E.ELEM[el.sym]?'':' locked'); t.dataset.sym=el.sym; tint(t, el.app);
+  for(const el of ELS){ const t=document.createElement('button'); t.type='button'; t.className='tile'+(el.f?' f':'')+(E.ELEM[el.sym]?'':' locked')+' bt'+(el.sym.length>1?' s2':' s1'); t.dataset.sym=el.sym; tint(t, el.app);
     if(el.f){ t.style.gridColumn=4+fi[el.period]; fi[el.period]++; t.style.gridRow=el.period+3; } else { t.style.gridColumn=el.group; t.style.gridRow=el.period; }
     t.innerHTML='<i class="z">'+el.Z+'</i><i class="m">'+(el.mass? el.mass.toFixed(el.mass<100?3:2) : '—')+'</i><b>'+el.sym+'</b><span class="nm">'+el.name+'</span><span class="sh">'+el.shells+'</span><span class="ap">'+el.app+'</span><i class="badge"></i>';
     tileEvents(t, el); grid.appendChild(t); tiles[el.sym]=t; }
@@ -86,11 +93,13 @@ function buildTable(){
 const meas=document.createElement('canvas').getContext('2d');
 function fitType(){
   const gap=3; const tileW=(grid.clientWidth - 17*gap)/18; if(!(tileW>0)) return;
-  meas.font='400 100px "Atkinson Hyperlegible Next", Tahoma, sans-serif'; const nw={}; for(const el of ELS) nw[el.sym]=meas.measureText(el.name).width;
-  meas.font='600 120px "Atkinson Hyperlegible Next", Tahoma, sans-serif'; let per=0; for(const el of ELS) per=Math.max(per, (nw[el.sym]+meas.measureText(el.sym).width)/100); // width per px of name size, symbol at 1.2×
-  const fit=Math.max(8, Math.min(16, Math.floor((tileW-12-6)/per*10)/10)); // one line: symbol · gap · name, 6px side padding
+  meas.font='400 100px "Atkinson Hyperlegible Next", Tahoma, sans-serif'; let nwMax=0; for(const el of ELS) nwMax=Math.max(nwMax, meas.measureText(el.name).width/100);
+  meas.font='600 100px "Atkinson Hyperlegible Next", Tahoma, sans-serif'; let sw1=0, sw2=0; for(const el of ELS){ const w=meas.measureText(el.sym).width/100; if(el.sym.length>1) sw2=Math.max(sw2,w); else sw1=Math.max(sw1,w); }
+  // the grid: symbol button = widest symbol of its letter count at 1.2× the name size + 6px each side; the divider + its shadow take 2px; the name gets 6px each side
+  const per = nwMax + 1.2*sw2; const fit=Math.max(8, Math.min(16, Math.floor((tileW-12-2-12)/per*10)/10));
   const nm=Math.min(fit, 14.5); // type caps at 14.5px (James, 4K: bigger reads semibold); the tile keeps growing
-  root.style.setProperty('--nm', nm+'px'); root.style.setProperty('--sym', (Math.round(nm*12)/10)+'px');
+  const sym=Math.round(nm*12)/10; root.style.setProperty('--sw1', Math.ceil(sym*sw1+12)+'px'); root.style.setProperty('--sw2', Math.ceil(sym*sw2+12)+'px');
+  root.style.setProperty('--nm', nm+'px'); root.style.setProperty('--sym', sym+'px');
   lift.row0=Math.round(fit*2.3); // strip rows follow the UNCAPPED fit, so the tiles stay tall on a wide screen
   lift.row1=Math.max(lift.row0, Math.min(90, Math.floor((window.innerHeight-80-125)/9)));
   strip.style.setProperty('--fgap', '6px');
@@ -116,11 +125,12 @@ function setLift(target){ if(!lift.h1) measureLift(); if(target===lift.t) return
 function liftTick(now){ lift.raf=0; const k=Math.min(1, (now-lift.t0)/120); lift.t=lift.from+(lift.to-lift.from)*k; applyLift(); if(k<1) lift.raf=requestAnimationFrame(liftTick); }
 handle.addEventListener('click', e=>{ hideCard(); if(e.target.closest('.hidebtn')) return; setLift(lift.t>=2 ? 1 : lift.t<=0 ? 1 : 2); }); // boop up, boop down
 $('hideTable').addEventListener('click', e=>{ e.stopPropagation(); hideCard(); setLift(0); }); // all the way down: the whole screen is bench
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && lift.full){ hideCard(); setLift(1); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && cardPinned){ hideCard(true); return; } if(e.key==='Escape' && lift.full){ hideCard(true); setLift(1); } });
+document.addEventListener('pointerdown', e=>{ if(cardPinned && !card.contains(e.target) && !(cardFor && cardFor.contains(e.target))) hideCard(true); }, true);
 window.addEventListener('resize', ()=>{ lift.h1=0; measureLift(); });
 
 // the hover card: 0.6 s on a tile (James's calls), the same card family the panels will reuse
-const card=$('card'); let cardTimer=0, cardFor=null;
+const card=$('card'); let cardTimer=0, cardFor=null, cardPinned=false;
 const NUM=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty'];
 function num(n){ return n<=20 ? NUM[n] : String(n); }
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
@@ -143,31 +153,32 @@ function fillCard(el){ const f=FACTS[el.sym]||{}; const c=E.appetiteHex(el.app,f
 function showCard(t, el){ fillCard(el); card.hidden=false; const r=t.getBoundingClientRect(); const w=card.offsetWidth, h=card.offsetHeight;
   let x=r.left+r.width/2-w/2; x=Math.max(16, Math.min(window.innerWidth-w-16, x)); let y=r.top-h-14; if(y<80){ y=r.bottom+14; card.classList.add('below'); } else card.classList.remove('below');
   card.style.left=x+'px'; card.style.top=y+'px'; card.style.setProperty('--px', (r.left+r.width/2-x)+'px'); requestAnimationFrame(()=>card.classList.add('on')); cardFor=t; t.classList.add('lit-hover'); }
-function hideCard(){ clearTimeout(cardTimer); cardTimer=0; if(cardFor){ cardFor.classList.remove('lit-hover'); cardFor=null; } card.classList.remove('on'); card.hidden=true; }
+function hideCard(force){ if(cardPinned && !force) return; cardPinned=false; card.classList.remove('pinned'); clearTimeout(cardTimer); cardTimer=0; if(cardFor){ cardFor.classList.remove('lit-hover'); cardFor=null; } card.classList.remove('on'); card.hidden=true; }
 
 const ghost=$('ghost'); let tdrag=null;
 function tileEvents(t, el){
-  t.addEventListener('pointerenter', ()=>{ clearTimeout(cardTimer); if(tdrag) return; cardTimer=setTimeout(()=>{ if(!tdrag) showCard(t, el); }, 600); });
+  t.addEventListener('pointerenter', ()=>{ clearTimeout(cardTimer); if(tdrag) return; cardTimer=setTimeout(()=>{ if(!tdrag){ if(cardPinned && cardFor!==t) hideCard(true); if(!cardPinned) showCard(t, el); } }, 600); });
   t.addEventListener('pointerleave', ()=>{ hideCard(); });
-  t.addEventListener('pointerdown', e=>{ hideCard(); tdrag={ el, sx:e.clientX, sy:e.clientY, moving:false, id:e.pointerId }; try{ t.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); });
+  t.addEventListener('pointerdown', e=>{ hideCard(); tdrag={ el, sx:e.clientX, sy:e.clientY, moving:false, id:e.pointerId, symZone: t.classList.contains('bt') && !!e.target.closest('b') }; try{ t.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); });
   t.addEventListener('pointermove', e=>{ if(!tdrag) return; if(!tdrag.moving && Math.hypot(e.clientX-tdrag.sx,e.clientY-tdrag.sy)>6){ tdrag.moving=true; ghost.textContent=el.name; ghost.hidden=false; } if(tdrag.moving){ ghost.style.left=e.clientX+'px'; ghost.style.top=e.clientY+'px'; } });
   const end = e=>{ if(!tdrag) return; const d=tdrag; tdrag=null; ghost.hidden=true; try{ t.releasePointerCapture(d.id); }catch(err){}
     if(d.moving){ const r=cv.getBoundingClientRect(); const sr=strip.getBoundingClientRect(); if(e.clientY < sr.top){ const w=toWorld(e.clientX-r.left, e.clientY-r.top); land(el, w.x, w.y); if(lift.full) setLift(1); } }
+    else if(d.symZone) openElement(el.sym); // buttonified tile: the symbol side opens the element panel (step 4), the name side lands an atom
     else land(el, sc.camx+(Math.random()-0.5)*220/sc.zoom, sc.camy+(Math.random()-0.5)*160/sc.zoom); }; // a click lands one atom, every click (James, 2026-09-03: free mode for now); the card is hover-only
   t.addEventListener('pointerup', end); t.addEventListener('pointercancel', ()=>{ tdrag=null; ghost.hidden=true; });
 }
 function land(el, x, y){
   E.audio(); if(window.SnapShells) window.SnapShells.show(el.sym); if(!E.ELEM[el.sym]){ say('table', el.name+' is on the table, not on the bench yet. The first eighteen are.'); return; }
-  if(sc.atoms.length>=140){ say('enough','That is plenty. Break something.'); return; }
+  if(sc.atoms.length>=140){ say('enough','That is plenty for one bench. Clear some room first.'); return; }
   const m=60; x=Math.max(m, Math.min(sc.W-m, x)); y=Math.max(m, Math.min(sc.H-m, y));
   const a=E.spawn(sc, el.sym, x, y); a.vy=-40; hideInvite();
   const fh=E.freeHands(a);
-  if(sc.atoms.length===1) say('', cap(el.name)+'. '+(E.isComplete(a) ? 'Its outer shell is full. It will not take anyone.' : E.canGive(a) ? 'It has '+a.outer+' to give away. Find something that wants '+(a.outer===1?'one':'them')+'.' : 'It wants '+fh+' more. Bring it something with an open hand.'));
+  if(sc.atoms.length===1) say('', cap(el.name)+'. '+(E.isComplete(a) ? 'Its outer shell is full. It does not bond.' : E.canGive(a) ? 'It has '+num(a.outer)+' outer electron'+(a.outer===1?'':'s')+' to give away. Bring it something that wants '+(a.outer===1?'one':num(a.outer))+'.' : 'It wants '+num(fh)+' more. Bring it something that has electrons to share.'));
 }
 
 // ---------- rail controls ----------
 // ---------- the toolbar and the molecules panel (step 3, round A) ----------
-const MOLS = window.SNAP_MOLECULES||[]; const panels={ molecules:$('panelMolecules'), shells:$('panelShells') }; let openPanel=null; const setCount={};
+const MOLS = window.SNAP_MOLECULES||[]; const panels={ molecules:$('panelMolecules'), shells:$('panelShells'), element:$('panelElement'), contents:$('panelContents') }; let openPanel=null; const setCount={};
 function tintOf(sym){ const el=ELS.find(e=>e.sym===sym); return el ? E.appetiteHex(el.app,false) : '#888'; }
 function buildMolecules(){
   const g=$('molGrid'); g.innerHTML=''; $('molCount').textContent=MOLS.length+' · click to land the atoms apart';
@@ -178,30 +189,66 @@ function buildMolecules(){
     c.addEventListener('pointerenter', ()=>{ clearTimeout(cardTimer); cardTimer=setTimeout(()=>showMolCard(c, m), 600); });
     c.addEventListener('pointerleave', hideCard); }
 }
-function showPanel(name){ for(const k in panels) panels[k].hidden = k!==name; openPanel=name; document.body.classList.toggle('panel-open', !!name); document.body.classList.toggle('mol-open', name==='molecules'); document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name)); }
+function showPanel(name){ for(const k in panels) panels[k].hidden = k!==name; openPanel=name; $('pos').classList.toggle('active', name==='contents'); document.body.classList.toggle('panel-open', !!name); document.body.classList.toggle('mol-open', name==='molecules'); document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name)); }
 function closePanel(){ if(!openPanel) return; hideCard(); showPanel(null); }
 $('tabs').addEventListener('click', e=>{ const b=e.target.closest('.tab'); if(!b) return; const name=b.dataset.tab;
-  if(!panels[name]){ say('soon', 'The '+name+' panel arrives in step 7 of the build.'); return; }
+  if(!panels[name]){ say('soon', 'The '+name+' panel is not built yet.'); return; }
   if(openPanel===name) closePanel(); else showPanel(name); });
-cv.addEventListener('pointerdown', ()=>{ if(openPanel) closePanel(); });
+cv.addEventListener('pointerdown', e=>{ if(openPanel && !E.hit(sc, spt(e))) closePanel(); }); // a press on an atom keeps the panel: releasing without a drag opens that element
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && openPanel && !lift.full) closePanel(); });
+
+
+// ---------- the element panel: the per-element card set (step 4) ----------
+const CONTENT=window.SNAP_CONTENT||{}; const SHELL_ROOM=[2,8,18,32]; let elemSym=null, elemTab='over';
+const eLadder=$('eLadder'); if(window.SnapShells) window.SnapShells.buildLadderInto(eLadder);
+function shellText(el){ const sh=el.shells.split('·').map(Number); const n=sh.length, outer=sh[n-1]; const N=cap(el.name);
+  let s='Electrons sit in shells around the nucleus, filled from the inside out. The first shell holds two, the second eight, the third eighteen, the fourth thirty-two. ';
+  s+=N+' has '+num(el.Z)+' electron'+(el.Z>1?'s':'')+(n>1?' in '+num(n)+' shells: '+sh.join(', ')+'.':'.')+' ';
+  if(n>1) s+='The inner shell'+(n>2?'s are':' is')+' full. ';
+  if(el.app==='full') s+='The outer shell has '+num(outer)+', and that counts as full, so '+el.name+' is stable as it is.';
+  else if(el.app.startsWith('wants')) s+='The outer shell has '+num(outer)+' and room for '+num(n===1?2:8)+', so '+el.name+' wants '+num(+el.app.slice(6))+' more.';
+  else s+='The outer shell has '+num(outer)+'. Giving '+(outer===1?'it':'them')+' away leaves a full shell underneath, so that is what '+el.name+' does.';
+  if(n>3 && el.app.startsWith('gives')) s+=' For the bigger atoms the inner shells fill in a more complicated order, and the outer count above is the one that matters for bonding.';
+  return s; }
+function numbers(el){ const f=FACTS[el.sym]||{}, k=(CONTENT[el.sym]||{}).num||{}; const rows=[['Atomic number', el.Z, 'protons'],['Mass', el.mass? el.mass.toFixed(3).replace(/0+$/,'').replace(/\.$/,'') : null, 'u'],['Shells', el.shells.replace(/·/g,' · '), null],['Pull on electrons', f.en!=null? f.en.toFixed(2) : null, 'Pauling'],['Melts', f.melt!=null? (f.est?'~':'')+f.melt : null, '°C'],['Boils', k.boil!=null? k.boil : null, '°C'],['Density', k.density||null, null],['Found', k.found||null, null]];
+  return rows.filter(r=>r[1]!=null && r[1]!=='').map(r=>'<div><dt>'+r[0]+'</dt><dd>'+r[1]+(r[2]?'<small>'+r[2]+'</small>':'')+'</dd></div>').join(''); }
+function fillElement(sym){ const el=ELS.find(e=>e.sym===sym); if(!el) return; elemSym=sym; const c=CONTENT[sym]||{}; const f=FACTS[sym]||{}; const tint=E.appetiteHex(el.app,false);
+  panels.element.style.setProperty('--et', tint); $('eSym').textContent=el.sym; $('eName').textContent=el.name; $('eZ').textContent='Z '+el.Z+' · '+el.app+(E.ELEM[sym]?'':' · not on the bench yet');
+  $('eOver').textContent = c.over || paragraph(el); $('eShellText').textContent=shellText(el); if(window.SnapShells) window.SnapShells.lightLadder(eLadder, el, tint);
+  $('eNums').innerHTML=numbers(el); const world = c.world || ''; $('eWorld').textContent = world || f.note || '';
+  const lines=(c.lines||[]).slice(); const pick={0:0,1:1,2:null,3:2}; for(let i=0;i<4;i++){ const k=pick[i]; $('eLine'+i).textContent = (k!=null && lines[k]) || (i===0 && !c.over && f.note ? f.note : ''); } // three lines per element: overview, shells, in the world (numbers stands alone)
+  const hasWorld = !!(world || f.note); panels.element.querySelector('.etab[data-et="world"]').disabled = !hasWorld; if(elemTab==='world' && !hasWorld) setElemTab('over'); }
+function setElemTab(name){ elemTab=name; panels.element.querySelectorAll('.etab').forEach(b=>b.classList.toggle('active', b.dataset.et===name)); panels.element.querySelectorAll('.epage').forEach(pg=>{ pg.hidden = pg.dataset.et!==name; }); }
+function openElement(sym){ hideCard(true); fillElement(sym); if(openPanel!=='element') showPanel('element'); panels.element.scrollTop=0; }
+$('etabs').addEventListener('click', e=>{ const b=e.target.closest('.etab'); if(b && !b.disabled) setElemTab(b.dataset.et); });
+$('ePrev').addEventListener('click', ()=>{ const el=ELS.find(e=>e.sym===elemSym); const z=el? (el.Z===1?118:el.Z-1) : 1; openElement(ELS.find(e=>e.Z===z).sym); });
+$('eNext').addEventListener('click', ()=>{ const el=ELS.find(e=>e.sym===elemSym); const z=el? (el.Z===118?1:el.Z+1) : 1; openElement(ELS.find(e=>e.Z===z).sym); });
 
 // land a set spaced past the snap reach, on a ring around the bench centre, offset so repeats never stack
 function pairReach(a,b){ return a.R+b.R+(a.e.reach+b.e.reach)*sc.S*1.2; }
-function landSet(m){
-  E.audio(); if(sc.atoms.length+m.atoms.length>140){ say('enough','That is plenty. Break something.'); return; }
-  const pr = openPanel==='molecules' ? panels[openPanel].getBoundingClientRect() : null; const cxw = pr ? toWorld((pr.right+sc.W)/2, 0).x : sc.camx; // land right of an open panel
-  const born=m.atoms.map(s=>E.spawn(sc, s, cxw, sc.camy)); hideInvite();
+function landSet(m, quiet, at){
+  E.audio(); if(sc.atoms.length+m.atoms.length>140){ say('enough','That is plenty for one bench. Clear some room first.'); return; }
+  const pr = openPanel==='molecules' ? panels[openPanel].getBoundingClientRect() : null; const cxw = at ? at.x : pr ? toWorld((pr.right+sc.W)/2, 0).x : sc.camx; const cyw = at ? at.y : sc.camy; // land right of an open panel, or where the guide asks
+  const born=m.atoms.map(s=>E.spawn(sc, s, cxw, cyw)); hideInvite();
   let need=0; for(let i=0;i<born.length;i++) for(let j=i+1;j<born.length;j++) need=Math.max(need, pairReach(born[i],born[j])*1.4);
   const n=born.length; const r = n===1 ? 0 : Math.max(need/(2*Math.sin(Math.PI/n)), 90);
   const k=(setCount[m.key]=(setCount[m.key]||0)+1); const others=sc.atoms.filter(a=>!born.includes(a));
-  let best=null; for(let trial=0; trial<15; trial++){ const rot=(k-1)*0.7+trial*0.9; const ox=((trial%5)-2)*r*0.7, oy=(Math.floor(trial/5)-1)*r*0.7;
-    const pos=born.map((a,i)=>({ x:cxw+ox+(n===1?0:Math.cos(rot+i*Math.PI*2/n)*r), y:sc.camy+oy+(n===1?0:Math.sin(rot+i*Math.PI*2/n)*r) }));
+  let best=null; for(let trial=0; trial<15; trial++){ const rot=(k-1)*0.7+trial*0.9; const spread = n===1 ? 120 : r*0.7; const ox=((trial%5)-2)*spread, oy=(Math.floor(trial/5)-1)*spread; // a single atom still walks the trial grid (it used to land exactly on whatever was already there)
+    const pos=born.map((a,i)=>({ x:cxw+ox+(n===1?0:Math.cos(rot+i*Math.PI*2/n)*r), y:cyw+oy+(n===1?0:Math.sin(rot+i*Math.PI*2/n)*r) }));
     let clear=1e9; pos.forEach((p,i)=>{ for(const o of others) clear=Math.min(clear, Math.hypot(p.x-o.x,p.y-o.y)-pairReach(born[i],o)*1.3); const m2=60; if(p.x<m2||p.x>sc.W-m2||p.y<m2||p.y>sc.H-m2) clear=Math.min(clear,-1); });
     if(!best || clear>best.clear) best={ clear, pos }; if(clear>0) break; }
   born.forEach((a,i)=>{ a.x=best.pos[i].x; a.y=best.pos[i].y; a.vx=0; a.vy=0; });
-  say('', m.land||(m.name+', landed apart. <em>Bring them together.</em>')); $('mode').textContent='Free · '+m.name.toLowerCase()+', apart';
+  if(!quiet){ say('', m.land||(m.name+', landed apart. <em>Bring them together.</em>')); $('mode').textContent='Free · '+m.name.toLowerCase()+', apart'; }
 }
+// the guide hands atoms in a row (the shells chapter): spaced past the snap reach, centred, two rows if the bench is narrow
+// where the guide's atoms land: below the strip (text + drawing + arrow), never under it
+function handY(){ const g=$('guide').getBoundingClientRect(), r=cv.getBoundingClientRect(); const below = g.height ? toWorld(0, g.bottom-r.top+110).y : sc.camy+150; return Math.max(sc.camy+150, Math.min(below, sc.H-120)); }
+function landRow(syms){ E.audio(); const born=syms.map(s=>E.spawn(sc, s, sc.camx, sc.camy)); hideInvite();
+  let reach=0; for(let i=0;i<born.length;i++) for(let j=i+1;j<born.length;j++) reach=Math.max(reach, pairReach(born[i],born[j]));
+  const usable=sc.W-180, n=born.length; let per=n, gap=Math.min(reach*1.4, usable/(n-1)); // one row if it fits past the snap reach, else two
+  if(gap<reach*1.05){ per=Math.ceil(n/2); gap=Math.min(reach*1.4, usable/(per-1)); }
+  const rows=Math.ceil(n/per); const dy=Math.min(gap*0.95, (sc.H-140)/rows); const y0=handY()+(rows-1)/2*dy; // first row sits at the hand line, the rest below it
+  born.forEach((a,i)=>{ const r=Math.floor(i/per), k=i%per, m=Math.min(per, n-r*per); a.x=sc.camx+(k-(m-1)/2)*gap; a.y=y0+(r-(rows-1)/2)*dy; a.vx=0; a.vy=0; }); }
 function showMolCard(c, m){ card.classList.add('mol'); const main=m.atoms[0]; card.style.setProperty('--cc', tintOf(main));
   $('cSym').textContent=m.formula; $('cName').textContent=m.name; $('cZ').textContent=m.atoms.length+' atoms · '+(m.bonds||'');
   $('cPara').textContent=m.para||(m.name+' lights up in round B: its picture, its paragraph and its landing pattern.');
@@ -225,10 +272,23 @@ $('mute').addEventListener('click', ()=>setMuted(!E.isMuted()));
 // the shared Elastic Space sound control (contract §6): Snap opens silent — sound is the greeting chords on interaction — so no autoplay attempt
 let soundCtl = null;
 if(window.ElasticSoundControl){ soundCtl = ElasticSoundControl.attach({ start(){ setMuted(false, true); }, stop(){ setMuted(true, true); }, setVolume(v){ E.setVolume(v); }, autoplay:false }); }
-$('clear').addEventListener('click', ()=>{ hideCard(); sc.atoms=[]; sc.bonds=[]; sc.effects=[]; sc.drag=null; sc.xray=null; sc.cool.clear(); $('mode').textContent='Free · the bench is empty'; say('', 'Cleared. The table is right there.'); });
+$('clear').addEventListener('click', ()=>{ hideCard(); sc.atoms=[]; sc.bonds=[]; sc.effects=[]; sc.drag=null; sc.xray=null; sc.cool.clear(); $('mode').textContent='Free · the bench is empty'; say('', 'Cleared.'); });
 const invite=$('invite');
-function hideInvite(){ invite.classList.add('off'); }
-$('begin').addEventListener('click', ()=>{ E.audio(); hideInvite(); say('begin', 'Guided mode is step 5 of the build. For now, drag any element up from the table and see what it does.', true); });
+function hideInvite(byGuide){ if(invite.classList.contains('off')) return; invite.classList.add('off'); if(!byGuide && guide) setModeSw('free'); } // land something before Begin = free mode; the toggle is the way back
+// ---------- guided mode (step 5) ----------
+if(window.SnapGuide){ guide = window.SnapGuide.build({ sc, E, ELS, tiles, tintOf, mini:window.SNAP_MINI, audio:()=>E.audio(), setMode:t=>{ $('mode').textContent=t; },
+  progress:()=>{ $('begin').querySelector('.cap').textContent='Continue'; },
+  nucleus:v=>{ sc.nucleusMode=!!v; },
+  enter:()=>{ hideInvite(true); document.querySelectorAll('.msw').forEach(b=>b.classList.toggle('active', b.dataset.m==='guided')); }, // a step link opens straight into the guide
+  fresh:()=>{ $('begin').querySelector('.cap').textContent='Begin'; invite.classList.remove('off'); $('mode').textContent='Free · the bench is empty'; try{ history.replaceState(null, '', location.pathname+location.search); }catch(e){} },
+  onPosition:(text, m)=>{ $('posText').textContent=text; document.querySelectorAll('.msw').forEach(b=>b.classList.toggle('active', b.dataset.m===m)); $('pos').hidden = m!=='guided'; if(m!=='guided' && openPanel==='contents') closePanel(); }, // the chip only shows in guided mode (James, 2026-09-04)
+  closeContents:()=>{ if(openPanel==='contents') closePanel(); },
+  hand:syms=>landSet({ key:'guide', name:'', atoms:syms }, true, { x:sc.camx, y:handY() }), handRow:landRow, clear:()=>{ sc.atoms.length=0; sc.bonds.length=0; sc.effects.length=0; } }); } // handed atoms land below the close-up drawing
+function setModeSw(m){ if(!guide) return; if(m==='guided') guide.setGuided(); else { guide.setFree(); if(sc.atoms.length){ sc.atoms=[]; sc.bonds=[]; sc.effects=[]; sc.drag=null; sc.xray=null; sc.cool.clear(); } } /* Free always starts on a clear bench (James, 2026-09-04) */ document.querySelectorAll('.msw').forEach(b=>b.classList.toggle('active', b.dataset.m===m)); $('pos').hidden = m!=='guided'; if(m!=='guided' && openPanel==='contents') closePanel(); }
+$('modesw').addEventListener('click', e=>{ const b=e.target.closest('.msw'); if(!b) return; E.audio(); hideInvite(true); setModeSw(b.dataset.m); });
+$('tocRestart').addEventListener('click', ()=>{ if(!guide) return; E.audio(); closePanel(); guide.restart(); });
+$('pos').addEventListener('click', ()=>{ if(!guide) return; if(openPanel==='contents') closePanel(); else { guide.contents(); showPanel('contents'); } });
+$('begin').addEventListener('click', ()=>{ E.audio(); hideInvite(true); if(guide) guide.start(); else say('begin', 'Drag any element up from the table and see what it does.', true); });
 
 // ---------- boot ----------
 BG=rgbOf('--bg-rgb'); INK=rgbOf('--ink-rgb'); E.tintElements(false); buildTable(); buildMolecules(); window.SnapShells.build($('panelShells'), { ELS, tintOf });
@@ -240,5 +300,5 @@ let last=performance.now(), running=true;
 function loop(now){ const dt=Math.min(0.025,(now-last)/1000); last=now; if(!sc.W) layout(); if(running && sc.W){ easeZoom(); E.step(sc,dt); E.draw(sc); } requestAnimationFrame(loop); }
 document.addEventListener('visibilitychange', ()=>{ running=!document.hidden; last=performance.now(); });
 requestAnimationFrame(loop);
-window.__snap = { sc, say, land:(sym,x,y)=>land(ELS.find(e=>e.sym===sym), x, y), setHeat, setZoom:z=>{ sc.zoomT=z; }, lift:setLift, liftState:()=>({t:lift.t,full:lift.full,hc:lift.hc,h0:lift.h0,h1:lift.h1,rest:lift.rest,row0:lift.row0,row1:lift.row1,nm:root.style.getPropertyValue('--nm')}), card:(sym)=>{ const el=ELS.find(e=>e.sym===sym); showCard(tiles[sym], el); }, panel:showPanel, landSet:(k)=>landSet(MOLS.find(m=>m.key===k)), molCard:(k)=>{ const m=MOLS.find(x=>x.key===k); showMolCard(document.querySelector('.mcell[data-key="'+k+'"]'), m); }, summary:()=>({ W:sc.W, H:sc.H, atoms:sc.atoms.length, bonds:sc.bonds.length, zoom:sc.zoom }) };
+window.__snap = { sc, say, land:(sym,x,y)=>land(ELS.find(e=>e.sym===sym), x, y), setHeat, setZoom:z=>{ sc.zoomT=z; }, lift:setLift, liftState:()=>({t:lift.t,full:lift.full,hc:lift.hc,h0:lift.h0,h1:lift.h1,rest:lift.rest,row0:lift.row0,row1:lift.row1,nm:root.style.getPropertyValue('--nm')}), card:(sym)=>{ const el=ELS.find(e=>e.sym===sym); showCard(tiles[sym], el); }, panel:showPanel, element:openElement, guide:()=>guide, elementTab:setElemTab, landSet:(k)=>landSet(MOLS.find(m=>m.key===k)), molCard:(k)=>{ const m=MOLS.find(x=>x.key===k); showMolCard(document.querySelector('.mcell[data-key="'+k+'"]'), m); }, summary:()=>({ W:sc.W, H:sc.H, atoms:sc.atoms.length, bonds:sc.bonds.length, zoom:sc.zoom }) };
 })();
