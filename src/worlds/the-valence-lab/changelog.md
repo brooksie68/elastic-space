@@ -2,6 +2,270 @@
 
 Newest entries first.
 
+## 2026-09-04 — Claude (Fable 5.1) — Snap! moved out to its own world; this lab stays
+
+Snap! is now `src/worlds/snap/` (draft, In progress worlds). `reimagine.md` moved with it
+(a pointer file remains here). James's call not to retire this world: the coherence
+scope is wanted on the Snap bench (see Snap's reimagine.md §15 item 3). Snap's
+2026-09-01→03 history stays in this file, below.
+
+## 2026-09-03 — Claude (Fable 5.1) — Snap! step 3, round A: the toolbar and the molecules panel (six lit)
+
+James's framing: design the panel for 24 (and more later), light only six so
+the art style and the type can be judged before every glyph is drawn. Built
+on his "round a go":
+
+1. **Rail tabs are real.** MOLECULES opens the panel; click again, click the
+   bench, or Escape closes it. SHELLS says "round B"; COLLECTION and MAP say
+   "step 7". `body.panel-open` shifts the text line right so a panel never
+   covers it.
+2. **The panel** (left under the rail, 600 wide, Design 2e anatomy): "Molecules"
+   in the serif + "24 · click to land the atoms apart" in mono, a four-column
+   grid of cells (little picture 64×44, name 12px/500 Atkinson, formula mono).
+   Data-driven from `tmp/snap/molecules.js`; scrolls inside if the list ever
+   outgrows the bench.
+3. **Six lit:** hydrogen, water, oxygen, carbon dioxide, methane, salt. The
+   other eighteen (nitrogen, ammonia, HCl, HF, Cl₂, F₂, peroxide, ethene,
+   ethane, acetylene, methanol, formaldehyde, H₂S, MgCl₂, LiF, propane,
+   silane, benzene — all inside the 18 bench elements) sit dimmed like locked
+   tiles with name + formula, and say "lights up in round B".
+4. **The little pictures** are canvas renders (`SNAP_MINI`): rings in the
+   appetite tints at authored unit-square positions, a white-blue lens with
+   two dark dots per shared pair (double = two rows), the dashed warm→cool
+   line with ± dots for salt, drawn once at load at device pixel ratio.
+5. **Click to land.** Atoms spawn on a ring around the bench centre (shifted
+   right of the open panel) with every chord ≥ 1.4× the engine's attraction
+   reach for that pair, so nothing joins on its own; repeats try 15
+   offset/rotation placements and take the clearest (clearance measured
+   against the real pair reach). Landing sets the mode readout and a
+   hand-written line ("Carbon dioxide, landed apart. Carbon wants four, each
+   oxygen wants two. *Bring them together.*").
+6. **Hover card, 600ms**, to the RIGHT of the panel with a side pointer:
+   formula (tinted) + name, "n atoms · bonds", a hand-written paragraph, then
+   ATOMS / BONDS / SHAPE / MADE OF, and one sentence. The element card puts its
+   own labels back when it shows.
+
+Pane-verified at 1920×1080: panel, pictures, a CO₂ landing right of the
+panel, the water card, no console errors. NOT YET SEEN BY JAMES. Round B on
+his read: the eighteen pictures + cards, and the Shells panel.
+
+First read: formula in the cell 10 → 13px and brighter ("I can barely read
+it"); picture, name and formula centred in the cell (were left-aligned).
+
+THE PROSE REGISTER (his brief in reimagine.md §15: clear, direct, human,
+no story, restate the rule every time, tenth-grade American science prose):
+the six molecule paragraphs rewritten ("Oxygen's outer shell holds eight
+electrons but has only six, so it needs two more... Count them: oxygen now
+has eight, and each hydrogen has two. Everyone is full, so the three atoms
+stay together."); the generated element paragraph rewritten the same way,
+opening with the shell rule; the bench ledger now reads the outer shell
+against its room — "2 · 6 of 8 · WANTS 2" instead of "2 · 6 · WANTS 2"
+(engine.js ledger()). His pullback idea and the Theodore Gray multimedia
+direction recorded in §15, unscoped.
+
+**Round B, part one (same night, his go after the prose rewrite): ALL
+TWENTY-FOUR LIT.** The eighteen got pictures (unit-square layouts; chain
+molecules now use the cell's width and rings shrink by √(5/n) past five
+atoms; benzene is a real hexagon with alternating lenses), paragraphs in
+the §15 register (each opens with the shell rule and counts the electrons),
+shape + bonds, an italic fact, and a landing line. Data check: every entry's
+picture atoms match its landing atoms, every bond index is in range.
+Hover card type a notch larger (paragraph 15.5px, note 18px, name 27px,
+card 420 wide). **THE TABLE COLLAPSES**: a "hide table" label at the right
+end of the chevron bar drops the strip to the bar alone (31px) and the
+bench grows to the whole screen (`--strip-h` follows the resting height);
+click the bar to bring the strip back; the bar's other click still opens
+the full table. Three states, linear ~120ms, no in-between. Not yet seen
+by James. Still open in round B: the Shells panel.
+
+**Propane rotated slowly counterclockwise forever** (James built one). Cause:
+the bond-angle spring pushes the two atoms with a force pair perpendicular
+to the bond (a net torque on the molecule) and the atom's frame-turning
+torque has no reaction; symmetric molecules cancel, chains with carbon's
+uneven TETRA slots (0/110/200/270°) never do. Fix in engine.js substep: the
+angle-spring forces are accumulated per atom (afx/afy) and, per connected
+molecule, their net torque about the centroid is cancelled with a rigid
+counter-couple (λ = −τ/I) before integration. Shape forces can bend a
+molecule, never spin it. Verified in the pane: propane's C1→C3 heading
+held to four decimals (0.1680 rad) over 30 simulated seconds, bonds intact.
+James: "a little rotation is ok, but it should fade rather quickly" → added
+whole-molecule spin damping (ROT_DAMP 4/s, a rigid counter-couple against
+the molecule's measured angular velocity) on top of the drive cancellation.
+Dot matrix re-based: the dots run at 3/4 of the bench zoom (pitch 24px,
+radius ~1px, alpha ~10% at 100%), so 100% now looks like the old 75%;
+atoms and molecules unchanged.
+
+**THE SHELLS PANEL (step 3 round B, part two) — built on his go, after two
+plan rounds.** His reframe: Molecules = things elements do; Shells = about
+shells themselves (what they are, why they matter, what they look like,
+whether an electron is a dot); orbitals belong in it; per-element depth
+(orbitals / weight / uses / valence) becomes a tabbed CARD SET later, in
+step 4. Built as `tmp/snap/shells.js` + markup + CSS, a 760-wide reader
+in five sections, every paragraph in the §15 register:
+1. What a shell is — the LADDER (shells 1–4 as rows of dashed places
+   2/8/18/32, the element's electrons lit inside-out, each row counted
+   "6 of 8 · wants 2", outer row in the element's tint) + a walk slider
+   H→Ca; any tile click or landing loads that element.
+2. Why they matter — the Li→Ne RAMP, eight mini atoms (inner 2, outer n),
+   gives 1 … wants 1 … full; click one to load it.
+3. What they look like — four HONEST ORBITAL CLOUDS (1s, 2s, 2p, 3d):
+   hydrogen-like |ψ|² sampled by inverse-CDF radius + rejection on the
+   angular part, lobes colored by sign, depth-faded; 2,600 dots each.
+4. Is the electron a dot? — the 2p room three ways: ring-and-dots
+   bookkeeping, the dot cloud, the fog (the dots added up).
+5. Why the table has its shape — s/p/d/f block picture with capacities;
+   the honest footnote (past calcium the filling order gets complicated;
+   the two-then-eight rule holds exactly for the eighteen on the bench).
+Pane-verified at 1920×1080 top to bottom, no console errors. NOT YET SEEN
+BY JAMES. Step 3 is now complete pending his read.
+
+His read ("pretty cool"): the Shells panel is now CENTRED, 900 wide, 48px
+side padding, more air between sections; dark charcoal scrollbar (thin,
+both the standards property and the WebKit pseudo-elements) on every
+panel. It needn't copy the Molecules panel's docked-left layout.
+Hover card type up a notch (both cards share it): width 380 → 420,
+paragraph 14 → 15.5, italic note 15 → 18, name 24 → 26, stats 12 → 13,
+labels 9 → 10.
+
+## 2026-09-03 — Claude (Fable 5.1) — Snap! step 2, James's first read: the rework
+
+His stream-of-consciousness verdict on step 2 ("this is cool," then the
+list), all done the same sitting:
+
+1. **Strip labels too small and too dim.** The 1–18 group-number row is gone;
+   the strip is tiles only, each two lines (symbol over full name), names in
+   ink not muted. Type is FIT AT RUNTIME: the widest name (Rutherfordium)
+   measured in Instrument Sans against one tile's width sets ONE name size
+   for every tile (~12.4px at 1920, the strip rows follow at 3× that, ~37px,
+   strip ~294px). Same fit size in the full table. This is the physical
+   ceiling: 18 columns across 1856px is ~100px a tile.
+2. **No in-between state** (his call: "that view is useless"). Open/close is
+   linear, ~120ms, no spring. A 40px pull on the strip's top edge or on the
+   hint text opens the full table outright; a pull down or a click closes;
+   Escape closes. The hint ("pull up for the full table") moved OUT of the
+   card to the bottom-left above the strip, mirroring the zoom HUD at right;
+   both ride `--strip-top` so they sit above the open table too.
+3. **Boron label flicker.** The label angle pointed "away from the
+   molecule's centre," which for BH3 IS the boron — undefined direction,
+   so it dithered. engine.js: no away-direction within 0.5R of the centroid
+   (keep the last angle), a 30° hysteresis before the target moves, and a
+   10%/frame ease. Verified: borane's boron label sits still.
+4. **Dot matrix zoomed backwards.** Dot radius and alpha now scale WITH
+   zoom (r = 1.3×zoom clamped 0.35–5, alpha 0.16 × (0.35+0.65×zoom)):
+   zoomed out = tiny faint dots, zoomed in = big clear ones, never gone.
+
+Not done from his list: nothing — but the "font grows as you pull" idea has
+no room to grow into (the fit size is already the widest the tile allows),
+so the pull goes straight to full. Awaiting his second look.
+
+Second read, same night: hover delay 1.5 s → 1.25 s, and a CLICK on a
+tile opens the card at once (a click used to land an atom near the
+centre; landing is drag-only now).
+
+Third read: the two-line tiles were "too far the other direction." Strip
+tiles are back to ONE line, symbol and name side by side, with the fit
+size measured for that layout (~9.8px name / 11.8px symbol at 1920, rows
+23px, strip ~257px). The lanthanide and actinide rows now show in the
+strip as well (he asked why they were hidden), so no element is folded
+away at any size.
+
+Fourth read: DRAG IS GONE. The strip's top edge is a 14px bar of faint
+evenly spaced upward chevrons (an inline SVG tile, repeat-x); click it and
+the table goes up, the chevrons flip to point down (scaleY(-1)), click
+again and it comes down. Escape still closes. The hint text is gone with
+the drag.
+
+Fifth read: the table's small type is now ATKINSON HYPERLEGIBLE NEXT (the
+Braille Institute's legibility face, variable woff2 banked in
+`tmp/snap/fonts/`, `--tiny`, Tahoma/Verdana fallback — the fit
+measurement uses the same face); symbol and name share a baseline
+(`align-items:baseline`); the gap between the chevron bar and the tiles now
+equals the side padding; the bar is 18px (was 14); chevrons every 96px at
+11% (were every 28px at 28% — "a Navajo blanket edge").
+
+Sixth read (font: "great, I like it"): symbol and name now sit at the
+vertical centre of the tile with their baselines still shared (line-height
+= row height on both); container padding +4 all round (12px, 30 on top
+under the 18px bar); the bar wears its hover tint all the time; chevrons
+thicker, wider and brighter (16px wide, 1.7 stroke, 30%).
+
+Later the same night: chevrons went to 3× thick / 2× wide on his ask, then
+back to the previous size at 16% (he wanted them LESS visible). Then
+CONTRAST, WCAG AA (4.5:1 for small text), measured in
+scratch (oklch → linear sRGB, alpha-composited over the real tile fill):
+the old `--dim` was 3.3:1 on the strip and 1.5:1 on a tinted tile, `--muted`
+2.4:1 on a tile, the L0.72 appetite symbols 3.7–3.9:1 on their own tint.
+Fixes: `--dim` 0.5 → 0.62 (5.4:1), `--dimmer` 0.45 → 0.58 (4.5:1), `--muted`
+0.62 → 0.66; every secondary line on a tile (Z, mass, shells, appetite,
+placeholder labels) is `--tile-2nd` oklch(0.82) — 4.7:1 on the brightest
+fill; symbol TEXT uses a second tint `--tt` at L 0.82 (4.85–5.45:1 on its
+tile; the fill and border keep L 0.72), exported `APP_HUE` from engine.js
+for it. Card labels and the italic note lifted too. And Atkinson
+Hyperlegible on EVERY line of the full-table tile (Z/mass/shells/appetite
+were JetBrains Mono), 10px, tabular numerals.
+
+Wheel zoom now steps through seven stops — 50 / 75 / 100 / 125 / 150 /
+175 / 200% — and the HUD reads the stop as a percent ("I don't want to see
+111, 127, blah"). The 0.5–4× continuous range is gone; the ease between
+stops stays.
+
+HUD lost the "wheel" word. Then two calls before step 3: (1) the 100
+elements not yet on the bench are LOCKED tiles — dimmed to 38% and
+desaturated, 60% on hover, the card adds "not on the bench yet"; the 18 lit
+ones read normal. (2) FREE MODE FOR NOW: a click on a tile lands one atom
+near the centre, every click; drag still lands at the drop point; the card
+is hover-only again (1.25 s).
+
+Then: locked tiles "too washed out" → 68% then 60% / saturate .7 (85% on hover);
+hover delay 1.25 s → 0.75 s.
+Then 0.6 s, and the chevron bar 18 → 24 → 30px.
+Dot matrix: opacity cap 16% → 14% → 12% (the zoom ratio kept); vignette ~10%
+stronger (mask ellipse 70/62% → 66/58%, solid to 50% instead of 55%).
+Locked tiles: opacity 60 (his number), the La–Lu / Ac–Lr placeholders
+locked too. James is on 3840×2160: the fit type there hit the 16px cap and
+"looks semibold" — name cap now 14.5px after a 13 that was "too small" (symbol 17.4) while the strip rows
+still follow the uncapped fit, so the tiles keep their size.
+Arrow: the amber halo circle removed ("I don't like the yellow circle").
+Open-table header row (title + legend): 10 → 12px, chips 10px, the row is
+52px + 12 margin so the text sits 31px below the bar and 31px above the
+tiles (was crowding the table).
+Bar 30px. The invitation ("Do you want to learn about atoms?") slides up
+when the table opens so the arrow keeps ~60px clear of it (body.table-open).
+
+## 2026-09-03 — Claude (Fable 5.1) — Snap! step 2: the table mini app (built, awaiting James's eyes)
+
+Built on his "let it rip," in `tmp/snap/` (local, gitignored) on top of step 1.
+
+1. **Pull-up.** Grab the strip's handle and drag: the strip grows continuously
+   from the 22px strip to the full table (rows up to 90px, sized to the window
+   so the whole thing sits under the rail). Let go past halfway and it springs
+   up; short of it, it falls back. Click the handle to toggle; Escape closes.
+   The table OVERLAYS the bench (the bench keeps its size, atoms stay put) —
+   the plan said "shrinks behind it"; overlay is simpler and loses nothing.
+   Spring is time-based (k 180, c 22, ~350ms). Dragging a tile off the full
+   table lands the atom and drops the table.
+2. **Full tiles.** Z and mass in the corners, big symbol in the appetite
+   color, full name, shells string, appetite line. The lanthanides and
+   actinides open out as two rows below the table (they are placeholders in
+   the strip). Legend chips + "118 known · tint = appetite" header when up.
+   Under 64px rows the shells string hides (`compact-rows`).
+3. **Hover card.** 1.5 s on any tile (James's number, not Design's 400ms):
+   symbol + name, "Z · appetite", a GENERATED plain paragraph (electron
+   count by shell, then what the outer shell wants/gives/refuses — derived
+   from the shells string, so it is honest for all 118), MASS / SHELLS /
+   PULL (Pauling electronegativity) / MELTS (°C), and one italic sentence
+   where written. New `facts.js`: en + melt for all 118 (est flag on the
+   guessed ones, "—" past rutherfordium), ~40 sentences (the first 20 and the
+   famous ones). Card clamps to the viewport and flips below a tile when
+   there is no room above. Same card element the molecules panel reuses.
+4. Badge slot stays on every tile (`badge-on` class), wired for step 5.
+
+Verified in the pane at 1920×1080 (the pane freezes rAF between calls, so
+the spring only settles when it renders — not a code fault; a drag from the
+full table landed oxygen at the drop point and the table fell). Not yet
+seen by James. NEXT: his eyes on the pull feel, tile density, card content
+and the 1.5 s; then step 3 (toolbar + molecules panel) on his go.
+
 ## 2026-09-02 — Claude (Fable 5.1) — The curriculum brief (recorded, nothing built)
 
 James, excited by the Snap direction, gave the next brief: names always

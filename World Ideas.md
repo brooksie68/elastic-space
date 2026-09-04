@@ -227,6 +227,8 @@ planning conversation. Depends on the same tech (depth strategy at long range, c
 dust, clumped population seeding) — build the tech once in Orb Dimension, inherit it here.
 
 ### 58. The Valence Lab — *several sessions* — `in progress` → `src/worlds/the-valence-lab/`
+
+**2026-09-04:** its successor **Snap!** is a world of its own — `src/worlds/snap/` (`in progress`, draft, no exits yet). The lab stays: its coherence scope is to come out onto the Snap bench (Snap's reimagine.md §15 item 3).
 James's brief (2026-07-24): the most realistic molecule visualizer possible — pick
 individual atoms, bring them together, watch valences and electron counts decide what
 forms (two hydrogens + one oxygen → water), electron clouds rendered with their true
@@ -285,6 +287,15 @@ Combat/Arachno lineage. Co-build, plan-first — not started.
 ### 62. Powers of Ten (it ends somewhere silly) — *one session* — `draft`
 
 James, 2026-09-01, spun off roll 7 of the Valence Lab rethink: a continuous, scrubbable zoom from a glass of water down through the molecule, the atom, the electron cloud, past the Planck length, and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world (those endings double as drift exits). The honest middle of the zoom can reuse the Valence Lab's baked Hartree-Fock densities. In the admin panel's page drafts as "Powers of Ten (it ends somewhere silly)".
+
+### 63. Lunar Lander — *one session* — `draft` (built 2026-09-04)
+
+Atari's 1979 vector cabinet, the Surround treatment: faithful physics (lunar gravity, the
+proportional lever, four selections, pads worth 2×–5×, landings graded by speed / drift /
+tilt, fuel as the only currency) on a glowing phosphor monitor with persistence, bloom,
+scanlines and an eased approach zoom; the LEM breaks along its own strokes; the McDonald's
+is there if you find the flat. `src/worlds/lunar-lander/`. Sibling of Surround (#59);
+Battlezone is the obvious next in the vector family.
 
 ## Built on commission — 2026-07-12
 

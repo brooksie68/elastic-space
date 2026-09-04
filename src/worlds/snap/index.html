@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Snap!: the molecule-building bench. Draft — no drift exits yet (they arrive at ship). Contract: docs/building-a-world.md -->
+<title>Snap!</title>
+<link rel="stylesheet" href="fonts.css?v=2">
+<link rel="stylesheet" href="snap.css?v=31">
+</head>
+<body>
+
+<div class="bench" id="bench">
+  <canvas id="arena" aria-label="The bench: drag atoms together, hold one for the X-ray, wheel to zoom"></canvas>
+</div>
+
+<header class="rail">
+  <div class="wordmark">Snap!</div>
+  <div class="div"></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab round" data-tab="molecules"><i></i>Molecules</button>
+    <button class="tab round" data-tab="shells"><i></i>Shells</button>
+    <button class="tab" data-tab="collection"><i></i>Collection</button>
+    <button class="tab" data-tab="map"><i></i>Map</button>
+  </nav>
+  <div class="mode" id="mode">Free · the bench is empty</div>
+  <div class="cluster">
+    <div class="heat" id="heat" title="heat: drag up or down"><div class="dial"><b></b></div><label id="heatLabel">HEAT 0.0</label></div>
+    <button class="sq" id="mute" title="sound"><span class="tri"></span></button>
+    <button class="sq" id="clear" title="clear the bench"><span class="box"></span></button>
+  </div>
+</header>
+
+<aside class="panel" id="panelMolecules" hidden>
+  <div class="ph"><h2>Molecules</h2><span class="pcount" id="molCount"></span></div>
+  <div class="mgrid" id="molGrid"></div>
+</aside>
+
+<aside class="panel shells" id="panelShells" hidden>
+  <div class="ph"><h2>Shells</h2><span class="pcount">What they are · why they matter · what they look like</span></div>
+  <section class="ssec" data-sec="s1"><h3></h3><div class="stext"></div>
+    <div class="walk"><input type="range" id="shellWalk" min="1" max="20" value="8" aria-label="walk from hydrogen to calcium"><div class="walkname" id="shellWalkName"></div></div>
+    <div class="ladder" id="shellLadder"></div></section>
+  <section class="ssec" data-sec="s2"><h3></h3><div class="stext"></div><div class="ramp" id="shellRamp"></div></section>
+  <section class="ssec" data-sec="s3"><h3></h3><div class="stext"></div>
+    <div class="orbs"><figure><canvas id="orb1s"></canvas><figcaption>1s · shell 1 · a ball · 2 electrons</figcaption></figure><figure><canvas id="orb2s"></canvas><figcaption>2s · shell 2 · a bigger ball · 2</figcaption></figure><figure><canvas id="orb2p"></canvas><figcaption>2p · shell 2 · a dumbbell, one of three · 2 each</figcaption></figure><figure><canvas id="orb3d"></canvas><figcaption>3d · shell 3 · a cloverleaf, one of five · 2 each</figcaption></figure></div></section>
+  <section class="ssec" data-sec="s4"><h3></h3><div class="stext"></div>
+    <div class="orbs three"><figure><canvas id="way1"></canvas><figcaption>the ring · two electrons in the 2p room, as bookkeeping</figcaption></figure><figure><canvas id="way2"></canvas><figcaption>the dots · 2,600 places the electron might be</figcaption></figure><figure><canvas id="way3"></canvas><figcaption>the fog · the dots added up: the cloud</figcaption></figure></div></section>
+  <section class="ssec" data-sec="s5"><h3></h3><div class="stext"></div><figure class="tshape"><canvas id="tableShape"></canvas></figure></section>
+</aside>
+
+<section class="invite" id="invite">
+  <div class="kicker">The bench is empty</div>
+  <h1>Do you want to learn about atoms?</h1>
+  <button class="arrow" id="begin">
+    <svg viewBox="0 0 120 64"><path d="M10 32 H94 M70 10 L98 32 L70 54"/></svg>
+    <span class="cap">Begin</span>
+  </button>
+</section>
+
+<div class="line" id="line"><div class="kicker" id="lineWho"></div><p id="lineText"></p></div>
+<div class="hud" id="hud">Zoom 100% · hold for x-ray</div>
+
+<footer class="strip" id="strip">
+  <button class="edge" id="handle" title="open the full table" aria-label="open or close the full table"><span class="hidebtn" id="hideTable" title="collapse the table to this bar">hide table</span></button>
+  <div class="thead" id="thead">
+    <div class="ttitle">The table of elements · 118 known · tint = appetite for electrons</div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</footer>
+
+<div class="ghost" id="ghost" hidden></div>
+
+<div class="card" id="card" hidden>
+  <div class="ch"><b id="cSym"></b><span class="cname" id="cName"></span><span class="cz" id="cZ"></span></div>
+  <p class="cp" id="cPara"></p>
+  <div class="cstats">
+    <div><label>Mass</label><b id="cMass"></b></div>
+    <div><label>Shells</label><b id="cShells"></b></div>
+    <div><label>Pull</label><b id="cPull"></b></div>
+    <div><label>Melts</label><b id="cMelt"></b></div>
+  </div>
+  <p class="cnote" id="cNote"></p>
+  <i class="ptr"></i>
+</div>
+
+<script src="../../core/dashboard-control.js"></script>
+<script src="../../core/sound-control.js"></script>
+<script src="elements.js"></script>
+<script src="facts.js"></script>
+<script src="molecules.js"></script>
+<script src="shells.js?v=2"></script>
+<script src="engine.js?v=6"></script>
+<script src="app.js?v=32"></script>
+</body>
+</html>

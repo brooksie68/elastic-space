@@ -8,6 +8,15 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-03/04 (Snap!: steps 2–3 built and read, prose register, the world folder)
+
+- Snap! step 2 (the table mini app) built and reworked through James's reads: one-line fit tiles in Atkinson Hyperlegible, chevron-bar click toggle (drag gone), a fully collapsed state, WCAG-AA contrast pass, seven zoom stops, locked tiles, click-to-land.
+- Step 3: Molecules panel with all 24 lit (pictures, cards, spaced landing) and the Shells panel (a five-section reader: ladder, Li→Ne ramp, honest orbital clouds, the electron three ways, the table's shape).
+- THE PROSE REGISTER (his brief after "too precious and too jargony"): direct tenth-grade science prose, the rule first, count out loud — every card rewritten; recorded in reimagine.md §15 + memory.
+- Engine: propane's endless rotation fixed (angle-spring torque cancelled per molecule + spin damping); label flicker fixed; dot matrix re-based.
+- Snap! became a DRAFT WORLD: `src/worlds/snap/` (dashboard + shared sound control wired), admin row in In progress worlds. The Valence Lab stays (his Scope-on-the-bench idea, recorded, unscoped).
+- Retired the "dev server is down" session-start reminder (his ask): memory deleted, CLAUDE.md line rewritten.
+
 ## 2026-09-03/04 (Orb Dimension: the glow homes — generator v2/v3, in-world as the field homes)
 
 - Glow-home generator v2 (lattice + `order` dial, three size tiers) and v3 (James's material +
