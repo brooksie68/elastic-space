@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-04 (Lunar Lander: the 1979 vector cabinet, built as a draft)
+
+- **Round one, then the direction reset, then round two — all the same day.** James flew the draft ("fun. lots to come. you didn't modernize it!?"), picked depth / ship / feedback / vector HUD; then flew that and reset the direction: no CRT imitation, "make it look super cool for 2026" inside green-to-white single-line drawing, three ground lines only, the ship a drawing not a blob, no velocity arrow, hold-to-burn throttle that never cuts out, contemporary DOM/SVG instruments, a zoom gate that never pumps. Round two built and flown: "this looks cool and makes me feel nostalgic." Round three planned (ship flatter, circle + triangle direction, fuel pads, earned landing tech with a dozen ideas awaiting his six-pick, a flatter NASA-plausible moonscape) — START HERE at the top of `src/worlds/lunar-lander/CLAUDE.md`. Sim 66,900 green.
+- **Lunar Lander built** on James's go after a ten-item plan ("the same treatment as Surround"): pure sim-tested core (66,899 assertions, an autopilot lands all four selections), vector-monitor renderer (persistence, bloom, phosphor tint, scanlines, barrel, eased approach zoom, the LEM breaking along its strokes, the spitting peak, the drive-through secret), positional thrust lever, cabinet readouts and messages, synthesis sound, PLAY + LOOK tuner with file-backed presets, look-dev + smoke harnesses. Draft: admin row under In progress (unwired), no exits. Awaiting his first flight, then the feature round. Detail: `src/worlds/lunar-lander/changelog.md`.
+
 ## 2026-09-02/03 (The Valence Lab → Snap!: the curriculum brief, the Claude Design experiment, step 1 built)
 
 - **Snap! is the plan.** James's briefs recorded whole in `src/worlds/the-valence-lab/reimagine.md` §10–12 (curriculum, guided mode with the happy arrow and table badges, the UI: toolbar, 24-molecule panel, pull-up table, hover cards, wheel zoom), the twelve-chapter outline (§11), and the eleven-step plan (§13) with his eyes gating every step.

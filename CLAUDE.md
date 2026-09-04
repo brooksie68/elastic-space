@@ -167,10 +167,22 @@ consistent. `npm run check-worlds` audits every world against the contract.
    with real emissive boundary ribbons, rendered on black. His corrections
    that now stand: the balls are SHELLS not suns and the inside is dark;
    fields have no thickness; fine surface detail kills the km scale; Fortress
-   50 / Wright 30 / Claude 20. NEXT with his go: core beam thinner, honey
-   tint, then export via the home pipe + write the generator to
-   `tmp/orb-dimension/glowhome_fields.py`. Full log: world changelog
-   2026-09-01/02. The original brief follows for the record —
+   50 / Wright 30 / Claude 20. **2026-09-03: GENERATOR v2 + v3 BUILT
+   headless, his eye each round** — `tmp/orb-dimension/glowhome_fields3.py`
+   (v2 = the lattice + the `order` dial 0.3–0.7 rolled per seed, his
+   verdict "structurally, I love them... fantastic"; v3 = his material +
+   shape pass: per-piece opacity, shimmer, bloom, motes, blobs, cubes cut,
+   polyhedra/stars/ovals/rounded corners/bevels, thick crystal columns at
+   any angle (NO GRAVITY), the Doctor's-lab instruments (8 recipes) +
+   filaments + blues). Sheet: `glowhome-roll3-sheet.png`. Awaiting his
+   read: "nice. these look great." **v62 SAME NIGHT (his go): THE FIELD
+   HOMES ARE IN-WORLD** — `export_fields.py` bakes six rolls to
+   `assets/homes/fields-01..06.bin` (GHM2, ~45k tris each), every shell
+   deals itself one + a random orientation, glass-program kind 3 classes
+   (pane/ribbon/blob/crystal), "home roll" dial in the societies group.
+   Nine sims + shader-check green. AWAITING HIS FLIGHT (read through the
+   shell, class brightness, frame rate, the deal dial). Full log: world
+   changelog v62 + 2026-09-03 + 2026-09-01/02. The original brief follows for the record —
    LIVE-BLENDER PLANE-STACK SESSION — the Bryce
    way: clean glass sheets (real transmission/IOR/tint, thickness), copy /
    rotate / shrink / stack, ~10% teal, one light at the center — built IN THE
@@ -179,6 +191,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Bryce/3DS Max hand; x/y/z is native to him. Small steps, his eyes each step,
    no batch generation. The in-world glow homes stay as they are until then
    (hex plates are the file:// fallback; `glowHome.name` swaps the model).
+   (f) **EVERY SPHERE BECOMES A REAL 3-D SHAPE (James, 2026-09-03, "it has
+   to" — recorded, NOT NOW, his call when):** every orb in the world (hearts,
+   veils, dust, beacons, actors, crowd clouds, the interiors) is a camera-
+   facing disc with a gradient — "circular TV screens facing you." Agreed
+   two-phase plan awaiting his go: PHASE 1 sphere impostors for every orb
+   (per-pixel ray-sphere hit, real normal, real depth write, rim/specular,
+   shell texture wrapped, refraction parallax; worldlets become true globes)
+   — one build; PHASE 2 the 26 procedural interiors go volumetric kind by
+   kind (raymarched like the Saelyri), sequenced with him, paintings may stay
+   flat. See world changelog 2026-09-03 (the honest answer) + world CLAUDE.md
+   START HERE.
    (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.
@@ -596,8 +619,52 @@ consistent. `npm run check-worlds` audits every world against the contract.
    drag-a-tile-to-land, wheel zoom 0.5–4×, hold for X-ray. URL
    http://127.0.0.1:4174/tmp/snap/index.html . EXECUTIVE DECISIONS: DARK
    ONLY (light theme removed); the step-1 X-ray schematic is not loved —
-   the mock's cloud-glow hold view is (step 10.5). NEXT: step 2, the table
-   mini app, on his go. Also: memory `no-flags-after-the-answer` ("flagging
+   the mock's cloud-glow hold view is (step 10.5). **STEP 2 BUILT 2026-09-03**
+   (his "let it rip"): the table mini app — handle pull-up with a time-based
+   spring (overlays the bench; atoms stay put), full tiles (Z/mass/symbol/
+   name/shells/appetite), f-block rows open below, legend, 1.5 s hover card
+   (generated honest paragraph + mass/shells/pull/melts + one sentence;
+   `tmp/snap/facts.js` holds en/melt for all 118). JAMES'S FIRST READ same
+   day ("this is cool" + a list) → REWORKED: group-number row gone, strip is
+   two-line tiles with ONE runtime-fit name size (~12.4px at 1920, the
+   18-column ceiling), open/close linear ~120ms with no in-between state,
+   hint text moved above the card, boron-label flicker fixed in engine.js
+   (centroid dead zone + hysteresis), dot matrix now scales WITH zoom.
+   His reads that night, all done (one-line fit tiles, Atkinson
+   Hyperlegible for the table, chevron-bar click toggle instead of drag,
+   WCAG contrast pass, seven zoom stops, locked tiles at 60/70, click lands
+   an atom). **STEP 3 ROUND A BUILT 2026-09-03** (his plan nod + "round a
+   go"): rail tabs real, the molecules panel (600 wide, 4-col grid, data-
+   driven from `tmp/snap/molecules.js`), SIX LIT (H₂, H₂O, O₂, CO₂, CH₄,
+   NaCl) with canvas little pictures + hand-written cards + spaced landing
+   (chords ≥ 1.4× the attraction reach), eighteen placeholders dimmed.
+   His read: formula bigger + cells centred; the prose was "too precious
+   and too jargony" → THE PROSE REGISTER (reimagine.md §15: direct
+   tenth-grade science prose, restate the shell rule, no story; memory
+   snap-prose-register) and every card rewritten; ledger reads "6 of 8".
+   ROUND B PART ONE BUILT same night: all 24 lit (pictures, paragraphs,
+   facts, landing lines), card type up, the table COLLAPSES to the bar
+   ("hide table"); propane's endless rotation fixed (angle-spring net
+   torque cancelled per molecule + spin damping 4/s); dot matrix re-based
+   (100% = old 75%). **THE SHELLS PANEL BUILT** (his reframe: Shells is
+   about shells themselves; Molecules is what elements do; per-element
+   depth = a tabbed card set in step 4): five-section reader — ladder +
+   H→Ca walk, Li→Ne ramp, four honest orbital clouds (1s/2s/2p/3d), the
+   2p room three ways, the s/p/d/f table shape. STEP 3 COMPLETE pending
+   his read. His asks on the list: box-select + Delete, Ctrl-C/V/D, a
+   right-click menu on the bench (answered: reliable via contextmenu
+   preventDefault; not built, needs his go). Shells panel centred + widened
+   on his read ("pretty cool"). **2026-09-04 (early): SNAP! IS A WORLD** —
+   `src/worlds/snap/` (draft, In progress worlds, "unwired"; dashboard +
+   shared sound control wired; reimagine.md moved there; its CLAUDE.md is
+   the START HERE; tmp/snap/index.html redirects, tmp/snap/design/ stays).
+   THE VALENCE LAB IS NOT RETIRED (his call): his new idea — THE SCOPE ON
+   THE BENCH — pull the lab's coherence scope out over a molecule on the
+   Snap bench (real HF electron cloud + shells at separate brightness,
+   nucleus, proton cloud); recorded in reimagine.md §15 item 3, unscoped.
+   NEXT: step 4 (the data + the per-element tabbed card set) on his go.
+   Also queued, his gos: bench editing (box-select/Delete/Ctrl-C-V-D/
+   right-click), the Scope, the pullback. Also: memory `no-flags-after-the-answer` ("flagging
    things is like a compulsion with you").
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
@@ -943,6 +1010,42 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
+7.5. LUNAR LANDER: Atari's 1979 vector cabinet, BUILT 2026-09-04 as a draft on
+   James's go ("the same treatment as Surround" — modernize, bells and whistles,
+   retro vibe intact) — `src/worlds/lunar-lander/` (read its CLAUDE.md first).
+   Pure sim-tested core (`node tmp/lunar-lander/sim.mjs`, 66,899 assertions,
+   autopilot lands all four selections), vector-monitor renderer (phosphor
+   persistence + bloom + scanlines + barrel, eased approach zoom, the LEM
+   breaking along its strokes, the spitting peak, the drive-through secret),
+   positional thrust lever, cabinet readouts + messages, synthesis sound, PLAY
+   + LOOK tuner with file-backed presets, look-dev + smoke harnesses in
+   tmp/lunar-lander/ (KEEP). Admin row under In progress (unwired). JAMES FLEW
+   IT ("fun. lots to come. you didn't modernize it!?") → ROUND ONE BUILT the
+   same day, his picks 1/2/5/6 of eight: DEPTH (perspective camera, four-row
+   wireframe ridge, far + near ranges, fog, camera bank), THE SHIP (wireframe
+   LEM solid that yaws with its tilt, particle plume, RCS puffs), FEEDBACK
+   (shockwave rings, settling dust, slow-mo crash beat, rising points tally),
+   THE VECTOR HUD (attitude ball with tolerance wedges, fuel bar, velocity
+   arrow) + THE LEVER FIX (thrust = lever^1.7, whisper-tap ramp, 2% wheel).
+   JAMES FLEW ROUND ONE → THE DIRECTION RESET (same day; his words are
+   the top of the world CLAUDE.md): no CRT imitation, "make it look super
+   cool for 2026" within green-to-white single-line drawing; three lines
+   only with black fills (stars behind everything); the ship a drawing,
+   not a blob (NASA 2036 shape); no velocity arrow; hold-to-burn throttle
+   (tap = goose, hold = full fast, never cuts out); contemporary DOM/SVG
+   instruments; zoom gate with hysteresis so bobbing pilots never see it
+   pump. ROUND TWO BUILT the same night (renderer rebuilt, shell rebuilt,
+   sim 66,900 green). HE FLEW ROUND TWO: "this looks cool and makes me feel
+   nostalgic." ROUND THREE AGREED, NOT BUILT — START HERE at the top of
+   the world CLAUDE.md: ship flatter ("samurai hat"), faint circle +
+   triangle for direction, fuel pads (1–2 per moonscape), EARNED LANDING
+   TECH on a 4X/5X (not a score bonus; parachute out; twelve ideas listed,
+   his six-pick pending), flatter NASA-plausible moonscape with plateaus.
+   Not built from the eight: surface dressing
+   (craters/wreck/flag/beacons), Earth + meteors, two-colour phosphor, drone bed
+   + radio chatter; then the feature round (multi-stage descents, moving pad,
+   meteor showers, fuel crates, co-op tow, terrain sets), then drift exits +
+   ship wiring. Battlezone discussed as the next vector sibling — not started.
 8. UNITY CHARACTER PIPELINE (pilot BUILT 2026-07-31, James's go after the "sell me
    on Unity" conversation — his brief: real character machinery, "what we have is
    sort of a clunky puppet"): Unity 6.5 free Personal + project repo
@@ -1000,7 +1103,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
   `start-local.cmd` were deleted 2026-07-13 — do not recreate them, nor any older launcher
   names). Double-click: reuses a running server or starts it in its own CMD window on
   port 4174, then opens the admin panel. It can also be launched from the ai-projects ops
-  dashboard's Launch button. Never make James start the server from a command line.
+  dashboard's Launch button. James starts it himself when he wants it (the .cmd, CMD, or by asking); never remind him it is down.
 - The admin panel page must keep working from `file://`: it polls `http://127.0.0.1:4174/healthz`
   (the server sends `Access-Control-Allow-Origin: *`) and switches itself to the served copy when
   the server comes up; editor panels stay dormant until then.
