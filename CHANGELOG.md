@@ -8,6 +8,20 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-03/04 (Orb Dimension: the glow homes — generator v2/v3, in-world as the field homes)
+
+- Glow-home generator v2 (lattice + `order` dial, three size tiers) and v3 (James's material +
+  shape pass, crystals at any angle, the Doctor's-lab instruments, filaments, blues) —
+  `tmp/orb-dimension/glowhome_fields3.py`, judged on three-seed sheets; "structurally, I love them."
+- v62: six rolls baked (`export_fields.py`, GHM2, ~45k tris each) into every Saelyri shell with a
+  random orientation, glass-program classes, "home roll" dial; v62.1–62.6 five rounds by his eye:
+  doubled + bulk-normalized size, heart-ball opacity dial, the home glow pass (quarter-res blur +
+  haze, `homeBlur`), steadier breath, ribbon melt; two brightness overshoots reverted exactly.
+  Wrap verdict: "they look great right now."
+- RECORDED, not built (root todo 0 (f)): every sphere in the world becomes a real 3-D shape —
+  every orb is a camera-facing disc today; two-phase plan (impostors, then volumetric interiors).
+- Nine Orb sims + shader-check green throughout.
+
 ## 2026-09-04 (Lunar Lander: the 1979 vector cabinet, built as a draft)
 
 - **Round one, then the direction reset, then round two — all the same day.** James flew the draft ("fun. lots to come. you didn't modernize it!?"), picked depth / ship / feedback / vector HUD; then flew that and reset the direction: no CRT imitation, "make it look super cool for 2026" inside green-to-white single-line drawing, three ground lines only, the ship a drawing not a blob, no velocity arrow, hold-to-burn throttle that never cuts out, contemporary DOM/SVG instruments, a zoom gate that never pumps. Round two built and flown: "this looks cool and makes me feel nostalgic." Round three planned (ship flatter, circle + triangle direction, fuel pads, earned landing tech with a dozen ideas awaiting his six-pick, a flatter NASA-plausible moonscape) — START HERE at the top of `src/worlds/lunar-lander/CLAUDE.md`. Sim 66,900 green.

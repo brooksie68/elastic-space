@@ -180,9 +180,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    `assets/homes/fields-01..06.bin` (GHM2, ~45k tris each), every shell
    deals itself one + a random orientation, glass-program kind 3 classes
    (pane/ribbon/blob/crystal), "home roll" dial in the societies group.
-   Nine sims + shader-check green. AWAITING HIS FLIGHT (read through the
-   shell, class brightness, frame rate, the deal dial). Full log: world
-   changelog v62 + 2026-09-03 + 2026-09-01/02. The original brief follows for the record —
+   HE FLEW IT, five rounds by eye (v62.1–62.6): homes doubled then re-based
+   on the bulk (HOME_FIT 0.68, spears 2–3× further), heart-ball opacity dial
+   (0.3), THE HOME GLOW PASS (quarter-res blur + additive haze, dial
+   homeBlur), steadier breath, ribbon melt; two brightness rounds
+   overshot and were REVERTED EXACTLY to the state he screenshotted — his
+   verdict at wrap: "they look great right now." The white-hot core IS the
+   sun look — never tone-map it. OPEN: far homes read pale peach across
+   the transmission lines (measure before touching); item (f) below.
+   Full log: world changelog v62–v62.6 + 2026-09-03 + 2026-09-01/02. The original brief follows for the record —
    LIVE-BLENDER PLANE-STACK SESSION — the Bryce
    way: clean glass sheets (real transmission/IOR/tint, thickness), copy /
    rotate / shrink / stack, ~10% teal, one light at the center — built IN THE

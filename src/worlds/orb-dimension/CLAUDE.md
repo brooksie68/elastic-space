@@ -32,6 +32,15 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   James's go — awaiting his first flight. Stargates, depot grid, grown reefs, hub
   society, luminous region: still spec-only, still need discussion.
 
+## START HERE (open, James's timing)
+
+- **EVERY SPHERE BECOMES A REAL 3-D SHAPE (2026-09-03, "it has to").** Every orb —
+  hearts, veils, dust, beacons, actors, crowd clouds, interiors — is a camera-facing disc
+  with a gradient today. Phase 1 = sphere impostors for every orb (ray-sphere per pixel,
+  real normal + depth, rim/specular, wrapped shell, refraction parallax; worldlets as true
+  globes). Phase 2 = the 26 procedural interiors go volumetric kind by kind, sequenced with
+  him. Not started; root todo 0 (f); changelog 2026-09-03.
+
 ## World-specific rules
 
 - NAMING: the tuner panel is the "configuration" panel — never "GOD MODE" (James retired
@@ -221,6 +230,26 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   to dim, never widen amber's kernel. (5) Every building carries a
   DICTATED `vantage` (James's coordinates); VIEW [V] on the deck jumps to
   it. Deck shortcuts N/T/C/V, four equal rows, console-fit must stay 0px.
+- THE FIELD HOMES (v62, 2026-09-03 — supersedes the Meshy home below for what
+  stands in the shells): the generator `tmp/orb-dimension/glowhome_fields3.py`
+  (lattice + `order` dial rolled per seed 0.3–0.7, three size tiers, crystals at
+  ANY angle — no gravity, no up — eight lab instruments, filaments, blobs, honey +
+  teal + blues) is baked by `export_fields.py <NN> <seed> [order]` into
+  `assets/homes/fields-01..06.bin`, magic GHM2 (GHOM record; uv.x = class×1000 +
+  hue°, uv.y = opacity). Rules: (1) look changes happen in the generator and are
+  judged on a three-seed sheet (`gh_sheet.py`) BEFORE re-baking; (2) re-bake only
+  in `--export` mode and keep each roll ≤ ~50k tris (the first bake was 157k —
+  bevels + ring segments on the small tier); (3) bump `glowHome.v` on every
+  re-bake; (4) the glass program's kind 3 + class/4 branch is the in-world
+  material — panes carry their own opacity, ribbons/filaments are hot lines;
+  (5) each shell deals itself a roll + a random orientation from SOCIETY_SEED —
+  `homeSeed` rotates the deal and only re-uploads the communities; (6) the hex
+  plates remain the file:// fallback, `homeV0/homeI0` rule unchanged; (7) v62.2 THE
+  HOME GLOW PASS: the homes draw twice — once sharp in the glass pass (weight
+  1 − 0.75·homeBlur) and once alone into a quarter-res FBO (`homeGlow`, depth pre-pass
+  of skull + Cadence solids, uHomePass=1 discards everything else), blurred 2×, added
+  after the orbs on TEXTURE9 — never bind that pass's textures on unit 0, other programs
+  keep their bindings across frames; the pass restores viewport/blend/depth itself.
 - THE GLOW HOMES (v60.1, 2026-08-17): the energy beings' habitat inside every
   Saelyri SHELL (James, 2026-09-01: the glowing balls are shells, not suns — the
   inside is dark; force fields have zero thickness — see changelog 2026-09-01/02) is a MESHY structure James made from a GPT concept, re-materialed

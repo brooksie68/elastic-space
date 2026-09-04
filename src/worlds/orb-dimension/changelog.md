@@ -3,6 +3,122 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v62 — 2026-09-03 (Claude, James's go after the lab round: "nice. these look great. go for the next step") — THE FIELD HOMES IN-WORLD
+
+The generator's rolls now stand inside every Saelyri shell.
+
+- **Bake:** `tmp/orb-dimension/export_fields.py <NN> <seed> [order]` runs `glowhome_fields3.py`
+  in its `--export` mode (leaner: 4-sided filaments, half-segment rings, 2-segment bevels and
+  none on the small tier, no small-tier ribbons, no motes, fewer connectors/spikes) and writes
+  `assets/homes/fields-NN.bin`, magic **GHM2** — the GHOM 8-float record, but uv.x =
+  class×1000 + hue° (0 pane / 1 ribbon+filament / 2 blob / 3 crystal) and uv.y = the piece's
+  opacity; vertices shared per polygon, flat normals. Six rolls baked (seeds 31/32/33/41/42/43,
+  orders 0.3/0.5/0.7/0.4/0.6/0.35): 40–51k tris, 2.9–3.8 MB each, 22 MB total. The first bake
+  was 157k tris / 16 MB — bevels and 48-segment rings on the small tier — hence the export mode.
+- **World:** `glowHome` is a name list; all six fetch in parallel (GHOM files still load as
+  kind 2). `homeMesh` deals each shell one roll (`cfg.homeSeed` rotates the deal, dial "home
+  roll" 0–5 in configuration · the societies, its own change handler → `uploadCommunities()`
+  only) and a uniformly random orientation — no gravity, no up. Glass program kind 3 + class/4:
+  panes fresnel-dim at their own opacity with a slow shimmer, ribbons/filaments hot lines, blobs
+  hot-centre/clear-rim, crystals denser and core-lit; colour = render palette (hue) pulled a
+  quarter toward the family hue. HOME_FIT unchanged (0.45 × nd.r). Tag `glowHome.v` = 3.
+- Nine sims green (init-smoke's HOMES line now exercises all six), shader-check ALL PASS.
+- **RECORDED, NOT BUILT — every sphere becomes real 3-D (James, same night, after
+  asking straight out whether the balls are spheres):** the honest answer is no — every orb
+  is a camera-facing disc with a gradient, and with real geometry inside a heart ball it
+  shows ("they act really weird and suss"; the interiors "look like circular TV screens
+  facing you"). His order: every sphere in the world becomes a real three-dimensional
+  shape, not just the homes — "it has to." Plan agreed in outline, awaiting his go and his
+  timing: PHASE 1 sphere impostors for every orb (per-pixel ray-sphere, real normal + depth
+  write, rim + specular, wrapped shell texture, refraction parallax, worldlets as true
+  globes); PHASE 2 the 26 procedural interiors rebuilt as volumes kind by kind (paintings
+  may stay flat pictures in a ball). Root todo item 0 (f).
+- **v62.6 — REVERTED to the screenshot state.** His read of v62.5: "all weirdly
+  translucent... go back to exactly what it looked like." v62.4's aerial/fog exemption, the
+  ribbon-floor change and v62.5's far-sharp ramp all removed; the shader is the v62.3 code
+  with the v62.2 light numbers again — exactly the three-screenshot state. The far "pale
+  peach" read from that state stands as an open item for a calmer session, measured first.
+- **v62.5 — I misread the three shots.** His verdict: the near shot that clips to white "is
+  the whole thing... that's the best any of these glow homes have looked"; the FAR shot is
+  the problem (peachy, washed out) and he wants far = "bright like that but a smaller point."
+  Knee removed, pane/crystal sun back to 0.6 / 1.5. Far fix kept (no aerial, 1/3 fog) plus:
+  beyond ~3 shell radii the sharp draw ramps to full strength (12 radii = all sharp), so a
+  far home is a hot compact point instead of a fixed-radius blur diluting a small object.
+- **v62.4 (three screenshots: far / mid / near — "pale peach... washed out" far, white-hot
+  and structureless near):** far = the glass program's aerial desaturation + full fog on the
+  homes (they are light, not structure) → homes now skip aerial and take 1/3 fog, like the
+  hearts' read; near = the haze add clipping to white in all channels → the composite gets a
+  soft knee by max channel (saturates toward the warm colour instead of white); pane sun
+  0.6→0.5, crystal sun 1.5→1.2, melted-ribbon floor 0.35→0.5 so far lines keep definition.
+- **v62.3 (his third look — "BY FAR the best these have looked... thumbs up", but "a bit
+  too bright" and "too small... sticking out of the balls in many places and mostly filling
+  the balls"):** the bake now normalizes on the BULK (85th-percentile vertex radius = 1)
+  instead of the longest spear — the lattice body sits at HOME_FIT 0.68 nd.r (the heart
+  ball is 0.5) and the spears run 2–3.4× further; all six re-baked, `glowHome.v` 4. Light
+  cut ~40%: pane/crystal sun terms, ribbon and blob strengths, and the haze add
+  (0.35 + 0.75·homeBlur, was 0.6 + 1.4·). "The color of the light is great. Very sun-like.
+  Warm and inviting" — palette untouched. HIS READ: "pale peach really washed out. No
+  definition. Lost all of its warm sun color" — the enlargement alone spread the light over
+  ~3× the area, and the cut stacked on it. Light restored to the v62.2 numbers, size kept.
+- **v62.2 (his second look, with two screenshots):** structurally "still look pretty cool...
+  there's definitely three-dimensionality"; colours drifted orange/peach + an unexpected
+  purple ("I could probably live with it"); the homes PULSED between opaque and skeletal;
+  and the ribbons sparkled as "all the little dots" at distance — his ask: "a significant
+  amount of blur on them... would really help the whole vibe." Built: (1) THE HOME GLOW
+  PASS — the homes drawn a second time alone into a quarter-res target (a depth pre-pass
+  of the skull + Cadence cores keeps the haze off the bone), two separable gaussian blurs,
+  added over the finished frame on its own texture unit (9); dial `homeBlur` ("home glow
+  blur", default 0.7) trades the sharp draw for haze; (2) the home breath steadied
+  (0.85 + 0.15 sin, was 0.55 + 0.45 — that was the opaque↔skeletal pulse); (3) ribbon melt
+  — a 0.8 m line under ~3 px dissolves to a faint average by fwidth(vP), the v55 discipline.
+  Nine sims + shader-check green. AWAITING his look at the haze level and the colour drift.
+- **v62.1 (his first look):** "too small inside the balls... they should be sticking out
+  on all sides" and the heart ball "is just another force field" — HOME_FIT 0.45 → 0.9
+  (doubled, past the ball), and the orb shader gained `uHeartOp` (cfg `heartOp`, default
+  0.3, dial "heart ball opacity" in the societies group) that dims the heart-flagged shell +
+  core glow only (halo untouched — the long-range read). The v60.1 "homes must stay inside
+  the heart orb" correction is retired.
+- AWAITING JAMES'S FLIGHT: how the homes read through the shell at approach, the class
+  brightnesses (ribbons may be hot), frame rate with ~50k tris × every shell, and the deal dial.
+
+## 2026-09-03 — Claude with James (headless rolls, his eye each round) — THE GLOW HOMES: generator v2/v3
+
+James's read of the held v1 (`glowhome-roll-s31-2d-b.png`): "too far apart... no coherency in the
+middle... solid pieces floating together more than a space home made out of force fields." Rebuilt
+headless, three seeds per sheet, his verdict between rounds. All in `tmp/orb-dimension/`.
+
+- **v2 `glowhome_fields2.py` — the structure.** A dense lattice of decks and walls crossing at the
+  axis that every other piece passes THROUGH (overlap, never spacing; density falls off with
+  distance); shards still fly in from any angle. His correction on my first plan: not
+  structure-in-the-middle / chaos-outside — ONE `order` dial rolled per seed in **0.3–0.7**, every
+  piece snaps to the lattice or goes free against it, so some seeds are tidy and some are storms,
+  all with a spine. Three size tiers so it reads as technology: macro plates, mid containers
+  (20–80 m), small connectors (3–15 m) clustered around them. Verdict: "structurally, I love them.
+  They're fantastic... I can completely live with them as they are." Colour (honey + a little
+  teal) right.
+- **v3 `glowhome_fields3.py` — his material + shape pass, in order:** (1) per-piece opacity
+  0.4–0.6 driving tint AND emission, a slow ~80 m shimmer in the glow, compositor bloom (the
+  blend's `glow-comp` group, retuned), light motes through the core, amorphous plasma blobs —
+  the first cut was a firework that whited the centre out, pulled back ~3×; (2) cubes cut to
+  rare, roster = hex/pent/oct/decagon prisms, dodecahedra, icosahedra, pyramids, 6- and 10-point
+  stars, ovals, rounded triangles, blobs; (3) bezier corner rounding on ~1/3 of flat shapes;
+  (4) 4-segment bevels on 1/2 of the solids (ribbons skip bevel strips); (5) core density +30%
+  and THICK CRYSTAL COLUMNS from the r2 look (hero obelisk + 4–16 faceted columns with pointed
+  caps + spike clusters) — then his no-gravity reminder: columns point along any lattice axis or
+  anywhere at all, thickness 4–40 m; (6) THE LAB — eight instrument recipes built as ordered
+  assemblies in their own frame (cyclotron, viewing tank, spectrum analyzer, scope, radiation
+  etcher, Asgardian spire array, dish, reactor torus; 6–10 per seed, ~72% near-but-off-axis, the
+  rest out in the arms), ~100 filaments strung instrument↔instrument, container↔container and out
+  to the decks, and five blues (cobalt/sky/indigo/ice/azure) beside the teal.
+- Sheet tooling: `gh_sheet.py` stacks renders (Blender python + numpy). Renders:
+  `glowhome-roll3-s31-o30 / s32-o50 / s33-o70.png` + `glowhome-roll3-sheet.png` (v2 set as
+  `glowhome-roll2-*`). ~25–60 s a render at 64 samples.
+- Open: the cores run hot where columns stack (honey pushes toward pink under AgX) — crystal glow
+  was cut once, would go further on his word. NEXT with his go: the export route — the generator's
+  fields as GHOM into every shell via the home pipe (`weld_bldg.mjs` / `export_home.py`), seeds +
+  order as dials. The lab pieces mean the in-world glass program needs the per-object opacity and
+  the filament/blob materials before it matches the render.
+
 ## 2026-09-01/02 — Claude with James in the live Blender window — THE GLOW HOMES: the plane-stack session
 
 Live co-drive (his format, one step and his word each time). Where it landed and

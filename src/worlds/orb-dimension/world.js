@@ -104,6 +104,9 @@
     nebGlow: 1,
     nebDensity: 1,
     nebScale: 1.6,
+    homeSeed: 0, // v62: rotates which field-home roll each shell gets (0–5)
+    heartOp: 0.3, // v62.1: opacity of the Saelyri heart balls (James: "reduce considerably")
+    homeBlur: 0.7, // v62.2: the field homes' glow pass — 0 sharp, 1 all haze
     sizeMin: 18,
     sizeMax: 70,
     shellOp: 1,
@@ -204,6 +207,10 @@
     // still clear the spawn, the approach line, and the satellite towns —
     // beyond that they merge into soup and lose their one-palette identities
     { key: "nebScale", label: "nebula size", min: 0.5, max: 2, step: 0.05, layout: true },
+    // v62 the field homes: six baked rolls; the dial re-deals them across the shells
+    { key: "homeSeed", label: "home roll", min: 0, max: 5, step: 1, homes: true },
+    { key: "heartOp", label: "heart ball opacity", min: 0, max: 1, step: 0.05 },
+    { key: "homeBlur", label: "home glow blur", min: 0, max: 1, step: 0.05 },
   ];
   const cfg = Object.assign({}, DEFAULTS);
   try {
@@ -563,6 +570,7 @@ uniform float uTime;
 uniform float uFog;
 uniform float uGlow;
 uniform float uShellOp;
+uniform float uHeartOp; // v62.1: the Saelyri heart balls are force fields — dimmed so the homes read through
 uniform float uFadeScale;
 out vec4 frag;
 
@@ -1227,6 +1235,7 @@ void main() {
   }
   vec3 outP = shell.rgb + coreP * (1.0 - shell.a);
   float outA = shell.a + coreA * (1.0 - shell.a);
+  if (portal > 1.5 && portal < 2.5) { outP *= uHeartOp; outA *= uHeartOp; } // v62.1 heart balls: a veil, not a container (halo untouched — the long-range read)
 
   // halo: v49.1 — a LONG-RANGE effect now (James: the near-field version
   // read as ghost balls, and this is space, not the old cave — no medium to
@@ -1269,7 +1278,7 @@ void main() {
   }
   gl.useProgram(prog);
   const U = {};
-  for (const name of ["uVP", "uRight", "uUp", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uFadeScale", "uArt", "uGlyphs"]) {
+  for (const name of ["uVP", "uRight", "uUp", "uShells", "uTime", "uFog", "uGlow", "uShellOp", "uHeartOp", "uFadeScale", "uArt", "uGlyphs"]) {
     U[name] = gl.getUniformLocation(prog, name);
   }
 
@@ -5126,6 +5135,8 @@ uniform float uFade;
 uniform float uGlow;
 uniform float uFams[5];
 uniform float uMelt;
+uniform float uHomePass;  // v62.2: 1 = the glow pass — only the field homes draw
+uniform float uHomeSharp; // v62.2: how much of the sharp home stays in the main pass
 in vec3 vP;
 in vec3 vN;
 in vec2 vUV;
@@ -5135,6 +5146,7 @@ out vec4 oC;
 ${COMM_HUE}
 ${COMM_AER}
 void main() {
+  if (uHomePass > 0.5 && vAux.x < 2.5) discard;
   vec3 N = normalize(vN);
   vec3 V = normalize(uCamPos - vP);
   float fres = pow(1.0 - abs(dot(N, V)), 2.4);
@@ -5158,11 +5170,46 @@ void main() {
     dash = mix(0.18, dash, crisp);
     col = vec3(0.4, 0.55, 0.75) * (0.04 + fres * 0.35) + famc * dash * (0.5 + fres);
     a = 0.06 + fres * 0.4 + dash * 0.25;
-  } else {
+  } else if (vAux.x < 2.5) {
     float d = distance(vP, vC) / max(vAux.z, 1.0);
     float sun = uGlow * (0.55 + 0.45 * sin(uTime * (0.5 + vAux.y * 0.13) + vAux.y)) * 1.6 / (d * d * 9.0 + 0.35);
     col = famc * (0.05 + fres * 0.5) + mix(famc, vec3(1.0), 0.35) * sun;
     a = clamp(0.10 + fres * 0.5 + sun * 0.35, 0.0, 0.9);
+  } else {
+    // v62 the field homes: kind 3 + class/4. vUV = (hue°, opacity). The
+    // render palette (honey / teal / blues) pulled a quarter toward the
+    // town's family hue so the towns still read as themselves.
+    float cls = floor((vAux.x - 3.0) * 4.0 + 0.5);
+    vec3 pc = mix(hueCol(vUV.x), famc, 0.25);
+    float op = vUV.y;
+    float d = distance(vP, vC) / max(vAux.z, 1.0);
+    // v62.2: a steadier breath than the heart's — James saw the homes pulse
+    // between opaque and skeletal; the structure should hold, the light breathe
+    float sun = uGlow * (0.85 + 0.15 * sin(uTime * (0.5 + vAux.y * 0.13) + vAux.y)) * 0.6 / (d * d * 9.0 + 0.35);
+    // v62.2 ribbon melt: a 0.8 m line under ~3 px dissolves into a faint average
+    // instead of sparkling as dots (the v55 melt discipline, by fwidth of vP)
+    float mpp = length(fwidth(vP));
+    float crisp = smoothstep(0.4, 3.0, 0.8 / max(mpp, 1e-6));
+    if (cls < 0.5) {
+      // pane: fresnel-dim face at its own opacity, a slow shimmer breathing through it
+      float sh = 0.7 + 0.3 * sin(dot(vP, vec3(0.011, 0.013, 0.009)) + uTime * 0.4 + vAux.y);
+      col = pc * (0.08 + fres * 0.45) * (0.5 + op) * sh + pc * sun;
+      a = clamp(op * (0.18 + fres * 0.5) + sun * 0.25, 0.0, 0.85);
+    } else if (cls < 1.5) {
+      // ribbon / filament: a hot line, melting when subpixel
+      col = mix(pc, vec3(1.0), 0.3) * 1.6 * uGlow * mix(0.35, 1.0, crisp);
+      a = mix(0.35, 0.95, crisp);
+    } else if (cls < 2.5) {
+      // blob: hot at the centre, gone at the rim
+      float fc = pow(abs(dot(N, V)), 2.2);
+      col = mix(pc, vec3(1.0), 0.4) * fc * 1.4 * uGlow;
+      a = fc * 0.8;
+    } else {
+      // crystal: a denser pane, lit harder by the core
+      col = pc * (0.15 + fres * 0.6) * (0.5 + op) + pc * sun * 1.5;
+      a = clamp(op * (0.35 + fres * 0.5) + sun * 0.3, 0.0, 0.9);
+    }
+    if (uHomePass < 0.5) { col *= uHomeSharp; a *= mix(0.6, 1.0, uHomeSharp); }
   }
   float gd = distance(vP, uCamPos);
   float fogF = exp(-gd * uFog * 1.2) * uFade;
@@ -5205,7 +5252,7 @@ void main() {
   float fogF = exp(-bd * uFog * 1.2) * uFade;
   oC = vec4(aerial(grad, bd) * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -5230,33 +5277,147 @@ void main() {
   // fresnel makes the faces dim and the edges bright, the sun term glows it
   // from the core. Served only: on file:// (or before it arrives) the hex
   // plates in communityGeometry stand in. Each sun gets its own yaw.
-  const glowHome = { mesh: null, name: "glowhome-01" };
-  const HOME_FIT = 0.5 * 0.9; // largest vertex radius vs nd.r — inside the heart orb (fixedR = 0.5 nd.r)
+  // v62 THE FIELD HOMES (2026-09-03, James's go): the glow-home generator
+  // (tmp/orb-dimension/glowhome_fields3.py — lattice + `order` dial, three
+  // size tiers, crystals at any angle, the Doctor's-lab instruments,
+  // filaments, blobs) baked by export_fields.py into six rolls,
+  // assets/homes/fields-01..06.bin, magic GHM2: same 8-float record as GHOM
+  // but uv.x = class*1000 + hue° (0 pane / 1 ribbon+filament / 2 blob /
+  // 3 crystal) and uv.y = the piece's opacity. Each shell deals itself one
+  // roll (cfg.homeSeed rotates the deal) and a fully random orientation —
+  // there is no gravity, no up. Drawn by the glass program as kind 3+cls/4
+  // (see COMM_FS_GLASS). Served only: on file:// (or before the six land)
+  // the hex plates stand in. GHOM files (the v60.1 Meshy home) still load
+  // as kind 2 if named here.
+  const glowHome = { meshes: [], names: ["fields-01", "fields-02", "fields-03", "fields-04", "fields-05", "fields-06"], v: 4 };
+  // v62.1 James: "they should be sticking out on all sides of the ball" — the
+  // heart orb (fixedR = 0.5 nd.r) is just another force field, not a container.
+  // Doubled from 0.45: the structure now reaches 0.9 nd.r, well past the ball.
+  // v62.3 (his: "too small... sticking out of the balls in many places and mostly
+  // filling the balls"): the bake now normalizes on the structure's BULK (85th
+  // percentile radius = 1), so this is where the body sits; spears run ~2× further.
+  const HOME_FIT = 0.68; // bulk radius vs nd.r (the heart ball is 0.5 nd.r)
+  // v62.2 THE HOME GLOW PASS (James: "a significant amount of blur on them...
+  // that would really help the whole vibe"): the field homes are drawn a
+  // second time, alone, into a quarter-res target (with a depth pre-pass of
+  // the bone + the Cadence cores so the glow never leaks through Korrudan),
+  // blurred twice, and added over the finished frame. cfg.homeBlur = how much
+  // haze (and how little of the sharp draw stays).
+  const homeGlow = { w: 0, h: 0, fbo: null, tex: null, depth: null, pp: [], ready: false };
+  const GLOW_VS = `#version 300 es
+out vec2 vT;
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  vT = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+  const GLOW_BLUR_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform vec2 uDir;
+in vec2 vT;
+out vec4 oC;
+void main() {
+  float w[5] = float[5](0.227, 0.194, 0.121, 0.054, 0.016);
+  vec4 c = texture(uTex, vT) * w[0];
+  for (int i = 1; i < 5; i++) {
+    vec2 o = uDir * float(i);
+    c += texture(uTex, vT + o) * w[i];
+    c += texture(uTex, vT - o) * w[i];
+  }
+  oC = c;
+}`;
+  const GLOW_COMP_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform float uAmt;
+in vec2 vT;
+out vec4 oC;
+void main() { oC = texture(uTex, vT) * uAmt; }`;
+  homeGlow.blur = makeProg(GLOW_VS, GLOW_BLUR_FS, ["uTex", "uDir"]);
+  homeGlow.comp = makeProg(GLOW_VS, GLOW_COMP_FS, ["uTex", "uAmt"]);
+  function glowTex(w, h) {
+    const t = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const f = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    return { tex: t, fbo: f };
+  }
+  function homeGlowEnsure(bw, bh) {
+    const w = Math.max(64, bw >> 2), h = Math.max(64, bh >> 2);
+    if (homeGlow.w === w && homeGlow.h === h) return;
+    for (const pp of homeGlow.pp) { gl.deleteFramebuffer(pp.fbo); gl.deleteTexture(pp.tex); }
+    if (homeGlow.fbo) { gl.deleteFramebuffer(homeGlow.fbo); gl.deleteTexture(homeGlow.tex); gl.deleteRenderbuffer(homeGlow.depth); }
+    const main = glowTex(w, h);
+    homeGlow.fbo = main.fbo; homeGlow.tex = main.tex;
+    homeGlow.depth = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, homeGlow.depth);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, homeGlow.depth);
+    homeGlow.pp = [glowTex(w, h), glowTex(w, h)];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    homeGlow.w = w; homeGlow.h = h;
+  }
+  function blurPass(src, dst, dx, dy) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+    gl.activeTexture(gl.TEXTURE9); // its own unit — never disturb the others' bindings
+    gl.bindTexture(gl.TEXTURE_2D, src.tex);
+    gl.uniform1i(homeGlow.blur.U.uTex, 9);
+    gl.uniform2f(homeGlow.blur.U.uDir, dx, dy);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
   function homeMesh(g, ci) {
-    const src = glowHome.mesh;
-    const nv = src.nv, ni = src.ni, P = src.verts;
-    const nN = g.nodes.length;
-    const v = new Float32Array(nv * 15 * nN);
-    const idx = new Uint32Array(ni * nN);
+    const list = glowHome.meshes;
     const R = mulberry32(SOCIETY_SEED ^ 0x40e5 ^ (ci * 7919));
+    const picks = [];
+    let totV = 0, totI = 0;
+    for (let n = 0; n < g.nodes.length; n++) {
+      const src = list[(Math.floor(R() * 1e6) + (cfg.homeSeed | 0)) % list.length];
+      // uniform random rotation (Shoemake): three rolls → a quaternion
+      const u1 = R(), u2 = R(), u3 = R();
+      const q = [Math.sqrt(1 - u1) * Math.sin(TAU * u2), Math.sqrt(1 - u1) * Math.cos(TAU * u2),
+        Math.sqrt(u1) * Math.sin(TAU * u3), Math.sqrt(u1) * Math.cos(TAU * u3)];
+      picks.push({ src, q });
+      totV += src.nv; totI += src.ni;
+    }
+    const v = new Float32Array(totV * 15);
+    const idx = new Uint32Array(totI);
     let vo = 0, io = 0, base = 0;
-    for (const nd of g.nodes) {
-      const s = nd.r * HOME_FIT;
-      const yaw = R() * TAU, cy = Math.cos(yaw), sy = Math.sin(yaw);
+    g.nodes.forEach((nd, n) => {
+      const { src, q } = picks[n];
+      const [x, y, z, w] = q;
+      const m00 = 1 - 2 * (y * y + z * z), m01 = 2 * (x * y - z * w), m02 = 2 * (x * z + y * w);
+      const m10 = 2 * (x * y + z * w), m11 = 1 - 2 * (x * x + z * z), m12 = 2 * (y * z - x * w);
+      const m20 = 2 * (x * z - y * w), m21 = 2 * (y * z + x * w), m22 = 1 - 2 * (x * x + y * y);
+      const s = nd.r * HOME_FIT, P = src.verts, nv = src.nv, fields = src.fields;
       for (let k = 0; k < nv; k++) {
         const o = k * 8;
-        const x = P[o], y = P[o + 1], z = P[o + 2], nx = P[o + 3], ny = P[o + 4], nz = P[o + 5];
-        v[vo++] = nd.p[0] + (x * cy - z * sy) * s;
-        v[vo++] = nd.p[1] + y * s;
-        v[vo++] = nd.p[2] + (x * sy + z * cy) * s;
-        v[vo++] = nx * cy - nz * sy; v[vo++] = ny; v[vo++] = nx * sy + nz * cy;
-        v[vo++] = 0; v[vo++] = 0;
-        v[vo++] = 2; v[vo++] = nd.phase; v[vo++] = nd.r; v[vo++] = nd.fam;
+        const px = P[o], py = P[o + 1], pz = P[o + 2], nx = P[o + 3], ny = P[o + 4], nz = P[o + 5];
+        v[vo++] = nd.p[0] + (m00 * px + m01 * py + m02 * pz) * s;
+        v[vo++] = nd.p[1] + (m10 * px + m11 * py + m12 * pz) * s;
+        v[vo++] = nd.p[2] + (m20 * px + m21 * py + m22 * pz) * s;
+        v[vo++] = m00 * nx + m01 * ny + m02 * nz;
+        v[vo++] = m10 * nx + m11 * ny + m12 * nz;
+        v[vo++] = m20 * nx + m21 * ny + m22 * nz;
+        if (fields) {
+          const ux = P[o + 6], cls = Math.floor(ux / 1000);
+          v[vo++] = ux - cls * 1000; v[vo++] = P[o + 7]; v[vo++] = 3 + cls * 0.25;
+        } else {
+          v[vo++] = 0; v[vo++] = 0; v[vo++] = 2;
+        }
+        v[vo++] = nd.phase; v[vo++] = nd.r; v[vo++] = nd.fam;
         v[vo++] = nd.p[0]; v[vo++] = nd.p[1]; v[vo++] = nd.p[2];
       }
-      for (let k = 0; k < ni; k++) idx[io++] = base + src.idx[k];
+      for (let k = 0; k < src.ni; k++) idx[io++] = base + src.idx[k];
       base += nv;
-    }
+    });
     return { v, i: idx };
   }
   function uploadCommunities() {
@@ -5269,7 +5430,7 @@ void main() {
       }
     }
     commGL.meshes = COMM_GEO.map((g, ci) => {
-      if (!glowHome.mesh) {
+      if (!glowHome.meshes.length) {
         return { solid: makeCommVao(g.solid), glass: makeCommVao(g.glass), bridge: makeCommVao(g.bridge) };
       }
       // homes in: cut the hex fallback off the glass tail, append the meshes
@@ -5286,15 +5447,19 @@ void main() {
   }
   (async () => {
     try {
-      const url = "assets/homes/" + glowHome.name + ".bin?v=2";
-      const buf = await fetch(url).then((r) => {
-        if (!r.ok) throw new Error(url + " " + r.status);
-        return r.arrayBuffer();
-      });
-      const dv = new DataView(buf);
-      if (dv.getUint32(0, false) !== 0x47484f4d) throw new Error("bad magic " + url);
-      const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
-      glowHome.mesh = { nv, ni, verts: new Float32Array(buf, 12, nv * 8), idx: new Uint32Array(buf, 12 + nv * 32, ni) };
+      const loaded = await Promise.all(glowHome.names.map(async (name) => {
+        const url = "assets/homes/" + name + ".bin?v=" + glowHome.v;
+        const buf = await fetch(url).then((r) => {
+          if (!r.ok) throw new Error(url + " " + r.status);
+          return r.arrayBuffer();
+        });
+        const dv = new DataView(buf);
+        const magic = dv.getUint32(0, false);
+        if (magic !== 0x47484f4d && magic !== 0x47484d32) throw new Error("bad magic " + url);
+        const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
+        return { nv, ni, fields: magic === 0x47484d32, verts: new Float32Array(buf, 12, nv * 8), idx: new Uint32Array(buf, 12 + nv * 32, ni) };
+      }));
+      glowHome.meshes = loaded;
       uploadCommunities();
     } catch (e) {
       console.warn("glow homes: hex plates stand in —", e.message);
@@ -6746,7 +6911,11 @@ void main() {
           gl.uniform1f(pr.U.uMelt, cfg.melt);
           gl.uniform1f(pr.U.uTime, t);
           gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
-          if (pass === "glass") gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
+          if (pass === "glass") {
+            gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
+            gl.uniform1f(pr.U.uHomePass, 0);
+            gl.uniform1f(pr.U.uHomeSharp, 1.0 - cfg.homeBlur * 0.75); // v62.2: the haze pass carries the rest
+          }
           for (const cd of commDraw) {
             gl.uniform3fv(pr.U.uOrigin, cd.o);
             gl.uniform1f(pr.U.uFade, cd.fade);
@@ -6755,6 +6924,63 @@ void main() {
           }
         }
         gl.bindVertexArray(null);
+      }
+      // v62.2 the home glow pass: homes alone → quarter-res → blur → (added after the orbs)
+      homeGlow.ready = false;
+      if (commDraw.length && glowHome.meshes.length && cfg.homeBlur > 0.001) {
+        homeGlowEnsure(bw, bh);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, homeGlow.fbo);
+        gl.viewport(0, 0, homeGlow.w, homeGlow.h);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // depth only: the bone + the Cadence cores, so the haze stops at Korrudan
+        gl.disable(gl.BLEND);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthMask(true);
+        gl.colorMask(false, false, false, false);
+        if (skull.ready) {
+          gl.useProgram(skull.prog);
+          gl.bindVertexArray(skull.vao);
+          gl.drawElements(gl.TRIANGLES, skull.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.useProgram(commGL.solid.p);
+        for (const cd of commDraw) {
+          gl.uniform3fv(commGL.solid.U.uOrigin, cd.o);
+          gl.uniform1f(commGL.solid.U.uFade, cd.fade);
+          gl.bindVertexArray(commGL.meshes[cd.ci].solid.vao);
+          gl.drawElements(gl.TRIANGLES, commGL.meshes[cd.ci].solid.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.colorMask(true, true, true, true);
+        // the homes, full strength, no depth write
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        const pr = commGL.glass;
+        gl.useProgram(pr.p);
+        gl.uniform1f(pr.U.uHomePass, 1);
+        gl.uniform1f(pr.U.uHomeSharp, 1);
+        for (const cd of commDraw) {
+          gl.uniform3fv(pr.U.uOrigin, cd.o);
+          gl.uniform1f(pr.U.uFade, cd.fade);
+          gl.bindVertexArray(commGL.meshes[cd.ci].glass.vao);
+          gl.drawElements(gl.TRIANGLES, commGL.meshes[cd.ci].glass.count, gl.UNSIGNED_INT, 0);
+        }
+        gl.uniform1f(pr.U.uHomePass, 0);
+        gl.bindVertexArray(null);
+        // blur: two separable passes, radius with the dial
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.BLEND);
+        gl.useProgram(homeGlow.blur.p);
+        const rad = 1.0 + cfg.homeBlur * 2.0;
+        const src = { tex: homeGlow.tex, fbo: homeGlow.fbo };
+        blurPass(src, homeGlow.pp[0], rad / homeGlow.w, 0);
+        blurPass(homeGlow.pp[0], homeGlow.pp[1], 0, rad / homeGlow.h);
+        blurPass(homeGlow.pp[1], homeGlow.pp[0], rad * 1.7 / homeGlow.w, 0);
+        blurPass(homeGlow.pp[0], homeGlow.pp[1], 0, rad * 1.7 / homeGlow.h);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, bw, bh);
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.BLEND);
+        homeGlow.ready = true;
       }
       gl.depthMask(false);
       gl.enable(gl.BLEND);
@@ -6775,10 +7001,26 @@ void main() {
       gl.uniform1f(U.uFog, cfg.haze / 18000);
       gl.uniform1f(U.uGlow, cfg.glow);
       gl.uniform1f(U.uShellOp, cfg.shellOp);
+      gl.uniform1f(U.uHeartOp, cfg.heartOp);
       gl.uniform1f(U.uFadeScale, cfg.fadeSpeed);
       gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, instData);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, m);
+    }
+    // v62.2 add the home haze over everything (premultiplied additive)
+    if (homeGlow.ready) {
+      const hadDepth = gl.isEnabled(gl.DEPTH_TEST);
+      gl.disable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE);
+      gl.useProgram(homeGlow.comp.p);
+      gl.activeTexture(gl.TEXTURE9);
+      gl.bindTexture(gl.TEXTURE_2D, homeGlow.pp[1].tex);
+      gl.uniform1i(homeGlow.comp.U.uTex, 9);
+      gl.uniform1f(homeGlow.comp.U.uAmt, 0.6 + cfg.homeBlur * 1.4); // v62.3: the 40% cut came back — with the bigger homes it read "washed out"
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      if (hadDepth) gl.enable(gl.DEPTH_TEST);
     }
 
     // home marker: when the heart is off-screen, glide a dot along the screen
@@ -6935,6 +7177,7 @@ void main() {
     });
     // v49 layout sliders re-seat the whole ring — heavy, so only on release
     if (s.layout) input.addEventListener("change", () => relayout());
+    if (s.homes) input.addEventListener("change", () => uploadCommunities()); // v62: re-deal the homes only
     out.value = String(cfg[s.key]);
     wrap.append(label, input);
     tunerInputs[s.key] = { input, out };
@@ -7002,7 +7245,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeTide", "saeCloud", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
