@@ -4,6 +4,7 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "colors-meeting/index.html",
   "dead-letter-office/index.html",
   "jerrys-pool/index.html",
+  "lunar-lander/index.html",
   "mandala-shop/index.html",
   "orb-dimension/index.html",
   "singing-plate/index.html",

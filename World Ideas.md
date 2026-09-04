@@ -288,14 +288,18 @@ Combat/Arachno lineage. Co-build, plan-first — not started.
 
 James, 2026-09-01, spun off roll 7 of the Valence Lab rethink: a continuous, scrubbable zoom from a glass of water down through the molecule, the atom, the electron cloud, past the Planck length, and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world (those endings double as drift exits). The honest middle of the zoom can reuse the Valence Lab's baked Hartree-Fock densities. In the admin panel's page drafts as "Powers of Ten (it ends somewhere silly)".
 
-### 63. Lunar Lander — *one session* — `draft` (built 2026-09-04)
+### 63. Lunar Lander — *one session* — `live` (built 2026-09-04, shipped 2026-09-04)
 
 Atari's 1979 vector cabinet, the Surround treatment: faithful physics (lunar gravity, the
 proportional lever, four selections, pads worth 2×–5×, landings graded by speed / drift /
 tilt, fuel as the only currency) on a glowing phosphor monitor with persistence, bloom,
 scanlines and an eased approach zoom; the LEM breaks along its own strokes; the McDonald's
 is there if you find the flat. `src/worlds/lunar-lander/`. Sibling of Surround (#59);
-Battlezone is the obvious next in the vector family.
+Battlezone is the obvious next in the vector family. SHIPPED the same day after four
+rounds with James: the 1979 look pulled all the way to 2026 (max-blend lines, no CRT),
+a two-stage LEM, landing tech, the endless chunked moon that remembers your life, the
+ring accelerator, and four ways out (drive-through door, relay tower, horizon ring, the
+hatch in your wreck). Missions are the next round.
 
 ## Built on commission — 2026-07-12
 

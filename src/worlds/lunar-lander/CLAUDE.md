@@ -1,48 +1,39 @@
 # Lunar Lander — Claude instructions
 
-## START HERE (next session — James, 2026-09-04 late: "we can pick this up next session right here")
+## START HERE (next session)
 
-Round three is planned and agreed except for one pick. His wrap words: "nice
-work. this looks cool and makes me feel nostalgic." The plan he approved:
+**SHIPPED 2026-09-04** — James flew rounds three and four the same night, said
+"I really like this. It's fun," and asked for egress: four ways out are in and
+the world is wired (changelog "SHIPPED"). Missions are the next round, his go.
+Read the changelog's round-four entry first. The shape of the game now:
 
-1. **The ship is "a bit too 3D now and looks like a samurai hat."** Flatten it:
-   less yaw toward the tilt (a hint, not a turn), drop the side-profile dome
-   arc (the hat brim), lower the dome, keep the deck and legs. A silhouette with
-   a little depth, not a solid.
-2. **Direction indicator, his spec:** "a very faint circle around the ship and
-   a little triangle" — the triangle rides the circle at the velocity heading,
-   brightness scales with speed. Not an arrow (he didn't like the arrow).
-3. **Fuel pads:** each moonscape has one, sometimes two, pads that refill fuel
-   when you land there (planned: +150, +200 for a perfect), marked with a small
-   fuel glyph beside the multiplier. Sim asserts count + refill.
-4. **Earned landing tech, NOT a score bonus** (his correction: "I want to get a
-   cool technology that helps me land easier... The bonus is landing on a 5X
-   because you had that advantage"). A 4X/5X landing earns one piece for the
-   rest of the game (a crash loses one), each drawn on the ship. The
-   parachute is OUT ("silly"). He asked for a dozen ideas, "physically
-   possible... fun or even funny" — delivered, AWAITING HIS SIX (or all
-   twelve):
-   1. Shock legs — land twice as hard; springs compress on touchdown.
-   2. Spider legs — fan out under 60 ft; wider stance counts, tilt widens.
-   3. Hover skirt — ring of jets under 50 ft cushions the last drop; trickles fuel.
-   4. Gyro stabilizer — rotation self-centres on key release.
-   5. Landing radar — dashed beam to the predicted touchdown; pad edges go green when the feet fit.
-   6. Sticky feet — drift tolerance triples; skid on and stop dead.
-   7. Auto-throttle — one tap under 100 ft holds a gentle descent until you touch the keys.
-   8. Ballast drop — jettison a weight once per flight; thrust stronger after.
-   9. Crash cage — one crash per game becomes a hard landing; cage draws bent after.
-   10. Fuel scoop — fuel pads refill more and vent visible vapour from altitude.
-   11. Long legs — stilts; body check relaxed, slopes of a few degrees count as a pad.
-   12. Tow drone — detaches to hover over the nearest pad as a tethered beacon.
-   Claude's pick for the set: 1, 2, 4, 5, 8, 9, earned in that order.
-5. **A more realistic moonscape:** "if this was a NASA simulation... it would be
-   flatter with plateaus, and yes some mountains, but maybe not so many really
-   pointy ones." Regenerate: long flat maria and plateaus, gentle rolling
-   hills, one or two proper sloped mountains per moonscape, rare sharp rims;
-   pads on the flats and plateaus. Sim keeps proving pads flat + terrain under
-   the spawn.
+1. The moon is endless both ways: 4,000 ft chunks hashed from the seed, made on
+   demand, kept for the whole life. One game = one world. Pads you have landed
+   on stay landed on: they refuel you but pay nothing twice (his accepted call).
+2. Every chunk rolls a DEAL (standard / sparse / rich / dry / jackpot) — "each
+   tile... some cool randomness... sometimes the really cool bonus is far off to
+   the right... other times right below you." Chunk 0 is always fair.
+3. After a landing the next flight is the RING ACCELERATOR beside the pad:
+   it APPEARS only then (never drawn at rest — his rule), slide → tilt → fire
+   through five rings with a whoosh, coasting to ~75% of flying height with
+   no fuel spent. The rail runs along the rings' right side so it lies under
+   them when tipped (his rule). Angle is a PLAY dial (default 60°; he said "we might
+   want 60... be prepared to adjust"). After a crash you drop in above the
+   wreck. There is no wrap and no fixed spawn after flight one.
+4. The wide camera scrolls with you (dead zone, then an ease that tightens
+   toward the edge — `cameraFollow` in the core, sim-proven not to pump).
+5. Missions are the door this opens — NOT built, needs its own conversation.
 
-Then his flight, then the feature round proper (see the end of this file).
+Round three (the ship, the aid ring, fuel pads, landing tech, the zoned
+moonscape) and the 2026 look pass 1–3 stand underneath; his verdicts on those
+are still pending too. His pre-flight notes are in the changelog ("first
+notes", "feel notes", "the console"). **Standing rule: this is NOT a faithful
+1979 recreation** — when in doubt, the contemporary choice wins; no stroke
+lettering in the scene except the drive-through sign.
+
+His flight decides: the launch angle and the accelerator's look, the scroll
+feel, the deals' variety, plus everything from round three. Then the 2026 look
+items 4–5 (palette, motion) and the feature round (see the end of this file).
 
 Atari's Lunar Lander (1979), the physics kept and the look taken to 2026. Built
 2026-09-04 as a draft on James's go; rebuilt the same day on his direction
@@ -75,6 +66,11 @@ make it look scratchy and like old school tech"). So:
   numerals, small caps labels, an SVG attitude indicator, a fuel bar, a thrust
   meter (a reading, not a control). Speeds grade themselves green inside a
   good landing near the ground and blink white outside it.
+  **Since 2026-09-04 they live in ONE CONSOLE, top centre, in glass panels**
+  (James: the corner HUD was "way too small and all far apart"); labels are
+  bright (ink 85%), and FUEL is its own large bar under everything with a
+  hash-mark scale (eighths / quarters / half) — "the most critical piece."
+  Never scatter instruments back to the corners; never shrink the labels.
 
 ## THE THROTTLE (James, round two: "make the thrust very responsive and effective")
 
@@ -103,10 +99,11 @@ zoom — "cool, effective, and necessary" — and keep it from pumping.
 
 ## Files
 
-- `game-core.js` — ALL game rules (gravity, lever curve, fuel, rotation,
-  terrain, pads, grading, scoring, the secret flat), pure: no DOM, no timers,
-  no Math.random (seeded rng). Shared verbatim with the sim; keep it pure or
-  the sim lies. Exposes `globalThis.LunarCore`.
+- `game-core.js` — ALL game rules (gravity, lever curve, fuel, rotation, the
+  endless chunked moon and its deals, pads/aprons/used pads, grading, scoring,
+  landing tech, the launch, the camera follow, the secret flat), pure: no DOM,
+  no timers, no Math.random (seeded rng). Shared verbatim with the sim; keep
+  it pure or the sim lies. Exposes `globalThis.LunarCore`.
 - `render3d.js` — the whole picture, nothing else: the 3-D line batch
   (segments → screen-space quads with a soft core, fogged by view distance),
   the ground fills, the vector font (pad labels, the tally), the lander solid,
@@ -115,11 +112,13 @@ zoom — "cool, effective, and necessary" — and keep it from pumping.
   bank, bloom + tint.
 - `game.js` — the shell: attempt flow, the throttle, the zoom gate, input,
   instruments, sound synthesis, tuner, presets, the ledger.
-- Sim: `node tmp/lunar-lander/sim.mjs` — 66,900 assertions on the real core
-  (terrain, determinism, gravity, fuel through the lever curve, abort,
-  rotation/inertia/wrap, every grade threshold, an autopilot that lands all
-  four selections with fuel cost rising by selection, advance(), a full
-  multi-attempt game). RUN IT after touching game-core.js.
+- Sim: `node tmp/lunar-lander/sim.mjs` — 330,028 assertions on the real core
+  (chunks/seams/aprons, determinism, gravity, fuel through the lever curve,
+  abort, rotation/inertia, the endless moon both ways, every grade threshold,
+  an autopilot that lands all four selections, advance(), a full multi-flight
+  life through launches, the zoned moonscape, deals + fuel pads, the whole
+  tech ladder, persistence + used pads, the launch, the camera follow). RUN IT
+  after touching game-core.js.
 
 ## The look-dev harness — use it
 
@@ -142,9 +141,12 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
 
 ## World-specific rules
 
-- **DRAFT (2026-09-04)**: not in the drift registry, no exits, listed under In
-  progress worlds on the admin panel as "unwired". Drift wiring comes after
-  the feature round.
+- **SHIPPED 2026-09-04** (James: "I'm ready to publish it"): in the drift
+  registry, four diegetic exits (the drive-through door, the relay tower's
+  door, the horizon ring, the wreck's hatch — hidden `data-drift` anchors the
+  game clicks via `takeExit`), admin row under Completed. The "unwired" note
+  was removed on his word the same night. Exits are found by playing: never draw an
+  arrow to one, never add a literal link.
 - **The physics are the cabinet's**: gravity 5.3 ft/s² × selection (Training
   0.55 / Cadet 1.0 / Prime 1.35 / Command 1.7), full lever 16.5 ft/s² and 8.5
   fuel/s, Command rotation carries momentum, abort = 1.1 s forced full burn at
@@ -153,12 +155,66 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
   crash (5 points, −50 fuel). Both feet must be on the pad; touching anything
   else is a crash however gentle. The game ends when the tank is dry. Tune by
   feel through the tuner scales (gravity / attack), not by editing these.
+  **Landing tech bends these** (`gradesFor(state)`): shock legs double every
+  vy limit, spider legs grow every tilt limit by half — the HUD and the
+  attitude wedges must read the effective grades, never `GRADES` directly.
+- **Landing tech is a core rule, not a shell flourish**: `state.tech` (ids in
+  the order earned), `TECH` ladder, `techEarnedBy` (good/perfect on ≥4X; the
+  last piece a perfect on a 5X), crash pops the newest. The renderer only
+  draws what `view.tech` says (`buildTech`); the shell owns engagement of the
+  auto-throttle (`autoOn`: one tap of W under `AUTO_ALT`, any flight key
+  releases) and the shock-leg squash spring. `predictTouchdown()` and
+  `autoLever()` are pure and sim-tested — put new tech physics in the core.
+- **Fuel pads** are a flag on a pad (`pad.fuel`); the refill lives in
+  `resolveContact` (`FUEL_PAD_REFILL` / `FUEL_PAD_PERFECT`) and the result
+  carries `fuelPad`.
+- **The moon is endless and chunked** (`makeChunk`, `getChunk`,
+  `chunksBetween`, `padsNear`; `CHUNK_W` 4000): chunks hash from the seed
+  and index, meet at hashed seam levels, and live in `state.world.chunks`
+  for the whole life. Never reintroduce wrap; never regenerate a chunk the
+  player has seen. Anything that needs ground or pads asks the STATE
+  (`groundAt(state, x)`), not a terrain object.
+- **Each chunk is zoned** (`chunk.zones`): maria, plateaus, hills, mountains
+  (1–2, never adjacent, rising from the higher neighbour, capped at 1250 ft),
+  rough (rationed by selection). Pads go on flats first, then hills, never a
+  mountain; every pad has a flat 150 ft APRON to its right for the
+  accelerator. The sim's TEST 10 guards the shape.
+- **Deals** (`chunk.deal`): standard / sparse / rich / dry / jackpot, rolled
+  per chunk; chunk 0 always standard with fuel. Tune the odds in `makeChunk`,
+  then re-read TEST 11's histogram.
+- **A pad pays once per life** (`pad.used`, `result.reused`): no points, no
+  tech, refuel still. `world.version` ticks on use — the renderer and the
+  labels key their rebuilds on it.
+- **The launch** (`newAttempt` → phase `launch` → shell sequence →
+  `launchFire(state, angleDeg, apexFrac)`): the shell owns the timing
+  (slide/tilt/fire) and the drawing (`view.launch`); the core owns the exit
+  velocity (coasts to apexFrac × `LAUNCH_HEIGHT` above the pad, no fuel).
+  Angle and apex are PLAY dials. **The launch aims clear**: `launchAngleFor`
+  steepens the pilot's angle in 5° steps until `launchClear` says the coast
+  misses the ground over the top — the shell must tilt to the aimed angle,
+  never the dial's. A crash or the drive-through drops in above where the
+  flight ended (`RESPAWN_ABOVE`).
+- **The wide camera follows the ship** through the core's `cameraFollow`
+  (dead zone ±20% of the view, ease tightening toward the edge). It is pure
+  and sim-tested for one-way motion — keep any follow change in the core.
 - **The flight line is the truth**: physics stay in the x-y plane at z = 0;
   the near and far lines and the lander's yaw never move a collision point.
   The flight line is the brightest ground line; pads brighter still.
-- **The lander is drawn larger than true** — 2.2× in the wide view, 1.25× on
-  approach (`ds` in render3d.js) — so it is never a smudge; collision points
+- **The lander is drawn larger than true** — 1.76× in the wide view, 1.0× on
+  approach (`ds` in render3d.js; James cut it 20% before his round-three flight) — so it is never a smudge; collision points
   never change. Feet still land inside the narrowest pad at 1.25×.
+- **The lander's outline is James's**: two stages (pod over descent stage),
+  taller than wide, a drawing not a solid. He rejected flattening it. Change
+  the outline only on his word; never change flying behaviour for a look.
+- **The direction indicator is a faint circle + triangle**, far out (60 ft ×
+  ds), barely visible (`ringBright`), the triangle only 1.2× the ring — "a
+  visual aid, not part of the ship." Never an arrow (rejected twice).
+- **Ground lines: three** (farther / far / flight). James asked for the third
+  back layer explicitly; the front (near) line was CUT 2026-09-04 when the
+  pulled-back view exposed it ("weird looking") — its empty batch keeps the
+  draw order. Stars tile three times around the camera; the wide view zooms
+  below 1× (to 0.3) to keep a high ship on screen.
+- **Space burns like W**; the abort is X. Nothing else may claim Space in play.
 - **The start gate** (house rule from Surround): boot lands in attract with the
   card; only START begins a game; result cards gate every next flight; the
   game never runs on its own.
@@ -179,6 +235,18 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
 
 ## Renderer notes (hard-won)
 
+- **Lines MAX-blend, never add** (`MaxEquation` on every LineBatch). Additive
+  was the 1979 tell James rejected: overlaps and corners stacked into blur
+  and dots. If a new pass needs stacking, it is wrong for this world.
+- **Glow is an edge softener, not the finish**: one half-res bloom level,
+  threshold 0.6. Do not bring back the three-level summed halo.
+- **The ship is an object**: back edges dimmed (0.38) in the dyn batch, front
+  edges heavier (1.3×) in `shipBatch`, body hull fill under the lines. New
+  ship geometry must go through `edge()` so it classifies.
+- **The 2026 look list** (James's ask, 2026-09-04): 1 max-blend, 2 tight
+  glow, 3 ship as object — BUILT; 4 palette off phosphor green, 5 motion +
+  feedback register — awaiting his look and go.
+
 - **Line quads wind either way** depending on the segment's direction — the
   line material must stay `DoubleSide` or every rightward segment is culled.
 - **The canvas measures 0 in a hidden pane** at construction, so `render()`
@@ -186,8 +254,9 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
   size changes. Never write the canvas's CSS width/height from JS — a 2 px
   first measurement got pinned that way and the page stayed 2 px forever.
 - **Draw order is the occlusion model**: every mesh is `transparent: true`
-  with an explicit `renderOrder` (stars 0 → far fill 1 → far line 2 → flight
-  fill 3 → flight line 4 → near fill 5 → near line 6 → live things 7). The
+  with an explicit `renderOrder` (stars 0 → farther fill/line 1–2 → far
+  fill/line 3–4 → flight fill/line 5–6 → near fill/line 7–8 → body fill 8.5
+  → live things 9 → ship front edges 10). The
   fills are opaque black `MeshBasicMaterial` strips down to `FILL_FLOOR`. An
   opaque material would leave the transparent queue and break the order.
 - Fog fades by view distance (`uFogA`/`uFogB`); the stars sit past the fog
@@ -195,8 +264,12 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
 - **The frame clock is clamped both ways** — a negative dt (a resumed tab, a
   synthetic pump) blew the throttle easing up to 1e41 once. `frame()` clamps
   dt to [0, 0.1].
-- Terrain, pads, labels, the lander and the ground fills are drawn three times
-  (±WORLD_W) so the wrap seam never shows at any zoom.
+- The renderer holds the core's state (`setWorld`) and builds its static
+  lines for the three chunks around the camera (`_syncStatic` keys on chunk
+  + world version + look params + the launching pad). Parallax ranges are
+  per-chunk with hashed seams (`_range`). Stars re-lay around the camera.
+  There are no wrap copies any more — a `dx` loop over `[0]` is a leftover
+  of that era, not a bug.
 - Fill-rate: the chain is ~8 full-screen passes; the buffer is capped at
   `PIXEL_BUDGET` (2.9M px) with a `res` slider. Don't remove the cap.
 

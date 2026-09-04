@@ -32,66 +32,167 @@
     /* A canvas is a replaced element: it needs an explicit size. */
     #field { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
 
-    /* ---- instruments ---------------------------------------------------------- */
-    .hud { position: fixed; z-index: 10; transition: opacity 500ms ease; }
+    /* ---- instruments: one console, top centre, in panels ------------------------- */
+    #console {
+      /* sized in em off one base so the whole console scales together; James: 20% down from the first cut */
+      font-size: 0.8rem;
+      pointer-events: none;
+      position: fixed; top: 0.9rem; left: 50%; transform: translateX(-50%); z-index: 10;
+      width: min(944px, 94vw);
+      display: flex; flex-direction: column; gap: 0.5rem;
+      transition: opacity 500ms ease;
+    }
+    .row { display: flex; gap: 0.5em; align-items: stretch; }
+    .panel {
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 14px;
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      padding: 0.7em 1em 0.75em;
+      display: flex; flex-direction: column; justify-content: center;
+    }
     .lbl {
-      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase;
-      color: var(--ink-faint);
+      font-size: 0.851em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink);
+      opacity: 0.85;
     }
     .num {
       font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1;
       color: var(--ink);
     }
-    .unit { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint); margin-left: 0.35em; }
+    .unit { font-size: 0.644rem; font-weight: 600; letter-spacing: 0.18em; color: var(--ink-dim); margin-left: 0.4em; }
 
-    #hud-left { top: 1.4rem; left: 1.6rem; }
-    #alt .num { font-size: clamp(2rem, 5.2vh, 3.4rem); font-weight: 200; margin-top: 0.15rem; }
+    /* flight: altitude + the two speeds */
+    #hud-left { flex: 1.5; flex-direction: row; gap: 1.6em; align-items: center; }
+    #alt .num { font-size: clamp(2.2em, 4.48vh, 3.6em); font-weight: 200; margin-top: 0.2em; }
     #alt .num.close { color: var(--ph); text-shadow: 0 0 22px var(--ph-faint); }
-    .speeds { display: flex; gap: 1.6rem; margin-top: 0.9rem; }
-    .speed .num { font-size: clamp(1.1rem, 2.6vh, 1.7rem); font-weight: 300; margin-top: 0.15rem; }
-    .speed .arrow { display: inline-block; width: 1.1em; font-size: 0.75em; color: var(--ink-dim); }
+    .speeds { display: flex; gap: 1.6em; }
+    .speed .num { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
+    .speed .arrow { display: inline-block; width: 1.1em; font-size: 0.862em; color: var(--ink-dim); }
     .speed.hot .num { color: var(--ink); animation: hot 700ms ease-in-out infinite alternate; }
     .speed.ok .num { color: var(--ph); }
     @keyframes hot { from { opacity: 1; } to { opacity: 0.45; } }
 
-    #hud-right { top: 1.4rem; right: 1.6rem; text-align: right; }
-    #score .num { font-size: clamp(1.6rem, 4vh, 2.6rem); font-weight: 200; margin-top: 0.15rem; }
-    #fuel { margin-top: 0.9rem; }
-    #fuel .num { font-size: clamp(1.1rem, 2.6vh, 1.7rem); font-weight: 300; margin-top: 0.15rem; }
-    #fuel-track { position: relative; width: 9rem; height: 2px; margin: 0.45rem 0 0 auto; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
-    #fuel-fill { position: absolute; right: 0; top: 0; bottom: 0; width: 100%; background: var(--ph); box-shadow: 0 0 8px var(--ph-dim); transition: width 120ms linear; }
-    #fuel.low .num { color: var(--ink); animation: hot 500ms ease-in-out infinite alternate; }
-    #fuel.low #fuel-fill { animation: hot 500ms ease-in-out infinite alternate; }
-    #meta { margin-top: 0.8rem; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.22em; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
-    #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-faint); }
+    /* attitude */
+    #attitude { align-items: center; gap: 0.15em; padding: 0.45em 0.9em; }
+    #att-svg { width: min(9.6vh, 86px); height: min(9.6vh, 86px); overflow: visible; }
+    /* a stylized lander that points the way the real one points; the plumb line
+       and the lander go green when you are level enough for a perfect */
+    /* --lv 0..1 = how level: 0 at 5° and beyond, 1 at 0° (set each frame); the green tints in continuously */
+    #att-svg { --lv: 0; --lvc: color-mix(in srgb, var(--ph) calc(var(--lv) * 100%), var(--ink)); --lvg: color-mix(in srgb, var(--ph-dim) calc(var(--lv) * 100%), transparent); }
+    #att-svg .plumb { stroke: color-mix(in srgb, var(--ph) calc(var(--lv) * 100%), var(--ink-faint)); stroke-width: calc(1.2px + var(--lv) * 1px); stroke-dasharray: 3 4; filter: drop-shadow(0 0 5px var(--lvg)); }
+    #att-svg .mark { stroke: color-mix(in srgb, var(--ph) calc(var(--lv) * 100%), var(--ink-faint)); stroke-width: 2; stroke-linecap: round; }
+    #att-svg .ship { fill: none; stroke: var(--lvc); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px var(--lvg)); }
+    #att-svg .ship.win { stroke-width: 1.4; }
+    #tilt-val { font-size: 0.92em; font-weight: 600; letter-spacing: 0.14em; color: var(--ink); font-variant-numeric: tabular-nums; }
+    #tilt-val { color: color-mix(in srgb, var(--ph) calc(var(--lv, 0) * 100%), var(--ink)); }
 
     /* thrust meter — a reading, not a control */
-    #thrust {
-      right: 1.9rem; top: 50%; transform: translateY(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-    }
-    #thrust-track { position: relative; width: 4px; height: min(30vh, 260px); border-radius: 2px; background: rgba(255, 255, 255, 0.08); }
-    #thrust-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); }
-    #thrust-trim { position: absolute; left: -6px; right: -6px; height: 1px; bottom: 0; background: var(--ink-dim); opacity: 0; transition: opacity 200ms ease; }
+    #thrust { align-items: center; gap: 0.45em; min-width: 5.2em; }
+    #thrust-track { position: relative; width: 6px; flex: 1; min-height: 3.4em; border-radius: 3px; background: rgba(255, 255, 255, 0.1); }
+    #thrust-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; border-radius: 3px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); }
+    #thrust-trim { position: absolute; left: -7px; right: -7px; height: 2px; bottom: 0; background: var(--ink); opacity: 0; transition: opacity 200ms ease; }
     #thrust-trim.on { opacity: 1; }
-    #thrust .num { font-size: 0.85rem; font-weight: 500; }
+    #thrust .num { font-size: 1.15em; font-weight: 500; }
 
-    /* attitude */
-    #attitude {
-      left: 50%; bottom: 1.3rem; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    /* score + flight meta */
+    #hud-right { flex: 1; text-align: right; align-items: flex-end; }
+    #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.2em; }
+    #meta { white-space: nowrap; margin-top: 0.55em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
+    #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-dim); }
+
+    /* landing tech — five drawings; dim until earned */
+    #tech-panel { align-items: center; gap: 0.4em; }
+    #tech { display: flex; gap: 0.6em; }
+    #tech .piece { pointer-events: auto; cursor: help; width: 1.9em; height: 1.9em; opacity: 0.22; transition: opacity 400ms ease, filter 400ms ease; }
+    #tech .piece svg { width: 100%; height: 100%; overflow: visible; fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+    #tech .piece.held { opacity: 1; }
+    #tech .piece.held svg { stroke: var(--ph); filter: drop-shadow(0 0 6px var(--ph-dim)); }
+    #tech .piece.live svg { animation: hot 600ms ease-in-out infinite alternate; }
+    #tech-card {
+      position: absolute; z-index: 3; width: 19em; transform: translateX(-50%);
+      background: rgba(4, 10, 6, 0.92); border: 1px solid var(--glass-edge); border-radius: 12px;
+      padding: 0.8em 1em 0.9em; text-align: left;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
+      opacity: 0; pointer-events: none; transition: opacity 160ms ease;
     }
-    #att-svg { width: min(15vh, 128px); height: min(15vh, 128px); overflow: visible; }
-    #att-svg .ring { fill: none; stroke: var(--ink-faint); stroke-width: 1.2; }
-    #att-svg .good { fill: none; stroke: var(--ph); stroke-width: 2.4; stroke-linecap: round; }
-    #att-svg .hard { fill: none; stroke: var(--ink-faint); stroke-width: 2.4; stroke-linecap: round; }
-    #att-svg .horizon { stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
-    #att-svg .ladder { stroke: var(--ink-faint); stroke-width: 1; }
-    #att-svg .ground { fill: var(--ph-faint); opacity: 0.55; }
-    #att-svg .ship { fill: none; stroke: var(--ph); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-    #att-svg .needle { stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; }
-    #att-svg .needle.out { stroke: var(--ink); }
-    #tilt-val { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.14em; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+    #tech-card.show { opacity: 1; }
+    #tech-card::before { content: ''; position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); background: rgba(4, 10, 6, 0.92); border-left: 1px solid var(--glass-edge); border-top: 1px solid var(--glass-edge); }
+    #tc-name { font-size: 1.035em; font-weight: 700; letter-spacing: 0.22em; color: var(--ink); }
+    #tc-status { margin-top: 0.25em; font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-dim); }
+    #tc-status.held { color: var(--ph); }
+    #tc-how { margin-top: 0.6em; font-size: 0.92em; line-height: 1.5; letter-spacing: 0.02em; color: var(--ink); opacity: 0.9; text-transform: none; }
+    #tech-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; }
+    .card .line.tech { color: var(--ink-dim); font-size: 0.713em; min-height: 0; margin-top: 0.3em; }
+    .card .line.tech:empty { display: none; }
+    .card .line.tech.earned { color: var(--ph); }
+    .card .line.exit { color: var(--ph); font-size: 0.62rem; margin-top: 0.4rem; }
+    .card .line.exit:empty { display: none; }
+    .card button.exit-btn { margin-left: 0.6rem; background: color-mix(in srgb, var(--ph) 26%, transparent); }
+    /* the ways out: hidden drift anchors the game clicks */
+    a.exit { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+    /* FUEL — the critical one: its own large bar under everything, with a scale */
+    #fuel { flex-direction: row; align-items: center; gap: 1.2em; padding: 0.8em 1.2em; }
+    #fuel .lbl { font-size: 1.035em; letter-spacing: 0.3em; }
+    #fuel .num { font-size: clamp(1.6em, 3.20vh, 2.4em); font-weight: 300; min-width: 4ch; text-align: right; }
+    #fuel-track {
+      position: relative; flex: 1; height: 1.15em; border-radius: 4px;
+      background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    #fuel-fill {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 3px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--ph) 85%, white) 0%, var(--ph) 55%, color-mix(in srgb, var(--ph) 70%, black) 100%);
+      box-shadow: 0 0 14px var(--ph-dim);
+      transition: width 120ms linear;
+    }
+    #fuel-scale { position: absolute; inset: 0; pointer-events: none; }
+    #fuel-scale span {
+      position: absolute; bottom: 0; width: 1px; background: rgba(0, 0, 0, 0.75);
+      height: 35%; box-shadow: 1px 0 0 rgba(255, 255, 255, 0.35);
+    }
+    #fuel-scale span.q { height: 60%; }
+    #fuel-scale span.h { height: 100%; width: 2px; }
+    #fuel-scale i {
+      position: absolute; top: calc(100% + 0.25em); transform: translateX(-50%);
+      font: 700 0.667em/1 var(--sans); letter-spacing: 0.1em; color: var(--ink); opacity: 0.7; font-style: normal;
+    }
+    #fuel.low .num { color: var(--ink); animation: hot 500ms ease-in-out infinite alternate; }
+    #fuel.low #fuel-fill { animation: hot 500ms ease-in-out infinite alternate; }
+
+    /* ---- world labels: pad multipliers + rising tallies, in the instrument type ---- */
+    #labels { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+    #labels > div { position: absolute; left: 0; top: 0; will-change: transform; white-space: nowrap; }
+    .pad-label { display: flex; align-items: baseline; gap: 0.3rem; color: var(--ink-dim); font-variant-numeric: tabular-nums; transition: opacity 200ms ease; }
+    .pad-label .mult { font-size: 1.092rem; font-weight: 300; letter-spacing: -0.02em; }
+    .pad-label .x { font-size: 0.69em; font-weight: 600; margin-left: 0.08em; color: var(--ink-faint); }
+    .pad-label .drop { width: 0.55rem; height: 0.75rem; fill: none; stroke: var(--ph); stroke-width: 1.4; stroke-linejoin: round; filter: drop-shadow(0 0 4px var(--ph-dim)); align-self: center; }
+    .pad-label.fuel .mult { color: var(--ink); }
+    .pad-label.used { opacity: 0.55; }
+    .pad-fuel { display: flex; flex-direction: row; align-items: center; gap: 0.25rem; margin-top: 0.15rem; transition: opacity 200ms ease; }
+    .pad-fuel svg { width: 0.65rem; height: 0.85rem; fill: color-mix(in srgb, var(--ph) 35%, transparent); stroke: var(--ph); stroke-width: 1.2; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--ph-dim)); }
+    .pad-fuel span { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.22em; color: var(--ph); }
+    .pad-fuel.used { opacity: 0.45; }
+    .pad-label .tag { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); margin-left: 0.2rem; }
+    .float { font-size: 0.897rem; font-weight: 600; letter-spacing: 0.22em; text-indent: 0.22em; color: var(--ink); text-shadow: 0 0 14px var(--ph-faint); }
+    .float.pts { font-size: 1.208rem; font-weight: 300; letter-spacing: 0; text-indent: 0; }
+    .float.tech { color: var(--ph); }
+    .float.fuel { color: var(--ink-dim); }
+
+    /* ---- the ship HUD: readouts beside the ship, only in the zoomed view --------- */
+    .ship-hud { position: absolute; left: 0; top: 0; z-index: 6; pointer-events: none; opacity: 0; transition: opacity 260ms ease; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ship-hud.show { opacity: 1; }
+    .ship-hud .row { display: flex; align-items: baseline; gap: 0.3em; line-height: 1.25; }
+    .ship-hud .k { font-size: 1rem; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-faint); width: 1.6em; }
+    .ship-hud .v { font-size: 1.64rem; font-weight: 300; color: var(--ink-dim); }
+    .ship-hud .u { font-size: 0.96rem; font-weight: 600; letter-spacing: 0.14em; color: var(--ink-faint); }
+    .ship-hud .a { font-size: 1.24rem; color: var(--ink-faint); width: 1em; display: inline-block; }
+    .ship-hud .row.ok .v, .ship-hud .row.ok .a { color: var(--ph); }
+    .ship-hud .row.hot .v { color: var(--ink); animation: hot 700ms ease-in-out infinite alternate; }
+    #shud-l { text-align: right; }
+    #shud-l .row { justify-content: flex-end; }
 
     /* ---- cards ------------------------------------------------------------------- */
     #centre {
@@ -116,17 +217,17 @@
       text-shadow: 0 0 40px var(--ph-faint);
     }
     .card .line {
-      margin-top: 0.8rem; font-size: 0.72rem; font-weight: 600;
+      margin-top: 0.8rem; font-size: 0.828rem; font-weight: 600;
       letter-spacing: 0.2em; text-indent: 0.2em; line-height: 1.9; color: var(--ink);
     }
-    .card .line.big { font-size: 0.88rem; color: var(--ph); }
-    .card .line.dim { color: var(--ink-faint); font-size: 0.62rem; }
+    .card .line.big { font-size: 1.012rem; color: var(--ph); }
+    .card .line.dim { color: var(--ink-faint); font-size: 0.713rem; }
     .card button {
       margin-top: 1.5rem;
       background: color-mix(in srgb, var(--ph) 12%, transparent);
       border: 1px solid color-mix(in srgb, var(--ph) 55%, transparent);
       border-radius: 999px; color: var(--ink);
-      font: 700 0.76rem/1 var(--sans);
+      font: 700 0.874rem/1 var(--sans);
       letter-spacing: 0.34em; text-indent: 0.34em;
       padding: 0.85rem 2.4rem; cursor: pointer;
       box-shadow: 0 0 24px color-mix(in srgb, var(--ph) 22%, transparent);
@@ -140,7 +241,7 @@
     #ledger {
       display: grid; grid-template-columns: auto auto auto; gap: 0.25rem 1.2rem;
       margin: 1rem auto 0; width: max-content;
-      font-size: 0.62rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink-faint);
+      font-size: 0.713rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink-faint);
       font-variant-numeric: tabular-nums; text-align: left;
     }
     #ledger:empty { display: none; }
@@ -156,16 +257,16 @@
     }
     body.paused #pause-card { display: flex; }
     #pause-card .word {
-      font-size: clamp(1.8rem, 6vh, 3.2rem); font-weight: 200;
+      font-size: clamp(2.07rem, 6.9vh, 3.68rem); font-weight: 200;
       letter-spacing: 0.44em; text-indent: 0.44em; color: var(--ink);
       text-shadow: 0 0 40px var(--ph-faint);
     }
-    #pause-card .sub { margin-top: 1rem; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.28em; text-indent: 0.28em; color: var(--ink-dim); }
+    #pause-card .sub { margin-top: 1rem; font-size: 0.759rem; font-weight: 600; letter-spacing: 0.28em; text-indent: 0.28em; color: var(--ink-dim); }
 
     /* ---- chrome ------------------------------------------------------------------ */
     #hint {
       position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10;
-      font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint);
+      font-size: 0.667rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint);
       transition: opacity 800ms ease; white-space: nowrap;
     }
     .faded { opacity: 0 !important; }
@@ -173,7 +274,7 @@
     #controls button, #tuner-toggle {
       background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px;
       color: var(--ink-dim);
-      font: 700 0.6rem/1 var(--sans); letter-spacing: 0.2em;
+      font: 700 0.69rem/1 var(--sans); letter-spacing: 0.2em;
       padding: 0.55rem 0.95rem; cursor: pointer;
       backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
@@ -201,7 +302,7 @@
     #tabs button {
       flex: 1; background: rgba(255, 255, 255, 0.04); border: 1px solid transparent;
       border-radius: 9px; color: var(--ink-dim);
-      font: 700 0.6rem/1 var(--sans); letter-spacing: 0.16em;
+      font: 700 0.69rem/1 var(--sans); letter-spacing: 0.16em;
       padding: 0.5rem 0; cursor: pointer;
     }
     #tabs button.on { background: color-mix(in srgb, var(--ph) 14%, transparent); border-color: color-mix(in srgb, var(--ph) 42%, transparent); color: var(--ink); }
@@ -210,97 +311,131 @@
     .t-row { margin-bottom: 0.62rem; }
     .t-label {
       display: flex; justify-content: space-between;
-      font-size: 0.56rem; font-weight: 700; letter-spacing: 0.15em;
+      font-size: 0.644rem; font-weight: 700; letter-spacing: 0.15em;
       color: var(--ink-dim); margin-bottom: 0.26rem; text-transform: uppercase;
     }
     .t-label span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
     .t-row input[type="range"] { width: 100%; accent-color: var(--ph); }
     .t-row input[type="text"] {
       width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-edge);
-      border-radius: 8px; color: var(--ink); font: 600 0.66rem/1 var(--sans); padding: 0.45rem 0.5rem;
+      border-radius: 8px; color: var(--ink); font: 600 0.759rem/1 var(--sans); padding: 0.45rem 0.5rem;
     }
     .t-seg { display: flex; gap: 0.28rem; }
     .t-seg button {
       flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid transparent;
       border-radius: 8px; color: var(--ink-dim);
-      font: 700 0.56rem/1 var(--sans); letter-spacing: 0.06em;
+      font: 700 0.644rem/1 var(--sans); letter-spacing: 0.06em;
       padding: 0.45rem 0; cursor: pointer;
     }
     .t-seg button.on { background: color-mix(in srgb, var(--ph) 16%, transparent); border-color: color-mix(in srgb, var(--ph) 50%, transparent); color: var(--ink); }
     .t-btn {
       width: 100%; background: none; border: 1px solid var(--glass-edge); border-radius: 9px;
-      color: var(--ink-dim); font: 700 0.58rem/1 var(--sans); letter-spacing: 0.16em;
+      color: var(--ink-dim); font: 700 0.667rem/1 var(--sans); letter-spacing: 0.16em;
       padding: 0.45rem 0; cursor: pointer; margin-top: 0.25rem;
     }
     .t-btn:hover { color: var(--ink); }
-    .t-note { font-size: 0.54rem; letter-spacing: 0.07em; color: var(--ink-faint); margin-top: 0.5rem; text-align: center; line-height: 1.5; }
+    .t-note { font-size: 0.621rem; letter-spacing: 0.07em; color: var(--ink-faint); margin-top: 0.5rem; text-align: center; line-height: 1.5; }
     #t-seed-row { display: flex; gap: 0.3rem; }
     #preset-row { display: flex; gap: 0.28rem; margin-bottom: 0.5rem; }
     #preset-row select {
       flex: 1; min-width: 0; background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--glass-edge); border-radius: 8px; color: var(--ink);
-      font: 600 0.6rem/1 var(--sans); padding: 0.4rem 0.3rem;
+      font: 600 0.69rem/1 var(--sans); padding: 0.4rem 0.3rem;
     }
     #preset-row button {
       background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-edge);
-      border-radius: 8px; color: var(--ink-dim); font: 700 0.58rem/1 var(--sans); padding: 0.4rem 0.55rem; cursor: pointer;
+      border-radius: 8px; color: var(--ink-dim); font: 700 0.667rem/1 var(--sans); padding: 0.4rem 0.55rem; cursor: pointer;
     }
     #preset-row button:hover { color: var(--ink); }
 
     #nogl {
       position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-      text-align: center; padding: 2rem; font-size: 0.85rem; letter-spacing: 0.12em;
+      text-align: center; padding: 2rem; font-size: 0.977rem; letter-spacing: 0.12em;
       color: var(--ink-dim); z-index: 30;
     }
     body.nogl #nogl { display: flex; }
     @media (max-width: 720px) {
-      #hud-left { left: 1rem; top: 1rem; } #hud-right { right: 1rem; top: 1rem; }
-      #thrust { right: 1rem; } #hint { display: none; }
+      #console { top: 0.5rem; width: 98vw; } .row { flex-wrap: wrap; } #hint { display: none; }
     }
   </style>
 </head>
 <body>
   <canvas id="field"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <div class="ship-hud" id="shud-l" aria-hidden="true">
+    <div class="row"><span class="v" id="sh-alt">0</span><span class="u">FT</span></div>
+    <div class="row"><span class="v" id="sh-thr">0</span><span class="u">%</span></div>
+  </div>
+  <div class="ship-hud" id="shud-r" aria-hidden="true">
+    <div class="row" id="sh-vrow"><span class="a" id="sh-va"></span><span class="v" id="sh-v">0</span><span class="u">FT/S</span></div>
+    <div class="row" id="sh-hrow"><span class="a" id="sh-ha"></span><span class="v" id="sh-h">0</span><span class="u">FT/S</span></div>
+  </div>
 
-  <div class="hud" id="hud-left">
-    <div id="alt"><div class="lbl">Altitude</div><div class="num" id="v-alt">0000<span class="unit">FT</span></div></div>
-    <div class="speeds">
-      <div class="speed" id="vs"><div class="lbl">Vertical</div><div class="num"><span class="arrow" id="a-v"></span><span id="v-v">00</span><span class="unit">FT/S</span></div></div>
-      <div class="speed" id="hs"><div class="lbl">Horizontal</div><div class="num"><span class="arrow" id="a-h"></span><span id="v-h">00</span><span class="unit">FT/S</span></div></div>
+  <div id="console">
+    <div class="row">
+      <div class="panel" id="hud-left">
+        <div id="alt"><div class="lbl">Altitude</div><div class="num" id="v-alt">0000<span class="unit">FT</span></div></div>
+        <div class="speeds">
+          <div class="speed" id="vs"><div class="lbl">Vertical</div><div class="num"><span class="arrow" id="a-v"></span><span id="v-v">00</span><span class="unit">FT/S</span></div></div>
+          <div class="speed" id="hs"><div class="lbl">Horizontal</div><div class="num"><span class="arrow" id="a-h"></span><span id="v-h">00</span><span class="unit">FT/S</span></div></div>
+        </div>
+      </div>
+      <div class="panel" id="attitude">
+        <svg id="att-svg" viewBox="-64 -64 128 128" aria-hidden="true">
+          <line class="plumb" x1="0" y1="-58" x2="0" y2="58" />
+          <g id="att-ship">
+            <!-- the lander at 2 svg units per foot, centred on its own middle: pod over descent stage, bell, tanks, splayed legs, mast -->
+            <path class="ship" d="M-17 3 L17 3 L17 19 L-17 19 Z" />
+            <path class="ship" d="M-11.6 1.8 L-11.6 -15.8 L11.6 -15.8 L11.6 1.8" />
+            <path class="ship" d="M-11.6 -15.8 L-6.8 -20 L6.8 -20 L11.6 -15.8" />
+            <path class="ship" d="M0 -20 L0 -31 M-3 -31 L3 -31" />
+            <path class="ship" d="M-5 19 L-9 28 L9 28 L5 19" />
+            <path class="ship" d="M-12 19 L-30 31 M-35 31 L-25 31 M12 19 L30 31 M25 31 L35 31" />
+            <path class="ship" d="M-12 8 L-27 25 M12 8 L27 25" />
+            <circle class="ship" cx="-22.5" cy="11" r="5" /><circle class="ship" cx="22.5" cy="11" r="5" />
+            <path class="ship win" d="M-8 -12 L-2.5 -12 L-2.5 -7 L-8 -7 Z M2.5 -12 L8 -12 L8 -7 L2.5 -7 Z" />
+          </g>
+          <line class="mark" x1="0" y1="-62" x2="0" y2="-50" />
+        </svg>
+        <div id="tilt-val">0°</div>
+      </div>
+      <div class="panel" id="thrust" title="hold W, ↑ or Space to burn — the wheel sets a hover trim">
+        <div class="lbl">Thrust</div>
+        <div id="thrust-track"><div id="thrust-fill"></div><div id="thrust-trim"></div></div>
+        <div class="num" id="v-thrust">0%</div>
+      </div>
+      <div class="panel" id="tech-panel">
+        <div class="lbl">Landing tech</div>
+        <div id="tech" aria-label="landing tech held">
+          <div class="piece" data-tech="shock"><svg viewBox="0 0 24 24"><path d="M6 4v3l-3 2 3 2-3 2 3 2v3M18 4v3l3 2-3 2 3 2-3 2v3M3 21h6M15 21h6"/></svg></div>
+          <div class="piece" data-tech="spider"><svg viewBox="0 0 24 24"><path d="M9 6h6l2 4-2 4H9l-2-4zM7 10l-5 8M17 10l5 8M9 14l-4 8M15 14l4 8"/></svg></div>
+          <div class="piece" data-tech="gyro"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><ellipse cx="12" cy="12" rx="8" ry="3"/><circle cx="12" cy="12" r="1.6"/></svg></div>
+          <div class="piece" data-tech="radar"><svg viewBox="0 0 24 24"><path d="M12 3v6M8 11a5 4 0 0 0 8 0M12 9l-5 12M12 9l5 12M4 21h16"/></svg></div>
+          <div class="piece" data-tech="auto"><svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="10"/><path d="M12 8V3M9 13h6M12 11v4"/></svg></div>
+        </div>
+        <div id="tech-note"></div>
+      </div>
+      <div class="panel" id="hud-right">
+        <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
+        <div id="meta"><span id="ro-select">CADET</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span><span id="v-range">HOME</span></div>
+      </div>
     </div>
-  </div>
-  <div class="hud" id="hud-right">
-    <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
-    <div id="fuel">
-      <div class="lbl">Fuel</div><div class="num" id="v-fuel">0750</div>
-      <div id="fuel-track"><div id="fuel-fill"></div></div>
+    <div id="tech-card" aria-hidden="true">
+      <div id="tc-name"></div><div id="tc-status"></div><div id="tc-how"></div>
     </div>
-    <div id="meta"><span id="ro-select">CADET</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span></div>
-  </div>
-
-  <div class="hud" id="thrust" title="hold W or ↑ to burn — the wheel sets a hover trim">
-    <div class="lbl">Thrust</div>
-    <div id="thrust-track"><div id="thrust-fill"></div><div id="thrust-trim"></div></div>
-    <div class="num" id="v-thrust">0%</div>
-  </div>
-
-  <div class="hud" id="attitude">
-    <svg id="att-svg" viewBox="-64 -64 128 128" aria-hidden="true">
-      <circle class="ring" r="50" cx="0" cy="0" />
-      <path class="hard" id="att-hard-l" d="" /><path class="hard" id="att-hard-r" d="" />
-      <path class="good" id="att-good" d="" />
-      <g id="att-horizon">
-        <path class="ground" d="M-46 0 A46 46 0 0 0 46 0 Z" />
-        <line class="horizon" x1="-46" y1="0" x2="46" y2="0" />
-        <line class="ladder" x1="-16" y1="-14" x2="16" y2="-14" />
-        <line class="ladder" x1="-10" y1="-27" x2="10" y2="-27" />
-        <line class="ladder" x1="-16" y1="14" x2="16" y2="14" />
-        <line class="ladder" x1="-10" y1="27" x2="10" y2="27" />
-      </g>
-      <path class="ship" d="M-22 4 L-9 4 L-4 -3 L4 -3 L9 4 L22 4 M-12 4 L-17 12 M12 4 L17 12" />
-      <line class="needle" id="att-needle" x1="0" y1="-48" x2="0" y2="-60" />
-    </svg>
-    <div id="tilt-val">0°</div>
+    <div class="panel" id="fuel">
+      <div class="lbl">Fuel</div>
+      <div id="fuel-track">
+        <div id="fuel-fill"></div>
+        <div id="fuel-scale">
+          <span style="left: 12.5%"></span><span class="q" style="left: 25%"></span><span style="left: 37.5%"></span>
+          <span class="h" style="left: 50%"></span>
+          <span style="left: 62.5%"></span><span class="q" style="left: 75%"></span><span style="left: 87.5%"></span>
+          <i style="left: 0">0</i><i style="left: 25%">¼</i><i style="left: 50%">½</i><i style="left: 75%">¾</i><i style="left: 100%">FULL</i>
+        </div>
+      </div>
+      <div class="num" id="v-fuel">0750</div>
+    </div>
   </div>
 
   <div id="centre">
@@ -316,7 +451,10 @@
       <div class="line big" id="r-msg"></div>
       <div class="line dim" id="r-detail"></div>
       <div class="line" id="r-points"></div>
+      <div class="line tech" id="r-tech"></div>
+      <div class="line exit" id="r-exit"></div>
       <button id="btn-next" type="button">NEXT</button>
+      <button id="btn-exit" type="button" class="exit-btn" style="display: none">WALK IN</button>
     </div>
   </div>
 
@@ -325,7 +463,7 @@
     <div class="sub">P OR SPACE TO RESUME</div>
   </div>
 
-  <div id="hint">← → ROTATE · HOLD W TO BURN · SHIFT FULL · S KILLS THE TRIM · SPACE ABORT · P PAUSE · R RESTART</div>
+  <div id="hint">← → ROTATE · HOLD W OR SPACE TO BURN · SHIFT FULL · S KILLS THE TRIM · LAND CLEAN ON A 4X FOR TECH · X ABORT · P PAUSE · R RESTART</div>
 
   <div id="controls">
     <button id="btn-pause" type="button">PAUSE</button>
@@ -367,6 +505,18 @@
         <input id="t-attack" type="range" min="0.1" max="1.2" step="0.05" />
       </div>
       <div class="t-row">
+        <div class="t-label"><span>Wheel trim — thrust per notch</span><span id="t-wheel-val">5% per notch</span></div>
+        <input id="t-wheel" type="range" min="1" max="20" step="1" />
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Launch angle</span><span id="t-langle-val">60°</span></div>
+        <input id="t-langle" type="range" min="40" max="80" step="1" />
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Launch — how high it coasts</span><span id="t-lapex-val">75% of the way up</span></div>
+        <input id="t-lapex" type="range" min="0.4" max="0.95" step="0.05" />
+      </div>
+      <div class="t-row">
         <div class="t-label"><span>Zoom on approach</span><span></span></div>
         <div class="t-seg" id="t-zoom">
           <button data-v="0" type="button">OFF</button>
@@ -395,10 +545,18 @@
     </div>
   </div>
 
+  <!-- the ways out — diegetic in the scene, the anchors carry the drift -->
+  <a id="exit-drivethru" class="exit" href="../../../index.html" data-drift aria-label="The lit doorway under the drive-through arches"></a>
+  <a id="exit-relay" class="exit" href="../../../index.html" data-drift aria-label="The door at the foot of the derelict relay tower"></a>
+  <a id="exit-horizon" class="exit" href="../../../index.html" data-drift aria-label="The faint ring of light high above the moon"></a>
+  <a id="exit-wreck" class="exit" href="../../../index.html" data-drift aria-label="The hatch in the wreck"></a>
+
   <div id="nogl">THIS ONE NEEDS WEBGL — TRY A DIFFERENT BROWSER OR TURN ON HARDWARE ACCELERATION.</div>
 
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
+  <script src="../../core/world-registry.js"></script>
+  <script src="../../core/drift.js"></script>
   <script src="game-core.js?v=3"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }

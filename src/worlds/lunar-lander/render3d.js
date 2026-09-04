@@ -4,13 +4,20 @@
 // it in the world; tmp/lunar-lander/lookdev.html drives it silently for look
 // development (that harness is where the picture gets judged before it flies).
 //
-// One register: a single-weight line drawing, green to white, glowing on black.
-// Three ground lines in depth — near, the flight line, far — each a polyline
+// One register: a line drawing, green to white, on black — drawn the 2026 way:
+// lines MAX-blend (overlaps and corners never stack brighter; a CRT summed
+// them and that is the blur James rejected), a tight single-level glow that
+// only softens the edge, and the lander as an object (dimmed back edges,
+// heavier front edges, a faint body fill under the lines).
+// Ground lines in depth — farther, far, the flight line, near — each a polyline
 // with solid black beneath it, drawn far to near so nothing shows through
-// anything; stars only behind the far line. The physics live in the x-y plane
-// at z = 0 (the flight line); the other two lines are parallax. The lander is
-// a wireframe solid that yaws toward its tilt. No CRT imitation: no scanlines,
-// no curve, no grain, no persistence smear. Glow is the whole finish.
+// anything; stars only behind the farthest line. The physics live in the x-y
+// plane at z = 0 (the flight line); the other lines are parallax. The moon is
+// ENDLESS: the renderer holds the core's world (chunks on demand) and rebuilds
+// its static lines for the chunks around the camera as it scrolls. The lander is
+// a wireframe drawing in two stages (pod over descent stage) that yaws toward
+// its tilt, with the landing tech it has earned drawn on. No CRT imitation: no
+// scanlines, no curve, no grain, no persistence smear. Glow is the whole finish.
 import * as THREE from 'three';
 
 // ---- tunables ------------------------------------------------------------------
@@ -21,7 +28,7 @@ export const DEFAULT_PARAMS = {
   glow: 0.9,          // bloom strength
   lineWeight: 1.8,    // core width, px at 1080p (scales with viewport)
   brightness: 1.0,    // the world's lines
-  shipBright: 0.7,    // the lander, kept dimmer than the world so its drawing reads
+  shipBright: 0.85,   // the lander (max-blend: it no longer blooms, so it can carry more)
   fov: 36,            // vertical field of view, degrees
   depth: 1.0,         // parallax separation between the three lines
   bank: 1.0,          // camera roll with lateral speed on approach
@@ -29,17 +36,21 @@ export const DEFAULT_PARAMS = {
   zoomAlt: 430,       // altitude (ft) where the zoom kicks in (the shell adds hysteresis)
   plume: 1.0,         // thrust particle density
   stars: 1.0,
+  ringBright: 0.08,   // the direction aid ring (James's pick, 2026-09-04)
+  triBright: 0.25,    // the aid's triangle (James's pick, 2026-09-04)
   res: 1.0,           // render scale
 };
 
 const PIXEL_BUDGET = 2.9e6;
-const WORLD_W = 4000;
+const CHUNK_W = 4000;
+const VIEW_W = 4000;          // the wide view's width in feet
 const FILL_FLOOR = -6000;   // the black under each ground line reaches here
 const CAM_TAU = 0.9;        // seconds — the zoom eases, never snaps (motion restraint)
 const BANK_TAU = 1.2;
 const MAX_BANK = 0.05;      // rad — a few degrees, no more
+const ZOOM_MIN = 0.3;       // the furthest the wide view pulls back (a ship 3.3× the base height up still shows)
 const MAX_PARTICLES = 2600;
-const Z_FAR = -1600, Z_NEAR = 420, Z_STARS = -9000;
+const Z_FAR = -1600, Z_FARTHER = -3400, Z_NEAR = 420, Z_STARS = -9000;
 
 // ---- vector font (4x6 grid, strokes) ---------------------------------------------
 const FONT = {
@@ -86,6 +97,7 @@ const FONT = {
 };
 
 // Emit `text` as segments [x0,y0,x1,y1,b]; h = cap height; anchor 0 = left, 0.5 = centre.
+export { buildTech, LANDER };
 export function textSegments(out, text, x, y, h, bright, anchor) {
   const cw = h * (5 / 6);
   const sc = h / 6;
@@ -149,8 +161,8 @@ const LINE_FRAG = `
     float l2 = dot(ab, ab);
     float t = l2 > 1e-6 ? clamp(dot(vP - vS0, ab) / l2, 0.0, 1.0) : 0.0;
     float d = length(vP - (vS0 + ab * t));
-    float core = 1.0 - smoothstep(uWidth * 0.5 - 0.7, uWidth * 0.5 + 0.7, d);
-    float halo = exp(-d / (uWidth * 1.0)) * 0.14;
+    float core = 1.0 - smoothstep(uWidth * 0.5 - 0.9, uWidth * 0.5 + 0.9, d);
+    float halo = exp(-d / (uWidth * 0.9)) * 0.05;
     float v = (core + halo) * vBright * uGain;
     gl_FragColor = vec4(v, v, v, 1.0);
   }
@@ -190,7 +202,11 @@ class LineBatch {
         uFogA: { value: 1e8 },
         uFogB: { value: 1e9 },
       },
-      blending: THREE.AdditiveBlending,
+      // MAX blend: a stroke crossing a stroke is one stroke's brightness, never two
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.MaxEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor,
       depthTest: false,
       depthWrite: false,
       transparent: true,
@@ -243,22 +259,19 @@ class GroundFill {
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = order;
   }
-  set(pts, z, copies) {
+  set(pts, z) {
     const n = pts.length;
-    const pos = new Float32Array(copies.length * n * 2 * 3);
-    const idx = new Uint32Array(copies.length * (n - 1) * 6);
+    const pos = new Float32Array(n * 2 * 3);
+    const idx = new Uint32Array((n - 1) * 6);
     let vi = 0, ii = 0;
-    for (const dx of copies) {
-      const base = vi / 3;
-      for (let i = 0; i < n; i++) {
-        pos[vi++] = pts[i][0] + dx; pos[vi++] = pts[i][1]; pos[vi++] = z;
-        pos[vi++] = pts[i][0] + dx; pos[vi++] = FILL_FLOOR; pos[vi++] = z;
-      }
-      for (let i = 0; i < n - 1; i++) {
-        const a = base + i * 2;
-        idx[ii++] = a; idx[ii++] = a + 1; idx[ii++] = a + 2;
-        idx[ii++] = a + 1; idx[ii++] = a + 3; idx[ii++] = a + 2;
-      }
+    for (let i = 0; i < n; i++) {
+      pos[vi++] = pts[i][0]; pos[vi++] = pts[i][1]; pos[vi++] = z;
+      pos[vi++] = pts[i][0]; pos[vi++] = FILL_FLOOR; pos[vi++] = z;
+    }
+    for (let i = 0; i < n - 1; i++) {
+      const a = i * 2;
+      idx[ii++] = a; idx[ii++] = a + 1; idx[ii++] = a + 2;
+      idx[ii++] = a + 1; idx[ii++] = a + 3; idx[ii++] = a + 2;
     }
     this.geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.geo.setIndex(new THREE.BufferAttribute(idx, 1));
@@ -268,57 +281,120 @@ class GroundFill {
 
 // ---- the lander: NASA 2036 ----------------------------------------------------------------
 // Local feet, upright, y up, z toward the camera. Feet at (±15, -11, ±15) so the
-// silhouette matches the core's collision points. A wide hexagonal deck, a low
-// crew dome with a window band, two side tanks, four splayed legs on pads, a
-// bell, a mast. Few lines, so each one reads.
+// silhouette matches the core's collision points. Two stages like the LEM: a
+// crew pod on top (hex prism, window band, hatch, cap) over a boxier descent
+// stage (octagonal prism) with the bell beneath, side tanks, four splayed legs
+// on pads, a mast. Taller than it is wide. Few lines, so each one reads.
+function ring(n, r, y, rot) {
+  const pts = [];
+  for (let i = 0; i < n; i++) { const a = (rot || 0) + Math.PI * 2 * i / n; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); }
+  return pts;
+}
 function buildLander() {
   const S = [];
   const seg = (a, b) => S.push([a[0], a[1], a[2], b[0], b[1], b[2]]);
-  const ring = (n, r, y, rot) => {
-    const pts = [];
-    for (let i = 0; i < n; i++) { const a = (rot || 0) + Math.PI * 2 * i / n; pts.push([Math.cos(a) * r, y, Math.sin(a) * r]); }
-    return pts;
-  };
   const loop = (pts) => { for (let i = 0; i < pts.length; i++) seg(pts[i], pts[(i + 1) % pts.length]); };
-  // deck: hexagonal prism, wide and flat
-  const dt = ring(6, 11.5, -1, Math.PI / 6), db = ring(6, 11.5, -4.2, Math.PI / 6);
+  // descent stage: octagonal prism, y -5 .. 3
+  const dt = ring(8, 8.6, 3, Math.PI / 8), db = ring(8, 8.6, -5, Math.PI / 8);
   loop(dt); loop(db);
-  for (let i = 0; i < 6; i++) seg(dt[i], db[i]);
-  // crew dome: front silhouette arc + a mid ring + the window band
-  const arc = [];
-  for (let i = 0; i <= 8; i++) { const a = Math.PI * i / 8; arc.push([Math.cos(a) * 8.5, -1 + Math.sin(a) * 9.5, 0]); }
-  for (let i = 1; i < arc.length; i++) seg(arc[i - 1], arc[i]);
-  const side = [];
-  for (let i = 0; i <= 8; i++) { const a = Math.PI * i / 8; side.push([0, -1 + Math.sin(a) * 9.5, Math.cos(a) * 8.5]); }
-  for (let i = 1; i < side.length; i++) seg(side[i - 1], side[i]);
-  loop(ring(10, 7.6, 3.2));
-  // window band: a short arc on the front, slightly above the ring
-  const win = [];
-  for (let i = 0; i <= 4; i++) { const a = Math.PI * 0.3 + Math.PI * 0.4 * i / 4; win.push([Math.cos(a) * 6.9, 4.4 + Math.sin(a) * 1.2, Math.sqrt(Math.max(0, 6.9 * 6.9 - (Math.cos(a) * 6.9) ** 2)) * 0.98]); }
-  for (let i = 1; i < win.length; i++) seg(win[i - 1], win[i]);
-  // side tanks: small hexagons in the flight plane, either side of the deck
+  for (let i = 0; i < 8; i += 2) seg(dt[i], db[i]);
+  // crew pod: hex prism y 3.6 .. 12.4, a cap ring, a low peak
+  const pb = ring(6, 5.8, 3.6, Math.PI / 6), pt = ring(6, 5.8, 12.4, Math.PI / 6);
+  loop(pb); loop(pt);
+  for (let i = 0; i < 6; i++) seg(pb[i], pt[i]);
+  const cap = ring(6, 3.4, 14.6, Math.PI / 6);
+  loop(cap);
+  for (let i = 0; i < 6; i += 2) seg(pt[i], cap[i]);
+  // the two windows: angled quads on the front face, canted like the LEM's
+  for (const sx of [-1, 1]) {
+    const z = 5.6;
+    const w = [[sx * 1.3, 10.6, z], [sx * 4.2, 10.0, z - 0.6], [sx * 4.0, 7.6, z - 0.6], [sx * 1.3, 8.2, z]];
+    loop(w);
+  }
+  // hatch on the descent stage front
+  loop([[-2.2, 1.6, 8.6], [2.2, 1.6, 8.6], [2.2, -3.4, 8.6], [-2.2, -3.4, 8.6]]);
+  // RCS quads at two pod corners
+  for (const sx of [-1, 1]) {
+    seg([sx * 6.4, 11.2, 0], [sx * 8.2, 11.2, 0]);
+    seg([sx * 7.3, 10.3, 0], [sx * 7.3, 12.1, 0]);
+  }
+  // side tanks: small hexagons in the flight plane, on the descent stage
   for (const sx of [-1, 1]) {
     const t = [];
-    for (let i = 0; i < 6; i++) { const a = Math.PI * 2 * i / 6; t.push([sx * 13.5 + Math.cos(a) * 3.2, 1.2 + Math.sin(a) * 3.2, 0]); }
+    for (let i = 0; i < 6; i++) { const a = Math.PI * 2 * i / 6; t.push([sx * 11.4 + Math.cos(a) * 2.7, -1 + Math.sin(a) * 2.7, 0]); }
     loop(t);
-    seg([sx * 11.5, -1, 0], [sx * 12, -1.6, 0]);
+    seg([sx * 8.6, -1, 0], [sx * 8.7, -1, 0]);
   }
-  // legs: four, splayed from the deck corners to pads, with a strut
+  // legs: four, from the descent-stage corners out to the pads, one strut each
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const foot = [15 * sx, -11, 15 * sz];
-    seg([9 * sx, -4.2, 9 * sz], foot);
-    seg([10.5 * sx, -1, 10.5 * sz], [12.5 * sx, -8, 12.5 * sz]);
-    seg([foot[0] - 2.5 * sx, -11, foot[2] + 2.5 * sz], [foot[0] + 2.5 * sx, -11, foot[2] - 2.5 * sz]);
+    seg([6.1 * sx, -5, 6.1 * sz], foot);
+    seg([6.1 * sx, 1.5, 6.1 * sz], [11.5 * sx, -7.4, 11.5 * sz]);
+    seg([foot[0] - 2.4 * sx, -11, foot[2] + 2.4 * sz], [foot[0] + 2.4 * sx, -11, foot[2] - 2.4 * sz]);
   }
   // engine bell
-  const b1 = ring(6, 3, -4.2), b2 = ring(6, 5.2, -9.2);
+  const b1 = ring(6, 2.6, -5), b2 = ring(6, 4.6, -9.8);
   loop(b1); loop(b2);
   for (let i = 0; i < 6; i += 2) seg(b1[i], b2[i]);
-  // mast + dish
-  seg([0, 8.5, 0], [0, 13.5, 0]); seg([-1.6, 13.5, 0], [1.6, 13.5, 0]); seg([-1.2, 13.5, 0], [0, 15, 0]); seg([0, 15, 0], [1.2, 13.5, 0]);
+  // mast + antenna
+  seg([0, 14.6, 0], [0, 19, 0]); seg([-1.4, 19, 0], [1.4, 19, 0]); seg([-1.0, 19, 0], [0, 20.3, 0]); seg([0, 20.3, 0], [1.0, 19, 0]);
   return S;
 }
 const LANDER = buildLander();
+const BODY_POINTS = [].concat(ring(8, 8.6, 3, Math.PI / 8), ring(8, 8.6, -5, Math.PI / 8), ring(6, 5.8, 3.6, Math.PI / 6), ring(6, 5.8, 12.4, Math.PI / 6), ring(6, 3.4, 14.6, Math.PI / 6));
+
+// The landing tech, drawn on the ship. Each piece is its own little set of
+// segments in lander-local feet; `fan` (0..1) is the spider legs' spread and
+// `squash` (0..1) the shock legs' compression, both driven by the shell.
+function buildTech(id, fan, squash) {
+  const S = [];
+  const seg = (a, b) => S.push([a[0], a[1], a[2], b[0], b[1], b[2]]);
+  const loop = (pts) => { for (let i = 0; i < pts.length; i++) seg(pts[i], pts[(i + 1) % pts.length]); };
+  if (id === 'shock') {
+    // a coil on each leg strut: zigzag between the knee and the foot
+    const sq = 1 - 0.45 * (squash || 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const a = [9.5 * sx, -7.4 * sq, 9.5 * sz], b = [13.2 * sx, -9.9 * sq, 13.2 * sz];
+      const n = 5;
+      let prev = a;
+      for (let i = 1; i <= n; i++) {
+        const t = i / n;
+        const side = (i % 2 ? 1 : -1) * (i < n ? 1.1 : 0);
+        const p = [a[0] + (b[0] - a[0]) * t + side * sz * 0.7, a[1] + (b[1] - a[1]) * t + side * 0.6, a[2] + (b[2] - a[2]) * t - side * sx * 0.7];
+        seg(prev, p); prev = p;
+      }
+    }
+  } else if (id === 'spider') {
+    // an outer leg beside each main strut, fanned wider as the ground nears
+    const f = fan || 0;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const knee = [10 * sx, -6.5, 10 * sz];
+      const toe = [(16.5 + 5.5 * f) * sx, -11 - 0.0 * f, (16.5 + 5.5 * f) * sz];
+      seg([7.6 * sx, -3.5, 7.6 * sz], knee);
+      seg(knee, toe);
+      seg([toe[0] - 1.6 * sx, toe[1], toe[2] + 1.6 * sz], [toe[0] + 1.6 * sx, toe[1], toe[2] - 1.6 * sz]);
+    }
+  } else if (id === 'gyro') {
+    // a gimbal ring around the pod's waist with a tilted inner ring
+    loop(ring(12, 7.4, 6.2));
+    const inner = [];
+    for (let i = 0; i < 10; i++) { const a = Math.PI * 2 * i / 10; inner.push([Math.cos(a) * 6.6, 6.2 + Math.sin(a) * 1.4, Math.sin(a) * 6.6]); }
+    loop(inner);
+  } else if (id === 'radar') {
+    // a dish under the descent stage, aimed down, on a short stalk
+    seg([5.2, -5, 3], [6.4, -7.4, 3.6]);
+    const d = [];
+    for (let i = 0; i < 8; i++) { const a = Math.PI * 2 * i / 8; d.push([6.4 + Math.cos(a) * 2.2, -7.4, 3.6 + Math.sin(a) * 2.2]); }
+    loop(d);
+    seg([6.4, -7.4, 3.6], [6.4, -9.2, 3.6]);
+  } else if (id === 'auto') {
+    // a computer box beside the bell with a whip antenna
+    loop([[-6.6, -5.4, 4.4], [-3.6, -5.4, 4.4], [-3.6, -8.2, 4.4], [-6.6, -8.2, 4.4]]);
+    loop([[-6.6, -5.4, 4.4], [-6.6, -5.4, 1.8], [-6.6, -8.2, 1.8], [-6.6, -8.2, 4.4]]);
+    seg([-5.1, -5.4, 3.1], [-5.1, -1.2, 3.1]);
+  }
+  return S;
+}
 
 // ---- post shaders ------------------------------------------------------------------------
 const QUAD_VERT = `
@@ -332,7 +408,7 @@ const BRIGHT_FRAG = `
   void main() {
     vec3 c = texture2D(tSrc, vUv).rgb;
     c = clamp(c, 0.0, 64.0);
-    c = max(c - 0.18, 0.0);
+    c = max(c - 0.6, 0.0);
     gl_FragColor = vec4(c, 1.0);
   }
 `;
@@ -355,15 +431,13 @@ const COMP_FRAG = `
   varying vec2 vUv;
   uniform sampler2D tScene;
   uniform sampler2D tB0;
-  uniform sampler2D tB1;
-  uniform sampler2D tB2;
   uniform vec3 uTint;
   uniform float uGlow;
   uniform float uFlash;
   void main() {
     vec3 s = clamp(texture2D(tScene, vUv).rgb, 0.0, 64.0);
-    vec3 bloom = texture2D(tB0, vUv).rgb * 0.9 + texture2D(tB1, vUv).rgb * 0.8 + texture2D(tB2, vUv).rgb * 0.9;
-    float lum = s.g + bloom.g * uGlow * 0.5 + uFlash;
+    vec3 bloom = texture2D(tB0, vUv).rgb;
+    float lum = s.g + bloom.g * uGlow * 0.4 + uFlash;
     // tinted body, whitening toward the core: green to white, nothing else
     vec3 col = uTint * lum;
     col = mix(col, vec3(lum), smoothstep(0.9, 2.2, lum) * 0.75);
@@ -381,34 +455,49 @@ export class LanderScene {
     this.renderer.autoClear = false;
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(this.params.fov, 1.78, 10, 40000);
-    // draw order: stars, far fill, far line, flight fill, flight line, near fill, near line, the live things
-    this.starBatch = new LineBatch(600, 0);
-    this.farFill = new GroundFill(1);
-    this.farBatch = new LineBatch(400, 2);
-    this.flightFill = new GroundFill(3);
-    this.flightBatch = new LineBatch(1400, 4);
-    this.nearFill = new GroundFill(5);
-    this.nearBatch = new LineBatch(400, 6);
-    this.dynBatch = new LineBatch(9000, 7);
-    for (const m of [this.starBatch.mesh, this.farFill.mesh, this.farBatch.mesh, this.flightFill.mesh, this.flightBatch.mesh, this.nearFill.mesh, this.nearBatch.mesh, this.dynBatch.mesh]) this.scene.add(m);
-    this.worldBatches = [this.starBatch, this.farBatch, this.flightBatch, this.nearBatch, this.dynBatch];
-    this.terrain = null;
+    // draw order: stars, farther fill/line, far fill/line, flight fill/line, near fill/line, the live things
+    this.starBatch = new LineBatch(2000, 0);
+    this.fartherFill = new GroundFill(1);
+    this.fartherBatch = new LineBatch(1200, 2);
+    this.farFill = new GroundFill(3);
+    this.farBatch = new LineBatch(1600, 4);
+    this.flightFill = new GroundFill(5);
+    this.flightBatch = new LineBatch(5000, 6);
+    this.nearFill = new GroundFill(7);
+    this.nearBatch = new LineBatch(2200, 8);
+    this.dynBatch = new LineBatch(9000, 9);
+    // the lander as an object: a faint body fill under the lines (order 8.5), then
+    // its front edges in a heavier batch (order 10) over the dimmed back edges (dyn)
+    this.bodyGeo = new THREE.BufferGeometry();
+    this.bodyGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 3 * 64), 3).setUsage(THREE.DynamicDrawUsage));
+    this.bodyGeo.setDrawRange(0, 0);
+    this.bodyMesh = new THREE.Mesh(this.bodyGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0.075, 0.075, 0.075), transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide }));
+    this.bodyMesh.frustumCulled = false;
+    this.bodyMesh.renderOrder = 8.5;
+    this.shipBatch = new LineBatch(1200, 10);
+    for (const m of [this.starBatch.mesh, this.fartherFill.mesh, this.fartherBatch.mesh, this.farFill.mesh, this.farBatch.mesh, this.flightFill.mesh, this.flightBatch.mesh, this.nearFill.mesh, this.nearBatch.mesh, this.bodyMesh, this.dynBatch.mesh, this.shipBatch.mesh]) this.scene.add(m);
+    this.worldBatches = [this.starBatch, this.fartherBatch, this.farBatch, this.flightBatch, this.nearBatch, this.dynBatch, this.shipBatch];
+    this.world = null;          // the core's game state (chunks on demand)
     this.stars = [];
-    this.ranges = null;
+    this.rangeCache = {};       // per-chunk parallax ranges: key kind:k
+    this.builtKey = '';         // which chunk span + world version the static batches hold
+    this.chunkSpan = [0, 0];
+    this.launchPadId = '';      // the pad whose accelerator is animating (its resting copy is skipped)
     this.effects = [];
     this.particles = [];
     this.zoom = 1;
     this.bankNow = 0;
-    this.cx = WORLD_W / 2;
+    this.cx = VIEW_W / 2;
     this.cy = 0;
     this.time = 0;
     this.flash = 0;
     this.rngState = 12345;
     this.w = 2; this.h = 2; this.pw = 2; this.ph = 2;
-    this.baseView = { cx: WORLD_W / 2, cy: 0, w: WORLD_W, h: WORLD_W / 1.78 };
+    this.baseView = { cx: VIEW_W / 2, cy: 0, w: VIEW_W, h: VIEW_W / 1.78 };
     this.view = null;
     this.camDist = 3000;
     this.rcsTimer = 0;
+    this.streak = 0;
     this._v = new THREE.Vector3();
     this._buildPost();
     this.resize();
@@ -422,13 +511,12 @@ export class LanderScene {
   _buildPost() {
     const opts = { type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, stencilBuffer: false };
     this.sceneRT = new THREE.WebGLRenderTarget(2, 2, opts);
-    this.bloomRT = [];
-    for (let i = 0; i < 3; i++) this.bloomRT.push([new THREE.WebGLRenderTarget(2, 2, opts), new THREE.WebGLRenderTarget(2, 2, opts)]);
+    this.bloomRT = [[new THREE.WebGLRenderTarget(2, 2, opts), new THREE.WebGLRenderTarget(2, 2, opts)]];   // one level, half res
     const mk = (frag, uniforms) => new THREE.ShaderMaterial({ vertexShader: QUAD_VERT, fragmentShader: frag, uniforms, depthTest: false, depthWrite: false });
     this.brightMat = mk(BRIGHT_FRAG, { tSrc: { value: null } });
     this.blurMat = mk(BLUR_FRAG, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } });
     this.compMat = mk(COMP_FRAG, {
-      tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null },
+      tScene: { value: null }, tB0: { value: null },
       uTint: { value: new THREE.Color(0.3, 1, 0.45) }, uGlow: { value: 1 }, uFlash: { value: 0 },
     });
     this.quadScene = new THREE.Scene();
@@ -441,7 +529,7 @@ export class LanderScene {
   setParams(p) {
     const before = { depth: this.params.depth, stars: this.params.stars, brightness: this.params.brightness };
     Object.assign(this.params, p);
-    if (this.terrain && (before.depth !== this.params.depth || before.stars !== this.params.stars || before.brightness !== this.params.brightness)) this._buildStatic();
+    if (this.world && (before.depth !== this.params.depth || before.stars !== this.params.stars || before.brightness !== this.params.brightness)) { this.builtKey = ''; this._buildStatic(); }
   }
 
   resize(w, h) {
@@ -467,77 +555,249 @@ export class LanderScene {
     for (const b of this.worldBatches) b.mat.uniforms.uRes.value.set(pw, ph);
     this.camera.aspect = w / h;
     const aspect = w / h;
-    let vw = WORLD_W, vh = WORLD_W / aspect;
+    let vw = VIEW_W, vh = VIEW_W / aspect;
     if (vh < 2000) { vh = 2000; vw = vh * aspect; }
-    this.baseView = { cx: WORLD_W / 2, cy: vh / 2 - 60, w: vw, h: vh };
-    this.cx = this.baseView.cx; this.cy = this.baseView.cy;
+    this.baseView = { cx: this.baseView ? this.baseView.cx : VIEW_W / 2, cy: vh / 2 - 60, w: vw, h: vh };
+    this.cy = this.baseView.cy;
+    this.builtKey = '';
   }
 
-  // ---- static content: three lines, pads, labels, stars ----------------------------------
-  setTerrain(terrain) {
-    this.terrain = terrain;
-    this.rngState = (terrain.seed || 1) >>> 0;
+  // ---- static content: the ground lines, pads, accelerators, stars ---------------------
+  // `state` is the core's game state. Stars are laid once per seed; the ground
+  // lines are built for the three chunks around the camera and rebuilt when the
+  // camera crosses into a new chunk or the world's version ticks (a pad used).
+  setWorld(state) {
+    this.world = state;
+    this.rangeCache = {};
+    this.rngState = (state.seed || 1) >>> 0;
     this.stars = [];
     for (let i = 0; i < 480; i++) {
-      this.stars.push([-4000 + this._rand() * 12000, -600 + this._rand() * 8000, Z_STARS - this._rand() * 3000, 0.3 + this._rand() * this._rand() * 1.0]);
+      this.stars.push([-4000 + this._rand() * 12000, -600 + this._rand() * 13000, Z_STARS - this._rand() * 3000, 0.3 + this._rand() * this._rand() * 1.0]);
     }
-    const mk = (n, lo, hi, smooth) => {
-      const pts = [];
-      let prev = lo + this._rand() * (hi - lo);
-      for (let i = 0; i <= n; i++) {
-        let y = lo + this._rand() * (hi - lo);
-        y = prev + (y - prev) * smooth;
-        prev = y;
-        pts.push([WORLD_W * i / n, y]);
-      }
-      pts[n][1] = pts[0][1];
-      return pts;
-    };
-    this.ranges = { far: mk(44, 260, 980, 0.5), near: mk(60, -340, 30, 0.5) };
+    // the wide view opens with the ship a quarter in from the left, heading right
+    const bv = this.baseView;
+    const sx = state.ship ? state.ship.x : 0;
+    bv.cx = sx + bv.w * 0.25;
+    this.cx = bv.cx; this.cy = bv.cy;
+    this.builtKey = '';
     this._buildStatic();
   }
-
+  // A parallax range for chunk k: seam heights hashed so neighbours meet.
+  _range(kind, k) {
+    const key = kind + ':' + k;
+    if (this.rangeCache[key]) return this.rangeCache[key];
+    const C = globalThis.LunarCore;
+    const spec = kind === 'farther' ? { n: 30, lo: 700, hi: 1700, sm: 0.45, salt: 11 } : kind === 'far' ? { n: 44, lo: 260, hi: 980, sm: 0.5, salt: 23 } : { n: 60, lo: -340, hi: 30, sm: 0.5, salt: 37 };
+    const seed = (this.world && this.world.seed) || 1;
+    const seam = (kk) => spec.lo + (C.hashSeed(seed, kk * 13 + spec.salt) / 4294967296) * (spec.hi - spec.lo);
+    const rng = C.mulberry32(C.hashSeed(seed, k * 101 + spec.salt));
+    const pts = [];
+    let prev = seam(k);
+    for (let i = 0; i <= spec.n; i++) {
+      let y = spec.lo + rng() * (spec.hi - spec.lo);
+      y = prev + (y - prev) * spec.sm;
+      prev = y;
+      pts.push([k * CHUNK_W + CHUNK_W * i / spec.n, y]);
+    }
+    pts[0][1] = seam(k);
+    pts[spec.n][1] = seam(k + 1);
+    pts[1][1] = (pts[0][1] + pts[2][1]) * 0.5;
+    pts[spec.n - 1][1] = (pts[spec.n][1] + pts[spec.n - 2][1]) * 0.5;
+    this.rangeCache[key] = pts;
+    return pts;
+  }
+  // Does the static content need rebuilding for the camera at cx?
+  _syncStatic() {
+    if (!this.world) return;
+    const C = globalThis.LunarCore;
+    const kc = C.chunkIndex(this.cx);
+    const half = Math.max(1, Math.ceil((this.view ? this.view.w : CHUNK_W) / CHUNK_W / 2) + 1);   // enough chunks for the current view width
+    const key = kc + '|' + half + '|' + this.world.world.version + '|' + this.params.depth + '|' + this.params.stars + '|' + this.params.brightness + '|' + this.launchPadId;
+    if (key === this.builtKey) return;
+    this.builtKey = key;
+    this.chunkSpan = [kc - half, kc + half];
+    this._buildStatic();
+  }
   _buildStatic() {
-    const T = this.terrain;
+    const W = this.world;
     const P = this.params;
     const D = P.depth;
-    const copies = [-WORLD_W, 0, WORLD_W];
-    const zFar = Z_FAR * D, zNear = Z_NEAR * D;
+    const zFar = Z_FAR * D, zFarther = Z_FARTHER * D, zNear = Z_NEAR * D;
+    const C = globalThis.LunarCore;
+    const [k0, k1] = this.chunkSpan;
+    const join = (kind) => {
+      const out = [];
+      for (let k = k0; k <= k1; k++) {
+        const pts = this._range(kind, k);
+        for (let i = out.length ? 1 : 0; i < pts.length; i++) out.push(pts[i]);
+      }
+      return out;
+    };
     // stars
     const S = this.starBatch;
     S.begin();
-    if (P.stars > 0) for (const s of this.stars) S.seg(s[0], s[1], s[2], s[0], s[1], s[2], s[3] * P.stars * 3.2);
+    if (P.stars > 0) for (const s of this.stars) {
+      // the 12,000 ft star field is tiled three times around the camera, so it
+      // never runs out however far the view pulls back or scrolls
+      const x = s[0] + Math.round((this.cx - s[0]) / 12000) * 12000;
+      for (const dx of [-12000, 0, 12000]) S.seg(x + dx, s[1], s[2], x + dx, s[1], s[2], s[3] * P.stars * 3.2);
+    }
     S.end();
+    if (!W) {
+      const flat = [[k0 * CHUNK_W, 0], [(k1 + 1) * CHUNK_W, 0]];
+      for (const b of [this.fartherBatch, this.farBatch, this.flightBatch, this.nearBatch]) { b.begin(); b.end(); }
+      this.fartherFill.set(flat, zFarther); this.farFill.set(flat, zFar); this.flightFill.set(flat, 0); this.nearFill.set([[k0 * CHUNK_W, -400], [(k1 + 1) * CHUNK_W, -400]], zNear);
+      return;
+    }
+    // the farthest range
+    const farther = join('farther');
+    const FF = this.fartherBatch;
+    FF.begin(); FF.poly2(farther, 0.38, 0, 0, zFarther); FF.end();
+    this.fartherFill.set(farther, zFarther);
     // far line
+    const far = join('far');
     const F = this.farBatch;
-    F.begin();
-    if (T) for (const dx of copies) F.poly2(this.ranges.far, 0.55, dx, 0, zFar);
-    F.end();
-    this.farFill.set(T ? this.ranges.far : [[0, 0], [WORLD_W, 0]], zFar, copies);
-    // the flight line, with pads
+    F.begin(); F.poly2(far, 0.55, 0, 0, zFar); F.end();
+    this.farFill.set(far, zFar);
+    // the flight line, with pads (their aprons are part of the terrain) and the accelerators at rest
     const B = this.flightBatch;
     B.begin();
-    if (T) {
-      for (const dx of copies) {
-        B.poly2(T.pts, 1.0, dx, 0, 0);
-        for (const p of T.pads) {
-          B.seg2(p.x0 + dx, p.y, p.x1 + dx, p.y, 2.2);
-          B.seg2(p.x0 + dx, p.y, p.x0 + dx, p.y + 7, 1.2);
-          B.seg2(p.x1 + dx, p.y, p.x1 + dx, p.y + 7, 1.2);
-          const segs = [];
-          textSegments(segs, p.mult + 'X', (p.x0 + p.x1) / 2 + dx, p.y + 20, 24, 1.1, 0.5);
-          B.text(segs);
+    const flight = [];
+    for (let k = k0; k <= k1; k++) {
+      const ch = C.getChunk(W, k);
+      for (let i = flight.length ? 1 : 0; i < ch.pts.length; i++) flight.push(ch.pts[i]);
+      for (const p of ch.pads) {
+        const b = p.used ? 0.9 : 2.2, tb = p.used ? 0.6 : 1.2;
+        B.seg2(p.x0, p.y, p.x1, p.y, b);
+        B.seg2(p.x0, p.y, p.x0, p.y + 7, tb);
+        B.seg2(p.x1, p.y, p.x1, p.y + 7, tb);
+        // the multiplier and the fuel mark are DOM labels the shell places (contemporary type, not stroke lettering).
+        // The accelerator is NOT drawn at rest (James: "they should just appear magically when the person finishes their landing").
+        if (p.relay) this._relayTower(B, p, 0.55);
+      }
+      // the horizon ring far above this chunk: faint, a way out for the high flyer
+      {
+        const ring = C.horizonRing(k);
+        const n = 48;
+        for (let j = 0; j < n; j++) {
+          const a0 = Math.PI * 2 * j / n, a1 = Math.PI * 2 * (j + 1) / n;
+          B.seg2(ring.x + Math.cos(a0) * ring.r, ring.y + Math.sin(a0) * ring.r, ring.x + Math.cos(a1) * ring.r, ring.y + Math.sin(a1) * ring.r, 0.22);
+        }
+        for (let j = 0; j < 12; j++) {
+          const a = Math.PI * 2 * j / 12;
+          B.seg2(ring.x + Math.cos(a) * (ring.r + 8), ring.y + Math.sin(a) * (ring.r + 8), ring.x + Math.cos(a) * (ring.r + 18), ring.y + Math.sin(a) * (ring.r + 18), 0.18);
         }
       }
     }
+    B.poly2(flight, 1.0, 0, 0, 0);
     B.end();
-    this.flightFill.set(T ? T.pts : [[0, 0], [WORLD_W, 0]], 0, copies);
-    // near line
+    this.flightFill.set(flight, 0);
+    // the near (front) line was cut 2026-09-04 — it only ever showed when the
+    // view pulled back and James found it "weird looking"; the batch stays
+    // empty so the draw order is unchanged
     const N = this.nearBatch;
-    N.begin();
-    if (T) for (const dx of copies) N.poly2(this.ranges.near, 0.5, dx, 0, zNear);
-    N.end();
-    this.nearFill.set(T ? this.ranges.near : [[0, -400], [WORLD_W, -400]], zNear, copies);
+    N.begin(); N.end();
+    this.nearFill.set([[k0 * CHUNK_W, -9000], [(k1 + 1) * CHUNK_W, -9000]], zNear);
+  }
+  // A derelict relay tower left of its pad: a tapered mast with a cross-braced
+  // base, a dish, and one lamp at the top. The lamp blinks (drawn live); the
+  // mast itself is static.
+  _relayTower(batch, pad, dim) {
+    const x = pad.x0 - 34, y = pad.y, h = 96;
+    batch.seg2(x - 9, y, x - 3, y + h, dim); batch.seg2(x + 9, y, x + 3, y + h, dim);
+    batch.seg2(x - 3, y + h, x + 3, y + h, dim);
+    for (let i = 1; i <= 5; i++) { const yy = y + h * i / 6, w = 9 - 6 * i / 6; batch.seg2(x - w, yy, x + w, yy, dim * 0.7); }
+    batch.seg2(x - 9, y, x + 6, y + h / 3, dim * 0.5); batch.seg2(x + 9, y, x - 6, y + h / 3, dim * 0.5);
+    // the dish, hanging off the mast two thirds up, aimed away
+    const dy = y + h * 0.66;
+    batch.seg2(x + 3, dy, x + 12, dy + 4, dim);
+    for (let j = 0; j < 8; j++) { const a0 = -Math.PI / 2 + Math.PI * j / 8, a1 = -Math.PI / 2 + Math.PI * (j + 1) / 8; batch.seg2(x + 12 + Math.cos(a0) * 7, dy + 4 + Math.sin(a0) * 7, x + 12 + Math.cos(a1) * 7, dy + 4 + Math.sin(a1) * 7, dim * 0.9); }
+    // the lamp mount
+    batch.seg2(x, y + h, x, y + h + 6, dim);
+  }
+  // The ring accelerator beside a pad — a magnetic launcher: a twin-spine
+  // truss rail along the RIGHT side of the ring stack (so it lies under the
+  // rings when tipped), cross-braced at every ring, each ring clamped to the
+  // rail by a coil bracket; a heavy base plate with a power block and a
+  // pivot. Standing upright at rest (never drawn then), tilted by `tilt`
+  // radians when launching; rings 0..lit-1 are lit.
+  _accelerator(batch, pad, tilt, lit, dim, sink) {
+    const C = globalThis.LunarCore;
+    const A = C.ACCEL;
+    const base0 = C.accelBase(pad);
+    // sink 0..1: the whole machine sits this far down into the ground (it rises
+    // out of the apron at the start of the sequence and sinks back after);
+    // everything below the pad line is clipped away
+    const drop = (sink || 0) * (A.railLen + 26);
+    const base = { x: base0.x, y: base0.y - drop };
+    const groundY = base0.y;
+    const c = Math.cos(Math.PI / 2 - tilt), s = Math.sin(Math.PI / 2 - tilt);   // rail direction
+    const rx = s, ry = -c;                                                        // rightward normal
+    const P = (d, n, z) => [base.x + c * d + rx * n, base.y + s * d + ry * n, z || 0];   // (along, across) → world
+    const clipSeg = (x0, y0, z0, x1, y1, z1, b) => {
+      if (y0 < groundY && y1 < groundY) return;
+      if (y0 < groundY) { const t = (groundY - y0) / (y1 - y0); x0 += (x1 - x0) * t; z0 += (z1 - z0) * t; y0 = groundY; }
+      else if (y1 < groundY) { const t = (groundY - y1) / (y0 - y1); x1 += (x0 - x1) * t; z1 += (z0 - z1) * t; y1 = groundY; }
+      batch.seg(x0, y0, z0, x1, y1, z1, b);
+    };
+    const seg = (p, q, b) => clipSeg(p[0], p[1], p[2], q[0], q[1], q[2], b);
+    const seg2 = (x0, y0, x1, y1, b) => clipSeg(x0, y0, 0, x1, y1, 0, b);
+    const heavy = dim * 1.5, mid = dim * 1.1, light = dim * 0.7;
+    const R = A.ringR;
+    const spineA = R + 3, spineB = R + 9;     // the two spines of the truss, right of the rings
+    // --- base plate: a low box under the whole footprint, upright regardless of tilt
+    const bx0 = base.x - R - 6, bx1 = base.x + spineB + 10, by = base.y;
+    seg2(bx0, by, bx1, by, heavy);
+    seg2(bx0, by + 5, bx1, by + 5, heavy);
+    seg2(bx0, by, bx0, by + 5, heavy);
+    seg2(bx1, by, bx1, by + 5, heavy);
+    for (let i = 1; i < 6; i++) { const x = bx0 + (bx1 - bx0) * i / 6; seg2(x, by, x, by + 5, light); }
+    // --- power block: a squat cabinet on the right end of the plate, with a hatch and a vent
+    const pw0 = base.x + spineB - 4, pw1 = base.x + spineB + 10;
+    seg2(pw0, by + 5, pw0, by + 17, mid); seg2(pw1, by + 5, pw1, by + 17, mid); seg2(pw0, by + 17, pw1, by + 17, mid);
+    seg2(pw0 + 3, by + 8, pw1 - 3, by + 8, light); seg2(pw0 + 3, by + 11, pw1 - 3, by + 11, light); seg2(pw0 + 3, by + 14, pw1 - 3, by + 14, light);
+    // --- pivot: a hub on the plate where the rail turns, with the rail's feet meeting it
+    const hub = [base.x + (spineA + spineB) / 2, by + 8];
+    for (let i = 0; i < 8; i++) {
+      const a0 = Math.PI * 2 * i / 8, a1 = Math.PI * 2 * (i + 1) / 8;
+      seg2(hub[0] + Math.cos(a0) * 4, hub[1] + Math.sin(a0) * 4, hub[0] + Math.cos(a1) * 4, hub[1] + Math.sin(a1) * 4, mid);
+    }
+    // --- the truss rail: two spines from the hub to the top, cross-braced at every ring
+    const d0 = 8, dTop = A.railLen + 6;
+    seg(P(d0, spineA), P(dTop, spineA), heavy);
+    seg(P(d0, spineB), P(dTop, spineB), heavy);
+    seg(P(dTop, spineA), P(dTop, spineB), heavy);
+    const ringAt = (i) => 18 + (A.railLen - 18) * i / (A.rings - 1);
+    let prevD = d0;
+    for (let i = 0; i < A.rings; i++) {
+      const d = ringAt(i);
+      // cross brace + diagonal between spines
+      seg(P(d, spineA), P(d, spineB), mid);
+      seg(P(prevD, spineA), P(d, spineB), light);
+      prevD = d;
+      // coil bracket: a short clamp from the rail to the ring's rim, with a coil box
+      seg(P(d, spineA), P(d, R), mid);
+      seg(P(d - 2.5, R - 1), P(d + 2.5, R - 1), mid);
+      seg(P(d - 2.5, R - 1), P(d - 2.5, spineA), mid);
+      seg(P(d + 2.5, R - 1), P(d + 2.5, spineA), mid);
+      // the ring itself, perpendicular to the rail; lit rings blaze
+      const bright = i < lit ? 2.4 : dim;
+      const n = 20;
+      const cpt = P(d, 0);
+      for (let j = 0; j < n; j++) {
+        const a0 = Math.PI * 2 * j / n, a1 = Math.PI * 2 * (j + 1) / n;
+        clipSeg(cpt[0] + rx * Math.cos(a0) * R, cpt[1] + ry * Math.cos(a0) * R, Math.sin(a0) * R,
+          cpt[0] + rx * Math.cos(a1) * R, cpt[1] + ry * Math.cos(a1) * R, Math.sin(a1) * R, bright);
+      }
+      // a second, inner ring on lit ones: the field
+      if (i < lit) for (let j = 0; j < n; j++) {
+        const a0 = Math.PI * 2 * j / n, a1 = Math.PI * 2 * (j + 1) / n, r2 = R * 0.72;
+        clipSeg(cpt[0] + rx * Math.cos(a0) * r2, cpt[1] + ry * Math.cos(a0) * r2, Math.sin(a0) * r2,
+          cpt[0] + rx * Math.cos(a1) * r2, cpt[1] + ry * Math.cos(a1) * r2, Math.sin(a1) * r2, 1.4);
+      }
+    }
+    // --- a cable run from the power block up the outer spine
+    seg([pw0 + 2, by + 17, 0], P(d0 + 6, spineB + 2), light);
   }
 
   // ---- effects --------------------------------------------------------------------------------
@@ -575,6 +835,12 @@ export class LanderScene {
     this.effects.push({ kind: 'ring', x, y: y + 0.5, age: 0, life: 0.9, r0: 8, r1: 60 + strength * 70, b: 0.9 + strength * 0.5 });
     this.effects.push({ kind: 'ring', x, y: y + 0.5, age: -0.18, life: 1.1, r0: 8, r1: 90 + strength * 90, b: 0.6 + strength * 0.4 });
   }
+  spawnLaunch(x, y, angle) {
+    for (let i = 0; i < 40; i++) this._spark(x, y, 0, 60 + this._rand() * 160, 0.9, 1.2);
+    this.effects.push({ kind: 'ring', x, y: y + 0.5, age: 0, life: 0.8, r0: 6, r1: 90, b: 1.3 });
+    this.flash = 0.5;
+    this.streak = 1.8;                 // seconds of speed trail behind the ship
+  }
   spawnTally(x, y, text) {
     this.effects.push({ kind: 'tally', x, y: y + 34, text, age: 0, life: 2.8 });
   }
@@ -587,7 +853,7 @@ export class LanderScene {
   }
   _plume(ship, thrust, dt, ds) {
     const P = this.params;
-    const rate = (60 + thrust * 420) * P.plume;
+    const rate = (80 + thrust * 560) * P.plume;
     let n = rate * dt + this._rand();
     const c = Math.cos(ship.angle), s = Math.sin(ship.angle);
     while (n >= 1 && this.particles.length < MAX_PARTICLES) {
@@ -638,11 +904,11 @@ export class LanderScene {
       }
       if (e.kind === 'debris') {
         e.ang += e.av * dt;
-        if (this.terrain) {
+        if (this.world) {
           const gy = this._groundAt(e.x);
           if (e.y < gy) { e.y = gy; e.vy = -e.vy * 0.35; e.vx *= 0.7; e.vz *= 0.7; e.av *= 0.6; }
         }
-      } else if (e.kind === 'dust' && !e.settled && this.terrain) {
+      } else if (e.kind === 'dust' && !e.settled && this.world) {
         const gy = this._groundAt(e.x);
         if (e.y < gy + 0.5 && e.vy < 0) { e.y = gy + 0.5; e.settled = true; }
       }
@@ -655,7 +921,7 @@ export class LanderScene {
       if (p.age >= p.life) continue;
       p.vy -= g * dt * 0.5;
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-      if (this.terrain) {
+      if (this.world) {
         const gy = this._groundAt(p.x);
         if (p.y < gy) { p.y = gy; p.vy = -p.vy * 0.2; p.vx *= 0.6; p.life = Math.min(p.life, p.age + 0.12); }
       }
@@ -664,25 +930,56 @@ export class LanderScene {
     this.particles = pk;
   }
   _groundAt(x) {
-    const T = this.terrain;
-    if (!T) return 0;
-    x = ((x % WORLD_W) + WORLD_W) % WORLD_W;
-    const pts = T.pts;
-    let lo = 0, hi = pts.length - 1;
-    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][0] <= x) lo = m; else hi = m; }
-    const a = pts[lo], b = pts[hi], span = b[0] - a[0];
-    return span <= 0 ? a[1] : a[1] + (b[1] - a[1]) * (x - a[0]) / span;
+    if (!this.world) return 0;
+    return globalThis.LunarCore.groundAt(this.world, x);
+  }
+
+  // The faint body under the lines: convex hull (monotone chain) of the pod and
+  // descent-stage rings projected into the flight plane, as a triangle fan.
+  _bodyFill(tr) {
+    const pts = [];
+    for (const q of BODY_POINTS) { const w = tr(q[0], q[1], q[2]); pts.push([w[0], w[1]]); }
+    pts.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+    const upper = [];
+    for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+    const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+    const pos = this.bodyGeo.attributes.position;
+    let n = 0;
+    const put = (p, dx) => { pos.array[n * 3] = p[0] + dx; pos.array[n * 3 + 1] = p[1]; pos.array[n * 3 + 2] = 0.5; n++; };
+    for (let i = 1; i < hull.length - 1 && n + 3 <= pos.count; i++) { put(hull[0], 0); put(hull[i], 0); put(hull[i + 1], 0); }
+    pos.needsUpdate = true;
+    pos.updateRanges = [{ start: 0, count: n * 3 }];
+    this.bodyGeo.setDrawRange(0, n);
   }
 
   // ---- camera ---------------------------------------------------------------------------------
   _updateCamera(view, dt) {
     const P = this.params;
-    const target = view && view.zoomOn ? P.zoomNear : 1;
+    const bv = this.baseView;
+    // the wide view pulls back further still when the ship climbs past the top
+    // (James: "way above the top of the screen... I couldn't see my ship") —
+    // zoom drops below 1 just enough to hold the ship halfway between centre
+    // and the top of the screen (clear of the console), never below ZOOM_MIN
+    let wide = 1, lift = 0;
+    if (view && view.ship) {
+      const up = view.ship.y - bv.cy;
+      if (up > bv.h * 0.25) wide = Math.max(ZOOM_MIN, (bv.h * 0.25) / up);
+      // once the zoom is at its floor the camera pans UP instead, so a very
+      // high ship (and the horizon ring it is aiming for) never climbs behind
+      // the console (James: "they go behind the HUD... you can't see anything")
+      if (wide <= ZOOM_MIN + 1e-6) lift = Math.max(0, up - (bv.h * 0.25) / ZOOM_MIN);
+    }
+    const target = view && view.zoomOn ? P.zoomNear : wide;
     const k = 1 - Math.exp(-dt / CAM_TAU);
     this.zoom += (target - this.zoom) * k;
     const t = Math.max(0, Math.min(1, (this.zoom - 1) / Math.max(0.001, P.zoomNear - 1)));
-    const bv = this.baseView;
     const vw = bv.w / this.zoom, vh = bv.h / this.zoom;
+    // the wide view scrolls with the ship: dead zone, then an ease that tightens
+    // toward the screen edge (core cameraFollow, sim-proven not to pump)
+    if (view && view.ship) bv.cx = globalThis.LunarCore.cameraFollow(bv.cx, view.ship.x, Math.max(bv.w, vw), dt);
     let tx = bv.cx, ty = bv.cy;
     let bankT = 0;
     if (view && view.ship) {
@@ -694,8 +991,9 @@ export class LanderScene {
       bankT = Math.max(-MAX_BANK, Math.min(MAX_BANK, -s.vx * 0.001)) * t * P.bank;
     }
     this.cx += (tx - this.cx) * (t > 0.02 ? k : 1);
-    this.cy += (ty - this.cy) * (t > 0.02 ? k : 1);
-    if (t <= 0.02) { this.cx = bv.cx; this.cy = bv.cy; }
+    if (t > 0.02) this.cy += (ty - this.cy) * k;
+    else { this.cx = bv.cx; this.cy += (bv.cy + lift - this.cy) * k; }
+    this._syncStatic();
     this.bankNow += (bankT - this.bankNow) * (1 - Math.exp(-dt / BANK_TAU));
     const cam = this.camera;
     cam.fov = P.fov;
@@ -723,7 +1021,10 @@ export class LanderScene {
   }
 
   // ---- the frame ------------------------------------------------------------------------------
-  // view: { ship, thrust, rotate, zoomOn, gravity, showShip, secret, flying }
+  // view: { ship, thrust, rotate, zoomOn, gravity, showShip, secret, flying, launch: { pad, tilt, lit } | null,
+  //         tech: [ids], fan: 0..1 (spider spread), squash: 0..1 (shock compression),
+  //         autoOn: bool, radar: predictTouchdown() | null,
+  //         relayLit: padId | null (the tower you sit at), hatch: {x, y} | null (the wreck's door) }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
     this.time += dt;
@@ -731,15 +1032,20 @@ export class LanderScene {
     const cw = window.innerWidth || this.canvas.clientWidth || 0;
     const chh = window.innerHeight || this.canvas.clientHeight || 0;
     if (cw > 2 && chh > 2 && (cw !== this.w || chh !== this.h)) this.resize(cw, chh);
+    // an animating accelerator replaces its resting copy in the static lines
+    const lp = view && view.launch && view.launch.pad ? view.launch.pad.id : '';
+    if (lp !== this.launchPadId) { this.launchPadId = lp; this.builtKey = ''; }
     this._updateCamera(view, dt);
     this._stepEffects(dt, view && view.gravity);
     this.flash = Math.max(0, this.flash - dt * 2.4);
 
     const D = this.dynBatch;
     D.begin();
+    this.shipBatch.begin();
+    this.bodyGeo.setDrawRange(0, 0);
     const zt = this.view ? this.view.t : 0;
-    // the lander is drawn larger than true: 2.2× in the wide view, 1.25× on approach
-    const ds = 1.25 + 0.95 * (1 - zt);
+    // the lander is drawn larger than true: 1.76× in the wide view, 1.0× on approach (James: 20% down from round three's first cut)
+    const ds = 1.0 + 0.76 * (1 - zt);
     if (view && view.ship && view.showShip !== false) {
       const s = view.ship;
       const c = Math.cos(s.angle), sn = Math.sin(s.angle);
@@ -751,21 +1057,121 @@ export class LanderScene {
         return [s.x + x2, s.y + y2, z1 * ds];
       };
       const sb = P.shipBright;
-      for (const dx of [-WORLD_W, 0, WORLD_W]) {
+      const F = this.shipBatch;
+      // an edge is "front" when its midpoint faces the camera after the yaw; back edges dim
+      const edge = (a, b, bright, dx) => {
+        const zm = (a[2] + b[2]) * 0.5;
+        if (zm < -1.5 * ds) D.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], bright * 0.38);
+        else F.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], bright);
+      };
+      // Feet sit ON the pad line. The legs splay in depth (z = ±15 ft) and the
+      // pad is a line at z = 0, so under perspective the near feet drew a few
+      // pixels below the line and the far feet above it — James read that as
+      // "resting a few pixels below the line." Any vertex at foot level is
+      // pulled onto the flight plane's projection (per wrap copy), so the foot
+      // lands exactly where the pad is, whatever the camera is doing.
+      const camD = this.camDist, camX = this.cx, camY = this.cy;
+      const onLine = (p, dx) => {
+        const f = (camD - p[2]) / camD;
+        return [camX + (p[0] + dx - camX) * f - dx, camY + (p[1] - camY) * f, p[2]];
+      };
+      const FOOT = -10.9;
+      const squash = Math.max(0, Math.min(1, view.squash || 0));
+      const fan = Math.max(0, Math.min(1, view.fan || 0));
+      const tech = view.tech || [];
+      const techSegs = [];
+      for (const id of tech) for (const q of buildTech(id, fan, squash)) techSegs.push(q);
+      const autoGlow = view.autoOn ? 0.6 + 0.4 * Math.sin(this.time * 6) : 0;
+      // the body fill: the convex hull of the two stages' rings, in the flight plane
+      this._bodyFill(tr);
+      for (const dx of [0]) {
         for (const q of LANDER) {
-          const a = tr(q[0], q[1], q[2]), b = tr(q[3], q[4], q[5]);
-          D.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], sb);
+          // shock legs compress: anything at foot level rides up a little
+          const y0 = q[1] <= FOOT ? q[1] + 3.2 * squash : q[1], y1 = q[4] <= FOOT ? q[4] + 3.2 * squash : q[4];
+          let a = tr(q[0], y0, q[2]), b = tr(q[3], y1, q[5]);
+          if (q[1] <= FOOT) a = onLine(a, dx);
+          if (q[4] <= FOOT) b = onLine(b, dx);
+          edge(a, b, sb, dx);
+        }
+        for (const q of techSegs) {
+          let a = tr(q[0], q[1], q[2]), b = tr(q[3], q[4], q[5]);
+          if (q[1] <= FOOT) a = onLine(a, dx);
+          if (q[4] <= FOOT) b = onLine(b, dx);
+          edge(a, b, sb * 0.95, dx);
+        }
+        if (autoGlow > 0) {
+          const a = tr(-5.1, -1.2, 3.1), b = tr(-5.1, 0.2, 3.1);
+          D.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], 1.2 + autoGlow);
         }
         const th = view.thrust || 0;
         if (th > 0.01) {
-          const flick = 0.8 + 0.2 * Math.sin(this.time * 61.7) * Math.sin(this.time * 23.3 + 1.7);
-          const L = (5 + th * 24) * flick;
-          const a = tr(-3.4, -9.4, 0), b = tr(0, -9.4 - L, 0), e = tr(3.4, -9.4, 0);
-          D.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], 0.9 + th * 0.8);
-          D.seg(b[0] + dx, b[1], b[2], e[0] + dx, e[1], e[2], 0.9 + th * 0.8);
+          // a short bright core at the bell mouth; the particle plume is the flame
+          const a = tr(0, -9.9, 0), b = tr(0, -9.9 - 3 - th * 5, 0);
+          D.seg(a[0] + dx, a[1], a[2], b[0] + dx, b[1], b[2], 1.2 + th * 1.0);
+        }
+        // the direction indicator: a very faint circle around the ship and a
+        // little triangle riding it at the velocity heading; brighter with speed
+        if (view.flying) {
+          // James: a visual aid, not part of the ship — far out, barely visible,
+          // the triangle only ~20% brighter than the circle
+          const spd = Math.hypot(s.vx, s.vy);
+          const k = Math.max(0, Math.min(1, (spd - 2) / 40));
+          if (k > 0) {
+            const R = 60 * ds;
+            const n = 48;
+            const cb = P.ringBright * (0.6 + 0.4 * k);
+            const tbase = P.triBright * (0.6 + 0.4 * k);
+            for (let i = 0; i < n; i++) {
+              const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+              D.seg(s.x + dx + Math.cos(a0) * R, s.y + Math.sin(a0) * R, 0, s.x + dx + Math.cos(a1) * R, s.y + Math.sin(a1) * R, 0, cb);
+            }
+            const h = Math.atan2(s.vy, s.vx);
+            const tipR = R + 3.2 * ds, baseR = R - 0.8 * ds, half = 0.05;
+            const tip = [s.x + dx + Math.cos(h) * tipR, s.y + Math.sin(h) * tipR];
+            const l = [s.x + dx + Math.cos(h - half) * baseR, s.y + Math.sin(h - half) * baseR];
+            const r = [s.x + dx + Math.cos(h + half) * baseR, s.y + Math.sin(h + half) * baseR];
+            const tb = tbase;
+            D.seg(tip[0], tip[1], 0, l[0], l[1], 0, tb); D.seg(l[0], l[1], 0, r[0], r[1], 0, tb); D.seg(r[0], r[1], 0, tip[0], tip[1], 0, tb);
+          }
+        }
+      }
+      // the landing radar: a dashed beam to the predicted touchdown; the pad's
+      // edges brighten and bracket when the feet fit
+      if (view.flying && view.radar) {
+        const R = view.radar;
+        const tx = R.x;
+        const ax = s.x, ay = s.y - 11 * ds, bx = tx, by = R.y;
+        const len = Math.hypot(bx - ax, by - ay);
+        const dash = 14, gap = 10;
+        const phase = (this.time * 40) % (dash + gap);
+        for (let d0 = -phase; d0 < len; d0 += dash + gap) {
+          const t0 = Math.max(0, d0) / len, t1 = Math.min(len, d0 + dash) / len;
+          if (t1 <= t0) continue;
+          for (const dx of [0]) D.seg(ax + dx + (bx - ax) * t0, ay + (by - ay) * t0, 0, ax + dx + (bx - ax) * t1, ay + (by - ay) * t1, 0, R.fits ? 0.6 : 0.32);
+        }
+        for (const dx of [0]) {
+          const mk = [[bx + dx - 6, by], [bx + dx + 6, by]];
+          D.seg(mk[0][0], mk[0][1], 0, mk[1][0], mk[1][1], 0, R.fits ? 1.0 : 0.5);
+          if (R.pad && R.fits) {
+            const pd = R.pad;
+            D.seg2(pd.x0 + dx, pd.y, pd.x0 + dx, pd.y + 14, 2.2); D.seg2(pd.x0 + dx, pd.y + 14, pd.x0 + dx + 8, pd.y + 14, 1.6);
+            D.seg2(pd.x1 + dx, pd.y, pd.x1 + dx, pd.y + 14, 2.2); D.seg2(pd.x1 + dx, pd.y + 14, pd.x1 + dx - 8, pd.y + 14, 1.6);
+            D.seg2(pd.x0 + dx, pd.y, pd.x1 + dx, pd.y, 1.4);
+          }
         }
       }
       if (view.flying) {
+        if (this.streak > 0) {
+          // the launch whoosh: a fading trail of motes streaming off the ship
+          this.streak -= dt;
+          let n = 260 * dt;
+          while (n-- > 0 && this.particles.length < MAX_PARTICLES) {
+            const j = (this._rand() - 0.5) * 14 * ds;
+            this.particles.push({ x: s.x + j, y: s.y - 6 * ds + (this._rand() - 0.5) * 10 * ds, z: (this._rand() - 0.5) * 10 * ds,
+              vx: s.vx * (0.2 + this._rand() * 0.3) - s.vx * 0.5, vy: s.vy * (0.2 + this._rand() * 0.3) - s.vy * 0.5, vz: 0,
+              age: 0, life: 0.25 + this._rand() * 0.35, b: 0.5 + 0.6 * Math.max(0, this.streak) });
+          }
+        }
         if ((view.thrust || 0) > 0.01) this._plume(s, view.thrust, dt, ds);
         if (view.rotate) {
           this.rcsTimer -= dt;
@@ -773,8 +1179,9 @@ export class LanderScene {
         }
       }
     }
-    if (view && view.secret && this.terrain && this.terrain.secret) {
-      const S = this.terrain.secret;
+    if (view && view.secret && this.world && view.ship) {
+      const S = globalThis.LunarCore.getChunk(this.world, globalThis.LunarCore.chunkIndex(view.ship.x)).secret;
+      if (!S) { /* nothing */ } else {
       const bx = (S.x0 + S.x1) / 2 + 60, by = S.y;
       D.poly2([[bx - 28, by], [bx - 28, by + 22], [bx + 28, by + 22], [bx + 28, by]], 0.9);
       D.poly2([[bx - 32, by + 22], [bx + 32, by + 22], [bx + 32, by + 26], [bx - 32, by + 26], [bx - 32, by + 22]], 0.9);
@@ -789,6 +1196,42 @@ export class LanderScene {
       const segs = [];
       textSegments(segs, 'BILLIONS SERVED', bx, by + 34, 8, 0.7, 0.5);
       D.text(segs);
+      // the doorway under the arches, lit: the way in (a drift exit)
+      const gl = 1.4 + 0.5 * Math.sin(this.time * 2.2);
+      D.poly2([[bx + 36, by], [bx + 36, by + 18], [bx + 48, by + 18], [bx + 48, by]], gl);
+      D.seg2(bx + 38, by + 2, bx + 46, by + 2, gl * 0.6); D.seg2(bx + 38, by + 16, bx + 46, by + 16, gl * 0.6);
+      }
+    }
+    // relay lamps: blink once a second; solid on the tower you have landed at
+    if (this.world) {
+      const C = globalThis.LunarCore;
+      const [k0, k1] = this.chunkSpan;
+      const blink = (Math.sin(this.time * Math.PI * 2) > 0.6) ? 1 : 0;
+      for (let k = k0; k <= k1; k++) for (const p of C.getChunk(this.world, k).pads) if (p.relay) {
+        const lit = (view && view.relayLit === p.id) ? 1 : blink;
+        if (!lit) continue;
+        const x = p.x0 - 34, y = p.y + 102;
+        const b = view && view.relayLit === p.id ? 2.4 : 1.6;
+        for (let j = 0; j < 8; j++) { const a0 = Math.PI * 2 * j / 8, a1 = Math.PI * 2 * (j + 1) / 8; D.seg2(x + Math.cos(a0) * 3, y + Math.sin(a0) * 3, x + Math.cos(a1) * 3, y + Math.sin(a1) * 3, b); }
+        if (view && view.relayLit === p.id) {
+          // the door at the foot of the tower opens: a lit frame
+          D.poly2([[x - 5, p.y], [x - 5, p.y + 14], [x + 5, p.y + 14], [x + 5, p.y]], 1.8);
+          D.seg2(x - 3, p.y + 2, x + 3, p.y + 12, 0.9); D.seg2(x + 3, p.y + 2, x - 3, p.y + 12, 0.9);
+        }
+      }
+    }
+    // the wreck's hatch: after the last flight, a dim door in the wreckage opens
+    if (view && view.hatch) {
+      const hx = view.hatch.x, hy = view.hatch.y;
+      const pulse = 0.9 + 0.5 * Math.sin(this.time * 3);
+      D.poly2([[hx - 6, hy], [hx - 6, hy + 9], [hx + 6, hy + 9], [hx + 6, hy]], pulse);
+      D.seg2(hx - 4, hy + 2, hx + 4, hy + 7, pulse * 0.6);
+    }
+    // the launch: the accelerator by the pad tilts and lights ring by ring
+    if (view && view.launch && view.launch.pad) {
+      const L = view.launch;
+      // it appears as the sequence begins (rise 0→1 over the first half second)
+      this._accelerator(D, L.pad, L.tilt || 0, L.lit || 0, 0.9, L.sink || 0);
     }
     for (const e of this.effects) {
       const fade = 1 - e.age / e.life;
@@ -824,6 +1267,7 @@ export class LanderScene {
       D.seg(p.x, p.y, p.z, p.x - p.vx * 0.012, p.y - p.vy * 0.012, p.z, p.b * fade * fade);
     }
     D.end();
+    this.shipBatch.end();
 
     const scale = this.ph / 1080;
     const width = Math.max(1.0, P.lineWeight * scale);
@@ -834,6 +1278,11 @@ export class LanderScene {
       b.mat.uniforms.uGain.value = gain;
     }
     this.dynBatch.mat.uniforms.uGain.value = 1 + this.flash * 0.5;   // the live things are authored in absolute terms
+    // the ship's front edges carry a heavier stroke than the world
+    const sw = width * 1.05;   // was 1.3; James: "a little bit thinner"
+    this.shipBatch.mat.uniforms.uWidth.value = sw;
+    this.shipBatch.mat.uniforms.uHalf.value = sw * 0.5 + sw * 2.0 + 1.5;
+    this.shipBatch.mat.uniforms.uGain.value = 1 + this.flash * 0.5;
 
     const r = this.renderer;
     r.setRenderTarget(this.sceneRT);
@@ -869,8 +1318,6 @@ export class LanderScene {
     const cu = this.compMat.uniforms;
     cu.tScene.value = this.sceneRT.texture;
     cu.tB0.value = this.bloomRT[0][0].texture;
-    cu.tB1.value = this.bloomRT[1][0].texture;
-    cu.tB2.value = this.bloomRT[2][0].texture;
     cu.uGlow.value = P.glow;
     cu.uFlash.value = this.flash * 0.3;
     cu.uTint.value.setHSL(P.hue, 1, 0.5).lerp(new THREE.Color(1, 1, 1), 1 - P.saturation);

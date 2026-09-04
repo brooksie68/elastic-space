@@ -1,6 +1,6 @@
 {
   "slug": "lunar-lander",
   "title": "Lunar Lander",
-  "status": "draft",
-  "summary": "Atari's Lunar Lander (1979) rebuilt as a glowing vector monitor: lunar gravity, a proportional thrust lever, four selections, pads worth 2×–5×, landings graded by speed, drift and tilt, and fuel as the only currency."
+  "status": "live",
+  "summary": "Atari's Lunar Lander (1979) with the physics kept and the look taken to 2026: an endless chunked moon that remembers your life, pads worth 2×–5× with fuel pads and earned landing tech, a ring accelerator that fires you back up after every landing, and four ways out — the drive-through's door, a derelict relay tower, the horizon ring far above, and the hatch in your own wreck."
 }
