@@ -113,6 +113,48 @@ body {
   color: rgba(255, 255, 252, 0.88);
 }
 
+/* The dice (2026-09-05): two thin frosted dice on the wall before the title —
+   very subtle at rest; the sharp one rolls a whole new hanging, the soft one
+   melts there over two seconds. */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.label-die.label-die-last {
+  margin-right: 8px; /* a little more air before the card than between the dice */
+}
+
+.label-die {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 252, 0.34);
+  cursor: pointer;
+  transition: color 0.6s ease;
+}
+
+.label-die svg {
+  width: 20px;
+  height: 20px;
+}
+
+.wall-label:hover .label-die,
+.label-die:focus-visible {
+  color: rgba(255, 255, 252, 0.6);
+}
+
+.label-die:hover {
+  color: rgba(255, 255, 252, 0.92);
+}
+
 .label-card {
   display: block;
   background: none;
@@ -176,6 +218,46 @@ body {
   border: 1px solid rgba(255, 255, 250, 0.12);
   border-radius: 2px;
   color: rgba(240, 238, 232, 0.9);
+}
+
+/* Both dice in the panel's top-right corner: sharp snaps, soft melts. */
+.panel-dice {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: flex;
+  gap: 5px;
+}
+
+.panel-die {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 250, 0.22);
+  border-radius: 2px;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.panel-die:hover,
+.panel-die:focus-visible {
+  opacity: 1;
+  border-color: rgba(255, 255, 250, 0.6);
+}
+
+.panel-die svg {
+  width: 14px;
+  height: 14px;
+}
+
+.die-soft svg {
+  filter: blur(0.6px);
 }
 
 .panel-title {

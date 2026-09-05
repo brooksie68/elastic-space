@@ -15,6 +15,31 @@
       <a href="../../../index.html" data-drift aria-label="Drift somewhere else"></a>
     </nav>
 
+    <button id="rift-dice-corner" class="rift-dice-toggle rift-die-hard" type="button"
+            title="Roll the dice — a whole new look, every control" aria-label="Roll the dice">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="3.6"></rect>
+        <circle cx="8" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="16" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="8" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="16" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </button>
+    <button id="rift-melt-corner" class="rift-dice-toggle rift-die-soft" type="button"
+            title="Melt roll — glide to a new look over two seconds" aria-label="Melt roll">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="3.6"></rect>
+        <circle cx="8" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="16" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="8" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+        <circle cx="16" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </button>
+
     <button id="rift-music-toggle" class="rift-music-toggle" type="button"
             aria-expanded="false" aria-controls="rift-music"
             title="Music" aria-label="Music player">
@@ -91,7 +116,32 @@
                aria-label="Gradient start color" title="Gradient start" />
         <input id="rift-color-end" type="color" value="#000000"
                aria-label="Gradient end color" title="Gradient end" />
-        <div id="rift-presets" class="tuner-presets" role="group" aria-label="Color presets"></div>
+        <div id="rift-presets" class="tuner-presets" role="group" aria-label="Dice and color presets">
+          <button id="rift-dice" class="tuner-die rift-die-hard" type="button"
+                  title="Roll the dice — a whole new look, every control" aria-label="Roll the dice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="3.6"></rect>
+              <circle cx="8" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="16" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="8" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="16" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+            </svg>
+          </button>
+          <button id="rift-melt" class="tuner-die tuner-die-last rift-die-soft" type="button"
+                  title="Melt roll — glide to a new look over two seconds" aria-label="Melt roll">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="3.6"></rect>
+              <circle cx="8" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="16" cy="8" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="12" cy="12" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="8" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+              <circle cx="16" cy="16" r="1.75" fill="currentColor" stroke="none"></circle>
+            </svg>
+          </button>
+        </div>
         <button id="rift-reset" class="tuner-reset" type="button"
                 title="Reset every control to its default">reset</button>
         <button id="rift-info" class="tuner-info" type="button" aria-haspopup="dialog"
@@ -136,7 +186,15 @@
           <li><strong>gradient</strong> — two color pickers for the start and end colors of the
             band gradient (default white → black). Everything derives from the palette: bands,
             scanlines, glow tint, and the backdrop (built from the deepest color).</li>
-          <li><strong>presets</strong> — 13 chips next to the pickers, each showing its own
+          <li><strong>dice</strong> — two dice at the head of the preset strip, repeated in the
+            bottom-right corner so you can roll with the panel closed and just watch. The sharp
+            die snaps every control — speed, bands, wander, breathe, pull, edges, and the
+            gradient — to a new random setting. The blurry die melts there over two seconds:
+            the rift fogs up, the new gradient takes over at the peak of the fog, and it
+            sharpens back in on the new look. Touching any control mid-melt stops the glide
+            where it stands. Gradients come from the 13 chips most of the time and from a fresh
+            random palette the rest.</li>
+          <li><strong>presets</strong> — 13 chips after the dice, each showing its own
             mini-gradient.</li>
           <li><strong>reset</strong> — the pill at the end of the colors row. One click returns
             all seven parameters and the palette to defaults. Individually, double-clicking any

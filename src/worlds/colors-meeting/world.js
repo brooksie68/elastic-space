@@ -185,7 +185,8 @@
     }
 
     const driftAmp = 0.012 + (state.drift / 100) * 0.33;
-    const baseSoft = 0.004 + Math.pow(state.softness / 100, 1.4) * 0.22;
+    // The melt roll's fog veil rides on top of the seam softness; never in state.
+    const baseSoft = 0.004 + Math.pow(state.softness / 100, 1.4) * 0.22 + meltVeil;
 
     for (const s of seams) {
       s.pos = s.basePos + s.oPos(t) * driftAmp;
@@ -266,7 +267,7 @@
     tSim += dt * SPEED_MULT[state.speed];
     acc += now - (tick.prev || now);
     tick.prev = now;
-    if (acc >= 90) {
+    if (acc >= 90 || meltRaf) {
       acc = 0;
       render(tSim);
       placeExits(tSim);
@@ -298,6 +299,7 @@
   document.addEventListener("pointerdown", (e) => {
     if (panel.hidden) return;
     if (panel.contains(e.target) || labelCard.contains(e.target)) return;
+    if (e.target.closest && e.target.closest(".label-die")) return; // a roll keeps the notes open
     panel.hidden = true;
     labelCard.setAttribute("aria-expanded", "false");
   });
@@ -388,6 +390,185 @@
     syncUI();
     buildFields();
   });
+
+  // ---------- the dice (2026-09-05) ----------
+  // Lumina's pair, brought over on James's ask after the Chrome Rift's. The sharp
+  // die snaps every control — fields, pigments, palette, tempo, seam, grain,
+  // drift, wander — to a new hanging. The soft die MELTS there over two seconds:
+  // the pigments glide in OKLab, the sliders ease, and a fog veil widens every
+  // seam to a peak at the midpoint, where the things that cannot glide (the field
+  // count, the tempo, wander) swap while the canvas is one soft gradient, then
+  // the seams sharpen back in on the new hanging. A hand on any control ends a
+  // melt where it stands. The panel holds both dice; the wall label carries the
+  // same pair, thin and frosted, before the title.
+
+  const MELT_MS = 2000;
+  const MELT_VEIL = 0.22; // added seam softness at the peak — the whole canvas fogs
+
+  let meltRaf = 0;
+  let meltVeil = 0; // read by render()
+
+  const PRESET_KEYS = Object.keys(PRESETS);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const scratch = [0, 0, 0, 0];
+  const bytesToHex = () =>
+    "#" + scratch.slice(0, 3).map((v) => v.toString(16).padStart(2, "0")).join("");
+
+  function lchToHex(L, C, H) {
+    const [l, a, b] = lchToOklab(L, C, H);
+    oklabToRgb(l, a, b, scratch, 0);
+    return bytesToHex();
+  }
+
+  function lerpHexLab(hexA, hexB, t) {
+    const a = hexToOklab(hexA);
+    const b = hexToOklab(hexB);
+    oklabToRgb(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, scratch, 0);
+    return bytesToHex();
+  }
+
+  // Most rolls hang one of the six palettes (never the one already up); the
+  // rest mix a fresh one — five close-valued pigments around one hue, muted
+  // the way this room likes them, sometimes with one brighter accent across.
+  function rollColors() {
+    const current = JSON.stringify(state.colors);
+    if (Math.random() < 0.6) {
+      const pool = PRESET_KEYS.filter((k) => JSON.stringify(PRESETS[k]) !== current);
+      return PRESETS[pick(pool)].slice();
+    }
+    const hue = rnd(0, 360);
+    const spread = rnd(15, 70);
+    const baseL = rnd(0.28, 0.6);
+    const chroma = rnd(0.05, 0.16);
+    const accent = Math.random() < 0.45 ? Math.floor(rnd(0, 5)) : -1;
+    const colors = [];
+    for (let i = 0; i < 5; i++) {
+      let H = hue + rnd(-spread, spread);
+      let L = Math.min(0.78, Math.max(0.16, baseL + rnd(-0.14, 0.14)));
+      let C = chroma * rnd(0.6, 1.3);
+      if (i === accent) {
+        H = hue + 180 + rnd(-30, 30);
+        L = Math.min(0.85, L + rnd(0.05, 0.25));
+        C = Math.max(C, 0.12);
+      }
+      colors.push(lchToHex(L, C, H));
+    }
+    return colors;
+  }
+
+  function rollSettings() {
+    return {
+      fields: 2 + Math.floor(Math.random() * 4),
+      colors: rollColors(),
+      speed: pick(["glacial", "slow", "restless"]),
+      softness: Math.round(rnd(0, 100)),
+      grain: Math.round(rnd(0, 100)),
+      drift: Math.round(rnd(0, 100)),
+      wander: Math.random() < 0.3,
+    };
+  }
+
+  function presetKeyFor(colors) {
+    const key = JSON.stringify(colors);
+    return PRESET_KEYS.find((k) => JSON.stringify(PRESETS[k]) === key) || "";
+  }
+
+  // Recolor the hung fields in place — the oscillators keep their phases, so a
+  // melt never makes the seams jump.
+  function retint() {
+    for (let i = 0; i < fields.length; i++) {
+      fields[i].base = oklabToLch(hexToOklab(state.colors[i]));
+    }
+  }
+
+  function reflectSliders() {
+    softnessCtl.value = state.softness;
+    grainCtl.value = state.grain;
+    driftCtl.value = state.drift;
+    swatchesEl.querySelectorAll("input").forEach((input, i) => {
+      input.value = state.colors[i];
+    });
+    applyGrain();
+  }
+
+  function cancelMelt() {
+    if (!meltRaf) return;
+    cancelAnimationFrame(meltRaf);
+    meltRaf = 0;
+    meltVeil = 0;
+    state.softness = Math.round(state.softness);
+    state.grain = Math.round(state.grain);
+    state.drift = Math.round(state.drift);
+  }
+
+  function rollDice() {
+    cancelMelt();
+    state = rollSettings();
+    syncUI();
+    presetSel.value = presetKeyFor(state.colors);
+    buildFields();
+  }
+
+  function meltRoll() {
+    cancelMelt();
+    const target = rollSettings();
+    const from = JSON.parse(JSON.stringify(state));
+    let swapped = false;
+    const t0 = performance.now();
+    const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+    presetSel.value = "";
+
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / MELT_MS);
+      const e = ease(p);
+      state.softness = from.softness + (target.softness - from.softness) * e;
+      state.grain = from.grain + (target.grain - from.grain) * e;
+      state.drift = from.drift + (target.drift - from.drift) * e;
+      state.colors = target.colors.map((c, i) => lerpHexLab(from.colors[i], c, e));
+      if (!swapped && p >= 0.5) {
+        // Under the fog: the count, the tempo, and wander swap; the new fields
+        // are built once here (fresh oscillators, unseen), then retinted.
+        swapped = true;
+        state.fields = target.fields;
+        state.speed = target.speed;
+        state.wander = target.wander;
+        buildSwatches();
+        buildFields();
+        setRadio(fieldsGroup, "n", state.fields);
+        setRadio(speedGroup, "v", state.speed);
+        wanderChk.checked = state.wander;
+      }
+      retint();
+      reflectSliders();
+      meltVeil = Math.sin(Math.PI * p) * MELT_VEIL;
+      if (p < 1) {
+        meltRaf = requestAnimationFrame(step);
+      } else {
+        meltRaf = 0;
+        meltVeil = 0;
+        presetSel.value = presetKeyFor(state.colors);
+      }
+    };
+    meltRaf = requestAnimationFrame(step);
+  }
+
+  document.getElementById("ctl-dice").addEventListener("click", rollDice);
+  document.getElementById("label-die").addEventListener("click", rollDice);
+  document.getElementById("ctl-melt").addEventListener("click", meltRoll);
+  document.getElementById("label-melt").addEventListener("click", meltRoll);
+
+  // A hand on any control ends a melt where it stands (capture phase, so the
+  // control's own handler then writes on top of the settled hanging).
+  panel.addEventListener("input", cancelMelt, true);
+  panel.addEventListener("change", cancelMelt, true);
+  panel.addEventListener(
+    "click",
+    (e) => {
+      if (e.target.closest(".steps button, .reset")) cancelMelt();
+    },
+    true,
+  );
 
   // ---------- go ----------
 

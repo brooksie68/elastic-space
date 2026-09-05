@@ -46,7 +46,8 @@ body {
 
 /* Tuner — speed and gradient controls. Sits above the drift portals. */
 .rift-tuner-toggle,
-.rift-music-toggle {
+.rift-music-toggle,
+.rift-dice-toggle {
   align-items: center;
   appearance: none;
   background: rgba(20, 20, 20, 0.45);
@@ -69,15 +70,71 @@ body {
 .rift-tuner-toggle:hover,
 .rift-tuner-toggle:focus-visible,
 .rift-music-toggle:hover,
-.rift-music-toggle:focus-visible {
+.rift-music-toggle:focus-visible,
+.rift-dice-toggle:hover,
+.rift-dice-toggle:focus-visible {
   background: rgba(20, 20, 20, 0.7);
   color: #fff;
 }
 
 .rift-tuner-toggle svg,
-.rift-music-toggle svg {
+.rift-music-toggle svg,
+.rift-dice-toggle svg {
   height: 1.15rem;
   width: 1.15rem;
+}
+
+/* The dice (2026-09-05) — Lumina's pair: a sharp die snaps to a new look, a
+   blurry die melts there over two seconds. In the corner they sit left of the
+   music note (sharp, then soft, then the note, then the sliders); in the panel
+   they head the preset strip, a little apart from the chips. */
+.rift-dice-toggle.rift-die-soft {
+  right: 7.2rem;
+}
+
+.rift-dice-toggle.rift-die-hard {
+  right: 10.3rem;
+}
+
+.rift-die-soft svg {
+  filter: blur(0.7px);
+}
+
+.tuner-die {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0.45rem;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 1.7rem;
+  justify-content: center;
+  padding: 0;
+  transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
+  width: 1.7rem;
+}
+
+.tuner-die svg {
+  height: 1.05rem;
+  width: 1.05rem;
+}
+
+.tuner-die:hover,
+.tuner-die:focus-visible {
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
+  transform: scale(1.12);
+}
+
+.tuner-die:active {
+  transform: scale(0.96);
+}
+
+.tuner-die-last {
+  margin-right: 0.6rem;
 }
 
 /* Music player — a tiny playlist. The note button sits just left of the tuner

@@ -340,7 +340,9 @@ function frame(now) {
   // field. (Vertical blur is a no-op on a 1px strip, and the extreme left and
   // right columns fading toward the backdrop reads as fog rolling off.)
   const soft = Math.max(0, 0.5 - config.edges) * 2;
-  if (soft > 0) context.filter = `blur(${(soft * soft * 48).toFixed(1)}px)`;
+  // The melt roll's veil adds to the fog and never lands in config.edges.
+  const blurPx = soft * soft * 48 + meltVeil;
+  if (blurPx > 0.05) context.filter = `blur(${blurPx.toFixed(1)}px)`;
   context.drawImage(bandStrip, 0, 0, viewWidth, viewHeight);
   context.filter = "none";
   drawScanlines(worldTime);
@@ -509,6 +511,7 @@ tunerToggle.addEventListener("click", () => {
 document.addEventListener("pointerdown", (e) => {
   if (tuner.hidden) return;
   if (tuner.contains(e.target) || tunerToggle.contains(e.target)) return;
+  if (e.target.closest && e.target.closest(".rift-dice-toggle")) return;
   tuner.hidden = true;
   tunerToggle.setAttribute("aria-expanded", "false");
   positionGuide();
@@ -552,6 +555,191 @@ document.getElementById("rift-reset").addEventListener("click", () => {
   reflectPalette();
   saveConfig();
 });
+
+// --- the dice (2026-09-05) ------------------------------------------------------
+// Lumina's pair, brought over on James's ask. The sharp die snaps every control
+// — speed, bands, wander, breathe, pull, edges, palette — to a new random
+// setting. The blurry die MELTS there over two seconds: numerics glide (in
+// slider space, so the motion matches a hand on the slider), the two colors
+// glide, and a fog veil rises to a peak at the midpoint where the palette's
+// structure (a middle color arriving or leaving) swaps while nothing is legible,
+// then clears as the new look sharpens in. Any hand on a control mid-melt stops
+// the glide where it stands. Both dice live twice: at the head of the preset
+// strip, and in the bottom-right corner so a roll needs no open panel.
+
+const MELT_MS = 2000;
+const MELT_VEIL = 18; // px of added fog at the midpoint swap
+
+let meltRaf = 0;
+let meltVeil = 0; // read by frame()
+
+function hslToHex(h, s, l) {
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(c * 255)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function lerpHex(a, b, t) {
+  const ra = hexToRgb(a);
+  const rb = hexToRgb(b);
+  return `#${ra
+    .map((v, i) => Math.round(lerp(v, rb[i], t)).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+// Most rolls land on one of the preset chips (never the one already up); the
+// rest deal a fresh palette — a saturated lead, sometimes a contrasting middle,
+// always a deep floor so the backdrop stays dark.
+function rollPalette() {
+  if (Math.random() < 0.65) {
+    const current = JSON.stringify(config.palette);
+    const pool = PRESETS.filter((p) => JSON.stringify(p.colors) !== current);
+    return pool[Math.floor(Math.random() * pool.length)].colors.slice();
+  }
+  const hue = Math.random() * 360;
+  const lead = hslToHex(hue, 0.7 + Math.random() * 0.3, 0.5 + Math.random() * 0.3);
+  const floor = hslToHex(
+    (hue + 120 + Math.random() * 120) % 360,
+    0.4 + Math.random() * 0.5,
+    0.04 + Math.random() * 0.12,
+  );
+  if (Math.random() < 0.5) return [lead, floor];
+  const mid = hslToHex(
+    (hue + 140 + Math.random() * 80) % 360,
+    0.6 + Math.random() * 0.4,
+    0.4 + Math.random() * 0.3,
+  );
+  return [lead, mid, floor];
+}
+
+// Speed rolls in slider space, weighted toward the low end (position^1.5 over
+// 0.15–0.70 → ×0.4 at the floor, ~×11 at the median, ~×190 at the ceiling) so
+// most rolls are legible and the gray smear stays an occasional event.
+function rollSettings() {
+  const speedPos = 0.15 + 0.55 * Math.pow(Math.random(), 1.5);
+  const wanderPos = Math.random();
+  return {
+    speed: sliderToSpeed(speedPos * 1000),
+    bands: 3 + Math.floor(Math.random() * (BAND_POOL_SIZE - 2)),
+    wander: WANDER_MAX * wanderPos * wanderPos,
+    breathe: Math.random(),
+    pull: Math.random(),
+    edges: Math.random(),
+    palette: rollPalette(),
+  };
+}
+
+function reflectAll() {
+  applyPalette();
+  reflectControls();
+  reflectPalette();
+}
+
+function cancelMelt() {
+  if (!meltRaf) return;
+  cancelAnimationFrame(meltRaf);
+  meltRaf = 0;
+  meltVeil = 0;
+  saveConfig(); // the look stays where it stands
+}
+
+function rollDice() {
+  cancelMelt();
+  Object.assign(config, rollSettings());
+  reflectAll();
+  saveConfig();
+}
+
+function meltRoll() {
+  cancelMelt();
+  const target = rollSettings();
+  const from = { ...config, palette: config.palette.slice() };
+  const fromPos = {
+    speed: speedToSlider(from.speed) / 1000,
+    wander: Math.sqrt(from.wander / WANDER_MAX),
+  };
+  const toPos = {
+    speed: speedToSlider(target.speed) / 1000,
+    wander: Math.sqrt(target.wander / WANDER_MAX),
+  };
+  // Same length: every color glides. Different lengths: the lead and the floor
+  // glide, the middle color is structural and swaps at the veil's peak.
+  const sameShape = from.palette.length === target.palette.length;
+  const fromLast = from.palette[from.palette.length - 1];
+  const toLast = target.palette[target.palette.length - 1];
+  let swapped = false;
+  const t0 = performance.now();
+  const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / MELT_MS);
+    const e = ease(p);
+    if (p >= 0.5) swapped = true;
+    config.speed = sliderToSpeed(lerp(fromPos.speed, toPos.speed, e) * 1000);
+    const wanderPos = lerp(fromPos.wander, toPos.wander, e);
+    config.wander = WANDER_MAX * wanderPos * wanderPos;
+    config.bands = clamp(Math.round(lerp(from.bands, target.bands, e)), 3, BAND_POOL_SIZE);
+    config.breathe = lerp(from.breathe, target.breathe, e);
+    config.pull = lerp(from.pull, target.pull, e);
+    config.edges = lerp(from.edges, target.edges, e);
+    if (sameShape) {
+      config.palette = target.palette.map((c, i) => lerpHex(from.palette[i], c, e));
+    } else {
+      const shape = swapped ? target.palette : from.palette;
+      config.palette = shape.map((c, i) => {
+        if (i === 0) return lerpHex(from.palette[0], target.palette[0], e);
+        if (i === shape.length - 1) return lerpHex(fromLast, toLast, e);
+        return c;
+      });
+    }
+    meltVeil = Math.sin(Math.PI * p) * MELT_VEIL;
+    reflectAll();
+    if (p < 1) {
+      meltRaf = requestAnimationFrame(step);
+    } else {
+      meltRaf = 0;
+      meltVeil = 0;
+      saveConfig();
+    }
+  };
+  meltRaf = requestAnimationFrame(step);
+}
+
+["rift-dice", "rift-dice-corner"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", (e) => {
+    rollDice();
+    e.currentTarget.blur();
+  });
+});
+["rift-melt", "rift-melt-corner"].forEach((id) => {
+  document.getElementById(id).addEventListener("click", (e) => {
+    meltRoll();
+    e.currentTarget.blur();
+  });
+});
+
+// A hand on any control ends a melt in flight (capture phase, so the control's
+// own handler then writes on top of the settled look). Programmatic slider
+// writes from reflectControls() fire no input events, so a melt can't cancel itself.
+tuner.addEventListener("input", cancelMelt, true);
+tuner.addEventListener("dblclick", cancelMelt, true);
+tuner.addEventListener(
+  "click",
+  (e) => {
+    if (e.target.closest(".tuner-chip, .tuner-reset")) cancelMelt();
+  },
+  true,
+);
 
 // --- music --------------------------------------------------------------------
 // A tiny playlist player. One Audio element plays TRACKS in order, wrapping at

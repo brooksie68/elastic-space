@@ -3,6 +3,41 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-05 — Claude (Fable 5.1) — THE DICE (James's ask)
+
+- James: "add the dice icon to the control panel... let's use both of the dice that we use in
+  Lumina, one of them switches automatically to some random settings, and the other one
+  switches over two seconds... not just the colors, but also the other controls... also put
+  the dice icon in the bottom right corner, right before the music selection." Built as asked.
+- TWO DICE, TWICE. In the panel they head the preset strip — sharp die, blurry die, then a
+  little more air than the chip gap (0.6rem extra), then the Monochrome chip and the rest.
+  In the corner they sit left of the music note: sharp, soft, note, sliders (`right:
+  10.3rem` / `7.2rem`, same round style). The die is drawn in the house 24-unit stroke style
+  (rect + five pips); the soft one is the same drawing under a 0.7px blur.
+- THE SHARP DIE snaps every control — speed, bands, wander, breathe, pull, edges AND the
+  gradient — to a new random setting. Speed rolls in slider space weighted low (×0.4 floor,
+  ~×12 median, ~×190 ceiling; the gray smear stays an occasional event); bands 3–60; wander
+  as the slider lays it out (position²); breathe/pull/edges uniform. Palette: 65% one of the
+  13 chips (never the one already up), 35% a fresh deal — saturated lead, a contrasting
+  middle half the time, always a deep floor so the backdrop stays dark. Sim
+  (scratch, 93,506 assertions) rolled it 10,000 times against the real functions.
+- THE MELT ROLL glides there over two seconds: numerics ease in slider space (so the motion
+  matches a hand on the slider), colors lerp, and a fog veil (18px at the peak, sin-shaped,
+  added to the edges blur, never written to config) rises so a palette that changes shape
+  (a middle color arriving or leaving) swaps at the peak where nothing is legible, then
+  clears as the new look sharpens in. Sliders track live during the melt. Any hand on a
+  control — slider, chip, reset, double-click — cancels mid-flight and the look stays where
+  it stands (capture-phase listeners; programmatic slider writes fire no input events).
+- Click-away: the corner dice are exempt — rolling one while the panel is open leaves it
+  open so you can watch the sliders move. Everything else still dismisses on pointerdown.
+- Guide: new `dice` entry; `presets` now reads "13 chips after the dice". world.json summary
+  mentions the dice.
+- Silent lab: `tmp/chrome-rift/dice-check.html` (KEEP) — the real page with Audio + the
+  sound control stubbed, `?open=1` opens the panel. Verified in the pane: sharp roll,
+  melt mid-flight (veil visible), melt settled, cancel-by-slider holds the values, panel
+  stays open on a corner roll, guide entry renders.
+- Where things stand: awaiting James's eyes on the roll odds and the melt feel.
+
 ## 2026-07-25 — Claude (Fable 5) — click-away dismissal (site-wide sweep)
 
 - New house rule from James: every control panel dismisses on click-away, no

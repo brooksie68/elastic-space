@@ -15,15 +15,59 @@
     <a class="portal portal-seam" data-drift href="../../../index.html" aria-label="Drift somewhere else"></a>
 
     <div class="wall-label">
-      <button type="button" class="label-card" id="label-card" aria-expanded="false" aria-controls="panel">
-        <span class="label-title">Colors, Meeting</span>
-        <span class="label-medium">pigment on light, dimensions variable</span>
-      </button>
+      <div class="label-row">
+        <button type="button" class="label-die" id="label-die" title="Roll the dice — a new hanging" aria-label="Roll the dice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3"></rect>
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </button>
+        <button type="button" class="label-die die-soft label-die-last" id="label-melt" title="Melt roll — glide to a new hanging over two seconds" aria-label="Melt roll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3"></rect>
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </button>
+        <button type="button" class="label-card" id="label-card" aria-expanded="false" aria-controls="panel">
+          <span class="label-title">Colors, Meeting</span>
+          <span class="label-medium">pigment on light, dimensions variable</span>
+        </button>
+      </div>
       <a class="label-next" data-drift href="../../../index.html" aria-label="Drift somewhere else">Next Gallery</a>
     </div>
 
     <aside class="panel" id="panel" hidden aria-label="Conservator's panel">
       <h2 class="panel-title">Conservator&rsquo;s Notes</h2>
+      <div class="panel-dice">
+        <button type="button" class="panel-die die-hard" id="ctl-dice" title="Roll the dice — a whole new hanging, every control" aria-label="Roll the dice">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3"></rect>
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </button>
+        <button type="button" class="panel-die die-soft" id="ctl-melt" title="Melt roll — glide to a new hanging over two seconds" aria-label="Melt roll">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3"></rect>
+            <circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="8" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="8" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+            <circle cx="16" cy="16" r="1.3" fill="currentColor" stroke="none"></circle>
+          </svg>
+        </button>
+      </div>
 
       <div class="row">
         <span class="row-name">Fields</span>

@@ -8,6 +8,14 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-05
+
+- Chrome Rift: THE DICE — Lumina's pair (sharp snap + two-second melt under a fog veil) at the
+  head of the preset strip and in the bottom-right corner; every control + the gradient rolls.
+  Silent lab `tmp/chrome-rift/dice-check.html`. (James: "actually pretty dope.")
+- Colors, Meeting: the same pair in the conservator's panel's top-right corner and, thin and
+  frosted, on the wall label before the title; pigments mixed in OKLCH, melt fogs the seams.
+
 ## 2026-09-04 (Orb Dimension: THE BALL v63 → Phase 2 volumes v64, the day by James's eye)
 
 - Orb Dimension v63 THE BALL: every eligible orb a per-pixel sphere impostor (real depth
