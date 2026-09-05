@@ -1,27 +1,15 @@
 [
   {
-    "id": "powers-of-ten-it-ends-somewhere-silly",
-    "title": "Powers of Ten (it ends somewhere silly)",
-    "synopsis": "A continuous zoom from something ordinary, a glass of water, down through the molecule, the atom, the electron cloud, past the Planck length... and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world.",
-    "vibe": "wonder, then deadpan. Eames's Powers of Ten with a Far Side panel at the bottom. Cosmic awe that never gets to keep a straight face.",
-    "links": "https://en.wikipedia.org/wiki/Powers_of_Ten_(film)  |  src/worlds/the-valence-lab (baked Hartree-Fock densities for the honest middle of the zoom)  |  src/worlds/the-valence-lab/reimagine.md (roll 7 of the ten, where this came from)",
-    "sound": "a rising drone that thins as the scale falls; dead silence and a room tone (or a drive-thru speaker) at the punchline",
-    "ideas": "James, 2026-09-01, spun off the Valence Lab rethink: powers of ten would be cool enough to be worth doing separately... and every time it ends up somewhere silly or funny like a Wendy's... below the Planck length is the mall... a clown face... a cookie... a big turtle... etc. lol... other ES worlds.\n\nClaude notes: the zoom's honest middle (glass of water > one water molecule > the oxygen atom > the electron cloud) can reuse the Valence Lab's baked densities, so the science stretch is real before the joke lands. The punchline is a random draw from a list that only ever grows (same growth model as Otis's floors). Endings that are other Elastic Space worlds double as drift exits: zoom past the Planck length and you simply arrive somewhere. Zoom should be continuous and scrubbable, not chaptered, so the joke can be re-run.",
-    "updated": "2026-09-02T01:26:21.806Z",
-    "status": "draft",
-    "created": "2026-09-02T01:26:21.806Z"
-  },
-  {
-    "id": "cute-animal-overload",
-    "title": "Cute Animal Overload",
-    "synopsis": "It's nothing but kittens and puppies and capybaras and owl babies in a beautiful vale full of sunlight, flowers, and rich, green grass",
-    "vibe": "cuteness overload",
-    "links": "",
-    "sound": "",
-    "ideas": "",
-    "updated": "2026-08-04T02:45:33.128Z",
-    "status": "draft",
-    "created": "2026-08-04T02:45:33.129Z"
+    "id": "the-reich-machine",
+    "title": "The Reich Machine",
+    "synopsis": "Inspired by Steve Reich's experiments with phase shifting. it will play two sets of musical notes (configurable) or percussion sounds (configurable) at the same time but one is playing at some amount (configurable) slower or faster on the metronome. crazy patterns and unintended harmonies and melodies ensue.",
+    "vibe": "Upbeat, experimental, playful, inviting",
+    "links": "https://en.wikipedia.org/wiki/Steve_Reich",
+    "sound": "we need to experiment with DAWs and sound generators cause the stuff out of the box isn't going to cut it",
+    "ideas": "a cool looking machine like a synth/drum machine. with many parameters. \nset different scales and chords \nset different rhythms and tempo offset amounts\netc\na set of musical effects as well like reverb, delay, harmonizer, compression, distortion, ring modulator, envelope filter, auto-wah, and univibe\n\npossible feature: a visualization panel (maybe its Lumina?!)",
+    "updated": "2026-09-05T01:39:18.100Z",
+    "status": "engaged",
+    "created": "2026-07-19T23:15:38.697Z"
   },
   {
     "id": "battle-level-w-the-jabberwocky-rifle",
@@ -30,10 +18,23 @@
     "vibe": "dark, violent, funny, ridiculous. insane clown posse vibe",
     "links": "",
     "sound": "",
-    "ideas": "It's a dungeon crawler where only the weapon and part of the hands is visible. You're trying to get to the Center of the Maze where the big boss is and take him out. The only problem is the gun you're using. It's called the Jabberwocky rifle, and every single time it shoots, it does something different and something very unexpected most of the time. The way we're gonna handle this is that Claude is gonna invent with me at least fifty different ways of dispatching an enemy. Maybe we'll even add more over time. and these things are gonna be wildly different from each other. Let me just give some examples right out the top of my head. And this is not to be limited to this list, and nor is it any order, nor is it off the table to use these items. It's fine to use them, but we need a whole bunch more than just these. A bullet, a hail of knives, a flying chainsaw, a rocket, a hail of baseballs, a a frozen blueberry pie, a grain of sand traveling at almost the speed of light. A huge fist. A smothering pile of jello. A flame thrower. Poison gas.  a rabid harpy eagle, a firehose of glue, a stream of live pirhanas, a tiny black hole, a freight train, lava, a giant mousetrap, a hole forms under the target and it drops out of sight.\n\n\nyou get the idea!",
-    "updated": "2026-07-29T01:35:50.479Z",
+    "ideas": "It's a dungeon crawler where only the weapon and part of the hands is visible. You're trying to get to the Center of the Maze where the big boss is and take him out. The only problem is the gun you're using. It's called the Jabberwocky rifle, and every single time it shoots, it does something different and something very unexpected most of the time. The way we're gonna handle this is that Claude is gonna invent with me at least fifty different ways of dispatching an enemy. Maybe we'll even add more over time. and these things are gonna be wildly different from each other. Let me just give some examples right out the top of my head. And this is not to be limited to this list, and nor is it any order, nor is it off the table to use these items. It's fine to use them, but we need a whole bunch more than just these. A bullet, a hail of knives, a flying chainsaw, a rocket, a hail of baseballs, a frozen blueberry pie, a grain of sand traveling at almost the speed of light. A huge fist. A smothering blast of jello. A flame thrower. Poison gas.  a rabid harpy eagle, a firehose of glue, a stream of live piranhas, a tiny black hole, a freight train, lava, a giant mousetrap, a hole forms under the target and it drops out of sight, a donkey kick, a freight train, a tornado, a pulverizing onslaught of gravel, a lady's handbag swung by a disembodied old lady's arm, a bunch of killer vines, a herring, etc\n\n\nyou get the idea!",
+    "updated": "2026-09-05T00:23:42.466Z",
+    "status": "engaged",
+    "created": "2026-07-29T01:35:50.479Z",
+    "engaged": "2026-09-05T04:18:41.938Z"
+  },
+  {
+    "id": "fireplace",
+    "title": "Fireplace",
+    "synopsis": "It's like the Yule log for any season but sometimes surprising or supernatural things happen",
+    "vibe": "Warm, calm, relaxing, meditative, surprising",
+    "links": "",
+    "sound": "a good sample of a crackling fire",
+    "ideas": "it's just pretty much... a fireplace. but occasionally surprising things happen. Little creatures like little fire elves appear occasionally in the fire, peeking around a log or looking at you, sitting on top of the fire with a little bit of an insolent smirk. Sometimes things rise up out of the fire and the smoke like ghostly images of things, skulls, and ghosts, and people's faces. Occasionally, fire salamanders move around underneath the fire, go in and out. Maybe a fire truck pulls up. It's very tiny. It tries to squirt water in a fire until it fails. Some little guys would get out and go, you need me, Pete? Diddley, me, peep. Like, little tiny firemen, but they can't put the fire out, so they race off again. Maybe there's a phoenix that comes up out of the fire and flies up into the chimney in the shower of spark and fire. Oh, fire tornado action. Like, a little micro tornado. These are just riffs.",
+    "updated": "2026-07-19T05:41:41.683Z",
     "status": "draft",
-    "created": "2026-07-29T01:35:50.479Z"
+    "created": "2026-07-19T05:40:40.612Z"
   },
   {
     "id": "backrooms-world",
@@ -48,16 +49,28 @@
     "created": "2026-07-28T05:19:37.380Z"
   },
   {
-    "id": "marble-drop-rebuild-one-level",
-    "title": "Marble Drop rebuild",
-    "synopsis": "",
-    "vibe": "",
-    "links": "https://en.wikipedia.org/wiki/Marble_Drop",
-    "sound": "",
-    "ideas": "",
-    "updated": "2026-08-04T02:45:57.854Z",
+    "id": "retro-arcade",
+    "title": "Retro Arcade",
+    "synopsis": "Two games already built: Surround and Lunar Lander. These are so fun. We'll do more. Eventually an arcade like the Mandala Shop",
+    "vibe": "Funky, techy, nerdy, neon and blacklights",
+    "links": "",
+    "sound": "an old school coin operated video arcade",
+    "ideas": "Actual Consoles for the games. user walks around. puts a coin in the machine and plays. need at least 12 games. and maybe skeeball, too",
+    "updated": "2026-09-05T01:31:01.203Z",
     "status": "draft",
-    "created": "2026-07-27T05:00:14.549Z"
+    "created": "2026-09-05T01:31:01.204Z"
+  },
+  {
+    "id": "powers-of-ten-it-ends-somewhere-silly",
+    "title": "Powers of Ten (it ends somewhere silly)",
+    "synopsis": "A continuous zoom from something ordinary, a glass of water, down through the molecule, the atom, the electron cloud, past the Planck length... and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world.",
+    "vibe": "wonder, then deadpan. Eames's Powers of Ten with a Far Side panel at the bottom. Cosmic awe that never gets to keep a straight face.",
+    "links": "https://en.wikipedia.org/wiki/Powers_of_Ten_(film)  |  src/worlds/the-valence-lab (baked Hartree-Fock densities for the honest middle of the zoom)  |  src/worlds/the-valence-lab/reimagine.md (roll 7 of the ten, where this came from)",
+    "sound": "a rising drone that thins as the scale falls; dead silence and a room tone (or a drive-thru speaker) at the punchline",
+    "ideas": "James, 2026-09-01, spun off the Valence Lab rethink: powers of ten would be cool enough to be worth doing separately... and every time it ends up somewhere silly or funny like a Wendy's... below the Planck length is the mall... a clown face... a cookie... a big turtle... etc. lol... other ES worlds.\n\nClaude notes: the zoom's honest middle (glass of water > one water molecule > the oxygen atom > the electron cloud) can reuse the Valence Lab's baked densities, so the science stretch is real before the joke lands. The punchline is a random draw from a list that only ever grows (same growth model as Otis's floors). Endings that are other Elastic Space worlds double as drift exits: zoom past the Planck length and you simply arrive somewhere. Zoom should be continuous and scrubbable, not chaptered, so the joke can be re-run.",
+    "updated": "2026-09-02T01:26:21.806Z",
+    "status": "draft",
+    "created": "2026-09-02T01:26:21.806Z"
   },
   {
     "id": "the-harmonograph-parlor-victorian-two-pendulum-drawing-machine",
@@ -70,30 +83,6 @@
     "updated": "2026-07-24T05:22:36.789Z",
     "status": "draft",
     "created": "2026-07-22T02:57:52.315Z"
-  },
-  {
-    "id": "the-reich-machine",
-    "title": "The Reich Machine",
-    "synopsis": "Inspired by Steve Reich's experiments with phase shifting. it will play a set of notes, each a tiny bit slower than the others. crazy patterns and unintended harmonies and melodies ensue.",
-    "vibe": "Upbeat, experimental, playful, inviting",
-    "links": "https://en.wikipedia.org/wiki/Philip_Glass",
-    "sound": "we need to experiment with DAWs and sound generators cause the stuff out of the box isn't going to cut it",
-    "ideas": "a cool looking machine like a synth/drum machine. with many parameters. \nset different scales and chords \nset different rhythms and tempo offset amounts\netc\n\nand maybe even a visualization panel",
-    "updated": "2026-07-19T23:16:19.307Z",
-    "status": "draft",
-    "created": "2026-07-19T23:15:38.697Z"
-  },
-  {
-    "id": "mossouk-baldah",
-    "title": "Mossouk Baldah",
-    "synopsis": "A walkable village full of shops, buildings, and activities, populated by NPCs and a visitor avatar. The first enterable shop is the Mandala Shop — its door in the village links to the existing world as a fixed authored route, keeping the shop interior and its curator setup untouched.",
-    "vibe": "A living place rather than a single room — streets you wander, villagers going about their business, doors that lead somewhere. Mandala Shop's warmth scaled up to a whole town.",
-    "links": "src/worlds/mandala-shop (reference interior + curator adapter); Meshy premade libraries for buildings/props; DLO postmaster pipeline for rigged NPCs",
-    "sound": "Village ambience bed (ElevenLabs), footsteps, distant activity; possibly a Suno town theme James curates later.",
-    "ideas": "First cut: one street, 3-4 building facades, 2-3 wandering NPCs (Meshy anim-packs: walk/idle/wave), one enterable shop (Mandala, fixed link through its door). Open questions: single visitor avatar vs multiplayer (avatar-only gets 90% of the feel for 10% of the cost); whether other buildings become future worlds' front doors; activities arrive building-by-building later. Meshy character pipeline and curator module are validated pieces.",
-    "updated": "2026-07-19T22:21:18.639Z",
-    "status": "draft",
-    "created": "2026-07-19T22:21:18.640Z"
   },
   {
     "id": "the-character-falls",
@@ -120,16 +109,40 @@
     "created": "2026-07-19T05:47:46.976Z"
   },
   {
-    "id": "fireplace",
-    "title": "Fireplace",
-    "synopsis": "It's like the Yule log for any season but sometimes surprising or supernatural things happen",
-    "vibe": "Warm, calm, relaxing, meditative, surprising",
+    "id": "cute-animal-overload",
+    "title": "Cute Animal Overload",
+    "synopsis": "It's nothing but kittens and puppies and capybaras and owl babies in a beautiful vale full of sunlight, flowers, and rich, green grass",
+    "vibe": "cuteness overload",
     "links": "",
-    "sound": "a good sample of a crackling fire",
-    "ideas": "it's just pretty much... a fireplace. but occasionally surprising things happen. Little creatures like little fire elves appear occasionally in the fire, peeking around a log or looking at you, sitting on top of the fire with a little bit of an insolent smirk. Sometimes things rise up out of the fire and the smoke like ghostly images of things, skulls, and ghosts, and people's faces. Occasionally, fire salamanders move around underneath the fire, go in and out. Maybe a fire truck pulls up. It's very tiny. It tries to squirt water in a fire until it fails. Some little guys would get out and go, you need me, Pete? Diddley, me, peep. Like, little tiny firemen, but they can't put the fire out, so they race off again. Maybe there's a phoenix that comes up out of the fire and flies up into the chimney in the shower of spark and fire. Oh, fire tornado action. Like, a little micro tornado. These are just riffs.",
-    "updated": "2026-07-19T05:41:41.683Z",
+    "sound": "",
+    "ideas": "",
+    "updated": "2026-08-04T02:45:33.128Z",
     "status": "draft",
-    "created": "2026-07-19T05:40:40.612Z"
+    "created": "2026-08-04T02:45:33.129Z"
+  },
+  {
+    "id": "marble-drop-rebuild-one-level",
+    "title": "Marble Drop rebuild",
+    "synopsis": "",
+    "vibe": "",
+    "links": "https://en.wikipedia.org/wiki/Marble_Drop",
+    "sound": "",
+    "ideas": "",
+    "updated": "2026-08-04T02:45:57.854Z",
+    "status": "draft",
+    "created": "2026-07-27T05:00:14.549Z"
+  },
+  {
+    "id": "mossouk-baldah",
+    "title": "Mossouk Baldah",
+    "synopsis": "A walkable village full of shops, buildings, and activities, populated by NPCs and a visitor avatar. The first enterable shop is the Mandala Shop — its door in the village links to the existing world as a fixed authored route, keeping the shop interior and its curator setup untouched.",
+    "vibe": "A living place rather than a single room — streets you wander, villagers going about their business, doors that lead somewhere. Mandala Shop's warmth scaled up to a whole town.",
+    "links": "src/worlds/mandala-shop (reference interior + curator adapter); Meshy premade libraries for buildings/props; DLO postmaster pipeline for rigged NPCs",
+    "sound": "Village ambience bed (ElevenLabs), footsteps, distant activity; possibly a Suno town theme James curates later.",
+    "ideas": "First cut: one street, 3-4 building facades, 2-3 wandering NPCs (Meshy anim-packs: walk/idle/wave), one enterable shop (Mandala, fixed link through its door). Open questions: single visitor avatar vs multiplayer (avatar-only gets 90% of the feel for 10% of the cost); whether other buildings become future worlds' front doors; activities arrive building-by-building later. Meshy character pipeline and curator module are validated pieces.",
+    "updated": "2026-07-19T22:21:18.639Z",
+    "status": "draft",
+    "created": "2026-07-19T22:21:18.640Z"
   },
   {
     "id": "otis",

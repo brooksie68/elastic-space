@@ -24,8 +24,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
   humanoid-only, refused twice), gibs with physics, blood decals, the rifle + gauntlets as a real
   viewmodel, 42 ElevenLabs one-shots with synthesis fallbacks, calliope gone. ~700 Meshy credits.
   Sim 116,837 green; silent 3D lab `tmp/jabberwocky/lab3d.html` (KEEP) + Meshy/Blender pipeline
-  scripts beside it. NOT flown since the rebuild. AWAITING JAMES: motion, look, hands, gore, odds;
-  his Suno track → `src/worlds/jabberwocky/assets/audio/theme.mp3`; then ship (registry, note off,
+  scripts beside it. His Suno track is in (`assets/audio/theme.mp3`, default 0.22 — "keep it rather
+  low"). His first load was black (a constant lost in the draw.js trim; fixed, `draw-check.mjs`
+  guards it now); second load "works now," he started testing, "really good work tonight."
+  AWAITING JAMES'S NOTES: motion, look, hands, gore, odds; then ship (registry, note off,
   World Ideas #64 → live, draft status → built).
 
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24

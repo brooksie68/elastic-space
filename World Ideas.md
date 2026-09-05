@@ -226,7 +226,9 @@ the 100×100×40 km Orb Dimension expansion, parked on the CLAUDE.md Todo pendin
 planning conversation. Depends on the same tech (depth strategy at long range, camera-local
 dust, clumped population seeding) — build the tech once in Orb Dimension, inherit it here.
 
-### 58. The Valence Lab — *several sessions* — `in progress` → `src/worlds/the-valence-lab/`
+### 58. The Valence Lab — *several sessions* — `archived` → `archive/the-valence-lab/`
+
+**2026-09-05:** ARCHIVED on James's word ("buh bye") the night its scope came to the Snap bench (`src/worlds/snap/scope.js`, rule 17 in Snap's CLAUDE.md). Snap carries its own copies of the physics modules and the Hartree-Fock bake; the solver and sims stay in `tmp/the-valence-lab/`.
 
 **2026-09-04:** its successor **Snap!** is a world of its own — `src/worlds/snap/` (`in progress`, draft, no exits yet). The lab stays: its coherence scope is to come out onto the Snap bench (Snap's reimagine.md §15 item 3).
 James's brief (2026-07-24): the most realistic molecule visualizer possible — pick
@@ -300,6 +302,22 @@ rounds with James: the 1979 look pulled all the way to 2026 (max-blend lines, no
 a two-stage LEM, landing tech, the endless chunked moon that remembers your life, the
 ring accelerator, and four ways out (drive-through door, relay tower, horizon ring, the
 hatch in your wreck). Missions are the next round.
+
+### 64. Jabberwocky — *one session* — `draft` (built 2026-09-05)
+
+James's admin-panel draft "Battle Level w the Jabberwocky Rifle": a Doom-like maze crawler where
+only the rifle and your gloved hands are visible, and every pull of the trigger fires something
+different — a hail of knives, a frozen blueberry pie, a grain of sand at almost the speed of light, a
+freight train that breaks walls, a herring. Built as a one-shot on his go: one hundred gags across
+four tiers (dispatch / weird / dud / backfire, 60-25-10-5), fifteen shared death outcomes, scars that
+stay until you leave the level, four mazes and the Jabberwock in the middle with a rifle exactly like
+yours (his duds and backfires included). `src/worlds/jabberwocky/`. James flew the first cut the
+same night (a 2D raycaster with clown goons): too clown-like, the turning made him sick, too
+low-res — so it was REBUILT that night on an agreed plan as a proper dungeon: three.js geometry
+with Meshy tiles and baked torch light, rooms carved into the mazes, five dungeon creatures as
+rigged Meshy models (the Jabberwock a posed statue, Meshy's rigger being humanoid-only), giblets
+with physics, PG-13 cartoon gore, the rifle as a real viewmodel, ElevenLabs one-shots. Draft,
+unwired, awaiting James's flight of the rebuild and his Suno track.
 
 ## Built on commission — 2026-07-12
 

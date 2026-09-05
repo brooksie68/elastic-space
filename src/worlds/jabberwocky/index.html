@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jabberwocky</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23120a12'/%3E%3Crect x='4' y='13' width='20' height='6' rx='3' fill='%235a2a9a'/%3E%3Ccircle cx='21' cy='18' r='7' fill='%23c2189c'/%3E%3Ctext x='21' y='21' font-size='8' font-family='Impact' fill='%23ffd23a' text-anchor='middle'%3E%3F%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --ink: #f4ecf2;
+      --ink-dim: rgba(244, 236, 242, 0.55);
+      --pink: #ff2fb8;
+      --gold: #ffd23a;
+      --green: #58ff7a;
+      --red: #ff2040;
+      --bg: #08050a;
+      --glass: rgba(14, 8, 16, 0.72);
+      --glass-edge: rgba(255, 47, 184, 0.28);
+      --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+      --carny: Impact, "Arial Black", "Franklin Gothic Heavy", sans-serif;
+      --ui-base: 15px;
+      --ui-scale: 1;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { background: var(--bg); overflow: hidden; font-family: var(--sans); color: var(--ink); user-select: none; -webkit-user-select: none; touch-action: none; cursor: crosshair; }
+    #view { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    #overlay { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
+
+    /* ---- the plate: what the rifle just did ---- */
+    #plate { position: fixed; left: 50%; top: 9vh; transform: translateX(-50%) rotate(-2deg); text-align: center; pointer-events: none; opacity: 0; transition: opacity 180ms ease, transform 180ms ease; max-width: 88vw; }
+    #plate.show { opacity: 1; transform: translateX(-50%) rotate(-2deg) scale(1); }
+    #plate.pop { animation: pop 320ms cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes pop { 0% { transform: translateX(-50%) rotate(-2deg) scale(0.6); } 100% { transform: translateX(-50%) rotate(-2deg) scale(1); } }
+    #plate-name { font-family: var(--carny); font-size: clamp(1.6rem, 4.2vw, 3.4rem); letter-spacing: 0.04em; color: var(--gold); text-shadow: 0 0 2px #000, 3px 3px 0 #120a12, 0 0 24px rgba(255, 210, 58, 0.45); line-height: 1; }
+    #plate.dud #plate-name { color: #c9c1cc; text-shadow: 0 0 2px #000, 3px 3px 0 #120a12; }
+    #plate.backfire #plate-name { color: var(--red); text-shadow: 0 0 2px #000, 3px 3px 0 #120a12, 0 0 24px rgba(255, 32, 64, 0.5); }
+    #plate.weird #plate-name { color: var(--pink); text-shadow: 0 0 2px #000, 3px 3px 0 #120a12, 0 0 24px rgba(255, 47, 184, 0.5); }
+    #plate-line { margin-top: 0.5em; font-size: clamp(0.85rem, 1.4vw, 1.15rem); font-weight: 600; letter-spacing: 0.04em; color: var(--ink); text-shadow: 0 1px 2px #000, 0 0 12px rgba(0, 0, 0, 0.8); }
+
+    /* ---- HUD ---- */
+    #hud { position: fixed; inset: 0; pointer-events: none; }
+    #hud .glass { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
+    #top-left { position: fixed; left: 1rem; top: 1rem; padding: 0.55rem 0.9rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    #level-name { font-family: var(--carny); font-size: 1.15rem; letter-spacing: 0.08em; color: var(--pink); }
+    #level-meta { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+    #level-meta span + span::before { content: '·'; margin: 0 0.5em; }
+    #key-icon { display: inline-block; width: 0.9em; height: 0.9em; vertical-align: -0.1em; margin-right: 0.3em; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); opacity: 0.2; }
+    #key-icon.held { opacity: 1; }
+    #health { position: fixed; left: 1rem; bottom: 1rem; padding: 0.6rem 0.9rem 0.7rem; width: min(300px, 40vw); }
+    #health .lbl { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.26em; color: var(--ink-dim); display: flex; justify-content: space-between; }
+    #hp-track { margin-top: 0.4rem; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+    #hp-fill { height: 100%; width: 100%; background: var(--green); border-radius: 5px; box-shadow: 0 0 10px rgba(88, 255, 122, 0.5); transition: width 160ms ease, background 300ms ease; }
+    #hp-fill.low { background: var(--red); box-shadow: 0 0 12px rgba(255, 32, 64, 0.6); animation: throb 600ms ease-in-out infinite alternate; }
+    @keyframes throb { from { opacity: 1; } to { opacity: 0.5; } }
+    #minimap { position: fixed; right: 1rem; bottom: 1rem; width: 150px; height: 150px; border-radius: 12px; opacity: 0.85; }
+    #minimap.off { display: none; }
+    #cross { position: fixed; left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
+    #cross::before, #cross::after { content: ''; position: absolute; background: var(--ink); box-shadow: 0 0 3px #000; }
+    #cross::before { left: 6px; top: 0; width: 2px; height: 14px; }
+    #cross::after { top: 6px; left: 0; width: 14px; height: 2px; }
+    #hint { position: fixed; left: 50%; bottom: 5.5rem; transform: translateX(-50%); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); text-shadow: 0 1px 2px #000; opacity: 0; transition: opacity 300ms ease; pointer-events: none; white-space: nowrap; }
+    #hint.show { opacity: 1; }
+
+    /* ---- the cards: title, level, death, the end ---- */
+    #card { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(4, 2, 6, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; pointer-events: none; transition: opacity 260ms ease; z-index: 20; }
+    #card.show { opacity: 1; pointer-events: auto; }
+    #card .box { text-align: center; padding: 2.2rem 2.8rem 2rem; max-width: min(760px, 92vw); background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 18px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7); }
+    #card-kicker { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; color: var(--pink); }
+    #card-title { margin-top: 0.4rem; font-family: var(--carny); font-size: clamp(2rem, 6vw, 4.4rem); line-height: 0.95; color: var(--gold); text-shadow: 3px 3px 0 #120a12, 0 0 30px rgba(255, 210, 58, 0.35); }
+    #card-title.red { color: var(--red); text-shadow: 3px 3px 0 #120a12, 0 0 30px rgba(255, 32, 64, 0.4); }
+    #card-sub { margin-top: 0.8rem; font-size: 1.05rem; line-height: 1.5; color: var(--ink); }
+    #card-lines { margin-top: 1rem; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em; color: var(--ink-dim); line-height: 1.8; }
+    #card-lines:empty { display: none; }
+    #card-btn { margin-top: 1.4rem; padding: 0.8rem 2.4rem; border: 0; border-radius: 12px; background: var(--pink); color: #120a12; font-family: var(--carny); font-size: 1.3rem; letter-spacing: 0.1em; cursor: pointer; box-shadow: 0 8px 24px rgba(255, 47, 184, 0.35); }
+    #card-btn:hover { filter: brightness(1.1); }
+    #card-keys { margin-top: 1rem; font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
+    #card-keys b { color: var(--ink); font-weight: 800; }
+
+    /* ---- overlays drawn by CSS: hurt, snot, fall ---- */
+    #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%); }
+    #fade { position: fixed; inset: 0; pointer-events: none; background: #000; opacity: 0; transition: opacity 600ms ease; z-index: 30; }
+    #fade.on { opacity: 1; }
+
+    /* ---- configuration ---- */
+    #tuner-toggle { position: fixed; left: 1rem; top: 5.2rem; z-index: 12; padding: 0.4rem 0.75rem; border: 1px solid var(--glass-edge); border-radius: 10px; background: var(--glass); color: var(--ink-dim); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(10px); }
+    #tuner-toggle:hover { color: var(--ink); }
+    #tuner { position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 105%); width: min(1100px, 96vw); max-height: 78vh; overflow: auto; z-index: 15; background: rgba(12, 7, 14, 0.94); border: 1px solid var(--glass-edge); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.7); transition: transform 240ms ease; font-size: calc(var(--ui-base) * var(--ui-scale)); padding: 1.1em 1.4em 1.4em; }
+    #tuner.open { transform: translate(-50%, 0); }
+    #tuner-head { display: flex; align-items: center; gap: 1em; margin-bottom: 0.8em; }
+    #tabs { display: flex; gap: 0.4em; }
+    #tabs button, .t-seg button, .t-btn, #preset-row button { font: inherit; font-size: 0.72em; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; padding: 0.5em 1em; border-radius: 8px; border: 1px solid var(--glass-edge); background: transparent; color: var(--ink-dim); cursor: pointer; }
+    #tabs button.on, .t-seg button.on { background: var(--pink); color: #120a12; border-color: var(--pink); }
+    .t-btn:hover, #tabs button:hover, .t-seg button:hover, #preset-row button:hover { color: var(--ink); }
+    #tuner-title { font-family: var(--carny); font-size: 1.1em; letter-spacing: 0.1em; color: var(--gold); }
+    #text-size { margin-left: auto; display: flex; align-items: center; gap: 0.4em; font-size: 0.7em; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); }
+    #text-size button { font: inherit; width: 2em; height: 2em; border-radius: 6px; border: 1px solid var(--glass-edge); background: transparent; color: var(--ink); cursor: pointer; }
+    .tab-body { display: none; }
+    .tab-body.on { display: block; }
+    .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15em, 1fr)); gap: 0.7em 1.2em; }
+    .t-row { display: flex; flex-direction: column; gap: 0.3em; }
+    .t-row.wide { grid-column: 1 / -1; }
+    .t-label { display: flex; justify-content: space-between; font-size: 0.74em; font-weight: 700; letter-spacing: 0.06em; color: var(--ink); }
+    .t-label span:last-child { color: var(--gold); font-variant-numeric: tabular-nums; }
+    .t-sum { font-size: 0.68em; color: var(--ink-dim); line-height: 1.4; }
+    input[type=range] { width: 100%; accent-color: var(--pink); height: 1.4em; }
+    .t-seg { display: flex; gap: 0.3em; flex-wrap: wrap; }
+    select, input[type=text] { font: inherit; font-size: 0.8em; padding: 0.4em 0.6em; border-radius: 8px; border: 1px solid var(--glass-edge); background: #1a0f1e; color: var(--ink); }
+    .t-note { margin-top: 0.9em; font-size: 0.66em; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+    #preset-row { display: flex; gap: 0.4em; align-items: center; margin-bottom: 0.9em; flex-wrap: wrap; }
+    .t-btn { margin-top: 0.9em; }
+    h3.t-h { font-size: 0.7em; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); margin: 1em 0 0.5em; grid-column: 1 / -1; }
+
+    /* the ways out: hidden drift anchors the game clicks */
+    a.exit { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <canvas id="overlay"></canvas>
+  <div id="vignette"></div>
+
+  <div id="plate"><div id="plate-name"></div><div id="plate-line"></div></div>
+
+  <div id="hud">
+    <div id="top-left" class="glass">
+      <div id="level-name">JABBERWOCKY</div>
+      <div id="level-meta"><span><i id="key-icon"></i>KEY</span><span id="goons-left">—</span><span id="gags-seen">0 OF 100 SEEN</span></div>
+    </div>
+    <div id="health" class="glass">
+      <div class="lbl"><span>YOU</span><span id="hp-num">100</span></div>
+      <div id="hp-track"><div id="hp-fill"></div></div>
+    </div>
+    <canvas id="minimap" width="300" height="300"></canvas>
+    <div id="cross"></div>
+    <div id="hint"></div>
+  </div>
+
+  <button id="tuner-toggle" type="button">configuration</button>
+  <div id="tuner">
+    <div id="tuner-head">
+      <div id="tuner-title">JABBERWOCKY</div>
+      <div id="tabs"><button data-tab="play" class="on" type="button">PLAY</button><button data-tab="look" type="button">LOOK</button></div>
+      <div id="text-size">text <button id="ts-down" type="button">−</button><span id="ts-val">100%</span><button id="ts-up" type="button">+</button></div>
+    </div>
+    <div class="tab-body on" data-body="play">
+      <div class="t-grid">
+        <h3 class="t-h">The table — odds per pull</h3>
+        <div class="t-row"><div class="t-label"><span>Dispatch — it kills</span><span id="t-odds-dispatch-val"></span></div><input id="t-odds-dispatch" type="range" min="0" max="100" step="1" /></div>
+        <div class="t-row"><div class="t-label"><span>Weird — it works, oddly</span><span id="t-odds-weird-val"></span></div><input id="t-odds-weird" type="range" min="0" max="100" step="1" /></div>
+        <div class="t-row"><div class="t-label"><span>Dud — nothing much</span><span id="t-odds-dud-val"></span></div><input id="t-odds-dud" type="range" min="0" max="100" step="1" /></div>
+        <div class="t-row"><div class="t-label"><span>Backfire — it hurts you</span><span id="t-odds-backfire-val"></span></div><input id="t-odds-backfire" type="range" min="0" max="100" step="1" /></div>
+        <div class="t-row wide"><div class="t-label"><span>Fire one gag every time</span><span></span></div><select id="t-force"><option value="">— the table —</option></select><div class="t-sum">For judging one gag. The boss keeps his own table.</div></div>
+        <h3 class="t-h">The fight</h3>
+        <div class="t-row"><div class="t-label"><span>Goons ×</span><span id="t-goonmul-val"></span></div><input id="t-goonmul" type="range" min="0.25" max="3" step="0.25" /></div>
+        <div class="t-row"><div class="t-label"><span>Goon speed ×</span><span id="t-goonspeed-val"></span></div><input id="t-goonspeed" type="range" min="0.5" max="2" step="0.05" /></div>
+        <div class="t-row"><div class="t-label"><span>Damage to you ×</span><span id="t-dmg-val"></span></div><input id="t-dmg" type="range" min="0" max="3" step="0.1" /></div>
+        <div class="t-row"><div class="t-label"><span>Seconds between pulls</span><span id="t-cool-val"></span></div><input id="t-cool" type="range" min="0.3" max="2" step="0.05" /></div>
+        <div class="t-row"><div class="t-label"><span>The beat before the gag</span><span id="t-reveal-val"></span></div><input id="t-reveal" type="range" min="0" max="0.8" step="0.02" /></div>
+        <div class="t-row"><div class="t-label"><span>Boss — seconds between his pulls</span><span id="t-boss-val"></span></div><input id="t-boss" type="range" min="1" max="5" step="0.1" /></div>
+        <h3 class="t-h">You</h3>
+        <div class="t-row"><div class="t-label"><span>Walk speed</span><span id="t-move-val"></span></div><input id="t-move" type="range" min="1.5" max="6" step="0.1" /></div>
+        <div class="t-row"><div class="t-label"><span>Mouse look</span><span id="t-sens-val"></span></div><input id="t-sens" type="range" min="0.2" max="3" step="0.05" /></div>
+        <div class="t-row"><div class="t-label"><span>Corner map</span><span></span></div><div class="t-seg" id="t-map"><button data-v="1" type="button">ON</button><button data-v="0" type="button">OFF</button></div></div>
+        <div class="t-row"><div class="t-label"><span>Start at</span><span></span></div><div class="t-seg" id="t-level"><button data-v="1" type="button">1</button><button data-v="2" type="button">2</button><button data-v="3" type="button">3</button><button data-v="4" type="button">4</button><button data-v="5" type="button">BOSS</button></div></div>
+        <div class="t-row"><div class="t-label"><span>Maze seed</span><span></span></div><div style="display:flex;gap:0.4em"><input id="t-seed" type="text" placeholder="random" style="flex:1" /><button class="t-btn" id="t-seed-roll" type="button" style="margin:0">ROLL</button></div></div>
+      </div>
+      <div class="t-note">goons · start level · seed take hold at the next BEGIN</div>
+    </div>
+    <div class="tab-body" data-body="look">
+      <div id="preset-row">
+        <select id="preset-select"><option value="">— preset —</option></select>
+        <button id="preset-save" type="button" title="Save current look">SAVE</button>
+        <button id="preset-default" type="button" title="Make this the default">MAKE DEFAULT</button>
+        <button id="preset-del" type="button" title="Delete preset">✕</button>
+      </div>
+      <div class="t-grid" id="look-rows"></div>
+      <button class="t-btn" id="t-reset" type="button">RESET DEFAULTS</button>
+      <div class="t-note" id="preset-note">presets save to the world folder</div>
+    </div>
+  </div>
+
+  <div id="card">
+    <div class="box">
+      <div id="card-kicker"></div>
+      <div id="card-title"></div>
+      <div id="card-sub"></div>
+      <div id="card-lines"></div>
+      <button id="card-btn" type="button">BEGIN</button>
+      <div id="card-keys"></div>
+    </div>
+  </div>
+  <div id="fade"></div>
+
+  <!-- the ways out — three odd doors in every maze; the anchors carry the drift -->
+  <a id="exit-0" class="exit" href="../../../index.html" data-drift aria-label="The door painted with a spiral"></a>
+  <a id="exit-1" class="exit" href="../../../index.html" data-drift aria-label="The door with an eye on it"></a>
+  <a id="exit-2" class="exit" href="../../../index.html" data-drift aria-label="The door that is only a drawing of a door"></a>
+
+  <script src="../../core/world-registry.js"></script>
+  <script src="../../core/drift.js"></script>
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="gags.js?v=2"></script>
+  <script src="core.js?v=2"></script>
+  <script src="draw.js?v=2"></script>
+  <script src="sound.js?v=2"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module" src="world.js?v=2"></script>
+</body>
+</html>
