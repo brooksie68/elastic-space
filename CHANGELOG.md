@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-05 — Codex — Fireplace flame count
+
+- Added a live Flame count slider to the silent study: 0–81, default 27,
+  with saved settings and no geometry rebuild. Agent: Codex.
+
 ## 2026-09-05 — Codex — Fireplace fire study
 
 - Built the authorized silent logs/fire/bricks study at `tmp/fireplace/fire-lab.html`,

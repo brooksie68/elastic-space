@@ -1,5 +1,15 @@
 # Fireplace study — KEEP
 
+## 2026-09-05 — Codex — Flame count control
+
+James called the initial study a pretty good start and requested more/less fire.
+Added Flame count: 0–81, integer steps, default 27 (the previous fixed count).
+Flame layers are pooled; the control shows/hides them without rebuilding geometry.
+Sparse counts are distributed across the existing anchors; the original 27-flame
+layout and spark seed are preserved. Saved settings without count default to 27.
+At maximum this triples the flame-plane draw/overdraw cost; hidden planes do not draw.
+No room or other adjacent work. Agent: Codex.
+
 ## 2026-09-05 — Codex — First silent fire study
 
 James approved only the fire, logs, inner bricks, grate, and front hearth study.
