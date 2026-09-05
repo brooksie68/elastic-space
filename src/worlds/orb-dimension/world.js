@@ -2964,7 +2964,11 @@ void main() {
       };
       // strut: a thin box from p to q; uv.x runs 0→1 along it (the pulse path)
       const strut = (m, p, q, w, aux) => {
+        w *= 0.5; // v67.1 James: "50% as thick as they are"
         const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+        // v68.6: aux.z = flag (0 / 2 station) + 4 × length in metres — the
+        // shader sizes packets in METRES (James: "fifty feet long... what are they?")
+        aux = [aux[0], aux[1], (aux[2] % 4) + 4 * Math.floor(Math.hypot(d[0], d[1], d[2])), aux[3]];
         const [a, b, c2] = frame3(d);
         const ec = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
         for (const [e1, e2] of [[b, c2], [c2, b]]) {
@@ -2981,6 +2985,18 @@ void main() {
         }
       };
       const isCap = ci === 0;
+      // v68 DOMINANT IS A STATION (James, 2026-09-05: the satellite cores are
+      // "a crazy, ridiculous jumble of granite blocks... no place anybody can
+      // live"; his go on the spine-and-ring kernel, built first so he can
+      // judge the direction). pads = the seats the buildings take.
+      const isStation = ci === 2;
+      const pads = [];
+      // v69: the station's big members (spine, rings, collar rims, pads) are a
+      // BUILDING mesh — 8 floats (pos/400, normal, uv), drawn by the building
+      // program with the 02-sphere's tile + assets/buildings/station-light.png
+      // (James: "spread that texture all over this entire thing"). uv.x = metres
+      // along / 3000 (the map repeats), uv.y = around, in [0.06, 0.84].
+      const stn = { v: [], i: [] };
       const envPoint = (f) => {
         const p = [rr(-1, 1), rr(-1, 1), rr(-1, 1)];
         for (let a = 0; a < 3; a++) p[a] *= ex[a] * f * (p[a] < 0 ? lop[a] : 1);
@@ -3008,7 +3024,7 @@ void main() {
       // anymore; Korrudan itself is the capital's body and the crust pass
       // (crustGeometry below) carries its machinery. (Braces guard, inner
       // indentation deliberately untouched — the sim extracts verbatim.)
-      if (!isCap) {
+      if (!isCap && !isStation) {
       for (let i = 0; i < 78; i++) {
         const [a, b] = [rdir(), rdir()];
         const eu = norm3(cross3(a, b));
@@ -3017,7 +3033,10 @@ void main() {
         quad(glass, envPoint(0.95), [eu[0] * h1, eu[1] * h1, eu[2] * h1],
           [ev[0] * h2, ev[1] * h2, ev[2] * h2], [0, rr(0, TAU), 0, pickFam()], [0, 0, 0]);
       }
-      for (let i = 0; i < 48; i++) {
+      // v67.2: the data planes (48 upright sheets raining yellow dashes) are
+      // GONE — James: "sheets of yellow... just doesn't make any sense". Loop
+      // kept at zero so the sim's extraction markers stand.
+      for (let i = 0; i < 0; i++) {
         const [a, , ] = frame3(rdir());
         const eu = norm3(cross3(Math.abs(a[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0], a));
         const ev = cross3(a, eu); // data planes lean upright — readable rain
@@ -3113,6 +3132,235 @@ void main() {
         }
       }
       } // end !isCap — the satellites' machine cores
+      if (isStation) {
+        // ---- v68 THE SPINE-AND-RING STATION ------------------------------
+        // One long spine, four rings around it at stations along its length,
+        // each ring joined to a hub on the spine by spokes; the rings carry
+        // flat docking pads where the buildings seat (outward and inward, so
+        // some hang "upside down"), diagonal bracing between rings, masts at
+        // the ends. Every solid goes through the material pass (kind 0 = the
+        // titanium mass, kind 1 = braced struts with traffic).
+        const ax = norm3([Math.cos(rr(0, TAU)) * 0.94, rr(0.22, 0.4), Math.sin(rr(0, TAU)) * 0.94]);
+        const [, sb, sc] = frame3(ax);
+        const along = (t) => [ax[0] * t, ax[1] * t, ax[2] * t];
+        const add3 = (p, q) => [p[0] + q[0], p[1] + q[1], p[2] + q[2]];
+        const sc3 = (p, k) => [p[0] * k, p[1] * k, p[2] * k];
+        // an n-gon tube from p to q, flat faces, ends extended by ext (for joints)
+        const tube = (m, p, q, rad, sides, aux, ext, grid) => {
+          let d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+          const [a, b, c2] = frame3(d);
+          if (ext) { p = [p[0] - a[0] * ext, p[1] - a[1] * ext, p[2] - a[2] * ext]; q = [q[0] + a[0] * ext, q[1] + a[1] * ext, q[2] + a[2] * ext]; }
+          // v68.3: grid = the lights lie on the mesh uv — aux.y carries length·1000 + face width (metres)
+          if (grid) aux = [aux[0], Math.floor(Math.hypot(d[0], d[1], d[2]) + 2 * (ext || 0)) * 1000 + Math.floor(2 * rad * Math.sin(Math.PI / sides)), aux[2], aux[3]];
+          const ec = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+          for (let k = 0; k < sides; k++) {
+            const t0 = (k / sides) * TAU, t1 = ((k + 1) / sides) * TAU;
+            const n0 = [b[0] * Math.cos(t0) + c2[0] * Math.sin(t0), b[1] * Math.cos(t0) + c2[1] * Math.sin(t0), b[2] * Math.cos(t0) + c2[2] * Math.sin(t0)];
+            const n1 = [b[0] * Math.cos(t1) + c2[0] * Math.sin(t1), b[1] * Math.cos(t1) + c2[1] * Math.sin(t1), b[2] * Math.cos(t1) + c2[2] * Math.sin(t1)];
+            const nf = norm3(add3(n0, n1));
+            const bI = m.v.length / 15;
+            vert(m, add3(p, sc3(n0, rad)), nf, 0, 0, aux, ec);
+            vert(m, add3(q, sc3(n0, rad)), nf, 1, 0, aux, ec);
+            vert(m, add3(q, sc3(n1, rad)), nf, 1, 1, aux, ec);
+            vert(m, add3(p, sc3(n1, rad)), nf, 0, 1, aux, ec);
+            m.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+          }
+        };
+        // a closed box: centre, three axes, half sizes
+        const slab = (m, c, e1, e2, e3, h, aux) => {
+          const axes = [[e1, e2, e3], [e2, e3, e1], [e3, e1, e2]];
+          for (let a = 0; a < 3; a++) {
+            const [e, f1, f2] = axes[a];
+            const he = h[a], s1 = h[(a + 1) % 3], s2 = h[(a + 2) % 3];
+            for (const sgn of [-1, 1]) {
+              quad(m, add3(c, sc3(e, he * sgn)), sc3(f1, s1), sc3(f2, s2 * sgn), aux, c);
+            }
+          }
+        };
+        const auxS = () => [0, rr(0, TAU), 0, pickFam()];      // rolled tile (pads, small slabs)
+        // v68.2: the whole station wears the 02-sphere's metal (aux.z = 2 on slabs AND struts)
+        const auxTi = () => [0, rr(0, TAU), 2, pickFam()];
+        const auxAr = () => [0, rr(0, TAU), 2, pickFam()];
+        const auxPn = () => [0, rr(0, TAU), 2, pickFam()];
+        const auxT = () => [1, rr(0, TAU), 2, pickFam()];
+        const SC = 400;
+        const vS = (p, n, u, v) => stn.v.push(p[0] / SC, p[1] / SC, p[2] / SC, n[0], n[1], n[2], u, v);
+        // an n-gon tube into the station mesh; u0 = metres already travelled (rings chain their segments)
+        const tubeS = (p, q, rad, sides, ext, u0) => {
+          const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+          const [a, b, c2] = frame3(d);
+          if (ext) { p = [p[0] - a[0] * ext, p[1] - a[1] * ext, p[2] - a[2] * ext]; q = [q[0] + a[0] * ext, q[1] + a[1] * ext, q[2] + a[2] * ext]; }
+          const len = Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]);
+          for (let k = 0; k < sides; k++) {
+            const t0 = (k / sides) * TAU, t1 = ((k + 1) / sides) * TAU;
+            const n0 = [b[0] * Math.cos(t0) + c2[0] * Math.sin(t0), b[1] * Math.cos(t0) + c2[1] * Math.sin(t0), b[2] * Math.cos(t0) + c2[2] * Math.sin(t0)];
+            const n1 = [b[0] * Math.cos(t1) + c2[0] * Math.sin(t1), b[1] * Math.cos(t1) + c2[1] * Math.sin(t1), b[2] * Math.cos(t1) + c2[2] * Math.sin(t1)];
+            const nf = norm3(add3(n0, n1));
+            const v0 = 0.06 + 0.78 * (k / sides), v1 = 0.06 + 0.78 * ((k + 1) / sides);
+            const bI = stn.v.length / 8;
+            vS(add3(p, sc3(n0, rad)), nf, u0 / 3000, v0);
+            vS(add3(q, sc3(n0, rad)), nf, (u0 + len) / 3000, v0);
+            vS(add3(q, sc3(n1, rad)), nf, (u0 + len) / 3000, v1);
+            vS(add3(p, sc3(n1, rad)), nf, u0 / 3000, v1);
+            stn.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+          }
+        };
+        // a closed box into the station mesh: centre, three axes, half sizes; u along e1
+        const slabS = (c, e1, e2, e3, h, u0) => {
+          const axes = [[e1, e2, e3, 1, 2], [e2, e3, e1, 2, 0], [e3, e1, e2, 0, 1]];
+          for (let a = 0; a < 3; a++) {
+            const [e, f1, f2, i1, i2] = axes[a];
+            const he = h[a], s1 = h[i1], s2 = h[i2];
+            for (const sgn of [-1, 1]) {
+              const cc = add3(c, sc3(e, he * sgn));
+              const n = sgn < 0 ? sc3(e, -1) : e;
+              const eu = sc3(f1, s1), ev = sc3(f2, s2 * sgn);
+              const bI = stn.v.length / 8;
+              const uw = s1 * 2 / 3000, vw = Math.min(0.5, s2 * 2 / 3000);
+              vS(add3(cc, add3(sc3(eu, -1), sc3(ev, -1))), n, u0 / 3000, 0.3);
+              vS(add3(cc, add3(eu, sc3(ev, -1))), n, u0 / 3000 + uw, 0.3);
+              vS(add3(cc, add3(eu, ev)), n, u0 / 3000 + uw, 0.3 + vw);
+              vS(add3(cc, add3(sc3(eu, -1), ev)), n, u0 / 3000, 0.3 + vw);
+              stn.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+            }
+          }
+        };
+        const L = S * 1.15;                 // spine length
+        const spineR = S * 0.056;           // ~300 m (v68.1: James, "twice as thick")
+        tubeS(along(-L / 2), along(L / 2), spineR, 12, 0, 0);
+        // a second, thinner service spine runs beside the main one
+        const off2 = add3(sc3(sb, spineR * 2.6), sc3(sc, spineR * 0.8));
+        tubeS(add3(along(-L * 0.42), off2), add3(along(L * 0.42), off2), spineR * 0.3, 8, 0, 700);
+        // the rings: four stations along the spine, radii varied, the two
+        // middle ones biggest
+        const NR = 4;
+        const ringT = [-0.36, -0.12, 0.13, 0.37];
+        const ringRad = [0.30, 0.42, 0.40, 0.27].map((f) => f * S * rr(0.94, 1.06));
+        const tubeR = S * 0.014;            // ~75 m ring tube (v68.2: back to v68 — "I made a mistake with the rings")
+        const prevRing = [];
+        for (let r = 0; r < NR; r++) {
+          const cR = along(ringT[r] * L);
+          const rad = ringRad[r];
+          const segs = 40;
+          const pt = (th) => add3(cR, add3(sc3(sb, Math.cos(th) * rad), sc3(sc, Math.sin(th) * rad)));
+          const ext = tubeR * Math.tan(Math.PI / segs) * 1.05;
+          const segLen = TAU * rad / segs;
+          for (let k = 0; k < segs; k++) tubeS(pt((k / segs) * TAU), pt(((k + 1) / segs) * TAU), tubeR, 8, ext, r * 900 + k * segLen);
+          // an inner rail 12% in, thinner, with traffic
+          const rad2 = rad * 0.88;
+          const pt2 = (th) => add3(cR, add3(sc3(sb, Math.cos(th) * rad2), sc3(sc, Math.sin(th) * rad2)));
+          const railAux = auxT();
+          for (let k = 0; k < segs; k++) strut(solid, pt2((k / segs) * TAU), pt2(((k + 1) / segs) * TAU), tubeR * 0.18, railAux);
+          // the hub on the spine where this ring's spokes land — v68.1 a
+          // TRANSLUCENT collar (glass program, kind 0 iridescent sheet) with
+          // two titanium rims; the spokes land on the rims
+          const hubR = spineR * 1.45, hubL = S * 0.06;
+          tube(glass, add3(cR, along(-hubL)), add3(cR, along(hubL)), hubR, 24, [0, rr(0, TAU), 0, pickFam()], 0);
+          for (const sg of [-1, 1]) tubeS(add3(cR, along(sg * hubL)), add3(cR, along(sg * (hubL + S * 0.008))), hubR * 1.06, 16, 0, 1500 + r * 300);
+          // spokes: eight, hub to ring, with traffic; ladder rungs between neighbours
+          const NS = 8;
+          const sp0 = rr(0, TAU);
+          for (let k = 0; k < NS; k++) {
+            const th = sp0 + (k / NS) * TAU;
+            const rim = pt(th);
+            const hub = add3(cR, add3(sc3(sb, Math.cos(th) * hubR), sc3(sc, Math.sin(th) * hubR)));
+            strut(solid, hub, rim, tubeR * 0.36, auxT());
+            // a rung between this spoke and the next at 55% out
+            const th2 = sp0 + ((k + 1) / NS) * TAU;
+            const a1 = add3(cR, add3(sc3(sb, Math.cos(th) * rad * 0.55), sc3(sc, Math.sin(th) * rad * 0.55)));
+            const a2 = add3(cR, add3(sc3(sb, Math.cos(th2) * rad * 0.55), sc3(sc, Math.sin(th2) * rad * 0.55)));
+            if (k % 2 === 0) strut(solid, a1, a2, tubeR * 0.12, auxT());
+          }
+          // the docking pads: twelve seats around the ring — outward faces
+          // take towers, inward faces (toward the spine) hang them upside
+          // down; a pad is a flat slab riding the tube
+          const NP = 18;
+          const p0 = rr(0, TAU);
+          const padW = S * 0.03, padD = S * 0.016, padT = S * 0.004;
+          for (let k = 0; k < NP; k++) {
+            const th = p0 + (k / NP) * TAU;
+            const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
+            const tang = norm3(cross3(ax, radial));
+            const inward = k % 3 === 2;              // every third pad hangs inside
+            const dir = inward ? sc3(radial, -1) : radial;
+            const c = add3(pt(th), sc3(dir, tubeR + padT));
+            slabS(c, tang, dir, ax, [padW, padT, padD], k * 410 + r * 130);
+            const roll = R();
+            pads.push({
+              p: add3(c, sc3(dir, padT)), up: dir, fwd: tang, w: padW, d: padD,
+              role: roll < 0.12 ? "farm" : roll < 0.2 ? "lying" : "tower",
+              scale: rr(0.06, 0.115) * S, yaw: rr(0, TAU), ring: r,
+            });
+            // a pad post: a short strut from the pad down into the tube
+            strut(solid, add3(c, sc3(tang, padW * 0.6)), add3(pt(th), sc3(tang, padW * 0.6)), tubeR * 0.12, auxT());
+          }
+          // v68.3 (James): pads on the ring's top and bottom faces too — buildings
+          // standing parallel to the spine, up off one face, down off the other
+          for (let k = 0; k < 6; k++) {
+            const th = p0 + ((k + 0.5) / 6) * TAU;
+            const sg = k % 2 === 0 ? 1 : -1;
+            const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
+            const tang = norm3(cross3(ax, radial));
+            const dir = sc3(ax, sg);
+            const c = add3(pt(th), sc3(dir, tubeR + padT));
+            slabS(c, tang, dir, radial, [padW, padT, padD], k * 530 + r * 170 + 2000);
+            pads.push({ p: add3(c, sc3(dir, padT)), up: dir, fwd: tang, w: padW, d: padD, role: "tower", scale: rr(0.06, 0.115) * S, yaw: rr(0, TAU), ring: r });
+          }
+          // diagonal bracing to the previous ring (rim to rim, twisted a step)
+          if (prevRing.length) {
+            const prev = prevRing[prevRing.length - 1];
+            const NB = 10;
+            for (let k = 0; k < NB; k++) {
+              const th = (k / NB) * TAU;
+              strut(solid, prev.pt(th), pt(th + TAU / NB * 0.5), tubeR * 0.13, auxT());
+            }
+          }
+          prevRing.push({ pt, rad });
+        }
+        // spine end caps: each end takes a big sphere (the 02 building scaled
+        // up, sunk a quarter into the spine) plus a mast cluster
+        for (const sg of [-1, 1]) {
+          const end = along((L / 2) * sg);
+          pads.push({ p: add3(end, along(-sg * S * 0.05)), up: sc3(ax, sg), fwd: sb, role: "endcap", scale: S * 0.26, yaw: rr(0, TAU), ring: -1 }); // v68.1 doubled
+          // masts off the end module, ribbed
+          for (let i = 0; i < 4; i++) {
+            const th = rr(0, TAU);
+            const d = norm3(add3(sc3(ax, sg * 0.35), add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th)))));
+            const base = add3(end, sc3(d, S * 0.13));
+            const Lm = rr(0.12, 0.22) * S;
+            const tip = add3(base, sc3(d, Lm));
+            const aux = auxT();
+            strut(solid, base, tip, S * 0.0018, aux);
+            const [, e1, e2] = frame3(d);
+            for (const [u, e] of [[0.45, e1], [0.65, e2], [0.85, e1]]) {
+              const b = add3(base, sc3(d, Lm * u));
+              const arm = rr(0.02, 0.05) * S;
+              strut(solid, add3(b, sc3(e, -arm)), add3(b, sc3(e, arm)), S * 0.0012, aux);
+            }
+          }
+        }
+        // docks: two towers lie along the spine between rings, half sunk in
+        for (const t of [-0.245, 0.25]) {
+          const th = rr(0, TAU);
+          const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
+          pads.push({ p: add3(along(t * L), sc3(radial, spineR * 0.45)), up: radial, fwd: ax, role: "dock", scale: S * 0.09, yaw: R() < 0.5 ? 0 : Math.PI, ring: -1 });
+        }
+        // conduit runs elbowing along the spine (the v51 gesture, kept — they
+        // read as plumbing on a spine, not noise)
+        for (let i = 0; i < 10; i++) {
+          let p = add3(along(rr(-0.45, 0.45) * L), add3(sc3(sb, rr(-1, 1) * spineR * 1.3), sc3(sc, rr(-1, 1) * spineR * 1.3)));
+          const axes = [ax, sb, sc];
+          const aux = auxT();
+          const segs = 3 + ((R() * 3) | 0);
+          for (let sI = 0; sI < segs; sI++) {
+            const e = axes[(R() * 3) | 0];
+            const Ls = rr(0.03, 0.12) * S * (R() < 0.5 ? -1 : 1);
+            const q = add3(p, sc3(e, Ls));
+            strut(solid, p, q, S * 0.0016, aux);
+            p = q;
+          }
+        }
+      }
       // -- v51/v52 the Korrudan wrap (capital only): hoops banding the
       // god-skull at bone-hugging radii (now 12km-bone radii), and long
       // threads that pass clean THROUGH the head — the machine grew around
@@ -3262,10 +3510,10 @@ void main() {
         const d = norm3([q0[0] - p0[0], q0[1] - p0[1], q0[2] - p0[2]]);
         const p = [p0[0] + d[0] * nodes[a].r, p0[1] + d[1] * nodes[a].r, p0[2] + d[2] * nodes[a].r];
         const q = [q0[0] - d[0] * nodes[b].r, q0[1] - d[1] * nodes[b].r, q0[2] - d[2] * nodes[b].r];
-        const w = Math.max(24, Math.min(nodes[a].r, nodes[b].r) * 0.1);
+        const w = Math.max(24, Math.min(nodes[a].r, nodes[b].r) * 0.1) * 0.7; // v67.2 James: "slightly less wide" 
         const [, e1, e2] = frame3(d);
         const mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
-        const aux = [nodes[a].fam, nodes[b].fam, rr(0, TAU), 0];
+        const aux = [Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]), nodes[b].fam, rr(0, TAU), 0]; // v68.6 aux.x = span in metres
         for (const e of [e1, e2]) {
           const bI = bridge.v.length / 15;
           const n = e === e1 ? e2 : e1;
@@ -3303,10 +3551,10 @@ void main() {
           const tgt = [rr(-900, 900), rr(-400, 1600), rr(-1000, 1000)]; // in the cranium (v52 12km bone)
           const d = norm3([tgt[0] - nd.p[0], tgt[1] - nd.p[1], tgt[2] - nd.p[2]]);
           const p = [nd.p[0] + d[0] * nd.r, nd.p[1] + d[1] * nd.r, nd.p[2] + d[2] * nd.r];
-          const w = Math.max(30, nd.r * 0.16);
+          const w = Math.max(30, nd.r * 0.16) * 0.7; // v67.2 skull feeds narrower too
           const [, e1, e2] = frame3(d);
           const mid = [(p[0] + tgt[0]) / 2, (p[1] + tgt[1]) / 2, (p[2] + tgt[2]) / 2];
-          const aux = [nd.fam, nd.fam, rr(0, TAU), 1];
+          const aux = [Math.hypot(tgt[0] - p[0], tgt[1] - p[1], tgt[2] - p[2]), nd.fam, rr(0, TAU), 1]; // v68.6 aux.x = span in metres
           for (const e of [e1, e2]) {
             const bI = bridge.v.length / 15;
             const n = e === e1 ? e2 : e1;
@@ -3324,7 +3572,7 @@ void main() {
       // envelope radius (orbits and standoffs key off it), not the (absent)
       // machine cloud's envelope
       com.coreR = isCap ? 7400 : Math.max(ex[0], ex[1], ex[2]);
-      out.push({ solid, glass, bridge, nodes, edges, feeds, shellR, coreR: com.coreR, homeV0, homeI0 });
+      out.push({ solid, glass, bridge, nodes, edges, feeds, shellR, coreR: com.coreR, homeV0, homeI0, pads, stn: isStation ? stn : null });
     }
     return out;
   }
@@ -4073,6 +4321,8 @@ void main() {
       box(focus, sky, t1, t2, [3, 3, 3], [3, rr(0, TAU), 1, fam]); // the feed glows neon
     };
     const strutC = (p, q, w, aux) => {
+      w *= 0.5; // v67.1 James: "50% as thick as they are"
+      aux = [aux[0], aux[1], (aux[2] % 4) + 4 * Math.floor(Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2])), aux[3]]; // v68.6 length in aux.z
       const d = nrm([q[0] - p[0], q[1] - p[1], q[2] - p[2]]);
       const ref = Math.abs(d[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
       const e1 = nrm(crs(ref, d));
@@ -6102,6 +6352,55 @@ void main() {
 vec3 hueCol(float h) {
   float x = h / 360.0;
   return clamp(abs(mod(x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+}
+// v67 the packets (James: "I only like the blue... they can use only blue or
+// white"): every data packet on every strut and bridge is one of three shades
+// — deep blue, sky blue, white — picked per piece from r in [0,1). Never a
+// family hue.
+vec3 packetCol(float r) {
+  return r < 0.34 ? vec3(0.18, 0.42, 1.0) : r < 0.67 ? vec3(0.30, 0.86, 0.96) : vec3(0.88, 0.94, 1.0); // v67.1: the middle one is aqua
+}
+// v68.13 THE TRAFFIC (James's mix, for EVERY light-carrying member — struts,
+// spokes, hoops, rails, bridges, feeds): 50% the standard — evenly spaced
+// medium pulses at a medium speed, one size; 15% an unbroken dense chain;
+// 10% trains with gaps; 15% sparse singletons; 10% fast or dense. A second
+// stream runs the other way on ~30%. Every stream RE-ROLLS its pattern every
+// 40–90 s ("shouldn't stay that way all the time"). u = along 0..1, Lm =
+// the member's length in metres, seedP = its centre, t = uTime·uTempo.
+float th3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float trafficAt(float u, float Lm, vec3 seedP, float phase, float t) {
+  float total = 0.0;
+  for (int st = 0; st < 2; st++) {
+    vec3 sd = seedP * (0.019 + float(st) * 0.007) + float(st) * 3.3;
+    if (st == 1 && th3(sd + 0.5) > 0.3) break;
+    float per = mix(40.0, 90.0, th3(sd + 2.2));
+    float epoch = floor(t / per + th3(sd + 7.0));
+    vec3 es = sd + epoch * 1.37;
+    float r = th3(es + 6.3);
+    float dir = (th3(es + 8.1) < 0.5 ? -1.0 : 1.0) * (st == 1 ? -1.0 : 1.0);
+    float sp, N, G, spd, hw;
+    if (r < 0.5) {        // standard: pulse, gap, pulse, gap — 2–5 per length, medium speed
+      float k = floor(2.0 + th3(es + 1.9) * 4.0);
+      sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.12, 0.26, th3(es + 3.7)); hw = max(3.0, sp * 0.03);
+    } else if (r < 0.65) { // an unbroken dense chain, slow to medium
+      sp = mix(6.0, 16.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.04, 0.15, th3(es + 3.7)); hw = 1.6;
+    } else if (r < 0.75) { // trains with gaps
+      sp = mix(6.0, 30.0, th3(es + 1.9)); N = floor(4.0 + th3(es + 4.1) * 12.0); G = mix(40.0, 300.0, th3(es + 4.4)); spd = mix(0.08, 0.3, th3(es + 3.7)); hw = 1.8;
+    } else if (r < 0.9) {  // a sparse singleton
+      sp = Lm; N = 1e6; G = 0.0; spd = mix(0.1, 0.3, th3(es + 3.7)); hw = max(3.0, Lm * 0.008);
+    } else {               // fast or dense — the few
+      sp = mix(5.0, 12.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.4, 0.9, th3(es + 3.7)); hw = 1.6;
+    }
+    float T = t * spd + phase * (1.0 + float(st));
+    float xM = fract(u * dir - T) * Lm;
+    float P = N * sp + G;
+    float pos = N > 1e5 ? xM : mod(xM, P);
+    float idx = floor(pos / sp);
+    float dd = abs(fract(pos / sp) - 0.5) * sp;
+    float bead = smoothstep(hw + 1.6, hw * 0.5, dd) + exp(-dd / (hw * 2.5)) * 0.15;
+    total += bead * step(idx, N - 0.5);
+  }
+  return total;
 }`;
   // v55 aerial perspective (James: everything "looks perfectly clear all the
   // time... killing the distance vibe"): distance quiets a surface before fog
@@ -6128,7 +6427,8 @@ vec3 aerial(vec3 col, float dist) {
   const COMM_MAT = `
 uniform sampler2D uHull;   // scarred hull plating
 uniform sampler2D uIron;   // gantry iron
-uniform sampler2D uCeram;  // aged ceramic armor
+uniform sampler2D uSteel;  // v68 brushed titanium — the mass material (James: the hull tile "looks like granite")
+uniform sampler2D uArmor;  // v68.2 the station's metal: the 02-sphere building's own dark tile (James: "wrap the entire station in the metal around the balls")
 uniform float uWear;       // configuration: 0 clean … 1 full wear (default 0.8)
 float mh(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float mn(vec3 p) {
@@ -6150,28 +6450,41 @@ vec3 matBase(float kind, vec3 loc, vec3 N, vec3 seedP, float along, out float we
   float ph = mh(seedP * 0.013 + 3.1);
   float ph2 = mh(seedP * 0.021 + 7.7);
   // metres per repeat: plates read as plates on a 24 m strut and on a 400 m slab
-  float mpr = kind < 0.5 ? 26.0 : kind < 1.5 ? 11.0 : kind < 2.5 ? 16.0 : 13.0;
+  // v68: the station's titanium members (kind -1) are km-scale — plates
+  // 60 m, wear features four times bigger, or the wear reads as stone grain
+  float big = kind < -0.5 ? 1.0 : 0.0;
+  // overrides (v68.2): -1 titanium 60 m plates; -2 the station metal (32 m per repeat)
+  float mpr = kind < -1.5 ? 32.0 : kind < -0.5 ? 60.0 : kind < 0.5 ? 26.0 : kind < 1.5 ? 11.0 : kind < 2.5 ? 16.0 : 13.0;
+  float wf = mix(1.0, 0.25, big);
   vec3 q = loc / mpr + ph * 5.3;
   vec3 hull = tri3(uHull, q, an);
   vec3 iron = tri3(uIron, q * 1.15, an);
-  vec3 cer = tri3(uCeram, q * 0.8, an);
-  cer = mix(cer, vec3(dot(cer, vec3(0.333))) * 0.9 + 0.05, 0.35); // the ceramic's dark hexes polka-dotted a slab; soften
+  vec3 steel = tri3(uSteel, q * 0.9, an);
+  steel = mix(steel, vec3(dot(steel, vec3(0.333))), 0.5) * vec3(0.9, 0.93, 0.98) * 0.92;
   vec3 base;
-  if (kind < 0.5) base = ph < 0.85 ? hull : cer;                   // slabs: hull, a few ceramic
-  else if (kind < 1.5) base = ph < 0.55 ? iron : ph < 0.9 ? hull : cer;  // struts: iron, some hull, a few ceramic
-  else if (kind < 2.5) base = ph < 0.8 ? hull : iron;                // crust faces: hull, some iron
-  else base = iron;                                                   // hoops: iron
+  if (kind < -1.5) { base = tri3(uArmor, q, an) * vec3(0.96, 0.98, 1.02) * 1.15; kind = 0.0; }
+  else if (kind < -0.5) { base = steel; kind = 0.0; }
+  else
+  // v68: titanium carries the mass; the scarred hull reads as stone, so it is
+  // the exception now ("okay for a couple of blocks here and there")
+  if (kind < 0.5) base = ph < 0.62 ? steel : ph < 0.86 ? iron : hull;          // slabs: titanium, some iron, a few stone
+  else if (kind < 1.5) base = ph < 0.5 ? steel : ph < 0.82 ? iron : hull; // struts (v68.8: the ceramic tile retired — its unit went to the station metal)
+  else if (kind < 2.5) base = ph < 0.8 ? hull : iron;                // crust faces: hull, some iron (Korrudan keeps its look)
+  else base = ph < 0.5 ? iron : steel;                                // hoops: iron / titanium
   // per-piece tint: a cool or warm cast, a little darker or lighter
-  vec3 tint = mix(vec3(0.9, 0.95, 1.08), vec3(1.05, 0.98, 0.9), ph2) * (0.8 + 0.4 * mh(seedP * 0.031 + 1.0));
+  vec3 tint = mix(vec3(0.9, 0.95, 1.08), vec3(1.05, 0.98, 0.9), ph2) * mix(0.8 + 0.4 * mh(seedP * 0.031 + 1.0), 1.0, big);
   // wear, all seeded on position so nothing repeats: grime pooling (low-freq
   // darkening), scorch spots, streaks running one way along the piece,
   // dead panels (a cell of the tile grid gone dark), edge dust
   float w = uWear;
-  float grime = 1.0 - w * 0.45 * smoothstep(0.35, 0.8, mn(loc * 0.09 + ph * 9.0));
-  float scorch = w * smoothstep(0.62, 0.9, mn(loc * 0.035 + ph2 * 13.0)) * 0.7;
-  float streak = w * 0.35 * smoothstep(0.7, 1.0, mn(vec3(along * 0.02, loc.yz * 0.6))) * smoothstep(0.3, 0.6, mn(loc * 0.05 + 4.0));
+  // v68.15: the station's members (big) carry almost no wear — the streaks,
+  // scorch and dead panels ran in world axes and read as diagonal stone
+  // banding on the rings and pads (James's zoom, 2026-09-05)
+  float grime = 1.0 - w * mix(0.45, 0.12, big) * smoothstep(0.35, 0.8, mn(loc * 0.09 * wf + ph * 9.0));
+  float scorch = w * smoothstep(0.62, 0.9, mn(loc * 0.035 * wf + ph2 * 13.0)) * mix(0.7, 0.0, big);
+  float streak = w * 0.35 * smoothstep(0.7, 1.0, mn(vec3(along * 0.02, loc.yz * 0.6 * wf))) * smoothstep(0.3, 0.6, mn(loc * 0.05 * wf + 4.0)) * (1.0 - big);
   vec3 cellId = floor(q * 1.0);
-  float dead = w * step(0.93, mh(cellId + ph * 3.0)) * 0.6;
+  float dead = w * step(0.93, mh(cellId + ph * 3.0)) * mix(0.6, 0.0, big);
   vec3 col = base * tint * grime * (1.0 - scorch) * (1.0 - dead);
   col = mix(col, vec3(0.42, 0.22, 0.1) * dot(col, vec3(0.5)), streak); // rust-brown streaks
   wearOut = clamp(dot(base, vec3(0.333)) * 2.2, 0.0, 1.0);
@@ -6219,15 +6532,63 @@ void main() {
   vec3 N = normalize(vN);
   // v66: the material pass — kind from aux.x (0 slab, 1 strut, ≥2 crust face)
   float mk = vAux.x < 0.5 ? 0.0 : vAux.x < 1.5 ? 1.0 : 2.0;
+  // v68.6: struts pack flag + 4·length(m) into aux.z; slabs carry the bare flag
+  float zFlag = vAux.x > 0.5 && vAux.x < 1.5 ? mod(vAux.z, 4.0) : vAux.z;
+  float strutLen = vAux.x > 0.5 && vAux.x < 1.5 ? floor(vAux.z / 4.0) : 0.0;
+  if (vAux.x < 1.5 && zFlag > 0.5) mk = -floor(zFlag + 0.5); // v68: a slab or strut with flag 1/2 is titanium / the station metal, no roll
   float wear;
   vec3 base = matBase(mk, vLoc, N, vE, vUV.x * 200.0, wear);
   vec3 col = matLight(base, N, vP, wear);
+  if (mk < -1.5) {
+    // v68.15: the station's dark metal keeps its darkness — matLight's blue
+    // fresnel + broad highlight turned the black tile into a mid grey sheen
+    float keyS = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
+    col = base * (0.10 + 0.85 * keyS) + col * 0.22;
+  }
   float dd = distance(vP, uCamPos);
   float fogF = exp(-dd * uFog * 1.2);
+  if (vAux.x < 0.5 && zFlag > 1.5) {
+    // v68.3: SLABS ONLY — no lights on any strut, spoke or brace (James)
+    // v68.2 THE STATION LIGHTS (James: "run some of those blue lights up and
+    // down and some more lights in general all over the place"): window dots
+    // on a 14 m grid laid triplanar, lit by row and by cell; light RAILS
+    // running the length of a member on a third of its faces (per-face roll
+    // on the faceted normal), dashes streaming along them. All blue or white.
+    vec3 an2 = abs(N); an2 = an2 / max(an2.x + an2.y + an2.z, 1e-4);
+    vec3 q2 = vLoc / 14.0;
+    vec2 uvw = an2.x >= an2.y && an2.x >= an2.z ? q2.zy : (an2.y >= an2.z ? q2.xz : q2.xy);
+    // v68.3: a member with aux.y = length·1000 + faceWidth (metres) lays its
+    // grid on the mesh uv — rows perfectly parallel to the member (James: the
+    // spine's triplanar rows ran "on a weird twisty diagonal") — and sparse
+    float lenM = floor(vAux.y / 1000.0);
+    float straight = step(0.5, lenM);
+    float faceW = vAux.y - lenM * 1000.0;
+    uvw = mix(uvw, vec2(vUV.x * lenM, vUV.y * faceW) / 14.0, straight);
+    vec2 cell = floor(uvw), f2 = fract(uvw);
+    float hc = mh(vec3(cell, floor(vE.x * 0.01)));
+    float hr = mh(vec3(cell.y, 3.0, floor(vE.y * 0.01)));
+    float lit = step(mix(0.7, 0.94, straight), hc) * step(mix(0.4, 0.62, straight), hr);
+    float pane = step(0.3, f2.x) * step(f2.x, 0.7) * step(0.36, f2.y) * step(f2.y, 0.64);
+    vec3 wc = packetCol(mh(vec3(cell, 7.7)));
+    float faceRoll = mh(floor(N * 3.0) + vE * 0.003);
+    float rail = step(mix(0.62, 0.86, straight), faceRoll) * step(0.47, vUV.y) * step(vUV.y, 0.53);
+    float rspd = 0.15 + 0.35 * mh(vec3(faceRoll, 1.0, 2.0));
+    float rdir = mh(vec3(faceRoll, 4.0, 1.0)) < 0.5 ? -1.0 : 1.0;
+    float dash = step(0.5, fract(vUV.x * 40.0 * rdir - uTime * uTempo * rspd * 8.0 + faceRoll));
+    vec3 rc = packetCol(mh(vec3(faceRoll, 5.0, 1.0)));
+    float pxW = 1.0 / max(max(fwidth(uvw.x), fwidth(uvw.y)), 1e-6);
+    float crispW = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, pxW);
+    vec3 e = wc * lit * pane * 1.8 + rc * rail * (0.3 + dash * 1.4);
+    e = mix(wc * 0.05 * step(0.4, hr) * (1.0 - straight * 0.7) + rc * 0.04 * step(0.62, faceRoll), e, crispW);
+    col += e * 2.0;
+  }
   if (vAux.x > 0.5 && vAux.x < 1.5) {
-    vec3 famc = hueCol(uFams[int(vAux.w + 0.5)]);
-    float p = fract(vUV.x - uTime * uTempo * 0.22 + vAux.y);
-    col += famc * (exp(-60.0 * abs(p - 0.5)) * 1.6 + 0.05);
+    vec3 famc = packetCol(mh(vE * 0.019 + 2.2)); // v67: blue or white, per strut
+    // v68.13: the shared traffic roll (COMM_HUE trafficAt) — his 50/15/10/15/10 mix
+    float Lm = max(strutLen, 40.0);
+    float line = smoothstep(0.34, 0.22, abs(vUV.y - 0.5));   // a line down the bar, not the whole face
+    float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo);
+    col += famc * (pkS * line * 2.2 + 0.03);
   }
   if (vAux.x > 2.5) {
     // v57 screens + neon (James: "lighted screens... advertising...
@@ -6432,11 +6793,20 @@ in vec3 vC;
 in vec3 vE;
 in vec3 vLoc;
 uniform sampler2D uIron;
+uniform sampler2D uSteel;   // v67 brushed titanium
 uniform float uWear;
+uniform float uBridgeFam;   // v67: -1 = roll per bridge, 0 iron / 1 steel / 2 glass (the lab forces one)
 out vec4 oC;
 ${COMM_HUE}
 ${COMM_AER}
 float bh(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float bn(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = mix(mix(bh(i), bh(i + vec3(1, 0, 0)), f.x), mix(bh(i + vec3(0, 1, 0)), bh(i + vec3(1, 1, 0)), f.x), f.y);
+  float b = mix(mix(bh(i + vec3(0, 0, 1)), bh(i + vec3(1, 0, 1)), f.x), mix(bh(i + vec3(0, 1, 1)), bh(i + vec3(1, 1, 1)), f.x), f.y);
+  return mix(a, b, f.z);
+}
 void main() {
   // v66 the conduit: the light bridge runs inside a METAL SHEATH — clamped,
   // corroded pipe cladding (the conduit tile, laid along the ribbon by
@@ -6446,17 +6816,32 @@ void main() {
   float across = abs(vUV.y - 0.5) * 2.0;                // 0 centre … 1 edge
   float alongM = length(vLoc - vE);                     // metres from the bridge's middle
   float acc = exp(-14.0 * abs(vUV.y - 0.5));
-  vec3 grad = mix(hueCol(uFams[int(vAux.x + 0.5)]), hueCol(uFams[int(vAux.y + 0.5)]), vUV.x);
-  float p1 = fract(vUV.x - uTime * uTempo * 0.11 + vAux.z);
-  float p2 = fract(-vUV.x - uTime * uTempo * 0.085 + vAux.z * 1.7);
-  float pk = exp(-90.0 * abs(p1 - 0.5)) + exp(-90.0 * abs(p2 - 0.5));
+  // v67: packets are blue or white only — one shade per bridge, both ends
+  vec3 grad = packetCol(bh(vE * 0.023 + 4.4));
+  // v68.14: the LIGHT BRIDGES keep their own traffic (James: the bridges to the
+  // glow homes "were fine... can keep the logic they had before") — the v68.6
+  // form: per-bridge speed on a log scale, one to three 5 m packets each way.
+  float bSpd = 0.03 * exp(2.6 * bh(vE * 0.029 + 2.2));
+  float bCnt = floor(bh(vE * 0.031 + 6.1) * 2.999) + 1.0;
+  float p1 = fract(vUV.x - uTime * uTempo * bSpd + vAux.z);
+  float p2 = fract(-vUV.x - uTime * uTempo * bSpd * 0.8 + vAux.z * 1.7);
+  float pk = 0.0;
+  float spanM = max(vAux.x, 100.0);                         // aux.x = the span in metres
+  for (float k = 0.0; k < 3.0; k += 1.0) {
+    if (k < bCnt) {
+      float d1 = abs(fract(p1 + k * 14.0 / spanM) - 0.5) * spanM, d2 = abs(fract(p2 + k * 14.0 / spanM) - 0.5) * spanM;
+      pk += smoothstep(4.5, 1.6, d1) + exp(-d1 * 0.3) * 0.18 + smoothstep(4.5, 1.6, d2) + exp(-d2 * 0.3) * 0.18;
+    }
+  }
   if (vAux.w > 0.5) {
     // a skull feed (v51): no return traffic — three packets streaming into
     // the bone, a hotter carrier line under them
     float pf = fract(vUV.x - uTime * uTempo * 0.16 + vAux.z);
-    pk = exp(-70.0 * abs(pf - 0.5))
-       + exp(-70.0 * abs(fract(pf + 0.333) - 0.5))
-       + exp(-70.0 * abs(fract(pf + 0.667) - 0.5));
+    pk = 0.0;
+    for (float k = 0.0; k < 3.0; k += 1.0) {
+      float df = abs(fract(pf + k * 0.333) - 0.5) * spanM;
+      pk += smoothstep(6.0, 2.0, df) + exp(-df * 0.25) * 0.22;
+    }
     pk = pk * 1.3 + 0.10;
   }
   float bd = distance(vP, uCamPos);
@@ -6488,10 +6873,46 @@ void main() {
   float facing = smoothstep(0.12, 0.45, abs(dot(Nn, Vv)));
   scol += grad * (0.06 + pk * 0.35) * smoothstep(0.7, 0.3, across);        // the core lights the inside of the sheath
   float sA = (1.0 - open) * fogF * facing;
+  // v67 THREE CONDUIT FAMILIES (James: "I don't want the same exact one on
+  // every single strut family... one more like titanium or steel... one
+  // like glass"): each bridge rolls iron (the v66 sheath above), brushed
+  // titanium, or glass. Collars and port rings stay on all three.
+  float fam = uBridgeFam < -0.5 ? floor(bh(vE * 0.037 + 5.3) * 2.999) : uBridgeFam;
+  if (fam > 0.5) {
+    // brushed titanium: the steel tile desaturated and lightened, a fine
+    // brush grain running the length of the tube, a hard anisotropic
+    // highlight band along the crest, light wear (it does not rust)
+    vec3 st = texture(uSteel, tq.zy * 0.7).rgb * an.x + texture(uSteel, tq.xz * 0.7).rgb * an.y + texture(uSteel, tq.xy * 0.7).rgb * an.z;
+    st = mix(st, vec3(dot(st, vec3(0.333))), 0.6) * vec3(0.94, 0.97, 1.02);
+    float brush = bn(vec3(alongM * 0.35, across * 90.0, bh(vE) * 7.0)) * 0.5 + bn(vec3(alongM * 1.3, across * 300.0, 2.0)) * 0.5;
+    float crest = pow(curve, 10.0);
+    float scuff = uWear * 0.25 * smoothstep(0.55, 0.85, bn(vec3(alongM * 0.06, across * 3.0, bh(vE) * 5.0)));
+    vec3 tcol = st * (0.75 + 0.45 * brush) * (0.3 + 0.7 * curve) * key * (1.05 - scuff) * (1.0 + collar * 0.25)
+              + vec3(0.9, 0.95, 1.0) * crest * (0.35 + 0.25 * brush) * key
+              + vec3(0.6, 0.66, 0.75) * collarEdge * 0.5;
+    tcol += grad * (0.05 + pk * 0.3) * smoothstep(0.7, 0.3, across);
+    scol = tcol;
+  }
+  if (fam > 1.5) {
+    // glass: a clear tube — the core shows through the whole width, the
+    // wall is a fresnel rim (bright at the tube's edges, near nothing on
+    // the crest) with a faint cool tint, a thin highlight streak along the
+    // crest, a little dust in the wear; collars stay titanium
+    float rim = pow(across, 2.5);
+    float dust = uWear * 0.12 * bn(vec3(alongM * 0.2, across * 30.0, bh(vE) * 3.0));
+    vec3 gcol = vec3(0.55, 0.75, 0.98) * (0.05 + 0.45 * rim) * key
+              + vec3(1.0) * pow(curve, 24.0) * 0.22 * key
+              + vec3(0.5, 0.6, 0.7) * dust
+              + grad * (0.04 + pk * 0.25) * (1.0 - rim * 0.5);
+    float gA = clamp(0.08 + 0.6 * rim + dust, 0.0, 0.9);
+    vec3 ccol = scol; // the titanium collar (fam > 0.5 branch ran)
+    scol = mix(gcol, ccol, collar);
+    sA = mix(gA, 1.0 - open, collar) * fogF * facing;
+  }
   float keep = 1.0 - sA;
   oC = vec4(core.rgb * keep + aerial(scol, bd) * sA, core.a * keep + sA);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uCeram", "uSheath", "uWear"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -6740,10 +7161,16 @@ void main() { oC = texture(uTex, vT) * uAmt; }`;
       gl.uniform1fv(pr.U["uFams[0]"], fams);
       gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]); // v49: ship space, forever
     }
-    // v66 the material tiles on units 12–15 (hull / iron / ceramic / sheath):
-    // a flat grey 1×1 stands in until each file lands (file:// keeps a look)
+    gl.useProgram(commGL.bridge.p);
+    gl.uniform1f(commGL.bridge.U.uBridgeFam, -1); // v67: every bridge rolls its own family
+    // v66 the material tiles on units 12–15 (hull / iron / ceramic / steel):
+    // a flat grey 1×1 stands in until each file lands (file:// keeps a look).
+    // v67: unit 15 is the brushed titanium (the v66 conduit-sheath tile was
+    // never sampled — scrapped in the v66 session, file left on disk).
     {
-      const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uCeram", "ceramic-aged", 14], ["uSheath", "conduit-sheath", 15]];
+      // v68.8: the station metal was on unit 5 — the FLEET's unit — so in-world the
+      // pads sampled the robot atlas and read as stone (the lab has no fleet). Unit 14 now.
+      const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uArmor", "station-hull", 14], ["uSteel", "steel-brushed", 15]];
       for (const [uni, name, unit] of TILES) {
         const tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + unit);
@@ -7329,7 +7756,7 @@ void main() {
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "29"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "30"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
@@ -7377,6 +7804,27 @@ void main() {
         } catch (e) { return null; }
       }));
       bldgMesh.kinds = loaded.filter(Boolean);
+      // v69: the station kind — the 02-sphere's tile + the generated station
+      // light map; its VAO is (re)built from COMM_GEO[2].stn by seatStationBuildings
+      try {
+        const [surf, light] = await Promise.all([loadImg("assets/tiles/station-hull.jpg?v=" + BLDG_V), loadImg("assets/buildings/station-light.png?v=" + BLDG_V)]);
+        bldgMesh.stationKind = { id: "station", label: "Dominant station", vantage: null, body: "sphere", vao: null, count: 0, texSurf: mkTex(surf, false, false), texLight: mkTex(light, true, true), geo: null };
+        bldgMesh.makeStationVao = (g) => {
+          const k = bldgMesh.stationKind;
+          if (k.vao) gl.deleteVertexArray(k.vao);
+          const vao = gl.createVertexArray();
+          gl.bindVertexArray(vao);
+          const vb = gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+          gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(g.stn.v), gl.STATIC_DRAW);
+          for (const [loc, n, off] of [[0, 3, 0], [1, 3, 12], [2, 2, 24]]) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 32, off); }
+          const ib = gl.createBuffer();
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(g.stn.i), gl.STATIC_DRAW);
+          gl.bindVertexArray(null);
+          k.vao = vao; k.count = g.stn.i.length; k.geo = g;
+        };
+      } catch (e) { /* no station tile/light map: the members simply don't draw */ }
       if (!bldgMesh.kinds.length) return;
       gl.useProgram(pr.p);
       gl.uniform1i(pr.U.uTex2, 10);
@@ -7397,8 +7845,9 @@ void main() {
     if (!com || !com.c) return;
     // keyed on Mediant's seat: if the ring dials move the town, the towers
     // re-seat themselves next frame (no relayout hook, no init-order coupling)
-    if (bldgMesh.seat === com.c) return;
+    if (bldgMesh.seat === com.c && bldgMesh.geo === COMM_GEO) return;
     bldgMesh.seat = com.c;
+    bldgMesh.geo = COMM_GEO;
     const sh = com.shellR || 8000;
     bldgMesh.list = bldgMesh.kinds.map((k, i) => ({
       name: k.label, kind: k,
@@ -7407,10 +7856,73 @@ void main() {
       // 2026-08-15 for 01b) — the view button jumps here, nose on the tower's middle
       vantage: k.vantage,
     }));
+    seatStationBuildings();
+  }
+  // v68: the station's pads take the buildings — every building at any
+  // scale, any orientation, sunk or hanging (James: "get as much mileage out
+  // of this work as possible"). Kinds by role: towers stand on outward pads
+  // and hang from inward ones; "lying" = a tower on its side along the pad;
+  // "farm" = six small spheres in a 2×3 grid; "endcap" = the sphere scaled
+  // up on each spine end; "dock" = a tower lying along the spine, half sunk.
+  function seatStationBuildings() {
+    const com = COMMUNITIES[2];
+    const g = COMM_GEO && COMM_GEO[2];
+    if (!com || !com.c || !g || !g.pads || !bldgMesh.kinds.length) return;
+    const R = mulberry32(SOCIETY_SEED ^ 0xb1d6);
+    if (bldgMesh.stationKind && g.stn) {
+      // v69: the station's own members — one instance, unit basis, 400 m per mesh unit
+      if (bldgMesh.stationKind.geo !== g) bldgMesh.makeStationVao(g);
+      if (!bldgMesh.kinds.includes(bldgMesh.stationKind)) bldgMesh.kinds.push(bldgMesh.stationKind);
+      bldgMesh.list.push({ name: "Dominant station", kind: bldgMesh.stationKind, pos: com.c.slice(), h: 400, yaw: 0, up: [0, 1, 0], fwd: [0, 0, 1], vantage: null });
+    }
+    const towers = bldgMesh.kinds.filter((k) => k.body !== "sphere" && k !== bldgMesh.stationKind);
+    const spheres = bldgMesh.kinds.filter((k) => k.body === "sphere" && k !== bldgMesh.stationKind);
+    const anyT = towers.length ? towers : bldgMesh.kinds;
+    const anyS = spheres.length ? spheres : bldgMesh.kinds;
+    const pick = (arr) => arr[(R() * arr.length) | 0];
+    const add = (p, q, k) => [p[0] + q[0] * k, p[1] + q[1] * k, p[2] + q[2] * k];
+    const world = (p) => [com.c[0] + p[0], com.c[1] + p[1], com.c[2] + p[2]];
+    for (const pad of g.pads) {
+      const r = pad.fwd, u = pad.up;
+      const f = [u[1] * r[2] - u[2] * r[1], u[2] * r[0] - u[0] * r[2], u[0] * r[1] - u[1] * r[0]];
+      if (pad.role === "tower") {
+        bldgMesh.list.push({ name: "station tower", kind: pick(anyT), pos: world(pad.p), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
+      } else if (pad.role === "lying") {
+        // on its side along the pad: up = the pad's tangent, sunk a fifth
+        const h = pad.scale * 1.3;
+        const side = R() < 0.5 ? r : [-r[0], -r[1], -r[2]];
+        bldgMesh.list.push({ name: "station dock", kind: pick(anyT), pos: world(add(add(pad.p, side, -h * 0.5), u, -h * 0.05)), h, yaw: pad.yaw, up: side, fwd: u, vantage: null });
+      } else if (pad.role === "farm") {
+        const hs = pad.scale * 0.32;
+        for (let i = 0; i < 6; i++) {
+          const gx = ((i % 3) - 1) * hs * 1.15, gz = ((i / 3 | 0) - 0.5) * hs * 1.15;
+          bldgMesh.list.push({ name: "station farm", kind: pick(anyS), pos: world(add(add(pad.p, r, gx), f, gz)), h: hs, yaw: 0, up: u, fwd: f, vantage: null });
+        }
+      } else if (pad.role === "endcap") {
+        bldgMesh.list.push({ name: "station endcap", kind: pick(anyS), pos: world(pad.p), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
+      } else if (pad.role === "dock") {
+        bldgMesh.list.push({ name: "station dock", kind: pick(anyT), pos: world(add(pad.p, u, -pad.scale * 0.45)), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
+      }
+    }
   }
   const bldgMat = new Float32Array(16);
   function bldgModel(b) {
     const c = Math.cos(b.yaw), s = Math.sin(b.yaw);
+    if (b.up) {
+      // v68: a full basis — up + forward (any orientation), yaw about up
+      const u = b.up, f0 = b.fwd;
+      const r0 = [u[1] * f0[2] - u[2] * f0[1], u[2] * f0[0] - u[0] * f0[2], u[0] * f0[1] - u[1] * f0[0]];
+      const r = [r0[0] * c + f0[0] * s, r0[1] * c + f0[1] * s, r0[2] * c + f0[2] * s];
+      const f = [f0[0] * c - r0[0] * s, f0[1] * c - r0[1] * s, f0[2] * c - r0[2] * s];
+      bldgMat[0] = r[0] * b.h; bldgMat[1] = r[1] * b.h; bldgMat[2] = r[2] * b.h; bldgMat[3] = 0;
+      bldgMat[4] = u[0] * b.h; bldgMat[5] = u[1] * b.h; bldgMat[6] = u[2] * b.h; bldgMat[7] = 0;
+      bldgMat[8] = f[0] * b.h; bldgMat[9] = f[1] * b.h; bldgMat[10] = f[2] * b.h; bldgMat[11] = 0;
+      bldgMat[12] = b.pos[0] - cam.pos[0];
+      bldgMat[13] = b.pos[1] - cam.pos[1];
+      bldgMat[14] = b.pos[2] - cam.pos[2];
+      bldgMat[15] = 1;
+      return;
+    }
     bldgMat[0] = c * b.h; bldgMat[1] = 0; bldgMat[2] = -s * b.h; bldgMat[3] = 0;
     bldgMat[4] = 0; bldgMat[5] = b.h; bldgMat[6] = 0; bldgMat[7] = 0;
     bldgMat[8] = s * b.h; bldgMat[9] = 0; bldgMat[10] = c * b.h; bldgMat[11] = 0;
@@ -8162,7 +8674,11 @@ void main() {
           for (const b of bldgMesh.list) {
             if (b.kind !== k) continue;
             const rdx = b.pos[0] - cam.pos[0], rdy = b.pos[1] - cam.pos[1], rdz = b.pos[2] - cam.pos[2];
-            if (rdx * rdx + rdy * rdy + rdz * rdz > 9e10) continue; // > 300 km
+            const d2 = rdx * rdx + rdy * rdy + rdz * rdz;
+            if (d2 > 9e10) continue; // > 300 km
+            // v68.7 (James: "keep your eye on the frame rates"): 130 station instances
+            // × ~45k tris each — skip any building that subtends under ~2 px
+            if (b.h * b.h * 1.2e6 < d2) continue;
             if (!bound) {
               gl.bindVertexArray(k.vao);
               gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf);
@@ -8216,6 +8732,7 @@ void main() {
           gl.uniform1f(pr.U.uMelt, cfg.melt);
           gl.uniform1f(pr.U.uTime, t);
           gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
+          if (pass === "bridge") gl.uniform1f(pr.U.uWear, cfg.wear); // v67: the sheaths never got the dial in v66
           if (pass === "glass") {
             gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
             gl.uniform1f(pr.U.uHomePass, 0);

@@ -34,6 +34,16 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
+- **THE TOWNSHIP KERNELS (2026-09-05, James: the satellite cores are "a crazy, ridiculous
+  jumble of granite blocks") — DOMINANT BUILT AS v68, AWAITING HIS EYES.** Plan he nodded
+  to: one kernel per town — Mediant an asteroid, Dominant a spine-and-ring station (built),
+  Subdominant a stacked platform; the five finished buildings seat on pads at any scale /
+  orientation / sink (his reuse rule: "get as much mileage out of this work as possible");
+  more buildings land in the deal as they come through the pipe. Judge in
+  `src/labs/station-lab/index.html` (admin Labs), then fly to Dominant. Rules: the station
+  code lives inside communityGeometry (society-sim extracts it — local helpers only); the
+  big members are forced titanium via `aux.z = 1` on a slab; pads carry `role` and
+  `seatStationBuildings()` turns roles into instances. Tri bar 20k per town (TEST 6).
 - **EVERY SPHERE BECOMES A REAL 3-D SHAPE (2026-09-03, "it has to") — PHASE 1 BUILT
   2026-09-04 (v63, THE BALL), AWAITING HIS FLIGHT.** Every eligible orb is a per-pixel
   sphere impostor now (real normal + depth test, key light from its nearest heart,
@@ -80,6 +90,18 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   every bridge wears its iron sheath. NOTHING SHIPS BARE (James, 2026-09-05): a new piece
   with a flat colour is a bug. Judge in `src/labs/material-lab/index.html`; new tiles go in
   `assets/tiles/` seam-blended (tmp script in the v66 session), bound on units 12–15.
+  TEXTURE UNITS ARE SPOKEN FOR (v68.8 bug: the station tile on unit 5 sampled the fleet
+  atlas in-world and read as stone while the lab looked right): 0–4 orbs/skull, 5 fleet,
+  6 castes, 7 wisp atlas, 8–11 buildings, 12–15 tiles (hull / iron / station metal /
+  titanium). A new tile must take a unit from this table, never a "free-looking" one.
+- PACKETS ARE BLUE OR WHITE (v67, James: "I've hated them for weeks"): every data packet on
+  a strut, bridge or feed uses `packetCol()` — three shades, never a family hue. Bridges roll
+  one of three conduit families (iron / titanium / glass, `uBridgeFam`); judge them in the
+  Material Lab rows 5–7.
+- THE BUDGET (James, 2026-09-05: "keep your eye on the frame rates and processor cycles...
+  let's not break the bank"): every station/kernel addition states its cost in the changelog
+  (tris, draw calls, fragment loops); building instances skip below ~2 px (v68.7); society-sim
+  TEST 6 bars 20k tris per town; his gaming laptop is the gate, not a weaker machine.
 - CACHE TAGS (v63.7): index.html loads `world.js?v=NNN` and `world.css?v=NNN` — bump
   both with every build stamp, or James's reload serves him the old file and he reports a
   build as broken that he has never run.

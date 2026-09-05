@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Station Lab</title>
+<style>
+  html, body { margin: 0; background: #06070c; color: #cfd6e6; font: 16px/1.45 system-ui, sans-serif; overflow: hidden; }
+  #head { position: fixed; left: 0; top: 0; right: 0; padding: 16px 24px 10px; background: linear-gradient(rgba(6,7,12,.92), rgba(6,7,12,0)); pointer-events: none; z-index: 2; }
+  #head h1 { margin: 0 0 2px; font: 600 24px/1.2 system-ui, sans-serif; color: #ffe9d6; }
+  #head p { margin: 0; color: #b4bccf; max-width: 90ch; font-size: 15px; }
+  #head .keys { color: #8b94a8; }
+  #head .keys b { color: #cfd6e6; font-weight: 600; }
+  #c { display: block; position: fixed; left: 0; top: 0; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 8px 24px; background: rgba(4,5,9,.86); color: #b4bccf; font-size: 15px; border-top: 1px solid rgba(140,160,210,.14); z-index: 2; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<header id="head">
+  <h1>Station Lab — Dominant's spine and rings</h1>
+  <p>The v68 township kernel drawn by the world's own shaders, tiles and building bins, with the buildings seated on their pads. Silent. <span class="keys"><b>Drag</b> to orbit &nbsp;·&nbsp; <b>wheel</b> to zoom &nbsp;·&nbsp; <b>1–4</b> preset distances &nbsp;·&nbsp; <b>H</b> stands it upright in front of you &nbsp;·&nbsp; <b>space</b> turns it &nbsp;·&nbsp; <b>C</b> saves a sheet to tmp/snapshots</span></p>
+</header>
+<div id="bar">loading the world…</div>
+<script>
+"use strict";
+const TAU = Math.PI * 2;
+(async () => {
+  const bar = document.getElementById("bar");
+  const BASE = "../../worlds/orb-dimension/";
+  const src = await fetch(BASE + "world.js?t=" + Date.now()).then((r) => r.text());
+  const grab = (tag) => { const i = src.indexOf(tag + " = `"); const j = src.indexOf("`;", i); return src.slice(src.indexOf("`", i) + 1, j); };
+  const cut = (a, b) => { const s = src.indexOf(a); const e = src.indexOf(b, s); if (s < 0 || e <= s) throw new Error("block " + a); return src.slice(s, e); };
+  const HUE = grab("COMM_HUE"), AER = grab("COMM_AER"), MAT = grab("COMM_MAT");
+  const sub = (t) => grab(t).replace("${COMM_HUE}", HUE).replace("${COMM_AER}", AER).replace("${COMM_MAT}", MAT);
+  // ---- the geometry, exactly as society-sim builds it
+  const layoutBlock = cut("function mulberry32", "// hue families");
+  const societyBlock = cut("const SOCIETY_SEED =", "// society hues");
+  const stationBlock = cut("const STATION_SEED =", "// station hues");
+  const W = new Function("TAU", layoutBlock + societyBlock + stationBlock + `
+    applyColonyLayout(250, 0, 0.5);
+    applyCommunityLayout(250, 0, 0.5, 0.66);
+    const GEO = communityGeometry(8);
+    return { COMMUNITIES, GEO, mulberry32, SOCIETY_SEED };`)(TAU);
+  const CI = 2;
+  const g = W.GEO[CI];
+  const com = W.COMMUNITIES[CI];
+  const canvas = document.getElementById("c");
+  const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: true });
+  const link = (vs, fs) => {
+    const p = gl.createProgram();
+    const a = gl.createShader(gl.VERTEX_SHADER), b = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(a, vs); gl.shaderSource(b, fs); gl.compileShader(a); gl.compileShader(b);
+    gl.attachShader(p, a); gl.attachShader(p, b); gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error([gl.getProgramInfoLog(p), gl.getShaderInfoLog(a), gl.getShaderInfoLog(b)].join(" | "));
+    return p;
+  };
+  const mk = (vs, fs, names) => { const p = link(vs, fs); const U = {}; for (const n of names) U[n] = gl.getUniformLocation(p, n); return { p, U }; };
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam"];
+  const solid = mk(grab("COMM_VS"), sub("COMM_FS_SOLID"), COMM_US);
+  const bridge = mk(grab("COMM_VS"), sub("COMM_FS_BRIDGE"), COMM_US);
+  const glass = mk(grab("COMM_VS"), sub("COMM_FS_GLASS"), COMM_US.concat(["uHomePass", "uHomeSharp"]));
+  const bprog = mk(grab("BLDG_VS"), grab("BLDG_FS").replace("${COMM_AER}", AER), ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
+  const loadImg = (p) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = p; });
+  const mkTex = (im, unit, alpha) => {
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex);
+    if (im) gl.texImage2D(gl.TEXTURE_2D, 0, alpha ? gl.RGBA8 : gl.RGB8, alpha ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, im);
+    else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([110, 115, 125]));
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, alpha ? gl.CLAMP_TO_EDGE : gl.REPEAT);
+    return tex;
+  };
+  const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uArmor", "station-hull", 14], ["uSteel", "steel-brushed", 15]];
+  for (const [uni, name, unit] of TILES) {
+    const im = await loadImg(BASE + "assets/tiles/" + name + ".jpg").catch(() => null);
+    mkTex(im, unit, false);
+    for (const pr of [solid, bridge]) { gl.useProgram(pr.p); if (pr.U[uni]) gl.uniform1i(pr.U[uni], unit); }
+  }
+  const fams = new Float32Array([200, 275, 340, 45, 120]);
+  for (const pr of [solid, bridge, glass]) {
+    gl.useProgram(pr.p);
+    gl.uniform1fv(pr.U["uFams[0]"], fams);
+    gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]);
+    gl.uniform1f(pr.U.uFog, 0.0); gl.uniform1f(pr.U.uAer, 1.0 / 120000); gl.uniform1f(pr.U.uMelt, 1.0);
+    gl.uniform1f(pr.U.uTempo, 1.0); gl.uniform1f(pr.U.uFade, 1.0); gl.uniform1f(pr.U.uGlow, 1.0); gl.uniform1f(pr.U.uWear, 0.8);
+    if (pr.U.uBridgeFam) gl.uniform1f(pr.U.uBridgeFam, -1);
+    if (pr.U.uHomePass) { gl.uniform1f(pr.U.uHomePass, 0); gl.uniform1f(pr.U.uHomeSharp, 1); }
+  }
+  const vao15 = (m) => {
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.v), gl.STATIC_DRAW);
+    const attr = (loc, n, off) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 60, off); };
+    attr(0, 3, 0); attr(1, 3, 12); attr(2, 2, 24); attr(3, 4, 32); attr(4, 3, 48);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(m.i), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, count: m.i.length };
+  };
+  // the glass mesh up to homeV0/homeI0 (the hex-plate home fallback is cut, as the world does once the homes load)
+  const solidM = vao15(g.solid), bridgeM = vao15(g.bridge), glassM = vao15({ v: g.glass.v.slice(0, g.homeV0), i: g.glass.i.slice(0, g.homeI0) });
+  // ---- the buildings: bins + the world's own seating + model matrix
+  const BLDG_V = (src.match(/const BLDG_V = "(\d+)"/) || [0, "1"])[1];
+  const kindsSrc = cut("const BLDG_KINDS = [", "];") + "];";
+  const BLDG_KINDS = new Function(kindsSrc + " return BLDG_KINDS;")();
+  const loadBin = async (url) => {
+    const buf = await fetch(url).then((r) => { if (!r.ok) throw new Error(url); return r.arrayBuffer(); });
+    const dv = new DataView(buf); const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
+    const verts = new Float32Array(buf, 12, nv * 8), idx = new Uint32Array(buf, 12 + nv * 32, ni);
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
+    for (const [loc, n, off] of [[0, 3, 0], [1, 3, 12], [2, 2, 24]]) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 32, off); }
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, count: ni };
+  };
+  const ceramic = await loadImg(BASE + "assets/buildings/strut-alloy.jpg?v=" + BLDG_V).catch(() => null);
+  mkTex(ceramic, 10, false);
+  const kinds = (await Promise.all(BLDG_KINDS.map(async (k) => {
+    try {
+      const [mesh, surf, light] = await Promise.all([loadBin(BASE + "assets/buildings/" + k.id + ".bin?v=" + BLDG_V), loadImg(BASE + "assets/buildings/" + k.id + "-surf.jpg?v=" + BLDG_V), loadImg(BASE + "assets/buildings/" + k.id + "-light.png?v=" + BLDG_V)]);
+      const texSurf = mkTex(surf, 8, false), texLight = mkTex(light, 9, true);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      return { ...k, vao: mesh.vao, count: mesh.count, texSurf, texLight };
+    } catch (e) { console.warn("building missing", k.id, e); return null; }
+  }))).filter(Boolean);
+  // v69: the station kind — its big members as a building mesh with the 02-sphere tile + station light map
+  if (g.stn) {
+    const surf = await loadImg(BASE + "assets/tiles/station-hull.jpg").catch(() => null);
+    const light = await loadImg(BASE + "assets/buildings/station-light.png").catch(() => null);
+    const texSurf = mkTex(surf, 8, false), texLight = mkTex(light, 9, true);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(g.stn.v), gl.STATIC_DRAW);
+    for (const [loc, n, off] of [[0, 3, 0], [1, 3, 12], [2, 2, 24]]) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 32, off); }
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(g.stn.i), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    kinds.push({ id: "station", label: "station", body: "sphere", vao, count: g.stn.i.length, texSurf, texLight, station: true });
+  }
+  gl.activeTexture(gl.TEXTURE0);
+  gl.useProgram(bprog.p); gl.uniform1i(bprog.U.uTex, 8); gl.uniform1i(bprog.U.uTex2, 10); gl.uniform1i(bprog.U.uLight, 9);
+  gl.uniform3fv(bprog.U.uCamPos, [0, 0, 0]); gl.uniform1f(bprog.U.uFog, 0); gl.uniform1f(bprog.U.uAer, 1 / 120000); gl.uniform1f(bprog.U.uMelt, 1); gl.uniform1f(bprog.U.uGlow, 1); gl.uniform1f(bprog.U.uFarBlur, 0);
+  // seat them with the world's own function (community centre at the origin here)
+  const bldgMesh = { kinds: kinds.filter((k) => !k.station), list: [] };
+  const stationKind = kinds.find((k) => k.station);
+  const comLocal = { c: [0, 0, 0], shellR: g.shellR };
+  const seatSrc = cut("function seatStationBuildings", "const bldgMat = new Float32Array(16)");
+  new Function("COMMUNITIES", "COMM_GEO", "bldgMesh", "mulberry32", "SOCIETY_SEED", seatSrc + " seatStationBuildings();")([null, null, comLocal], [null, null, g], bldgMesh, W.mulberry32, W.SOCIETY_SEED);
+  const cam = { pos: [0, 0, 0] };
+  const bldgMat = new Float32Array(16);
+  const bldgModel = new Function("cam", "bldgMat", cut("function bldgModel", "// column-major model matrix for one robot") + " return bldgModel;")(cam, bldgMat);
+  if (stationKind) bldgMesh.list.push({ name: "station", kind: stationKind, pos: [0, 0, 0], h: 400, yaw: 0, up: [0, 1, 0], fwd: [0, 0, 1] });
+  bar.textContent = "Dominant: " + (g.solid.i.length / 3 | 0) + " strut tris + " + ((g.stn ? g.stn.i.length : 0) / 3 | 0) + " station tris, " + g.pads.length + " pads, " + bldgMesh.list.length + " buildings seated (" + kinds.length + " kinds loaded). Drag to orbit, wheel to zoom, C for a sheet.";
+
+  // ---- camera
+  const norm3 = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const persp = (aspect, fov = 0.9, n = 5, f = 400000) => { const t = 1 / Math.tan(fov / 2); return new Float32Array([t / aspect, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]); };
+  const view = (r, u, f) => new Float32Array([r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, 0, 0, 0, 1]);
+  const mul = (a, b) => { const o = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; o[i * 4 + j] = s; } return o; };
+  let yaw = 0, pitch = 0, dist = 9000, turn = false, last = 0, drag = null; // v68.9: still by default, upright in front
+  const target = [0, 0, 0];
+  // the spine axis is the lab's UP — the station stands upright and orbiting keeps it so
+  const endcap = g.pads.find((p) => p.role === "endcap");
+  const AX = endcap ? endcap.up.slice() : [0, 1, 0];
+  const REF = Math.abs(AX[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0];
+  const B1 = norm3(cross3(REF, AX)), B2 = cross3(AX, B1);
+  const PRESETS = [2500, 5000, 9000, 16000];
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) * 0.001); last = now;
+    if (turn && !drag) yaw += dt * 0.06;
+    const dpr = devicePixelRatio;
+    const w = Math.floor(innerWidth * dpr), h = Math.floor(innerHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; canvas.style.width = innerWidth + "px"; canvas.style.height = innerHeight + "px"; }
+    const cp = Math.cos(pitch), sy = Math.sin(yaw), cy = Math.cos(yaw), sp = Math.sin(pitch);
+    cam.pos = [0, 1, 2].map((i) => target[i] + (B1[i] * sy * cp + B2[i] * cy * cp + AX[i] * sp) * dist);
+    const f = norm3([target[0] - cam.pos[0], target[1] - cam.pos[1], target[2] - cam.pos[2]]);
+    const r = norm3(cross3(f, AX)), u = cross3(r, f);
+    const vp = mul(persp(w / h), view(r, u, f));
+    const origin = [-cam.pos[0], -cam.pos[1], -cam.pos[2]];
+    const t = now * 0.001;
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0.012, 0.014, 0.03, 1); gl.depthMask(true); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+    gl.useProgram(solid.p); gl.uniformMatrix4fv(solid.U.uVP, false, vp); gl.uniform3fv(solid.U.uOrigin, origin); gl.uniform1f(solid.U.uTime, t);
+    gl.bindVertexArray(solidM.vao); gl.drawElements(gl.TRIANGLES, solidM.count, gl.UNSIGNED_INT, 0);
+    // buildings
+    gl.useProgram(bprog.p); gl.uniformMatrix4fv(bprog.U.uVP, false, vp); gl.uniform1f(bprog.U.uTime, t);
+    for (const k of kinds) {
+      let bound = false;
+      for (const b of bldgMesh.list) {
+        if (b.kind !== k) continue;
+        if (!bound) { gl.bindVertexArray(k.vao); gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf); gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight); gl.activeTexture(gl.TEXTURE0); gl.uniform1f(bprog.U.uLidMask, k.body === "sphere" ? 0 : 1); bound = true; }
+        bldgModel(b); gl.uniformMatrix4fv(bprog.U.uModel, false, bldgMat); gl.drawElements(gl.TRIANGLES, k.count, gl.UNSIGNED_INT, 0);
+      }
+    }
+    // bridges (blended, no depth write)
+    gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false);
+    gl.useProgram(bridge.p); gl.uniformMatrix4fv(bridge.U.uVP, false, vp); gl.uniform3fv(bridge.U.uOrigin, origin); gl.uniform1f(bridge.U.uTime, t);
+    gl.bindVertexArray(bridgeM.vao); gl.drawElements(gl.TRIANGLES, bridgeM.count, gl.UNSIGNED_INT, 0);
+    gl.useProgram(glass.p); gl.uniformMatrix4fv(glass.U.uVP, false, vp); gl.uniform3fv(glass.U.uOrigin, origin); gl.uniform1f(glass.U.uTime, t);
+    gl.bindVertexArray(glassM.vao); gl.drawElements(gl.TRIANGLES, glassM.count, gl.UNSIGNED_INT, 0);
+    gl.bindVertexArray(null); gl.depthMask(true); gl.disable(gl.BLEND);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY }; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} });
+  // v68.9: drag direction flipped (James: "feels opposite to me") — drag right turns the station right
+  // v68.10: drag right → the station turns right; drag up → its top tips away (James, by hand, twice)
+  canvas.addEventListener("pointermove", (e) => { if (!drag) return; yaw += (e.clientX - drag.x) * 0.005; pitch = Math.max(-1.4, Math.min(1.4, pitch + (e.clientY - drag.y) * 0.005)); drag = { x: e.clientX, y: e.clientY }; });
+  canvas.addEventListener("pointerup", () => { drag = null; });
+  canvas.addEventListener("wheel", (e) => { dist = Math.max(300, Math.min(60000, dist * Math.exp(e.deltaY * 0.0012))); e.preventDefault(); }, { passive: false });
+  const post = async (name) => fetch("/api/dev-snapshot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, dataUrl: canvas.toDataURL("image/png") }) }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+  async function capture(name) { const r = await post(name || "station-lab"); bar.textContent = "Saved: " + ((r && r.saved) ? r.saved : "not saved (" + ((r && r.error) || "server not reached") + ")"); }
+  addEventListener("keydown", (e) => {
+    if (e.code === "KeyC") capture();
+    if (e.code === "Space") turn = !turn;
+    if (e.code === "KeyH") { yaw = 0; pitch = 0; turn = false; }
+    const n = "Digit1 Digit2 Digit3 Digit4".split(" ").indexOf(e.code);
+    if (n >= 0) dist = PRESETS[n];
+  });
+  globalThis.LAB = { capture, set: (y, p, d, tg) => { yaw = y; pitch = p; dist = d; turn = false; if (tg) { target[0] = tg[0]; target[1] = tg[1]; target[2] = tg[2]; } }, g, list: bldgMesh.list };
+})().catch((e) => { document.getElementById("bar").textContent = "station-lab error: " + e.message; console.error(e); });
+</script>
+</body>
+</html>

@@ -3,6 +3,249 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v68.14 — 2026-09-05 (Claude, James: "the entire space station looks pretty awesome")
+
+- The light bridges to the Saelyri glow homes are back on their own v68.6 traffic (per-bridge
+  speed, one to three 5 m packets each way; feeds inward-only) — his call: the station's
+  traffic mix is for the station's members, the bridges "were fine". Cache tags ?v=6892.
+
+## v68.13 — 2026-09-05 (Claude, James's traffic reset: "it looks like an amusement park ride")
+
+His brief, for EVERY light-carrying member (struts, spokes, hoops, rails, light bridges,
+feeds — "I'm sick of saying the names"): 50% the old standard (evenly spaced pulses of one
+size at a medium speed, pulse-gap-pulse-gap), ~15% unbroken chains, more variety in the
+rest, only a very few fast or dense, and the pattern must change up every so often.
+- **One shared roll**, `trafficAt()` in COMM_HUE, used by the solid AND bridge programs:
+  50% standard (2–5 evenly spaced pulses per length, speed 0.12–0.26) / 15% unbroken dense
+  chain (slow–medium) / 10% trains with gaps / 15% a sparse singleton / 10% fast or dense.
+  A second stream runs the other way on ~30%. Every stream re-rolls its pattern on its own
+  40–90 s clock (a hard cut, no crossfade — cheap and the packets are small).
+- The v68.11 per-strut train roll and the bridge's separate packet code are gone; feeds keep
+  their hotter carrier line. Cost: two streams, no inner loop, ~40 ALU per fragment.
+- Cache tags ?v=6891; init-smoke + shader-check green; lab checked by eye.
+
+## v68.12 — 2026-09-05 (Claude, James: the pads still read as "diagonally wrapped stone-looking quartz")
+
+- The Station Lab shows the pads in the dark tile (checked at 700 m), so the in-flight
+  read could not be reproduced here; taken on his word. The pads now carry their own flag
+  (aux.z = 3 → kind −3): the same dark tile sampled at 90 m per repeat so no mottle can
+  read as grain, at 0.7 brightness. Lights unchanged. Cache tags ?v=6890; init-smoke /
+  society-sim / shader-check green. If they still read as stone in flight, the next step is
+  a screenshot from the pod so the difference between lab and world can be measured.
+
+## v69 — 2026-09-05 (Claude, the station in the buildings' own metal — and THE LOSS + REBUILD)
+
+James's read: the end spheres show the right thing — "that black metal with the blue lines"
+— and the rings/pads did not. Same tile, different renderer: the spheres go through the
+BUILDING program (surface tile + light map + its lighting), the members went through the
+town-structure program with the wear pass. Now the station's big members ARE a building:
+- `stn` in communityGeometry (Dominant only): spine, service spine, rings, collar rims and
+  pads written as an 8-float building mesh (pos/400, normal, uv — u = metres along / 3000,
+  v = around in [0.06, 0.84]); struts, spokes, braces, masts stay in the solid mesh.
+- `bldgMesh.stationKind`: the 02-sphere's tile (`assets/tiles/station-hull.jpg`) + a
+  generated light map `assets/buildings/station-light.png` (6 rows of blue lines in long
+  dashes with end ticks, sparse windows; 84 KB) — one instance at the town seat, 400 m per
+  unit, rebuilt from COMM_GEO when the geometry re-rolls. BLDG_V 30. Cost: ~4k tris, one
+  draw call; Dominant's solid mesh dropped to 3.1k tris.
+- Station Lab draws it the same way (6 kinds loaded, "station tris" in the bar).
+- **THE LOSS.** Mid-patch, Claude ran `git checkout -- world.js` to clear a half-applied
+  edit; world.js was uncommitted since v66 and the whole day (v67 → v68.15) was wiped. No
+  copy existed anywhere (the dev server sends no-store; the lab's fetched text was garbage-
+  collected). REBUILT from the session's patch scripts + inline edits in order (v67, 67.1,
+  67.2, 68, 68.1, 68.2, 68.3, 68.6, 68.13, 68.14, 68.7, 68.8, 68.15, 69); the superseded
+  rounds (67.1's traffic, 68.4 Morse, 68.11 trains) were not re-applied since 68.13
+  replaced them. Every sim + shader-check green; lab checked by eye. Committed locally as a
+  checkpoint the moment it passed. Lesson in memory `never-checkout-uncommitted-work`.
+  Cache tags ?v=690.
+
+## v68.9–v68.11 — 2026-09-05 (Claude, James's lab-feel notes + the trains brief)
+
+- **Station Lab** (v68.9/10): still by default (space turns it), the spine axis is the
+  lab's up so orbiting never rolls it over, H stands it upright dead ahead, drag right
+  turns it right / drag up tips the top away (flipped twice by his hand).
+- **THE TRAINS** (v68.11; James: the v68.6 roll was "a bunch of singletons everywhere...
+  sparse and kind of lame" — he wants beads on a necklace, trains of 8–12 with gaps,
+  dense-and-slow or spaced-and-fast, singletons only occasionally, both directions):
+  every strut rolls one or two STREAMS (the second runs the other way, on ~55%); a stream
+  is a periodic train — N beads (1 on 12%, 3–6 on 18%, 6–20 on 70%) at 6–40 m spacing
+  (dense weighted), a 20–260 m gap, speed on a log scale (0.02–0.73 lengths/s), a few
+  ping-pong, a few stuttering. Beads ~3 m, a line down the bar. Cost: two streams, no
+  loop — cheaper than the v68.4 eight-slot Morse loop it replaces (Morse retired).
+- Cache tags ?v=689; init-smoke + shader-check green; station-lab checked by eye.
+
+## v68.8 — 2026-09-05 (Claude, James: the pads "still appear to be the previous texture... stone rather than metal")
+
+- The station tile sat on texture unit 5 — the ROBOT FLEET's unit — so in the world every
+  station slab sampled the fleet atlas (the Station Lab has no fleet, so it looked right
+  there). The tile is on unit 14 now; the aged-ceramic tile retired to free it (it dressed
+  a few percent of struts and slabs; those roll iron/hull now). Everything the station wears
+  — spine, rings, pads, collars' rims — reads as the dark metal in flight.
+- Rule for the world CLAUDE.md: units 0–4 orbs/skull, 5 fleet, 6 castes, 7 wisp atlas,
+  8–11 buildings, 12–15 tiles. Nothing new goes on 5–7. Cache tags ?v=688; init-smoke +
+  shader-check green. His verdict on v68.6: "really better than I was hoping for."
+
+## v68.7 — 2026-09-05 (Claude, James: "keep your eye on the frame rates... let's not break the bank")
+
+- The cost that matters at the station is the buildings: 130 instances × ~45k tris each,
+  all drawn out to 300 km. Now any instance that would subtend under ~2 px is skipped
+  (h² × 1.2e6 < distance²) — the farm spheres and hanging towers drop out first as you
+  pull away. The traffic loop is eight cheap iterations per strut fragment; the lights are
+  one hash grid. Cache tags ?v=687. Budget rule recorded in memory + the world CLAUDE.md.
+
+## v68.6 — 2026-09-05 (Claude, James's packet scale note: "bigger than my ship... fifty feet long. What are they?")
+
+- **Packets are sized in METRES now.** Struts pack flag + 4·length into aux.z (both strut
+  builders), bridges carry their span in aux.x (the family index there was dead since v67).
+  Dots 4 m, dashes 12 m, gaps 6 m, bridge packets 5 m — a few pixels at flying distance —
+  and a packet is a thin line down the middle of the bar, not a block across its face.
+- **Half the traffic is standard again** (mode 0: one plain runner at the old speed, no
+  stutter); the Morse / group / ping-pong modes share the other half.
+- **The station's between-ring members are skinnier** (spokes 0.36×, braces 0.13×, rungs
+  0.12×, inner rail 0.18× of the ring tube).
+- Cache tags ?v=686; init-smoke / society-sim / crust-sim / v47-sim / shader-check green;
+  station-lab-near sheet captured. AWAITING JAMES.
+
+## v68.5 — 2026-09-05 (Claude, James: the station's struts "are all dark... no lights whatsoever")
+
+- v68.3 read his "no lights on any strut" as packets too and cut the station struts' traffic;
+  he meant windows and rails. The packet pulse runs on every strut again, station included.
+  Cache tags ?v=685.
+
+## v68.4 — 2026-09-05 (Claude, James's traffic brief: "a lot more variety... and they all need to be smaller")
+
+- **The traffic roll on every strut** (all kind-1 struts, towns and Korrudan alike): a MODE
+  per strut — a lone runner / a Morse train (eight slots of off, dot, dash rolled per
+  strut) / a pair or triplet / a ping-pong runner that reverses at the ends — plus speed
+  on a log scale (0.03–0.9, a 30× spread), direction, and a stutter gate on a third.
+- **Packets are small**: dots ~0.6% of the strut, dashes ~2.4%, a faint bleed (was a
+  blob a tenth of the strut long).
+- **Bridges** the same discipline: per-bridge speed on a log scale, one to three packets
+  each way, packet width ~1% of the span; skull feeds' three packets small too.
+- Cache tags ?v=684; init-smoke + shader-check green; Material Lab row 1 shows the new
+  strut packets. AWAITING JAMES: a flight along Korrudan's hoops and the station.
+
+## v68.3 — 2026-09-05 (Claude, James's light-wrapping pass: "that's really pretty cool, actually")
+
+- **Pads in the station metal, with lights** (they rolled the ordinary tiles before).
+- **Spine lights straight and sparse**: a member built with `grid` carries length·1000 +
+  face width in aux.y and lays its window grid on the mesh uv, rows parallel to the member
+  (the triplanar grid ran diagonal on the leaning spine — his "weird twisty diagonal");
+  spine windows at a 6% deal, rails on one face in seven. Rings unchanged ("great").
+- **No lights on any strut, spoke or brace** — the lights block is slabs-only, and station
+  struts (aux.z = 2) carry no traffic pulse either.
+- **Up/down pads**: six per ring on the ring's two flat faces, buildings standing parallel
+  to the spine, alternating up and down. 100 pads, 130 buildings.
+- Cache tags ?v=683; init-smoke / society-sim (Dominant 7.8k tris) green. AWAITING JAMES.
+
+## v68.2 — 2026-09-05 (Claude, James: "wrap the entire station in the metal around the balls... run some of those blue lights up and down")
+
+- **One metal for the whole station**: the 02-sphere building's own dark tile
+  (`assets/tiles/station-hull.jpg`, a copy of its surf map) on every station slab AND
+  strut (`aux.z = 2` now overrides struts too); the v68.1 armor/panel tiles are gone.
+- **Rings back to v68 thickness** (his "I made a mistake with the rings"); the spine stays
+  doubled, the collars stay sized to it, the end spheres stay doubled.
+- **THE STATION LIGHTS**: window dots on a 14 m triplanar grid (lit by row and by cell) and
+  light RAILS along a third of every member's faces (per-face roll on the faceted normal)
+  with dashes streaming along them, speed and direction rolled per rail — all blue or white
+  via `packetCol`, melting to an average glow at distance like the crust windows.
+- Cache tags ?v=682; init-smoke / society-sim green; sheets in tmp/snapshots/
+  (station-lab-far / -near). AWAITING JAMES: the lab, then a flight.
+
+## v68.1 — 2026-09-05 (Claude, James's read of the station: "a solid B plus / A minus... a great starting point")
+
+His orders, all done: the spine twice as thick (~300 m) and the collars grown to fit; the
+ring tubes doubled (~150 m; the ring radii stand — doubling those would swallow the suns);
+the end spheres doubled (~1.4 km); a darker, more realistic metal, different per part.
+- **Three station materials** (COMM_MAT overrides via `aux.z`: 1 titanium / 2 armor / 3 panel
+  steel): the spine in near-black armored plating (`assets/tiles/dark-armor.jpg`, the v59
+  library tile, no credits), the rings in a darkened steel panel grid (`panel-steel.jpg`,
+  panel-grid-a at 62%), the service spine and collar rims in titanium. Units 5 + 6.
+- **The collars are translucent** — each hub is now an iridescent glass sleeve (the glass
+  program's kind-0 sheet) between two titanium rims; the spokes land on the rims.
+- Station Lab draws the glass mesh too. Cache tags ?v=681; init-smoke / society-sim (TEST 9
+  glass overdraw 1.0 screens) / v47-sim green. AWAITING JAMES: the lab again, then a flight.
+  His notes for later, not built: buildings above and below the rings, not only outward
+  ("we need a lot more assets"); the light bridges look random (they are the sun-to-sun
+  bridges — the kernel does not move the suns yet).
+
+## v68 — 2026-09-05 (Claude, DOMINANT IS A STATION — the first township kernel, James's go)
+
+James's screenshot verdict on the satellite cores: "a crazy, ridiculous jumble of granite
+blocks... no place anybody can live... not a meaningful structure of any sort." His plan
+nod: three kernels, one per town (asteroid / spine-and-ring station / stacked platform),
+build one first with the five finished buildings, judge the direction, then the rest.
+- **Dominant (ci 2) is a spine-and-ring station** (`isStation` in communityGeometry; the
+  old box-and-strut jumble no longer runs there): one 6 km spine (12-sided tube) plus a
+  service spine, four rings (40-segment 8-sided tubes, joints extended so they close) at
+  stations along it, each with a hub on the spine, eight spokes with traffic, rungs, an
+  inner rail with traffic, diagonal bracing to the previous ring, eighteen docking pads
+  per ring (every third one facing inward), masts at both ends, conduit runs along the
+  spine. ~6.7k tris, society-sim TEST 6 green.
+- **The pads seat the buildings** (`pads` on the geometry; `seatStationBuildings()`):
+  towers stand on outward pads and hang from inward ones (any orientation — `bldgModel`
+  takes an up + forward basis now), "lying" pads take a tower on its side, "farm" pads a
+  2×3 grid of small spheres, the spine ends a big sphere sunk a quarter in, two towers lie
+  half-sunk along the spine as docks. 106 buildings from the five kinds, each rolled by seed.
+- **Titanium is the mass material** (COMM_MAT: slabs 62% titanium / iron / a little
+  stone; struts titanium-led; hoops iron or titanium). The station's spine, hubs and rings
+  are FORCED titanium (`aux.z = 1` on a slab → kind −1) with 60 m plates and wear
+  features four times bigger — at 30 m the wear read as stone grain (lab round 2).
+- **Station Lab** `src/labs/station-lab/index.html` (admin Labs): the kernel drawn by the
+  world's own shaders, tiles, bins and seating code, orbit + zoom, C saves a sheet.
+  Sheets: tmp/snapshots/station-lab-far.png / -near.png.
+- Mediant and Subdominant keep the old core until their kernels come. Cache tags ?v=680;
+  init-smoke / v47-sim / society-sim / crust-sim / sphere-sim / shader-check green.
+  AWAITING JAMES: the lab, then a flight to Dominant. NEXT on his verdict: Mediant's
+  asteroid, Subdominant's stack; more buildings through the pipe as concepts arrive.
+
+## v67.2 — 2026-09-05 (Claude, James's township screenshot)
+
+- **Light bridges 30% narrower** (town bridges and skull feeds) — his "slightly less wide,
+  don't dramatically change them; I like very much the glass".
+- **The data planes are gone** — the 48 upright glass sheets raining family-coloured dashes
+  through every satellite core ("sheets of yellow... just doesn't make any sense"). Loop at zero.
+- His verdicts recorded for the township redesign (item (d) in the repo Todo): the hull tile
+  reads as "pixely granite", fine for a few blocks, not for the mass; the cores are "a crazy,
+  ridiculous jumble of granite blocks... no place anybody can live"; he wants each township to
+  read as a specific large space station with seats for the buildings. Suggestions delivered in
+  chat; his picks next. Cache tags ?v=672; sims green.
+
+## v67.1 — 2026-09-05 (Claude, James's read of v67: bridges "really good", struts "not so great")
+
+- **Struts half as thick** (both builders — the core webbing + hoops, and the crust struts).
+- **Every strut rolls its own traffic.** Face-on at Korrudan he counted seven struts all
+  running the same way at the same speed ("all going around counterclockwise... not cool
+  looking anymore"). Each strut now rolls direction, speed (0.06–0.42), one to three packets
+  and packet width from its centre, so neighbours never agree.
+- **The middle blue is aqua** (his correction: toward green, not purple).
+- Cache tags ?v=671; sims + shader-check green. AWAITING JAMES: a Korrudan face-on look.
+
+## v67 — 2026-09-05 (Claude, THREE CONDUIT FAMILIES + BLUE PACKETS, James's read of v66)
+
+James liked the material pass, with two orders. (1) "I don't want the same exact one on every
+single strut family" — the iron sheath reads "pixely, almost like camouflage"; he wants three
+kinds of energy conduit: the current one, one "more like titanium or steel", one "like glass".
+(2) The packets: "I only like the blue... I don't like the pink and I don't like the yellow. They
+look really super goofy and I've hated them for weeks... switch them all to blue" — three shades,
+blue or white only, everywhere packets run.
+- **Packets are blue or white only.** `packetCol(r)` in COMM_HUE: deep blue / sky blue / white,
+  one shade rolled per piece (from vE). The bridge core, the skull feeds and every webbing
+  strut's data pulse use it; family hues no longer touch a packet anywhere. Screens, neon and
+  windows keep their family colours (not packets).
+- **Three conduit families**, rolled per bridge in the bridge FS (`uBridgeFam` = -1 rolls;
+  the lab forces 0/1/2): 0 the v66 gantry-iron sheath; 1 BRUSHED TITANIUM — the v59 library's
+  `brushed-metal` tile (no new credits; seam-blended to `assets/tiles/steel-brushed.jpg`,
+  unit 15, replacing the never-sampled conduit-sheath slot) desaturated and lightened, a brush
+  grain along the tube, a hard anisotropic crest highlight, light scuffing, no rust; 2 GLASS — a
+  clear tube: the core shows through the whole width, a fresnel rim bright at the tube's edges,
+  a thin crest streak, a little dust with wear, titanium collars and port rings.
+- v66 slip fixed: the bridge pass never set `uWear` (sheaths drew clean); it takes the dial now.
+- Material Lab: rows 5–7 are Conduit · iron / titanium / glass; a missing tile no longer kills
+  the page (grey stand-in like the world).
+- Cache tags ?v=670; init-smoke / v47-sim / society-sim / crust-sim / shader-check green; lab
+  sheet captured (tmp/snapshots/material-lab-sheet.png). NOT eye-verified in-world (sound world).
+  AWAITING JAMES: the lab rows, then a flight along the bridges. NEXT: the township kernels.
+
 ## v66 — 2026-09-05 (Claude, THE MATERIAL PASS on James's go)
 
 James, after the interiors pass: everything with a baseline Blender material — the struts and

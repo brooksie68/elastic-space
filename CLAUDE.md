@@ -279,7 +279,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
    (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.
-   (d) NEW DESIGN THREAD — TOWNSHIP KERNELS: the capital has Korrudan (bone
+   (d) TOWNSHIP KERNELS — **DOMINANT BUILT AS v68 2026-09-05** (James's screenshot
+   verdict on the old cores: "a crazy, ridiculous jumble of granite blocks... no place
+   anybody can live"; his nod to one kernel per town, build one first): the spine-and-ring
+   station with the five finished buildings seated on 76 pads at any scale/orientation/sink,
+   titanium as the mass material, Station Lab in admin Labs. Same day: v67 three conduit
+   families (iron/titanium/glass) + packets blue/white only in three shades; v67.1 struts
+   half as thick + random traffic per strut; v67.2 bridges 30% narrower + the yellow data
+   planes gone. AWAITING HIS EYES on the lab and a flight to Dominant; then Mediant's
+   asteroid + Subdominant's stack, and buildings through the pipe as concepts arrive (the
+   ten tech pieces could skip the lit guide). The original thread for the record: the capital has Korrudan (bone
    + crust, buildings embedded — "gonna get even cooler"); the three satellite
    towns have nothing solid at the center — "connecting from nothing to
    nothing." Each needs a kernel to build on: an asteroid/planetoid (needn't be

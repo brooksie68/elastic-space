@@ -66,7 +66,9 @@ const TAU = Math.PI * 2;
     { name: "Slab", sub: "a core slab, 420 × 90 × 300 m", kind: "slab" },
     { name: "Hoop", sub: "a gear-band of struts around a core, 700 m across", kind: "hoop" },
     { name: "Crust face", sub: "a Korrudan crust wall with its window grid (physical pitch)", kind: "crust" },
-    { name: "Conduit", sub: "a light bridge in its sheath — 60 m wide, 900 m long", kind: "bridge" },
+    { name: "Conduit · iron", sub: "a light bridge in its iron sheath — 60 m wide, 900 m long", kind: "bridge", fam: 0 },
+    { name: "Conduit · titanium", sub: "the same bridge in brushed titanium (v67)", kind: "bridge", fam: 1 },
+    { name: "Conduit · glass", sub: "the same bridge as a clear tube, titanium collars (v67)", kind: "bridge", fam: 2 },
   ];
   const ROWS = PIECES.length;
   const DIST = [120, 500, 2500];
@@ -88,19 +90,20 @@ const TAU = Math.PI * 2;
     return p;
   };
   bar.textContent = "compiling the Cadence shaders…";
-  const US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uCeram", "uSheath", "uWear"];
+  const US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam"];
   const mk = async (fs) => { const p = await link(VS, fs); const U = {}; for (const n of US) U[n] = gl.getUniformLocation(p, n); return { p, U }; };
   const solid = await mk(FS_SOLID), bridge = await mk(FS_BRIDGE);
 
   // ---- the tiles on units 12–15, exactly as the world binds them
   const loadImg = (p) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = p; });
-  const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uCeram", "ceramic-aged", 14], ["uSheath", "conduit-sheath", 15]];
+  const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uArmor", "station-hull", 14], ["uSteel", "steel-brushed", 15]];
   for (const [uni, name, unit] of TILES) {
     const tex = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    const im = await loadImg(BASE + "assets/tiles/" + name + ".jpg");
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, im);
+    const im = await loadImg(BASE + "assets/tiles/" + name + ".jpg").catch(() => null);
+    if (im) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, im);
+    else { console.warn("material tile missing:", name); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([110, 115, 125])); }
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
@@ -209,7 +212,7 @@ const TAU = Math.PI * 2;
     gl.bindVertexArray(null);
     return { vao, count: m.i.length, prog, radius, kind };
   };
-  const PIECEGL = PIECES.map((p) => build(p.kind));
+  const PIECEGL = PIECES.map((p) => Object.assign(build(p.kind), { fam: p.fam == null ? -1 : p.fam }));
 
   // ---- camera math (ship space: the camera is the origin, the piece is offset by -cam)
   const persp = (aspect, fov = 0.9, n = 1, f = 200000) => { const t = 1 / Math.tan(fov / 2); return new Float32Array([t / aspect, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]); };
@@ -236,7 +239,7 @@ const TAU = Math.PI * 2;
     gl.uniform3fv(pr.U.uOrigin, [-cam[0], -cam[1], -cam[2]]);
     gl.uniform1f(pr.U.uTime, t);
     gl.uniform1f(pr.U.uWear, WEAR);
-    if (pg.kind === "bridge") { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); }
+    if (pg.kind === "bridge") { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.uniform1f(pr.U.uBridgeFam, pg.fam); }
     else { gl.disable(gl.BLEND); gl.depthMask(true); }
     gl.bindVertexArray(pg.vao);
     gl.drawElements(gl.TRIANGLES, pg.count, gl.UNSIGNED_INT, 0);
