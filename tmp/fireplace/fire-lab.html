@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fireplace — silent fire study</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#090706;color:#e2c7a7;font-family:Georgia,serif;overflow:hidden}canvas{display:block;width:100vw;height:100vh}#note{position:fixed;top:22px;left:26px;pointer-events:none;font:11px system-ui;letter-spacing:.16em;text-transform:uppercase;color:#ad9984}#note span{display:block;margin-top:7px;font-size:10px;letter-spacing:.07em;color:#786b5e}button{cursor:pointer;color:inherit;border:1px solid #63503d;background:#17120feb;border-radius:5px;padding:.65em 1em;font:inherit}#toggle{position:fixed;bottom:22px;right:24px;font:13px system-ui}#panel{--ui-scale:1;font-size:calc(14px * var(--ui-scale));position:fixed;bottom:4.5rem;right:1.5rem;max-width:calc(100vw - 3rem);width:36em;max-height:70vh;overflow:auto;background:#17130ff5;border:1px solid #57432f;border-radius:.6em;padding:1.25em;box-shadow:0 1em 4em #0009;font-family:system-ui}#panel[hidden]{display:none}h2{font:1.1em Georgia;margin:0 0 1em}#controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(15em,1fr));gap:1em}label{font-size:.85em;display:grid;grid-template-columns:1fr 3.5em;gap:.4em}input{grid-column:1/-1;width:100%;accent-color:#ce8b42}output{text-align:right;color:#dfa359}.actions{display:flex;gap:.5em;margin-top:1.2em;flex-wrap:wrap}#error{position:fixed;top:30%;left:20%;right:20%;color:#ffc}#stats{position:fixed;bottom:25px;left:26px;font:11px system-ui;color:#8b7864}
+</style>
+<div id="note">Fireplace / material & flame study<span>Silent · move gently to look · scroll to zoom</span></div><div id="stats">Loading geometry…</div><div id="error" hidden></div>
+<button id="toggle" aria-expanded="false" aria-controls="panel">Configuration</button>
+<section id="panel" hidden><h2>Fire study</h2><div id="controls"></div><div class="actions"><button id="pause">Pause</button><button id="reset">Reset</button><button id="still">Logs only</button></div></section>
+<script src="../../src/core/dashboard-control.js" data-home="../../index.html"></script><script src="logs.js"></script>
+<script type="importmap">{"imports":{"three":"../../src/lib/three/three.module.js"}}</script>
+<script type="module" src="fire.js"></script></html>
