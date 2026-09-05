@@ -52,7 +52,7 @@ const MADE_LINES = {
 };
 const K_SPR = 2400, K_ANG = 140, K_TD = 8, K_REP = 260, K_ATT = 340, K_CENTER = 0.15, K_TQ = 34, DAMP_RATE = 2.2, OM_DAMP = 6, K_BD = 50, K_DRAG = 500, DRAG_DAMP = 25;
 const BREAK = { 0:7, 1:6, 2:10, 3:13, ionic:11 }; // 0 = metallic // px at S=1, measured against the drag transient
-const HEAT_K = 3800, K_HB = 90, ROT_DAMP = 4; // whole-molecule spin decays at 4/s (half a turn's speed gone in ~0.17 s) // heat kicks (px/s per sqrt(s), scaled by S) and the hydrogen-bond pull
+const HEAT_K = 3800, K_HB = 90, ROT_DAMP = 4, K_HOLD = 6, K_RING = 1500; // K_HOLD: extra damping per bond of distance from the dragged atom (capped at 6 bonds) // whole-molecule spin decays at 4/s (half a turn's speed gone in ~0.17 s) // heat kicks (px/s per sqrt(s), scaled by S) and the hydrogen-bond pull
 
 function hexRgb(h){ const n = parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
 function rgba(h,a){ const [r,g,b] = hexRgb(h); return 'rgba('+r+','+g+','+b+','+a+')'; }
@@ -89,9 +89,25 @@ function rebuild(sc,a){
   if(a.e.metal){ a.n=0; a.slots=[]; a.R=ringR(sc,a); for(const b of a.bonds) b.L=bondLen(sc,b); return; }
   const { pairs } = lewis(a); const cov = a.bonds.filter(b => !b.ionic); const hands = freeHands(a);
   const n = pairs + cov.length + hands; const slots = new Array(n); const used = new Set();
-  for(const b of cov){
+  // four domains: the tetrahedron seen from the side, unless the atom sits in a chain (two or three neighbours heavier than
+  // hydrogen), when the heavy neighbours take slots 120° apart the way a skeletal drawing zigzags — a chain of these can close
+  // into a six-ring instead of folding on itself (James, 2026-09-04)
+  const heavy = cov.filter(b => other(b,a).sym!=='H'); let pat = null, heavySlots = null;
+  if(n===4 && heavy.length===2){ pat = CHAIN2; heavySlots = [0,1]; } else if(n===4 && heavy.length===3){ pat = CHAIN3; heavySlots = [0,1,2]; }
+  else if(heavy.length>=2 && heavy.length<n) heavySlots = heavy.map((b,i)=>i); // three domains: the heavy neighbours take 0° and 120°, so the hydrogen (or hand) points out of the bend, never into a ring
+  a.pat = pat;
+  if(heavySlots){ // the heavy slots run counter-clockwise, so the heavy neighbours take them in counter-clockwise order round the atom — a mirror
+    // assignment fits with equal and opposite errors, the torque cancels, and the atom sits stable with its hydrogen slot pointing into the ring
+    const angs = heavy.map(b => { const o = other(b,a); return Math.atan2(o.y-a.y, o.x-a.x); });
+    let order = heavy.map((b,i) => i);
+    if(heavy.length===2){ if(wrap(angs[1]-angs[0]) < 0) order = [1,0]; }
+    else { order.sort((i,j) => ((angs[i]-angs[0]+TAU*2)%TAU) - ((angs[j]-angs[0]+TAU*2)%TAU)); // counter-clockwise from the first
+      let bestR=0, bestE=1e9; for(let r=0;r<order.length;r++){ let e=0; for(let q=0;q<order.length;q++) e += Math.abs(wrap(a.th + slotBase(n,pat,heavySlots[q]) - angs[order[(q+r)%order.length]])); if(e<bestE){ bestE=e; bestR=r; } }
+      order = order.map((_,q) => order[(q+bestR)%order.length]); }
+    order.forEach((hi,q) => { used.add(heavySlots[q]); slots[heavySlots[q]] = { type:'bond', bond:heavy[hi] }; }); }
+  for(const b of cov){ if(heavySlots && heavy.includes(b)) continue;
     const o = other(b,a); const want = Math.atan2(o.y-a.y, o.x-a.x); let best=-1, bd=1e9;
-    for(let k=0;k<n;k++){ if(used.has(k)) continue; const d = Math.abs(wrap(a.th + (n===4 ? TETRA[k] : k*TAU/n) - want)); if(d<bd){ bd=d; best=k; } }
+    for(let k=0;k<n;k++){ if(used.has(k)) continue; const d = Math.abs(wrap(a.th + slotBase(n,pat,k) - want)); if(d<bd){ bd=d; best=k; } }
     if(best>=0){ used.add(best); slots[best] = { type:'bond', bond:b }; }
   }
   let k = 0;
@@ -101,7 +117,10 @@ function rebuild(sc,a){
   for(const b of a.bonds) b.L = bondLen(sc,b);
 }
 const TETRA = [0, 110, 200, 270].map(d => d*Math.PI/180); // four domains drawn as a tetrahedron seen from the side
-function slotAng(a,k){ return a.th + (a.n===4 ? TETRA[k] : k*TAU/a.n); }
+const CHAIN2 = [0, 120, 200, 280].map(d => d*Math.PI/180); // two heavy neighbours 120° apart, the rest behind
+const CHAIN3 = [0, 120, 240, 300].map(d => d*Math.PI/180); // a branch point: three heavy neighbours, one small slot
+function slotBase(n,pat,k){ return pat ? pat[k] : (n===4 ? TETRA[k] : k*TAU/n); }
+function slotAng(a,k){ return a.th + slotBase(a.n, a.pat, k); }
 function other(b,x){ return x===b.a ? b.b : b.a; }
 function findBond(A,B){ for(const b of A.bonds) if(other(b,A)===B) return b; return null; }
 const METAL_MAX=6; // a copper atom packs against up to six neighbours: the hexagonal block
@@ -116,9 +135,9 @@ function canBond(A,B){
 }
 function link(sc, A, B, kind, forceOrder){
   if(kind==='covalent'){
-    const order = forceOrder || Math.min(3, freeHands(A), freeHands(B)); if(order<1) return null;
+    const order = forceOrder || 1; if(freeHands(A)<order || freeHands(B)<order) return null; // first contact is always a single bond; pushing the pair together again steps it up (James, 2026-09-04: a chain of doubles would not bend into a ring)
     const b = { a:A, b:B, order, ionic:false, L:0, born:sc.t }; b.L = bondLen(sc,b);
-    sc.bonds.push(b); A.bonds.push(b); B.bonds.push(b); rebuild(sc,A); rebuild(sc,B); b.L = bondLen(sc,b); return b;
+    sc.bonds.push(b); A.bonds.push(b); B.bonds.push(b); rebuild(sc,A); rebuild(sc,B); b.L = bondLen(sc,b); sc.ringsDirty = true; return b;
   }
   if(kind==='ionic'){
     const donor = canGive(A) ? A : B, acc = donor===A ? B : A;
@@ -153,13 +172,55 @@ function ionize(sc, a){
   if(sc.onIon) sc.onIon(a); return true; }
 function unlink(sc,b){
   sc.bonds = sc.bonds.filter(x => x!==b); b.a.bonds = b.a.bonds.filter(x => x!==b); b.b.bonds = b.b.bonds.filter(x => x!==b);
-  rebuild(sc,b.a); rebuild(sc,b.b);
+  rebuild(sc,b.a); rebuild(sc,b.b); sc.ringsDirty = true;
 }
+// ---------- bench editing (select / delete / copy / paste) ----------
+function removeAtoms(sc, list){ const set=new Set(list); if(!set.size) return; for(const b of sc.bonds.slice()) if(set.has(b.a)||set.has(b.b)) unlink(sc,b);
+  sc.atoms = sc.atoms.filter(a=>!set.has(a)); if(sc.drag && set.has(sc.drag)) sc.drag=null; if(sc.xray) sc.xray=null; sc.lastX=(sc.lastX||[]).filter(a=>!set.has(a));
+  if(sc.sel) for(const a of list) sc.sel.delete(a); sc.ringsDirty=true; }
+// a snapshot is positions about the centroid + the bonds among the copied atoms; restore rebuilds it anywhere (ionic pairs hand their electron over again, lone ions keep their charge)
+function snapshot(sc, list){ if(!list.length) return null; const idx=new Map(list.map((a,i)=>[a,i])); let cx=0, cy=0; for(const a of list){ cx+=a.x; cy+=a.y; } cx/=list.length; cy/=list.length;
+  const atoms=list.map(a=>({ sym:a.sym, x:a.x-cx, y:a.y-cy, th:a.th, charge:a.charge, outer:a.outer })); const bonds=[]; const seen=new Set();
+  for(const a of list) for(const b of a.bonds){ if(seen.has(b)) continue; seen.add(b); const i=idx.get(b.a), j=idx.get(b.b); if(i===undefined||j===undefined) continue; bonds.push({ i, j, order:b.order, ionic:!!b.ionic, tether:!!b.tether, metallic:!!b.metallic }); }
+  let R=0; for(const a of list) R=Math.max(R, Math.hypot(a.x-cx,a.y-cy)+a.R); return { atoms, bonds, R }; }
+function restore(sc, snap, x, y){ const made=snap.atoms.map(s=>{ const a=spawn(sc,s.sym,x+s.x,y+s.y); a.th=s.th; return a; });
+  for(const bb of snap.bonds){ const A=made[bb.i], B=made[bb.j]; if(bb.metallic) link(sc,A,B,'metal'); else if(bb.ionic && !bb.tether) link(sc,A,B,'ionic'); else if(!bb.ionic) link(sc,A,B,'covalent',bb.order); }
+  snap.atoms.forEach((s,i)=>{ const a=made[i]; if(a.charge!==s.charge){ a.charge=s.charge; a.outer=s.outer; rebuild(sc,a); } });
+  for(const bb of snap.bonds) if(bb.tether) link(sc,made[bb.i],made[bb.j],'tether');
+  sc.ringsDirty=true; return made; }
+function drawSelection(sc){ const ctx=sc.ctx, S=sc.S; const AMBER='#FFC43C';
+  if(sc.sel && sc.sel.size){ const live=new Set(sc.atoms); for(const a of sc.sel) if(!live.has(a)) sc.sel.delete(a); } // an atom that left the bench (clear, guide, free mode) takes its highlight with it (James, 2026-09-05)
+  if(sc.sel && sc.sel.size){ ctx.save(); ctx.setLineDash([4*S,4*S]); ctx.lineDashOffset=-sc.t*20; for(const a of sc.sel){ ring(ctx,a.x,a.y,a.R+7*S,AMBER,0.7,1.4*S); } ctx.restore(); }
+  const m=sc.marquee; if(m){ const x=Math.min(m.x0,m.x1), y=Math.min(m.y0,m.y1), w=Math.abs(m.x1-m.x0), h=Math.abs(m.y1-m.y0); ctx.save(); ctx.fillStyle=rgba(AMBER,0.05); ctx.fillRect(x,y,w,h); ctx.setLineDash([5*S,4*S]); ctx.strokeStyle=rgba(AMBER,0.75); ctx.lineWidth=1.2*S; ctx.strokeRect(x,y,w,h); ctx.restore(); } }
+// ---------- rings: five- and six-membered cycles of covalent bonds are first-class shapes ----------
+// Found again whenever a bond is made or broken (cheap: one short search per covalent bond). Each ring gets a shape spring in
+// substep() that pulls its atoms toward a regular convex polygon in their bond order, the way the angle springs shape
+// everything else; without it a closed ring could settle dented or twisted (James, 2026-09-04, building benzene by hand).
+function findRings(sc){ sc.ringsDirty = false; const rings = []; const seen = new Set();
+  for(const b of sc.bonds){ if(b.ionic || b.metallic) continue; const A=b.a, B=b.b; // shortest path from A to B not using this bond, at most 5 hops
+    const par = new Map([[A,null]]); let front=[A], path=null;
+    for(let hops=1; hops<=5 && !path; hops++){ const next=[]; for(const x of front) for(const bb of x.bonds){ if(bb===b || bb.ionic || bb.metallic) continue; const o=other(bb,x); if(par.has(o)) continue; par.set(o,x); if(o===B){ path=[]; let c=B; while(c){ path.push(c); c=par.get(c); } break; } next.push(o); } front=next; }
+    if(!path || path.length<5 || path.length>6) continue; const key = path.map(a=>a.id).sort((x,y)=>x-y).join(','); if(seen.has(key)) continue; seen.add(key); rings.push({ atoms:path, n:path.length }); }
+  sc.rings = rings; }
+function ringForces(sc){ if(sc.ringsDirty || (sc.rings && sc.rings.length && sc.rings.some(r=>r.atoms.some(a=>!sc.atoms.includes(a))))) findRings(sc); if(!sc.rings || !sc.rings.length) return;
+  for(const r of sc.rings){ const at=r.atoms, n=r.n; let cx=0, cy=0, L=0; for(let i=0;i<n;i++){ cx+=at[i].x; cy+=at[i].y; const bb=findBond(at[i],at[(i+1)%n]); L += bb ? bb.L : 0; } cx/=n; cy/=n; L/=n; if(!L) continue;
+    const Rr = L/(2*Math.sin(Math.PI/n)); const th = at.map(a=>Math.atan2(a.y-cy,a.x-cx));
+    let wind=0; for(let i=0;i<n;i++) wind += wrap(th[(i+1)%n]-th[i]); const sgn = wind>=0 ? 1 : -1; // which way round the atoms run
+    let sx=0, sy=0; for(let i=0;i<n;i++){ const d=th[i]-sgn*i*TAU/n; sx+=Math.cos(d); sy+=Math.sin(d); } const off=Math.atan2(sy,sx); // best-fit rotation of the polygon
+    for(let i=0;i<n;i++){ const a=at[i]; const t=off+sgn*i*TAU/n; const fx=(cx+Math.cos(t)*Rr-a.x)*K_RING, fy=(cy+Math.sin(t)*Rr-a.y)*K_RING; a.fx+=fx; a.fy+=fy; a.afx=(a.afx||0)+fx; a.afy=(a.afy||0)+fy; } } }
+function pathLen(A,B,max){ // bonds along the molecule from A to B, 0 if none within max
+  let front=[A]; const seen=new Set(front); for(let hops=1; hops<=max; hops++){ const next=[]; for(const x of front) for(const b of x.bonds){ const o=other(b,x); if(o===B) return hops; if(!seen.has(o)){ seen.add(o); next.push(o); } } if(!next.length) return 0; front=next; } return 0; }
 function component(a){ const seen = new Set([a]); const q=[a]; while(q.length){ const x=q.pop(); for(const b of x.bonds){ const o=other(b,x); if(!seen.has(o)){ seen.add(o); q.push(o); } } } return [...seen]; }
 function formulaKey(atoms){ const c={}; for(const a of atoms) c[a.sym]=(c[a.sym]||0)+1; return KEYORD.filter(s=>c[s]).map(s=>s+(c[s]>1?c[s]:'')).join(''); }
 
 // ---------- physics ----------
-function step(sc, dt){ const n = Math.max(1, Math.ceil(dt/(1/240))); const h = dt/n; for(let i=0;i<n;i++) substep(sc,h); }
+function step(sc, dt){ const n = Math.max(1, Math.ceil(dt/(1/240))); const h = dt/n; for(let i=0;i<n;i++) substep(sc,h); reslot(sc); }
+// Every 0.2 s an atom re-picks which of its domains each bond sits in, nearest to where the neighbour actually is (this is
+// bookkeeping about the flat drawing, not a twist about a bond). Without it a chain kept whatever angle pattern it got at
+// contact and would not bend into a ring, and a ring vertex could stay wedged (James, 2026-09-04). Hand phases carry over.
+function reslot(sc){ if(sc.t - (sc.reslotT||0) < 0.2) return; sc.reslotT = sc.t;
+  for(const a of sc.atoms){ if(a.e.metal || !a.bonds.length) continue; let ok=true, cov=0; for(const b of a.bonds){ if(b.metallic){ ok=false; break; } if(!b.ionic) cov++; } if(!ok || !cov) continue;
+    const phases = a.slots.filter(s=>s && s.type==='hand').map(s=>s.phase); rebuild(sc,a); let i=0; for(const s of a.slots) if(s && s.type==='hand' && i<phases.length) s.phase = phases[i++]; } }
 function substep(sc, dt){
   sc.t += dt; const atoms = sc.atoms, S = sc.S; const pending = [];
   for(const a of atoms){ a.fx=0; a.fy=0; a.tq=0; }
@@ -167,8 +228,9 @@ function substep(sc, dt){
     const A=atoms[i], B=atoms[j]; const dx=B.x-A.x, dy=B.y-A.y; const d=Math.hypot(dx,dy)||0.001; const ux=dx/d, uy=dy/d;
     if(findBond(A,B)) continue;
     const minD = (A.R+B.R)*0.92;
-    if(d<minD){ const f=(minD-d)*K_REP; A.fx-=ux*f; A.fy-=uy*f; B.fx+=ux*f; B.fy+=uy*f; }
+    if(d<minD && !pathLen(A,B,3)){ const f=(minD-d)*K_REP; A.fx-=ux*f; A.fy-=uy*f; B.fx+=ux*f; B.fy+=uy*f; } // atoms within two bonds of each other (a hydrogen and its carbon's neighbour) may pass through one another: a bond can rotate in 3-D, and a hydrogen has to be able to swing to the other side of its carbon for a chain to curl into a ring (James, 2026-09-04)
     let kind = canBond(A,B); if(kind && (sc.cool.get(A.id+':'+B.id)||0) > sc.t) kind = null;
+    if(kind && d < A.R+B.R+(A.e.reach+B.e.reach)*S*1.2 && pathLen(A,B,4) > 0) kind = null; // no three- or four-membered rings: atoms fewer than five bonds apart along one molecule leave each other alone (five- and six-rings close fine)
     if(sc.hbonds && !kind) hbondForce(sc,A,B,d,ux,uy);
     if(kind){
       const reach = A.R+B.R+(A.e.reach+B.e.reach)*S*1.2;
@@ -193,12 +255,14 @@ function substep(sc, dt){
       if(k<0) continue; const ang = slotAng(X,k);
       const ax = X.x+Math.cos(ang)*b.L, ay = X.y+Math.sin(ang)*b.L; const ex=ax-Y.x, ey=ay-Y.y;
       const vx=(Y.x-X.x)/d, vy=(Y.y-X.y)/d; const along=ex*vx+ey*vy; let px=ex-along*vx, py=ey-along*vy; const pm=Math.hypot(px,py); if(pm>60*S){ px*=60*S/pm; py*=60*S/pm; }
+      { const err=wrap(ang-Math.atan2(Y.y-X.y,Y.x-X.x)); if(Math.abs(err)>Math.PI/2){ const sg=err>0?1:-1; px=-vy*sg*60*S; py=vx*sg*60*S; } } // more than 90° off its slot: the sideways projection dies out near 180°, so push full-strength the short way round (a hydrogen wedged inside a ring, 2026-09-04)
       const rvx=Y.vx-X.vx, rvy=Y.vy-X.vy; const rt=rvx*(-vy)+rvy*vx; const tx=px*K_ANG - (-vy)*rt*K_TD, ty=py*K_ANG - vx*rt*K_TD;
       Y.fx+=tx; Y.fy+=ty; X.fx-=tx; X.fy-=ty; Y.afx=(Y.afx||0)+tx; Y.afy=(Y.afy||0)+ty; X.afx=(X.afx||0)-tx; X.afy=(X.afy||0)-ty;
       const want = Math.atan2(Y.y-X.y, Y.x-X.x); X.tq += wrap(want-ang)*K_TQ;
     }
   }
   // shape forces may bend a molecule but never spin it: cancel the angle springs' net torque per molecule (chains with the uneven
+  ringForces(sc);
   // tetra slots otherwise turn forever — James caught propane rotating, 2026-09-03)
   { const seen=new Set();
     for(const a0 of atoms){ if(seen.has(a0) || !a0.bonds.length) continue; const comp=component(a0); for(const a of comp) seen.add(a); if(comp.length<2) continue;
@@ -209,16 +273,23 @@ function substep(sc, dt){
       if(I>1e-6){ let L=0; for(const a of comp){ const rx=a.x-cx, ry=a.y-cy; L += rx*a.vy - ry*a.vx; } const om=L/I; const k=om*ROT_DAMP; for(const a of comp){ const rx=a.x-cx, ry=a.y-cy; a.fx += k*ry; a.fy += -k*rx; } } }
     for(const a of atoms){ a.afx=0; a.afy=0; } }
   const damp = Math.exp(-DAMP_RATE*dt), odamp = Math.exp(-OM_DAMP*dt); const cx=sc.W/2, cy=sc.H/2;
+  // while dragging, the rest of the molecule holds still in proportion to how many bonds away it is, so a chain bends instead of sliding as one stiff body (James, 2026-09-04: "can't get it to hold still while I bend it around")
+  for(const a of atoms) a.hops=0; if(sc.drag){ const q=[sc.drag]; sc.drag.hops=0; const seen=new Set(q); while(q.length){ const x=q.shift(); for(const b of x.bonds){ const o=other(b,x); if(!seen.has(o)){ seen.add(o); o.hops=x.hops+1; q.push(o); } } } }
   const kc = (sc.kCenter!==undefined ? sc.kCenter : K_CENTER); const hk = sc.heat ? sc.heat*sc.heat*HEAT_K*S*Math.sqrt(dt) : 0;
   for(const a of atoms){
     if(a===sc.drag){ const dd=Math.exp(-DRAG_DAMP*dt); a.fx += (sc.pointer.x-a.x)*K_DRAG; a.fy += (sc.pointer.y-a.y)*K_DRAG; a.vx += a.fx*dt; a.vy += a.fy*dt; a.vx*=dd; a.vy*=dd; a.x += a.vx*dt; a.y += a.vy*dt; }
     else {
-      a.fx += (cx-a.x)*kc; a.fy += (cy-a.y)*kc; if(hk){ a.vx += (Math.random()-0.5)*hk; a.vy += (Math.random()-0.5)*hk; } a.vx += a.fx*dt; a.vy += a.fy*dt; a.vx*=damp; a.vy*=damp; a.x += a.vx*dt; a.y += a.vy*dt;
-      const m = a.R+2; if(a.x<m){ a.x=m; a.vx=Math.abs(a.vx)*0.5; } if(a.x>sc.W-m){ a.x=sc.W-m; a.vx=-Math.abs(a.vx)*0.5; } if(a.y<m){ a.y=m; a.vy=Math.abs(a.vy)*0.5; } if(a.y>sc.H-m){ a.y=sc.H-m; a.vy=-Math.abs(a.vy)*0.5; }
+      a.fx += (cx-a.x)*kc; a.fy += (cy-a.y)*kc; if(hk){ a.vx += (Math.random()-0.5)*hk; a.vy += (Math.random()-0.5)*hk; } a.vx += a.fx*dt; a.vy += a.fy*dt; const dm = a.hops ? Math.exp(-(DAMP_RATE+K_HOLD*Math.min(a.hops,6))*dt) : damp; a.vx*=dm; a.vy*=dm; a.x += a.vx*dt; a.y += a.vy*dt;
+      const m = a.R+2; if(a.x<m){ a.x=m; a.vx=Math.abs(a.vx)*0.5; } if(a.x>sc.W-m){ a.x=sc.W-m; a.vx=-Math.abs(a.vx)*0.5; } const top=(sc.topY||0)+m; if(a.y<top){ a.y=top; a.vy=Math.abs(a.vy)*0.5; } if(a.y>sc.H-m){ a.y=sc.H-m; a.vy=-Math.abs(a.vy)*0.5; }
     }
     a.om += a.tq*dt; a.om *= odamp; a.th += a.om*dt;
   }
   for(const [A,B,kind] of pending){ if(findBond(A,B)) continue; if(kind==='tether'){ if(A.charge*B.charge<0) bondEvent(sc,A,B,'tether'); } else if(canBond(A,B)===kind) bondEvent(sc,A,B,kind); }
+  if(sc.drag){ const D=sc.drag; for(const b of D.bonds){ if(b.ionic || b.metallic) continue; const o=other(b,D); const pd=Math.hypot(sc.pointer.x-o.x, sc.pointer.y-o.y);
+      if(b.minPd===undefined || pd<b.minPd) b.minPd=pd; // closest the cursor has come to the partner since this bond was made or last stepped up
+      if(pd>b.minPd+o.R*0.5){ b.armed=true; b.minPd=pd; } // each step is its own push: the cursor has to back off half a radius and come again — one continuous shove that overshoots the contact never counts (James caught a third carbon arriving as a double, 2026-09-04)
+      if(!b.armed || b.order>=3 || sc.t-b.born<0.6 || freeHands(D)<1 || freeHands(o)<1) continue;
+      if(pd<o.R*0.9){ b.armed=false; b.minPd=pd; upgradeEvent(sc,b); } } } // drag one atom onto its bonded partner: share another pair
   if(sc.drag){ const behind = Math.max(0, component(sc.drag).length-2); const factor = 1 + 0.35*behind; for(const b of sc.drag.bonds.slice()){ if(sc.t-b.born < 0.8) continue; const o=other(b,sc.drag); const d=Math.hypot(o.x-sc.drag.x,o.y-sc.drag.y); sc.maxStretch=Math.max(sc.maxStretch||0,d-b.L); const limit = b.L + (b.ionic ? BREAK.ionic : BREAK[b.order])*S*factor*(sc.breakScale||1); if(d>limit && !sc.noBreak) breakEvent(sc,b); } }
   if(sc.heat>0.5){ for(const b of sc.bonds.slice()){ if(sc.t-b.born<0.8) continue; const d=Math.hypot(b.b.x-b.a.x,b.b.y-b.a.y); const limit=b.L+(b.ionic?BREAK.ionic:BREAK[b.order])*S*(sc.breakScale||1)*(2.4-1.7*sc.heat); if(d>limit) breakEvent(sc,b); } }
   sc.effects = sc.effects.filter(e => sc.t - e.t0 < e.dur);
@@ -231,7 +302,8 @@ function bondEvent(sc,A,B,kind){
   if(kind==='covalent'){
     sc.effects.push({ type:'flash', x:mx, y:my, t0:sc.t, dur:0.55, order:b.order });
     sndChord([A.e.pitch,B.e.pitch], b.order, false);
-    const w = b.order===1 ? cap(A.e.name)+' and '+B.e.name+' share one pair of electrons. A single bond; the pair counts for both.'
+    const more = freeHands(A)>0 && freeHands(B)>0 ? ' Both still have a place open: drag one onto the other and they share a second pair.' : '';
+    const w = b.order===1 ? cap(A.e.name)+' and '+B.e.name+' share one pair of electrons. A single bond; the pair counts for both.'+more
           : b.order===2 ? 'Two pairs shared: a double bond. It takes more to pull apart than a single.'
           : 'Three pairs shared: a triple bond, one of the strongest there is.';
     whisper(sc, 'snap', w);
@@ -245,6 +317,13 @@ function bondEvent(sc,A,B,kind){
   } else {
     whisper(sc, 'charge', 'Opposite charges. They hold together again; no electron needed to move.');
   }
+  checkMolecule(sc, A);
+}
+function upgradeEvent(sc,b){
+  const A=b.a, B=b.b; b.order += 1; b.born = sc.t; b.L = bondLen(sc,b); rebuild(sc,A); rebuild(sc,B); for(const x of [A,B]) for(const bb of x.bonds) bb.L=bondLen(sc,bb);
+  if(!sc.live) return;
+  const mx=(A.x+B.x)/2, my=(A.y+B.y)/2; sc.effects.push({ type:'flash', x:mx, y:my, t0:sc.t, dur:0.55, order:b.order }); sndChord([A.e.pitch,B.e.pitch], b.order, false);
+  whisper(sc, 'snap', b.order===2 ? 'A second pair shared: a double bond. It takes more to pull apart than a single, and it cannot twist.' : 'A third pair: a triple bond, one of the strongest there is.');
   checkMolecule(sc, A);
 }
 function breakEvent(sc,b){
@@ -359,8 +438,9 @@ function drawHBonds(sc){ const ctx=sc.ctx, at=sc.atoms; ctx.save(); ctx.setLineD
 // ---------- labels: the Design rule (symbol in the nucleus; name + ledger outside the ring) ----------
 function ledger(a){ // two lines, and every count names its shell (James, 2026-09-04: "2 · 1 of 8" was too obscure — keep saying which shell is the outer one)
   const n=a.e.inner.length+1; let first;
-  if(n===1) first='SHELL 1: '+a.outer+' OF '+a.e.seats;
-  else first=(n===2 ? 'SHELL 1 FULL' : 'SHELLS 1–'+(n-1)+' FULL')+' · SHELL '+n+': '+a.outer+' OF '+a.e.seats;
+  const stripped = a.charge>0 && a.outer===0; // an ion with its outer shell emptied: an empty shell is not a thing that is there (James, 2026-09-04)
+  if(n===1) first = stripped ? 'NO ELECTRONS' : 'SHELL 1: '+a.outer+' OF '+a.e.seats;
+  else first=(n===2 ? 'SHELL 1 FULL' : 'SHELLS 1–'+(n-1)+' FULL')+(stripped ? ' · NO OUTER ELECTRONS' : ' · SHELL '+n+': '+a.outer+' OF '+a.e.seats);
   const fh = freeHands(a); let second;
   if(a.charge>0) second='CHARGE +'+a.charge; else if(a.charge<0) second='CHARGE −'+(-a.charge); else if(isComplete(a)) second='FULL'; else if(canGive(a)) second='GIVES '+a.outer; else if(fh>0) second='WANTS '+fh; else second='';
   return [first, second]; }
@@ -407,16 +487,18 @@ function drawBalance(sc, a, x, y, ds){ const ctx=sc.ctx; const ne=a.e.Z-a.charge
 // ---------- X-ray: the same atom drawn as data ----------
 function drawXray(sc){
   const ctx=sc.ctx, S=sc.S; sc.xmix += ((sc.xray?1:0)-sc.xmix)*(RM?1:0.12); if(sc.xmix<0.002){ sc.xset=null; return; }
-  const comp = sc.xray || sc.lastX || []; sc.xset = new Set(comp); const m=sc.xmix;
-  ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.setLineDash([3*S,4*S]);
-  for(const a of comp){
-    ctx.globalAlpha=m; ctx.strokeStyle='rgba(243,248,255,0.55)'; ctx.lineWidth=1*S; ctx.beginPath(); ctx.arc(a.x,a.y,a.R,0,TAU); ctx.stroke();
-    a.e.inner.forEach((cnt,i)=>{ const r = a.outer>0 ? a.R*(i===0?0.34:0.62) : a.R*(i===0?0.5:0.86); ctx.beginPath(); ctx.arc(a.x,a.y,r,0,TAU); ctx.stroke();
-      for(let k=0;k<cnt;k++){ const an=k*TAU/cnt+a.id; ctx.fillStyle='rgba(243,248,255,0.9)'; ctx.beginPath(); ctx.arc(a.x+Math.cos(an)*r,a.y+Math.sin(an)*r,2.2*S,0,TAU); ctx.fill(); } });
-    for(let k=0;k<a.outer;k++){ const an=k*TAU/Math.max(1,a.outer)+a.th; ctx.fillStyle='rgba(243,248,255,0.95)'; ctx.beginPath(); ctx.arc(a.x+Math.cos(an)*a.R,a.y+Math.sin(an)*a.R,2.6*S,0,TAU); ctx.fill(); }
-    ctx.fillStyle='rgba(243,248,255,0.95)'; ctx.beginPath(); ctx.arc(a.x,a.y,3.2*S,0,TAU); ctx.fill();
-  }
-  ctx.restore();
+  const comp = sc.xray || sc.lastX || []; sc.xset = new Set(comp); const m=sc.xmix; const z=sc.zoom||1;
+  // the veil: the bench goes dark under the held molecule (drawn in world space so the camera transform stays put)
+  ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.fillStyle=sc.bgRGBA(0.88*m); ctx.fillRect(sc.camx-sc.W/z, sc.camy-sc.H/z, 2*sc.W/z, 2*sc.H/z); ctx.restore();
+  // the cloud: the real Hartree-Fock density when the bake has this molecule (cloud.js); the layered glow otherwise
+  const C=window.SnapCloud; let drew=false;
+  if(C && C.data && comp.length>1){ ctx.save(); drew=C.draw(sc, comp, m); ctx.restore(); }
+  if(!drew){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(const a of comp){ let x=a.x, y=a.y, r=a.R*1.7, al=0.5; if(a.e.seats===2){ const o=a.bonds.length ? other(a.bonds[0],a) : null; if(o){ x=o.x+(a.x-o.x)*0.78; y=o.y+(a.y-o.y)*0.78; } r=a.R*1.35; al=0.35; }
+      for(let i=0;i<5;i++){ const rr=r*(0.35+0.16*i); glow(ctx,x,y,rr,i<2?'#FFFFFF':COL.electron,al*m*(0.22-0.03*i)); } }
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha=m*0.92; ctx.font='500 '+(9.5*S)+'px "JetBrains Mono", monospace'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='rgba(243,238,229,0.95)'; for(const a of comp) ctx.fillText('+'+a.e.Z, a.x, a.y+0.5); ctx.restore(); }
   const heavy = comp.filter(a=>a.e.seats===8);
   if(heavy.length===6 && comp.length===12){ const cx=heavy.reduce((s,a)=>s+a.x,0)/6, cy=heavy.reduce((s,a)=>s+a.y,0)/6; const rr=Math.hypot(heavy[0].x-cx,heavy[0].y-cy); ctx.save(); ctx.globalCompositeOperation='lighter'; for(let i=0;i<3;i++) ring(ctx,cx,cy,rr*(0.8+0.18*i),COL.electron,m*(0.35-0.1*i),(7-2*i)*S); ctx.restore(); }
 }
@@ -431,7 +513,7 @@ function draw(sc){
   if(sc.hbonds) drawHBonds(sc);
   ctx.globalAlpha = xr ? Math.max(0.15, 1-sc.xmix) : 1; for(const a of sc.atoms) drawAtom(sc,a,t); for(const b of sc.bonds) drawBond(sc,b,t); drawEffects(sc); ctx.globalAlpha=1;
   drawXray(sc);
-  ctx.globalCompositeOperation='source-over'; drawLabels(sc); drawMoleculeTags(sc);
+  ctx.globalCompositeOperation='source-over'; drawLabels(sc); drawMoleculeTags(sc); drawSelection(sc);
 }
 // ---------- recognized molecules: the 24 on the panel get a name tag on the bench while they stand (James, 2026-09-04: "shouldn't it say H2O somewhere?") ----------
 let PANEL=null;
@@ -462,6 +544,6 @@ const CONFIG = { H:'1s¹', He:'1s²', Li:'[He] 2s¹', Be:'[He] 2s²', B:'[He] 2s
 for(const k in CONFIG) if(ELEM[k]) ELEM[k].config = CONFIG[k];
 function hit(sc,p){ let best=null, bd=1e9; for(const a of sc.atoms){ const d=Math.hypot(a.x-p.x,a.y-p.y); if(d<a.R+10 && d<bd){ bd=d; best=a; } } return best; }
 
-window.SnapEngine = { APP_HUE, ELEM, KNOWN, MADE_LINES, COL, ionize, makeScene, resize, spawn, step, draw, link, rebuild, component, hit, formulaKey, freeHands, canGive, isComplete, audio, setMuted:(m)=>{ muted=m; if(!m) audio(); }, isMuted:()=>muted, setVolume:(v)=>{ VOL=Math.max(0,Math.min(1,v)); if(AC && AC._master) AC._master.gain.value=VOL; }, tintElements, appetiteHex, oklchHex, slotAng, other, TAU };
+window.SnapEngine = { APP_HUE, ELEM, KNOWN, MADE_LINES, COL, ionize, makeScene, resize, spawn, step, draw, link, rebuild, component, hit, removeAtoms, snapshot, restore, formulaKey, freeHands, canGive, isComplete, audio, setMuted:(m)=>{ muted=m; if(!m) audio(); }, isMuted:()=>muted, setVolume:(v)=>{ VOL=Math.max(0,Math.min(1,v)); if(AC && AC._master) AC._master.gain.value=VOL; }, tintElements, appetiteHex, oklchHex, slotAng, other, TAU };
 
 })();

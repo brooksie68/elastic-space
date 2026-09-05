@@ -2,6 +2,86 @@
 
 Newest entries first. The 2026-09-01 → 2026-09-03 history of this build (the rethink, the ten rolls, the Design prompt, steps 1–3 and every read of James's) is in `src/worlds/the-valence-lab/changelog.md`; entries from the move on are here.
 
+## 2026-09-05 — Claude (Fable 5.1) — Scope controls centred, bigger
+
+James: recentre the controls; disclaimer to the left, midway up; larger labels; bigger slider targets. The dials plate sits bottom-centre; the READING plate is left-middle; labels 11 → 14px in ink; sliders 170px wide with a 22px amber thumb on a 6px track and a 32px hit height; close 13px.
+
+Then: the READING plate pinned to the scope, not the window — its right edge 20px off the rim.
+
+## 2026-09-05 — Claude (Fable 5.1) — The scope gets its body
+
+James: give it back some physicality — a bevelled metal-and-plastic rim around the viewport, the controls in a connected panel, a name card, a plate for the disclaimer, a slight rectangular outer frame; an overlay to the whole window, not a circle on an arm. Built in CSS only: `.lens-wrap` is the frame (22px in from the window, a double hairline, faint gradient, inset bevel); `.rim` is the ring (a conic brushed-metal gradient with a plastic collar in the box-shadow stack, inset highlight above and shadow below, a ring of fine ticks every 6°); `.lens` sits inside it with a dark inner lip; three `.plate`s share one bevelled style — SPECIMEN (name + formula, top-left), READING (the disclaimer, bottom-left), and the dials with the close button (bottom-left, under it). Verified at 1920×1080.
+
+## 2026-09-05 — Claude (Fable 5.1) — The lens, twice the size
+
+James: "make the scope like twice this size. When I zoom in, I want to be able to see a lot of the molecule." The lens now fills the window (92% of the shorter side, up to 1240px); the name sits top-left, the caption and the three dials bottom-left, all over the veil instead of stacked under the lens. The wheel zooms in closer (near limit 6 → 2.5).
+
+## 2026-09-05 — Claude (Fable 5.1) — Highlights leave with their atoms
+
+James: highlighted atoms that get cleared kept their rings. The selection set held atoms the bench no longer had (clear, guided-mode chapter starts and free mode replace the atom list outright). `drawSelection` now prunes the selection to atoms still on the bench every frame.
+
+## 2026-09-05 — Claude (Fable 5.1) — The Scope on the bench; the Valence Lab retired
+
+James's five calls (both placements; 3-D lens; three sliders plus mouse rotate and wheel zoom; all eighteen atoms; "buh bye" to the lab). Built:
+
+`scope.js` (an ES module, loaded the first time it is asked for — served only). Click an atom or a molecule, then SCOPE in the rail (or "scope" in the right-click menu). A veil drops over the bench and a round lens opens with the reading in 3-D: the swarm (7,000 dots, each a genuine sample — hydrogen-like |ψ|² with Slater screening for a lone atom via `orbitals.js`, the Metropolis walk over the baked Hartree-Fock density for a molecule via `density.js`), the shells (the ρ = 0.004 isosurface of that density for molecules; s spheres and p dumbbells of the valence shell for atoms), and the nucleus (protons and neutrons, instanced, jittering, magnified). Dots are coloured by subshell for atoms (inner shells dimmed) and by element for molecules. It turns slowly on its own until you drag it; the wheel zooms. Three dials under the lens — cloud, shells, nucleus — remembered in localStorage (`snap-scope`). Escape, the close button, or a click on the veil closes it. The physics modules are the lab's own, copied into this folder; `orbitals.js` gained the twelve missing elements so all eighteen bench atoms read (copper refuses: "The scope reads the first eighteen elements"); molecules beyond the nine baked refuse by name. Framing: atoms by the visible edge of their valence shell (sodium's far 3s tail no longer pushes the camera out), molecules by their extent; dot size holds on screen at any distance.
+
+Verified in the pane at 1920×1080: water (dots, shell, three nuclei), sodium (bright core, sparse 3s halo, 1s² 2s² 2p⁶ 3s¹ in the head), methane (the tetrahedral shell), the copper refusal, Escape closes. Console clean.
+
+THE VALENCE LAB IS ARCHIVED (his "buh bye"): `archive/the-valence-lab/` via the admin archive route; its row left the admin panel; the registry regeneration leaked the drafts (Lumina, Snap) into the live pool as the known gotcha says and was restored from git. Snap holds its own copies of `orbitals.js`, `density.js` and `assets/molecules-data.js`; the Hartree-Fock solver and the sims stay in `tmp/the-valence-lab/` (the sims still import from the old world path — repoint them when the solver batch runs). The lab's changelog, with Snap's 2026-09-01→03 history, is in the archive.
+
+AWAITING JAMES'S EYES on the scope.
+
+## 2026-09-04 — Claude (Fable 5.1) — Step 10.5: the hold view is the real electron cloud
+
+Same night, his "engage!". Holding an atom or molecule now dims the bench under a veil (the background at 88%) and shows the electron cloud in place of the dashed-shell X-ray:
+
+THE REAL DENSITY (`cloud.js`, new). For the nine molecules the Valence Lab baked (H₂, N₂, O₂, H₂O, CO₂, CH₄, NH₃, H₂O₂, C₂H₄ — `assets/molecules-data.js`, copied from the lab, RHF/UHF STO-3G, the same converged density matrices), the cloud is the genuine Hartree-Fock electron density: evaluated on a 96×96 grid in the molecule's own plane (the direction its atoms spread least, found over a fan of 400 directions), integrated through ±3 bohr, eased to nothing over the last 1.2 bohr before the 4.6-bohr cutoff so the grid never shows a rim. The column density is kept raw and coloured on demand with a LOG ramp — t = ln(1 + c/0.02)/ln(1 + 40/0.02), alpha = t^0.55, blue (110,175,255) running to white above t = 0.72 — then painted twice with added light: a blurred halo (20 px, 65%) under the sharp copy. That is the layered glow James liked in the mock, with the real shape under it. The image is FITTED onto the atoms you are holding: the best similarity transform (rotation, scale, reflection) over every symbol-consistent pairing of bench atoms to baked atoms; the nucleus marks (+8, +1…) sit at the fitted true positions. Build costs 22–74 ms per molecule; all nine build in idle time after load and cache in localStorage as PNGs (`snap-cloud-v3`), so a hold never waits.
+
+THE FALLBACK for anything not baked (single atoms, other molecules): the mock's layered glow itself — five soft discs per atom, white at the centre, hydrogens tucked toward their partner — with the same nucleus marks. Under file:// the import fails quietly and every hold uses the fallback. The benzene ring glow stays. Names, ledgers and the configuration line stay on top of the veil.
+
+Judged in `tmp/snap/hold-lab.html` (KEEP — the nine clouds side by side at bench scale with live dials for the ramp and halo; it shares `SnapCloud.paint` with the world). Rounds: the first ramp blew every core out white to ring size; a linear ramp made flat blue discs; the log ramp gave wings and cores; the halo brought the glow; the soft cutoff removed the rounded-square rim. Verified in the world at 1920×1080: water and ethene held show fitted clouds; console clean. AWAITING JAMES'S EYES.
+
+## 2026-09-04 — Claude (Fable 5.1) — Bench editing
+
+James's "engage!" on the four-point plan. Built:
+
+SELECTION. Drag on empty bench draws an amber dashed box; release selects every atom whose centre is inside (Shift keeps the old selection too). Click an atom selects it (and opens its card as before); Shift-click adds or removes one and does nothing else; a plain click on empty bench clears. Selected atoms wear a slow-marching amber dashed ring (`drawSelection` in engine.js, under the same camera transform). Panning the camera at zoom moved to Shift-drag or middle-drag on empty bench.
+
+KEYS. Delete / Backspace removes the selection (bonds unlinked, X-ray and drag state cleared — `E.removeAtoms`). Ctrl-C copies the selection as a snapshot: positions about the centroid, charges, and every bond among the copied atoms (`E.snapshot`). Ctrl-V rebuilds it at the mouse (`E.restore`: covalent bonds re-linked at their order, metallic re-linked, ionic pairs hand their electron over again, lone ions keep their charge, tethers last), somewhere clear — the asked-for spot, else the nearest of a widening ring of spots that keeps 50px from everything and stays under the guide strip. Ctrl-D duplicates beside the original (clipboard untouched). Ctrl-A selects all. Escape clears the selection after it has closed any menu, card or panel. Pasting counts as landing (the invitation goes; the 140-atom cap holds).
+
+THE MENU. Right-click anywhere on the bench opens a small menu in the panel chrome (mono caps rows, `#menu`, position: fixed, kept inside the window). On an atom: the ion line first — "lose an electron" / "gain an electron" / "back to neutral" by what that atom would do — then copy / duplicate / delete for that atom, or for the whole selection when you right-clicked inside it ("copy 6 atoms"). On empty bench: paste (dim with nothing copied), select all, clear the bench. Dismiss: click away, Escape, wheel, window blur. Right-click no longer ionizes directly; chapter 7's four steps now say "right-click the sodium and choose lose an electron" and so on (their waits are unchanged).
+
+Verified in the pane at 1920×1080: box-select over a landed hydrogen → Ctrl-C → Ctrl-V lands a ringed copy clear of the original → right-click shows the six rows → Escape closes it → Delete removes the copy. Bond harness ALL GREEN. Tags: css 44, engine 21, app 48, guide 17.
+
+HIS FIRST TRY: box, click, Shift-click, Delete, Escape worked; Ctrl-V and the right-click menu did nothing, Ctrl-D bookmarked the page. Cause: a later edit (the cloud warm-up line) was spliced in front of the `let mouse, mouseIn, clip` declaration and its trailing comment swallowed it, so every path touching the cursor position or the clipboard threw. The pane had passed because its test dispatched events before that edit. Declaration restored on its own line; verified with real right-click and a dispatched Ctrl-D (2 atoms → 4). Tag app 50.
+
+## 2026-09-04 — Claude (Fable 5.1) — Bonds by hand: single first, push for more, and rings that close
+
+James, on chapter 9: six carbons chained up stiff with doubles and would not bend into a ring. His nod on the plan (single first; push again for double, triple; chapter text; benzene hands-on). What it took, all in `engine.js`, each found by the new harness `tmp/snap/bond-sim.mjs` (KEEP — 36 assertions, seeded, `SNAPDBG=1` prints slot geometry):
+
+1. **First contact is a single bond** (`link` order 1). **Drag one atom onto its bonded partner and they share another pair** — each step is its own push: the cursor has to leave the partner (1.4 R) and come back inside 0.9 R, having actually moved; a partner drifting under a still cursor does not count; 0.6 s age gate. `upgradeEvent` flashes, chords and whispers ("A second pair shared: a double bond… it cannot twist"). The single-bond whisper now says how to get the second pair when both still have a place open.
+2. **Viscous hold while dragging** (`K_HOLD` 6 per bond of distance, capped at 6): the far end of a molecule stays put, so a chain bends instead of sliding as one stiff body.
+3. **Slots re-pick every 0.2 s for every atom** (`reslot`; hand phases carry over). Chain atoms with two or three heavy neighbours use 120° zigzag patterns (`CHAIN2`/`CHAIN3`), and heavy neighbours take the wide slots **in counter-clockwise order** — the mirror assignment fit with equal and opposite errors, the torque cancelled, and the atom sat stable with its hydrogen pointing into the ring.
+4. **No three- or four-membered rings**: atoms fewer than five bonds apart along one molecule neither attract nor bond (`pathLen`). Atoms within three bonds may pass through one another (a hydrogen has to be able to swing to the other side of its carbon; a bond rotates in 3-D).
+5. **Rings are first-class** (`findRings` on every link/unlink, five- and six-cycles): a shape spring (`K_RING` 1500, torque-cancelled with the angle springs) pulls each ring toward a regular convex polygon in bond order. An angle spring more than 90° off its slot pushes full-strength the short way round (the sideways projection dies at 180°).
+
+Harness: six seeds close the ring by a human-style sweep and settle a perfect hexagon (all six angles 120°, every hydrogen outward), three pushes make benzene; water, methane, ammonia, nitrogen, carbon dioxide, ethene, propane still build; propane stays a zigzag. Guide: chapter 5's oxygen/nitrogen steps, chapter 9's ethene step and a NEW hands-on benzene step (`made:C6H6`, twelve atoms handed) say the push in plain words; the Molecules panel landing lines for O₂, CO₂, N₂, ethene, acetylene, formaldehyde, benzene too. Not eye-verified in-world (the pane is 800 px); loads clean. Tags: engine 19, guide 16, molecules 2.
+
+AWAITING JAMES: the push gesture's feel, a ring closed by hand, the hexagon.
+
+Same night, his first read: a third carbon attached to a C–C arrived as a double. Cause: the first approach itself armed the step (the cursor is beyond 1.4 R at the moment of contact), and now that the chain holds still the shove carries on over the partner. The arming is a REVERSAL now: the cursor has to back off half a radius from its closest approach since the bond formed (or last stepped up), then come inside 0.9 R. A probe of straight-in drags at two speeds, stopping anywhere from the rim to 40 px past the partner's centre, never makes a double; back off and push does. Harness push gesture updated; ALL GREEN over four seeds. Tag engine 20. HIS VERDICT: "It worked. I made a carbon ring. And then I made cyclohexane."
+
+## 2026-09-04 — Claude (Fable 5.1) — The strip is a wall
+
+James at chapter 8 step 2: one or two hydrogens ended up behind the guide strip where nothing can be clicked, and he had to vacuum them out with the carbon from below ("none of the example atoms should accidentally get stuck behind the area where you can't click"). Cause: the bench's top wall was the canvas edge, so anything the physics nudged upward parked under the text. Now `sc.topY` is set every frame from the strip's bottom edge (+8px) while the strip is on and not minimized, the engine's top wall sits there, and the landing trials treat it as the top of the bench. Verified in the pane at 1920×1080 on #ch8-2: every handed atom below the text. Tags: engine 18, app 47.
+
+## 2026-09-04 — Claude (Fable 5.1) — Ion ledger; the plan trimmed
+
+James's morning-after reads. The ion ledger no longer counts an empty shell: a stripped ion reads `SHELLS 1–2 FULL · NO OUTER ELECTRONS / CHARGE +1` (helium-row ions `SHELL 1 FULL · NO OUTER ELECTRONS`; bare H⁺ `NO ELECTRONS / CHARGE +1`); the sum line beneath (`11 P⁺ + 10 E⁻ = +1`) is what explains the plus one. Filled shells unchanged. Tag engine 17.
+
+The plan (reimagine.md §13): step 9 crossed off ("we've already done this" — the Design look has been the world's since step 1), step 10 rewritten to one plain sentence (exits, registry, changelog, check-worlds, he removes "unwired"), step 11 removed ("tune by eye is not a step, it's just how we do this"). Tonight, his word: bench editing and the hold view (10.5).
+
 ## 2026-09-04 — Claude (Fable 5.1) — Step 6: chapters 7–12, right-click ions, and copper
 
 James's go ("copper real block… ions: let's go with your idea… be creative!"). Two new engine behaviours and six chapters:

@@ -522,22 +522,16 @@ then moved into the world.
    judges them. If he likes them, the world is themed from those screens
    (type, color, panel chrome, the badge, the arrow). If not, the mock's own
    look is refined by eye and the step is closed.
-9. **The look coded onto the engine.** Whichever look won in step 8, applied
-   to the mock: panels, table, cards, arrow, badges, the bench itself.
-   Sound: the greeting chords from the Snap sketch, one per family, kept.
-10. **Into the world.** snap.html becomes src/worlds/the-valence-lab (v4
-    retired to archive; the physics modules, HF data and sims kept); a
-    curriculum sim asserts every chapter's target molecule is buildable
-    from its handed atoms and every panel entry lands without an instant
-    snap; drift exits, sound control, changelog, CLAUDE.md, check-worlds.
-10.5. **The hold view, explored.** James liked the mock's hold view (the
-    dark veil and the layered soft glow, a first try at the electron cloud)
-    more than step 1's dashed-shell X-ray. Bring the cloud back and explore
-    it properly as its own thread. (Added 2026-09-03 at his wrap; he asked
-    for it near the end, not before step 2.)
-11. **Tune by eye.** Hover delay, spacing of landed atoms, the "imperfect
-    molecule" behavior, hover card content, zoom range: his ten-percent
-    steps.
+9. **The look coded onto the engine.** Done: the tokens, type and panel chrome
+   from the Design package have been the world's look since step 1 (crossed off
+   2026-09-04, James: "we've already done this").
+10. **Ship.** Add the drift exits, the registry entry and the changelog entry;
+    run check-worlds; James takes the "unwired" note off.
+10.5. **The hold view.** Done 2026-09-04: the dark veil and the layered
+    soft glow are back as the held view, and for the nine baked molecules the
+    glow is the real Hartree-Fock density fitted onto the atoms you hold.
+
+Tuning by eye is not a step; it is how every step is done (James, 2026-09-04).
 
 ## 14. Step 8 moved to the front: the Claude Design prompt (2026-09-02)
 

@@ -140,6 +140,37 @@ body.table-open .invite{top:min(380px, calc(var(--strip-top) - 280px))} /* keeps
 .strip.up .grid.compact-rows .tile .sh{display:none}
 .ghost{position:fixed;z-index:50;pointer-events:none;padding:6px 10px;border:1px solid var(--electron);border-radius:2px;background:var(--panel);font-family:var(--mono);font-size:11px;letter-spacing:0.1em;transform:translate(-50%,-140%);box-shadow:0 0 18px rgba(160,205,255,0.4)}
 .ghost[hidden]{display:none}
+.menu{position:fixed;z-index:60;min-width:190px;padding:6px;border:1px solid var(--border-strong);border-radius:2px;background:var(--panel);box-shadow:0 18px 50px rgba(0,0,0,0.5);display:flex;flex-direction:column;gap:2px}
+.menu[hidden]{display:none}
+.menu button{all:unset;cursor:pointer;display:block;padding:8px 12px;border-radius:2px;color:var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;line-height:1;white-space:nowrap}
+.menu button:hover{background:oklch(0.24 0.01 60)}
+.menu button:disabled{color:var(--dimmer);cursor:default;background:none}
+/* THE SCOPE: a veil over the bench; a slight rectangular frame; a round viewport with a bevelled metal-and-plastic rim; plates for the name, the reading, the dials */
+.scope{position:fixed;inset:0;z-index:55;background:rgb(var(--bg-rgb) / 0.8);--d:min(88vh,88vw,1180px);--m1:oklch(0.34 0.006 70);--m2:oklch(0.22 0.006 70);--m3:oklch(0.46 0.008 75);--plastic:oklch(0.17 0.006 60)}
+.scope[hidden]{display:none}
+.lens-wrap{position:absolute;inset:22px;border:1px solid oklch(0.3 0.008 65);border-radius:3px;background:linear-gradient(180deg, oklch(0.15 0.007 60 / 0.55), oklch(0.11 0.006 60 / 0.55));box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.5)}
+.lens-wrap::before{content:"";position:absolute;inset:8px;border:1px solid oklch(0.22 0.006 60);border-radius:2px;pointer-events:none}
+.plate{position:absolute;border:1px solid oklch(0.36 0.008 70);border-radius:2px;background:linear-gradient(180deg, oklch(0.2 0.006 60), oklch(0.15 0.006 60));box-shadow:inset 0 1px 0 rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.45)}
+.plate .kicker{display:block;font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.lens-head{left:28px;top:28px;padding:12px 18px 14px;min-width:260px}
+.lens-head .lens-name{display:inline;margin:0;font-family:var(--serif);font-weight:400;font-size:34px;line-height:1;color:var(--ink)}
+.lens-formula{display:inline-block;margin-left:14px;font-size:13px;letter-spacing:0.12em;color:var(--muted)}
+.rim{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(var(--d) + 56px);height:calc(var(--d) + 56px);border-radius:50%;background:conic-gradient(from 210deg, var(--m1), var(--m3) 12%, var(--m2) 28%, var(--m1) 45%, var(--m3) 60%, var(--m2) 78%, var(--m1));box-shadow:0 0 0 1px oklch(0.12 0.006 60), 0 0 0 9px var(--plastic), 0 0 0 10px oklch(0.3 0.008 65), 0 30px 90px rgba(0,0,0,0.7), inset 0 2px 3px rgba(255,255,255,0.12), inset 0 -3px 6px rgba(0,0,0,0.6)}
+.rim-ticks{position:absolute;inset:14px;border-radius:50%;background:repeating-conic-gradient(from 0deg, oklch(0.55 0.01 75 / 0.55) 0deg 0.5deg, transparent 0.5deg 6deg);-webkit-mask:radial-gradient(circle, transparent calc(50% - 7px), #000 calc(50% - 6px));mask:radial-gradient(circle, transparent calc(50% - 7px), #000 calc(50% - 6px));pointer-events:none}
+.lens{position:absolute;inset:28px;border-radius:50%;border:1px solid oklch(0.08 0.005 60);background:radial-gradient(circle at 50% 45%, oklch(0.16 0.012 250) 0%, oklch(0.09 0.008 250) 70%, oklch(0.07 0.006 250) 100%);box-shadow:inset 0 0 0 3px oklch(0.13 0.006 60), inset 0 0 80px rgba(0,0,0,0.65), inset 0 6px 14px rgba(0,0,0,0.6);overflow:hidden;cursor:grab;touch-action:none}
+.lens:active{cursor:grabbing}
+.lens canvas{display:block;width:100%;height:100%}
+.lens-cap{right:calc(50% + var(--d) / 2 + 28px + 20px);top:50%;transform:translateY(-50%);width:300px;padding:12px 18px 14px} /* its right edge 20px off the rim (the rim is the lens + 28px each side) */
+.lens-cap p{margin:0;font-family:var(--sans);font-size:14px;line-height:1.55;color:var(--muted)}
+.lens-bar{left:50%;bottom:28px;transform:translateX(-50%);display:flex;align-items:center;gap:30px;padding:14px 22px}
+.lens-bar label{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:14px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink)}
+.lens-bar input[type=range]{-webkit-appearance:none;appearance:none;width:170px;height:32px;background:transparent;cursor:pointer;margin:0}
+.lens-bar input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:oklch(0.3 0.008 65);box-shadow:inset 0 1px 2px rgba(0,0,0,0.6)}
+.lens-bar input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:var(--amber);border:2px solid oklch(0.2 0.006 60);box-shadow:0 2px 6px rgba(0,0,0,0.6)}
+.lens-bar input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:oklch(0.3 0.008 65)}
+.lens-bar input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--amber);border:2px solid oklch(0.2 0.006 60)}
+.lens-close{all:unset;cursor:pointer;padding:10px 16px;border:1px solid var(--border);border-radius:2px;font-family:var(--mono);font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink)}
+.lens-close:hover{border-color:var(--border-strong)}
 
 @media (max-height:900px){ .invite{top:calc(50% - 200px)} }
 

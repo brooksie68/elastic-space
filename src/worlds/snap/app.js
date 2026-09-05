@@ -56,15 +56,64 @@ function hud(){ $('hud').textContent = 'Zoom '+Math.round(sc.zoomT*100)+'% · '+
 // ---------- pointer on the bench: drag after 6px, X-ray after 350ms of stillness ----------
 let down=null, holdTimer=0;
 function spt(e){ const r=cv.getBoundingClientRect(); return toWorld(e.clientX-r.left, e.clientY-r.top); }
-cv.addEventListener('pointerdown', e=>{ if(e.button===2) return; E.audio(); const p=spt(e); const a=E.hit(sc,p); down={a,p,sx:e.clientX,sy:e.clientY}; sc.pointer=p; try{ cv.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); clearTimeout(holdTimer);
+cv.addEventListener('pointerdown', e=>{ if(e.button===2) return; hideMenu(); E.audio(); const p=spt(e); const a=E.hit(sc,p); down={a,p,sx:e.clientX,sy:e.clientY,shift:e.shiftKey,pan:(e.button===1 || e.shiftKey) && !a}; sc.pointer=p; try{ cv.setPointerCapture(e.pointerId); }catch(err){} e.preventDefault(); clearTimeout(holdTimer);
+  if(a && e.shiftKey){ toggleSel(a); down.a=null; down.pan=false; down.did=true; return; } // shift-click an atom: in or out of the selection, nothing else
   if(a) holdTimer=setTimeout(()=>{ if(down && !sc.drag){ sc.xray=E.component(a); sc.lastX=sc.xray; hud(); } },350); });
 cv.addEventListener('pointermove', e=>{ if(!down) return; const p=spt(e); sc.pointer=p;
   if(!sc.drag && down.a && !sc.xray && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)>6){ sc.drag=down.a; cv.classList.add('dragging'); clearTimeout(holdTimer); }
-  if(!down.a && !sc.xray && sc.zoom>1){ // pan the camera when dragging empty bench
-    const dx=(e.clientX-down.sx)/sc.zoom, dy=(e.clientY-down.sy)/sc.zoom; down.sx=e.clientX; down.sy=e.clientY; sc.camx-=dx; sc.camy-=dy; clampCam(); dots(); } });
-function release(e){ clearTimeout(holdTimer); const click = down && down.a && !sc.drag && !sc.xray && e && e.type==='pointerup' && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)<=6; const sym = click ? down.a.sym : null; down=null; sc.drag=null; sc.xray=null; if(sym) openElement(sym); cv.classList.remove('dragging'); hud(); try{ if(e&&e.pointerId!=null) cv.releasePointerCapture(e.pointerId); }catch(err){} }
-cv.addEventListener('contextmenu', e=>{ e.preventDefault(); const a=E.hit(sc, spt(e)); if(a){ E.audio(); E.ionize(sc, a); } }); // right-click an atom: it loses or gains an electron (chapter 7)
+  if(down.did) return;
+  if(!down.a && down.pan && sc.zoom>1){ // shift-drag or middle-drag on empty bench pans the camera
+    const dx=(e.clientX-down.sx)/sc.zoom, dy=(e.clientY-down.sy)/sc.zoom; down.sx=e.clientX; down.sy=e.clientY; sc.camx-=dx; sc.camy-=dy; clampCam(); dots(); }
+  else if(!down.a && !down.pan){ if(!sc.marquee && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)>6) sc.marquee={ x0:down.p.x, y0:down.p.y, x1:p.x, y1:p.y }; if(sc.marquee){ sc.marquee.x1=p.x; sc.marquee.y1=p.y; } } }); // plain drag on empty bench: box-select
+function release(e){ clearTimeout(holdTimer); const still = down && e && e.type==='pointerup' && Math.hypot(e.clientX-down.sx,e.clientY-down.sy)<=6; const click = down && down.a && !sc.drag && !sc.xray && still; const sym = click ? down.a.sym : null;
+  if(sc.marquee){ const m=sc.marquee; const x0=Math.min(m.x0,m.x1), x1=Math.max(m.x0,m.x1), y0=Math.min(m.y0,m.y1), y1=Math.max(m.y0,m.y1); if(!(down && down.shift)) sc.sel.clear(); for(const a of sc.atoms) if(a.x>=x0 && a.x<=x1 && a.y>=y0 && a.y<=y1) sc.sel.add(a); sc.marquee=null; }
+  else if(down && !down.did && still && !down.a) sc.sel.clear(); // a plain click on empty bench: nothing selected
+  else if(click){ sc.sel.clear(); sc.sel.add(down.a); }
+  down=null; sc.drag=null; sc.xray=null; if(sym) openElement(sym); cv.classList.remove('dragging'); hud(); try{ if(e&&e.pointerId!=null) cv.releasePointerCapture(e.pointerId); }catch(err){} }
+cv.addEventListener('contextmenu', e=>{ e.preventDefault(); const a=E.hit(sc, spt(e)); E.audio(); showMenu(e.clientX, e.clientY, a); });
+cv.addEventListener('pointermove', e=>{ mouse=spt(e); mouseIn=true; }); cv.addEventListener('pointerleave', ()=>{ mouseIn=false; });
 cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release); cv.addEventListener('lostpointercapture', ()=>{ if(down) release(null); });
+
+// ---------- bench editing: selection, delete, copy / paste / duplicate, the right-click menu ----------
+sc.sel = new Set(); sc.marquee = null; window.__snapScene = sc; // dev handle for pane checks (the sims never use it)
+let mouse=null, mouseIn=false, clip=null; // the last bench position of the cursor, and the copy buffer
+if(window.SnapCloud) SnapCloud.load().then(()=>SnapCloud.warm()); // the hold view's clouds, built in idle time (served only; file:// keeps the layered glow)
+function toggleSel(a){ if(sc.sel.has(a)) sc.sel.delete(a); else sc.sel.add(a); }
+function selList(){ return sc.atoms.filter(a=>sc.sel.has(a)); }
+function targetOf(a){ return (a && sc.sel.has(a)) ? selList() : a ? [a] : selList(); } // the menu acts on the selection when you right-clicked inside it, else on that one atom
+function delAtoms(list){ if(!list.length) return; E.removeAtoms(sc, list); }
+function copyAtoms(list){ if(!list.length) return; clip=E.snapshot(sc, list); }
+// somewhere clear for a copy: the asked-for spot, else the nearest of a widening ring of spots (the trial-grid idea from landSet)
+function clearSpot(snap, x, y){ const others=sc.atoms; const top=(sc.topY||0); const fits=(cx,cy)=>{ for(const s of snap.atoms){ const px=cx+s.x, py=cy+s.y; if(px<60||px>sc.W-60||py<top+60||py>sc.H-60) return false; for(const o of others){ if(Math.hypot(px-o.x,py-o.y) < o.R+50) return false; } } return true; };
+  if(fits(x,y)) return { x, y }; let best=null; for(let r=60; r<=900 && !best; r+=60) for(let k=0;k<12;k++){ const an=k*Math.PI/6; const cx=x+Math.cos(an)*r, cy=y+Math.sin(an)*r; if(fits(cx,cy)){ best={ x:cx, y:cy }; break; } }
+  return best || { x, y }; }
+function pasteAt(x, y){ if(!clip) return; if(sc.atoms.length+clip.atoms.length>140){ say('enough','That is plenty for one bench. Clear some room first.'); return; } const p=clearSpot(clip, x, y); const made=E.restore(sc, clip, p.x, p.y); sc.sel.clear(); for(const a of made) sc.sel.add(a); hideInvite(); }
+function pasteHere(){ const at = mouseIn && mouse ? mouse : { x:sc.camx, y:sc.camy }; pasteAt(at.x, at.y); }
+function duplicateAtoms(list){ if(!list.length) return; const keep=clip; copyAtoms(list); const s=clip; let cx=0, cy=0; for(const a of list){ cx+=a.x; cy+=a.y; } cx/=list.length; cy/=list.length; pasteAt(cx+s.R*2+60, cy); clip=keep||clip; }
+function selectAll(){ sc.sel.clear(); for(const a of sc.atoms) sc.sel.add(a); }
+document.addEventListener('keydown', e=>{ const t=e.target; if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA' || t.isContentEditable)) return; const mod=e.ctrlKey||e.metaKey; const k=e.key.toLowerCase();
+  if(e.key==='Delete' || e.key==='Backspace'){ if(sc.sel.size){ delAtoms(selList()); e.preventDefault(); } return; }
+  if(mod && k==='c'){ if(sc.sel.size){ copyAtoms(selList()); e.preventDefault(); } return; }
+  if(mod && k==='v'){ if(clip){ pasteHere(); e.preventDefault(); } return; }
+  if(mod && k==='d'){ if(sc.sel.size){ duplicateAtoms(selList()); } e.preventDefault(); return; }
+  if(mod && k==='a'){ selectAll(); e.preventDefault(); return; }
+  if(e.key==='Escape'){ if(!menu.hidden){ hideMenu(); return; } if(sc.sel.size && !cardPinned && !openPanel && !lift.full) sc.sel.clear(); } });
+// THE SCOPE (scope.js, an ES module with three.js — loaded the first time it is asked for; served only)
+let scopeMod=null, scopeLoading=null;
+function openScope(atoms){ hideCard(); closePanel(); if(scopeMod){ scopeMod.open(atoms, say); return; } if(!scopeLoading){ scopeLoading=import('./scope.js').then(m=>{ scopeMod=m; return m; }).catch(err=>{ scopeLoading=null; console.warn('scope failed to load', err); say('scope', 'The scope needs the page served; it does not open from a file on disk.'); return null; }); }
+  scopeLoading.then(m=>{ if(m) m.open(atoms, say); }); }
+const menu=$('menu');
+function hideMenu(){ menu.hidden=true; menu.innerHTML=''; }
+function showMenu(cx, cy, a){ const list=targetOf(a); const n=list.length; const items=[];
+  if(a && n===1){ const lbl = a.charge!==0 ? 'back to neutral' : (a.e.metal||a.sym==='H'||a.sym==='C'||E.canGive(a)) ? 'lose an electron' : 'gain an electron'; items.push({ label:lbl, run:()=>E.ionize(sc,a) }); }
+  if(a) items.push({ label:'scope', run:()=>openScope(E.component(a)) });
+  if(n){ const cnt = n>1 ? ' '+n+' atoms' : ''; items.push({ label:'copy'+cnt, run:()=>copyAtoms(list) }); items.push({ label:'duplicate'+cnt, run:()=>duplicateAtoms(list) }); items.push({ label:'delete'+cnt, run:()=>delAtoms(list) }); }
+  const px = mouse ? mouse.x : sc.camx, py = mouse ? mouse.y : sc.camy; items.push({ label:'paste', run:()=>pasteAt(px,py), off:!clip });
+  if(sc.atoms.length){ items.push({ label:'select all', run:selectAll, off:sc.atoms.length===sc.sel.size }); items.push({ label:'clear the bench', run:()=>$('clear').click() }); }
+  menu.innerHTML=''; for(const it of items){ const b=document.createElement('button'); b.type='button'; b.textContent=it.label; if(it.off) b.disabled=true; b.addEventListener('click', ()=>{ hideMenu(); it.run(); }); menu.appendChild(b); }
+  menu.hidden=false; const w=menu.offsetWidth, h=menu.offsetHeight; menu.style.left=Math.min(cx, innerWidth-w-8)+'px'; menu.style.top=Math.min(cy, innerHeight-h-8)+'px'; }
+document.addEventListener('pointerdown', e=>{ if(!menu.hidden && !menu.contains(e.target)) hideMenu(); }, true);
+window.addEventListener('blur', hideMenu); window.addEventListener('wheel', ()=>{ if(!menu.hidden) hideMenu(); }, { passive:true });
 
 // ---------- the table strip: a mini app (step 2, reworked on James's first read 2026-09-03) ----------
 const strip=$('strip'), grid=$('grid'), handle=$('handle'); const tiles={};
@@ -192,6 +241,7 @@ function buildMolecules(){
 function showPanel(name){ for(const k in panels) panels[k].hidden = k!==name; openPanel=name; $('pos').classList.toggle('active', name==='contents'); document.body.classList.toggle('panel-open', !!name); document.body.classList.toggle('mol-open', name==='molecules'); document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name)); }
 function closePanel(){ if(!openPanel) return; hideCard(); showPanel(null); }
 $('tabs').addEventListener('click', e=>{ const b=e.target.closest('.tab'); if(!b) return; const name=b.dataset.tab;
+  if(name==='scope'){ const list=selList(); if(!list.length){ say('scope', 'Click an atom or a molecule first, then Scope.'); return; } openScope(E.component(list[0])); return; }
   if(!panels[name]){ say('soon', 'The '+name+' panel is not built yet.'); return; }
   if(openPanel===name) closePanel(); else showPanel(name); });
 cv.addEventListener('pointerdown', e=>{ if(openPanel && !E.hit(sc, spt(e))) closePanel(); }); // a press on an atom keeps the panel: releasing without a drag opens that element
@@ -235,7 +285,7 @@ function landSet(m, quiet, at){
   const k=(setCount[m.key]=(setCount[m.key]||0)+1); const others=sc.atoms.filter(a=>!born.includes(a));
   let best=null; for(let trial=0; trial<15; trial++){ const rot=(k-1)*0.7+trial*0.9; const spread = n===1 ? 120 : r*0.7; const ox=((trial%5)-2)*spread, oy=(Math.floor(trial/5)-1)*spread; // a single atom still walks the trial grid (it used to land exactly on whatever was already there)
     const pos=born.map((a,i)=>({ x:cxw+ox+(n===1?0:Math.cos(rot+i*Math.PI*2/n)*r), y:cyw+oy+(n===1?0:Math.sin(rot+i*Math.PI*2/n)*r) }));
-    let clear=1e9; pos.forEach((p,i)=>{ for(const o of others) clear=Math.min(clear, Math.hypot(p.x-o.x,p.y-o.y)-pairReach(born[i],o)*1.3); const m2=60; if(p.x<m2||p.x>sc.W-m2||p.y<m2||p.y>sc.H-m2) clear=Math.min(clear,-1); });
+    let clear=1e9; pos.forEach((p,i)=>{ for(const o of others) clear=Math.min(clear, Math.hypot(p.x-o.x,p.y-o.y)-pairReach(born[i],o)*1.3); const m2=60; if(p.x<m2||p.x>sc.W-m2||p.y<(sc.topY||0)+m2||p.y>sc.H-m2) clear=Math.min(clear,-1); });
     if(!best || clear>best.clear) best={ clear, pos }; if(clear>0) break; }
   born.forEach((a,i)=>{ a.x=best.pos[i].x; a.y=best.pos[i].y; a.vx=0; a.vy=0; });
   if(!quiet){ say('', m.land||(m.name+', landed apart. <em>Bring them together.</em>')); $('mode').textContent='Free · '+m.name.toLowerCase()+', apart'; }
@@ -297,7 +347,9 @@ layout(); if(!sc.W) setTimeout(layout, 50);
 document.fonts && document.fonts.ready.then(()=>measureLift());
 document.fonts && document.fonts.ready.then(()=>{});
 let last=performance.now(), running=true;
-function loop(now){ const dt=Math.min(0.025,(now-last)/1000); last=now; if(!sc.W) layout(); if(running && sc.W){ easeZoom(); E.step(sc,dt); E.draw(sc); } requestAnimationFrame(loop); }
+// the bench's top wall sits at the guide strip's bottom while the strip shows, so nothing can drift under the text (James, 2026-09-04: hydrogens stuck behind the dead area)
+function topWall(){ const g=$('guide'); if(!g.classList.contains('on') || g.classList.contains('min')){ sc.topY=0; return; } const gr=g.getBoundingClientRect(), r=cv.getBoundingClientRect(); sc.topY=Math.max(0, toWorld(0, gr.bottom-r.top+8).y); }
+function loop(now){ const dt=Math.min(0.025,(now-last)/1000); last=now; if(!sc.W) layout(); if(running && sc.W){ easeZoom(); topWall(); E.step(sc,dt); E.draw(sc); } requestAnimationFrame(loop); }
 document.addEventListener('visibilitychange', ()=>{ running=!document.hidden; last=performance.now(); });
 requestAnimationFrame(loop);
 window.__snap = { sc, say, land:(sym,x,y)=>land(ELS.find(e=>e.sym===sym), x, y), setHeat, setZoom:z=>{ sc.zoomT=z; }, lift:setLift, liftState:()=>({t:lift.t,full:lift.full,hc:lift.hc,h0:lift.h0,h1:lift.h1,rest:lift.rest,row0:lift.row0,row1:lift.row1,nm:root.style.getPropertyValue('--nm')}), card:(sym)=>{ const el=ELS.find(e=>e.sym===sym); showCard(tiles[sym], el); }, panel:showPanel, element:openElement, guide:()=>guide, elementTab:setElemTab, landSet:(k)=>landSet(MOLS.find(m=>m.key===k)), molCard:(k)=>{ const m=MOLS.find(x=>x.key===k); showMolCard(document.querySelector('.mcell[data-key="'+k+'"]'), m); }, summary:()=>({ W:sc.W, H:sc.H, atoms:sc.atoms.length, bonds:sc.bonds.length, zoom:sc.zoom }) };

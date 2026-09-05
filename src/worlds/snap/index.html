@@ -6,7 +6,7 @@
 <!-- Snap!: the molecule-building bench. Draft — no drift exits yet (they arrive at ship). Contract: docs/building-a-world.md -->
 <title>Snap!</title>
 <link rel="stylesheet" href="fonts.css?v=2">
-<link rel="stylesheet" href="snap.css?v=43">
+<link rel="stylesheet" href="snap.css?v=49">
 </head>
 <body>
 
@@ -20,6 +20,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab round" data-tab="molecules"><i></i>Molecules</button>
     <button class="tab round" data-tab="shells"><i></i>Shells</button>
+    <button class="tab" data-tab="scope" id="tabScope"><i></i>Scope</button>
   </nav>
   <div class="modes"><div class="modesw" id="modesw"><button class="msw active" data-m="free">Free</button><button class="msw" data-m="guided">Guided</button></div>
   <button class="pos" id="pos" title="where you are · open the contents" hidden><span id="posText">Not started</span><i></i></button></div>
@@ -104,6 +105,7 @@
 </footer>
 
 <div class="ghost" id="ghost" hidden></div>
+<div class="menu" id="menu" hidden></div>
 
 <div class="card" id="card" hidden>
   <div class="ch"><b id="cSym"></b><span class="cname" id="cName"></span><span class="cz" id="cZ"></span></div>
@@ -122,11 +124,12 @@
 <script src="../../core/sound-control.js"></script>
 <script src="elements.js"></script>
 <script src="facts.js"></script>
-<script src="molecules.js"></script>
+<script src="molecules.js?v=2"></script>
 <script src="content.js?v=2"></script>
 <script src="shells.js?v=3"></script>
-<script src="engine.js?v=16"></script>
-<script src="guide.js?v=15"></script>
-<script src="app.js?v=46"></script>
+<script src="engine.js?v=23"></script>
+<script src="cloud.js?v=1"></script>
+<script src="guide.js?v=17"></script>
+<script src="app.js?v=51"></script>
 </body>
 </html>

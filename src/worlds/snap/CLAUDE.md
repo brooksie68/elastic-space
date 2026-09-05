@@ -9,16 +9,24 @@ only what is specific to this world.
    (§1), the ten rolls and the pick (§2–3), the curriculum, guided-mode and UI briefs
    (§10–12), THE ELEVEN-STEP PLAN (§13, each step needs James's eyes before the next),
    the Design prompt (§14), and §15: THE PROSE REGISTER + the parked ideas.
-2. **Where the plan stands (2026-09-04, night):** steps 1 (bench), 2 (table mini app), 3
-   (toolbar + Molecules panel, all 24 lit + Shells panel), 4 (the element card set, all
-   118 — `content.js` + `#panelElement`), 5 + 6 (GUIDED MODE, all twelve chapters — `guide.js`, see
-   rule 13) and 8 (Claude Design) are built. Tiles are BUTTONIFIED (rule 11). NEXT: his
-   read of chapters 7–12, right-click ions and copper (built 2026-09-04 night), 7 (the contents panel and the Free | Guided toggle cover it; the Collection and Map
-   tabs were DROPPED 2026-09-04 — later, the Molecules panel marks made molecules with a
-   trophy, not built), 9 the look onto the engine, 10 ship (part one done: the world folder), 10.5 the
-   hold view, 11 tune by eye. Also his: bench editing (box-select, Delete, Ctrl-C/V/D,
-   right-click menu — reliable via contextmenu preventDefault), THE SCOPE on the bench
-   (the Valence Lab's visualizer over a molecule), the pullback. Each needs its own go.
+2. **Where the plan stands (2026-09-04, night):** steps 1–6, 8 and 9 are built and
+   judged (bench, table mini app, toolbar + Molecules + Shells panels, the element card
+   set for all 118, guided mode's twelve chapters, buttonified tiles, the Design look).
+   Step 7 is covered by the FREE | GUIDED toggle + contents panel (Collection and Map
+   tabs dropped). AWAITING his read: chapters 7–12, right-click ions, copper. BENCH EDITING
+   (rule 15) and 10.5 THE HOLD VIEW (rule 16) BUILT 2026-09-04 — HIS READ 2026-09-05: editing
+   "all of that works"; hold view "looks cool... we'll need to add it everywhere"; chapters
+   7–12 "totally fine for now" (a long tuning + copywriting thread is coming — he finds the
+   AI register obtuse; "the quality of the whole framework is great"). THE SHIP LIST (his
+   order: not one step, seven items, each its own go — (1) DRIFT EXITS DEFERRED 2026-09-05, "plenty of stuff to work on before we worry about that"), (2) registry entry
+   (restore the other drafts), (3) sound check — silent open, chords after first click,
+   (4) the file:// pass, (5) `npm run check-worlds`, (6) changelog + CLAUDE.md ship entries,
+   (7) he moves the admin row to Completed and removes "unwired". THE SCOPE BUILT 2026-09-05
+   (rule 17), awaiting his eyes; the Valence Lab archived on his word. ALSO QUEUED: THE HOLD VIEW
+   EVERYWHERE — run the Valence Lab's HF solver (tmp/the-valence-lab/hf/) on the rest of the
+   24 molecules and the single atoms, in batches, and extend assets/molecules-data.js;
+   trophies on the Molecules panel; THE SCOPE on the bench; the pullback; the copy + tuning
+   thread. Tuning by eye is not a step, it is how every step is done.
 3. Local URL: http://127.0.0.1:4174/src/worlds/snap/index.html (`?mute=1` opens muted).
    `tmp/snap/index.html` redirects here. The Design package (Claude Design's frames,
    spec README with the oklch tokens) is `tmp/snap/design/` — the look's source of truth.
@@ -90,8 +98,8 @@ italic one-line facts on the cards (he likes those; he wants more later).
     Waits also: `ion:SYM` (right-click made that ion) and `metal:N` (a copper block of N).
     RIGHT-CLICK on a lone atom = `E.ionize` (givers/H/Cu/C lose an electron, N–Cl gain;
     again = neutral). COPPER is kind `metal`: no hands, bonds only to copper (≤6 each),
-    metallic bonds draw the electron sea, break under heat like singles. Benzene is NOT a
-    hands-on target (the min-free-hands bond rule makes a hand-built ring a puzzle).
+    metallic bonds draw the electron sea, break under heat like singles. Benzene IS a
+    hands-on target since the bonding rework (rule 14).
     Copy register: calm, brief, rule first — James: "don't get too cutesy." Every engine
     whisper is in the same register now; never bring back the mock's hands-and-rings
     voice. MODES: the rail toggle GUIDED | FREE is the one switch (no other way in or
@@ -102,6 +110,43 @@ italic one-line facts on the cards (he likes those; he wants more later).
     localStorage only (`snap-guide`); no server, no accounts — never build one here. The rail's mode
     note is hidden (`.mode{display:none}`) until James decides about notes.
 
+14. **Bonds by hand (2026-09-04, James's nod):** first contact is always a SINGLE bond; drag one
+    atom onto its bonded partner — the cursor has to back off half a radius from its closest
+    approach and come inside 0.9 R (a reversal; one continuous shove that overshoots the contact
+    never counts) — and they share another pair. Never a double on contact. While dragging, the rest of the
+    molecule holds still in proportion to bond distance (`K_HOLD`), so chains bend. Slots re-pick
+    every 0.2 s for every atom; chain atoms zigzag at 120° and heavy neighbours take the wide
+    slots counter-clockwise. No three- or four-rings (atoms under five bonds apart along a
+    molecule ignore each other); atoms within three bonds pass through one another. Five- and
+    six-rings are first-class: `findRings` + a regular-polygon shape spring (`K_RING`). Any change
+    here runs `node tmp/snap/bond-sim.mjs` (KEEP) — 36 assertions incl. six seeded ring closures.
+15. **Bench editing (2026-09-04):** drag on empty bench = box-select (Shift adds), Shift-click
+    toggles one atom, click on empty bench clears; Delete/Backspace, Ctrl-C/V/D, Ctrl-A, Escape;
+    right-click = the menu (`#menu`, `showMenu` in app.js) — the ion line first on an atom, then
+    copy/duplicate/delete (for the selection if you clicked inside it), paste / select all / clear
+    on empty bench. Right-click never ionizes directly any more; chapter 7 says "choose lose an
+    electron". Camera pan is Shift-drag or middle-drag. Copies go through `E.snapshot` /
+    `E.restore` (bonds re-linked at their order; ionic pairs re-hand the electron), placed by
+    `clearSpot` (50px from everything, below the guide strip). Selection ring + marquee are drawn
+    by the engine (`drawSelection`).
+16. **The hold view (2026-09-04, step 10.5):** holding = veil (bg at 88%) + the electron cloud.
+    `cloud.js` draws the REAL Hartree-Fock density for the nine baked molecules
+    (`assets/molecules-data.js`, a copy of the Valence Lab's bake — regenerate there, copy here):
+    column density in the molecule's own plane, log ramp, halo + sharp pass with added light,
+    fitted onto the held atoms by the best similarity transform over symbol-consistent pairings;
+    everything else gets the mock's five-disc layered glow. The ramp lives in cloud.js constants
+    (K0/CMAX/AMAX/TW/GA/HALO/HALOA) and is judged in `tmp/snap/hold-lab.html` (KEEP) — change it
+    there first, then copy the numbers. Images cache in localStorage (`snap-cloud-v3`; bump the
+    key when the grid or ramp changes). Under file:// the import fails quietly → fallback glow.
+17. **The Scope (2026-09-05, his five calls):** `scope.js`, an ES module imported on demand
+    (three.js from `lib/three/`); opens from the rail tab SCOPE on the selection's molecule and
+    from the right-click menu on that atom; refuses by name what it cannot read (elements past
+    argon, molecules not in the bake). Physics modules `orbitals.js` (all eighteen) and
+    `density.js` are Snap's own copies of the lab's — never reshape a distribution. Dials
+    cloud / shells / nucleus persist in `snap-scope`. Escape / close / veil click closes.
+    The Valence Lab is ARCHIVED (`archive/the-valence-lab/`); its solver + sims live on in
+    `tmp/the-valence-lab/` for the hold-view-everywhere batch.
+
 ## Files
 
 `index.html` · `snap.css` (tokens + every panel) · `app.js` (bench, table, panels,
@@ -109,11 +154,13 @@ cards) · `engine.js` (the 2D bench: atoms, bonds, physics, labels, chords) ·
 `elements.js` (118) · `facts.js` (en/melt/one-liners) · `content.js` (all 118 element
 cards) · `molecules.js` (24) ·
 `shells.js` (the Shells reader) · `guide.js` (guided mode: the chapters as data + the
-guide) · `fonts/` · `reimagine.md` · `changelog.md`.
+guide) · `cloud.js` (the hold view's real density) · `scope.js` (the Scope lens, 3-D) ·
+`orbitals.js` + `density.js` (the physics, from the lab) · `assets/molecules-data.js` (the HF
+bake) · `fonts/` · `reimagine.md` · `changelog.md`.
 
 ## Relations
 
-The Valence Lab (`src/worlds/the-valence-lab/`) stays alive: its coherence scope, the
-RHF/UHF STO-3G Hartree-Fock bake, `orbitals.js`/`density.js`/`valence.js` and the sims
-in `tmp/the-valence-lab/` are what the Scope-on-the-bench and the step-10.5 hold view
-will reuse. Its changelog holds Snap's 2026-09-01→03 history.
+The Valence Lab was ARCHIVED 2026-09-05 (`archive/the-valence-lab/`) once its scope came
+to the bench (rule 17). Its RHF/UHF STO-3G Hartree-Fock solver and sims stay in
+`tmp/the-valence-lab/` (the sims import from the old world path — repoint before use).
+Its changelog holds Snap's 2026-09-01→03 history.
