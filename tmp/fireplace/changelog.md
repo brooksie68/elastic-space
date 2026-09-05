@@ -1,5 +1,22 @@
 # Fireplace study — KEEP
 
+## 2026-09-05 — Codex — Independent motion, detached tips, then research
+
+Completed the two behavior changes before beginning web research, per James.
+Each flame has an independent smoothly changing local clock; Speed variation
+0–1.5 (default 1) retains the master Movement speed. Tip wisps 0–2 (default 1)
+controls irregular detachments: parent tip shortens, a pooled fragment rises,
+curls, shrinks and fades over 0.65–1.3 seconds. Pool capped at 24 fragments.
+Hidden flames do not emit; zero count clears fragments; pause freezes all fire time.
+Static shadow maps cached because shadow-casting geometry and lights stay fixed.
+Simulation passed 81 independent clocks, 474 detachments over two minutes, pause,
+disabled emitters, lifetime bounds, plus existing light/zoom assertions. Browser
+checked controls and live fragments with no console errors. Preview 30–38 fps;
+full-resolution Chrome gate remains open. check-worlds run; lab outside its scope.
+Research findings and sources: fire-research.md. Recommendation for discussion:
+separate WebGPU volumetric comparison; no renderer replacement authorized or built.
+No paid assets, no room work, no push. Agent: Codex.
+
 ## 2026-09-05 — Codex — Flame count control
 
 James called the initial study a pretty good start and requested more/less fire.
