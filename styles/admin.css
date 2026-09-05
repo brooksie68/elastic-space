@@ -376,7 +376,54 @@ h2 {
   margin-top: 0.9rem;
 }
 
+.draft-row {
+  align-items: stretch;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.draft-row.dragging {
+  opacity: 0.45;
+}
+
+.draft-grip {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  cursor: grab;
+  display: flex;
+  flex: none;
+  font-size: 0.95rem;
+  letter-spacing: -0.15em;
+  padding: 0 0.9rem 0 0.7rem;
+  user-select: none;
+}
+
+.draft-grip:hover {
+  background: var(--highlight);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.draft-row.dragging .draft-grip {
+  cursor: grabbing;
+}
+
+.draft-num {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex: none;
+  font-size: calc(1em + 2pt);
+  font-variant-numeric: tabular-nums;
+  justify-content: flex-end;
+  min-width: 1.6em;
+}
+
 .draft-card {
+  flex: 1;
+  min-width: 0;
   align-items: baseline;
   background: var(--panel-soft);
   border: 1px solid var(--line);

@@ -274,7 +274,21 @@ function renderDrafts() {
     return;
   }
 
-  for (const draft of state.drafts) {
+  state.drafts.forEach((draft, index) => {
+    const row = document.createElement("div");
+    row.className = "draft-row";
+    row.dataset.id = draft.id;
+
+    const grip = document.createElement("span");
+    grip.className = "draft-grip";
+    grip.title = "drag to reorder";
+    grip.setAttribute("aria-hidden", "true");
+    grip.textContent = "⋮⋮";
+
+    const number = document.createElement("span");
+    number.className = "draft-num";
+    number.textContent = String(index + 1);
+
     const card = document.createElement("button");
     card.type = "button";
     card.className = "draft-card";
@@ -292,8 +306,76 @@ function renderDrafts() {
     card.addEventListener("click", () => {
       openDraftDialog(draft);
     });
-    draftsList.append(card);
+
+    // The row is only draggable while the pointer is on the grip, so text
+    // selection and the card click keep working everywhere else.
+    grip.addEventListener("pointerdown", () => {
+      row.draggable = true;
+    });
+    row.addEventListener("dragstart", (event) => {
+      dragRow = row;
+      row.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draft.id);
+    });
+    row.addEventListener("dragend", () => {
+      row.draggable = false;
+      row.classList.remove("dragging");
+      if (dragRow) {
+        dragRow = null;
+        void saveDraftOrder();
+      }
+    });
+
+    row.append(number, grip, card);
+    draftsList.append(row);
+  });
+}
+
+// --- drag to reorder -------------------------------------------------------
+let dragRow = null;
+
+draftsList.addEventListener("dragover", (event) => {
+  if (!dragRow) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  const over = event.target.closest(".draft-row");
+  if (!over || over === dragRow) return;
+  const box = over.getBoundingClientRect();
+  const before = event.clientY < box.top + box.height / 2;
+  over.parentNode.insertBefore(dragRow, before ? over : over.nextSibling);
+  renumberDrafts();
+});
+
+draftsList.addEventListener("drop", (event) => {
+  if (dragRow) event.preventDefault();
+});
+
+function renumberDrafts() {
+  draftsList.querySelectorAll(".draft-row").forEach((row, index) => {
+    row.querySelector(".draft-num").textContent = String(index + 1);
+  });
+}
+
+async function saveDraftOrder() {
+  const ids = [...draftsList.querySelectorAll(".draft-row")].map((row) => row.dataset.id);
+  const previous = state.drafts;
+  const byId = new Map(previous.map((draft) => [draft.id, draft]));
+  state.drafts = ids.map((id) => byId.get(id)).filter(Boolean);
+  try {
+    const response = await fetch("/api/drafts/order", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) throw new Error("Saving the order failed.");
+    state.drafts = await response.json();
+    setDraftsStatus("Order saved.");
+  } catch (error) {
+    state.drafts = previous;
+    setDraftsStatus(error.message, "error");
   }
+  renderDrafts();
 }
 
 function openDraftDialog(draft) {

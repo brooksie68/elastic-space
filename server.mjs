@@ -1175,6 +1175,27 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
+  // Reorder: the client sends every draft id in its new order. Any id it
+  // missed (a draft created in another tab) keeps its place at the end.
+  if (pathname === "/api/drafts/order" && request.method === "PUT") {
+    const payload = await readBody(request);
+    const ids = Array.isArray(payload.ids) ? payload.ids.map((id) => slugify(String(id))) : [];
+    const drafts = await readDrafts();
+    const byId = new Map(drafts.map((item) => [item.id, item]));
+    const ordered = [];
+    for (const id of ids) {
+      const draft = byId.get(id);
+      if (draft) {
+        ordered.push(draft);
+        byId.delete(id);
+      }
+    }
+    ordered.push(...byId.values());
+    await writeDrafts(ordered);
+    sendJson(response, 200, ordered);
+    return true;
+  }
+
   const draftMatch = pathname.match(/^\/api\/drafts\/([a-z0-9-]+)$/i);
   if (draftMatch) {
     if (request.method !== "PUT") {
