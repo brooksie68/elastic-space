@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Reich Machine</title>
+  <link rel="stylesheet" href="./world.css" />
+</head>
+<body>
+  <header id="top">
+    <h1>The Reich Machine</h1>
+    <div class="transport">
+      <button id="play" class="big" title="play / stop (space)">▶</button>
+      <button id="rewind" title="back to the top">⏮</button>
+      <label>tempo <input id="bpm" type="number" min="30" max="260" step="1"></label>
+      <label>steps per beat <select id="subdiv"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></label>
+      <button id="hold" class="toggle" title="freeze every track on the master clock (H)">hold</button>
+    </div>
+    <div class="pitch">
+      <label>root <select id="root"></select></label>
+      <label>scale <select id="scale"></select></label>
+      <label>chord <select id="chord"></select></label>
+      <label>keyboard from <select id="kbBase"><option value="48">C3</option><option value="60" selected>C4</option><option value="72">C5</option></select></label>
+    </div>
+    <div class="misc">
+      <button id="addTrack">+ track</button>
+      <select id="presets"><option value="">presets…</option></select>
+      <button id="savePreset" title="save the whole machine under a name">save</button>
+      <button id="reset" title="two tracks, the twelve-note figure, one of them one percent fast">demo</button>
+      <label>volume <input id="volume" type="range" min="0" max="1" step="0.01" value="0.7"></label>
+      <label>room <input id="mReverb" type="range" min="0" max="0.6" step="0.01" value="0.15"></label>
+      <label>squash <input id="mComp" type="range" min="0" max="1" step="0.01" value="0.4"></label>
+    </div>
+  </header>
+
+  <section id="keyboard" title="click to hear the selected track's voice; with a step armed, it writes the note"></section>
+  <div id="kbHint">click a track's step to arm it, then play the keyboard to write notes</div>
+
+  <main id="tracks"></main>
+
+  <template id="trackTpl">
+    <article class="track">
+      <div class="row head">
+        <span class="num"></span>
+        <label>voice <select class="voice"></select> <span class="vstate"></span></label>
+        <label>length <input class="length" type="number" min="1" max="64" step="1"></label>
+        <label>figure <select class="figure"><option value="">fill with…</option></select></label>
+        <label>notes <select class="art"><option value="auto">auto</option><option value="hit">short</option><option value="hold">held</option></select></label>
+        <label>gate <input class="gate" type="range" min="0.05" max="1" step="0.01"></label>
+        <label>level <input class="gain" type="range" min="0" max="1" step="0.01"></label>
+        <button class="mute toggle">mute</button>
+        <button class="micro toggle" title="the microtonal line: every step carries its own cents">micro</button>
+        <button class="del" title="remove this track">✕</button>
+      </div>
+      <div class="row drift">
+        <label class="rateLabel">offset <input class="rate" type="range" min="-5" max="5" step="0.01"><span class="rateVal"></span></label>
+        <span class="cycle"></span>
+        <label>pull <input class="pull" type="range" min="0" max="1" step="0.01"><span class="pullVal"></span></label>
+        <span class="nudge"><button class="nudgeL" title="one step earlier">◀</button><button class="nudgeR" title="one step later">▶</button></span>
+        <span class="phase"><span class="marker"></span></span>
+        <span class="driftVal"></span>
+      </div>
+      <div class="grid"></div>
+      <div class="cents"></div>
+      <details class="fx"><summary>effects</summary><div class="fxgrid"></div></details>
+    </article>
+  </template>
+
+  <!-- Core wiring: dashboard-control ALWAYS; sound-control because the machine makes sound.
+       Draft world: no drift exits yet, so no registry/drift scripts. -->
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./player.js"></script>
+  <script src="./world.js"></script>
+</body>
+</html>
