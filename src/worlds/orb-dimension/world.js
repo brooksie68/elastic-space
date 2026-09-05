@@ -9319,7 +9319,9 @@ void main() {
   const loadVps = () => { try { return JSON.parse(localStorage.getItem(VP_KEY) || "[]"); } catch (e) { return []; } };
   const saveVps = (v) => localStorage.setItem(VP_KEY, JSON.stringify(v));
   function refreshBldgUi() {
-    const list = bldgMesh.list || [];
+    // v69.1: the deck lists the five test towers + one entry for the station,
+    // not every seated instance (James: "25 entries of station tower")
+    const list = (bldgMesh.list || []).filter((b) => !b.name.startsWith("station ") );
     const vps = loadVps();
     const want = bldgSel.value || localStorage.getItem(BLDG_PICK_KEY) || "";
     bldgSel.innerHTML = "";
