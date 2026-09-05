@@ -90,6 +90,8 @@
     saeGroup: 1,
     saeKnot: 0.85,
     saeStream: 1,
+    saeForm: 1, // v64.5 the formation share (James: rings everywhere, one formation in five minutes)
+    wear: 0.8, // v66 the material pass: how battle-scarred the metal reads (0 clean … 1 full)
     saeTide: 1,
     citizens: 12,
     // acknowledgment reach in meters — beings notice the pod inside this,
@@ -194,6 +196,7 @@
     { key: "saeGroup", label: "group size ×", min: 0.5, max: 2.5, step: 0.1, layout: true },
     { key: "saeKnot", label: "in groups", min: 0, max: 1, step: 0.05, layout: true },
     { key: "saeStream", label: "streams ×", min: 0, max: 2, step: 0.1, layout: true },
+    { key: "saeForm", label: "formations ×", min: 0, max: 3, step: 0.1, layout: true },
     { key: "saeTide", label: "tide speed ×", min: 0.25, max: 3, step: 0.05 },
     { key: "citizens", label: "citizens/caste", min: 0, max: 20, step: 1, layout: true },
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
@@ -740,21 +743,206 @@ float volPts(vec3 p, float cell, float rad, float k, float fill) {
 }
 // a lit solid: emission from the body colour, shaded by the sun direction
 vec3 volLit(vec3 p, vec3 c, vec3 col, vec3 L) { vec3 n = normalize(p - c + 1e-5); return col * (0.35 + 0.65 * max(dot(n, L), 0.0)); }
+
+// ---- v65 THE ROLLED INTERIOR (kind 30, James: "a roll of the dice... twenty
+// different things you can do, geometric shapes, patterns, textures, lighting,
+// fog... believably three-dimensional"): one recipe that reads a GENOME of 16
+// slots, 3 bits each, packed by JS into p0 (slots 0-7) and p1 (slots 8-15) —
+// integers under 2^24, exact in float32 — so the lab can print the genome in
+// words and a kept roll is just its two numbers. seed still hashes the details.
+int volGene(float pk, int k) { return int(mod(floor(pk / exp2(3.0 * float(k))), 8.0)); }
+vec3 volHue(vec3 c, float a) { // rotate hue (YIQ), cheap
+  const vec3 w = vec3(0.299, 0.587, 0.114);
+  float y = dot(c, w);
+  vec3 ch = c - y;
+  float ca = cos(a), sa = sin(a);
+  vec3 i = vec3(0.596, -0.274, -0.322), q = vec3(0.211, -0.523, 0.312);
+  float I = dot(c, i), Q = dot(c, q);
+  float I2 = I * ca - Q * sa, Q2 = I * sa + Q * ca;
+  return clamp(vec3(y + 0.956 * I2 + 0.621 * Q2, y - 0.272 * I2 - 0.647 * Q2, y - 1.106 * I2 + 1.703 * Q2), 0.0, 4.0);
+}
+float volHexEdge(vec2 uv) { // distance to the nearest honeycomb wall, cell size 1
+  vec2 rr = vec2(1.0, 1.7320508);
+  vec2 h = rr * 0.5;
+  vec2 a = mod(uv, rr) - h, b = mod(uv - h, rr) - h;
+  vec2 gv = dot(a, a) < dot(b, b) ? a : b;
+  vec2 g = abs(gv);
+  return 0.5 - max(dot(g, normalize(vec2(1.0, 1.7320508))), g.x);
+}
+vec4 volRolled(vec3 p, float t, float pk0, float pk1, float seed, vec3 c1, vec3 c2, vec3 L) {
+  int gLat = volGene(pk0, 0), gScl = volGene(pk0, 1), gSym = volGene(pk0, 2), gSol = volGene(pk0, 3);
+  int gCnt = volGene(pk0, 4), gHol = volGene(pk0, 5), gPat = volGene(pk0, 6), gFog = volGene(pk0, 7);
+  int gLit = volGene(pk1, 0), gPal = volGene(pk1, 1), gHue = volGene(pk1, 2), gMot = volGene(pk1, 3);
+  int gMov = volGene(pk1, 4), gGrd = volGene(pk1, 5), gNz = volGene(pk1, 6), gCut = volGene(pk1, 7);
+  float ss = seed * 3.7;
+  float r = length(p);
+  float env = smoothstep(1.0, 0.86, r);
+  // motion (slot 12): still / spin / counter-turning layers / breathe / pulse / flow
+  vec3 q = p;
+  if (gMov == 1 || gMov == 2) q = volRotY(q, t * 0.12);
+  else if (gMov == 3) q = volRotY(q, t * 0.14 * (fract(r * 2.5) < 0.5 ? 1.0 : -1.0));
+  else if (gMov == 4) q *= 1.0 + 0.06 * sin(t * 0.7 + ss);
+  else if (gMov == 6 || gMov == 7) q += 0.05 * vec3(sin(t * 0.5 + p.y * 4.0 + ss), sin(t * 0.37 + p.z * 3.0), cos(t * 0.43 + p.x * 4.0));
+  float pulse = gMov == 5 ? 0.6 + 0.4 * sin(t * 2.0 + r * 6.0) : 1.0;
+  // symmetry (slot 2): none ×3 / mirror / 3-fold / 4-fold / 6-fold / 8-fold
+  if (gSym == 3) q = abs(q);
+  else if (gSym >= 4) {
+    float k = gSym == 4 ? 3.0 : gSym == 5 ? 4.0 : gSym == 6 ? 6.0 : 8.0;
+    float kk = 6.2831853 / k;
+    float a = atan(q.z, q.x);
+    a = abs(mod(a + kk * 0.5, kk) - kk * 0.5);
+    float rq = length(q.xz);
+    q = vec3(cos(a) * rq, q.y, sin(a) * rq);
+  }
+  // noise warp (slot 14): none ×3 / gentle / strong / ridged
+  if (gNz == 4 || gNz == 5) {
+    float amp = gNz == 4 ? 0.1 : 0.28;
+    q += (vec3(n3(q * 3.0 + ss), n3(q * 3.0 + ss + 7.0), n3(q * 3.0 + ss + 13.0)) - 0.5) * amp;
+  } else if (gNz >= 6) q += abs(n3(q * 4.0 + ss) - 0.5) * 0.3;
+  // the lattice (slots 0, 1): scale 2.5–11 cells across; walls never thinner
+  // than the march can see (~0.045 of the ball)
+  float sc = mix(2.5, 11.0, float(gScl) / 7.0);
+  float thin = max(0.045 * sc, 0.07) * (gHol == 7 ? 1.6 : 1.0);
+  // a roll with no lattice and almost no solids is an empty ball — round 1 of
+  // the sheet had four; the roller (JS, lab + world) forbids it too
+  if (gLat == 0 && gCnt <= 2) gCnt = 5;
+  float lat = 0.0;
+  if (gLat == 1 || gLat == 2) { // honeycomb prisms, capped in y
+    float e = volHexEdge(q.xz * sc);
+    float cap = smoothstep(thin * 0.5, 0.0, abs(fract(q.y * sc * 0.6) - 0.5) - 0.35);
+    lat = max(smoothstep(thin, thin * 0.3, e), cap * smoothstep(thin * 1.5, 0.0, e - thin));
+  } else if (gLat == 3) { // a cubic scaffold: bars along every edge
+    vec3 f = abs(fract(q * sc) - 0.5);
+    float e = min(min(max(f.x, f.y), max(f.y, f.z)), max(f.x, f.z));
+    lat = smoothstep(thin * 0.9, thin * 0.3, e);
+  } else if (gLat == 4) { // gyroid
+    vec3 g = q * sc * 1.5;
+    float v = sin(g.x) * cos(g.y) + sin(g.y) * cos(g.z) + sin(g.z) * cos(g.x);
+    lat = smoothstep(thin * 3.0, thin * 0.3, abs(v));
+  } else if (gLat == 5) { // foam: the walls between noise cells
+    float v = n3(q * sc * 0.55 + ss);
+    lat = smoothstep(thin * 0.7, thin * 0.3, abs(v - 0.5));
+  } else if (gLat == 6) { // concentric shells
+    lat = smoothstep(thin * 1.6, thin * 0.3, abs(fract(r * max(sc, 5.0) * 0.35 + 0.5) - 0.5));
+  } else if (gLat == 7) { // spiral arms in a thick disc
+    float a = atan(q.z, q.x);
+    lat = smoothstep(thin * 1.6, 0.0, abs(fract(a / 6.2831853 * 3.0 + r * sc * 0.25 + t * 0.01) - 0.5)) * smoothstep(0.4, 0.1, abs(q.y));
+  }
+  // gLat 0 = no lattice
+  // the solids (slots 3, 4, 5): shapes dealt into cells, hashed on by the count
+  float sol = 0.0;
+  float sc2 = max(sc * 0.5, 2.5); // at least ~5 cells across, or a small scale has no room for solids
+  float fill = mix(0.06, 0.55, float(gCnt) / 7.0);
+  {
+    vec3 cp = q * sc2;
+    vec3 ip = floor(cp), fp = fract(cp) - 0.5;
+    float hh = h31(ip + ss);
+    if (hh < fill) {
+      vec3 jit = (vec3(h31(ip + ss + 1.1), h31(ip + ss + 2.2), h31(ip + ss + 3.3)) - 0.5) * 0.35;
+      vec3 lp = fp - jit;
+      float sz = mix(0.16, 0.34, h31(ip + ss + 4.4));
+      float sd;
+      if (gSol <= 1) sd = length(lp) - sz;                                        // spheres
+      else if (gSol == 2) sd = max(length(lp.xz) - sz * 0.35, abs(lp.y) - 0.46); // rods
+      else if (gSol == 3) sd = volBox(lp, vec3(sz, sz * 0.14, sz));              // plates
+      else if (gSol == 4) sd = volTor(lp, sz, sz * 0.22);                         // rings
+      else if (gSol == 5) sd = (abs(lp.x) + abs(lp.y) + abs(lp.z) - sz) * 0.577;  // octahedra
+      else if (gSol == 6) sd = max((abs(lp.x) + abs(lp.z)) * 0.9 - sz * 0.5, abs(lp.y) - sz * 1.4); // crystals
+      else sd = volBox(lp, vec3(sz * 0.7));                                       // cubes
+      float wsm = 0.05 / sc2;
+      if (gHol <= 3) sol = volSolid(sd, wsm);
+      else if (gHol <= 5) sol = volShell(sd, wsm * 1.4);
+      else if (gHol == 6) sol = volSolid(sd, wsm) * step(0.45, n3(q * sc * 3.0 + ss));            // lace
+      else sol = volSolid(sd, wsm) * smoothstep(0.42, 0.58, n3(q * sc * 1.8 + ss + 9.0));       // holes
+    }
+  }
+  // surface pattern on the solids (slot 6): plain ×3 / bands / traces / honeycomb / scales / stripes
+  float pat = 1.0;
+  if (gPat == 3) pat = 0.45 + 0.55 * step(0.5, fract(q.y * sc * 2.0));
+  else if (gPat == 4) pat = 0.3 + 1.4 * step(0.82, n3(q * sc * 4.0 + ss));
+  else if (gPat == 5) pat = 0.4 + 0.9 * smoothstep(0.12, 0.0, volHexEdge(q.xz * sc * 4.0));
+  else if (gPat == 6) pat = 0.5 + 0.5 * smoothstep(0.3, 0.0, length(fract(q.xy * sc * 3.0) - 0.5) - 0.3);
+  else if (gPat == 7) pat = 0.45 + 0.55 * step(0.5, fract((q.x + q.z) * sc * 2.0));
+  // density gradient (slot 13): uniform ×2 / dense core / dense rim / equator band / two poles
+  float grd = 1.0;
+  // floors at 0.25–0.3: a gradient thins a roll, never empties it (round 2 lesson)
+  if (gGrd == 2 || gGrd == 3) grd = 0.25 + 0.75 * smoothstep(0.95, 0.15, r);
+  else if (gGrd == 4 || gGrd == 5) grd = 0.3 + 0.7 * smoothstep(0.3, 0.85, r);
+  else if (gGrd == 6) grd = 0.25 + 0.75 * smoothstep(0.35, 0.05, abs(q.y));
+  else if (gGrd == 7) grd = 0.25 + 0.75 * smoothstep(0.35, 0.65, abs(q.y));
+  // cutaway (slot 15): none ×5 / a wedge / a half
+  float cut = 1.0;
+  // on the UNFOLDED p: the symmetry fold puts every q in the +x/+z sector,
+  // which is exactly the wedge (round 3 bug: symmetry + cutaway = an empty ball)
+  if (gCut == 5 || gCut == 6) cut = 1.0 - step(0.0, p.x) * step(0.0, p.z);
+  else if (gCut == 7) cut = 1.0 - step(0.0, p.x);
+  // fog (slot 7): none ×3 / uniform / strata / clumpy / a core cloud / a rim haze
+  float fog = 0.0;
+  if (gFog == 3) fog = 0.35;
+  else if (gFog == 4) fog = 0.5 * smoothstep(0.6, 0.95, sin(q.y * 9.0 + ss));
+  else if (gFog == 5) fog = 0.9 * smoothstep(0.5, 0.75, fbm3(q * 2.5 + ss + t * 0.04));
+  else if (gFog == 6) fog = 1.2 * exp(-r * r * 7.0);
+  else if (gFog == 7) fog = 0.5 * smoothstep(0.55, 0.95, r);
+  // palette (slots 9, 10)
+  float mixv = clamp(0.5 + 0.5 * sin(r * 5.0 + q.y * 3.0 + ss), 0.0, 1.0);
+  vec3 col;
+  if (gPal == 0) col = c1;
+  else if (gPal == 1) col = mix(c1, c2, mixv);
+  else if (gPal == 2) col = volHue(c1, r * 3.0 + q.y * 2.0);
+  else if (gPal == 3) col = mix(vec3(0.1, 0.3, 0.95), vec3(0.45, 0.85, 1.0), mixv);   // data blues
+  else if (gPal == 4) col = mix(vec3(1.0, 0.28, 0.05), vec3(1.0, 0.8, 0.3), mixv);    // ember
+  else if (gPal == 5) col = mix(vec3(0.55, 0.9, 1.0), vec3(0.8, 0.7, 1.0), mixv);     // ice
+  else if (gPal == 6) col = mix(vec3(0.3, 1.0, 0.25), vec3(1.0, 0.2, 0.8), mixv);     // acid
+  else col = mix(vec3(1.0, 0.95, 0.85), c2, mixv) * 0.55;                              // white with an accent (dimmed: it blew out on the sheet)
+  if (gPal >= 3) col = volHue(col, (float(gHue) / 7.0 - 0.5) * 1.2);
+  // light (slot 8): even ×2 / a center glow / sun-lit / lit rim / from below / pulsing / flicker
+  float lit = 1.0;
+  if (gLit == 2) lit = 0.35 + 1.4 * exp(-r * 2.5);
+  else if (gLit == 3) lit = 0.3 + 0.9 * max(dot(normalize(p + 1e-4), L), 0.0);
+  else if (gLit == 4) lit = 0.25 + 0.9 * smoothstep(0.5, 0.95, r);
+  else if (gLit == 5) lit = 0.3 + 0.9 * smoothstep(0.4, -0.6, p.y);
+  else if (gLit == 6) lit = 0.6 + 0.5 * sin(t * 1.7 + r * 7.0 + ss);
+  else if (gLit == 7) lit = 0.7 + 0.5 * step(0.7, h31(vec3(floor(t * 9.0), ss, 1.0)));
+  lit *= pulse;
+  // motes (slot 11): none ×3 / drifting dust / orbiting points / a swarm / falling / embers rising
+  float mot = 0.0;
+  vec3 mcol = col;
+  if (gMot == 3) mot = volPts(q + vec3(t * 0.01, 0.0, t * 0.013), 12.0, 0.14, ss, 0.2) * 0.6;
+  else if (gMot == 4) mot = volPts(volRotY(q, t * 0.4), 7.0, 0.2, ss, 0.15);
+  else if (gMot == 5) mot = volPts(q + 0.07 * sin(t * 1.5 + q.yzx * 9.0 + ss), 9.0, 0.2, ss, 0.22);
+  else if (gMot == 6) mot = volPts(vec3(q.x, q.y + t * 0.12, q.z), 10.0, 0.15, ss, 0.2);
+  else if (gMot == 7) { mot = volPts(vec3(q.x + sin(t * 0.7 + q.y * 4.0) * 0.03, q.y - t * 0.09, q.z), 10.0, 0.15, ss, 0.18); mcol = vec3(1.0, 0.6, 0.25); }
+  // assemble
+  float body = (lat * 1.6 + sol * 2.2 * pat) * grd * cut * env;
+  vec3 e = col * body * lit * 2.3 + col * fog * 0.18 * env + mcol * mot * 4.5 * env;
+  float d = (lat * 6.0 + sol * 10.0) * grd * cut * env + fog * 0.9 * env + mot * 4.0 * env;
+  return vec4(e, d);
+}
 vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed, vec3 L) {
   vec3 e = vec3(0.0); float d = 0.0;
+  if (kind == 30) return volRolled(p, t, vD.y, vD.z, seed, c1, c2, L); // v65 the rolled interior
   float r = length(p);
   float rr = length(p.xz);
   float ang = atan(p.z, p.x);
   float ss = seed * 3.7;
   if (kind == 1) { // swirling lights: two ribbons of light spiralling through the ball
     // two helical tubes of light winding up through the ball, counter-turning
-    float th1 = t * 1.1 + p.y * 5.0, th2 = -t * 0.8 + p.y * 3.5 + 2.4;
-    float rad1 = 0.42 + 0.12 * sin(p.y * 2.0 + t * 0.5), rad2 = 0.3 + 0.15 * cos(p.y * 3.0 - t * 0.4);
-    vec2 h1 = vec2(cos(th1), sin(th1)) * rad1, h2 = vec2(cos(th2), sin(th2)) * rad2;
-    float g1 = exp(-dot(p.xz - h1, p.xz - h1) / 0.012), g2 = exp(-dot(p.xz - h2, p.xz - h2) / 0.008);
+    // v65.1 (James: "needs more detail, more strands, many more"): ten helices,
+    // two families counter-turning, each on its own radius, pitch and phase
     float env = smoothstep(1.0, 0.7, r);
-    d = (g1 + g2) * env * 3.0;
-    e = (c1 * g1 * 1.2 + c2 * g2) * env * 4.0;
+    // v65.2 (James: "thinner still and a higher proportion of them"): eighteen
+    // strands at the march's resolving width, three families
+    for (int i = 0; i < 18; i++) {
+      float fi = float(i);
+      float fam = fi < 6.0 ? 1.0 : fi < 12.0 ? -1.0 : 0.6;
+      float ph = fi * 0.698 + ss;
+      float th = fam * t * (0.6 + 0.07 * fi) + p.y * (3.0 + fi * 0.35) + ph;
+      float rad = 0.12 + 0.038 * fi + 0.07 * sin(p.y * (1.5 + fi * 0.2) + t * 0.4 + ph);
+      vec2 h = vec2(cos(th), sin(th)) * rad;
+      float g = exp(-dot(p.xz - h, p.xz - h) / 0.0022);
+      d += g * env * 3.0;
+      e += mix(c1, c2, fract(fi * 0.37)) * g * env * 3.6;
+    }
   } else if (kind == 2) { // water with fish: a dim blue fill, caustics, four fish, bubbles
     // v64.1 (James: "they look like buttons" — a white ring meeting a dark
     // limb): the water is FULL now (density 1.6, the chord saturates well
@@ -769,7 +957,7 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     // four small fish, HEAD FIRST: the body lies along the path's own velocity
     for (int i = 0; i < 4; i++) {
       float fs = seed + float(i) * 13.7;
-      float w1 = 0.22 + 0.06 * h11(fs), w2 = 0.31 + 0.05 * h11(fs + 1.0), w3 = w1 * 0.8;
+      float w1 = 0.11 + 0.03 * h11(fs), w2 = 0.155 + 0.025 * h11(fs + 1.0), w3 = w1 * 0.8; // v65.2 half speed (James: "slow it down")
       vec3 fp = vec3(sin(t * w1 + fs) * 0.55, sin(t * w2 + fs * 2.0) * 0.4, cos(t * w3 + fs * 1.3) * 0.5);
       vec3 fv = vec3(cos(t * w1 + fs) * 0.55 * w1, cos(t * w2 + fs * 2.0) * 0.4 * w2, -sin(t * w3 + fs * 1.3) * 0.5 * w3);
       vec3 fd = fv / max(length(fv), 1e-4);
@@ -781,15 +969,38 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     }
     float bub = volPts(vec3(p.x, p.y - t * 0.12, p.z), 9.0, 0.16, ss, 0.12) * clamp(act - 1.0, 0.0, 1.0);
     e += vec3(0.5, 0.8, 0.9) * bub * 2.0; d += bub * 3.0;
+    // v65.1 (James): little dark dots too — silt sinking, density with no light
+    float silt = volPts(vec3(p.x + sin(t * 0.3 + p.z * 5.0) * 0.02, p.y + t * 0.03, p.z), 13.0, 0.13, ss + 7.0, 0.22)
+               + volPts(vec3(p.x, p.y + t * 0.02, p.z + sin(t * 0.2 + p.x * 3.0) * 0.02), 6.0, 0.3, ss + 19.0, 0.2) * 1.3; // v65.2 some bigger ones
+    d += silt * 9.0;
   } else if (kind == 4) { // kaleidoscope: the ball folded into a mirrored cell, a lattice of light inside
-    vec3 q = abs(volRotY(p, t * 0.15));
-    if (q.x < q.y) q.xy = q.yx;
-    if (q.y < q.z) q.yz = q.zy;
-    if (q.x < q.y) q.xy = q.yx;
-    float f = sin(q.x * 18.0 + t) * sin(q.y * 18.0 - t * 0.7) * sin(q.z * 18.0 + t * 0.4);
-    float k1 = smoothstep(0.65, 0.98, f), k2 = smoothstep(0.65, 0.98, -f);
-    d = (k1 + k2) * 1.2 * (1.0 - r * 0.5);
-    e = (c1 * k1 + c2 * k2) * 2.6 * (1.0 - r * 0.5);
+    // v65.2 (James: "a shame it can't have some symmetry... actual
+    // kaleidoscopic effects"): the ball is folded SIX-FOLD about a tilted
+    // axis and mirrored across its equator, so one wedge holds a few slowly
+    // drifting gems, rods and a ring, and the fold repeats them twelve times
+    // — turn it and the whole pattern turns as one, the way a kaleidoscope does
+    vec3 q = volRotX(volRotY(p, t * 0.08 + ss), 0.5);
+    float a = atan(q.z, q.x);
+    float kk = 6.2831853 / 6.0;
+    a = abs(mod(a + kk * 0.5, kk) - kk * 0.5);
+    float rq = length(q.xz);
+    q = vec3(cos(a) * rq, abs(q.y), sin(a) * rq);
+    float env = smoothstep(1.0, 0.85, r);
+    for (int i = 0; i < 4; i++) {
+      float fi = float(i);
+      vec3 c = vec3(0.15 + 0.2 * fi + 0.05 * sin(t * 0.3 + fi), 0.1 + 0.18 * fi * h11(fi + ss) + 0.04 * sin(t * 0.23 + fi * 2.0), 0.05 + 0.12 * fi);
+      vec3 lp = q - c;
+      float gem = volSolid((abs(lp.x) + abs(lp.y) + abs(lp.z) - 0.055 - 0.02 * fi) * 0.577, 0.012);
+      float rod = volSolid(volSeg(q, c, c * vec3(1.0, -0.2, 1.0) + vec3(0.0, 0.05, 0.0), 0.012), 0.012);
+      // v65.3 (James: "stick with all blue green colors"): a fixed sea palette
+      vec3 col = i == 0 ? vec3(0.15, 0.55, 1.0) : i == 1 ? vec3(0.2, 0.95, 0.75) : i == 2 ? vec3(0.4, 0.8, 1.0) : vec3(0.1, 0.7, 0.55);
+      e += col * (gem * 3.0 + rod * 1.6) * env;
+      d += (gem * 10.0 + rod * 6.0) * env;
+    }
+    float ring = volSolid(volTor(q - vec3(0.0, 0.02, 0.0), 0.5, 0.02), 0.012) * step(a, 0.2);
+    e += vec3(0.3, 0.9, 0.9) * ring * 2.5 * env; d += ring * 8.0 * env;
+    float mirror = smoothstep(0.02, 0.0, abs(a - kk * 0.5)) * smoothstep(0.9, 0.3, rq) * 0.25; // the faint mirror planes
+    e += vec3(0.6, 0.7, 1.0) * mirror * env; d += mirror * 0.8 * env;
   } else if (kind == 5) { // weird blobs: four metaballs oozing through each other
     float m = 0.0;
     for (int i = 0; i < 4; i++) {
@@ -798,6 +1009,7 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
       float dd = length(p - c) + fbm3(p * 4.0 + t * 0.3) * 0.12;
       m += 0.09 / (dd * dd + 0.02);
     }
+    // v65.2: the v64 blobs restored exactly (James: "I kind of like them better on the first pass")
     float blob = smoothstep(0.8, 1.8, m);
     d = blob * 4.0;
     e = mix(c2, c1, smoothstep(1.0, 3.0, m)) * blob * 2.4;
@@ -809,7 +1021,7 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
       float R = 0.3 + fi * 0.16;
       vec3 q = volRotX(volRotZ(p, fi * 0.35 + ss), fi * 0.5);
       float ring = volShell(volTor(q, R, 0.0), 0.035);
-      float a = t * (0.9 - fi * 0.17) + fi * 2.0;
+      float a = t * (0.45 - fi * 0.085) + fi * 2.0; // v65.2 half speed
       vec3 pc = vec3(cos(a) * R, 0.0, sin(a) * R);
       float pl = volSolid(volSph(q, pc, 0.07 + fi * 0.012), 0.03);
       e += c2 * ring * 1.2 + volLit(q, pc, mix(c2, vec3(1.0), 0.3), L) * pl * 4.0;
@@ -825,46 +1037,82 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     e = mix(c1, vec3(1.0), 0.5) * core * 8.0 + c1 * halo * 2.0 + c2 * (r1 + r2) * 2.0 + c1 * fil * 1.5;
     d = core * 10.0 + halo * 1.2 + (r1 + r2) * 1.5 + fil * 1.4;
   } else if (kind == 8) { // data rain: columns of glyphs falling through the ball
-    vec3 q = vec3(p.x, p.y + t * 0.35, p.z);
+    vec3 q = vec3(p.x, p.y + t * 0.11, p.z); // v65.2 a third of the speed (James: "quite a bit")
     vec3 ip = floor(q * vec3(7.0, 12.0, 7.0));
     float on = step(0.72, h31(ip + ss)) * step(0.35, h31(vec3(ip.x, 0.0, ip.z) + ss + 9.0)); // some columns rain, some cells lit
     vec3 fp = fract(q * vec3(7.0, 12.0, 7.0)) - 0.5;
     float cellD = smoothstep(0.42, 0.2, max(abs(fp.x), abs(fp.z))) * smoothstep(0.45, 0.3, abs(fp.y));
     float head = step(0.93, h31(ip + ss + 3.0));
-    d = on * cellD * 3.0 * (1.0 - r * 0.4);
-    e = mix(c1, vec3(1.0), head) * on * cellD * (2.0 + head * 3.0) * (1.0 - r * 0.4);
-  } else if (kind == 9) { // radar sweep: a thin disc, range rings, the sweep, a blip
-    p = volRotZ(volRotX(p, 0.9 + 0.3 * sin(ss)), 0.5 * cos(ss)); rr = length(p.xz); ang = atan(p.z, p.x);
-    float disc = smoothstep(0.05, 0.0, abs(p.y)) * (1.0 - rr);
-    float rings = smoothstep(0.7, 1.0, sin(rr * 31.0)) * 0.5;
-    float sw = fract((ang - t * 0.9) / 6.28318);
-    float sweep = pow(1.0 - sw, 6.0) * 1.6 + smoothstep(0.985, 1.0, 1.0 - sw) * 3.0;
-    vec3 bp = vec3(cos(ss) * 0.55, 0.0, sin(ss) * 0.55);
-    float blip = volSolid(volSph(p, bp, 0.035), 0.02) * (0.4 + 0.6 * pow(1.0 - fract((atan(bp.z, bp.x) - t * 0.9) / 6.28318 + 1.0), 3.0));
-    e = mix(c1, vec3(0.5, 1.0, 0.6), 0.5) * disc * (0.5 + rings * 1.5 + sweep) * 2.5 + vec3(1.0, 0.9, 0.6) * blip * 6.0;
-    d = disc * (0.6 + rings + sweep * 0.5) * 2.5 + blip * 9.0;
+    // v65.1 (James: "looked cooler when it was green... more like the Matrix"):
+    // phosphor green with a pale head, each column a trail that fades up
+    // behind its head, cells flickering as they change
+    float trail = pow(fract(q.y * 0.5 + h31(vec3(ip.x, 0.0, ip.z) + ss + 4.0)), 2.0);
+    float flick = 0.7 + 0.3 * step(0.5, h31(ip + floor(t * 1.5) + ss));
+    vec3 gcol = mix(vec3(0.15, 1.0, 0.35), c1, 0.2);
+    d = on * cellD * (2.0 + trail * 2.0 + head * 4.0) * (1.0 - r * 0.4);
+    e = mix(gcol, vec3(0.8, 1.0, 0.85), head) * on * cellD * (1.2 + trail * 2.5 + head * 5.0) * flick * (1.0 - r * 0.4);
   } else if (kind == 10) { // gyroscope: three nested rings, each tumbling on its own axis
-    for (int i = 0; i < 3; i++) {
+    // v65.3 (James: "only three... can you have nine? more ornamentation on
+    // some... more color variation"): nine nested rings, radii 0.86 down to
+    // 0.3, every third one plain, the others carrying studs or a chain of
+    // small beads, nine hues stepped around the orb's
+    for (int i = 0; i < 9; i++) {
       float fi = float(i);
-      vec3 q = volRotZ(volRotX(volRotY(p, t * (0.4 + fi * 0.2) + fi), t * (0.3 - fi * 0.1) + ss), fi * 1.1);
-      float ring = volShell(volTor(q, 0.75 - fi * 0.2, 0.0), 0.05 + fi * 0.006);
-      e += mix(c1, c2, fi * 0.5) * ring * 3.5;
-      d += ring * 4.0;
+      vec3 q = volRotZ(volRotX(volRotY(p, t * (0.12 + fi * 0.04) * (mod(fi, 2.0) < 0.5 ? 1.0 : -1.0) + fi), t * (0.1 - fi * 0.008) + ss + fi * 0.7), fi * 0.9);
+      // v65.1 (James: "more precise looking... a little pixely"): a real tube
+      // (radius 0.028 — twice the march's resolving width) with a hard edge,
+      // slower tumble, tick marks on every ring, a bright bearing where the
+      // rings cross their axis
+      float R = 0.86 - fi * 0.07;
+      float ring = volSolid(volTor(q, R, 0.022), 0.012);
+      float ra0 = atan(q.z, q.x);
+      float orn = mod(fi, 3.0);
+      float tick = 0.0;
+      if (orn > 0.5 && orn < 1.5) tick = smoothstep(0.38, 0.5, abs(fract(ra0 * 2.55) - 0.5)) * volSolid(volTor(q, R, 0.045), 0.012);        // studs
+      else if (orn > 1.5) tick = smoothstep(0.3, 0.45, abs(fract(ra0 * 4.5) - 0.5)) * volSolid(volTor(q, R + 0.05, 0.03), 0.012);          // a chain of beads outside
+      float bearing = (volSolid(volSph(q, vec3(R, 0.0, 0.0), 0.04), 0.012) + volSolid(volSph(q, vec3(-R, 0.0, 0.0), 0.04), 0.012)) * step(orn, 0.5);
+      // v65.2 (James: "all pink... more exciting lighting"): each ring its own
+      // colour (c1 / c2 / the complement), a white glint racing round each
+      // ring, a soft glow off the tube toward the sun
+      vec3 rc = volHue(mix(c1, c2, fract(fi * 0.5)), fi * 0.7);
+      float ra = ra0;
+      float glint = pow(0.5 + 0.5 * cos(ra - t * (1.6 + fi * 0.5)), 24.0);
+      float sun = 0.6 + 0.6 * max(dot(normalize(vec3(cos(ra), 0.0, sin(ra))), L), 0.0);
+      float haze = volSolid(volTor(q, R, 0.08), 0.04) * (1.0 - ring) * 0.35;
+      e += rc * (ring * 3.2 * sun + tick * 2.0 + haze * 1.2) + vec3(1.0) * (bearing * 3.0 + ring * glint * 5.0);
+      d += ring * 12.0 + tick * 6.0 + bearing * 12.0 + haze * 1.5;
     }
-    float hub = volSolid(volSph(p, vec3(0.0), 0.07), 0.02);
+    float hub = volSolid(volSph(p, vec3(0.0), 0.06), 0.02);
     e += vec3(1.0) * hub * 4.0; d += hub * 8.0;
   } else if (kind == 11) { // circuitry: traces on three floating boards, pulses running them
-    for (int i = 0; i < 3; i++) {
+    // v65.2 (James: "can it have six... better ordered... a computer is a very
+    // ordered thing... more parallelism"): three parallel DECKS and three
+    // parallel UPRIGHTS crossing them at right angles — a backplane — the
+    // whole block on one seeded tilt so no viewer sees it all edge-on
+    for (int i = 0; i < 6; i++) {
       float fi = float(i);
-      vec3 q = volRotX(volRotY(p, fi * 1.05 + ss), 0.4 + fi * 0.7); // each board on its own tilt — three planes, never all edge-on
-      float yb = -0.4 + fi * 0.4;
+      vec3 q = volRotX(volRotY(p, ss), 0.5);
+      if (fi > 2.5) q = volRotZ(q, 1.5707963); // the uprights
+      float yb = -0.4 + mod(fi, 3.0) * 0.4;
       float board = smoothstep(0.02, 0.0, abs(q.y - yb)) * smoothstep(0.85, 0.6, length(q.xz));
-      vec2 g = q.xz * 7.0;
+      // v65.1 (James: "another whack... more symmetrical"): the board is
+      // mirrored in four (abs on both axes) so every trace has its twin, with
+      // a ring bus around the middle and a chip pad at each corner
+      vec2 g = abs(q.xz) * 7.0;
       vec2 gf = abs(fract(g) - 0.5);
-      float onx = step(0.5, h21(vec2(floor(g.y), fi) + ss)), onz = step(0.5, h21(vec2(floor(g.x), fi) + ss + 5.0));
+      float onx = step(0.45, h21(vec2(floor(g.y), fi) + ss)), onz = step(0.45, h21(vec2(floor(g.x), fi) + ss + 5.0));
       float trace = max(smoothstep(0.12, 0.03, gf.y) * onx, smoothstep(0.12, 0.03, gf.x) * onz);
+      float bus = smoothstep(0.03, 0.0, abs(length(q.xz) - 0.28)) + smoothstep(0.03, 0.0, abs(length(q.xz) - 0.5));
+      float pad = smoothstep(0.08, 0.05, max(abs(abs(q.x) - 0.38), abs(abs(q.z) - 0.38)));
+      trace = max(trace, max(bus, pad * 0.8));
       float pulse = smoothstep(0.8, 1.0, sin(g.x * 2.0 + g.y - t * 6.0 + fi));
-      e += (c1 * 1.2 + c2 * pulse * 4.0) * trace * board * 3.0 + c2 * board * 0.15;
+      // v65.3 (James: "variations of the color"): four board families by seed —
+      // copper on green, silver on blue, gold on black, cyan on violet
+      float cf = floor(h11(ss + 9.0) * 4.0);
+      vec3 tcol = cf < 0.5 ? vec3(0.9, 0.5, 0.2) : cf < 1.5 ? vec3(0.75, 0.85, 1.0) : cf < 2.5 ? vec3(1.0, 0.8, 0.3) : vec3(0.3, 0.95, 1.0);
+      vec3 pcol = cf < 0.5 ? vec3(1.0, 0.85, 0.5) : cf < 1.5 ? vec3(0.5, 0.8, 1.0) : cf < 2.5 ? vec3(1.0, 0.95, 0.7) : vec3(1.0, 0.5, 1.0);
+      vec3 bcol = cf < 0.5 ? vec3(0.05, 0.25, 0.1) : cf < 1.5 ? vec3(0.05, 0.1, 0.3) : cf < 2.5 ? vec3(0.05, 0.05, 0.05) : vec3(0.15, 0.05, 0.25);
+      e += (tcol * 1.2 + pcol * pulse * 4.0) * trace * board * 3.0 + bcol * board * 0.6;
       d += (trace * (1.2 + pulse) + 0.2) * board * 3.0;
     }
   } else if (kind == 12) { // snow-globe city: towers on the floor of the ball, lit windows, snow
@@ -885,15 +1133,29 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     float flash = step(0.75, h11(flashT)) * pow(1.0 - fract(t * 1.3 + ss), 4.0);
     vec3 fa = vec3(h11(flashT + 1.0) - 0.5, 0.6, h11(flashT + 2.0) - 0.5), fb = vec3(h11(flashT + 3.0) - 0.5, -0.5, h11(flashT + 4.0) - 0.5);
     float bolt = volShell(volSeg(p + (n3(p * 9.0 + flashT) - 0.5) * 0.08, fa, fb, 0.0), 0.025) * flash;
-    e = mix(vec3(0.16, 0.18, 0.24), c1 * 0.8, 0.4) * cloud * 1.2 + vec3(0.8, 0.85, 1.0) * (bolt * 6.0 + cloud * flash * 1.5);
+    // v65.2 (James: "variations of different colors"): four storm families by
+    // seed — slate, green-violet, rust dust, deep red — each with its own bolt
+    float sf = floor(h11(ss + 5.0) * 4.0);
+    vec3 scol = sf < 0.5 ? vec3(0.16, 0.18, 0.24) : sf < 1.5 ? vec3(0.12, 0.22, 0.18) : sf < 2.5 ? vec3(0.3, 0.18, 0.1) : vec3(0.28, 0.08, 0.1);
+    vec3 bcol = sf < 0.5 ? vec3(0.8, 0.85, 1.0) : sf < 1.5 ? vec3(0.7, 1.0, 0.8) : sf < 2.5 ? vec3(1.0, 0.85, 0.6) : vec3(1.0, 0.6, 0.6);
+    e = mix(scol, c1 * 0.8, 0.3) * cloud * 1.2 + bcol * (bolt * 6.0 + cloud * flash * 1.5);
     d = cloud * 2.6 + bolt * 6.0;
   } else if (kind == 14) { // ember hive: a dark honeycombed mass with embers drifting up out of it
-    float mass = volSolid(volSph(p, vec3(0.0), 0.5) + (n3(p * 7.0 + ss) - 0.5) * 0.14, 0.04);
-    float pores = smoothstep(0.55, 0.8, n3(p * 12.0 + ss + 3.0));
-    float hot = smoothstep(0.45, 0.2, r) * (0.7 + 0.3 * sin(t * 2.0 + r * 20.0));
-    float emb = volPts(vec3(p.x + sin(t * 0.7 + p.y * 4.0) * 0.03, p.y - t * 0.09, p.z), 11.0, 0.15, ss, 0.15) * smoothstep(0.35, 0.6, r);
-    e = mass * (vec3(0.07, 0.035, 0.02) * (1.0 - pores) + mix(c1, vec3(1.0, 0.6, 0.2), 0.5) * pores * (0.6 + hot) * 4.0) + vec3(1.0, 0.6, 0.25) * emb * 5.0;
-    d = mass * 10.0 * (1.0 - pores * 0.3) + emb * 5.0;
+    // v65.1 (James: it lost "the bees effect... some holes in the center
+    // piece"): the mass is a true honeycomb — hexagonal cells bored through
+    // it top to bottom (the walls stay, the cells are open and glow from
+    // within), and a few BIG bees crawl the cells instead of the ember dust
+    float mass = volSolid(volSph(p, vec3(0.0), 0.5) + (n3(p * 7.0 + ss) - 0.5) * 0.1, 0.04);
+    // cells are bored RADIALLY (hex lattice on the cylinder: twelve around, so
+    // no seam) and stop short of the core — from any side you look into pockets
+    float hexE = volHexEdge(vec2((ang + ss) / 6.2831853 * 12.0, p.y * 6.0));
+    float cell = smoothstep(0.1, 0.22, hexE) * smoothstep(0.2, 0.32, r); // 1 inside a cell, 0 on the wall
+    float hot = smoothstep(0.5, 0.15, r) * (0.7 + 0.3 * sin(t * 2.0 + r * 20.0));
+    float wall = mass * (1.0 - cell * 0.9);
+    float glow = mass * cell * (0.35 + hot);
+    float bees = volPts(vec3(p.x + sin(t * 0.9 + p.y * 3.0 + ss) * 0.06, p.y + sin(t * 0.6 + p.x * 4.0) * 0.05, p.z + cos(t * 0.7 + ss) * 0.06), 5.0, 0.24, ss, 0.14) * smoothstep(0.3, 0.55, r) * smoothstep(0.75, 0.6, r);
+    e = vec3(0.09, 0.045, 0.02) * wall + mix(c1, vec3(1.0, 0.6, 0.2), 0.5) * glow * 2.2 + vec3(1.0, 0.75, 0.3) * bees * 5.0;
+    d = wall * 12.0 + glow * 1.6 + bees * 9.0;
   } else if (kind == 15) { // clockwork: three toothed gears meshing, turning
     for (int i = 0; i < 3; i++) {
       float fi = float(i);
@@ -904,6 +1166,20 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
       float gear = volShell(length(q.xy) - R - teeth, 0.06) * smoothstep(0.07, 0.02, abs(q.z));
       float spoke = smoothstep(0.05, 0.0, abs(sin(atan(q.y, q.x) * 2.0)) * length(q.xy)) * step(length(q.xy), R) * smoothstep(0.07, 0.02, abs(q.z));
       e += mix(c1, vec3(0.9, 0.7, 0.35), 0.5) * (gear + spoke * 0.6) * 6.0;
+      d += (gear + spoke * 0.6) * 7.0;
+    }
+    // v65.2 (James: "another set of three going across ways"): a second train
+    // in the crossing plane, smaller, turning the other way
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      vec3 pp = volRotY(p, 1.5707963);
+      vec3 gc = vec3(cos(fi * 2.09 + ss + 1.0) * 0.3, sin(fi * 2.09 + ss + 1.0) * 0.32, 0.0);
+      vec3 q = volRotZ(pp - gc, -t * (fi == 1.0 ? -1.1 : 0.75) + fi);
+      float R = 0.2 + fi * 0.05;
+      float teeth = 0.035 * step(0.0, sin(atan(q.y, q.x) * (10.0 + fi * 4.0)));
+      float gear = volShell(length(q.xy) - R - teeth, 0.05) * smoothstep(0.06, 0.02, abs(q.z));
+      float spoke = smoothstep(0.04, 0.0, abs(sin(atan(q.y, q.x) * 2.0)) * length(q.xy)) * step(length(q.xy), R) * smoothstep(0.06, 0.02, abs(q.z));
+      e += mix(c2, vec3(0.7, 0.75, 0.85), 0.5) * (gear + spoke * 0.6) * 5.0;
       d += (gear + spoke * 0.6) * 7.0;
     }
     float tick = smoothstep(0.9, 1.0, sin(t * 3.14159 * 2.0)) * volSolid(volSph(p, vec3(0.0, -0.55, 0.0), 0.06), 0.02);
@@ -923,10 +1199,17 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     float arm = smoothstep(0.1, 0.9, 0.5 + 0.5 * cos(th * 2.0 - rq * 9.0 + 1.0));
     float dust = fbm3(vec3(cos(thD) * rq * 5.0, sin(thD) * rq * 5.0, 0.0) + ss);
     float disc = exp(-q.y * q.y / (0.004 + rq * 0.03)) * smoothstep(1.0, 0.2, rq);
-    float bulge = exp(-length(q * vec3(1.0, 2.2, 1.0)) * 7.0);
+    float bulge = exp(-length(q * vec3(1.0, 1.6, 1.0)) * 7.0); // v65.1 rounder, and the disc twice as bright: a pill no more
     float stars = volPts(vec3(cos(thD) * rq, q.y * 4.0, sin(thD) * rq), 14.0, 0.18, ss, 0.35) * disc;
-    e = c1 * disc * (0.25 + arm * (0.6 + dust * 0.8)) * 1.6 + vec3(1.0, 0.95, 0.85) * bulge * 4.0 + vec3(1.0) * stars * 2.0;
-    d = disc * (0.5 + arm * (0.8 + dust)) * 1.4 + bulge * 6.0 + stars * 3.0;
+    // v65.1 (James: "a variety of colours"): four galaxy families by seed —
+    // blue-white, gold, rose-with-cyan-arms, green — the arms tinted apart
+    // from the disc
+    float gf = floor(h11(ss + 11.0) * 4.0);
+    vec3 dcol = gf < 0.5 ? vec3(0.55, 0.7, 1.0) : gf < 1.5 ? vec3(1.0, 0.8, 0.45) : gf < 2.5 ? vec3(1.0, 0.55, 0.7) : vec3(0.5, 1.0, 0.6);
+    vec3 acol = gf < 0.5 ? vec3(0.8, 0.9, 1.0) : gf < 1.5 ? vec3(1.0, 0.95, 0.7) : gf < 2.5 ? vec3(0.5, 0.9, 1.0) : vec3(0.9, 1.0, 0.7);
+    vec3 bcol = gf < 1.5 ? vec3(1.0, 0.95, 0.85) : gf < 2.5 ? vec3(1.0, 0.85, 0.8) : vec3(0.95, 1.0, 0.9);
+    e = mix(dcol, c1, 0.25) * disc * 0.35 + acol * disc * arm * (0.6 + dust * 0.8) * 1.3 + bcol * bulge * 2.2 + vec3(1.0) * stars * 2.0;
+    d = disc * (0.5 + arm * (0.8 + dust)) * 1.4 + bulge * 3.5 + stars * 3.0;
   } else if (kind == 17) { // the eye that opens: an eyeball facing out, the lid parting as you close in
     float open = 0.15 + 0.85 * smoothstep(0.2, 1.6, act) * (0.8 + 0.2 * sin(t * 0.7));
     vec3 q = volRotY(p, ss);
@@ -937,7 +1220,7 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     float pupil = smoothstep(0.17, 0.12, irisA);
     float lid = smoothstep(open * 0.5, open * 0.5 - 0.06, abs(q.y) / max(length(q), 1e-4));
     float fib = 0.6 + 0.4 * sin(atan(q.y, q.x) * 24.0 + irisA * 30.0);
-    vec3 col = mix(vec3(0.9, 0.9, 0.85), c1 * fib * 1.6, iris) * (1.0 - pupil);
+    vec3 col = mix(vec3(0.9, 0.9, 0.85), vec3(0.2, 0.5, 1.0) * fib * 1.6, iris) * (1.0 - pupil); // v65.1 blue (James: "red is not good")
     e = ball * (col * lid * 1.4 + vec3(0.12, 0.06, 0.05) * (1.0 - lid)) * 2.5;
     d = ball * 12.0;
   } else if (kind == 20) { // the forge: an anvil block, a molten pool glowing under it, sparks
@@ -948,15 +1231,31 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
     e = vec3(0.06, 0.05, 0.05) * anvil * 2.0 + vec3(1.0, 0.45, 0.1) * (pool * 3.0 + heat) + vec3(1.0, 0.7, 0.3) * sparks * 5.0;
     d = anvil * 12.0 + pool * 3.0 + heat * 0.8 + sparks * 4.0;
   } else if (kind == 21) { // singing crystals: five shards standing at angles, each pulsing on its own note
-    for (int i = 0; i < 5; i++) {
+    // v65.1 (James: "too big and bulky... a lot smaller and more detailed"):
+    // a geode — fourteen slim shards growing out from a dark seed rock at
+    // the centre, each a hexagonal prism with a pointed tip, faceted by a
+    // banded emission along its length, each on its own note
+    float rock = volSolid(volSph(p, vec3(0.0), 0.16) + (n3(p * 9.0 + ss) - 0.5) * 0.06, 0.02);
+    e += vec3(0.05, 0.04, 0.06) * rock; d += rock * 12.0;
+    // v65.2 (James: "still needs more... colour variations within the same
+    // one... some longer ones that come almost to the very edge"): twenty
+    // shards, every third one long (to 0.92), each its own hue about c1
+    for (int i = 0; i < 20; i++) {
       float fi = float(i);
-      vec3 c = vec3(cos(fi * 1.257 + ss) * 0.35, -0.1 + 0.1 * sin(fi * 2.0), sin(fi * 1.257 + ss) * 0.35);
-      vec3 q = volRotZ(volRotX(p - c, 0.5 * sin(fi + ss)), 0.4 * cos(fi * 1.3 + ss));
-      float sd = volBox(q, vec3(0.05, 0.25 + 0.1 * h11(fi + ss), 0.05)) - 0.02;
-      float body = volSolid(sd, 0.02), edge = volShell(sd, 0.02);
+      float a = fi * 0.3142 + ss, b = (h11(fi + ss) - 0.5) * 2.6;
+      vec3 dir = normalize(vec3(cos(a) * cos(b), sin(b), sin(a) * cos(b)));
+      float len = mod(fi, 3.0) < 0.5 ? 0.7 + 0.22 * h11(fi * 3.1 + ss) : 0.26 + 0.28 * h11(fi * 3.1 + ss);
+      float w = 0.028 + 0.014 * h11(fi * 5.3 + ss);
+      float along = dot(p, dir);
+      vec3 perp = p - dir * along;
+      float hexR = max(abs(perp.x) * 0.866 + abs(perp.y) * 0.5, max(abs(perp.y), abs(perp.z) * 0.866 + abs(perp.x) * 0.5));
+      float taper = w * (1.0 - smoothstep(len - 0.08, len + 0.02, along) * 1.0);
+      float sd = max(hexR - taper, max(0.12 - along, along - len - 0.02));
+      float body = volSolid(sd, 0.012), edge = volShell(sd, 0.012);
       float note = 0.5 + 0.5 * sin(t * (1.5 + fi * 0.37) + fi * 2.0);
-      e += mix(c2, c1, fi * 0.25) * (body * (0.3 + note * 1.2) + edge * 1.5) * 1.6;
-      d += body * 3.0 + edge * 2.0;
+      float bands = 0.6 + 0.4 * step(0.5, fract(along * 18.0 + fi));
+      e += volHue(mix(c2, c1, fract(fi * 0.31)), (h11(fi * 7.7 + ss) - 0.5) * 2.4) * (body * (0.25 + note * 1.0) * bands + edge * 1.8) * 1.5;
+      d += body * 7.0 + edge * 3.0;
     }
   } else if (kind == 22) { // moons around a hearth: a warm hearth, three moons lit by it
     float hearth = volSolid(volSph(p, vec3(0.0), 0.16), 0.04);
@@ -974,54 +1273,44 @@ vec4 volKind(int kind, vec3 p, float t, float act, vec3 c1, vec3 c2, float seed,
       d += moon * 9.0;
     }
   } else if (kind == 23) { // signal beacon: a mast, a lamp, spherical pulses spreading out
-    float mast = volSolid(volSeg(p, vec3(0.0, -0.8, 0.0), vec3(0.0, 0.45, 0.0), 0.03), 0.02);
-    float lamp = volSolid(volSph(p, vec3(0.0, 0.5, 0.0), 0.07), 0.03) * (0.6 + 0.4 * sin(t * 6.0));
-    float pr = fract(t * 0.35 + ss);
-    float pulse = volShell(length(p - vec3(0.0, 0.5, 0.0)) - pr * 0.9, 0.03) * (1.0 - pr);
-    float pr2 = fract(t * 0.35 + 0.5 + ss);
-    pulse += volShell(length(p - vec3(0.0, 0.5, 0.0)) - pr2 * 0.9, 0.03) * (1.0 - pr2);
-    e = vec3(0.2, 0.22, 0.28) * mast * 2.0 + mix(c1, vec3(1.0), 0.4) * lamp * 8.0 + c1 * pulse * 2.0;
-    d = mast * 8.0 + lamp * 10.0 + pulse * 1.6;
-  } else if (kind == 24) { // metronome: a pendulum swinging from the top, the tick flashes at the ends
-    float ph = sin(t * 2.2);
-    vec3 pivot = vec3(0.0, 0.62, 0.0);
-    vec3 bob = pivot + vec3(sin(ph * 0.7) * 0.85, -cos(ph * 0.7) * 0.85, 0.0);
-    float rod = volSolid(volSeg(p, pivot, bob, 0.03), 0.02);
-    float bobS = volSolid(volSph(p, bob, 0.09), 0.03);
-    float tick = smoothstep(0.92, 1.0, abs(ph));
-    float frame = volSolid(volBox(p - vec3(0.0, 0.66, 0.0), vec3(0.3, 0.03, 0.05)), 0.01);
-    e = c2 * (rod + frame) * 2.0 + mix(c1, vec3(1.0), tick) * bobS * (3.0 + tick * 5.0);
-    d = (rod + frame) * 8.0 + bobS * 10.0;
-  } else if (kind == 25) { // the lone jellyfish: a pulsing bell and trailing tentacles in dim water
-    e = vec3(0.01, 0.03, 0.06) * 0.8; d = 0.3;
-    float by = 0.15 + 0.12 * sin(t * 0.6 + ss);
-    float pulse = 0.5 + 0.5 * sin(t * 1.9);
-    vec3 q = p - vec3(sin(t * 0.2 + ss) * 0.2, by, cos(t * 0.17 + ss) * 0.2);
-    float bellR = 0.24 + 0.04 * pulse;
-    float bell = volShell(volSph(q * vec3(1.0, 1.5 - 0.3 * pulse, 1.0), vec3(0.0), bellR), 0.03) * step(-0.02, q.y);
-    float tent = 0.0;
-    for (int i = 0; i < 6; i++) {
-      float fi = float(i) * 1.047;
-      vec3 a = vec3(cos(fi) * 0.16, 0.0, sin(fi) * 0.16);
-      vec3 b = a + vec3(sin(t * 1.3 + fi * 3.0) * 0.12, -0.7, cos(t * 1.1 + fi * 2.0) * 0.12);
-      tent += volShell(volSeg(q + vec3(0.0, 0.0, 0.0), a, b, 0.0) - 0.008 + sin(q.y * 20.0 + t * 3.0 + fi) * 0.006, 0.012);
-    }
-    e += (c1 * 0.7 + vec3(0.3, 0.5, 0.7)) * (bell * 2.2 + tent * 1.4) * (0.6 + 0.4 * pulse);
-    d += bell * 3.0 + tent * 2.0;
+    // v65.1 (James: "coming from the center instead of the top"): the lamp
+    // sits at the heart on a three-strut cradle; three pulses spread out
+    // from it as full spheres so the ball reads round from every side
+    float mast = 0.0;
+    for (int i = 0; i < 3; i++) { float a = float(i) * 2.094 + ss; mast += volSolid(volSeg(p, vec3(0.0), vec3(cos(a) * 0.85, -0.35, sin(a) * 0.85), 0.022), 0.012); }
+    float lamp = volSolid(volSph(p, vec3(0.0), 0.09), 0.03) * (0.6 + 0.4 * sin(t * 6.0));
+    float pulse = 0.0;
+    for (int i = 0; i < 3; i++) { float pr = fract(t * 0.3 + float(i) * 0.333 + ss); pulse += volShell(r - pr * 0.95, 0.03) * (1.0 - pr) * (1.0 - pr); }
+    e = vec3(0.2, 0.22, 0.28) * mast * 2.0 + mix(c1, vec3(1.0), 0.4) * lamp * 8.0 + c1 * pulse * 2.4;
+    d = mast * 8.0 + lamp * 10.0 + pulse * 1.8;
   } else if (kind == 26) { // the library: rings of shelves around a reading lamp
-    float lamp = volSolid(volSph(p, vec3(0.0, -0.1, 0.0), 0.06), 0.03);
-    float warm = exp(-length(p - vec3(0.0, -0.1, 0.0)) * 2.4) * 0.35;
-    e = vec3(1.0, 0.8, 0.5) * (lamp * 6.0 + warm); d = lamp * 9.0 + warm * 0.5;
-    float wall = smoothstep(0.55, 0.62, rr) * smoothstep(0.92, 0.85, rr);
-    float shelfY = fract(p.y * 5.0 + 0.5);
-    float shelf = smoothstep(0.1, 0.02, abs(shelfY - 0.5) - 0.02) * wall * step(abs(p.y), 0.75);
-    vec3 bk = vec3(floor(ang * 14.0), floor(p.y * 5.0), 0.0);
-    float bookOn = step(0.15, h31(bk + ss));
-    float bookCol = h31(bk + ss + 2.0);
-    float book = wall * step(abs(p.y), 0.75) * (1.0 - shelf) * bookOn * smoothstep(0.5, 0.35, abs(fract(ang * 14.0) - 0.5));
-    vec3 bcol = mix(mix(vec3(0.45, 0.12, 0.1), vec3(0.1, 0.25, 0.4), bookCol), vec3(0.5, 0.4, 0.15), step(0.7, bookCol));
-    e += vec3(0.35, 0.25, 0.15) * shelf * 1.2 + bcol * book * (0.5 + warm * 3.0) * 2.0;
-    d += shelf * 6.0 + book * 6.0;
+    // v65.1 (James: "instead of books... data-related blues, futuristic
+    // blues that all go together, rack servers, a data-centre orb"): two
+    // concentric rings of rack modules — slim slabs in a family of blues,
+    // each with a blinking status light — around a cool white core
+    float lamp = volSolid(volSph(p, vec3(0.0), 0.07), 0.03);
+    float cool = exp(-r * 2.4) * 0.3;
+    e = vec3(0.7, 0.85, 1.0) * (lamp * 6.0 + cool * 0.6); d = lamp * 9.0 + cool * 0.4;
+    for (int i = 0; i < 2; i++) {
+      float fi = float(i);
+      float R0 = 0.42 + fi * 0.28;
+      float wall = smoothstep(R0 - 0.03, R0, rr) * smoothstep(R0 + 0.13, R0 + 0.1, rr) * step(abs(p.y), 0.72 - fi * 0.1);
+      float nA = 10.0 + fi * 8.0;
+      float rail = smoothstep(0.06, 0.02, abs(fract(p.y * 6.0 + 0.5) - 0.5)) * wall;
+      vec3 bk = vec3(floor(ang * nA), floor(p.y * 6.0), fi);
+      float on = step(0.12, h31(bk + ss));
+      float hue = h31(bk + ss + 2.0);
+      float unit = wall * (1.0 - rail) * on * smoothstep(0.5, 0.38, abs(fract(ang * nA) - 0.5));
+      // v65.2 (James: "color variations"): four rack families by seed —
+      // the blues, cyan-green, amber, magenta-violet
+      float df = floor(h11(ss + 3.0) * 4.0);
+      vec3 lo = df < 0.5 ? vec3(0.04, 0.16, 0.5) : df < 1.5 ? vec3(0.03, 0.3, 0.3) : df < 2.5 ? vec3(0.4, 0.2, 0.03) : vec3(0.3, 0.05, 0.4);
+      vec3 hi = df < 0.5 ? vec3(0.25, 0.65, 1.0) : df < 1.5 ? vec3(0.3, 1.0, 0.8) : df < 2.5 ? vec3(1.0, 0.75, 0.3) : vec3(1.0, 0.4, 0.9);
+      vec3 bcol = mix(lo, hi, hue);
+      float led = smoothstep(0.12, 0.05, length(vec2(fract(ang * nA) - 0.5, fract(p.y * 6.0 + 0.5) - 0.3))) * unit * step(0.5, h31(bk + floor(t * 3.0) + ss + 5.0));
+      e += vec3(0.1, 0.14, 0.22) * rail * 1.4 + bcol * unit * (0.4 + cool * 3.0) * 2.0 + vec3(0.6, 0.9, 1.0) * led * 6.0;
+      d += rail * 6.0 + unit * 7.0 + led * 6.0;
+    }
   }
   return vec4(e, d);
 }
@@ -1338,6 +1627,38 @@ void main() {
       float aA = glowR * glowR * 0.3 * (0.5 + 0.5 * vis);
       frag = vec4(ec1 * aA, aA) * fogF * nearF;
     }
+    // v65.2 RINGS (James: "let's have a couple have rings"): p1 = 1 marks a
+    // ringed worldlet (its quad is 2.3 radii wide). The ring is a flat band
+    // 1.25–1.85 radii out in the globe's own frame, tilted by seed; this
+    // pixel's ray meets that plane and the band is drawn there — behind the
+    // globe it is hidden by the globe's own disc (r < 1 draws the surface),
+    // in front it lays over it. Lit by the same sun, with the planet's
+    // shadow across the far side.
+    if (vD.z > 0.5 && ballK > 0.5) {
+      float la2 = seed * 1.7;
+      vec3 nR = normalize(vec3(sin(la2) * 0.55, 1.0, cos(la2) * 0.45));
+      float den = dot(rd, nR);
+      if (abs(den) > 1e-4) {
+        float tR = dot(vCen, nR) / den;
+        vec3 hp = rd * tR - vCen;
+        float rr = length(hp) / radius;
+        float front = step(dot(rd * tR, rd0), dist); // the ring point is nearer than the globe centre
+        float show = (r >= 1.0) ? 1.0 : front * hitF; // over the globe only where the ring is in front of it
+        float band = smoothstep(1.22, 1.3, rr) * smoothstep(1.9, 1.8, rr);
+        float gaps = 0.55 + 0.45 * smoothstep(0.3, 0.7, n3(vec3(rr * 9.0, seed, 0.0)));
+        float divis = smoothstep(0.025, 0.0, abs(rr - 1.55)) * 0.8 + smoothstep(0.02, 0.0, abs(rr - 1.7)) * 0.6;
+        // fade toward the quad edge so no clipped edge ever shows up close
+        float ringA = band * gaps * (1.0 - divis) * show * step(0.0, tR) * smoothstep(vMisc.y, vMisc.y * 0.72, r);
+        vec3 Ls = normalize(mix(vec3(0.0, 1.0, 0.0), vL.xyz, clamp(vL.w - 1.0, 0.0, 1.0)));
+        float lit = 0.25 + 0.75 * abs(dot(nR, Ls));
+        // the globe's shadow: ring points behind the globe as seen from the sun
+        vec3 toS = hp - Ls * dot(hp, Ls);
+        float shadow = (dot(hp, Ls) < 0.0) ? smoothstep(0.9, 1.05, length(toS) / radius) : 1.0;
+        vec3 rcol = mix(vec3(0.75, 0.7, 0.62), ec1, 0.35) * lit * shadow * (0.7 + 0.3 * gaps);
+        float rA = ringA * 0.85 * fogF * nearF;
+        frag = frag * (1.0 - rA) + vec4(rcol * rA, rA);
+      }
+    }
     return;
   }
 
@@ -1466,22 +1787,6 @@ void main() {
       float cell = step(0.35, h21(vec2(ci, floor((q.y * 0.5 + 0.5) * 22.0))));
       scn = mix(vec3(0.1, 1.0, 0.55), vec3(0.4, 0.9, 1.0), cs) * trail * cell * 1.1;
       sca = trail * cell * 0.85 * (1.0 - r * 0.4);
-    } else if (kind == 9) { // radar sweep
-      float ang = atan(q.y, q.x);
-      float sweep = fract(ang * 0.1592 - t0 * spd * 0.22);
-      float beam = pow(1.0 - sweep, 6.0);
-      float grid = smoothstep(0.02, 0.008, abs(r - 0.45)) + smoothstep(0.02, 0.008, abs(r - 0.8));
-      scn = c1 * (beam * 0.8 * (1.0 - r * 0.5) + grid * 0.12);
-      sca = beam * 0.7 * (1.0 - r * 0.3) + grid * 0.12;
-      for (int i = 0; i < 3; i++) {
-        float bs = seed + float(i) * 3.3;
-        vec2 bp = vec2(h11(bs) * 1.4 - 0.7, h11(bs + 1.0) * 1.4 - 0.7)
-          + full2 * vec2(sin(t0 * 0.2 + bs), cos(t0 * 0.17 + bs)) * 0.15;
-        float bang = fract(atan(bp.y, bp.x) * 0.1592 - t0 * spd * 0.22);
-        float blip = smoothstep(0.05, 0.015, length(q - bp)) * exp(-bang * 5.0);
-        scn += vec3(1.0, 0.6, 0.3) * blip;
-        sca += blip;
-      }
     } else if (kind == 10) { // gyroscope rings
       for (int i = 0; i < 3; i++) {
         float gi = float(i);
@@ -1635,26 +1940,6 @@ void main() {
       float morse = step(0.5, h11(floor(t0 * 2.5) + floor(seed * 10.0)));
       scn = c1 * (b1 + b2) * (1.0 - r * 0.55) * 0.9 + vec3(1.0) * lens * (0.5 + 0.5 * morse);
       sca = clamp((b1 + b2) * (1.0 - r * 0.4) * 0.8 + lens, 0.0, 0.95);
-    } else if (kind == 24) { // metronome
-      vec2 pq = rot2(q - vec2(0.0, 0.6), sin(t0 * spd * 1.8 + seed) * 0.7);
-      float rod = smoothstep(0.015, 0.006, abs(pq.x)) * step(-1.1, pq.y) * step(pq.y, 0.0);
-      float bob = pow(smoothstep(0.13, 0.0, length(pq - vec2(0.0, -1.05))), 1.6);
-      float arc = smoothstep(0.02, 0.008, abs(length(q - vec2(0.0, 0.6)) - 1.05)) * smoothstep(-0.6, -0.2, q.y) * 0.2;
-      scn = c2 * rod * 0.8 + mix(c1, vec3(1.0), 0.6) * bob * 1.2 + c1 * arc;
-      sca = clamp(rod * 0.6 + bob + arc * 0.5, 0.0, 0.95);
-    } else if (kind == 25) { // the lone jellyfish tank
-      scn = mix(vec3(0.01, 0.05, 0.09), vec3(0.03, 0.12, 0.18), q.y * 0.5 + 0.5);
-      sca = 0.75;
-      float ph = t0 * spd * 0.7 + seed;
-      vec2 jq = (q - vec2(sin(ph * 0.3) * 0.2, sin(ph * 0.23) * 0.15)) / (0.9 + 0.1 * sin(ph));
-      float bellA = smoothstep(0.55, 0.2, length(vec2(jq.x, (jq.y - 0.15) * 1.5)));
-      float tent = 0.0;
-      for (int i = 0; i < 4; i++) {
-        float tx = (float(i) - 1.5) * 0.16;
-        tent += smoothstep(0.04, 0.0, abs(jq.x - tx - sin(jq.y * 3.0 + ph * 2.0 + float(i)) * 0.07))
-          * smoothstep(0.15, -0.9, jq.y);
-      }
-      scn += c1 * (bellA * 0.55 + clamp(tent, 0.0, 1.0) * 0.3) * (0.6 + 0.3 * sin(ph));
     } else if (kind == 26) { // the library
       float shelfY = fract((q.y + 1.0) * 1.5);
       float band = floor((q.y + 1.0) * 1.5);
@@ -1663,7 +1948,7 @@ void main() {
       float bw = h21(vec2(book, band) + floor(seed));
       float spine = step(0.15, fract(sx)) * step(fract(sx), 0.9);
       float inShelf = step(shelfY, 0.55 + 0.35 * bw) * step(0.08, shelfY);
-      vec3 bcol = mix(vec3(0.45, 0.2, 0.1), vec3(0.15, 0.3, 0.4), h21(vec2(book * 3.0, band)));
+      vec3 bcol = mix(vec3(0.05, 0.18, 0.55), vec3(0.3, 0.7, 1.0), h21(vec2(book * 3.0, band))); // v65.1 the data-centre blues
       bcol = mix(bcol, vec3(0.5, 0.4, 0.15), step(0.7, bw));
       scn = bcol * spine * inShelf * (0.35 + 0.55 * vis) * (0.7 + 0.3 * sin(q.y * 2.0 + 1.0));
       sca = spine * inShelf * 0.75;
@@ -1673,6 +1958,10 @@ void main() {
         scn += vec3(1.0, 0.95, 0.8) * pages * full2;
         sca += pages * full2 * 0.8;
       }
+    } else if (kind == 30) { // v65 the rolled interior, from afar: a soft cloud in its colours
+      float nn = n3(vec3(q * 2.2, seed * 0.3 + t0 * 0.05));
+      scn = mix(c1, c2, nn) * (0.25 + 0.6 * vis) * (0.5 + 0.5 * nn);
+      sca = 0.35 + 0.3 * nn;
     } else if (kind >= 40) { // a painting lives here (p0 = art layer)
       vec2 auv = clamp(q * 0.5 * 0.98 + 0.5, 0.0, 1.0);
       vec3 tex = texture(uArt, vec3(auv.x, 1.0 - auv.y, vD.y)).rgb;
@@ -1989,6 +2278,11 @@ void main() {
     "interior-art/bear-reading", "interior-art/terrarium", "interior-art/workshop",
     "planetoids/planet-lava", "planetoids/planet-ice", "planetoids/planet-gas",
     "planetoids/planet-ocean", "planetoids/planet-desert",
+    // v65.3 (James: "10 more planet types... at least six Earth-like"): layers 8–17
+    "planetoids/planet-temperate", "planetoids/planet-archipelago", "planetoids/planet-pangaea",
+    "planetoids/planet-autumn", "planetoids/planet-monsoon", "planetoids/planet-tundra",
+    "planetoids/planet-rust", "planetoids/planet-swamp", "planetoids/planet-crystal",
+    "planetoids/planet-pale-giant",
   ];
   const artTex = gl.createTexture();
   gl.activeTexture(gl.TEXTURE3);
@@ -2270,17 +2564,19 @@ void main() {
   // are indistinguishable from the plain ones — a vague glowing nothing — and
   // the scene only wakes as you close in. Tech is deliberately common
   // (James's spec); the bear is deliberately rare.
-  const TECH_KINDS = [7, 8, 9, 10, 11, 23]; // reactor, data rain, radar, gyro, circuit, beacon
-  const WONDER_KINDS = [1, 2, 4, 5, 6, 12, 13, 14, 15, 16, 17, 20, 21, 22, 24, 25, 26];
+  const PLANET_MAPS = ART_FILES.length - 3; // every planetoid layer after the three paintings
+  const TECH_KINDS = [7, 8, 10, 11, 23]; // reactor, data rain, gyro, circuit, beacon (radar cut 2026-09-04, James: "never going to make sense")
+  const WONDER_KINDS = [1, 2, 4, 5, 6, 12, 13, 14, 15, 16, 17, 20, 21, 22, 26]; // metronome + jellyfish cut 2026-09-04
   function decorate(o) {
     if (o.portal || o.dust) return o;
     const roll = Math.random();
     if (roll < 0.08) {
       // a worldlet: one of the five planet maps, biased large, tight quad
       o.kind = 50;
-      o.p0 = 3 + ((Math.random() * 5) | 0);
+      o.p0 = 3 + ((Math.random() * PLANET_MAPS) | 0);
       o.ur = rand(0.7, 1);
-      o.quadScale = 1.3;
+      o.p1 = Math.random() < 0.25 ? 1 : 0; // v65.2 rings (p1 = 1)
+      o.quadScale = o.p1 ? 2.3 : 1.3;
       o.spin = 0;
       o.halo = 0.5;
       o.sat = rand(55, 80);
@@ -2294,6 +2590,17 @@ void main() {
       o.kind = pick(TECH_KINDS);
     } else if (roll < 0.53) {
       o.kind = pick(WONDER_KINDS);
+    } else if (roll < 0.60) {
+      // v65 a rolled interior: sixteen 3-bit slots packed into p0/p1 (the
+      // Sphere Lab's rolls sheet is where these get culled; a kept roll is
+      // its two numbers)
+      o.kind = 30;
+      let g0 = 0, g1 = 0;
+      const gs = []; for (let i = 0; i < 16; i++) gs.push((Math.random() * 8) | 0);
+      if (gs[0] === 0 && gs[4] <= 2) gs[4] = 5; // never an empty ball
+      for (let i = 0; i < 8; i++) { g0 += gs[i] * 8 ** i; g1 += gs[8 + i] * 8 ** i; }
+      o.p0 = g0; o.p1 = g1;
+      o.ur = rand(0.6, 1);
     }
     return o;
   }
@@ -3223,7 +3530,8 @@ void main() {
     }
     return { pts, R: Rm };
   }
-  function saelyriLayout(geoList, capPop, satPop, groupMul, knotFrac, streamMul) {
+  function saelyriLayout(geoList, capPop, satPop, groupMul, knotFrac, streamMul, formMul) {
+    if (formMul === undefined) formMul = 1;
     const R = mulberry32(SOCIETY_SEED ^ 0x5ae111);
     const rr = (a, b) => a + R() * (b - a);
     const unit = (yMax) => {
@@ -3293,8 +3601,8 @@ void main() {
       // into its suns; satellites live on their suns and bridges (James's
       // pick). The stream dial scales the river share.
       const W = isCap
-        ? [0.20, 0.20 * streamMul, 0.11, 0.21, 0.10, 0.06, 0.12]
-        : [0.24, 0.26 * streamMul, 0.10, 0.09, 0.12, 0.06, 0.13]; // v63.6: [6] = formations
+        ? [0.20, 0.20 * streamMul, 0.11, 0.21, 0.10, 0.06, 0.28 * formMul]
+        : [0.24, 0.26 * streamMul, 0.10, 0.09, 0.12, 0.06, 0.30 * formMul]; // v63.6: [6] = formations; v64.5 share 0.13 → 0.30 (≈ the rings) × the formations dial
       if (!routes.length) W[1] = 0;
       const target = pop * Math.min(1, Math.max(0, knotFrac));
       let inGroups = 0;
@@ -4415,7 +4723,7 @@ void main() {
     saeBeings.length = 0;
     saeGlyphs.length = 0;
     saeGroups.length = 0;
-    const sae = saelyriLayout(COMM_GEO, cfg.saeCap, cfg.saeSat, cfg.saeGroup, cfg.saeKnot, cfg.saeStream);
+    const sae = saelyriLayout(COMM_GEO, cfg.saeCap, cfg.saeSat, cfg.saeGroup, cfg.saeKnot, cfg.saeStream, cfg.saeForm);
     const cc = [0, 0, 0];
     for (let ci = 0; ci < COMMUNITIES.length; ci++) {
       const com = COMMUNITIES[ci];
@@ -5779,7 +6087,9 @@ out vec4 vAux;
 out vec3 vC;
 out vec3 vE; // v57: aCenter RAW — the crust packs face sizes + pattern here;
              // vC (+uOrigin) stays world-space for the glass/bridge programs
+out vec3 vLoc; // v66: aPos RAW — the material pass lays its tiles on this (stable on the piece)
 void main() {
+  vLoc = aPos;
   vP = aPos + uOrigin;
   vN = aNorm;
   vUV = aUV;
@@ -5807,6 +6117,82 @@ vec3 aerial(vec3 col, float dist) {
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
   return mix(col, lum * vec3(0.74, 0.82, 1.05), a);
 }`;
+  // v66 THE MATERIAL PASS (James, 2026-09-05: everything with a baseline
+  // Blender material "looks like real cheapo plastic... not battle-scarred,
+  // hundreds-of-thousands-of-years-old technology that's still chugging
+  // along"): four Meshy tiles (assets/tiles/, 36 cr) laid TRIPLANAR on the
+  // raw mesh position at a fixed metres-per-repeat, plus wear that no two
+  // pieces share — grime pooling, scorch, one-way streaks, dead panels — and
+  // the building metal's specular response. Struts and slabs, crust and
+  // hoops all go through it; screens and windows keep their emission.
+  const COMM_MAT = `
+uniform sampler2D uHull;   // scarred hull plating
+uniform sampler2D uIron;   // gantry iron
+uniform sampler2D uCeram;  // aged ceramic armor
+uniform float uWear;       // configuration: 0 clean … 1 full wear (default 0.8)
+float mh(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float mn(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = mix(mix(mh(i), mh(i + vec3(1, 0, 0)), f.x), mix(mh(i + vec3(0, 1, 0)), mh(i + vec3(1, 1, 0)), f.x), f.y);
+  float b = mix(mix(mh(i + vec3(0, 0, 1)), mh(i + vec3(1, 0, 1)), f.x), mix(mh(i + vec3(0, 1, 1)), mh(i + vec3(1, 1, 1)), f.x), f.y);
+  return mix(a, b, f.z);
+}
+vec3 tri3(sampler2D t, vec3 q, vec3 an) {
+  return texture(t, q.zy).rgb * an.x + texture(t, q.xz).rgb * an.y + texture(t, q.xy).rgb * an.z;
+}
+// base albedo for a piece: which tile (by kind + a per-piece roll), its scale,
+// and the wear laid over it. kind 0 slab / 1 strut / 2 crust face / 3 hoop.
+// seedP = the piece's centre (vE) — every piece rolls its own tint + wear.
+vec3 matBase(float kind, vec3 loc, vec3 N, vec3 seedP, float along, out float wearOut) {
+  vec3 an = abs(N);
+  an = an / max(an.x + an.y + an.z, 1e-4);
+  float ph = mh(seedP * 0.013 + 3.1);
+  float ph2 = mh(seedP * 0.021 + 7.7);
+  // metres per repeat: plates read as plates on a 24 m strut and on a 400 m slab
+  float mpr = kind < 0.5 ? 26.0 : kind < 1.5 ? 11.0 : kind < 2.5 ? 16.0 : 13.0;
+  vec3 q = loc / mpr + ph * 5.3;
+  vec3 hull = tri3(uHull, q, an);
+  vec3 iron = tri3(uIron, q * 1.15, an);
+  vec3 cer = tri3(uCeram, q * 0.8, an);
+  cer = mix(cer, vec3(dot(cer, vec3(0.333))) * 0.9 + 0.05, 0.35); // the ceramic's dark hexes polka-dotted a slab; soften
+  vec3 base;
+  if (kind < 0.5) base = ph < 0.85 ? hull : cer;                   // slabs: hull, a few ceramic
+  else if (kind < 1.5) base = ph < 0.55 ? iron : ph < 0.9 ? hull : cer;  // struts: iron, some hull, a few ceramic
+  else if (kind < 2.5) base = ph < 0.8 ? hull : iron;                // crust faces: hull, some iron
+  else base = iron;                                                   // hoops: iron
+  // per-piece tint: a cool or warm cast, a little darker or lighter
+  vec3 tint = mix(vec3(0.9, 0.95, 1.08), vec3(1.05, 0.98, 0.9), ph2) * (0.8 + 0.4 * mh(seedP * 0.031 + 1.0));
+  // wear, all seeded on position so nothing repeats: grime pooling (low-freq
+  // darkening), scorch spots, streaks running one way along the piece,
+  // dead panels (a cell of the tile grid gone dark), edge dust
+  float w = uWear;
+  float grime = 1.0 - w * 0.45 * smoothstep(0.35, 0.8, mn(loc * 0.09 + ph * 9.0));
+  float scorch = w * smoothstep(0.62, 0.9, mn(loc * 0.035 + ph2 * 13.0)) * 0.7;
+  float streak = w * 0.35 * smoothstep(0.7, 1.0, mn(vec3(along * 0.02, loc.yz * 0.6))) * smoothstep(0.3, 0.6, mn(loc * 0.05 + 4.0));
+  vec3 cellId = floor(q * 1.0);
+  float dead = w * step(0.93, mh(cellId + ph * 3.0)) * 0.6;
+  vec3 col = base * tint * grime * (1.0 - scorch) * (1.0 - dead);
+  col = mix(col, vec3(0.42, 0.22, 0.1) * dot(col, vec3(0.5)), streak); // rust-brown streaks
+  wearOut = clamp(dot(base, vec3(0.333)) * 2.2, 0.0, 1.0);
+  return col;
+}
+// the building metal's response, shared: key + a glint from behind-right,
+// shininess from the tile's brightness (scuffed = polished), a fresnel rim
+vec3 matLight(vec3 base, vec3 N, vec3 P, float wear) {
+  vec3 Vv = normalize(-P);
+  vec3 L1 = normalize(vec3(-0.4, 0.75, 0.5));
+  vec3 L2 = normalize(vec3(0.6, 0.2, -0.75));
+  float key = max(dot(N, L1), 0.0);
+  float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
+  float shin = mix(12.0, 36.0, wear);
+  float sp1 = pow(max(dot(N, normalize(L1 + Vv)), 0.0), shin) * (0.3 + 0.6 * wear);
+  float sp2 = pow(max(dot(N, normalize(L2 + Vv)), 0.0), shin * 0.6) * (0.2 + 0.4 * wear);
+  float fres = pow(1.0 - max(dot(N, Vv), 0.0), 4.0);
+  return base * 0.85 * (vec3(0.22, 0.23, 0.27) + key * vec3(0.9, 0.95, 1.05) * 0.85 + rim * vec3(0.3, 0.4, 0.55) * 0.3)
+    + (sp1 * vec3(0.85, 0.9, 1.0) + sp2 * vec3(0.7, 0.8, 1.0)) * 0.5
+    + fres * vec3(0.18, 0.24, 0.34) * 0.4;
+}`;
   // the Cadence's metal: gunmetal slabs and webbing, readability over realism
   // (partial self-light like the robots); struts run a data pulse end to end
   const COMM_FS_SOLID = `#version 300 es
@@ -5824,15 +6210,18 @@ in vec2 vUV;
 in vec4 vAux;
 in vec3 vC;
 in vec3 vE;
+in vec3 vLoc;
 out vec4 oC;
 ${COMM_HUE}
 ${COMM_AER}
+${COMM_MAT}
 void main() {
   vec3 N = normalize(vN);
-  float key = max(dot(N, normalize(vec3(-0.4, 0.75, 0.5))), 0.0);
-  float rim = max(dot(N, normalize(vec3(0.5, -0.1, -0.8))), 0.0);
-  vec3 col = vec3(0.30, 0.33, 0.38) *
-    (vec3(0.22, 0.23, 0.26) + key * vec3(0.85, 0.9, 1.0) * 0.85 + rim * vec3(0.35, 0.42, 0.55) * 0.3);
+  // v66: the material pass — kind from aux.x (0 slab, 1 strut, ≥2 crust face)
+  float mk = vAux.x < 0.5 ? 0.0 : vAux.x < 1.5 ? 1.0 : 2.0;
+  float wear;
+  vec3 base = matBase(mk, vLoc, N, vE, vUV.x * 200.0, wear);
+  vec3 col = matLight(base, N, vP, wear);
   float dd = distance(vP, uCamPos);
   float fogF = exp(-dd * uFog * 1.2);
   if (vAux.x > 0.5 && vAux.x < 1.5) {
@@ -6040,10 +6429,22 @@ in vec3 vN;
 in vec2 vUV;
 in vec4 vAux;
 in vec3 vC;
+in vec3 vE;
+in vec3 vLoc;
+uniform sampler2D uIron;
+uniform float uWear;
 out vec4 oC;
 ${COMM_HUE}
 ${COMM_AER}
+float bh(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 void main() {
+  // v66 the conduit: the light bridge runs inside a METAL SHEATH — clamped,
+  // corroded pipe cladding (the conduit tile, laid along the ribbon by
+  // metres from the middle) with the energy visible through a glass slot
+  // down the centre and through a ring of ports at every clamp. The old
+  // hot-line bridge is the core inside it.
+  float across = abs(vUV.y - 0.5) * 2.0;                // 0 centre … 1 edge
+  float alongM = length(vLoc - vE);                     // metres from the bridge's middle
   float acc = exp(-14.0 * abs(vUV.y - 0.5));
   vec3 grad = mix(hueCol(uFams[int(vAux.x + 0.5)]), hueCol(uFams[int(vAux.y + 0.5)]), vUV.x);
   float p1 = fract(vUV.x - uTime * uTempo * 0.11 + vAux.z);
@@ -6060,9 +6461,37 @@ void main() {
   }
   float bd = distance(vP, uCamPos);
   float fogF = exp(-bd * uFog * 1.2) * uFade;
-  oC = vec4(aerial(grad, bd) * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
+  vec4 core = vec4(aerial(grad, bd) * (0.10 + pk * 2.2) * acc * fogF, (0.05 + pk * 0.5) * acc * fogF * 0.6);
+  // the sheath: opaque beyond the centre slot (across > 0.3), with a port
+  // ring every 90 m that opens the sheath for a short stretch
+  float slot = smoothstep(0.34, 0.26, across);
+  float clampPh = fract(alongM / 90.0);
+  float port = smoothstep(0.08, 0.06, abs(clampPh - 0.5)) * step(0.55, across) * step(across, 0.8);
+  float open = max(slot, port);
+  // the cladding: the gantry iron laid triplanar on the ribbon (10 m per
+  // repeat, so a 60 m tube shows plates, never a magnified tile), collars
+  // drawn procedurally every 90 m, a fake tube shade across
+  vec3 Nn = normalize(vN);
+  vec3 an = abs(Nn); an = an / max(an.x + an.y + an.z, 1e-4);
+  vec3 tq = vLoc / 10.0 + bh(vE) * 4.0;
+  vec3 sheath = texture(uIron, tq.zy).rgb * an.x + texture(uIron, tq.xz).rgb * an.y + texture(uIron, tq.xy).rgb * an.z;
+  float collar = smoothstep(0.1, 0.07, abs(clampPh - 0.5));
+  float collarEdge = smoothstep(0.02, 0.0, abs(abs(clampPh - 0.5) - 0.085));
+  float curve = sqrt(max(1.0 - across * across, 0.0));                     // a fake tube shade
+  float grime = 1.0 - uWear * 0.4 * smoothstep(0.4, 0.8, bh(floor(vec3(alongM / 15.0, 1.0, bh(vE) * 9.0))));
+  vec3 Vv = normalize(-vP);
+  vec3 L1 = normalize(vec3(-0.4, 0.75, 0.5));
+  float key = 0.35 + 0.75 * max(dot(Nn, L1), 0.0);
+  vec3 scol = sheath * grime * (0.25 + 0.75 * curve) * key * (1.0 + collar * 0.35) + vec3(0.5, 0.55, 0.6) * collarEdge * 0.4;
+  // two crossed quads make the ribbon: the one turning edge-on fades out so
+  // only the facing quad carries the tube (no V from the side)
+  float facing = smoothstep(0.12, 0.45, abs(dot(Nn, Vv)));
+  scol += grad * (0.06 + pk * 0.35) * smoothstep(0.7, 0.3, across);        // the core lights the inside of the sheath
+  float sA = (1.0 - open) * fogF * facing;
+  float keep = 1.0 - sA;
+  oC = vec4(core.rgb * keep + aerial(scol, bd) * sA, core.a * keep + sA);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uCeram", "uSheath", "uWear"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -6310,6 +6739,32 @@ void main() { oC = texture(uTex, vT) * uAmt; }`;
       gl.useProgram(pr.p);
       gl.uniform1fv(pr.U["uFams[0]"], fams);
       gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]); // v49: ship space, forever
+    }
+    // v66 the material tiles on units 12–15 (hull / iron / ceramic / sheath):
+    // a flat grey 1×1 stands in until each file lands (file:// keeps a look)
+    {
+      const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uCeram", "ceramic-aged", 14], ["uSheath", "conduit-sheath", 15]];
+      for (const [uni, name, unit] of TILES) {
+        const tex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([110, 115, 125]));
+        for (const pr of [commGL.solid, commGL.bridge]) { gl.useProgram(pr.p); if (pr.U[uni]) gl.uniform1i(pr.U[uni], unit); }
+        const img = new Image();
+        img.onload = () => {
+          gl.activeTexture(gl.TEXTURE0 + unit);
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, img);
+          gl.generateMipmap(gl.TEXTURE_2D);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+          gl.activeTexture(gl.TEXTURE0);
+        };
+        img.onerror = () => console.warn("material tile missing:", name);
+        img.src = "assets/tiles/" + name + ".jpg?v=1";
+      }
+      gl.activeTexture(gl.TEXTURE0);
     }
     gl.useProgram(prog);
     commGL.inited = true;
@@ -7727,6 +8182,7 @@ void main() {
         // the Cadence cores: opaque metal + webbing write depth like the bone
         gl.useProgram(commGL.solid.p);
         gl.uniformMatrix4fv(commGL.solid.U.uVP, false, vp);
+        gl.uniform1f(commGL.solid.U.uWear, cfg.wear);
         gl.uniform1f(commGL.solid.U.uFog, cfg.haze / 18000);
         gl.uniform1f(commGL.solid.U.uAer, cfg.aerial / 120000);
         gl.uniform1f(commGL.solid.U.uMelt, cfg.melt);
@@ -8134,7 +8590,7 @@ void main() {
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
     { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
-    { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeTide", "saeNotice"] },
+    { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
   ];
   const groupsRow = document.createElement("div");

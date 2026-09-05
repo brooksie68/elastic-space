@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>sphere-lab — the ball</title>
+<title>Sphere Lab</title>
 <style>
   /* the page is typeset (James, 2026-09-04: "organize this page, typographically, into
      something readable") — a header in normal flow, column heads on a grid that shares
@@ -13,6 +13,9 @@
   #head p { margin: 0 0 6px; color: #b4bccf; max-width: 70ch; }
   #head .keys { color: #8b94a8; font-size: 15px; }
   #head .keys b { color: #cfd6e6; font-weight: 600; }
+  #sheets { margin: 4px 0 8px; font-size: 16px; color: #8b94a8; }
+  #sheets a { color: #cfd6e6; text-decoration: none; padding: 3px 10px; border: 1px solid rgba(140,160,210,.25); border-radius: 4px; margin-right: 8px; }
+  #sheets a.on { color: #0a0c12; background: #e6ebf5; border-color: #e6ebf5; }
   #cols { display: grid; align-items: end; padding: 14px 0 6px; border-top: 1px solid rgba(140,160,210,.14); }
   #cols div { padding: 0 14px; font: 600 18px/1.2 system-ui, sans-serif; color: #ffe9d6; text-align: center; }
   #cols div.gut { color: #8b94a8; font-weight: 400; font-size: 15px; text-align: left; padding-left: 28px; }
@@ -29,8 +32,9 @@
 <body>
 <header id="head">
   <h1 id="title">Sphere Lab</h1>
+  <p id="sheets"><a href="./index.html" data-sheet="ball">the ball</a><a href="./index.html?sheet=interiors" data-sheet="interiors">the interiors</a><a href="./index.html?sheet=rolls" data-sheet="rolls">the rolls</a> three sheets — pick one <span id="rollui" hidden>&nbsp;·&nbsp; <a id="reroll" href="#">roll twenty more</a> &nbsp;·&nbsp; a roll number is in the address bar, so a batch you like reloads the same</span></p>
   <p id="blurb"></p>
-  <p class="keys"><b>C</b> saves the sheet to tmp/snapshots &nbsp;·&nbsp; <b>1–9</b> shows one row alone, turning &nbsp;·&nbsp; <b>T</b> disc / ball in that view &nbsp;·&nbsp; <b>0</b> back to the sheet</p>
+  <p class="keys"><b>Click an orb in the Ball · 0° column</b> to see it alone, turning &nbsp;·&nbsp; <b>click again</b> to come back to the sheet &nbsp;·&nbsp; <b>T</b> disc / ball in that view &nbsp;·&nbsp; <b>C</b> saves the sheet to tmp/snapshots</p>
   <div id="cols"></div>
 </header>
 <div id="wrap"><canvas id="c"></canvas><div id="labels"></div></div>
@@ -43,8 +47,9 @@
 // and 90° around it. A disc looks the same from every angle; a ball does
 // not — that is the whole test. Key light is fixed in the world, so the
 // rim and the pin move across the glass as the camera orbits.
-// Keys: C capture (posts to tmp/snapshots/), 1–8 solo a row (animated,
-// orbiting), T toggle the dial in solo, 0 back to the sheet.
+// Click an orb in the Ball · 0° column to solo that row (animated, orbiting);
+// click again to come back (James: "no pressing numbers"). Keys: C capture
+// (posts to tmp/snapshots/), T toggle the dial in solo, 0 back to the sheet.
 "use strict";
 const TAU = Math.PI * 2;
 (async () => {
@@ -59,8 +64,12 @@ const TAU = Math.PI * 2;
   const canvas = document.getElementById("c");
   // ?sheet=interiors — every interior kind at full proximity (v64 Phase 2: the volumes)
   const SHEET = new URLSearchParams(location.search).get("sheet") || "ball";
+  for (const el of document.querySelectorAll("#sheets a")) el.classList.toggle("on", el.dataset.sheet === SHEET);
+  document.title = "Sphere Lab — the " + SHEET;
   const COLS = 4, CW = 600, CH = 270, GUT = 420;
-  let ROWS = SHEET === "interiors" ? 24 : 8; // GUT: a label gutter left of the cells (James: readable, nothing zoomed)
+  const QS = new URLSearchParams(location.search);
+  const ROLL = Number(QS.get("roll") || 1);
+  let ROWS = SHEET === "interiors" ? 40 : SHEET === "rolls" ? 20 : 8; // GUT: a label gutter left of the cells (James: readable, nothing zoomed)
   canvas.width = GUT + COLS * CW;
   canvas.height = ROWS * CH;
   canvas.style.width = (canvas.width / devicePixelRatio) + "px";
@@ -73,15 +82,27 @@ const TAU = Math.PI * 2;
     if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));
     return o;
   };
-  const link = (vs, fs) => {
+  // the orb FS is big (every interior recipe + the rolled one) and the compile
+  // used to freeze the page ~25 s (James: "putting a hurting on my computer").
+  // With KHR_parallel_shader_compile the driver compiles on its own threads
+  // and we poll; the page stays live meanwhile.
+  const par = gl.getExtension("KHR_parallel_shader_compile");
+  const link = async (vs, fs) => {
     const p = gl.createProgram();
-    gl.attachShader(p, sh(gl.VERTEX_SHADER, vs));
-    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+    const a = gl.createShader(gl.VERTEX_SHADER), b = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(a, vs); gl.shaderSource(b, fs);
+    gl.compileShader(a); gl.compileShader(b);
+    gl.attachShader(p, a); gl.attachShader(p, b);
     gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    if (par) while (!gl.getProgramParameter(p, par.COMPLETION_STATUS_KHR)) await new Promise((r) => setTimeout(r, 50));
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      const log = [gl.getProgramInfoLog(p), gl.getShaderInfoLog(a), gl.getShaderInfoLog(b)].join(" | ");
+      throw new Error(log);
+    }
     return p;
   };
-  const prog = link(grab("VS"), grab("FS"));
+  bar.textContent = "compiling the world's orb shader" + (par ? " (in the background)" : "") + "…";
+  const prog = await link(grab("VS"), grab("FS"));
   gl.useProgram(prog);
   const U = {};
   for (const n of ["uVP", "uRight", "uUp", "uTime", "uFog", "uGlow", "uShellOp", "uHeartOp", "uFadeScale", "uShells", "uArt", "uGlyphs", "uSphere", "uBallRim"]) U[n] = gl.getUniformLocation(prog, n);
@@ -138,7 +159,7 @@ const TAU = Math.PI * 2;
   gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   const ART_SIZE = 1024;
-  const ART = ["interior-art/bear-reading", "interior-art/terrarium", "interior-art/workshop", "planetoids/planet-lava", "planetoids/planet-ice", "planetoids/planet-gas", "planetoids/planet-ocean", "planetoids/planet-desert"];
+  const ART = ["interior-art/bear-reading", "interior-art/terrarium", "interior-art/workshop", "planetoids/planet-lava", "planetoids/planet-ice", "planetoids/planet-gas", "planetoids/planet-ocean", "planetoids/planet-desert", "planetoids/planet-temperate", "planetoids/planet-archipelago", "planetoids/planet-pangaea", "planetoids/planet-autumn", "planetoids/planet-monsoon", "planetoids/planet-tundra", "planetoids/planet-rust", "planetoids/planet-swamp", "planetoids/planet-crystal", "planetoids/planet-pale-giant"];
   const artTex = gl.createTexture();
   gl.activeTexture(gl.TEXTURE3);
   gl.bindTexture(gl.TEXTURE_2D_ARRAY, artTex);
@@ -171,7 +192,7 @@ const TAU = Math.PI * 2;
   gl.uniform1f(U.uFog, 0.45 / 18000);
 
   // ---- the beam: a real depth-writing solid through the orb
-  const beamProg = link(`#version 300 es
+  const beamProg = await link(`#version 300 es
 layout(location=0) in vec3 aP;
 uniform mat4 uVP;
 out vec3 vP;
@@ -230,9 +251,45 @@ void main() {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
   // ---- rows: one orb of each family. lw: 1 = ball (own light), 2 = ball + lit
-  const INTERIORS = [[1, "Swirling lights"], [2, "Water, with fish"], [4, "Kaleidoscope"], [5, "Weird blobs"], [6, "Orrery"], [7, "Reactor core"], [8, "Data rain"], [9, "Radar sweep"], [10, "Gyroscope rings"], [11, "Circuitry"], [12, "Snow-globe city"], [13, "Storm orb"], [14, "Ember hive"], [15, "Clockwork"], [16, "Galaxy"], [17, "The eye that opens"], [20, "The forge"], [21, "Singing crystals"], [22, "Moons around a hearth"], [23, "Signal beacon"], [24, "Metronome"], [25, "The lone jellyfish"], [26, "The library"], [40, "The bear"]];
+  const INTERIORS = [[1, "Swirling lights"], [2, "Water, with fish"], [4, "Kaleidoscope"], [5, "Weird blobs"], [6, "Orrery"], [7, "Reactor core"], [8, "Data rain"], [10, "Gyroscope rings"], [11, "Circuitry"], [12, "Snow-globe city"], [13, "Storm orb"], [14, "Ember hive"], [15, "Clockwork"], [16, "Galaxy"], [17, "The eye that opens"], [20, "The forge"], [21, "Singing crystals"], [22, "Moons around a hearth"], [23, "Signal beacon"], [26, "The data centre"], [40, "The bear"], [40, "The terrarium", 1], [40, "The workshop", 2], [50, "Planet — lava", 3], [50, "Planet — ice", 4], [50, "Planet — gas giant", 5], [50, "Planet — ocean", 6], [50, "Planet — desert", 7], [50, "Planet — temperate", 8], [50, "Planet — archipelago", 9], [50, "Planet — pangaea", 10], [50, "Planet — autumn", 11], [50, "Planet — monsoon", 12], [50, "Planet — tundra", 13], [50, "Planet — rust", 14], [50, "Planet — swamp", 15], [50, "Planet — crystal", 16], [50, "Planet — pale giant", 17], [50, "Planet — ocean, ringed", 6, 1], [50, "Planet — pale giant, ringed", 17, 1]];
   // every row has a title and a one-line sub (what it is, in plain words)
-  const ROWDEF = SHEET === "interiors" ? INTERIORS.map(([kind, name], i) => ({ name, sub: kind === 40 ? "a painting — stays a flat picture" : "interior kind " + kind + " — a volume up close", kind, shell: 0, spin: 0, h1: (i * 47) % 360, h2: (i * 47 + 30) % 360, sat: 70, lw: 2, p0: 0 })) : [
+
+  // ---- v65 THE ROLLS: kind 30 reads a 16-slot genome (3 bits each) packed by
+  // JS into p0 (slots 0-7) and p1 (slots 8-15). The same words the shader
+  // uses, so the sub line under each row says exactly what was rolled.
+  const SLOTS = [
+    ["lattice", ["none", "honeycomb", "honeycomb", "cubic scaffold", "gyroid", "foam walls", "concentric shells", "spiral arms"]],
+    ["scale", ["2.5 cells", "3.7 cells", "4.9 cells", "6.1 cells", "7.4 cells", "8.6 cells", "9.8 cells", "11 cells"]],
+    ["symmetry", ["none", "none", "none", "mirror", "3-fold", "4-fold", "6-fold", "8-fold"]],
+    ["solids", ["spheres", "spheres", "rods", "plates", "rings", "octahedra", "crystals", "cubes"]],
+    ["count", ["very few", "few", "few", "some", "some", "many", "many", "packed"]],
+    ["hollowing", ["solid", "solid", "solid", "solid", "shells", "shells", "lace", "holes"]],
+    ["pattern", ["plain", "plain", "plain", "bands", "traces", "honeycomb skin", "scales", "stripes"]],
+    ["fog", ["none", "none", "none", "uniform", "strata", "clumpy", "core cloud", "rim haze"]],
+    ["light", ["even", "even", "center glow", "sun-lit", "lit rim", "from below", "pulsing", "flicker"]],
+    ["palette", ["one hue", "two hues", "hue ramp", "data blues", "ember", "ice", "acid", "white + accent"]],
+    ["hue shift", ["-", "-", "-", "-", "+", "+", "+", "+"]],
+    ["motes", ["none", "none", "none", "dust", "orbiting", "swarm", "falling", "embers"]],
+    ["motion", ["still", "spin", "spin", "counter-turning", "breathe", "pulse", "flow", "flow"]],
+    ["gradient", ["even", "even", "dense core", "dense core", "dense rim", "dense rim", "equator band", "two poles"]],
+    ["warp", ["none", "none", "none", "none", "gentle", "strong", "ridged", "ridged"]],
+    ["cutaway", ["none", "none", "none", "none", "none", "wedge", "wedge", "half"]],
+  ];
+  const mulberry = (a) => () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const rollGenome = (rng) => { const g = SLOTS.map(() => (rng() * 8) | 0); if (g[0] === 0 && g[4] <= 2) g[4] = 5; return g; }; // never an empty ball
+  const packGenome = (g) => [g.slice(0, 8).reduce((a, v, i) => a + v * 8 ** i, 0), g.slice(8).reduce((a, v, i) => a + v * 8 ** i, 0)];
+  const genomeWords = (g) => SLOTS.map(([k, words], i) => words[g[i]] === "-" ? null : words[g[i]] === "+" ? "hue shifted" : k + " " + words[g[i]]).filter(Boolean).join(" · ");
+  const ROLLROWS = [];
+  if (SHEET === "rolls") {
+    const rng = mulberry(ROLL * 7919 + 17);
+    for (let i = 0; i < 20; i++) {
+      const g = rollGenome(rng);
+      const [p0, p1] = packGenome(g);
+      const h1 = (rng() * 360) | 0;
+      ROLLROWS.push({ name: "Roll " + ROLL + "." + (i + 1), sub: genomeWords(g) + "   [" + p0 + " / " + p1 + "]", kind: 30, shell: 0, spin: 0, h1, h2: (h1 + 40 + ((rng() * 120) | 0)) % 360, sat: 60 + ((rng() * 35) | 0), lw: 2, p0, p1, seed: 0.37 + i * 1.731 + ROLL * 0.913 });
+    }
+  }
+  const ROWDEF = SHEET === "rolls" ? ROLLROWS : SHEET === "interiors" ? INTERIORS.map(([kind, name, p0 = 0, p1 = 0], i) => ({ name, sub: kind === 40 ? "a Meshy painting behind the glass (art layer " + p0 + ") — stays a flat picture that faces you" : kind === 50 ? (p1 ? "a true globe with RINGS (p1 = 1) — the band lives in the globe's frame, tilted by seed" : "a true globe, kind 50 — one of the rendered planet maps") : "interior kind " + kind + " — a volume up close", kind, shell: 0, spin: 0, h1: kind === 50 ? 20 : (i * 47) % 360, h2: kind === 50 ? 40 : (i * 47 + 30) % 360, sat: 70, lw: 2, p0, p1, qs: p1 ? 2.3 : 1.4 })) : [
     { name: "Glass orb", sub: "plain shell glass; a beam passes through it", kind: 0, shell: 0, spin: 0, h1: 200, h2: 230, sat: 70, lw: 2, beam: true },
     { name: "Swirl orb", sub: "the swirl shell, spinning", kind: 0, shell: 2, spin: 0.35, h1: 30, h2: 330, sat: 75, lw: 2 },
     { name: "Water, with fish", sub: "interior kind 2", kind: 2, shell: 1, spin: 0, h1: 190, h2: 210, sat: 70, lw: 2 },
@@ -300,7 +357,7 @@ void main() {
     gl.uniform1f(U.uBallRim, 0.12); // the world default
     data[0] = -cam[0]; data[1] = -cam[1]; data[2] = -cam[2]; data[3] = rr;
     data[4] = row.h1; data[5] = row.h2; data[6] = row.sat / 100; data[7] = 9;
-    data[8] = 0; data[9] = row.spin; data[10] = row.shell; data[11] = row.halo || 0.6;
+    data[8] = row.seed || 0; data[9] = row.spin; data[10] = row.shell; data[11] = row.halo || 0.6;
     data[12] = 17.3; data[13] = row.portal || 0; data[14] = 0; data[15] = row.qs || 1.4;
     data[16] = row.kind; data[17] = row.p0 || 0; data[18] = row.p1 || 0; data[19] = 2;
     data[20] = LIGHT[0]; data[21] = LIGHT[1]; data[22] = LIGHT[2]; data[23] = row.lw;
@@ -316,8 +373,11 @@ void main() {
     // the header: what this sheet is, then column heads on a grid that shares
     // the canvas's column widths (CSS px = canvas px / dpr; the canvas is 1:1)
     const k = 1 / devicePixelRatio;
-    document.getElementById("title").textContent = SHEET === "interiors" ? "Sphere Lab — the interiors" : "Sphere Lab — the ball";
-    document.getElementById("blurb").textContent = SHEET === "interiors"
+    document.getElementById("title").textContent = SHEET === "interiors" ? "Sphere Lab — the interiors" : SHEET === "rolls" ? "Sphere Lab — the rolls" : "Sphere Lab — the ball";
+    if (SHEET === "rolls") { document.getElementById("rollui").hidden = false; document.getElementById("reroll").href = "./index.html?sheet=rolls&roll=" + (ROLL + 1); }
+    document.getElementById("blurb").textContent = SHEET === "rolls"
+      ? "Twenty rolled interiors. Each is the one rolled recipe reading a sixteen-slot genome — lattice, solids, fog, light, palette, motes, motion and the rest — so no two are the same and none was hand-drawn. The line under each row says what was rolled; the two numbers in brackets are the whole genome, so naming a row you like is enough to keep it."
+      : SHEET === "interiors"
       ? "Every interior kind up close, where the flat picture has given way to the volume. Column one is the old disc for comparison; the other three are the ball seen from three camera angles. The key light is fixed in the world, upper right and in front."
       : "One orb of each family. Column one is the old camera-facing disc; the other three are the ball seen from three camera angles, so anything truly round changes and anything flat does not. The key light is fixed in the world, upper right and in front.";
     const cols = document.getElementById("cols");
@@ -341,9 +401,48 @@ void main() {
     });
   }
   let solo = -1, soloSphere = 1;
-  function draw(t) {
-    if (solo >= 0) { drawCell(ROWDEF[solo], t * 0.35, soloSphere, t, 0, 0, canvas.width, canvas.height); return; }
-    for (let ri = 0; ri < ROWS; ri++) for (let ci = 0; ci < COLS; ci++) {
+  // click: on the sheet, an orb in column two (Ball · 0°) opens that row alone;
+  // in the solo view, any click comes back. Pointer cursor only over column two.
+  let barSheet = "", sheetScroll = 0;
+  const cellAt = (e) => {
+    const rc = canvas.getBoundingClientRect();
+    const x = (e.clientX - rc.left) * devicePixelRatio, y = (e.clientY - rc.top) * devicePixelRatio;
+    const ci = Math.floor((x - GUT) / CW), ri = Math.floor(y / CH);
+    return (x >= GUT && ci >= 0 && ci < COLS && ri >= 0 && ri < ROWS) ? { ci, ri } : null;
+  };
+  canvas.addEventListener("click", (e) => {
+    if (solo >= 0) { solo = -1; canvas.style.cursor = ""; bar.textContent = barSheet; document.getElementById("labels").hidden = false; document.getElementById("cols").style.visibility = ""; scrollTo(0, sheetScroll); return; } // back to where he was (James: "always brings me back to the top")
+    const c = cellAt(e);
+    if (c && c.ci === 1) { solo = c.ri; sheetScroll = scrollY; canvas.style.cursor = "pointer"; scrollTo(0, 0); document.getElementById("labels").hidden = true; document.getElementById("cols").style.visibility = "hidden"; barSheet = bar.textContent; bar.textContent = "Row " + (c.ri + 1) + " — " + ROWDEF[c.ri].name + " alone, turning   ·   click anywhere to come back   ·   T for the old disc"; }
+  });
+  canvas.addEventListener("mousemove", (e) => {
+    if (solo >= 0) return;
+    const c = cellAt(e);
+    canvas.style.cursor = c && c.ci === 1 ? "pointer" : "";
+  });
+  function draw(t, full) {
+    if (solo >= 0) {
+      // the solo view fits the VIEWPORT (the canvas is the whole sheet, 2,820 ×
+      // 6,480 — drawn full it was twice the window; James caught it): the
+      // visible part of the canvas below the header, at the top-left.
+      const dpr = devicePixelRatio;
+      const rc = canvas.getBoundingClientRect();
+      const vw = Math.min(canvas.width, Math.floor(innerWidth * dpr));
+      const vh = Math.min(canvas.height, Math.max(200, Math.floor((innerHeight - rc.top) * dpr)));
+      gl.disable(gl.SCISSOR_TEST);
+      gl.clearColor(0.012, 0.014, 0.03, 1);
+      gl.depthMask(true);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      drawCell(ROWDEF[solo], t * 0.35, soloSphere, t, 0, canvas.height - vh, vw, vh);
+      return;
+    }
+    // only the rows on screen (the sheet is up to 26 rows × 4 raymarched
+    // cells; drawing all of them every frame was the other half of the hurt).
+    // A capture (full === true) still draws every row.
+    const rc = canvas.getBoundingClientRect();
+    const k = devicePixelRatio;
+    const top = full ? 0 : Math.max(0, Math.floor((-rc.top) * k / CH)), bot = full ? ROWS : Math.min(ROWS, Math.ceil((innerHeight - rc.top) * k / CH) + 1);
+    for (let ri = top; ri < bot; ri++) for (let ci = 0; ci < COLS; ci++) {
       drawCell(ROWDEF[ri], ANGLES[ci], ci === 0 ? 0 : 1, t, GUT + ci * CW, (ROWS - 1 - ri) * CH, CW, CH);
     }
   }
@@ -367,15 +466,20 @@ void main() {
   };
   async function capture(name) {
     if (SHEET === "interiors") name = "sphere-lab-interiors";
-    draw(T0);
+    if (SHEET === "rolls") name = "sphere-lab-rolls-" + ROLL;
+    draw(T0, true);
     const r = await post(name);
     const where = (x) => (x && x.saved) ? x.saved : "not saved (" + ((x && x.error) || "server not reached") + ")";
-    if (SHEET === "interiors") { bar.textContent = "Sheet saved: " + where(r); return; }
+    if (SHEET !== "ball") { bar.textContent = "Sheet saved: " + where(r); return; }
     drawClose(T0);
     const r2 = await post(name.replace("sheet", "close"));
     bar.textContent = "Sheet saved: " + where(r) + "   ·   close view: " + where(r2);
   }
-  const loop = (now) => { draw(T0 + now * 0.001); requestAnimationFrame(loop); };
+  let lastSheet = 0;
+  const loop = (now) => {
+    if (solo >= 0 || now - lastSheet > 50) { draw(T0 + now * 0.001); if (solo < 0) lastSheet = now; }
+    requestAnimationFrame(loop);
+  };
   loop(0);
   addEventListener("keydown", (e) => {
     if (e.code === "KeyC") capture("sphere-lab-sheet");

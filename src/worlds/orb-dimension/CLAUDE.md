@@ -75,6 +75,11 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   the v55.4 lens shift. Run `sphere-sim` after touching any of it; judge looks in
   sphere-lab.html before the world.
 
+- THE MATERIAL PASS (v66): every solid the Cadence programs draw goes through
+  `COMM_MAT` (tiles triplanar on `vLoc`, seeded wear, the building metal's specular) and
+  every bridge wears its iron sheath. NOTHING SHIPS BARE (James, 2026-09-05): a new piece
+  with a flat colour is a bug. Judge in `src/labs/material-lab/index.html`; new tiles go in
+  `assets/tiles/` seam-blended (tmp script in the v66 session), bound on units 12–15.
 - CACHE TAGS (v63.7): index.html loads `world.js?v=NNN` and `world.css?v=NNN` — bump
   both with every build stamp, or James's reload serves him the old file and he reports a
   build as broken that he has never run.

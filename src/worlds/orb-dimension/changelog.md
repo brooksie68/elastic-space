@@ -3,6 +3,180 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v66 — 2026-09-05 (Claude, THE MATERIAL PASS on James's go)
+
+James, after the interiors pass: everything with a baseline Blender material — the struts and
+energy conduits around Korrudan, the town cores — "looks like real cheapo plastic... not
+battle-scarred, hundreds-of-thousands-of-years-old technology that's still chugging along...
+everything that is basic Blender shape output has to have textures." His standing word:
+nothing ships bare; the township kernels get crust and wear from day one.
+- **Four Meshy tiles** (nano-banana-pro, 36 cr; `assets/tiles/`, seam-blended to .jpg):
+  scarred hull plating, corroded conduit sheath, aged ceramic armor, gantry iron.
+- **`COMM_MAT`** — a shared snippet in the solid program: tiles laid TRIPLANAR on the raw mesh
+  position (`vLoc`, new VS varying) at fixed metres-per-repeat (slab 26 / strut 11 / crust
+  face 16 / hoop 13); the tile per piece rolled from the piece's centre (slabs hull with a few
+  ceramic, struts iron / hull / a little ceramic, crust hull with some iron, hoops iron); a
+  per-piece tint; wear seeded on position — grime pooling, scorch, one-way rust streaks, dead
+  panels; the building metal's specular response (key + glint, shininess from the tile,
+  fresnel rim). Screens, windows and the pulse keep their emission over it.
+- **The conduits**: each light bridge runs inside a metal SHEATH — gantry iron triplanar (10 m
+  per repeat), collars every 90 m with a bright edge, a fake tube shade, a glass slot down the
+  centre and port rings at the collars where the hot core shows; the two crossed quads fade as
+  they turn edge-on so only the facing one carries the tube. The old hot line is the core.
+  (First cut sampled the conduit tile along the ribbon — magnified thirty times on a 60 m
+  tube, it was a painting; scrapped for the iron.)
+- **"metal wear"** dial (the air, 0–1, default 0.8), the solid + bridge programs; tiles on
+  texture units 12–15 with a flat grey 1×1 standing in until each file lands (file:// keeps a
+  look). shader-check substitutes `${COMM_MAT}`.
+- **Material Lab** `src/labs/material-lab/index.html` (admin Labs): strut / slab / hoop /
+  crust face / conduit, real size, the world's shaders and tiles, at 120 / 500 / 2,500 m, a
+  wear slider, click-to-solo, C captures. Three self-critique rounds before handing over.
+- Cache tags ?v=650; init-smoke / crust-sim / society-sim / sphere-sim / v47-sim / shader-check
+  green. NOT eye-verified in-world (sound world, no pane). AWAITING JAMES: the lab, then a
+  flight to a town and around Korrudan's hoops. NEXT: the township kernels (his calls 1–2
+  standing on Claude's picks: Mediant + Dominant asteroids, Subdominant a metal core, ~2.5 km,
+  crust + this material from day one).
+
+## v65.3 — 2026-09-05 (Claude, TEN MORE PLANETS + James's third read)
+
+- **Ten new planet maps** (his ask: "10 more planet types... at least six Earth-like... you
+  don't even need to show them to me"; his tier call: "whichever gives the best visual
+  result" → Meshy nano-banana-pro, 90 credits): temperate, archipelago, pangaea, autumn,
+  monsoon, tundra (the six Earth-likes), rust (Mars-like), swamp, crystal, pale giant.
+  `assets/planetoids/planet-*.png`, 1024², art layers 8–17; four arrived with a letterbox
+  frame and were cropped to content before resizing. The deal reads the count, so the ten are
+  live in the world at once (worldlets pick from fifteen maps). Lab interiors sheet rows
+  27–36 are the ten, 37–38 the ringed ocean and ringed pale giant. Prompt shape that worked:
+  "Flat top-down planet surface texture map, square, edge to edge, no horizon, no sphere, no
+  border. <world> Satellite-photo realism, painterly detail, rich saturated color."
+- His third read: Kaleidoscope on a fixed blue-green sea palette ("I don't like that pink");
+  Gyroscope NINE nested rings (0.86 down to 0.3), every third plain, the others with studs or
+  an outer chain of beads, nine hues stepped round the orb's, alternating spin; Circuitry four
+  colour families by seed (copper on green, silver on blue, gold on black, cyan on violet).
+- Cache tags ?v=649; sphere-sim / init-smoke / v47-sim / shader-check green.
+- **James's verdict on the whole interiors sheet, same day: "100% pass status... I am psyched."**
+  Everything above is live in the world (the lab reads world.js) — his next flight is the first
+  in-world look at the rolls, the fifteen planets, the rings and the colour families together.
+- Lab: the sheet remembers its scroll position across a solo view (his ask).
+
+## v65.2 — 2026-09-05 (Claude, James's second read of the interiors sheet)
+
+His verdicts, in his order, all built:
+- 1 Swirling lights: eighteen strands in three families at the march's resolving width.
+- 2 Water: fish at half speed; a second, coarser silt (bigger dark dots).
+- 3 Kaleidoscope: REAL symmetry — six-fold about a tilted axis, mirrored across the equator;
+  one wedge holds four drifting gems, rods and a ring arc, the fold repeats them twelve times,
+  faint mirror planes between ("actual kaleidoscopic effects").
+- 4 Weird blobs: the v64 recipe restored exactly ("liked them better on the first pass").
+- 6 Orrery half speed; 7 Data rain a third of the speed.
+- 8 Gyroscope: a colour per ring (c1 / c2 / the complement), a white glint racing each ring,
+  sun-facing shading, a soft haze off the tube ("all pink... more exciting lighting").
+- 9 Circuitry: SIX boards, ordered — three parallel decks and three parallel uprights crossing
+  them at right angles, one seeded tilt for the block ("a computer is a very ordered thing").
+- 11 Storm orb: four families by seed — slate, green-violet, rust dust, deep red — each with
+  its own bolt colour.
+- 13 Clockwork: a second train of three smaller gears in the crossing plane, turning the
+  other way.
+- 17 Singing crystals: twenty shards, every third one long (to 0.92 of the ball), each its own
+  hue about the orb's.
+- 20 The data centre: four rack families — blues, cyan-green, amber, magenta-violet.
+- 5, 10, 12, 14, 15, 16, 18, 19: fine as they are (14 and 15 already vary by seed in the world).
+- **RINGS** (his "let's have a couple have rings"): p1 = 1 marks a ringed worldlet (a quarter of
+  the deal, quad 2.3 radii). The ring is a flat band 1.25–1.85 radii out in the globe's own
+  frame, tilted by seed; each pixel's ray meets the plane, the band is drawn there, hidden
+  behind the globe and laid over it in front, lit by the sun with the globe's shadow across
+  the far side, gaps and two divisions by seed, and a fade toward the quad edge so no clipped
+  edge shows up close (the first cut at 2.3 radii loomed over the lab's close camera and
+  clipped flat — the geometry was right, the ring was just too wide for the quad). Lab rows
+  27–28 are ringed ocean and gas giant.
+- The deal reads the planet count from the art list (`PLANET_MAPS`), ready for the ten new
+  maps James asked for (six Earth-like) — those are Meshy text-to-image, awaiting his word on
+  the credits. Cache tags ?v=648; sphere-sim / init-smoke / v47-sim / shader-check green.
+
+## Sphere Lab perf — 2026-09-04 (Claude, James: "putting a hurting on my computer... 25 seconds")
+
+- The orb FS now compiles through KHR_parallel_shader_compile — the driver compiles on its
+  own threads and the page polls, so nothing is on hold while it happens (the bar says
+  "compiling the world's orb shader (in the background)"). Every `link` is awaited.
+- The sheet draws only the rows on screen (it is up to 26 rows × 4 raymarched cells, and it
+  was drawing all of them every frame), at 20 fps; the solo view keeps the full rate; a
+  capture (C, or the load-time snapshot) still draws every row.
+
+## v65.1 — 2026-09-04 (Claude, James's 24 interior verdicts, read row by row)
+
+Built on his "go ahead and act on that now" — every verdict from his read of the interiors
+sheet, in his order:
+- 1 Swirling lights: ten helices in two counter-turning families ("many more strands").
+- 2 Water: sinking silt — dark dots (density, no light) beside the bright bubbles.
+- 4 Weird blobs: a firm skin with a bright edge line, darker core, less noise ("more definition").
+- 7 Data rain: phosphor green with pale heads, trails fading up behind each head, flickering cells.
+- 8 Radar sweep, 21 Metronome, 22 Lone jellyfish: CUT — volume + flat branches gone, out of the
+  deal (TECH/WONDER_KINDS), the lab and both sims.
+- 9 Gyroscope: real tubes (radius 0.028, twice the march's resolving width) instead of
+  zero-radius shells, slower tumble, tick marks, bright bearings ("more precise... pixely").
+- 10 Circuitry: every board mirrored in four, a ring bus, corner pads ("more symmetrical").
+- 13 Ember hive: a true honeycomb — hexagonal cells bored RADIALLY (twelve around the cylinder,
+  no seam), stopping short of the core, glowing from within; a few big bees crawl the cells.
+  The first cut bored them top-to-bottom and read as stripes from the side.
+- 15 Galaxy: four colour families by seed (blue-white / gold / rose with cyan arms / green),
+  the bulge rounder. A brightness overshoot (the disc went white) pulled back the same round.
+  The lab shows one seed so one family; the world deals all four.
+- 16 The eye: blue iris ("red is not good").
+- 18 Singing crystals: a geode — fourteen slim hexagonal shards growing out of a dark seed rock,
+  banded and pointed ("too big and bulky").
+- 20 Signal beacon: the lamp at the heart on a three-strut cradle, three spherical pulses
+  spreading from the centre ("from the center instead of the top").
+- 23 The library → THE DATA CENTRE: two rings of rack modules in a family of blues, each with
+  a blinking status light, around a cool white core; the far picture in the same blues.
+- 3, 5, 6, 11, 12, 14, 17, 19: pass, untouched. 24 the bear stays flat.
+- Sheet renumbered 1–26 (three cut, five planets). sphere-sim + v47-sim kind lists updated,
+  shader-check green, cache tags ?v=647. AWAITING HIS READ of the rerendered rows.
+
+## v65 — 2026-09-04 (Claude, THE ROLLED INTERIOR on James's "do that shit")
+
+- **Kind 30, the rolled interior.** James, after reading the interiors sheet: the ones that
+  fill the ball with structure at depth (Forge, Ember Hive, Circuitry, Reactor, Library) are
+  what a worldlet needs; instead of naming things, roll them — "twenty different things you
+  can do, geometric shapes, patterns, textures, lighting, fog... a roll of the dice." One
+  recipe (`volRolled` in the orb FS) reads a SIXTEEN-SLOT GENOME, 3 bits each, packed by JS
+  into p0 (slots 0–7) and p1 (slots 8–15): lattice (honeycomb prisms / cubic scaffold /
+  gyroid / foam walls / concentric shells / spiral arms / none), scale, symmetry (mirror,
+  3/4/6/8-fold), solids (spheres / rods / plates / rings / octahedra / crystals / cubes) dealt
+  into cells by count, hollowing (solid / shell / lace / holes), surface pattern, fog (uniform
+  / strata / clumpy / core cloud / rim haze), light (center glow / sun-lit / lit rim / from
+  below / pulsing / flicker), palette (one hue / two / hue ramp / data blues / ember / ice /
+  acid / white + accent) + hue shift, motes (dust / orbiting / swarm / falling / embers),
+  motion (spin / counter-turning / breathe / pulse / flow), density gradient, noise warp,
+  cutaway (wedge / half). Far away it is a soft two-tone cloud. In the world it takes 7% of
+  the deal (roll 0.53–0.60, genome rolled per orb).
+- **The rolls sheet** in the Sphere Lab (`?sheet=rolls&roll=N`, the third sheet button):
+  twenty rolls per roll number from a seeded generator, the genome written in words under
+  each row plus its two numbers in brackets — naming a row is enough to keep it; "roll
+  twenty more" steps the number. Four self-critique rounds before handing over: empty balls
+  (no lattice + few solids) forbidden in the roller and the shader; sharper walls; fog
+  quieter; gradient floors 0.25–0.3 so a gradient thins but never empties; solid cells never
+  fewer than ~5 across; and the real bug — the cutaway was applied AFTER the symmetry fold,
+  and the fold puts every point in the +x/+z sector the wedge removes, so symmetry + cutaway
+  was an empty ball. Cutaway now uses the unfolded point.
+- Also: the interiors sheet gained the five planets (kind 50, maps lava/ice/gas/ocean/desert)
+  as rows 25–29; click an orb in the Ball · 0° column to solo a row (no more number keys),
+  the solo view fits the viewport; the lab header has the sheet buttons; the admin Labs
+  list links the interiors sheet. sphere-sim TEST 1 counts kind 30. Cache tags ?v=646.
+  shader-check green. James's 25-item interiors verdict list (this session) is NEXT.
+
+## v64.5 — 2026-09-04 (Claude, James flying the formations)
+
+- **More formations.** James flew five minutes around three glow homes: rings everywhere,
+  streams flying off in a line, one amorphous grouping. The formation share of the deal was
+  0.13 at satellites / 0.12 at the capital; it is now 0.30 / 0.28 (about the rings' share)
+  and the deal normalizes, so the other verbs shrink in proportion. New dial in
+  configuration → the crowds → **formations ×** (0–3, default 1, `saeForm`; a layout
+  rebuild like streams ×). society-sim TEST 16 now proves the pose only against members
+  idle on their seat-trade clock (the reroll changed which group it inspects and pair 0's
+  clock alone no longer stood for the rest). Rubric `crowds.md` updated. Cache tags v645.
+  Formations still keep the tide (assembled about half a 140–320 s cycle) — to find one fast
+  turn tide speed × up. **James's verdict on the formations, same day: "its good."**
+
 ## v64.4 — 2026-09-04 (Claude, James on the swirl orb and the galaxy)
 
 - **The swirl seam.** v64.2 wrapped the render's whole disc onto each hemisphere, so its rim

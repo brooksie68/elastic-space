@@ -8,6 +8,26 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
+- JABBERWOCKY (from the engaged draft "Battle Level w the Jabberwocky Rifle", id
+  battle-level-w-the-jabberwocky-rifle) — **BUILT 2026-09-05 as a one-shot on James's go**
+  (his three answers: a handful of short mazes; the boss has a Jabberwocky rifle too; scars stay
+  until you move on; then "surprise me. be silly. be gross. be violent. be funny. be ridiculous").
+  `src/worlds/jabberwocky/` — READ ITS CLAUDE.md FIRST. 100 gags in four tiers, 15 outcomes,
+  50 scars, five goon types, four mazes + the Jabberwock, canvas raycaster, code-drawn art, all
+  synthesis sound, configuration panel with a force-one-gag picker, three drift doors per maze.
+  **JAMES FLEW IT THE SAME NIGHT: too clown-like, the motion made him sick (turning), too low-res
+  → THE DUNGEON REBUILD, plan discussed and agreed first** ("loved your new plan", Meshy for the
+  creatures, "go nuts w Meshy", gore welcome incl. intestines, more space, ElevenLabs OK, a Suno
+  track coming): `render3d.js` (three.js, real geometry, Meshy tiles, baked torch light, native
+  res, bob 0), rooms carved into the mazes, five dungeon creatures as rigged Meshy models with
+  clips (ghoul/brute/ratling/cultist/stalker) + the Jabberwock as a posed statue (Meshy's rigger is
+  humanoid-only, refused twice), gibs with physics, blood decals, the rifle + gauntlets as a real
+  viewmodel, 42 ElevenLabs one-shots with synthesis fallbacks, calliope gone. ~700 Meshy credits.
+  Sim 116,837 green; silent 3D lab `tmp/jabberwocky/lab3d.html` (KEEP) + Meshy/Blender pipeline
+  scripts beside it. NOT flown since the rebuild. AWAITING JAMES: motion, look, hands, gore, odds;
+  his Suno track → `src/worlds/jabberwocky/assets/audio/theme.mp3`; then ship (registry, note off,
+  World Ideas #64 → live, draft status → built).
+
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
    communities (capital Tonic + Mediant/Dominant/Subdominant on the hexagram at
@@ -222,8 +242,38 @@ consistent. `npm run check-worlds` audits every world against the contract.
    shell render at load — min across its rotations — layers 4–7, balls
    only); the galaxy on the ecliptic with a rigid arm pattern + differential
    dust. Sphere Lab is an admin Lab (src/labs/sphere-lab, typeset page,
-   ?sheet=interiors). Remaining reads on the ball sheet: 1, 2, 6, 8 pass;
-   the interiors sheet is next for his eyes. World changelog v63–v64.4.
+   ?sheet=interiors). Remaining reads on the ball sheet: 1, 2, 6, 8 pass.
+   **2026-09-04 (later): HE READ THE INTERIORS SHEET, all 24** — verdicts
+   built as v65.1 (ten-strand swirl, silt in the water, firmer blobs, green
+   Matrix rain, tube gyro, mirrored circuitry, radial honeycomb hive with
+   bees, four galaxy families, blue eye, geode crystals, centre beacon, the
+   library → THE DATA CENTRE in blues; radar / metronome / jellyfish CUT).
+   **v65 THE ROLLED INTERIOR (his "do that shit")**: kind 30 reads a 16-slot
+   genome (lattice / solids / fog / light / palette / motes / motion /
+   symmetry / cutaway...) packed into p0/p1; the lab's third sheet
+   `?sheet=rolls&roll=N` shows twenty per roll number with the genome in
+   words — naming a row keeps it; 7% of the world deal. Lab: click an orb
+   in Ball · 0° to solo (no number keys), sheet buttons, planets rows 22–26.
+   HE READ v65.1 → v65.2 built 2026-09-05 (real kaleidoscope symmetry,
+   18-strand swirl, blobs restored, slower fish/orrery/rain, coloured gyro,
+   six ordered circuit boards, storm + data-centre colour families, crossing
+   gear train, twenty crystals, RINGS on a quarter of worldlets). v65.3 same
+   day: TEN MORE PLANET MAPS landed (Meshy nano-banana-pro, 90cr, his tier
+   call; six Earth-like + rust/swamp/crystal/pale giant; fifteen maps in the
+   deal), kaleidoscope blue-green, nine ornamented gyro rings, circuit colour
+   families. HIS VERDICT on the interiors sheet 2026-09-05: "100% pass status" — all
+   of it is live in the world. HE FLEW v65.3 + read the rolls: "totally happy with all
+   of it" — the interiors thread, the rolls and the planets are CROSSED OFF
+   (2026-09-05). World changelog v63–v65.3.
+   **v66 THE MATERIAL PASS BUILT 2026-09-05 (his go; his words "cheapo
+   plastic... everything that's basic Blender shape output has to have
+   textures" — STANDING: nothing ships bare, memory nothing-ships-bare):**
+   four Meshy tiles (36cr), COMM_MAT triplanar tiles + seeded wear + the
+   building metal's specular on every strut/slab/hoop/crust face, the
+   light bridges in iron SHEATHS with collars + ports, "metal wear" dial,
+   Material Lab (src/labs/material-lab, admin Labs). AWAITING his read
+   (lab, then a flight). NEXT: township kernels (d) with crust + this
+   material from day one; his calls 1–2 standing on Claude's picks.
    (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.
@@ -256,7 +306,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
    his riff, built unjudged on his go): a seventh verb — groups assemble into
    a hollow sphere / Bucky ball / patterned cube / 3-D star / hex prism / lazy
    cloud, turn, breathe, trade seats, break away on the tide; society-sim
-   TEST 16. Awaiting his flight.
+   TEST 16. HE FLEW IT 2026-09-04: "its good" — after v64.5 raised the formation
+   share 0.13 → 0.30 + the "formations ×" dial (he saw rings everywhere and one
+   formation in five minutes). Crossed off.
 0.5. FACE LAB / expressive characters: pipeline BUILT + POSTMASTER FACE TRANSFER
    VALIDATED 2026-07-23/24 — `src/labs/face-lab/` (read its CLAUDE.md + changelog first).
    Face Lab live (James delighted; skin/eye pickers, protected presets). The house
@@ -535,7 +587,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
    exists), morph-normals fidelity lever, Unity-vs-browser fork for future
    characters (his want: near-readable lips). World Ideas #61 (Galactic
    Bar & Grill) captured as the character-stack graduation project.
-0.7. THE VALENCE LAB: the realistic molecule visualizer (James's brief + name,
+0.7. THE VALENCE LAB — ARCHIVED 2026-09-05 (`archive/the-valence-lab/`, James's "buh bye"
+   once its scope came to Snap's bench; solver + sims stay in tmp/the-valence-lab/).
+   History: the realistic molecule visualizer (James's brief + name,
    2026-07-24). PHASE A BUILT 2026-07-24; PHASE B (bonding bench) BUILT 2026-07-25
    on James's go + his three calls (instant bonding, loud honest refusals, ~10%
    ghost shells) — draft v3, AWAITING JAMES'S EYES. Same-night on his feedback:
@@ -713,10 +767,34 @@ consistent. `npm run check-worlds` audits every world against the contract.
    chapters 7–12 — right-click IONIZE on the bench, COPPER as the first metal with the
    electron sea, carbon chains, ethene, methanol, ammonia; benzene/glucose/glycine/
    peptide as drawings + text. AWAITING HIS READ of 7–12.
-   NEXT on his go: step 9 the look, step 10 ship, 10.5 the hold view.
-   Also queued, his gos: bench editing (box-select/Delete/Ctrl-C-V-D/
-   right-click), the Scope, the pullback. Also: memory `no-flags-after-the-answer` ("flagging
+   2026-09-04 (later): James read the plan — step 9 crossed off (the Design look
+   has been the world's since step 1), step 10 rewritten plain, step 11 dropped
+   ("tune by eye is not a step"). THE STRIP IS A WALL (atoms can't drift under the
+   guide text); BONDS BY HAND (first contact single, back off + push = double/
+   triple; five- and six-rings first-class — he made a carbon ring and
+   cyclohexane); the ion ledger says NO OUTER ELECTRONS; BENCH EDITING (box-select,
+   Delete, Ctrl-C/V/D/A, right-click menu with the ion line); THE HOLD VIEW 10.5
+   (veil + the real HF cloud for the nine baked molecules, fitted onto the held
+   atoms; layered glow for the rest; `cloud.js`, lab tmp/snap/hold-lab.html KEEP).
+   2026-09-05: his reads — editing works, hold view "looks cool... add it
+   everywhere", chapters 7–12 fine for now (a long copy + tuning thread is
+   coming; "the quality of the whole framework is great"). Step 10 split into
+   seven items (drift exits DEFERRED by him). THE SCOPE BUILT on his five calls
+   (rail + menu, 3-D lens, three dials + mouse rotate/zoom, all 18 atoms) —
+   `src/worlds/snap/scope.js`; THE VALENCE LAB ARCHIVED. Awaiting his eyes on
+   the scope. Open list is in the world CLAUDE.md START HERE (hold view
+   everywhere = the HF solver batch, trophies, the pullback, the copy thread). Also: memory `no-flags-after-the-answer` ("flagging
    things is like a compulsion with you").
+0.8. THE REICH MACHINE (engaged draft, James's #1, 2026-09-05): a phase-shifting step
+   machine after Steve Reich — N tracks, each a step figure on one voice, each a little
+   faster or slower than the master, drifting past each other. BUILT AS A DRAFT WORLD
+   2026-09-05 on his go, sound gate first (his rule: "not with shitty sounds"): a 3,008-patch
+   dry Surge XT audition page (tmp/reich-machine/library.html, KEEP), his fifteen picks
+   rendered as voice banks (assets/voices/, the voice-folder contract), engine.js (pure,
+   sim 257 green), player.js (Web Audio sampler + effects + lookahead scheduler), the PLAIN
+   face. Read `src/worlds/reich-machine/CLAUDE.md` + changelog first. AWAITING HIS FIRST
+   DRIVE. NEXT, his go: the look pass (Glass Bead Game / Player of Games / Arcane, look-dev
+   page first), exits + ship wiring; Lumina panel parked at his word.
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
    `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile

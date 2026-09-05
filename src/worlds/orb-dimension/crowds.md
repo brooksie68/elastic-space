@@ -32,7 +32,7 @@ also owns a private orbit — it is where they go at low tide.
 
 The verb mix follows the weights EXACTLY (largest-deficit deal, seeded tie-break), so
 a weight change is a predictable change. `saeStream` multiplies the stream weight;
-`saeGroup` multiplies every size.
+`saeForm` multiplies the formation weight (v64.5); `saeGroup` multiplies every size.
 
 | Verb | Capital weight | Satellite weight | Size | Where | Motion | Spacing |
 |---|---:|---:|---:|---|---|---|
@@ -42,10 +42,13 @@ a weight change is a predictable change. `saeStream` multiplies the stream weigh
 | Gathering | 0.25 | 0.10 | 10–40 | capital: the bone at 1.08–1.14 × the skull ellipsoid, never the face cap (+Z); Mediant: 70% at the test towers; elsewhere: a plaza beside a bridge | a loitering knot, spread = 12 m × √n (≤110 m at the capital), small personal wander | ~25 m |
 | Home traffic | 0.12 | 0.14 | 6–20 | one LANE per group from 0.12 to 1.32 sun radii (outward-facing at the capital) | in and out of the core on a cosine (dwell at both ends), 50–110 s per round trip, ±18 m lateral slots | 30–90 m |
 | Play | 0.06 | 0.06 | 3–8 | a lissajous loop at 1.2–2.0 sun radii | a chase line, each member 0.5–1.1 s behind the last | 30–60 m |
-| Formation (v63.6) | 0.12 | 0.13 | 14–40 | a shape whose center orbits a sun at 1.4–2.3 radii (capital: guarded by the shape's radius) | one of six shapes rolled per group — hollow sphere (Fibonacci), Bucky ball / dodecahedron / icosahedron by headcount (vertices, then the edges traced), cube with a pattern per face (ring / grid / diamond), a five-pointed star in two perpendicular planes, a hexagonal prism, the lazy cloud (jittered cells in a ball, slow personal drift); the shape turns in place (140–320 s, either way), breathes ±5%, partners (k, k^1) trade seats on a 34–70 s clock, morph on ONE clock (the chorus), tidal like a ring | ~25 m along an edge (sim bars 8–95 m nearest seat) |
+| Formation (v63.6) | 0.28 × saeForm | 0.30 × saeForm | 14–40 | a shape whose center orbits a sun at 1.4–2.3 radii (capital: guarded by the shape's radius) | one of six shapes rolled per group — hollow sphere (Fibonacci), Bucky ball / dodecahedron / icosahedron by headcount (vertices, then the edges traced), cube with a pattern per face (ring / grid / diamond), a five-pointed star in two perpendicular planes, a hexagonal prism, the lazy cloud (jittered cells in a ball, slow personal drift); the shape turns in place (140–320 s, either way), breathes ±5%, partners (k, k^1) trade seats on a 34–70 s clock, morph on ONE clock (the chorus), tidal like a ring | ~25 m along an edge (sim bars 8–95 m nearest seat) |
 
-(The other weights moved to make room: capital 0.20/0.20/0.11/0.21/0.10/0.06/0.12, satellites
-0.24/0.26/0.10/0.09/0.12/0.06/0.13. Mediant's first gathering is always at the towers.)
+(The other weights moved to make room: capital 0.20/0.20/0.11/0.21/0.10/0.06/0.28, satellites
+0.24/0.26/0.10/0.09/0.12/0.06/0.30 — the formation weight was 0.12/0.13 until v64.5, when James
+flew five minutes and saw rings everywhere and one formation; now it is about the rings' share,
+times the formations dial, and the deal normalizes so the others shrink in proportion.
+Mediant's first gathering is always at the towers.)
 
 Streams at the capital only use bridges whose sagged line clears Korrudan.
 

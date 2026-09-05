@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Material Lab</title>
+<style>
+  html, body { margin: 0; background: #06070c; color: #cfd6e6; font: 16px/1.45 system-ui, sans-serif; }
+  #head { padding: 22px 28px 14px; max-width: 1400px; }
+  #head h1 { margin: 0 0 4px; font: 600 28px/1.2 system-ui, sans-serif; color: #ffe9d6; }
+  #head p { margin: 0 0 6px; color: #b4bccf; max-width: 80ch; }
+  #head .keys { color: #8b94a8; font-size: 15px; }
+  #head .keys b { color: #cfd6e6; font-weight: 600; }
+  #ctl { display: flex; gap: 22px; align-items: center; margin: 8px 0 4px; font-size: 15px; color: #b4bccf; }
+  #ctl input[type=range] { width: 220px; }
+  #cols { display: grid; align-items: end; padding: 14px 0 6px; border-top: 1px solid rgba(140,160,210,.14); }
+  #cols div { padding: 0 14px; font: 600 18px/1.2 system-ui, sans-serif; color: #ffe9d6; text-align: center; }
+  #cols div.gut { color: #8b94a8; font-weight: 400; font-size: 15px; text-align: left; padding-left: 28px; }
+  #wrap { position: relative; }
+  #c { display: block; }
+  #labels { position: absolute; left: 0; top: 0; pointer-events: none; }
+  #labels .row { position: absolute; display: flex; gap: 12px; align-items: baseline; }
+  #labels .n { color: #8b94a8; font: 600 15px/1.2 system-ui, sans-serif; min-width: 1.6em; text-align: right; }
+  #labels .t { color: #e6ebf5; font: 600 20px/1.2 system-ui, sans-serif; }
+  #labels .s { display: block; color: #8b94a8; font: 400 15px/1.3 system-ui, sans-serif; margin-top: 3px; }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 28px; background: rgba(4,5,9,.86); color: #b4bccf; font-size: 15px; border-top: 1px solid rgba(140,160,210,.14); }
+</style>
+</head>
+<body>
+<header id="head">
+  <h1>Material Lab — the Cadence metal</h1>
+  <p>Where the material pass gets judged before it flies. Each row is one real piece from the towns, drawn by the world's own shaders with the world's own tiles, at three distances. The wear slider is the world's "metal wear" dial in the air group.</p>
+  <div id="ctl">
+    <label>metal wear <input id="wear" type="range" min="0" max="1" step="0.05" value="0.8"> <span id="wearV">0.80</span></label>
+    <label><input id="turn" type="checkbox" checked> turning</label>
+  </div>
+  <p class="keys"><b>Click a cell</b> to see that piece alone, filling the window, turning &nbsp;·&nbsp; <b>click again</b> to come back &nbsp;·&nbsp; <b>C</b> saves the sheet to tmp/snapshots</p>
+  <div id="cols"></div>
+</header>
+<div id="wrap"><canvas id="c"></canvas><div id="labels"></div></div>
+<div id="bar">loading the world's shaders…</div>
+<script>
+// material-lab (v66): the Cadence metal up close. Pulls COMM_VS / COMM_FS_SOLID /
+// COMM_FS_BRIDGE (+ the shared snippets) out of world.js, builds five real
+// pieces at real size with the same vertex layout as makeCommVao (15 floats:
+// pos, normal, uv, aux4, center3), loads the four material tiles, and draws
+// each piece from 120 m, 500 m and 2,500 m. Click a cell to solo it.
+"use strict";
+const TAU = Math.PI * 2;
+(async () => {
+  const bar = document.getElementById("bar");
+  const BASE = "../../worlds/orb-dimension/";
+  const src = await fetch(BASE + "world.js?t=" + Date.now()).then((r) => r.text());
+  const grab = (tag) => {
+    const i = src.indexOf(tag + " = `");
+    const j = src.indexOf("`;", i);
+    return src.slice(src.indexOf("`", i) + 1, j);
+  };
+  const HUE = grab("COMM_HUE"), AER = grab("COMM_AER"), MAT = grab("COMM_MAT");
+  const sub = (t) => grab(t).replace("${COMM_HUE}", HUE).replace("${COMM_AER}", AER).replace("${COMM_MAT}", MAT);
+  const VS = grab("COMM_VS"), FS_SOLID = sub("COMM_FS_SOLID"), FS_BRIDGE = sub("COMM_FS_BRIDGE");
+
+  const canvas = document.getElementById("c");
+  const COLS = 3, CW = 720, CH = 320, GUT = 420;
+  const PIECES = [
+    { name: "Strut", sub: "a 24 m webbing strut, 600 m long, with its data pulse", kind: "strut" },
+    { name: "Slab", sub: "a core slab, 420 × 90 × 300 m", kind: "slab" },
+    { name: "Hoop", sub: "a gear-band of struts around a core, 700 m across", kind: "hoop" },
+    { name: "Crust face", sub: "a Korrudan crust wall with its window grid (physical pitch)", kind: "crust" },
+    { name: "Conduit", sub: "a light bridge in its sheath — 60 m wide, 900 m long", kind: "bridge" },
+  ];
+  const ROWS = PIECES.length;
+  const DIST = [120, 500, 2500];
+  canvas.width = GUT + COLS * CW;
+  canvas.height = ROWS * CH;
+  canvas.style.width = (canvas.width / devicePixelRatio) + "px";
+  canvas.style.height = (canvas.height / devicePixelRatio) + "px";
+  const gl = canvas.getContext("webgl2", { preserveDrawingBuffer: true, antialias: true });
+  const par = gl.getExtension("KHR_parallel_shader_compile");
+  const link = async (vs, fs) => {
+    const p = gl.createProgram();
+    const a = gl.createShader(gl.VERTEX_SHADER), b = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(a, vs); gl.shaderSource(b, fs);
+    gl.compileShader(a); gl.compileShader(b);
+    gl.attachShader(p, a); gl.attachShader(p, b);
+    gl.linkProgram(p);
+    if (par) while (!gl.getProgramParameter(p, par.COMPLETION_STATUS_KHR)) await new Promise((r) => setTimeout(r, 50));
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error([gl.getProgramInfoLog(p), gl.getShaderInfoLog(a), gl.getShaderInfoLog(b)].join(" | "));
+    return p;
+  };
+  bar.textContent = "compiling the Cadence shaders…";
+  const US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uCeram", "uSheath", "uWear"];
+  const mk = async (fs) => { const p = await link(VS, fs); const U = {}; for (const n of US) U[n] = gl.getUniformLocation(p, n); return { p, U }; };
+  const solid = await mk(FS_SOLID), bridge = await mk(FS_BRIDGE);
+
+  // ---- the tiles on units 12–15, exactly as the world binds them
+  const loadImg = (p) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = p; });
+  const TILES = [["uHull", "hull-scarred", 12], ["uIron", "gantry-iron", 13], ["uCeram", "ceramic-aged", 14], ["uSheath", "conduit-sheath", 15]];
+  for (const [uni, name, unit] of TILES) {
+    const tex = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    const im = await loadImg(BASE + "assets/tiles/" + name + ".jpg");
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB8, gl.RGB, gl.UNSIGNED_BYTE, im);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    for (const pr of [solid, bridge]) { gl.useProgram(pr.p); if (pr.U[uni]) gl.uniform1i(pr.U[uni], unit); }
+  }
+  gl.activeTexture(gl.TEXTURE0);
+  const fams = new Float32Array([200, 275, 340, 45, 120]);
+  for (const pr of [solid, bridge]) {
+    gl.useProgram(pr.p);
+    gl.uniform1fv(pr.U["uFams[0]"], fams);
+    gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]);
+    gl.uniform1f(pr.U.uFog, 0.0);
+    gl.uniform1f(pr.U.uAer, 1.0 / 120000);
+    gl.uniform1f(pr.U.uMelt, 1.0);
+    gl.uniform1f(pr.U.uTempo, 1.0);
+    gl.uniform1f(pr.U.uFade, 1.0);
+    gl.uniform1f(pr.U.uGlow, 1.0);
+  }
+
+  // ---- geometry: the same 15-float record the world's makeCommVao expects
+  const norm3 = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+  const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const mesh = () => ({ v: [], i: [] });
+  const vert = (m, p, n, u, v, aux, ec) => m.v.push(p[0], p[1], p[2], n[0], n[1], n[2], u, v, aux[0], aux[1], aux[2], aux[3], ec[0], ec[1], ec[2]);
+  const quad = (m, c, eu, ev, aux, ec) => {
+    const b = m.v.length / 15;
+    const n = norm3(cross3(eu, ev));
+    vert(m, [c[0] - eu[0] - ev[0], c[1] - eu[1] - ev[1], c[2] - eu[2] - ev[2]], n, 0, 0, aux, ec);
+    vert(m, [c[0] + eu[0] - ev[0], c[1] + eu[1] - ev[1], c[2] + eu[2] - ev[2]], n, 1, 0, aux, ec);
+    vert(m, [c[0] + eu[0] + ev[0], c[1] + eu[1] + ev[1], c[2] + eu[2] + ev[2]], n, 1, 1, aux, ec);
+    vert(m, [c[0] - eu[0] + ev[0], c[1] - eu[1] + ev[1], c[2] - eu[2] + ev[2]], n, 0, 1, aux, ec);
+    m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  };
+  const frame3 = (d) => { const a = norm3(d); const ref = Math.abs(a[1]) > 0.94 ? [1, 0, 0] : [0, 1, 0]; const b = norm3(cross3(ref, a)); return [a, b, cross3(a, b)]; };
+  const strut = (m, p, q, w, aux) => {
+    const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+    const [, b, c2] = frame3(d);
+    const ec = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2, (p[2] + q[2]) / 2];
+    for (const [e1, e2] of [[b, c2], [c2, b]]) for (const sgn of [-1, 1]) {
+      const off = [e1[0] * w * sgn, e1[1] * w * sgn, e1[2] * w * sgn];
+      const bI = m.v.length / 15;
+      const n = sgn < 0 ? [-e1[0], -e1[1], -e1[2]] : e1;
+      vert(m, [p[0] + off[0] - e2[0] * w, p[1] + off[1] - e2[1] * w, p[2] + off[2] - e2[2] * w], n, 0, 0, aux, ec);
+      vert(m, [q[0] + off[0] - e2[0] * w, q[1] + off[1] - e2[1] * w, q[2] + off[2] - e2[2] * w], n, 1, 0, aux, ec);
+      vert(m, [q[0] + off[0] + e2[0] * w, q[1] + off[1] + e2[1] * w, q[2] + off[2] + e2[2] * w], n, 1, 1, aux, ec);
+      vert(m, [p[0] + off[0] + e2[0] * w, p[1] + off[1] + e2[1] * w, p[2] + off[2] + e2[2] * w], n, 0, 1, aux, ec);
+      m.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+    }
+  };
+  const box = (m, c, h, aux) => {
+    const ax = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let f = 0; f < 3; f++) {
+      const e = ax[f], e1 = ax[(f + 1) % 3], e2 = ax[(f + 2) % 3];
+      const he = h[f], s1 = h[(f + 1) % 3], s2 = h[(f + 2) % 3];
+      for (const sgn of [-1, 1]) quad(m, [c[0] + e[0] * he * sgn, c[1] + e[1] * he * sgn, c[2] + e[2] * he * sgn], [e1[0] * s1, e1[1] * s1, e1[2] * s1], [e2[0] * s2 * sgn, e2[1] * s2 * sgn, e2[2] * s2 * sgn], aux, c);
+    }
+  };
+  const build = (kind) => {
+    const m = mesh();
+    let prog = solid, radius = 300;
+    if (kind === "strut") { strut(m, [-300, 0, 0], [300, 0, 0], 12, [1, 1.3, 0, 1]); radius = 320; }
+    else if (kind === "slab") { box(m, [0, 0, 0], [210, 45, 150], [0, 2.1, 0, 2]); radius = 280; }
+    else if (kind === "hoop") {
+      const segs = 28, rad = 350; let prev = null;
+      for (let s = 0; s <= segs; s++) { const th = s / segs * TAU; const p = [Math.cos(th) * rad, Math.sin(th) * 0.35 * rad * 0.2, Math.sin(th) * rad]; if (prev) strut(m, prev, p, 11, [1, s * 0.4, 0, 3]); prev = p; }
+      radius = 380;
+    } else if (kind === "crust") {
+      // a crust wall: aux.x = 2 (windows), aCenter = face half-sizes + pattern 0 (the classic grid)
+      const b = m.v.length / 15, hw = 160, hh = 90;
+      const aux = [2, 0.7, 1, 0];
+      const ec = [hw, hh, 0];
+      vert(m, [-hw, -hh, 0], [0, 0, 1], 0, 0, aux, ec); vert(m, [hw, -hh, 0], [0, 0, 1], 1, 0, aux, ec);
+      vert(m, [hw, hh, 0], [0, 0, 1], 1, 1, aux, ec); vert(m, [-hw, hh, 0], [0, 0, 1], 0, 1, aux, ec);
+      m.i.push(b, b + 1, b + 2, b, b + 2, b + 3);
+      // and a plain slab face beside it for the metal read
+      box(m, [0, 0, -60], [hw + 20, hh + 20, 40], [0, 0.4, 0, 2]);
+      radius = 260;
+    } else if (kind === "bridge") {
+      prog = bridge;
+      const p = [-450, 0, 0], q = [450, 0, 0], w = 30, d = [1, 0, 0];
+      const [, e1, e2] = frame3(d);
+      const mid = [0, 0, 0];
+      const aux = [1, 3, 0.4, 0];
+      for (const e of [e1, e2]) {
+        const n = norm3(cross3(d, e));
+        const bI = m.v.length / 15;
+        vert(m, [p[0] - e[0] * w, p[1] - e[1] * w, p[2] - e[2] * w], n, 0, 0, aux, mid);
+        vert(m, [q[0] - e[0] * w, q[1] - e[1] * w, q[2] - e[2] * w], n, 1, 0, aux, mid);
+        vert(m, [q[0] + e[0] * w, q[1] + e[1] * w, q[2] + e[2] * w], n, 1, 1, aux, mid);
+        vert(m, [p[0] + e[0] * w, p[1] + e[1] * w, p[2] + e[2] * w], n, 0, 1, aux, mid);
+        m.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
+      }
+      radius = 40; // the camera distances are measured from the tube itself
+    }
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.v), gl.STATIC_DRAW);
+    const attr = (loc, n, off) => { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 60, off); };
+    attr(0, 3, 0); attr(1, 3, 12); attr(2, 2, 24); attr(3, 4, 32); attr(4, 3, 48);
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(m.i), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return { vao, count: m.i.length, prog, radius, kind };
+  };
+  const PIECEGL = PIECES.map((p) => build(p.kind));
+
+  // ---- camera math (ship space: the camera is the origin, the piece is offset by -cam)
+  const persp = (aspect, fov = 0.9, n = 1, f = 200000) => { const t = 1 / Math.tan(fov / 2); return new Float32Array([t / aspect, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]); };
+  const view = (r, u, f) => new Float32Array([r[0], u[0], -f[0], 0, r[1], u[1], -f[1], 0, r[2], u[2], -f[2], 0, 0, 0, 0, 1]);
+  const mul = (a, b) => { const o = new Float32Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; o[i * 4 + j] = s; } return o; };
+  function drawCell(pg, angle, dist, t, vx, vy, vw, vh) {
+    if (pg.kind === "crust") angle = 0.35 * Math.sin(angle); // the wall keeps facing us, swaying
+    const d = dist + pg.radius * 0.9;
+    const cam = [Math.sin(angle) * d, d * 0.28, Math.cos(angle) * d];
+    const f = norm3([-cam[0], -cam[1], -cam[2]]);
+    const r = norm3(cross3(f, [0, 1, 0]));
+    const u = cross3(r, f);
+    const vp = mul(persp(vw / vh), view(r, u, f));
+    gl.viewport(vx, vy, vw, vh);
+    gl.scissor(vx, vy, vw, vh);
+    gl.enable(gl.SCISSOR_TEST);
+    gl.clearColor(0.012, 0.014, 0.03, 1);
+    gl.depthMask(true);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+    const pr = pg.prog;
+    gl.useProgram(pr.p);
+    gl.uniformMatrix4fv(pr.U.uVP, false, vp);
+    gl.uniform3fv(pr.U.uOrigin, [-cam[0], -cam[1], -cam[2]]);
+    gl.uniform1f(pr.U.uTime, t);
+    gl.uniform1f(pr.U.uWear, WEAR);
+    if (pg.kind === "bridge") { gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); }
+    else { gl.disable(gl.BLEND); gl.depthMask(true); }
+    gl.bindVertexArray(pg.vao);
+    gl.drawElements(gl.TRIANGLES, pg.count, gl.UNSIGNED_INT, 0);
+    gl.bindVertexArray(null);
+    gl.disable(gl.SCISSOR_TEST);
+  }
+  let WEAR = 0.8, TURN = true, solo = -1, sheetScroll = 0;
+  document.getElementById("wear").oninput = (e) => { WEAR = Number(e.target.value); document.getElementById("wearV").textContent = WEAR.toFixed(2); };
+  document.getElementById("turn").onchange = (e) => { TURN = e.target.checked; };
+  {
+    const k = 1 / devicePixelRatio;
+    const cols = document.getElementById("cols");
+    cols.style.gridTemplateColumns = GUT * k + "px repeat(3, " + CW * k + "px)";
+    [["gut", "distance →"], ["", "120 m"], ["", "500 m"], ["", "2,500 m"]].forEach(([cls, txt]) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = txt; cols.appendChild(d); });
+    const L = document.getElementById("labels");
+    L.style.width = canvas.style.width;
+    PIECES.forEach((row, ri) => {
+      const d = document.createElement("div");
+      d.className = "row";
+      d.style.left = 22 * k + "px";
+      d.style.top = (ri * CH + CH / 2 - 22) * k + "px";
+      d.style.width = (GUT - 44) * k + "px";
+      const n = document.createElement("span"); n.className = "n"; n.textContent = String(ri + 1);
+      const t = document.createElement("span"); t.className = "t"; t.textContent = row.name;
+      const sb = document.createElement("span"); sb.className = "s"; sb.textContent = row.sub;
+      t.appendChild(sb); d.append(n, t); L.appendChild(d);
+    });
+  }
+  let ang = 0.6, last = 0;
+  function draw(now, full) {
+    const t = now * 0.001;
+    if (TURN) ang += (now - last) * 0.00012;
+    last = now;
+    if (solo >= 0) {
+      const dpr = devicePixelRatio, rc = canvas.getBoundingClientRect();
+      const vw = Math.min(canvas.width, Math.floor(innerWidth * dpr)), vh = Math.min(canvas.height, Math.max(200, Math.floor((innerHeight - rc.top) * dpr)));
+      gl.disable(gl.SCISSOR_TEST); gl.clearColor(0.012, 0.014, 0.03, 1); gl.depthMask(true); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      drawCell(PIECEGL[solo], ang, soloDist, t, 0, canvas.height - vh, vw, vh);
+      return;
+    }
+    const rc = canvas.getBoundingClientRect(), k = devicePixelRatio;
+    const top = full ? 0 : Math.max(0, Math.floor((-rc.top) * k / CH)), bot = full ? ROWS : Math.min(ROWS, Math.ceil((innerHeight - rc.top) * k / CH) + 1);
+    for (let ri = top; ri < bot; ri++) for (let ci = 0; ci < COLS; ci++) drawCell(PIECEGL[ri], ang + ci * 0.7, DIST[ci], t, GUT + ci * CW, (ROWS - 1 - ri) * CH, CW, CH);
+  }
+  let soloDist = 120, barSheet = "";
+  const cellAt = (e) => { const rc = canvas.getBoundingClientRect(); const x = (e.clientX - rc.left) * devicePixelRatio, y = (e.clientY - rc.top) * devicePixelRatio; const ci = Math.floor((x - GUT) / CW), ri = Math.floor(y / CH); return (x >= GUT && ci >= 0 && ci < COLS && ri >= 0 && ri < ROWS) ? { ci, ri } : null; };
+  canvas.addEventListener("click", (e) => {
+    if (solo >= 0) { solo = -1; canvas.style.cursor = ""; bar.textContent = barSheet; document.getElementById("labels").hidden = false; document.getElementById("cols").style.visibility = ""; scrollTo(0, sheetScroll); return; }
+    const c = cellAt(e);
+    if (c) { solo = c.ri; soloDist = DIST[c.ci]; sheetScroll = scrollY; scrollTo(0, 0); document.getElementById("labels").hidden = true; document.getElementById("cols").style.visibility = "hidden"; barSheet = bar.textContent; bar.textContent = "Row " + (c.ri + 1) + " — " + PIECES[c.ri].name + " alone at " + DIST[c.ci] + " m, turning   ·   click anywhere to come back"; }
+  });
+  canvas.addEventListener("mousemove", (e) => { if (solo < 0) canvas.style.cursor = cellAt(e) ? "pointer" : ""; });
+  const post = async (name) => fetch("/api/dev-snapshot", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, dataUrl: canvas.toDataURL("image/png") }) }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+  async function capture() {
+    draw(31700, true);
+    const r = await post("material-lab-sheet");
+    bar.textContent = "Sheet saved: " + ((r && r.saved) ? r.saved : "not saved (" + ((r && r.error) || "server not reached") + ")");
+  }
+  let lastSheet = 0;
+  const loop = (now) => { if (solo >= 0 || now - lastSheet > 50) { draw(now, false); if (solo < 0) lastSheet = now; } requestAnimationFrame(loop); };
+  loop(0);
+  addEventListener("keydown", (e) => { if (e.code === "KeyC") capture(); });
+  globalThis.LAB = { capture, PIECES };
+  setTimeout(capture, 1200);
+})().catch((e) => { document.getElementById("bar").textContent = "material-lab error: " + e.message; console.error(e); });
+</script>
+</body>
+</html>
