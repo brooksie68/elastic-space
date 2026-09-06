@@ -3,6 +3,14 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v70.3 — 2026-09-06 (Claude, James at Dominant: "almost all super thick chains of packets... what the hell happened?")
+
+The v70.1 two-pixel floor did it: from the pod a pixel is several metres, so beads 8–25 m
+apart grew until they touched and every group / Morse ladder read as a solid chain in both
+directions. Now beads THIN with distance — every k-th bead kept so neighbours stay ≥ 6 px
+apart on screen (dots with gaps at any range, never a line). Second stream back to 25% of
+members; the quick tier capped at 0.45. Shares unchanged (40% regular). Cache tags ?v=703.
+
 ## v70.2 — 2026-09-06 (Claude, James: "station far blur doesn't seem to be doing anything")
 
 Right — the station's light map is six long blue lines and a few windows; there was nothing for

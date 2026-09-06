@@ -6377,7 +6377,7 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
   float total = 0.0;
   for (int st = 0; st < 2; st++) {
     vec3 sd = seedP * (0.019 + float(st) * 0.007) + float(st) * 3.3;
-    if (st == 1 && th3(sd + 0.5) > 0.45) break;
+    if (st == 1 && th3(sd + 0.5) > 0.25) break;
     float per = mix(40.0, 90.0, th3(sd + 2.2));
     float epoch = floor(t / per + th3(sd + 7.0));
     vec3 es = sd + epoch * 1.37;
@@ -6397,7 +6397,7 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
       sp = Lm; N = 1e6; G = 0.0; spd = mix(0.08, 0.35, th3(es + 3.7)); hw = max(3.0, Lm * 0.008);
     } else if (r < 0.95) { // quick and few: 2–3 per length, fast
       float k = floor(2.0 + th3(es + 1.9) * 2.0);
-      sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.35, 0.6, th3(es + 3.7)); hw = max(3.0, sp * 0.02);
+      sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.3, 0.45, th3(es + 3.7)); hw = max(3.0, sp * 0.02);
     } else {               // the rare dense chain — slow, and dimmer
       sp = mix(6.0, 12.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.04, 0.1, th3(es + 3.7)); hw = 1.6; gain = 0.45;
     }
@@ -6422,6 +6422,11 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     float bead = (smoothstep(hwS + 1.6, hwS * 0.5, dd) + exp(-dd / (hwS * 2.5)) * 0.15) * max(0.6, hw / hwS);
     float keep = step(idx, N - 0.5) * step(0.0, pos);
     keep *= mix(1.0, step(0.42, th3(vec3(idx, es.x, es.y))), morse);
+    // v70.3 (James: the 2 px floor turned every group into "super thick chains"):
+    // beads thin out with distance so neighbours stay ≥ 6 px apart on screen —
+    // dots with gaps at any range, never a solid line
+    float thin = max(1.0, ceil(6.0 * mpp / sp));
+    keep *= step(mod(idx, thin), 0.5);
     total += bead * keep * gain;
   }
   return total;
