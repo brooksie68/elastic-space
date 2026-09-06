@@ -275,5 +275,30 @@
     });
   }
 
-  globalThis.JabberwockyDraw = { S, projSprite, scarSprite, keySprite, PROJ, SCAR, cache, primitives: { blob, box, poly, line, text, star, fire, cloud, splat } };
+  // the pie: a crusted meat pie with a wobbling red filling, a couple of flies, and a glow so you spot it down a hall
+  function healSprite(t) {
+    const frame = Math.floor(t * 8) % 16;
+    return cached(`heal|${frame}`, P, P, (ctx) => {
+      const ph = frame / 16 * TAU;
+      ctx.shadowColor = '#ff4a3a'; ctx.shadowBlur = 10;
+      // plate
+      blob(ctx, 32, 46, 27, 8, '#8a8f9a', 2.5);
+      // crust
+      blob(ctx, 32, 36, 22, 12, '#c98a3e', 3);
+      blob(ctx, 32, 33, 20, 9, '#e0a552', 0);
+      // the filling, breathing through the vent
+      const w = 6 + Math.sin(ph) * 1.5;
+      blob(ctx, 32, 33, w, w * 0.6, '#c81a1a', 2.5);
+      blob(ctx, 32, 33, w * 0.5, w * 0.3, '#ff5a3a', 0);
+      // crimped edge
+      ctx.shadowBlur = 0;
+      for (let i = 0; i < 9; i++) { const a = Math.PI + i / 8 * Math.PI; blob(ctx, 32 + Math.cos(a) * 21, 38 + Math.sin(a) * 9, 3, 3, '#a86a2a', 0); }
+      // a steam curl and two flies
+      ctx.globalAlpha = 0.5; line(ctx, 30, 22, 28, 17 - Math.sin(ph) * 2, '#ffffff', 2); line(ctx, 28, 17 - Math.sin(ph) * 2, 32, 13, '#ffffff', 2); ctx.globalAlpha = 1;
+      blob(ctx, 20 + Math.sin(ph * 2) * 4, 18 + Math.cos(ph * 3) * 3, 1.6, 1.6, '#120a12', 0);
+      blob(ctx, 44 + Math.cos(ph * 2) * 4, 20 + Math.sin(ph * 2.5) * 3, 1.6, 1.6, '#120a12', 0);
+    });
+  }
+
+  globalThis.JabberwockyDraw = { S, projSprite, scarSprite, keySprite, healSprite, PROJ, SCAR, cache, primitives: { blob, box, poly, line, text, star, fire, cloud, splat } };
 })();

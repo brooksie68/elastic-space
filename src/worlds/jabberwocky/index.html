@@ -53,7 +53,7 @@
     #hp-fill { height: 100%; width: 100%; background: var(--green); border-radius: 5px; box-shadow: 0 0 10px rgba(88, 255, 122, 0.5); transition: width 160ms ease, background 300ms ease; }
     #hp-fill.low { background: var(--red); box-shadow: 0 0 12px rgba(255, 32, 64, 0.6); animation: throb 600ms ease-in-out infinite alternate; }
     @keyframes throb { from { opacity: 1; } to { opacity: 0.5; } }
-    #minimap { position: fixed; right: 1rem; bottom: 1rem; width: 150px; height: 150px; border-radius: 12px; opacity: 0.85; }
+    #minimap { position: fixed; right: 1rem; bottom: 1rem; width: 220px; height: 220px; border-radius: 12px; opacity: 0.85; }
     #minimap.off { display: none; }
     #cross { position: fixed; left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
     #cross::before, #cross::after { content: ''; position: absolute; background: var(--ink); box-shadow: 0 0 3px #000; }
@@ -83,9 +83,9 @@
     #fade.on { opacity: 1; }
 
     /* ---- configuration ---- */
-    #tuner-toggle { position: fixed; left: 1rem; top: 5.2rem; z-index: 12; padding: 0.4rem 0.75rem; border: 1px solid var(--glass-edge); border-radius: 10px; background: var(--glass); color: var(--ink-dim); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(10px); }
+    #tuner-toggle { position: fixed; left: 1rem; top: 5.2rem; z-index: 25; padding: 0.4rem 0.75rem; border: 1px solid var(--glass-edge); border-radius: 10px; background: var(--glass); color: var(--ink-dim); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(10px); }
     #tuner-toggle:hover { color: var(--ink); }
-    #tuner { position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 105%); width: min(1100px, 96vw); max-height: 78vh; overflow: auto; z-index: 15; background: rgba(12, 7, 14, 0.94); border: 1px solid var(--glass-edge); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.7); transition: transform 240ms ease; font-size: calc(var(--ui-base) * var(--ui-scale)); padding: 1.1em 1.4em 1.4em; }
+    #tuner { position: fixed; left: 50%; bottom: 0; transform: translate(-50%, 105%); width: min(1100px, 96vw); max-height: 78vh; overflow: auto; z-index: 26; background: rgba(12, 7, 14, 0.94); border: 1px solid var(--glass-edge); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.7); transition: transform 240ms ease; font-size: calc(var(--ui-base) * var(--ui-scale)); padding: 1.1em 1.4em 1.4em; }
     #tuner.open { transform: translate(-50%, 0); }
     #tuner-head { display: flex; align-items: center; gap: 1em; margin-bottom: 0.8em; }
     #tabs { display: flex; gap: 0.4em; }
@@ -131,7 +131,7 @@
       <div class="lbl"><span>YOU</span><span id="hp-num">100</span></div>
       <div id="hp-track"><div id="hp-fill"></div></div>
     </div>
-    <canvas id="minimap" width="300" height="300"></canvas>
+    <canvas id="minimap" width="440" height="440"></canvas>
     <div id="cross"></div>
     <div id="hint"></div>
   </div>
@@ -202,12 +202,12 @@
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
   <script src="gags.js?v=2"></script>
-  <script src="core.js?v=2"></script>
-  <script src="draw.js?v=2"></script>
-  <script src="sound.js?v=2"></script>
+  <script src="core.js?v=3"></script>
+  <script src="draw.js?v=3"></script>
+  <script src="sound.js?v=4"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="world.js?v=2"></script>
+  <script type="module" src="world.js?v=9"></script>
 </body>
 </html>

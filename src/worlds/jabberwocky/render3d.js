@@ -37,6 +37,45 @@ const CREATURES = {
   jabberwock: { clips: [], yaw: 0, unscaled: true, procedural: true },
 };
 const GIBS = ['intestines', 'arm', 'leg', 'skull', 'ribs'];
+// PROPS: real objects instead of billboard stickers. size = metres on the long side; motion = how it moves in
+// flight; stays = it rests where it lands and stands in for the floor decal. Files: assets/models/props/<name>.glb
+// (Meshy, 2026-09-06); prim = built from primitives at load, no file needed.
+const PROPS = {
+  anvil:     { size: 0.9,  motion: 'tumble', stays: true },
+  piano:     { size: 2.2,  motion: 'tumble', stays: true },
+  train:     { size: 3.0,  motion: 'drive',  stays: false },
+  bus:       { size: 3.2,  motion: 'drive',  stays: false },
+  cow:       { size: 1.8,  motion: 'tumble', stays: true },
+  vending:   { size: 1.7,  motion: 'tumble', stays: true },
+  sink:      { size: 1.2,  motion: 'tumble', stays: true },
+  sneaker:   { size: 1.8,  motion: 'tumble', stays: true },
+  chainsaw:  { size: 0.9,  motion: 'spin',   stays: true },
+  rocket:    { size: 1.0,  motion: 'fly',    stays: false },
+  cart:      { size: 1.1,  motion: 'drive',  stays: true },
+  ham:       { size: 0.5,  motion: 'roll',   stays: true },
+  jackbox:   { size: 0.8,  motion: 'tumble', stays: true },
+  mousetrap: { size: 1.1,  motion: 'none',   stays: true },
+  doll:      { size: 0.9,  motion: 'walk',   stays: true },
+  grandma:   { size: 1.5,  motion: 'walk',   stays: false },
+  sumo:      { size: 1.8,  motion: 'walk',   stays: false },
+  eagle:     { size: 1.6,  motion: 'flyhigh', stays: false },
+  goose:     { size: 0.9,  motion: 'walk',   stays: false },
+  skunk:     { size: 0.7,  motion: 'walk',   stays: false },
+  cat:       { size: 0.6,  motion: 'walk',   stays: false },
+  karaoke:   { size: 1.1,  motion: 'none',   stays: true },
+  mirror:    { size: 1.4,  motion: 'tumble', stays: true },
+  boomerang: { size: 0.5,  motion: 'spin',   stays: false },
+  herring:   { size: 0.4,  motion: 'tumble', stays: true },
+  porcupine: { size: 0.6,  motion: 'tumble', stays: true },
+  cupcake:   { size: 0.35, motion: 'tumble', stays: false },
+  pie:       { size: 0.5,  motion: 'spin',   stays: false },
+  cannonball:{ size: 0.42, motion: 'roll',   stays: true, prim: 'ball', color: 0x2a2a30 },
+  bowling:   { size: 0.4,  motion: 'roll',   stays: true, prim: 'ball', color: 0x101a5a, holes: true },
+  baseball:  { size: 0.2,  motion: 'roll',   stays: true, prim: 'ball', color: 0xf4f0e8 },
+  knife:     { size: 0.55, motion: 'spin',   stays: false, prim: 'knife' },
+};
+const BOOM_GAGS = new Set(['rocket', 'wrongway', 'meteor', 'piledriver']);   // the only splashes that are explosions
+const SPLASH_COLOR = { pie: 0x6a3aa0, jello: 0x3ddc5a, gravy: 0x6b3a1a, lava: 0xff6a20, chowder: 0xf0e0c0, burrito: 0xd0a060, legos: 0xe03030, lovepotion: 0xff6ab0, monkeypaw: 0x3a2a2a, catbag: 0x8a7a6a, jack: 0xffd23a, porcupine: 0x8a6a4a, cow: 0xf0f0f0, yak: 0x6a4a2a, frogs: 0x3a9a2a, tent: 0xc8202a, sneaker: 0xf0f0f0, anvil: 0x505058, piano: 0x202020, vending: 0xd02020, sink: 0xf0f0f0 };
 const SMOTHER_COLOR = { jello: 0x3ddc5a, gravy: 0x6b3a1a, frogs: 0x3a9a2a, tent: 0xc8202a, glue: 0xf0eee6, yak: 0x6b4a2a };
 
 export function createRenderer(canvas) {
@@ -57,7 +96,7 @@ export function createRenderer(canvas) {
 
   // ---- assets -------------------------------------------------------------------------------------
   const textures = {};
-  const models = { creatures: {}, gibs: [], rifle: null, gauntlets: null };
+  const models = { creatures: {}, gibs: [], gibByName: {}, props: {}, rifle: null, gauntlets: null };
   let assetsReady = false, assetsFailed = 0;
   function tex(name) {
     if (textures[name]) return textures[name];
@@ -86,7 +125,12 @@ export function createRenderer(canvas) {
         tick();
       }));
     }
-    for (const gname of GIBS) { total++; jobs.push(loadGlb(MODEL_DIR + 'gibs/' + gname + '.glb').then((g) => { if (g) { prepModel(g.scene); models.gibs.push(g.scene); } tick(); })); }
+    for (const gname of GIBS) { total++; jobs.push(loadGlb(MODEL_DIR + 'gibs/' + gname + '.glb').then((g) => { if (g) { prepModel(g.scene); models.gibs.push(g.scene); models.gibByName[gname] = g.scene; } tick(); })); }
+    for (const name of Object.keys(PROPS)) {
+      const def = PROPS[name];
+      if (def.prim) { models.props[name] = primProp(name, def); continue; }
+      jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'props/' + name + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); models.props[name] = fitProp(g.scene, def.size); resolve(); }, undefined, () => resolve())));   // a missing prop is not a failure: the sprite stands in
+    }
     total += 2;
     jobs.push(loadGlb(MODEL_DIR + 'rifle.glb').then((g) => { if (g) { prepModel(g.scene); models.rifle = g.scene; } tick(); }));
     jobs.push(loadGlb(MODEL_DIR + 'gauntlets.glb').then((g) => { if (g) { prepModel(g.scene); models.gauntlets = g.scene; } tick(); }));
@@ -95,6 +139,40 @@ export function createRenderer(canvas) {
     buildViewmodel();
     return { failed: assetsFailed };
   }
+  // scale a prop to its size and centre it (centre at the origin; halfH says where the floor is)
+  function fitProp(scene, size) {
+    const box = new THREE.Box3().setFromObject(scene);
+    const dim = box.getSize(new THREE.Vector3());
+    const k = size / Math.max(0.01, dim.x, dim.y, dim.z);
+    const g = new THREE.Group();
+    scene.scale.setScalar(k);
+    const c = box.getCenter(new THREE.Vector3()).multiplyScalar(k);
+    scene.position.set(-c.x, -c.y, -c.z);
+    g.add(scene); g.userData.halfH = dim.y * k / 2; g.userData.halfW = Math.max(dim.x, dim.z) * k / 2;
+    return g;
+  }
+  // props live in torchlight, not the baked vertex light the walls get: give them a little of their own glow
+  function litProp(scene) {
+    scene.traverse((o) => { if (o.isMesh && o.material) { const m = o.material; if (m.emissiveMap) m.emissiveIntensity = 0.45; else if (m.emissive && m.map) { m.emissiveMap = m.map; m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.35; } else if (m.emissive) { m.emissive.copy(m.color); m.emissiveIntensity = 0.3; } } });
+  }
+  function primProp(name, def) {
+    const g = new THREE.Group();
+    if (def.prim === 'ball') {
+      const r = def.size / 2;
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), new THREE.MeshStandardMaterial({ color: def.color, metalness: name === 'cannonball' ? 0.7 : 0.1, roughness: name === 'baseball' ? 0.9 : 0.35 })));
+      if (def.holes) for (let i = 0; i < 3; i++) { const h = new THREE.Mesh(new THREE.SphereGeometry(r * 0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0x050508 })); const a = -0.5 + i * 0.5; h.position.set(Math.sin(a) * r * 0.55, r * 0.85, Math.cos(a) * r * 0.55 - r * 0.3); g.add(h); }
+      if (name === 'baseball') { const seam = new THREE.Mesh(new THREE.TorusGeometry(r * 0.98, r * 0.03, 4, 32), new THREE.MeshBasicMaterial({ color: 0xc02020 })); seam.rotation.x = 0.8; g.add(seam); }
+      g.userData.halfH = r; g.userData.halfW = r;
+    } else if (def.prim === 'knife') {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.62, 0.05, 0.008), new THREE.MeshStandardMaterial({ color: 0xd8dce8, metalness: 0.9, roughness: 0.25 }));
+      blade.position.x = def.size * 0.19; g.add(blade);
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.38, 0.065, 0.03), new THREE.MeshStandardMaterial({ color: 0x4a2a14, roughness: 0.8 }));
+      handle.position.x = -def.size * 0.31; g.add(handle);
+      g.userData.halfH = 0.04; g.userData.halfW = def.size / 2;
+    }
+    return g;
+  }
+  function propFor(sprite) { return PROPS[sprite] && models.props[sprite] ? models.props[sprite] : null; }
   function prepModel(root) {
     root.traverse((o) => {
       if (o.isMesh) {
@@ -274,6 +352,13 @@ export function createRenderer(canvas) {
       spr.scale.set(1.0, 1.0, 1); spr.position.set(level.key.x * S, 1.1, level.key.y * S);
       levelGroup.add(spr); keyView = spr; keyLight.intensity = 6;
     } else keyLight.intensity = 0;
+    // the pies
+    healViews = [];
+    for (const h of state.heals || []) {
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex('heal|0', D().healSprite(0)), transparent: true, depthWrite: false }));
+      spr.scale.set(0.7, 0.7, 1); spr.position.set(h.x * S, 0.55, h.y * S);
+      levelGroup.add(spr); healViews.push({ spr, h });
+    }
   }
   function placeTorches(level, isOpen) {
     const out = [];
@@ -298,12 +383,13 @@ export function createRenderer(canvas) {
   // ---- entities -----------------------------------------------------------------------------------
   const goonViews = new Map(), shotViews = new Map(), zoneViews = new Map(), scarViews = new Map(), beamViews = new Map();
   let keyView = null;
+  let healViews = [];
   const gibs = [], shards = [], extras = [];
   const entGroup = new THREE.Group(); scene.add(entGroup);
   function clearEntities() {
-    for (const v of goonViews.values()) entGroup.remove(v.root);
+    for (const v of goonViews.values()) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.block) entGroup.remove(v.block); }
     for (const v of shotViews.values()) entGroup.remove(v);
-    for (const v of zoneViews.values()) entGroup.remove(v.obj);
+    for (const v of zoneViews.values()) { entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); }
     for (const v of scarViews.values()) entGroup.remove(v);
     for (const v of beamViews.values()) entGroup.remove(v);
     for (const g of gibs) entGroup.remove(g.mesh);
@@ -332,6 +418,7 @@ export function createRenderer(canvas) {
       }
       view.procedural = !!CREATURES[g.type].procedural;
       root.add(model); view.model = model;
+      view.minY = new THREE.Box3().setFromObject(model).min.y;   // where the feet are in root space (Meshy rigs sit on their hips)
       view.mixer = new THREE.AnimationMixer(model);
       for (const k in asset.clips) view.actions[k] = view.mixer.clipAction(asset.clips[k]);
       if (!view.actions.idle && view.actions.walk) { /* no idle clip: hold the first frame of walk */ }
@@ -419,7 +506,12 @@ export function createRenderer(canvas) {
       root.position.set(g.x * S, 0, g.y * S);
       if (view.current) view.current.paused = true;
       if (o === 'expire') { if (!play(view, g.gagId === 'audit' ? 'hit' : 'die', { once: true, restart: true })) view.fallOver = true; }
-      if (o === 'gib') { hide(view); gibBurst(g.x * S, hgt * 0.5, g.y * S, g.isBoss ? 22 : 8, g.isBoss ? 2 : 1); wallSplats(state, g.x, g.y, 2); }
+      if (o === 'gib') { hide(view); gibBurst(g.x * S, hgt * 0.5, g.y * S, g.isBoss ? 30 : 20, g.isBoss ? 2 : 1); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 1.6); }
+      if (o === 'squash') { pool(g.x * S, g.y * S, 2.2); puff(g.x * S, 0.3, g.y * S, 0x8a7a6a, 1.6); blood.burst(g.x * S, 0.3, g.y * S, 24, 2.2); setTint(view, new THREE.Color(0xff6a7a), new THREE.Color(0x802030), 0.45); }
+      if (o === 'freeze') { const block = new THREE.Mesh(new THREE.BoxGeometry(0.9 * g.def.size + 0.3, hgt + 0.15, 0.7 * g.def.size + 0.3), new THREE.MeshLambertMaterial({ color: 0xbfe8ff, emissive: 0x3a7ab0, emissiveIntensity: 0.35, transparent: true, opacity: 0.42, depthWrite: false })); block.position.set(g.x * S, (hgt + 0.15) / 2, g.y * S); block.scale.set(0.01, 0.01, 0.01); entGroup.add(block); view.block = block; }
+      if (o === 'fling') { const from = state.player, ang = Math.atan2(g.y - from.y, g.x - from.x); const hit = CORE().castRay(state, g.x, g.y, ang, 5); const d = hit ? Math.max(0.3, hit.d - 0.35) : 5; view.flingTo = { x: (g.x + Math.cos(ang) * d) * S, z: (g.y + Math.sin(ang) * d) * S, d, ang, wall: !!hit && hit.d < 5, hx: hit ? hit.x : null, hy: hit ? hit.y : null }; view.flingFrom = { x: g.x * S, z: g.y * S }; }
+      if (o === 'vapor') { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = 1.4; ash(g.x * S, g.y * S, 1.2); }
+      if (o === 'chew') { view.bites = 0; }
       if (o === 'chew') { blood.burst(g.x * S, hgt * 0.5, g.y * S, 12, 2); }
       if (o === 'vapor') { flash(g.x * S, hgt * 0.5, g.y * S, 0xffffff, 1.6); }
       if (o === 'freeze') setTint(view, new THREE.Color(0x9fd8ff), new THREE.Color(0x2a6aa0), 0.0);
@@ -429,48 +521,137 @@ export function createRenderer(canvas) {
       if (o === 'drop') { /* sinks below */ }
     }
     switch (o) {
-      case 'squash': { const k = Math.min(1, u * 3); root.scale.set(1 + 0.7 * k, Math.max(0.06, 1 - 0.94 * k), 1 + 0.7 * k); break; }
+      case 'squash': { const k = Math.min(1, u * 3), sy = Math.max(0.16, 1 - 0.84 * k); root.scale.set(1 + 1.3 * k, sy, 1 + 1.3 * k); root.position.y = -(view.minY || 0) * (1 - sy); break; }
       case 'freeze': {
-        setTint(view, new THREE.Color(0x9fd8ff), new THREE.Color(0x3a7ab0), Math.min(1, u * 2));
-        if (u > 0.55 && !view.hidden) { hide(view); iceShards(g.x * S, hgt * 0.5, g.y * S, 14, hgt); }
+        setTint(view, new THREE.Color(0xdff4ff), new THREE.Color(0x3a7ab0), Math.min(1, u * 2));
+        if (view.block) { const k = Math.min(1, u / 0.5); view.block.scale.set(k, k, k); }
+        if (u > 0.55 && !view.hidden) { hide(view); if (view.block) { entGroup.remove(view.block); view.block = null; } iceShards(g.x * S, hgt * 0.5, g.y * S, 22, hgt); for (let i = 0; i < 6; i++) spawnGib(GIBS[i % GIBS.length], g.x * S, hgt * 0.5, g.y * S, 1, 0x9fd8ff, 1.5 + Math.random() * 2, 2 + Math.random() * 2); puff(g.x * S, hgt * 0.5, g.y * S, 0xbfe8ff, 1.2); }
         break;
       }
       case 'glue': { root.position.y = -Math.min(1.4, u * 1.6) * (hgt * 0.5); if (view.blob) view.blob.scale.set(1.1 + u * 0.3, 0.25 + u * 0.2, 1.1 + u * 0.3); break; }
       case 'gas': { setTint(view, new THREE.Color(0x60c840), new THREE.Color(0x2a6a10), Math.min(1, u * 1.5)); root.rotation.z = Math.sin(g.dieT * 9) * 0.18 * (1 - u); if (u > 0.7) root.rotation.x = -(u - 0.7) / 0.3 * Math.PI / 2; break; }
-      case 'fling': { root.position.set(g.x * S, Math.sin(Math.min(1, g.dieT / 1.2) * Math.PI) * 1.4, g.y * S); root.rotation.z = (g.spin || 0); if (g.state === 'dead' && !view.splatted) { view.splatted = true; root.scale.set(1.4, 0.12, 1.4); root.rotation.z = 0; root.position.y = 0; blood.burst(g.x * S, 0.4, g.y * S, 18, 1); } break; }
+      case 'fling': {
+        const F = view.flingTo, F0 = view.flingFrom;
+        if (F && F0) {
+          const k = Math.min(1, g.dieT / 0.55);                       // 0.55 s to the wall
+          const x = F0.x + (F.x - F0.x) * k, z = F0.z + (F.z - F0.z) * k;
+          const peak = 1.2 + Math.min(1.2, F.d * 0.3);
+          if (k < 1) { root.position.set(x, Math.sin(k * Math.PI) * peak + 0.05, z); root.rotation.z = (g.spin || 0) + k * 6; root.rotation.x = k * 4; }
+          else {
+            if (!view.splatted) { view.splatted = true; root.rotation.set(0, root.rotation.y, 0); blood.burst(F.x, F.wall ? 1.3 : 0.4, F.z, 30, 1.6); if (F.wall) splatAt(F.hx, F.hy, F.ang, 1.3); pool(F.x, F.z, 1.2); }
+            const slide = Math.min(1, (g.dieT - 0.55) / 0.7);          // then slide down the wall onto the floor
+            const sy = Math.max(0.16, 1 - 0.84 * slide);
+            root.position.set(F.x, (F.wall ? (1 - slide) * 1.1 : 0) - (view.minY || 0) * (1 - sy), F.z);
+            root.scale.set(1 + 1.0 * slide, sy, 1 + 1.0 * slide);
+          }
+        } else { root.position.set(g.x * S, Math.sin(Math.min(1, g.dieT / 1.2) * Math.PI) * 1.4, g.y * S); root.rotation.z = (g.spin || 0); }
+        break;
+      }
       case 'drop': { root.position.y = -u * 3.2; break; }
       case 'burn': { setTint(view, new THREE.Color(0x0a0806), new THREE.Color(0x000000), Math.min(1, u * 1.6)); if (view.fire) { view.fire.material.map = flameTex(Math.floor(g.dieT * 10) % 4); view.fire.material.opacity = u < 0.8 ? 1 : (1 - u) * 5; } if (u > 0.85) { root.scale.set(1, 0.35, 1); } embers.emit(g.x * S, hgt * 0.4, g.y * S, 1); break; }
-      case 'chew': { if (!view.hidden && u > 0.85) { hide(view); dropGibs(g.x * S, g.y * S, ['skull', 'ribs', 'arm']); } if (Math.floor(g.dieT * 8) !== view.lastBite) { view.lastBite = Math.floor(g.dieT * 8); blood.burst(g.x * S, hgt * 0.5, g.y * S, 4, 1.2); } break; }
+      case 'chew': { if (!view.hidden && u > 0.85) { hide(view); dropGibs(g.x * S, g.y * S, ['skull', 'ribs']); } if (Math.floor(g.dieT * 8) !== view.lastBite) { view.lastBite = Math.floor(g.dieT * 8); blood.burst(g.x * S, hgt * 0.5, g.y * S, 6, 1.4); if (view.lastBite % 2 === 0 && !view.hidden) { view.bites = (view.bites || 0) + 1; spawnGib(['arm', 'leg', 'intestines', 'arm', 'leg'][view.bites % 5], g.x * S, hgt * 0.5, g.y * S, 0.8, null, 1 + Math.random() * 2, 1.5 + Math.random() * 2); root.scale.setScalar(Math.max(0.55, 1 - view.bites * 0.06)); } } break; }
       case 'gib': break;
-      case 'vapor': { setOpacity(view, Math.max(0, 1 - u * 1.4)); break; }
+      case 'vapor': { if (u > 0.15) { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = Math.max(0, 1.4 - (u - 0.15) * 4); setOpacity(view, Math.max(0, 1 - (u - 0.15) * 1.6)); root.scale.set(1, Math.max(0.05, 1 - (u - 0.15) * 1.3), 1); } break; }
       case 'expire': { if (view.fallOver) root.rotation.x = -Math.min(1, Math.max(0, (u - 0.6) / 0.4)) * Math.PI / 2; if (g.gagId === 'audit' && u > 0.6 && !view.audited) { view.audited = true; play(view, 'die', { once: true, restart: true }); } break; }
       case 'shrink': { root.scale.setScalar(Math.max(0.02, g.scale)); break; }
       case 'smother': { const k = Math.min(1, u * 1.5); if (view.blob) view.blob.scale.set(0.2 + k * 1.3, 0.15 + k * 1.0, 0.2 + k * 1.3); root.position.y = -k * 0.5; break; }
-      case 'inflate': { const s = g.scale != null ? g.scale : 1 + u; if (s < 0.05) { if (!view.hidden) { hide(view); gibBurst(g.x * S, hgt * 0.6, g.y * S, 10, 1.2); } } else root.scale.setScalar(s); break; }
+      case 'inflate': { const s = g.scale != null ? g.scale : 1 + u; if (s < 0.05) { if (!view.hidden) { hide(view); gibBurst(g.x * S, hgt * 0.6, g.y * S, 22, 1.4); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 1.8); } } else root.scale.setScalar(s); break; }
       default: break;
     }
-    if (g.isBoss && g.state === 'dying' && !view.bossBurst && u > 0.5) { view.bossBurst = true; gibBurst(g.x * S, 2.5, g.y * S, 16, 2); }
+    if (g.isBoss && g.state === 'dying' && !view.bossBurst && u > 0.5) { view.bossBurst = true; gibBurst(g.x * S, 2.5, g.y * S, 28, 2); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 3); }
   }
-  function hide(view) { view.hidden = true; if (view.model) view.model.visible = false; if (view.fire) view.fire.visible = false; }
+  function hide(view) { view.hidden = true; if (view.model) view.model.visible = false; if (view.fire) view.fire.visible = false; if (view.block) { entGroup.remove(view.block); view.block = null; } }
 
-  // gibs: real Meshy pieces with a little physics; they stay as scars
+  // gibs: real Meshy pieces with a little physics; they stay as scars (capped — the oldest settled ones go)
+  const MAX_GIBS = 80;
+  function spawnGib(name, x, y, z, big, tint, sp, up) {
+    const src = models.gibByName[name] || models.gibs[Math.floor(Math.random() * models.gibs.length)] || null;
+    const mesh = src ? src.clone() : new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshLambertMaterial({ color: 0xa01020 }));
+    if (tint != null) mesh.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.lerp(new THREE.Color(tint), 0.7); if (o.material.emissive) { o.material.emissive.setHex(tint); o.material.emissiveIntensity = 0.3; } } });
+    const sc = (0.6 + Math.random() * 0.5) * big * 0.34;   // Meshy pieces come in at ~1.9 units on their long side
+    mesh.scale.setScalar(sc);
+    mesh.position.set(x, y, z);
+    const a = Math.random() * TAU;
+    entGroup.add(mesh);
+    gibs.push({ mesh, v: new THREE.Vector3(Math.cos(a) * sp, up, Math.sin(a) * sp), av: new THREE.Vector3((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14, (Math.random() - 0.5) * 14), settled: false, bounces: 0 });
+    if (gibs.length > MAX_GIBS) { const i = gibs.findIndex((b) => b.settled); const old = gibs.splice(i < 0 ? 0 : i, 1)[0]; entGroup.remove(old.mesh); }
+  }
   function gibBurst(x, y, z, n, big) {
-    blood.burst(x, y, z, 40 * big, 2.2 * big);
+    blood.burst(x, y, z, 60 * big, 2.8 * big);
+    mist(x, y, z, 1.4 * big);
     for (let i = 0; i < n; i++) {
-      const src = models.gibs.length ? models.gibs[Math.floor(Math.random() * models.gibs.length)] : null;
-      const mesh = src ? src.clone() : new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshLambertMaterial({ color: 0xa01020 }));
-      const sc = (0.5 + Math.random() * 0.5) * big * 0.24;   // Meshy pieces come in at ~1.9 units on their long side
-      mesh.scale.setScalar(sc);
-      mesh.position.set(x, y, z);
-      const a = Math.random() * TAU, sp = 2 + Math.random() * 4 * big;
-      entGroup.add(mesh);
-      gibs.push({ mesh, v: new THREE.Vector3(Math.cos(a) * sp, 3 + Math.random() * 4 * big, Math.sin(a) * sp), av: new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12), settled: false, bounces: 0 });
+      // the rib cage and the skull every time, then a few ropes of intestine, then the rest of the drawer
+      const name = i === 0 ? 'ribs' : i === 1 ? 'skull' : i < 5 ? 'intestines' : GIBS[Math.floor(Math.random() * GIBS.length)];
+      spawnGib(name, x, y + (Math.random() - 0.5) * 0.4, z, big * (name === 'ribs' || name === 'skull' ? 1.25 : 1), null, 2.5 + Math.random() * 5 * big, 4 + Math.random() * 5.5 * big);
     }
+  }
+  // a growing red cloud that thins out — every burst gets one
+  function mist(x, y, z, size) {
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0x8a0a18, transparent: true, depthWrite: false, opacity: 0.75 }));
+    spr.position.set(x, y, z); spr.scale.set(size * 0.4, size * 0.4, 1); entGroup.add(spr);
+    extras.push({ obj: spr, life: 0.7, t: 0, fade: true, grow: size * 2.2 });
+  }
+  // dust / frost / smoke puff, any colour
+  function puff(x, y, z, color, size) {
+    for (let i = 0; i < 5; i++) {
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color, transparent: true, depthWrite: false, opacity: 0.55 }));
+      spr.position.set(x + (Math.random() - 0.5) * size * 0.5, y + Math.random() * 0.2, z + (Math.random() - 0.5) * size * 0.5); spr.scale.set(size * 0.3, size * 0.3, 1); entGroup.add(spr);
+      extras.push({ obj: spr, life: 0.8 + Math.random() * 0.4, t: 0, fade: true, grow: size * (1.2 + Math.random() * 0.6), rise: 0.6 });
+    }
+  }
+  // a pool of blood that spreads on the floor and stays
+  function pool(x, z, size) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * TAU; m.position.set(x, 0.018, z); m.scale.setScalar(0.15); entGroup.add(m);
+    extras.push({ obj: m, growTo: 1, growT: 0, growDur: 1.6 });
+  }
+  function ash(x, z, size) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: scarTex('scorch', Math.random()), transparent: true, depthWrite: false, opacity: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * TAU; m.position.set(x, 0.016, z); entGroup.add(m); extras.push({ obj: m });
+  }
+  // a blood splat on the wall a ray just hit (hx, hy = the wall cell's hit point in cells; ang = the flight direction)
+  function splatAt(hx, hy, ang, y) {
+    const dx = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? Math.sign(Math.cos(ang)) : 0, dy = dx ? 0 : Math.sign(Math.sin(ang));
+    const geo = new THREE.PlaneGeometry(1.8, 1.8);
+    const mat = new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const m = new THREE.Mesh(geo, mat);
+    const px = hx * S - dx * 0.03, pz = hy * S - dy * 0.03;
+    m.position.set(px, y, pz); m.lookAt(px - dx, y, pz - dy); m.rotateZ(Math.random() * TAU);
+    entGroup.add(m); extras.push({ obj: m });
+  }
+  // THE EXPLOSION KIT: fireball + smoke ring + light + a scorch — rocket, meteor, the wrong-way rocket, the pile driver
+  function boomFx(x, y, z, r) {
+    const R = Math.max(0.8, r) * S * 0.9;
+    const cols = [0xfff2b0, 0xffa030, 0xff4a10];
+    cols.forEach((c, i) => {
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 1 }));
+      spr.position.set(x, y + 0.2 + i * 0.15, z); spr.scale.set(0.3, 0.3, 1); entGroup.add(spr);
+      extras.push({ obj: spr, life: 0.38 + i * 0.12, t: 0, fade: true, grow: R * (1.6 - i * 0.3), rise: 1.2 });
+    });
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * TAU;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0x3a3030, transparent: true, depthWrite: false, opacity: 0.6 }));
+      spr.position.set(x, 0.3, z); spr.scale.set(R * 0.35, R * 0.35, 1); entGroup.add(spr);
+      extras.push({ obj: spr, life: 0.9, t: 0, fade: true, grow: R * 0.8, vx: Math.cos(a) * R * 1.6, vz: Math.sin(a) * R * 1.6, rise: 0.5 });
+    }
+    const l = new THREE.PointLight(0xffa040, 160, 14, 2); l.position.set(x, y + 0.4, z); entGroup.add(l);
+    extras.push({ obj: l, life: 0.3, t: 0, light: true });
+    shakeAmt = Math.max(shakeAmt, 0.9 * look.shake);
+  }
+  // a thing landed hard: dust ring + shake
+  function impactFx(x, z, r) {
+    const R = Math.max(0.6, r) * S;
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * TAU;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0x7a6a5a, transparent: true, depthWrite: false, opacity: 0.6 }));
+      spr.position.set(x, 0.2, z); spr.scale.set(R * 0.3, R * 0.3, 1); entGroup.add(spr);
+      extras.push({ obj: spr, life: 0.7, t: 0, fade: true, grow: R * 0.7, vx: Math.cos(a) * R * 1.4, vz: Math.sin(a) * R * 1.4, rise: 0.3 });
+    }
+    shakeAmt = Math.max(shakeAmt, 0.7 * look.shake);
   }
   function dropGibs(x, z, names) {
     for (const name of names) {
-      const i = GIBS.indexOf(name);
-      const src = models.gibs[i] || models.gibs[0];
+      const src = models.gibByName[name] || models.gibs[0];
       if (!src) continue;
       const mesh = src.clone(); mesh.scale.setScalar(0.22); mesh.position.set(x + (Math.random() - 0.5) * 0.8, 0.3, z + (Math.random() - 0.5) * 0.8);
       entGroup.add(mesh);
@@ -565,20 +746,57 @@ export function createRenderer(canvas) {
       seen.add(s.id);
       let spr = shotViews.get(s.id);
       if (!spr) {
-        spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(s.sprite, 0), transparent: true, depthWrite: false }));
+        const src = propFor(s.sprite);
+        if (src) { spr = src.clone(); spr.userData.prop = s.sprite; spr.userData.halfH = src.userData.halfH; spr.userData.halfW = src.userData.halfW; }
+        else spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(s.sprite, 0), transparent: true, depthWrite: false }));
         entGroup.add(spr); shotViews.set(s.id, spr);
       }
+      if (spr.userData.prop) { syncPropShot(s, spr, state); continue; }
       spr.material.map = gagSprite(s.sprite, s.t);
       let sz = 0.5;
-      if (s.kind === 'train') sz = 1.4; else if (s.kind === 'melee') sz = 0.9 + s.t * 1.5; else if (s.kind === 'summon') sz = 0.6; else if (s.gag.count) sz = 0.3;
+      if (s.kind === 'train') sz = 1.4; else if (s.kind === 'melee') sz = 0.55; else if (s.kind === 'summon') sz = 0.6; else if (s.gag.count) sz = 0.3; else if (s.gag.kind === 'stream') sz = 0.22;
       if (['cow', 'yak', 'tent', 'bus'].includes(s.gag.id)) sz = 1.1;
       if (['sumo', 'grandma', 'doll'].includes(s.gag.id)) sz = 0.9;
       sz *= S * look.spriteScale;
       spr.scale.set(sz, sz, 1);
-      spr.position.set(s.x * S, (s.z != null ? s.z : 0.3) * S + sz * 0.15, s.y * S);
-      spr.material.opacity = s.kind === 'melee' ? Math.max(0, 1 - s.t / s.life) : 1;
+      if (s.kind === 'melee') {
+        // the lunge: from a cell out to the reach and back, never a card over the lens
+        const k = Math.min(1, s.t / s.life), out = 0.7 + Math.sin(k * Math.PI) * Math.max(0.4, (s.reach || 2) - 0.7);
+        spr.position.set((s.x + Math.cos(s.a) * out) * S, 0.35 * S + sz * 0.15, (s.y + Math.sin(s.a) * out) * S);
+        spr.material.opacity = k < 0.8 ? 1 : (1 - k) * 5;
+      } else {
+        spr.position.set(s.x * S, (s.z != null ? s.z : 0.3) * S + sz * 0.15, s.y * S);
+        const dp = Math.hypot(s.x - state.player.x, s.y - state.player.y);
+        spr.material.opacity = dp < 0.9 ? Math.max(0, (dp - 0.45) / 0.45) : 1;
+      }
     }
-    for (const [id, spr] of shotViews) if (!seen.has(id)) { entGroup.remove(spr); shotViews.delete(id); }
+    for (const [id, spr] of shotViews) if (!seen.has(id)) { shotViews.delete(id); if (spr.userData.prop && PROPS[spr.userData.prop].stays) restProp(spr); else entGroup.remove(spr); }
+  }
+  // a prop in flight: faces its way, spins / rolls / tumbles / walks by its kind
+  function syncPropShot(s, obj, state) {
+    const def = PROPS[obj.userData.prop], hh = obj.userData.halfH;
+    const a = s.a != null ? s.a : Math.atan2(s.vy || 0, s.vx || 1);
+    let y = (s.z != null ? s.z : 0.3) * S;
+    if (def.motion === 'drive' || def.motion === 'walk' || def.motion === 'none') y = hh;
+    if (def.motion === 'flyhigh') y = 1.3 + Math.sin(s.t * 6) * 0.15;
+    if (def.motion === 'walk') y = hh + Math.abs(Math.sin(s.t * 9)) * 0.08;
+    obj.position.set(s.x * S, y, s.y * S);
+    obj.rotation.set(0, -a + Math.PI / 2, 0);     // Meshy props face -Z at rest; turn them to face along the flight
+    if (def.motion === 'spin') obj.rotateY(s.t * 14);
+    if (def.motion === 'roll') obj.rotateX(s.t * 9);
+    if (def.motion === 'tumble') { obj.rotateX(s.t * 4); obj.rotateZ(s.t * 2.5); }
+    if (def.motion === 'walk') obj.rotateZ(Math.sin(s.t * 9) * 0.08);
+    if (def.motion === 'fly') obj.rotateX(-0.2);
+    const dp = Math.hypot(s.x - state.player.x, s.y - state.player.y);
+    obj.visible = dp > 0.5 && (s.kind !== 'melee' || s.t < s.life * 0.85);
+  }
+  // a prop that stays: settle it on the floor where it stopped and keep it for the level
+  function restProp(obj) {
+    obj.position.y = obj.userData.halfH * 0.9;
+    obj.rotation.set(0, obj.rotation.y, (Math.random() - 0.5) * 0.3);
+    if (levelRef) { const cx = obj.position.x / S, cz = obj.position.z / S; if (CORE().cellAt(levelRef, cx, cz) !== 0) { obj.position.x = (Math.floor(cx) + 0.5) * S; obj.position.z = (Math.floor(cz) + 0.5) * S; } }
+    obj.visible = true;
+    extras.push({ obj });
   }
   function syncZones(state, t) {
     const seen = new Set();
@@ -587,19 +805,34 @@ export function createRenderer(canvas) {
       seen.add(z.id);
       let v = zoneViews.get(z.id);
       if (!v) {
-        const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(z.sprite, 0), transparent: true, depthWrite: false }));
-        v = { obj: spr, light: null };
+        const src = (z.mode === 'drop' || z.mode === 'flash') ? propFor(z.sprite) : null;
+        let spr;
+        if (src) { spr = src.clone(); spr.userData.prop = z.sprite; spr.userData.halfH = src.userData.halfH; spr.rotation.y = Math.random() * TAU; }
+        else spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(z.sprite, 0), transparent: true, depthWrite: false }));
+        v = { obj: spr, light: null, prop: !!src };
         if (z.mode === 'pull') { v.light = new THREE.PointLight(0xb070ff, 30, 12, 2); spr.add(v.light); }
         entGroup.add(spr); zoneViews.set(z.id, v);
       }
       const spr = v.obj;
-      spr.material.map = gagSprite(z.sprite, z.t);
-      if (z.mode === 'drop') { const u = z.done ? 1 : Math.min(1, z.t / z.dur); const sz = (z.gag.id === 'tent' ? 2.4 : 1.0) * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, (1 - u) * 6 + sz * 0.4, z.y * S); spr.material.opacity = z.done ? Math.max(0, 1 - (z.t - z.dur + 0.5) * 2) : 1; }
+      if (!v.prop) spr.material.map = gagSprite(z.sprite, z.t);
+      if (z.mode === 'drop') {
+        const u = z.done ? 1 : Math.min(1, z.t / z.dur); const sz = (z.gag.id === 'tent' ? 2.4 : 1.0) * S;
+        if (v.prop) { spr.position.set(z.x * S, (1 - u) * (1 - u) * 6 + spr.userData.halfH, z.y * S); if (!z.done) spr.rotation.x = (1 - u) * 1.2; else spr.rotation.x = 0; }
+        else { spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, (1 - u) * 6 + sz * 0.4, z.y * S); spr.material.opacity = z.done ? Math.max(0, 1 - (z.t - z.dur + 0.5) * 2) : 1; }
+        if (!v.shadow) { v.shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); v.shadow.rotation.x = -Math.PI / 2; v.shadow.position.set(z.x * S, 0.02, z.y * S); entGroup.add(v.shadow); }
+        const sr = (z.r || 0.8) * S * (0.2 + 0.8 * u); v.shadow.scale.set(sr, sr, 1); v.shadow.material.opacity = z.done ? 0 : 0.55;
+        if (z.done && !v.landed) { v.landed = true; impactFx(z.x * S, z.y * S, z.r || 0.8); }
+      }
       else if (z.mode === 'pull') { const sz = 1.5 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, 1.2, z.y * S); }
-      else if (z.mode === 'wander') { const sz = 2.4 * S; spr.scale.set(sz * 0.8, sz, 1); spr.position.set(z.x * S, sz * 0.45, z.y * S); spr.material.opacity = 0.9; }
-      else if (z.mode === 'flash') { const sz = 0.9 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, sz * 0.4, z.y * S); spr.material.opacity = z.gag.scar ? 0 : Math.max(0, 1 - z.t / z.dur); }
+      else if (z.mode === 'wander') {
+        const sz = 2.4 * S; spr.scale.set(sz * 0.8, sz, 1); spr.position.set(z.x * S, sz * 0.45, z.y * S); spr.material.opacity = 0.35;
+        if (!v.cone) { v.cone = new THREE.Group(); for (let i = 0; i < 7; i++) { const rr = 0.25 + i * 0.28; const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.05 + i * 0.02, 6, 24), new THREE.MeshBasicMaterial({ color: 0xb8b0a8, transparent: true, opacity: 0.5 - i * 0.04, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.2 + i * 0.42; ring.userData.i = i; v.cone.add(ring); } entGroup.add(v.cone); }
+        v.cone.position.set(z.x * S, 0, z.y * S); v.cone.children.forEach((ring) => { ring.rotation.z = t * (9 - ring.userData.i * 0.6); ring.position.x = Math.sin(t * 3 + ring.userData.i) * 0.15 * ring.userData.i / 3; });
+      }
+      else if (z.mode === 'flash' && v.prop) { spr.position.set(z.x * S, spr.userData.halfH, z.y * S); }
+      else if (z.mode === 'flash') { const sz = 1.3 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, sz * 0.4, z.y * S); spr.material.opacity = z.gag.scar ? 0 : Math.max(0, 1 - z.t / z.dur); }
     }
-    for (const [id, v] of zoneViews) if (!seen.has(id)) { entGroup.remove(v.obj); zoneViews.delete(id); }
+    for (const [id, v] of zoneViews) if (!seen.has(id)) { if (v.prop && PROPS[v.obj.userData.prop].stays) { v.obj.rotation.x = 0; extras.push({ obj: v.obj }); } else entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); zoneViews.delete(id); }
   }
   const BILLBOARD_SCARS = new Set(['gas', 'stink']);
   function syncScars(state, t) {
@@ -608,6 +841,7 @@ export function createRenderer(canvas) {
       seen.add(s.id);
       let m = scarViews.get(s.id);
       if (!m) {
+        if (s.gag && PROPS[s.gag.sprite] && PROPS[s.gag.sprite].stays && models.props[s.gag.sprite] && s.type !== 'blood' && s.type !== 'scorch') continue;   // the prop itself is the scar
         const map = scarTex(s.type, s.seed);
         if (!map) continue;
         if (BILLBOARD_SCARS.has(s.type)) {
@@ -746,6 +980,7 @@ export function createRenderer(canvas) {
     }
     // the door
     if (doorMesh) { const want = state.doorOpen ? 1 : 0; doorOpenAnim += (want - doorOpenAnim) * Math.min(1, dt * 2.5); doorMesh.position.y = doorMesh.userData.baseY + doorOpenAnim * H_LOW * 0.95; }
+    if (healViews.length) { const m = canvasTex('heal|' + (Math.floor(view.t * 8) % 16), D().healSprite(view.t)); for (const v of healViews) { v.spr.visible = !v.h.taken; v.spr.material.map = m; v.spr.position.y = 0.55 + Math.sin(view.t * 2.5 + v.h.x) * 0.06; } }
     if (keyView) { keyView.material.map = canvasTex('key|' + (Math.floor(view.t * 8) % 16), D().keySprite(view.t)); keyView.position.y = 1.1 + Math.sin(view.t * 3) * 0.12; keyLight.position.copy(keyView.position); keyLight.intensity = state.key && state.key.held ? 0 : 6 + Math.sin(view.t * 5) * 2; if (state.key && state.key.held) keyView.visible = false; }
     // creatures
     const seen = new Set();
@@ -755,7 +990,7 @@ export function createRenderer(canvas) {
       if (!v) { v = makeGoonView(g); goonViews.set(g.id, v); }
       syncGoon(g, v, dt, state);
     }
-    for (const [id, v] of goonViews) if (!seen.has(id)) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); goonViews.delete(id); }
+    for (const [id, v] of goonViews) if (!seen.has(id)) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.block) entGroup.remove(v.block); goonViews.delete(id); }
     syncShots(state, view.t);
     syncZones(state, view.t);
     syncScars(state, view.t);
@@ -765,17 +1000,30 @@ export function createRenderer(canvas) {
     syncBeams(state, _muzzleWorld);
     stepBodies(gibs, dt); stepBodies(shards, dt);
     blood.step(dt); embers.step(dt);
-    for (let i = extras.length - 1; i >= 0; i--) { const e = extras[i]; if (e.life != null) { e.t += dt; if (e.fade && e.obj.material) e.obj.material.opacity = Math.max(0, 1 - e.t / e.life); if (e.t >= e.life) { entGroup.remove(e.obj); extras.splice(i, 1); } } }
+    for (let i = extras.length - 1; i >= 0; i--) {
+      const e = extras[i];
+      if (e.growTo != null) { e.growT += dt; const k = Math.min(1, e.growT / e.growDur); e.obj.scale.setScalar(0.15 + (e.growTo - 0.15) * (1 - (1 - k) * (1 - k))); if (k >= 1) e.growTo = null; }
+      if (e.life == null) continue;
+      e.t += dt; const u = Math.min(1, e.t / e.life);
+      if (e.grow) { const k = 0.3 + 0.7 * (1 - (1 - u) * (1 - u)); e.obj.scale.set(e.grow * k, e.grow * k, 1); }
+      if (e.rise) e.obj.position.y += e.rise * dt;
+      if (e.vx) { e.obj.position.x += e.vx * dt * (1 - u); e.obj.position.z += e.vz * dt * (1 - u); }
+      if (e.light) e.obj.intensity = 160 * (1 - u);
+      if (e.fade && e.obj.material) e.obj.material.opacity = (e.obj.material.userData.o0 != null ? e.obj.material.userData.o0 : (e.obj.material.userData.o0 = e.obj.material.opacity)) * (1 - u);
+      if (e.t >= e.life) { entGroup.remove(e.obj); extras.splice(i, 1); }
+    }
     // the player's rune light dims when the rifle plays dead
     runeLight.intensity = p.fx && p.fx.dead > 0 ? 1 : 6;
     updateViewmodel(dt, p);
+    if (skipRender) return;   // the review captures step many frames per saved one
     renderer.clear();
     renderer.render(scene, camera);
     renderer.clearDepth();
     renderer.render(vmScene, vmCamera);
   }
+  let skipRender = false;
 
-  return {
+  return { setSkipRender(v) { skipRender = !!v; }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
     load, buildLevel, update, resize, setLook, shake, look, vm, scene, camera, renderer, vmRoot, models, goonViews,
     fire() { vm.recoil = 1; vm.muzzle = 1; vm.spin = 0; vm.mood = 'idle'; },
     get ready() { return assetsReady; }, get failed() { return assetsFailed; },

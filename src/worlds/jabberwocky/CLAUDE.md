@@ -16,6 +16,9 @@ Meshy creatures, PG-13 cartoon gore.
   AUTO ALL fires the whole table in turn, drag to look, WASD to move. In the browser pane the animation
   loop stalls between screenshots: drive it by hand from the console — `LAB.step(n)` steps the core,
   `for (…) LAB.R.update(LAB.state, LAB.view, 0.016)` steps the renderer.
+- `tmp/jabberwocky/review/` (KEEP) — THE RIFLE REVIEW 2026-09-06: every gag scored 1–5 with a capture strip
+  and a plan (`catalog.py` words, `verdicts.py` scores, `review.py` builds `rifle-review.html`). Recapture:
+  lab `?level=5&manual=1`, the `CAP` script in the changelog entry; strips land in `tmp/snapshots/gag-*.jpg`.
 - `tmp/jabberwocky/sim.mjs` — ten tests, ~117k assertions on the core. Run it before saying anything is done.
 - `tmp/jabberwocky/meshy.mjs` (KEEP) — the Meshy helper: `images`, `models`, `rigs`, `animate`, `anims`
   poll and download in bulk with the API key from `.env`. Manifests of every task id sit beside it
@@ -56,6 +59,11 @@ Meshy creatures, PG-13 cartoon gore.
   cultist, stalker. The Jabberwock is `jabberwock/base.glb` only: Meshy's rigger wants a humanoid and
   refused the dragon twice, so he is a posed statue (rifle in hand) moved procedurally.
 - `assets/models/gibs/` — intestines, arm, leg, skull, ribs. `rifle.glb`, `gauntlets.glb` (the viewmodel).
+- `assets/models/props/` — 28 Meshy props (2026-09-06, `tmp/jabberwocky/props.mjs`, keyed by SPRITE name)
+  that replace the billboard stickers: they fly/spin/roll/tumble/walk by `PROPS[name].motion` in render3d.js
+  and the heavy ones rest where they land as the scar. A missing file falls back to the sprite. New prop =
+  one PROPS row + a prompt in props.mjs + run it + slim (`slim_models.py` on the props dir). Never run
+  slim_models.py on a mixed dir: anything not named base.glb outside gibs/props is stripped to a clip.
 - Concept images and raw downloads live in `tmp/jabberwocky/meshy/` and `models/` (gitignored).
 
 ## World-specific rules
@@ -65,8 +73,10 @@ Meshy creatures, PG-13 cartoon gore.
   Never preview the roll; the rifle's shudder and purr are mood, not a tell.
 - **Fifty gags, fifteen outcomes.** New gags pick an existing outcome; no bespoke deaths.
 - **Duds and backfires stay in.** They are the comedy.
-- **Gore is PG-13 and cartoon**: giblets, blood, bones, never realism. James asked for body parts and
-  intestines and got them; keep them rare-ish because most gags kill some other way.
+- **Gore is PG-13 and cartoon**: giblets, blood, bones, never realism. Since the 2026-09-06 gore pass the
+  gib burst is THE spectacle (ribs + skull every time, mist, wall splats, a pool) and the gore kit in
+  render3d.js (`gibBurst / spawnGib / mist / puff / pool / ash / splatAt / boomFx / impactFx`) is the
+  vocabulary — reuse it, don't add bespoke particles. Explosions only for `BOOM_GAGS`.
 - **Motion:** head bob defaults to 0, shake to 0.25, no CRT anything, native resolution. The 2D
   raycaster made James sick and is gone for good; never bring back per-column rendering.
 - **Space:** cells are 2.6 m wide, corridors 3.2 m tall, rooms 5.4 m. Tightness was part of the nausea.

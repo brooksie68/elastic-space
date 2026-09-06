@@ -3,6 +3,106 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-06 (James flying the gore pass) — Claude (Fable 5.1) — map flip, eased mouse look
+
+- Corner map: the maze's forward axis drew downward — flipped with a canvas transform so ahead is up (his
+  "the map has the up down backwards").
+- Configuration was unreachable in play: the pause card (z 20) sat over the configuration button (z 12), so
+  after Esc the click never landed. Button and panel now float above the card; `C` opens/closes the panel
+  from the keyboard (pauses + frees the mouse); the keys line says so. Esc always frees the pointer.
+- Mouse look ("herky jerky... too fast and goofy"): mouse motion now goes into `lookBank` and each frame
+  spends `1 - e^(-dt·14)` of it (about 70 ms to settle) for both turn and pitch, instead of applying every
+  mousemove raw. Default sensitivity 1 → 0.75 (his saved panel value still wins — the Mouse look slider).
+
+## 2026-09-06 (late night) — Claude (Fable 5.1) — THE GORE PASS, BUILT ("do as much as possible without me")
+
+James's go on the review, in his words: do as much as possible without him. Built, captured, not yet seen by him:
+- **A · the deaths** (render3d.js `outcomeFx` + the gore kit): `gibBurst` = 20 pieces (boss 30), ribs + skull
+  guaranteed, three intestine ropes, `mist`, four `wallSplats`, a `pool` decal that spreads, gibs capped at 80
+  (`spawnGib` retires the oldest settled). Squash = pink-tinted rug at 2.3× / 0.16 that STAYS; `view.minY`
+  lifts hip-origin rigs so the pancake sits on the floor. Freeze = translucent ice `block` growing to full,
+  then 22 shards + 6 blue gibs + frost puff. Fling = `castRay` to the first wall, arc there in 0.55 s, `splatAt`
+  the wall, slide down, flatten. Vapor = skeleton flash (emissive 1.4) → top-down dissolve → `ash`. Chew =
+  a gib knocked off every other bite, body shrinks, skull + ribs remain. Inflate pops into the full burst.
+  `R.strike(x,y)` = a blood puff on every kill (world.js + lab wire it on 'kill').
+- **The explosion kit** `boomFx` (three additive fireball layers, ten-sprite smoke ring, point-light flash,
+  shake) — gated by `BOOM_GAGS` (rocket, wrongway, meteor, piledriver); every other splash gets `impactFx`
+  + a puff in `SPLASH_COLOR`. `R.boom(x,y,r,gagId)` on 'boom' events; `R.impact` on 'impact'.
+- **C · nothing at the lens**: melee sprites are 0.55 and lunge from 0.7 cells to the reach and back
+  (no more screen-filling cards); stream sprites 0.22 and fade inside 0.9 cells of the player.
+- **B · THE PROPS** — `PROPS` table (keyed by sprite name) + `assets/models/props/<name>.glb`: 28 Meshy
+  props (`tmp/jabberwocky/props.mjs`, meshy-5 preview 5 cr + refine 10 cr, prompts inside, manifest
+  `props-manifest.json`; Meshy's queue cap refused three on the first pass — a rerun picks up whatever is not
+  on disk; **537 credits** all told, balance 3683 → 3146) + four primitives (`primProp`: cannonball, bowling
+  ball with holes, baseball with a seam, knife). `fitProp` sizes each to its metres and centres it;
+  `litProp` gives them emissive so they read in torchlight; `syncPropShot` spins / rolls / tumbles / walks /
+  flies by `motion`; `restProp` settles the ones that `stays` where they stop, and the scar decal is skipped
+  when the prop itself is the scar. Drop and flash zones (anvil, piano, sneaker, vending, sink, mousetrap,
+  karaoke) use their prop and keep it. Slimmed with `slim_models.py` on the props dir (safe there: the
+  dir name matches the root so nothing is treated as a clip) → 8 MB for all 28.
+- **E · drops**: a shadow disc grows under the falling thing, `impactFx` dust ring + shake on landing;
+  tornado = seven spinning torus rings under the sprite; flash-mode areas 1.3 cells.
+- **F · sound**: five ElevenLabs one-shots via sfx-batch.mjs — crunch (after gib/inflate), boing (fling),
+  wallsplat (fling lands), icecrack (freeze), vapor; OUT_FILES remapped.
+- Bugs found on the way: gibs were picked by load order not name (`models.gibByName`); a stale
+  `obj.visible` hid any prop born within half a cell of the muzzle (cannonball, train vanished);
+  `debugGoon(id)` added to the renderer API for the lab.
+- Captures: `tmp/snapshots/v2-* v3-* v8-* v9-*` (after strips), review page rebuilt with AFTER strips and
+  after-scores (average 2.29 → 2.72 by my eye, 40 gags re-shot). Sim 116,893 green, draw-check green.
+NOT DONE: a real strike animation per summon (the core already lands them in 0.6 s — the review's "summons
+don't land" was the slow expire/chew deaths reading as nothing), viewmodel-scene melee props, vines that
+wrap, the jack that springs, the anvil is dark on a dark floor. AWAITING JAMES'S FLIGHT.
+
+## 2026-09-06 (night) — Claude (Fable 5.1) — THE RIFLE REVIEW (nothing built)
+
+James: go through the whole catalog, review every gag for how well it shows the thing, rank them 1–5 with a
+picture each and a plan; emphasis on PG-13 cartoon gore, bones and rib cages flying. Done as a headless play:
+`tmp/jabberwocky/lab3d.html?level=5&manual=1` (new `manual` flag — no animation loop, a script drives
+`LAB.step` + `LAB.R.update`; `LAB.loaded` / `LAB.input` exposed) fired all 100 gags at three creatures three
+cells out and saved a four-frame strip per gag (0.45 / 0.9 / 1.7 / 3.2 s) through /api/dev-snapshot →
+`tmp/snapshots/gag-<id>.jpg`, plus fifteen outcome close-ups `out-<outcome>-<gag>.jpg`. Renderer gained
+`setSkipRender(v)` so a capture can step 190 frames and draw four (the hidden pane renders slowly).
+Review kit in `tmp/jabberwocky/review/` (KEEP): `catalog.py` (every gag in plain words), `verdicts.py`
+(score + plan), `review.py` → `rifle-review.html` (published as an artifact), `review_sheets.py` (contact
+sheets). Verdict: average 2.29 / 5 — 11 ones, 50 twos, 38 threes, one four (lightning), no fives. The six
+fixes, in build order: A the deaths (gib ×3 with rib cage + skull guaranteed, visible pancake that stays, ice
+block, fling to the wall, skeleton flash, chew to a skeleton, one explosion kit — no credits), B ~30 real
+props instead of stickers (Meshy ~350 cr + Blender primitives), C nothing spawns at the lens (melee as
+viewmodel props, streams 1.2 cells out), D summons that land, E drops/areas read, F ~15 gore one-shots.
+BUG FOUND AND FIXED on the way: smother/glue blobs (`view.blob`) were never removed on level clear, so
+green domes leaked into the next maze; clearEntities + goon retirement now drop them.
+AWAITING JAMES'S READ of the page and his go on which fixes (A is free).
+
+## 2026-09-06 (later still) — Claude (Fable 5.1) — the corner map actually maps
+
+James: "the Map doesn't work." Measured in the pane (`?silent=1&nolock=1`): it drew, but the reveal was a
+fixed five-by-five block around the player on a 150 px canvas — 6,400 of 90,000 pixels lit, a pink smudge.
+Now: every open cell within seven of you that you have line of sight to (core `lineOfSight`) is revealed
+with its ring of walls, so corridors and rooms draw as you look down them and the map accumulates into the
+real maze; canvas 440 px drawn at 220 px; pies show as red dots once seen (key yellow, door red/green, drift
+doors blue as before). M still toggles it; the PLAY panel's Corner map seg unchanged.
+
+## 2026-09-06 (later) — Claude (Fable 5.1) — MEAT PIES (health pickups)
+
+James: "could use some health boost pickups." Each maze now deals MEAT PIES OF DUBIOUS ORIGIN — one per four
+goons on the level's deal (2/3/4/5 through the mazes, 2 in the arena), placed on open cells at least six
+steps from the spawn, never on the key, spread farthest-apart like the drift doors. A pie is a code-drawn
+sprite (crust, wobbling red filling breathing through the vent, two flies, red glow) bobbing at knee height
+in the 3-D scene. Walk over one when hurt: +35, capped at 100, a three-bite chew + a little rising chord, and
+the hint "A MEAT PIE OF DUBIOUS ORIGIN · +35 · DO NOT ASK WHAT KIND". At full health you walk past it and it
+stays for later. Retry re-bakes them. Core opts `healMul` / `healHp` exist (defaults 1 / 35), not dialed in
+the panel — ship defaults first. Sim TEST 11 (placement, heal, no overfill, retry); draw-check runs the pie.
+116,893 assertions green. Cache tags bumped.
+
+## 2026-09-06 — Claude (Fable 5.1) — vertical mouse look
+
+James: "it's too hard to kill the rat cause I can't aim down." The camera had a `view.pitch` slot but nothing
+ever set it — mouse Y was ignored, so the ratling (1.1 tall, 0.22 wide, under the reticle) was a floor-level
+blur you could not put the cross on. Now mouse Y pitches the camera (same sensitivity as the turn, clamped
+to about ±45°, mouse down = look down); pitch resets to level on every new game / retry / next maze. Hits are
+still decided on the maze floor plane by the core (pitch never changes what a shot hits — a rat on the line
+was always dying; you just could not see it), so no sim change. Cache tag bumped.
+
 ## 2026-09-05 (later, same night) — Claude (Fable 5.1) — THE DUNGEON REBUILD
 
 James flew the one-shot. Verdict: the creativity and the maze were "pretty close to what I expected,"

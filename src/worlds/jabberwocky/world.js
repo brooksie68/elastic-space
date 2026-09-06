@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js';
+import { createRenderer, S } from './render3d.js?v=3';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
 const $ = (id) => document.getElementById(id);
@@ -10,7 +10,7 @@ const TAU = Math.PI * 2;
 
 // ---- settings ------------------------------------------------------------------------------------
 const PLAY_KEY = 'jabberwocky-play-v2', LOOK_KEY = 'jabberwocky-look-v2', UI_KEY = 'jabberwocky-ui-v1';
-const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 1, map: 1, startLevel: 1, seed: '', forceGag: '' };
+const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, startLevel: 1, seed: '', forceGag: '' };
 const LOOK_RANGES = {
   fov:         { label: 'Field of view', min: 60, max: 100, step: 1, def: 76, sum: 'Wider sees more of the corridor at once.' },
   fog:         { label: 'Fog distance', min: 10, max: 60, step: 1, def: 34, sum: 'How far down a hall you can see before it goes dark. In metres.' },
@@ -56,6 +56,8 @@ const view = { t: 0, bob: 0, pitch: 0 };
 const anim = { bob: 0 };
 const fx = { hurt: 0 };
 const input = { fwd: 0, strafe: 0, turn: 0, look: 0, fire: false, run: false };
+const lookBank = { x: 0, y: 0 };   // mouse motion waiting to be spent
+const LOOK_EASE = 14;              // per second: ~70 ms to settle; higher = snappier
 const keys = {};
 let seen = new Set(), seenLevel = null;
 let noticeT = 0, cardTimer = null, lastHud = 0;
@@ -83,13 +85,19 @@ canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) input.fire = true;
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
-addEventListener('mousemove', (e) => { if (mode === 'play' && locked()) input.look += e.movementX * 0.0022 * play.sens; });
+addEventListener('mousemove', (e) => {
+  if (mode !== 'play' || !locked()) return;
+  // the mouse feeds a bank; each frame drains a share of it so the turn eases instead of jumping (James: "herky jerky")
+  lookBank.x += e.movementX * 0.0022 * play.sens;
+  lookBank.y += e.movementY * 0.0022 * play.sens;
+});
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
   keys[e.code] = true;
   if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
   if (e.code === 'KeyP') { if (mode === 'play') pause(); else if (mode === 'paused') resume(); }
+  if (e.code === 'KeyC') { if (tuner.classList.contains('open')) closeTuner(); else openTuner(); }   // configuration from the keyboard: the mouse is locked while you play
   if (e.code === 'KeyM') { play.map = play.map ? 0 : 1; save(PLAY_KEY, play); syncPlayUI(); }
   if (mode === 'card' && cardTimer && (e.code === 'Space' || e.code === 'Enter')) skipCard();
   if (mode === 'attract' && e.code === 'Enter') begin();
@@ -127,7 +135,7 @@ function skipCard() { if (cardTimer) { clearTimeout(cardTimer); cardTimer = null
 $('card-btn').addEventListener('click', () => skipCard());
 card.addEventListener('click', () => { if (mode === 'card' && cardTimer) skipCard(); });
 
-const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>space</b> fires · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause';
+const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>space</b> fires · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration · <b>esc</b> frees the mouse';
 const BLURBS = {
   1: 'The gate. Ghouls, mostly. Find the key. It opens the door. The door is not where the key is.',
   2: 'Catacombs. Cultists throw flaming skulls, ratlings are faster than you would like. The key is further.',
@@ -145,7 +153,7 @@ function attract() {
 }
 function begin() {
   hideCard();
-  state = C.newGame(opts());
+  state = C.newGame(opts()); view.pitch = 0;
   seen = new Set(); seenLevel = null;
   mode = 'play';
   lock();
@@ -171,7 +179,7 @@ function deathCard() {
   setTimeout(() => showCard({
     kicker: 'YOU WERE', title: by.verb + ' BY ' + by.name, red: true, sub,
     lines: [`${state.shotsFired} pulls · ${state.kills} kills · ${Object.keys(state.gagsSeen).length} of ${T.GAGS.length} gags seen · ${state.deaths} deaths`],
-    btn: 'AGAIN', keys: 'same maze, same table', action: () => { hideCard(); C.retryLevel(state); mode = 'play'; lock(); handleEvents(); syncHud(true); },
+    btn: 'AGAIN', keys: 'same maze, same table', action: () => { hideCard(); C.retryLevel(state); view.pitch = 0; mode = 'play'; lock(); handleEvents(); syncHud(true); },
   }), 900);
 }
 function winCard() {
@@ -209,20 +217,21 @@ function handleEvents() {
       case 'level': R.buildLevel(state); levelCard(e.n, e.name); Sfx.play('level'); seen = new Set(); seenLevel = state.level; syncHud(true); break;
       case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
       case 'fire': R.fire(); Sfx.play(e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
+      case 'kill': Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'hurt': fx.hurt = 1; R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); deathCard(); break;
+      case 'heal': Sfx.play('heal'); hint('A MEAT PIE OF DUBIOUS ORIGIN · +' + e.gained + ' · DO NOT ASK WHAT KIND', 2600); break;
       case 'key': Sfx.play('key'); setTimeout(() => Sfx.play('door'), 400); hint('THE DOOR IS OPEN — IT IS NOT HERE', 3500); break;
-      case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: 'MAZE ' + e.n + ' CLEARED', title: 'THROUGH THE DOOR', sub: 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); mode = 'play'; handleEvents(); } }); break;
+      case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: 'MAZE ' + e.n + ' CLEARED', title: 'THROUGH THE DOOR', sub: 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); view.pitch = 0; mode = 'play'; handleEvents(); } }); break;
       case 'won': Sfx.play('win'); winCard(); break;
       case 'drift': mode = 'drifting'; Sfx.play('drift'); unlock(); $('fade').classList.add('on'); setTimeout(() => { const a = $('exit-' + e.i); if (a) a.click(); }, 700); break;
       case 'notice': if (view.t > noticeT) { noticeT = view.t + 0.6; Sfx.play('notice', pan(e.goon.x, e.goon.y), e.goon.type); } break;
       case 'swing': Sfx.play('swing', pan(e.goon.x, e.goon.y)); break;
       case 'throw': Sfx.play('throw', pan(e.goon.x, e.goon.y)); break;
       case 'splat': Sfx.play('splat', pan(e.x, e.y)); break;
-      case 'boom': Sfx.play('boom', pan(e.x, e.y)); R.shake(0.7); break;
-      case 'impact': R.shake(0.8); break;
+      case 'boom': Sfx.play('boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;
+      case 'impact': R.impact(e.x, e.y, e.r); Sfx.play('thud', pan(e.x, e.y)); break;
       case 'wallbreak': Sfx.play('wallbreak', pan(e.x, e.y)); R.shake(0.5); R.buildLevel(state); break;
       case 'crash': Sfx.play('boom', pan(e.x, e.y)); break;
       case 'bounce': Sfx.play('bounce', pan(e.x, e.y)); break;
@@ -262,12 +271,23 @@ function drawMap() {
   mm.classList.remove('off');
   const L = state.level, p = state.player;
   if (seenLevel !== L) { seen = new Set(); seenLevel = L; }
-  const px = Math.floor(p.x), py = Math.floor(p.y);
-  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = px + dx, y = py + dy; if (x >= 0 && y >= 0 && x < L.w && y < L.h) seen.add(y * L.w + x); }
-  const size = 300, cs = Math.floor(size / Math.max(L.w, L.h));
+  // reveal: every open cell within seven of you that you can actually see, plus the walls around it
+  const px = Math.floor(p.x), py = Math.floor(p.y), RV = 7;
+  const mark = (x, y) => { if (x >= 0 && y >= 0 && x < L.w && y < L.h) seen.add(y * L.w + x); };
+  for (let dy = -RV; dy <= RV; dy++) for (let dx = -RV; dx <= RV; dx++) {
+    const x = px + dx, y = py + dy;
+    if (x < 0 || y < 0 || x >= L.w || y >= L.h) continue;
+    const i = y * L.w + x;
+    if (L.map[i] !== C.CELL.OPEN && !(dx === 0 && dy === 0)) continue;
+    if ((dx || dy) && !C.lineOfSight(state, p.x, p.y, x + 0.5, y + 0.5)) continue;
+    for (let ny = -1; ny <= 1; ny++) for (let nx = -1; nx <= 1; nx++) mark(x + nx, y + ny);
+  }
+  const size = mm.width, cs = Math.floor(size / Math.max(L.w, L.h));
   const ox = (size - cs * L.w) / 2, oy = (size - cs * L.h) / 2;
+  mctx.setTransform(1, 0, 0, 1, 0, 0);
   mctx.clearRect(0, 0, size, size);
   mctx.fillStyle = 'rgba(8,5,10,0.8)'; mctx.fillRect(0, 0, size, size);
+  mctx.setTransform(1, 0, 0, -1, 0, size);   // the maze's y grows away from you; the map's grows down — flip it so forward is up
   for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
     const i = y * L.w + x;
     if (!seen.has(i)) continue;
@@ -279,6 +299,7 @@ function drawMap() {
     mctx.fillRect(ox + x * cs, oy + y * cs, cs, cs);
   }
   if (state.key && !state.key.held && seen.has(Math.floor(state.key.y) * L.w + Math.floor(state.key.x))) { mctx.fillStyle = '#ffd23a'; mctx.beginPath(); mctx.arc(ox + state.key.x * cs, oy + state.key.y * cs, cs * 0.35, 0, TAU); mctx.fill(); }
+  for (const h of state.heals || []) { if (h.taken || !seen.has(Math.floor(h.y) * L.w + Math.floor(h.x))) continue; mctx.fillStyle = '#ff5a3a'; mctx.beginPath(); mctx.arc(ox + h.x * cs, oy + h.y * cs, cs * 0.3, 0, TAU); mctx.fill(); }
   for (const g of state.goons) { if (g.state === 'dead' || !seen.has(Math.floor(g.y) * L.w + Math.floor(g.x))) continue; if (Math.hypot(g.x - p.x, g.y - p.y) > 3) continue; mctx.fillStyle = g.isBoss ? '#ff2040' : '#f4ecf2'; mctx.beginPath(); mctx.arc(ox + g.x * cs, oy + g.y * cs, cs * 0.3, 0, TAU); mctx.fill(); }
   mctx.save(); mctx.translate(ox + p.x * cs, oy + p.y * cs); mctx.rotate(p.a);
   mctx.fillStyle = '#ffd23a'; mctx.beginPath(); mctx.moveTo(cs * 0.7, 0); mctx.lineTo(-cs * 0.4, -cs * 0.4); mctx.lineTo(-cs * 0.4, cs * 0.4); mctx.closePath(); mctx.fill(); mctx.restore();
@@ -307,6 +328,10 @@ function frame(now) {
   if (!state) return;
   if (mode === 'play') {
     readKeys();
+    const k = 1 - Math.exp(-dt * LOOK_EASE);
+    input.look = lookBank.x * k; lookBank.x -= input.look;
+    const dy = lookBank.y * k; lookBank.y -= dy;
+    view.pitch = Math.max(-1, Math.min(1, view.pitch - dy));   // pitch = rise of the look target over one unit forward, ~±45°
     C.step(state, input, dt);
     input.look = 0;
     handleEvents();
@@ -325,7 +350,7 @@ function frame(now) {
 // ---- configuration ---------------------------------------------------------------------------------------------
 const tuner = $('tuner');
 let tunerPaused = false;
-function openTuner() { tuner.classList.add('open'); if (mode === 'play') { pause(); tunerPaused = true; } }
+function openTuner() { tuner.classList.add('open'); if (mode === 'play') { pause(); tunerPaused = true; } unlock(); }
 function closeTuner() { tuner.classList.remove('open'); if (tunerPaused && mode === 'paused') { hideCard(); mode = 'play'; } tunerPaused = false; }
 $('tuner-toggle').addEventListener('click', (e) => { e.stopPropagation(); if (tuner.classList.contains('open')) closeTuner(); else openTuner(); });
 document.addEventListener('pointerdown', (e) => {

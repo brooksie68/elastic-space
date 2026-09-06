@@ -204,6 +204,7 @@
     swing: (p) => whoosh({ dur: 0.25, gain: 0.3, pan: p }),
     hurt: () => { voice({ f: 180, f2: 120, dur: 0.3, formants: [600, 1500], gain: 0.25 }); noise({ dur: 0.15, f: 600, f2: 200, gain: 0.3 }); },
     throw: (p) => whoosh({ dur: 0.3, gain: 0.25, pan: p }),
+    heal: () => { for (let i = 0; i < 3; i++) { noise({ dur: 0.1, f: 700, f2: 250, gain: 0.3, delay: i * 0.16 }); clicks(1, 0, { f: 1800, gain: 0.25, delay: i * 0.16 }); } seq([[523, 0.08], [659, 0.08], [784, 0.2]], { type: 'triangle', gain: 0.12, delay: 0.5 }); },
     key: () => { seq([[1568, 0.08], [2093, 0.08], [2637, 0.25]], { type: 'sine', gain: 0.15 }); noise({ dur: 0.15, f: 6000, type: 'highpass', gain: 0.1 }); },
     door: () => { noise({ dur: 1.2, f: 200, f2: 900, type: 'bandpass', q: 3, gain: 0.25 }); tone({ f: 90, f2: 110, dur: 1.2, type: 'sawtooth', gain: 0.08, filter: 'lowpass', ff: 400 }); clicks(2, 0.15, { f: 800, gain: 0.3, delay: 1.1 }); },
     level: () => { seq([[392, 0.15], [523, 0.15], [659, 0.15], [784, 0.4]], { type: 'square', gain: 0.1 }); },
@@ -316,10 +317,11 @@
     hurt: ['hurt1', 'hurt2'], death: 'death', swing: 'swing', throw: 'throw', chainsaw: 'chainsaw', train: 'train', moo: 'moo', honk: 'honk',
     yowl: 'yowl', sneeze: 'sneeze', thud: 'thud', clang: 'clang', zap: 'zap', hiss: 'hiss', key: 'key', door: 'door', wallbreak: 'wallbreak',
     fall: 'fall', buzz: 'buzz', screech: 'screech', pop: 'pop', win: 'win', bosswind: 'bossroar', bosshit: 'bosshit', bossdead: 'bossdie',
+    crunch: 'crunch', boing: 'boing', wallsplat: 'wallsplat',
     flame: 'burn', lava: 'burn', nitrogen: 'freeze', hose: 'glue', jello: 'glue', gravy: 'glue', crash: 'explosion', catbag: 'yowl',
   };
   const NOTICE = { ghoul: 'ghoul', brute: 'brute', ratling: 'ratling', cultist: 'cultist', stalker: 'stalker', jabberwock: 'bossroar' };
-  const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'freeze', glue: 'glue', burn: 'burn', fling: 'scream', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue' };
+  const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'icecrack', glue: 'glue', burn: 'burn', fling: 'boing', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue', vapor: 'vapor' };
   const available = new Set();
   let preflighted = false;
   function preflight() {

@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-06 — Claude — Jabberwocky: the rifle review + the gore pass + 28 Meshy props
+- Vertical look, meat-pie health pickups, a real corner map (LOS reveal, flipped so ahead is up), eased mouse look, `C` for configuration.
+- All 100 gags fired headless and scored 1–5 with capture strips (artifact); then the gore pass built on James's go: rib-cage gib bursts, visible squash, ice block, wall-splat fling, explosion kit, nothing at the lens, drop shadows, five new one-shots.
+- 28 Meshy props + 4 primitives replace the billboard stickers and rest where they land (537 cr). Sim 116,893 green.
+
 ## 2026-09-06 — Claude — Lunar Lander becomes Battle for the Moon 2075 (lander side)
 - Fuel drought rule, zoom reads the pad, gyro + landing radar cut (his notes).
 - Level-1 design agreed and built as rounds one and two: `structures.js` (18 shared
@@ -15,6 +20,13 @@ this file tracks project-level activity.
   gone, missile / laser / targeting / pad supplies, level goal; he flew it, "pretty fun".
 - A second session owns the TANK half (`tank/`, brief `tank-brief.md`); one shared score.
 - Round three (hostile fire) is next, on his go. Detail: world changelog.
+
+## 2026-09-06 — Codex — Fireplace reactive volume revision
+
+Rebuilt volume motion and shading with irregular curl, sharper transport, separate
+burning lifetime and corrected speed timing. GPU and Node checks pass; visual review
+and foreground performance remain open. Details in tmp/fireplace/changelog.md.
+Agent: Codex.
 
 ## 2026-09-05 — Codex — Fireplace volume refinement
 

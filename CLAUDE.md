@@ -27,8 +27,19 @@ consistent. `npm run check-worlds` audits every world against the contract.
   scripts beside it. His Suno track is in (`assets/audio/theme.mp3`, default 0.22 — "keep it rather
   low"). His first load was black (a constant lost in the draw.js trim; fixed, `draw-check.mjs`
   guards it now); second load "works now," he started testing, "really good work tonight."
-  AWAITING JAMES'S NOTES: motion, look, hands, gore, odds; then ship (registry, note off,
-  World Ideas #64 → live, draft status → built).
+  2026-09-06 (his day with it): vertical mouse look (mouse Y was ignored), MEAT PIES (health pickups,
+  +35, one per four goons), the corner map made real (line-of-sight reveal, 220 px, then flipped so
+  ahead is up), eased mouse look (`lookBank`, 70 ms settle, default sens 0.75), `C` opens configuration
+  (the pause card had covered the button). **THE RIFLE REVIEW** — all 100 gags fired headless in the lab,
+  scored 1–5 with strips + plans, artifact https://claude.ai/code/artifact/5a94c1c6-c3da-4453-a174-a85bfaf9a715
+  (kit in tmp/jabberwocky/review/, KEEP) — then, on his "do as much as possible without me": THE GORE
+  PASS (gib burst with ribs + skull, visible squash rug, ice block, wall-splat fling, skeleton-flash vapor,
+  explosion kit, nothing at the lens, drop shadows + dust, tornado rings, five ElevenLabs one-shots) and
+  28 MESHY PROPS + 4 primitives replacing the stickers (537 cr; `PROPS` table in render3d.js, props.mjs).
+  Sim 116,893 green. He flew the gore pass: "more good progress today. I like it." Coming back tonight.
+  AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
+  (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
+  note off, World Ideas #64 → live, draft status → built).
 
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
@@ -820,8 +831,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
    console shell), the console face rebuilt (`index.html`/`world.js`/`world.css`: meter bridge
    with THE KEY window, four channel strips with the offset knob + clock face + tape/lean/piano-
    phase switch + solo, one editor with draggable note pills + no lit column, record-to-steps,
-   the piano lip, scribble-strip help, the dice pair). Sim 2,512 green. AWAITING HIS FLIGHT
-   (room, look, layout); then exits + ship wiring; Lumina panel parked at his word.
+   the piano lip, scribble-strip help, the dice pair). Sim 2,512 green. HE FLEW IT the same
+   evening: the flat slab + mouse look were "crazy town" → HIS PEN SKETCH → THE BENCH (the console
+   as a tipped wraparound desk in the room's perspective, CSS 3-D panels off the three.js camera,
+   wings wrapping toward the seat, four cabinets high on the walls, camera FIXED, no mouse look
+   ever) rebuilt to his proportions. His verdict: "this direction is good... a bunch more tuning
+   still" — TUNING CONTINUES NEXT SESSION by his eye; then exits + ship wiring; Lumina panel
+   parked at his word.
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
    `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile

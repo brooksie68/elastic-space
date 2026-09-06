@@ -19,6 +19,8 @@
     bossFire: 2.4,       // seconds between the boss's pulls
     seed: '',
     forceGag: '',        // a gag id to fire every time (the lab / the configuration panel)
+    healMul: 1,          // how many pies a maze gets (× the level's deal)
+    healHp: 35,          // what a pie is worth
     startLevel: 1,
   };
 
@@ -162,12 +164,25 @@
     return n;
   };
 
+  // health: MEAT PIES OF DUBIOUS ORIGIN, on open cells away from the spawn and the key, spread apart
+  function placeHeals(level, cells, n, rand) {
+    const pool = cells.slice();
+    for (let i = 0; i < n && pool.length; i++) {
+      let ci = Math.floor(rand() * pool.length);
+      if (level.heals.length) {
+        let bestSep = -1;
+        pool.forEach((c, j) => { const sep = Math.min(...level.heals.map((h) => Math.hypot(c[0] + 0.5 - h.x, c[1] + 0.5 - h.y))); if (sep > bestSep) { bestSep = sep; ci = j; } });
+      }
+      const c = pool.splice(ci, 1)[0];
+      level.heals.push({ x: c[0] + 0.5, y: c[1] + 0.5 });
+    }
+  }
   function buildLevel(n, seedStr, opts) {
     const def = LEVELS[n - 1];
     const rand = mulberry(hashStr(seedStr + ':' + n));
     const w = def.w, h = def.h;
     const map = def.arena ? makeArena(w, h, rand) : makeMaze(w, h, rand, def.loops);
-    const level = { n, name: def.name, w, h, map, theme: def.theme, arena: !!def.arena, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [] };
+    const level = { n, name: def.name, w, h, map, theme: def.theme, arena: !!def.arena, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [] };
     const at = (x, y) => y * w + x;
     // rooms: open chambers carved into the maze with a tall ceiling; the arena is one big hall
     if (def.arena) level.tall.fill(1); else carveRooms(level, def.rooms || 0, rand);
@@ -190,6 +205,7 @@
         const c = far.splice(Math.floor(rand() * far.length), 1)[0];
         level.goonSpawns.push({ x: c[0] + 0.5, y: c[1] + 0.5, type: weightedType(rand, def.mix) });
       }
+      placeHeals(level, far, Math.round(2 * (opts.healMul == null ? 1 : opts.healMul)), rand);
       return level;
     }
 
@@ -260,6 +276,9 @@
       const c = pool.splice(Math.floor(rand() * pool.length), 1)[0];
       level.goonSpawns.push({ x: c[0] + 0.5, y: c[1] + 0.5, type: weightedType(rand, def.mix) });
     }
+    // pies: one per four goons on the deal, at least six steps out, never on the key
+    const pieCells = open.filter(([x, y]) => dS[at(x, y)] >= 6 && !(x === best[0] && y === best[1]));
+    placeHeals(level, pieCells, Math.max(1, Math.round(def.goons / 4 * (opts.healMul == null ? 1 : opts.healMul))), rand);
     return level;
   }
   // carve k rooms (3x3 / 5x3 / 5x5 cells) at odd-aligned spots, never over the spawn corner, never touching
@@ -375,6 +394,7 @@
     }
     state.shots = []; state.zones = []; state.scars = []; state.beams = []; state.emitters = [];
     state.key = level.key ? { x: level.key.x, y: level.key.y, held: false } : { held: true };
+    state.heals = level.heals.map((h) => ({ x: h.x, y: h.y, taken: false }));
     state.doorOpen = !level.key;
     state.pending = null;
     state.plate = null;
@@ -734,6 +754,14 @@
     let nearHole = false;
     for (const s of state.scars) if (s.hazard === 'fall' && Math.hypot(s.x - p.x, s.y - p.y) < s.r + 0.9) nearHole = true;
     if (!nearHole) { p.safe.x = p.x; p.safe.y = p.y; }
+    // pies: a bite when you are hurt; a full belly walks past
+    if (p.hp < p.maxHp) for (const h of state.heals) {
+      if (h.taken || Math.hypot(h.x - p.x, h.y - p.y) > 0.6) continue;
+      h.taken = true;
+      const was = p.hp;
+      p.hp = Math.min(p.maxHp, p.hp + (state.opts.healHp == null ? 35 : state.opts.healHp));
+      state.events.push({ type: 'heal', x: h.x, y: h.y, hp: p.hp, gained: p.hp - was });
+    }
     // key + door
     if (state.key && !state.key.held && Math.hypot(state.key.x - p.x, state.key.y - p.y) < 0.6) {
       state.key.held = true; state.doorOpen = true;
