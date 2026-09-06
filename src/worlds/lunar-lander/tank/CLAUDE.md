@@ -6,6 +6,30 @@ outside `tank/` and `tmp/lunar-lander/tank-*`. The split, the git protocol
 and the look contract are in `../tank-brief.md` — read it first, then this.
 Needs for the lander side go in `NEEDS.md` here, one line to James.
 
+## THE DIRECTION (James, 2026-09-06, after his first look — this overrides everything below)
+
+"This is not a clone of Battlezone." Battlezone is the jumping-off point for a
+NOSTALGIC FEEL — a game from 40–50 years ago that is still fun to play now
+because it has 2026 affordances, UI and game thinking. "It's not Battlezone
+anyway. It's Battle for the Moon 2075." The first build was "the most
+simplest basic wireframe" — a fair verdict; it proved the plumbing and the
+match with the lander, not the look. He is not asking for greebles; he is
+asking to be impressed that this session understands the aesthetic: modern,
+cool, a fun ten-minute time-waster, nostalgic underneath. Every look choice
+from here on is judged against that, in the look-dev page first. THE NEXT
+PASS (agreed as the list, not yet built): 1 a moon not a grid (contours,
+crater rims, rock fields, the flight line as a ticked trail); 2 line weight by
+distance (near heavy + white, far hairline + green); 3 structures that live
+(beacons, window dots, turning dishes, SAM rails that swing to you); 4 enemy
+turrets tracking separately, wheel dust, a faint aiming line when one has you;
+5 marks that stay (craters, scorch rings, wrecks); 6 a sky with Earth, a
+horizon glow, skyline ridges at three depths with parallax; 7 the cockpit as
+a modern instrument (compass tape, projected range, a scope view, a recoil
+pulse in the glow — never camera motion); 8 the egress: mission one opens with
+the camera descending from the lander's height onto the tank; 9 death as
+signal loss (lines fray and drift). Same rule as the lander's CLAUDE.md
+"THE DIRECTION": when in doubt, the contemporary choice wins.
+
 ## What it is (James, 2026-09-06)
 
 "Like Battle Zone!" — the spiritual guide, not a recreation. First person

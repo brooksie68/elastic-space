@@ -3,6 +3,15 @@
 Newest entries first. Never rewrite or delete earlier entries. The lander
 half's changelog is one folder up.
 
+## 2026-09-06 (his first look) — Claude (tank session) — THE DIRECTION
+
+James looked: nostalgic ("I played Battlezone a lot"), "a good start", "a
+ways to go" — and the overriding note, now at the top of CLAUDE.md: NOT a
+Battlezone clone; the jumping-off point for a nostalgic feel with 2026
+affordances; the first build was "the most simplest basic wireframe"; impress
+him. The nine-item look pass is recorded there and is the next session's
+first work, in the look-dev page before anything else. Nothing built.
+
 ## 2026-09-06 (later) — Claude (tank session) — round two matched
 
 The lander session sent its round-two presentation values by message and
