@@ -23,7 +23,12 @@
     const reverbSend = ac.createGain(); reverbSend.gain.value = 0.15;
     master.connect(comp); comp.connect(limiter); limiter.connect(out); out.connect(ac.destination);
     master.connect(reverbSend); reverbSend.connect(reverb); reverb.connect(limiter);
-    P.nodes = { master, comp, limiter, out, reverb, reverbSend };
+    const meter = ac.createAnalyser(); meter.fftSize = 512; out.connect(meter);
+    P.nodes = { master, comp, limiter, out, reverb, reverbSend, meter };
+    // levels for the meters: RMS of the last 512 samples, master + every live track chain
+    const meterBuf = new Float32Array(512);
+    function rms(an) { an.getFloatTimeDomainData(meterBuf); let s = 0; for (let i = 0; i < meterBuf.length; i++) s += meterBuf[i] * meterBuf[i]; return Math.sqrt(s / meterBuf.length); }
+    P.levels = () => { const tracks = {}; for (const id in P.chains) tracks[id] = rms(P.chains[id].meter); return { master: rms(meter), tracks }; };
     P.setVolume = v => { out.gain.setTargetAtTime(v, ac.currentTime, 0.02); };
     P.setMasterFx = fx => { Object.assign(P.masterFx, fx); reverbSend.gain.setTargetAtTime(P.masterFx.reverb, ac.currentTime, 0.05);
       comp.threshold.setTargetAtTime(-4 - 26 * P.masterFx.compressor, ac.currentTime, 0.05); comp.ratio.setTargetAtTime(1.5 + 6 * P.masterFx.compressor, ac.currentTime, 0.05); };
@@ -71,6 +76,7 @@
       c.delayTone = ac.createBiquadFilter(); c.delayTone.type = 'lowpass'; c.delayTone.frequency.value = 4000;
       c.reverbSend = ac.createGain(); c.reverbSend.gain.value = 0;
       c.gain = ac.createGain(); c.gain.value = 0.8;
+      c.meter = ac.createAnalyser(); c.meter.fftSize = 512; c.gain.connect(c.meter);
       // wiring: input → shaper → ring(dry/wet) → wah(dry/wet) → vibe(dry/wet) → comp → gain → master (+ delay loop, + reverb send)
       c.input.connect(c.shaper);
       c.shaper.connect(c.ringDry); c.shaper.connect(c.ringMul); c.ringMul.connect(c.ringWet);
@@ -87,7 +93,8 @@
     }
     function applyFx(t, c) {
       const f = t.fx, now = ac.currentTime, k = 0.03;
-      c.gain.gain.setTargetAtTime(t.mute ? 0 : t.gain, now, k);
+      const anySolo = m.tracks.some(x => x.solo);
+      c.gain.gain.setTargetAtTime(t.mute || (anySolo && !t.solo) ? 0 : t.gain, now, k);
       c.shaper.curve = driveCurve(f.distortion);
       c.ringDry.gain.setTargetAtTime(1 - f.ringMod, now, k); c.ringWet.gain.setTargetAtTime(f.ringMod, now, k); c.ringOsc.frequency.setTargetAtTime(f.ringHz, now, k);
       c.wahDry.gain.setTargetAtTime(1 - f.autoWah, now, k); c.wahWet.gain.setTargetAtTime(f.autoWah * 1.6, now, k); c.wah.frequency.value = 900; c.wahDepth.gain.setTargetAtTime(700 * f.autoWah, now, k);
@@ -143,7 +150,7 @@
     }
     P.trigger = trigger;
     // immediate preview (the keyboard)
-    P.preview = (voiceSlug, midi, dur, fx) => { if (ac.state === 'suspended') ac.resume(); trigger(voiceSlug, midi, 0, 1, ac.currentTime + 0.01, dur || 0.4, 'auto', master, (fx && fx.envFilter) || 0); };
+    P.preview = (voiceSlug, midi, dur, fx, vel) => { if (ac.state === 'suspended') ac.resume(); trigger(voiceSlug, midi, 0, vel == null ? 1 : vel, ac.currentTime + 0.01, dur || 0.4, 'auto', master, (fx && fx.envFilter) || 0); };
 
     // ---- the scheduler --------------------------------------------------------------
     let timer = null, scheduledUntil = 0;

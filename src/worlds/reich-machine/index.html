@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Reich Machine</title>
+  <link rel="stylesheet" href="./world.css?v=4" />
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <!-- THE BENCH: four control panels placed in the room's perspective by studio.js -->
+  <div id="bench">
+    <div class="cam" id="benchCam">
+
+      <!-- the screen: the editor for the selected track -->
+      <section class="panel" id="screen">
+        <div class="ehead">
+          <span class="etitle" id="etitle">no track</span>
+          <div class="ctl phrasectl" data-help="musical phrases: ▶ plays one so you can hear it, the name writes it into the track">
+            <span class="silk">musical phrase</span>
+            <div class="phrases" id="phrases"></div>
+          </div>
+        </div>
+        <div class="gridwrap">
+          <div class="cursorRow" id="cursorRow"></div>
+          <div class="grid" id="grid"></div>
+          <div class="cents" id="cents"></div>
+        </div>
+      </section>
+
+      <!-- the lip: the button row, the piano, the scribble strip -->
+      <section class="panel" id="lip">
+        <div class="erow">
+          <div class="ctl" data-help="how many steps the track loops over"><span class="silk">length</span>
+            <div class="btnrow" id="lengths"><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button><button data-v="7">7</button><button data-v="8">8</button><button data-v="12">12</button><button data-v="16">16</button><input id="lengthN" type="number" min="1" max="64" step="1"></div>
+          </div>
+          <div class="ctl" data-help="how the voice plays each note: auto picks short or held by the note length"><span class="silk">notes</span>
+            <div class="btnrow" id="art"><button data-v="auto">auto</button><button data-v="hit">short</button><button data-v="hold">held</button></div>
+          </div>
+          <div class="ctl" data-help="which octaves the editor and the piano show"><span class="silk">octaves</span>
+            <div class="btnrow" id="kbBase"><button data-v="36">C2</button><button data-v="48">C3</button><button data-v="60">C4</button><button data-v="72">C5</button></div>
+          </div>
+          <button id="micro" class="pb toggle" data-help="the microtonal line: every step carries its own cents, notes stop snapping to the key">micro</button>
+          <button id="clear" class="pb" data-help="clear every note in this track">clear</button>
+          <button id="moreBtn" class="pb" data-help="effects and the cents row for this track">more…</button>
+          <button id="record" class="pb rec" data-help="record: play the piano while the machine runs and the notes land on the selected track's steps (R)">● record</button>
+        </div>
+        <div id="keyboard" data-help="the piano: click to hear the selected track's voice; with a step armed it writes the note and moves to the next"></div>
+        <div id="scribble"><span id="scribbleText">click a step, then play the piano · drag a note to move it · right-click clears</span></div>
+      </section>
+
+      <!-- the left wing: the four channel strips -->
+      <section class="panel" id="wingL"><div id="strips"></div></section>
+
+      <!-- the right wing: the key · transport · master · the dice · presets -->
+      <section class="panel" id="wingR">
+        <div class="group key" data-help="the key: every note in every track snaps to this scale, or to the chord when one is chosen">
+          <span class="silk">the key</span>
+          <div class="keywin" id="keyText">C major</div>
+          <div class="keysel"><select id="root"></select><select id="scale"></select><select id="chord"></select></div>
+        </div>
+        <div class="group transport">
+          <button id="play" class="pb big" data-help="play or stop the machine (space)">▶</button>
+          <button id="rewind" class="pb" data-help="back to the top: every track back on the master">⏮</button>
+          <button id="hold" class="pb toggle" data-help="hold: freeze every track on the master clock while it is on (H)">hold</button>
+          <div class="ctl" data-help="beats per minute of the master clock">
+            <span class="silk">tempo</span>
+            <div class="stepper"><button id="bpmDown">−</button><input id="bpm" type="number" min="30" max="260" step="1"><button id="bpmUp">+</button></div>
+          </div>
+        </div>
+        <div class="ctl" data-help="how many steps fit in one beat">
+          <span class="silk">steps per beat</span>
+          <div class="btnrow" id="subdiv"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="6">6</button></div>
+        </div>
+        <div class="group master">
+          <div class="vus"><svg class="vu" id="vuA" viewBox="0 0 100 60"></svg><svg class="vu" id="vuB" viewBox="0 0 100 60"></svg></div>
+          <div class="minis">
+            <label class="mini" data-help="master volume"><span class="silk">volume</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.7"></label>
+            <label class="mini" data-help="the room: how much of the studio's reverb you hear"><span class="silk">room</span><input id="mReverb" type="range" min="0" max="0.6" step="0.01" value="0.15"></label>
+            <label class="mini" data-help="squash: the master compressor, glues the tracks together"><span class="silk">squash</span><input id="mComp" type="range" min="0" max="1" step="0.01" value="0.4"></label>
+          </div>
+        </div>
+        <div class="dice">
+          <button id="dicePhrase" class="pb" data-help="roll a new musical phrase into the selected track, in the current key">🎲 phrase</button>
+          <button id="diceMachine" class="pb" data-help="roll a whole new piece: key, tracks, voices, phrases, offsets">🎲 machine</button>
+        </div>
+        <div class="presets">
+          <select id="presets" data-help="saved machines"><option value="">presets…</option></select>
+          <button id="savePreset" class="pb" data-help="save the whole machine under a name">save</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- the drawer: effects for the selected track (a flat card over the room) -->
+  <div id="more" class="drawer">
+    <div class="dhead"><span class="silk">effects · <span id="moreTitle"></span></span><button id="moreClose" class="pb">close</button></div>
+    <div class="fxgrid" id="fxgrid"></div>
+  </div>
+
+  <template id="stripTpl">
+    <article class="strip">
+      <div class="shead"><span class="tally"></span><span class="num"></span><span class="vname"></span><button class="del" data-help="remove this track">✕</button></div>
+      <div class="plate" data-help="the voice: hover to hear it, pick another from the list"><select class="voice"></select><span class="vstate"></span></div>
+      <div class="knobwrap" data-help="offset: how much faster or slower than the master this track runs · drag up and down, wheel for hundredths, double-click to zero">
+        <div class="knob rate"><div class="cap"><i></i></div></div>
+        <div class="rateVal">+0.00 %</div>
+        <div class="cycle">locked to the master</div>
+      </div>
+      <div class="switch pull" data-help="tape: pure drift · lean: lingers a little at the lock points · piano phase: lingers long, then slips">
+        <button data-v="0">tape</button><button data-v="0.5">lean</button><button data-v="1">piano phase</button>
+      </div>
+      <div class="clockrow">
+        <svg class="clock" viewBox="0 0 44 44" data-help="where this track sits against the master: twelve o'clock is in step, the hand drifts as it runs">
+          <circle cx="22" cy="22" r="20"></circle><line class="tick" x1="22" y1="2" x2="22" y2="7"></line>
+          <line class="hand" x1="22" y1="22" x2="22" y2="5"></line><circle class="pin" cx="22" cy="22" r="1.6"></circle>
+        </svg>
+        <div class="driftcol"><div class="driftVal"></div>
+          <div class="shift" data-help="shift the whole pattern one step earlier or later"><button class="nudgeL">◀</button><span class="silk">shift</span><button class="nudgeR">▶</button></div>
+        </div>
+      </div>
+      <div class="ctl gatectl" data-help="note length: short to long, as a share of each step"><span class="silk">note length</span><input class="gate" type="range" min="0.05" max="1" step="0.01"></div>
+      <div class="bottom">
+        <div class="ctl levelctl" data-help="level"><span class="silk">level</span><input class="fader" type="range" min="0" max="1" step="0.01"></div>
+        <div class="ms"><button class="mute" data-help="mute this track">M</button><button class="solo" data-help="solo: hear only the soloed tracks">S</button></div>
+      </div>
+    </article>
+  </template>
+  <template id="emptyTpl">
+    <article class="strip empty"><button class="addTrack pb" data-help="add a track: another tape machine joins the room">+ track</button></article>
+  </template>
+
+  <!-- Core wiring: dashboard-control ALWAYS; sound-control because the machine makes sound.
+       Draft world: no drift exits yet, so no registry/drift scripts. -->
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="./engine.js?v=2"></script>
+  <script src="./player.js?v=2"></script>
+  <script src="./world.js?v=3"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module">
+    import { createStudio } from './studio.js?v=10';
+    createStudio({ canvas: document.getElementById('stage'), base: './', panels: {
+      root: document.getElementById('bench'), cam: document.getElementById('benchCam'),
+      screen: document.getElementById('screen'), lip: document.getElementById('lip'),
+      wingL: document.getElementById('wingL'), wingR: document.getElementById('wingR') } });
+  </script>
+</body>
+</html>

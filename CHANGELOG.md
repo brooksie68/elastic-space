@@ -8,6 +8,13 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-06 — Claude — Reich Machine: the studio + the bench (the console becomes a world)
+- James's read of the first pass: cool, but "not a world, just software" and a little hard to use → the 1970s control room (three.js): four Meshy reel-to-reels with reels turning at each track's rate, four wall cabinets, cloud lights.
+- The console rebuilt for ease of use (his ten): THE KEY window, offset knobs with clock faces, tape/lean/piano-phase switch, solo, musical-phrase chips that audition, draggable note pills with no lit column, record-to-steps, scribble-strip help, the dice pair.
+- His pen sketch → THE BENCH: the controls are DOM panels placed in the room's perspective (CSS 3-D off the three.js camera) on a tipped wraparound desk; camera fixed, no mouse look (his call, twice).
+- The old plain face kept whole as plain.html for a possible mobile experience. Meshy ~130 cr (remesh at Meshy, never Blender-decimate a raw soup). Sim 2,512 green.
+- His verdict at wrap: "this direction is good... a bunch more tuning still" — continues next session.
+
 ## 2026-09-06 — Claude — Jabberwocky: the rifle review + the gore pass + 28 Meshy props
 - Vertical look, meat-pie health pickups, a real corner map (LOS reveal, flipped so ahead is up), eased mouse look, `C` for configuration.
 - All 100 gags fired headless and scored 1–5 with capture strips (artifact); then the gore pass built on James's go: rib-cage gib bursts, visible squash, ice block, wall-splat fling, explosion kit, nothing at the lens, drop shadows, five new one-shots.

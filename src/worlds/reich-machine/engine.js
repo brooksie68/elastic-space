@@ -134,6 +134,7 @@
       gate: 0.6,                 // note length as a fraction of the (effective) step
       gain: 0.8,
       mute: false,
+      solo: false,               // solo: only soloed tracks sound (the player honours it)
       articulation: 'auto',      // auto | hit | hold
       micro: false,              // the microtonal line: every step carries free cents
       fx: DEFAULT_FX(),
@@ -232,11 +233,46 @@
   function addTrack(m, opts) { const t = makeTrack(opts); m.tracks.push(t); return t; }
   function removeTrack(m, id) { m.tracks = m.tracks.filter(t => t.id !== id); }
 
+
+  // ---- the dice ---------------------------------------------------------------------------
+  // rollPhrase: a fresh musical phrase in scale degrees — a random walk with small steps, the
+  // odd leap, ~15 % rests, always starting near the root so phrases sit together. Pure: pass
+  // an rng for the sim.
+  function rollPhrase(len, rng) {
+    rng = rng || Math.random; len = len || [5, 7, 8, 8, 12, 16][Math.floor(rng() * 6)];
+    const out = []; let d = Math.floor(rng() * 3);
+    for (let i = 0; i < len; i++) {
+      if (i > 0 && rng() < 0.15) { out.push(null); continue; }
+      const r = rng(); const move = r < 0.42 ? 1 : r < 0.72 ? -1 : r < 0.82 ? 2 : r < 0.9 ? -2 : r < 0.95 ? 3 : -3;
+      d = Math.max(0, Math.min(9, d + move)); out.push(d);
+    }
+    if (out.every(x => x === null)) out[0] = 0;
+    return out;
+  }
+  // rollMachine: a whole new piece — key, two to four tracks, phrases, voices, offsets.
+  function rollMachine(m, opts) {
+    opts = opts || {}; const rng = opts.rng || Math.random; const voices = opts.voices && opts.voices.length ? opts.voices : ['dx-ep'];
+    const scales = Object.keys(SCALES).filter(k => k !== 'chromatic');
+    m.root = Math.floor(rng() * 12); m.scale = scales[Math.floor(rng() * scales.length)]; m.chord = 'none (whole scale)';
+    m.bpm = 96 + Math.floor(rng() * 60); m.subdivision = [2, 2, 3, 4][Math.floor(rng() * 4)];
+    const n = opts.tracks || (2 + Math.floor(rng() * 3));
+    m.tracks = [];
+    const base = opts.base == null ? 60 : opts.base;
+    for (let i = 0; i < n; i++) {
+      const t = addTrack(m, { voice: voices[Math.floor(rng() * voices.length)] });
+      fillFigure(m, t, { steps: rollPhrase(0, rng) }, base + (i % 2 ? 0 : 12) - (i > 1 ? 12 : 0));
+      t.rate = i === 0 ? 1 : 1 + (rng() < 0.5 ? -1 : 1) * (0.25 + rng() * 1.75) / 100;
+      t.gate = 0.4 + rng() * 0.4; t.gain = 0.7 + rng() * 0.2;
+    }
+    rewind(m);
+    return m;
+  }
+
   // serialization for presets / localStorage
   function snapshot(m) {
     return JSON.parse(JSON.stringify({ bpm: m.bpm, subdivision: m.subdivision, root: m.root, scale: m.scale, chord: m.chord,
       tracks: m.tracks.map(t => ({ voice: t.voice, length: t.length, steps: t.steps, rate: t.rate, pull: t.pull, gate: t.gate, gain: t.gain,
-        mute: t.mute, articulation: t.articulation, micro: t.micro, fx: t.fx })) }));
+        mute: t.mute, solo: !!t.solo, articulation: t.articulation, micro: t.micro, fx: t.fx })) }));
   }
   function restore(m, snap) {
     if (!snap) return;
@@ -247,7 +283,7 @@
 
   const api = { SCALES, CHORDS, ROOTS, FIGURES, DEFAULT_FX, scaleNotes, degreeToMidi, quantize, createMachine, makeTrack, addTrack,
     removeTrack, advance, play, stop, rewind, nudge, offsetOf, driftSteps, cycleSeconds, effectiveRate, setLength, fillFigure,
-    requantize, snapshot, restore, stepsPerSecond };
+    requantize, snapshot, restore, stepsPerSecond, rollPhrase, rollMachine };
   root.ReichEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
