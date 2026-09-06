@@ -23,7 +23,11 @@ the bottom under "Done".
   `LunarCore.hitStructure(state, sid, x, y)` instead of flipping `alive` by
   hand — it runs the shield / dead / score / level-count rules and bumps
   `world.version`, and returns the same events the lander's shell draws
-  (`kill` / `shield` / `civHit`).
+  (`kill` / `shield` / `civHit`). ADOPTED (tank, 2026-09-06):
+  `damageStructure` in tank-core.js calls it for every hostile hit that the
+  tank's own gates allow (civilians never reach it; a shut bunker door is the
+  tank's refusal, timed by the tank's SAM); the tank reads `alive` back from
+  the lander's object. The tank keeps its own score tally alongside.
 
 - `structures.js` with `solid(id)` (2026-09-06) — drawn as-is in first person,
   black box under each footprint for occlusion. Nothing authored on this side

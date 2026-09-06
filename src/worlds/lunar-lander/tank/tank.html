@@ -125,8 +125,11 @@
     /* tags over the world: name + X over a hostile you are looking at */
     #labels { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
     #labels > div { position: absolute; left: 0; top: 0; will-change: transform; white-space: nowrap; }
-    .tag { font-size: 0.69rem; font-weight: 700; letter-spacing: 0.22em; color: var(--ink-dim); transition: opacity 200ms ease; }
-    .tag .x { color: var(--ph); margin-left: 0.5em; }
+    /* the target tag: the lander's exact amber (#ffb457, 0.78rem, 700, 0.2em, the glow); one word under it; a refusal in pink */
+    .tag { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; text-indent: 0.2em; color: #ffb457; text-shadow: 0 0 12px rgba(255, 180, 87, 0.45); text-align: center; line-height: 1.35; transition: opacity 200ms ease; }
+    .tag .x { margin-left: 0.5em; }
+    .tag .word { display: block; font-size: 0.66rem; letter-spacing: 0.24em; opacity: 0.9; }
+    .tag .word.refuse { color: #ff8fa3; text-shadow: 0 0 12px rgba(255, 143, 163, 0.45); }
     .float { font-size: 1.1rem; font-weight: 300; letter-spacing: 0; color: var(--ink); text-shadow: 0 0 14px var(--ph-faint); }
     .float.word { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.22em; text-indent: 0.22em; color: var(--ink-dim); }
 

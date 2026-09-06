@@ -89,7 +89,10 @@ one align on presentation by message (both sessions are live at once).
   `respawn` keeps the field as it stands (kills stay dead).
 - Score: 100 × the X rating (enemies: slow 1, medium 2, boss 5; structures:
   the lander's `mult`). Civilians: never targetable, absorb shots, pay
-  nothing.
+  nothing. A hostile structure's damage runs through the LANDER core's
+  `hitStructure` (one rule for shield / dead / level count; the lander's
+  chunk object flips) — the tank only gates it (civilian, door shut) and
+  reads `alive` back. The tank's own score is its own tally.
 - Missions: `MISSIONS[1..6]` — a chunk stretch + waves. Complete when every
   hostile structure in the stretch is dead and every wave spawned and dead.
   Waves come when ≤ 1 enemy is left. Spawns 1300–2200 ft off, mostly ahead.
@@ -118,8 +121,12 @@ one align on presentation by message (both sessions are live at once).
   CONTACT / N CONTACTS / ENEMY IN RANGE / MISSILE INBOUND), SHELL + LASER,
   HEADING + SPEED, SCORE + mission meta, and HULL as the big bar under
   everything (three cells; the last one blinks) with the tanks left.
-  Crosshair centred, warms to the line colour over a hostile; a name + X
-  tag over the hostile you are looking at; civilians get nothing.
+  Crosshair centred, warms to the line colour over a hostile; the hostile
+  under it draws at 1.25 (the lander's hover value) with the lander's AMBER
+  tag over it — #ffb457, NAME + X, one word under (OVERHANG / RIDGE / DOOR /
+  SHIELD; DOOR SHUT in pink #ff8fa3 as the refusal); civilians get nothing.
+  Rubble is the lander's `_rubble` recipe stroke for stroke (same rng), so a
+  building killed from the ground looks the same from the air.
 - Keys: W S drive, A D turn, mouse height = look (no pointer lock; a PLAY
   dial turns it off; Q E look too), click / Space shell, right click / L
   laser, P pause, R restart (armed twice). Tuner: PLAY (mission, mouse look,
@@ -134,5 +141,4 @@ one align on presentation by message (both sessions are live at once).
 - Enemy tanks in the lander's side view: authored here in the shared format
   (`MODELS` in tank-render.js, model space x right / y up / z back) — tell the
   lander session the ids when James wants them going by.
-- Round-two matching: the amber hostile hover when the lander builds it.
 - Revolved forms for the round structures (NEEDS.md item 1).

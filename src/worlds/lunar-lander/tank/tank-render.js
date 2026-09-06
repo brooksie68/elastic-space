@@ -650,17 +650,23 @@ export class TankScene {
     g.setDrawRange(0, boxes.length * 36);
     g.computeBoundingSphere();
   }
-  _rubbleFor(id) {
-    if (this.rubble[id]) return this.rubble[id];
-    const segs = globalThis.LunarStructures.solid(id) || [];
+  // Rubble: THE LANDER'S RECIPE (render3d.js _rubble, 2026-09-06) so a
+  // destroyed building looks the same from the air and from the ground —
+  // same rng seed, same draws, same strokes; local to the footprint centre.
+  _rubbleFor(s) {
+    if (this.rubble[s.sid]) return this.rubble[s.sid];
+    const C = globalThis.LunarCore;
+    const rng = C.mulberry32(C.hashSeed(s.k * 131 + 7, s.x0 | 0));
+    const w = s.x1 - s.x0;
+    const n = 4 + Math.floor(rng() * 3);
     const out = [];
-    let i = 0;
-    for (const q of segs) {
-      if ((i++ % 3) !== 0) continue;
-      const j = () => (this._rand() - 0.5) * 6;
-      out.push([q[0] + j(), q[1] * 0.12 + 1, q[2] + j(), q[3] + j(), q[4] * 0.12 + 1, q[5] + j()]);
+    for (let i = 0; i < n; i++) {
+      const x = (rng() - 0.5) * w * 0.9, z = (rng() - 0.5) * 30;
+      const h = 3 + rng() * Math.min(14, s.h * 0.35), dx = (rng() - 0.5) * 16;
+      out.push([x, 0, z, x + dx, h, z, 0.42]);
     }
-    this.rubble[id] = out;
+    out.push([-w / 2 + 4, 0.5, 0, w / 2 - 4, 0.5, 0, 0.3]);
+    this.rubble[s.sid] = out;
     return out;
   }
 
@@ -742,7 +748,8 @@ export class TankScene {
 
   // ---- the frame ---------------------------------------------------------------------------------
   // view: { tank: {x,y,z,heading,pitch,recoil,alive}, enemies, missiles, eshells, shell, beam,
-  //         structures: [placed structures near the tank], dead: bool, deadT: s, flash }
+  //         structures: [placed structures near the tank], dead: bool, flash,
+  //         hover: the sid (structure) or id (enemy) under the crosshair, drawn at 1.25 }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
     this.time += dt;
@@ -790,11 +797,13 @@ export class TankScene {
     let boxKey = '';
     for (const s of structs) {
       boxKey += s.sid + (s.alive ? '+' : '-');
-      const segs = s.alive ? ST.solid(s.id) : this._rubbleFor(s.id);
+      const segs = s.alive ? ST.solid(s.id) : this._rubbleFor(s);
       if (!segs) continue;
-      let b = s.alive ? (s.cls === 'civ' ? P.civBright : P.hostBright) : 0.32;
-      // a hostile that has just been hit flickers; a bunker's open door shows as a lit frame
-      for (const q of segs) SB.seg(s.x + q[0], s.y + q[1], s.z + q[2], s.x + q[3], s.y + q[4], s.z + q[5], b);
+      // the lander's values: civilians 0.62, hostiles 0.85, the hostile under the
+      // crosshair 1.25 (its "hover"); rubble carries its own brightness per stroke
+      const hov = view && view.hover && view.hover === s.sid;
+      const b = s.alive ? (hov ? 1.25 : s.cls === 'civ' ? P.civBright : P.hostBright) : 0;
+      for (const q of segs) SB.seg(s.x + q[0], s.y + q[1], s.z + q[2], s.x + q[3], s.y + q[4], s.z + q[5], s.alive ? b : q[6]);
       if (s.alive && s.hard === 'door' && s.door > 0) {
         const gl = 1.6 + 0.5 * Math.sin(this.time * 14);
         const hz = s.d / 2;
@@ -811,7 +820,7 @@ export class TankScene {
       if (!e.alive) continue;
       const M = MODELS[e.kind] || MODELS.slow;
       const c = Math.cos(e.heading), s = Math.sin(e.heading);
-      const eb = P.enemyBright * (e.hitT > 0 ? 1.8 : 1);
+      const eb = view && view.hover && view.hover === e.id ? 1.25 : P.enemyBright;
       for (const q of M) D.seg(e.x + q[0] * c - q[2] * s, e.y + q[1], e.z + q[0] * s + q[2] * c, e.x + q[3] * c - q[5] * s, e.y + q[4], e.z + q[3] * s + q[5] * c, eb);
     }
     for (const m of (view && view.missiles) || []) {

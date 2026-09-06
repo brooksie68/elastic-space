@@ -329,15 +329,17 @@ function placeLabels(dt) {
   if (r) for (const c of r.contacts) if (c.kind !== 'missile' && Math.abs(c.bearing) < 0.06 && c.range < 1400 && (!best || c.range < best.range)) best = c;
   if (best) {
     if (!hostTag) { hostTag = document.createElement('div'); hostTag.className = 'tag'; labelLayer.appendChild(hostTag); }
-    const name = ENEMY_NAMES[best.kind] || (ST.BY_ID[best.kind] ? ST.BY_ID[best.kind].name : best.kind.toUpperCase());
-    const mult = ENEMY_NAMES[best.kind] ? T.ENEMY[best.kind].mult : (ST.BY_ID[best.kind] ? ST.BY_ID[best.kind].mult : 1);
-    hostTag.innerHTML = name + '<span class="x">' + mult + 'X</span>' + (best.hard ? '<span class="x">' + best.hard.toUpperCase() + '</span>' : '');
+    // NAME + X, then one word under it: the hardening (OVERHANG / RIDGE / DOOR / SHIELD), in pink when the door is shut (a refusal)
+    const word = best.doorShut ? '<span class="word refuse">DOOR SHUT</span>' : best.hard ? '<span class="word">' + best.hard.toUpperCase() + '</span>' : '';
+    hostTag.innerHTML = best.name + '<span class="x">' + best.mult + 'X</span>' + word;
+    hoverId = best.sid || best.id || null;
     const f = T.forward(t.heading + best.bearing);
     scene.projectToScreen(t.x + f[0] * best.range, t.y + T.TANK.eye + best.dy + 16, t.z + f[1] * best.range, _pt);
     hostTag.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -100%)';
     hostTag.style.opacity = _pt.on ? 1 : 0;
-  } else if (hostTag) hostTag.style.opacity = 0;
+  } else { if (hostTag) hostTag.style.opacity = 0; hoverId = null; }
 }
+let hoverId = null;
 
 // ---- frame ---------------------------------------------------------------------------------------
 function currentInput() {
@@ -375,6 +377,7 @@ function frameStep(dt) {
       structures: T.structuresNear(state, t.x, t.z, 2800),
       dead: state.phase === 'dead' || state.phase === 'over',
       flash: hullFlash * 0.22,
+      hover: hoverId,
     };
     scene.render(view, dt);
     placeLabels(dt);

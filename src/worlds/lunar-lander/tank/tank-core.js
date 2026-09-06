@@ -433,15 +433,24 @@
     events.push({ type: 'kill', x: e.x, y: e.y, z: e.z, kind: e.kind, points: pts, by: by, enemy: e });
   }
   // Hostile structures die to a hit (a shield takes two; a bunker's door must
-  // be open — it opens for two seconds when its own SAM fires). Civilians
-  // absorb the shot and pay nothing: never targetable, never harmed.
+  // be open — it opens for two seconds when its own SAM fires, the tank's
+  // own timer since the SAM fires at the tank). Civilians absorb the shot and
+  // pay nothing: never targetable, never harmed. The damage itself goes
+  // through the LANDER core's `hitStructure` when it is there (2026-09-06,
+  // the lander session's ask): one rule for shield / dead / the level count,
+  // and the lander's chunk object flips so both halves see the same moon.
   function damageStructure(state, s, events, by) {
     if (s.cls === 'civ') { events.push({ type: 'absorbed', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s }); return; }
     if (s.hard === 'door' && s.door <= 0) { events.push({ type: 'absorbed', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s, door: true }); return; }
-    s.hp -= 1;
-    if (s.hp > 0) { events.push({ type: 'hit', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s }); return; }
+    if (typeof C().hitStructure === 'function') {
+      C().hitStructure(state.land, s.sid, s.x, s.y + s.h / 2);
+      s.hp = s.st.alive === false ? 0 : Math.max(1, s.hp - 1);
+    } else {
+      s.hp -= 1;
+      if (s.hp <= 0) s.st.alive = false;
+    }
+    if (s.st.alive !== false) { events.push({ type: 'hit', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s }); return; }
     s.alive = false;
-    s.st.alive = false;              // the lander's chunk data sees it too
     const pts = 100 * (s.mult || 1);
     state.score += pts; state.kills++;
     events.push({ type: 'kill', x: s.x, y: s.y, z: s.z, kind: s.id, points: pts, by: by, structure: s });
@@ -662,16 +671,16 @@
     const t = state.tank;
     const contacts = [];
     const eye = t.y + TANK.eye;
-    const rel = (x, z, cy, kind, alive) => {
+    const rel = (x, z, cy, kind, alive, extra) => {
       const dx = x - t.x, dz = z - t.z;
       const range = Math.hypot(dx, dz);
       if (range > RADAR_RANGE) return;
       // dy: the target's centre above the eye — what a gunner reads to lay the gun
-      contacts.push({ bearing: wrapAngle(headingTo(t.x, t.z, x, z) - t.heading), range: Math.round(range), dy: +(cy - eye).toFixed(1), kind: kind, alive: alive });
+      contacts.push(Object.assign({ bearing: wrapAngle(headingTo(t.x, t.z, x, z) - t.heading), range: Math.round(range), dy: +(cy - eye).toFixed(1), kind: kind, alive: alive }, extra || {}));
     };
-    for (const e of state.enemies) if (e.alive) rel(e.x, e.z, e.y + ENEMY[e.kind].hullH / 2, e.kind, true);
-    for (const s of structuresNear(state, t.x, t.z, RADAR_RANGE)) if (s.alive && s.cls !== 'civ') rel(s.x, s.z, s.y + Math.min(s.h, 30) / 2, s.id, true);
-    for (const m of state.missiles) if (m.alive) rel(m.x, m.z, m.y, 'missile', true);
+    for (const e of state.enemies) if (e.alive) rel(e.x, e.z, e.y + ENEMY[e.kind].hullH / 2, e.kind, true, { id: e.id, name: ENEMY[e.kind].name, mult: ENEMY[e.kind].mult });
+    for (const s of structuresNear(state, t.x, t.z, RADAR_RANGE)) if (s.alive && s.cls !== 'civ') rel(s.x, s.z, s.y + Math.min(s.h, 30) / 2, s.id, true, { sid: s.sid, name: s.name, mult: s.mult || 1, hard: s.hard, doorShut: s.hard === 'door' && s.door <= 0 });
+    for (const m of state.missiles) if (m.alive) rel(m.x, m.z, m.y, 'missile', true, { id: m.id });
     let nearest = null;
     for (const c of contacts) if (c.kind !== 'missile' && (!nearest || c.range < nearest.range)) nearest = c;
     return {
@@ -695,6 +704,6 @@
     groundAt: groundAt, naturalAt: naturalAt, baseAt: baseAt, slopeAlong: slopeAlong,
     chunkStructures: chunkStructures, structuresNear: structuresNear, stretchHostiles: stretchHostiles, hostilesLeft: hostilesLeft,
     boxDist: boxDist, blocked: blocked, rayHit: rayHit, forward: forward, wrapAngle: wrapAngle, headingTo: headingTo,
-    spawnWave: spawnWave, hullHit: hullHit,
+    spawnWave: spawnWave, hullHit: hullHit, damageStructure: damageStructure, damageEnemy: damageEnemy,
   };
 })();
