@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=4';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=5';
 
 const Core = globalThis.LunarCore;
 
@@ -128,6 +128,13 @@ let launchLit = 0;
 let launchPadY = null;         // the pad the last launch left from (for the zoom-out rule)
 let squashT = -1;            // seconds since touchdown on shock legs, -1 = none
 let techDrawn = '';
+// the weapons (round two): which is armed, what the cursor is over, what is selected
+let armed = null;            // null | 'missiles' | 'laser'
+let hover = null;            // structure sid under the cursor
+let target = null;           // selected structure sid
+let denyWhy = null, denyT = 0;   // the tag's refusal word and how long it shows
+const cursor = { x: 0, y: 0, on: false };
+const SUPPLY_NAMES = { missiles: 'MISSILES', laser: 'LASER CHARGE', chaff: 'CHAFF' };
 
 // Read-only handle for headless checks and the look-dev harness.
 Object.defineProperty(globalThis, 'LANDER_DEBUG', {
@@ -245,6 +252,15 @@ const Sfx = {
   ring(i) { this.env('sine', 440 * Math.pow(1.25, i), 0.18, 0.09); this.env('triangle', 880 * Math.pow(1.25, i), 0.12, 0.04); },
   launch() { this.noise(0.7, 0.5, 1400); this.env('sawtooth', 120, 0.7, 0.12, 420); },
   refuel() { [392, 494, 587].forEach((f, i) => setTimeout(() => this.env('sine', f, 0.3, 0.08), 300 + i * 140)); },
+  // the weapons
+  missile() { this.noise(0.7, 0.55, 1800); this.env('sawtooth', 220, 0.6, 0.14, 70); },
+  laser(hit) { this.env('sine', 1900, 0.34, 0.12, 320); this.env('square', 960, 0.12, 0.04, 480); if (hit) setTimeout(() => this.noise(0.25, 0.3, 2400), 120); },
+  boom(hit) { this.noise(hit ? 0.9 : 0.45, hit ? 0.8 : 0.4, hit ? 700 : 1200); this.env('sine', hit ? 64 : 90, hit ? 0.8 : 0.4, hit ? 0.45 : 0.2, 28); },
+  kill() { [523, 659, 784].forEach((f, i) => setTimeout(() => this.env('triangle', f, 0.18, 0.1), 350 + i * 90)); },
+  clank() { this.env('square', 320, 0.16, 0.08, 180); this.noise(0.12, 0.3, 3000); },
+  deny() { this.env('square', 140, 0.07, 0.06); setTimeout(() => this.env('square', 120, 0.07, 0.06), 90); },
+  lock() { this.env('sine', 880, 0.05, 0.07); setTimeout(() => this.env('sine', 1320, 0.06, 0.07), 60); },
+  chaff() { this.noise(0.35, 0.4, 3200); this.env('triangle', 600, 0.2, 0.05, 200); },
   over() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => this.env('triangle', f, 0.35, 0.14), i * 160)); },
 };
 if (window.ElasticSoundControl) {
@@ -280,7 +296,7 @@ function makeGame() {
   clearFloats();
   buildPadLabels();
 }
-function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; launchAfter = null; }
+function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; launchAfter = null; armed = null; target = null; hover = null; denyWhy = null; }
 function enterAttract(resultLine, stamp) {
   mode = 'attract';
   document.body.classList.remove('paused');
@@ -445,6 +461,8 @@ function showResult(result) {
   else if (result.reused) pts = 'NO POINTS — THIS PAD HAS PAID ALREADY' + (result.fuelBonus ? ' · FUEL +' + result.fuelBonus : '');
   else pts = pad(result.points, 3) + ' POINTS (' + result.pad.mult + 'X PAD)' + (result.fuelBonus ? ' · FUEL +' + result.fuelBonus : '');
   if (result.fuelPad) pts += ' · FUEL PAD +' + result.fuelPad;
+  if (result.supply) pts += ' · ' + SUPPLY_NAMES[result.supply.kind] + (result.supply.amount > 0 ? ' +' + result.supply.amount : ' FULL');
+  if (result.levelDone) { $('r-word').textContent = 'LEVEL ' + result.levelDone + ' COMPLETE'; $('r-msg').textContent = 'THE STRETCH IS CLEAR. THE RELAY IS YOURS.'; }
   if (state.phase === 'over') pts += ' · TANK DRY';
   $('r-points').textContent = pts;
   const rt = $('r-tech');
@@ -472,6 +490,8 @@ function handleEvents(events) {
       if (r.points > 0) floatLabel(state.ship.x, state.ship.y + 34, '+' + r.points, 'pts', row++);
       if (r.techEarned) { floatLabel(state.ship.x, state.ship.y + 34, TECH_NAMES[r.techEarned], 'tech', row++); Sfx.earn(); }
       if (r.fuelPad) { floatLabel(state.ship.x, state.ship.y + 34, 'FUEL +' + r.fuelPad, 'fuel', row++); Sfx.refuel(); }
+      if (r.supply && r.supply.amount > 0) floatLabel(state.ship.x, state.ship.y + 34, SUPPLY_NAMES[r.supply.kind] + ' +' + r.supply.amount, 'fuel', row++);
+      if (r.levelDone) { floatLabel(state.ship.x, state.ship.y + 34, 'LEVEL ' + r.levelDone + ' COMPLETE', 'tech', row++); Sfx.earn(); }
       if (r.kind === 'secret') Sfx.secret(); else Sfx.land(r.kind);
       if (Core.hasTech(state, 'shock')) squashT = 0;
       autoOn = false;
@@ -485,6 +505,36 @@ function handleEvents(events) {
       slowMo = 0.18;              // the beat: the pieces hang, then time comes back
       resultTimer = 2.3;
       mode = 'settle';
+    } else if (e.type === 'launch') {
+      Sfx.missile();
+    } else if (e.type === 'laser') {
+      scene.spawnLaser(e.from, e.to, e.hit);
+      Sfx.laser(e.hit);
+    } else if (e.type === 'impact') {
+      scene.spawnImpact(e.x, e.y, e.hit);
+      Sfx.boom(e.hit);
+    } else if (e.type === 'kill') {
+      const st = Core.structureById(state, e.sid);
+      if (st) scene.spawnBreak(st);
+      floatLabel(e.x, e.y + 40, '+' + e.points + '  ' + e.name, 'pts', 0);
+      Sfx.kill();
+      if (target === e.sid) target = null;
+      if (hover === e.sid) hover = null;
+    } else if (e.type === 'shield') {
+      const st = Core.structureById(state, e.sid);
+      if (st) scene.spawnShield(st);
+      floatLabel(e.x, e.y + 30, 'SHIELD DOWN', 'tech', 0);
+      Sfx.clank();
+    } else if (e.type === 'civHit') {
+      const st = Core.structureById(state, e.sid);
+      if (st) scene.spawnBreak(st);
+      floatLabel(e.x, e.y + 40, e.points + '  ' + e.name, 'lost', 0);
+      Sfx.lose();
+    } else if (e.type === 'miss') {
+      floatLabel(e.x, e.y + 24, 'MISSED', 'fuel', 0);
+    } else if (e.type === 'levelClear') {
+      floatLabel(state.ship.x, state.ship.y + 60, 'LEVEL ' + e.level + ' CLEAR — LAND ON THE RELAY', 'tech', 0);
+      Sfx.earn();
     } else if (e.type === 'over') {
       setTimeout(() => Sfx.over(), 900);
     } else if (e.type === 'gate') {
@@ -503,7 +553,7 @@ let padLabels = [];
 let labelsKey = '';
 const floats = [];
 function buildPadLabels() {
-  labelLayer.querySelectorAll('.pad-label, .pad-fuel').forEach((el) => el.remove());
+  labelLayer.querySelectorAll('.pad-label, .pad-fuel, .pad-supply').forEach((el) => el.remove());
   padLabels = [];
   if (!state || !scene) return;
   labelsKey = scene.builtKey;
@@ -516,6 +566,17 @@ function buildPadLabels() {
         (p.used ? '<span class="tag">USED</span>' : '');
       labelLayer.appendChild(el);
       padLabels.push({ el, x: (p.x0 + p.x1) / 2, y: p.y + 6 });
+      if (p.supply) {
+        // the supply mark under the pad, beside the fuel drop: a dart, a bolt, or shreds
+        const m = document.createElement('div');
+        m.className = 'pad-supply' + (p.used ? ' used' : '');
+        const glyph = p.supply === 'missiles' ? '<path d="M8 1.5v10M8 1.5L5.5 6M8 1.5l2.5 4.5M5 11.5l3 3 3-3"/>'
+          : p.supply === 'laser' ? '<path d="M9.5 1.5L4 8.5h4l-1.5 6L12 7.5H8l1.5-6z"/>'
+          : '<path d="M3 3l2 3M8 2l1 4M12 3l-1 3M4 9l1 3M8 9v4M12 9l-1 3"/>';
+        m.innerHTML = '<svg viewBox="0 0 16 16" aria-label="' + p.supply + ' supply">' + glyph + '</svg>';
+        labelLayer.appendChild(m);
+        padLabels.push({ el: m, x: (p.x0 + p.x1) / 2 + (p.fuel ? 14 : 0), y: p.y - 3, below: true });
+      }
       if (p.fuel) {
         // the fuel mark: a big drop UNDER the pad (James: the little droplet was too small to see)
         const f = document.createElement('div');
@@ -523,7 +584,7 @@ function buildPadLabels() {
         f.innerHTML = '<svg viewBox="0 0 12 16" aria-label="fuel pad"><path d="M6 1.5C4 5 2 7.5 2 10.2a4 4 0 0 0 8 0C10 7.5 8 5 6 1.5z"/></svg>';
         labelLayer.appendChild(f);
         // the drop alone, right under the middle of the pad (James's pick)
-        padLabels.push({ el: f, x: (p.x0 + p.x1) / 2, y: p.y - 3, below: true });
+        padLabels.push({ el: f, x: (p.x0 + p.x1) / 2 - (p.supply ? 10 : 0), y: p.y - 3, below: true });
       }
     }
   }
@@ -539,6 +600,7 @@ function clearFloats() { for (const f of floats) f.el.remove(); floats.length = 
 const _pt = {};
 function placeLabels(dt) {
   if (!scene || !state) return;
+  placeTargetTag(dt);
   for (const L of padLabels) {
     scene.projectToScreen(L.x, L.y, _pt);
     L.el.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(' + (L.left ? '0%' : '-50%') + ', ' + (L.below ? '0%' : '-100%') + ')';
@@ -708,6 +770,9 @@ function frameStep(dt) {
     tech: state.tech,
     fan, squash,
     autoOn: autoOn && mode === 'play',
+    shots: state.shots,
+    hover: mode === 'play' ? hover : null,
+    target: mode === 'play' ? target : null,
     launch: launchView,
     relayLit: state.result && state.result.kind !== 'crash' && state.result.pad && state.result.pad.relay ? state.result.pad.id : null,
     hatch: state.phase === 'over' && state.result ? { x: state.result.x, y: Core.groundAt(state, state.result.x) } : null,
@@ -782,6 +847,7 @@ function renderInstruments() {
   $('v-score').textContent = pad(r.score, 4);
   $('v-time').textContent = fmtTime(r.time);
   $('v-flight').textContent = 'FLIGHT ' + state.attempt;
+  renderWeapons();
   const rg = r.range;
   $('v-range').textContent = Math.abs(rg) < 500 ? 'HOME' : (rg > 0 ? '→ ' : '← ') + (Math.abs(rg) >= 10000 ? (Math.abs(rg) / 1000).toFixed(1) + 'K' : Math.abs(rg)) + ' FT';
   $('v-fuel').textContent = pad(r.fuel, 4);
@@ -831,6 +897,9 @@ window.addEventListener('keydown', (e) => {
     burnHeld = true;
   }
   else if (k === 'x' || k === 'X') { if (mode === 'play') abortReq = true; }
+  else if (k === '1') { if (mode === 'play') toggleArm('missiles'); }
+  else if (k === '2') { if (mode === 'play') toggleArm('laser'); }
+  else if (k === 'c' || k === 'C') { if (mode === 'play' && state && Core.dropChaff(state)) { Sfx.chaff(); floatLabel(state.ship.x, state.ship.y - 30, 'CHAFF', 'fuel', 0); } }
   else if (k === 'ArrowDown' || k === 's' || k === 'S') { trim = 0; autoRelease(); e.preventDefault(); }
   else if (k === 'Shift') { shiftHeld = true; autoRelease(); }
   else if (k === ' ') {
@@ -867,9 +936,90 @@ window.addEventListener('wheel', (e) => {
   autoRelease();
 }, { passive: true });
 // hold the pointer on the field to burn (touch / mouse)
-canvas.addEventListener('pointerdown', (e) => { if (mode === 'play') { if (autoOn) autoRelease(); else autoEngage(); burnHeld = true; try { canvas.setPointerCapture(e.pointerId); } catch (_) {} } });
+canvas.addEventListener('pointerdown', (e) => {
+  if (mode !== 'play') return;
+  cursor.x = e.clientX; cursor.y = e.clientY; cursor.on = true;
+  if (e.button === 2) { clearTarget(); return; }
+  if (armed) {
+    // an armed weapon: the click targets, never burns
+    const st = hostileUnderCursor();
+    if (st) { if (target === st.sid) doFire(); else selectTarget(st); }
+    else if (target) doFire();
+    return;
+  }
+  if (autoOn) autoRelease(); else autoEngage();
+  burnHeld = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+});
+canvas.addEventListener('pointermove', (e) => { cursor.x = e.clientX; cursor.y = e.clientY; cursor.on = true; });
+canvas.addEventListener('pointerleave', () => { cursor.on = false; });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (mode === 'play') clearTarget(); });
 canvas.addEventListener('pointerup', () => { burnHeld = false; });
 canvas.addEventListener('pointercancel', () => { burnHeld = false; });
+
+// ---- the weapons (round two) -------------------------------------------------------------------
+function toggleArm(w) {
+  if (armed === w) { armed = null; target = null; }
+  else { armed = w; if (target) { const st = Core.structureById(state, target); if (!st || !Core.targetable(state, st, w).ok) target = null; } }
+  Sfx.tick();
+  renderWeapons();
+}
+function clearTarget() { target = null; if (armed) { armed = null; } renderWeapons(); }
+// the hostile under the cursor: its box grown by ~14 px in world feet
+function hostileUnderCursor() {
+  if (!scene || !state || !cursor.on) return null;
+  const w = scene.screenToWorld(cursor.x, cursor.y, {});
+  const a = scene.projectToScreen(w.x, w.y, {}), b = scene.projectToScreen(w.x + 100, w.y, {});
+  const pxPerFt = Math.max(1e-6, Math.abs(b.x - a.x) / 100);
+  return Core.hostileAt(state, w.x, w.y, 14 / pxPerFt);
+}
+function selectTarget(st) {
+  const t = Core.targetable(state, st, armed);
+  if (!t.ok) { denyWhy = t.why; denyT = 1.2; hover = st.sid; Sfx.deny(); return; }
+  target = st.sid; denyWhy = null;
+  Sfx.lock();
+  renderWeapons();
+}
+function doFire() {
+  if (!armed || !target || !state) return;
+  const r = Core.fire(state, armed, target);
+  if (!r.ok) { denyWhy = r.why; denyT = 1.2; Sfx.deny(); if (r.why === 'DESTROYED') target = null; return; }
+  handleEvents(r.events);
+  target = null;
+  renderWeapons();
+}
+function renderWeapons() {
+  if (!state) return;
+  for (const w of ['missiles', 'laser', 'chaff']) {
+    const el = $('w-' + w);
+    if (!el) continue;
+    el.textContent = state.ammo[w];
+    const row = el.parentElement;
+    row.classList.toggle('armed', armed === w);
+    row.classList.toggle('locked', armed === w && !!target);
+    row.classList.toggle('empty', state.ammo[w] <= 0);
+  }
+  const note = $('weapon-note');
+  if (note) note.textContent = !armed ? '' : target ? 'CLICK AGAIN TO FIRE' : (armed === 'missiles' ? 'MISSILE ARMED — CLICK A TARGET' : 'LASER ARMED — CLICK A TARGET');
+  const hs = $('v-hostiles');
+  if (hs) hs.textContent = state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + ' HOSTILES';
+}
+const tagEl = $('target-tag');
+function placeTargetTag(dt) {
+  if (denyT > 0) { denyT -= dt; if (denyT <= 0) denyWhy = null; }
+  if (mode === 'play') hover = (() => { const st = hostileUnderCursor(); return st ? st.sid : null; })();
+  const sid = hover || target;
+  const st = sid && mode === 'play' ? Core.structureById(state, sid) : null;
+  if (!st || !st.alive) { tagEl.classList.remove('show'); return; }
+  const t = armed ? Core.targetable(state, st, armed) : { ok: true, why: st.hard ? st.hard.toUpperCase() : null };
+  const why = (denyWhy && (hover === sid || target === sid)) ? denyWhy : (t.ok ? t.why : t.why);
+  tagEl.innerHTML = st.name + '<span class="x">' + st.mult + 'X</span>' + (why ? '<span class="why">' + why + '</span>' : '');
+  tagEl.classList.toggle('sel', target === sid);
+  tagEl.classList.toggle('deny', !!denyWhy && !t.ok);
+  scene.projectToScreen((st.x0 + st.x1) / 2, st.y + st.h + 14, _pt);
+  tagEl.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -100%)';
+  tagEl.classList.toggle('show', _pt.on);
+}
 
 function togglePause() {
   if (mode === 'paused') {

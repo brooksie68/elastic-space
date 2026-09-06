@@ -2,6 +2,62 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (Battle for the Moon, round two: the weapons) — Claude
+
+Built on James's "you can continue" after round one. Everything is in the pure
+core with the shell and renderer only showing it.
+
+THE CORE (`game-core.js`): loadout 4 missiles / 3 laser / 3 chaff (`LOADOUT`,
+caps `AMMO_MAX` 6/5/5). `targetable(state, st, weapon)` is the whole target
+system: civilians never (CIVILIAN), dead never (DESTROYED), a data centre only
+from the open right side below a 0.9 rise/run (OVERHANG), a depot only by a
+missile with 220 ft of height over it (RIDGE), a bunker only while its door is
+open — 2 s in every 12 for now, round three ties it to its own SAM (DOOR), a
+shielded core says SHIELD and takes two hits (`hp`). `fire(state, weapon,
+sid)` spends one round and rolls the hit from the game's own seeded counter
+(`HIT_ODDS` 0.85): the laser resolves in the call (events laser → kill /
+shield / miss); a missile joins `state.shots` and flies in `stepShots` (boost
+to 260 ft/s, turns 2.6 rad/s toward its aim, strikes at the point, the ground,
+or after 10 s) → impact → kill / shield / miss; a MISS lands 70–170 ft off, and
+a civilian within 22 ft of that point is hit: −150 (`civHit`) — James's call.
+A kill pays 100 × X and ticks `hostilesLeft`; the level's stretch is chunks
+1–8, counted at `createGame` (which also promises a relay pad in the stretch);
+at zero `levelClear` fires once and landing on the relay sets
+`result.levelDone` (the card says LEVEL 1 COMPLETE). `dropChaff` spends one
+and drops a falling cloud (round three makes it decoy SAMs). PAD SUPPLIES: one
+per pad at most (`pad.supply` missiles / laser / chaff, missiles favoured) on
+their own drought ladder `WEAPON_ODDS` [0.28 → 1.0], carried across seams like
+fuel (`wdrought`); chunk 0 always has one; a landing refills +2 up to the cap
+(`result.supply`), every landing like fuel. `hostileAt`, `structureById`,
+`doorOpen` exported.
+
+THE SHELL (`game.js`): 1 arms the missile, 2 the laser (same key disarms), C
+drops chaff, right-click clears. With a weapon armed the pointer TARGETS and
+never burns: hover any hostile and its strokes step up (1.25) with an amber
+DOM tag (name, X, and the one word — OVERHANG / RIDGE / DOOR / SHIELD — or the
+refusal in pink); click selects (bracket + pulse 1.7 ± 0.5, "CLICK AGAIN TO
+FIRE", the armed row blinks); click again fires; a refused click shows why for
+1.2 s. Civilians never react. WEAPONS panel in the console (three rows, the
+armed one lit, empties dimmed) + "N HOSTILES" / "CLEAR — LAND ON THE RELAY" in
+the meta line. Pad supply marks under the pad beside the fuel drop (dart /
+bolt / shreds). Sounds: missile whoosh, laser sweep, boom, kill chord, shield
+clank, deny, lock, chaff hiss.
+
+THE RENDERER (`render3d.js`): `screenToWorld` (the cursor onto the flight
+plane), the missile as a dart with a particle plume, chaff as a hashed shower
+of shreds, the beam (white-hot, fading, a second hairline so it reads as a
+beam), impact ring + sparks + flash, `spawnBreak` — the structure comes apart
+along its own solid's strokes like the lander does — then rubble (four to six
+low broken strokes, hashed) where it stood; the shield flash arc.
+
+Sim TEST 14: loadout + goal + relay promise (40 seeds), civilians never
+answer, hit rate 0.849 over 451 shots, one civilian hit, every hardening
+exercised, chaff falls, supplies (share 0.43, never five pads without one,
+missiles > laser > chaff, refill + cap), the full level-1 sweep to levelClear
+and the relay landing. 206,774 green. Driven in the pane: hover tag, select,
+fire, the tower breaking, +100. Tags: game-core v9, game v8, render3d v5.
+NOT built: hostile fire (round three).
+
 ## 2026-09-06 (Battle for the Moon, round one: the structures) — Claude
 
 Built on James's go after the level-1 design was agreed (world CLAUDE.md top).

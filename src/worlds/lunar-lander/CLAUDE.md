@@ -37,9 +37,10 @@ The plan (three rounds, his eyes between each):
 1. Structures — BUILT 2026-09-06 (changelog "round one"): `structures.js`
    (18 drawings), `chunk.structures`, solid, the four selections gone.
    AWAITING HIS EYES.
-2. Weapons + refills — missile and laser, targeting by click, ammo + charge in
-   the console; pads carry fuel / missiles / laser / chaff in a mix, each on
-   its own drought ladder (fuel's odds unchanged).
+2. Weapons + refills — BUILT 2026-09-06 (changelog "round two"): `fire` /
+   `targetable` / `stepShots` / pad supplies in the core; 1 / 2 / C / right-
+   click in the shell; the tag, the bracket, the dart, the beam, the break.
+   AWAITING HIS EYES.
 3. Hostile fire — SAM sites, warning + icon + pink range, chaff.
 Everything in the pure core with sim tests; animations in the renderer.
 
@@ -290,6 +291,17 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
   `result.struck`). Both renderers draw from this file — the tank session
   imports it; never author a building anywhere else. The renderer also
   scatters hashed civilian silhouettes on the far line (decoration only).
+- **The weapons are core rules** (round two, 2026-09-06): `LOADOUT` /
+  `AMMO_MAX` / `PAD_SUPPLY`, `targetable(state, st, weapon)` → { ok, why }
+  (the why IS the tag's word), `fire(state, weapon, sid)` → { ok, why,
+  events } (the laser resolves in the call; a missile flies in `state.shots`
+  via `stepShots` every step), `dropChaff`, `damage` (shield hp then dead,
+  `world.version++` so the static lines rebuild), the level goal
+  (`hostilesLeft` over chunks 1..`LEVEL_CHUNKS`, `levelClear`, the relay
+  promised at `createGame`, `result.levelDone`). Rolls come from
+  `rollW(state)` — hashed seed + counter, never Math.random. Pad supplies
+  ride the same carry as fuel (`chunk.wdrought`). The shell only arms,
+  hovers, selects and calls fire; never put a rule in it.
 - **One feel, levels not selections** (`FLIGHT`, 2026-09-06): there is no
   `DIFFICULTY` any more; `state.level` starts at 1; physics never change
   between levels.

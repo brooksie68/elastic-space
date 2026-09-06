@@ -125,6 +125,29 @@
     #tc-status.held { color: var(--ph); }
     #tc-how { margin-top: 0.6em; font-size: 0.92em; line-height: 1.5; letter-spacing: 0.02em; color: var(--ink); opacity: 0.9; text-transform: none; }
     #tech-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; }
+    /* ---- the weapons (round two): three rows, the armed one lit ---- */
+    #weapons-panel { gap: 0.35em; }
+    #weapons { display: flex; flex-direction: column; gap: 0.18em; margin-top: 0.3em; }
+    .wpn { display: flex; align-items: baseline; gap: 0.55em; font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); padding: 0.12em 0.45em; border-radius: 6px; border: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
+    .wpn .key { display: inline-block; min-width: 1.2em; text-align: center; font-size: 0.85em; color: var(--ink-faint); border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0 0.15em; letter-spacing: 0; }
+    .wpn .wname { flex: 1; }
+    .wpn .wcount { font-variant-numeric: tabular-nums; font-size: 1.25em; font-weight: 300; letter-spacing: 0; color: var(--ink); }
+    .wpn.armed { color: var(--ph); border-color: color-mix(in srgb, var(--ph) 55%, transparent); background: color-mix(in srgb, var(--ph) 10%, transparent); }
+    .wpn.armed .key { color: var(--ph); border-color: var(--ph); }
+    .wpn.armed.locked { animation: hot 520ms ease-in-out infinite alternate; }
+    .wpn.empty .wcount { color: var(--ink-faint); }
+    #weapon-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; min-height: 1.2em; }
+    /* the cursor's tag over a hostile: amber, name + X, one word of the trick */
+    #target-tag { display: none; color: #ffb457; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; text-indent: 0.2em; text-shadow: 0 0 12px rgba(255, 180, 87, 0.45); }
+    #target-tag.show { display: block; }
+    #target-tag .x { font-weight: 300; letter-spacing: 0; margin-left: 0.3em; font-size: 1.15em; }
+    #target-tag .why { display: block; margin-top: 0.15em; font-size: 0.7em; color: #ffd9a8; opacity: 0.85; }
+    #target-tag.sel { color: #ffe0b0; }
+    #target-tag.deny .why { color: #ff8fa3; }
+    .pad-supply { display: flex; align-items: center; gap: 0.2rem; transition: opacity 200ms ease; }
+    .pad-supply svg { width: 0.8rem; height: 0.8rem; fill: none; stroke: var(--ph); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px var(--ph-dim)); }
+    .pad-supply.used { opacity: 0.45; }
+    .float.lost { color: #ff8fa3; }
     .card .line.tech { color: var(--ink-dim); font-size: 0.713em; min-height: 0; margin-top: 0.3em; }
     .card .line.tech:empty { display: none; }
     .card .line.tech.earned { color: var(--ph); }
@@ -361,7 +384,7 @@
 </head>
 <body>
   <canvas id="field"></canvas>
-  <div id="labels" aria-hidden="true"></div>
+  <div id="labels" aria-hidden="true"><div id="target-tag"></div></div>
   <div class="ship-hud" id="shud-l" aria-hidden="true">
     <div class="row"><span class="v" id="sh-alt">0</span><span class="u">FT</span></div>
     <div class="row"><span class="v" id="sh-thr">0</span><span class="u">%</span></div>
@@ -404,6 +427,15 @@
         <div id="thrust-track"><div id="thrust-fill"></div><div id="thrust-trim"></div></div>
         <div class="num" id="v-thrust">0%</div>
       </div>
+      <div class="panel" id="weapons-panel" title="1 missile · 2 laser · click a target, click again to fire · right-click clears · C chaff">
+        <div class="lbl">Weapons</div>
+        <div id="weapons">
+          <div class="wpn" data-w="missiles"><span class="key">1</span><span class="wname">MISSILE</span><span class="wcount" id="w-missiles">4</span></div>
+          <div class="wpn" data-w="laser"><span class="key">2</span><span class="wname">LASER</span><span class="wcount" id="w-laser">3</span></div>
+          <div class="wpn" data-w="chaff"><span class="key">C</span><span class="wname">CHAFF</span><span class="wcount" id="w-chaff">3</span></div>
+        </div>
+        <div id="weapon-note"></div>
+      </div>
       <div class="panel" id="tech-panel">
         <div class="lbl">Landing tech</div>
         <div id="tech" aria-label="landing tech held">
@@ -415,7 +447,7 @@
       </div>
       <div class="panel" id="hud-right">
         <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
-        <div id="meta"><span id="ro-select">LEVEL 1</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span><span id="v-range">HOME</span></div>
+        <div id="meta"><span id="ro-select">LEVEL 1</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span><span id="v-range">HOME</span><span id="v-hostiles"></span></div>
       </div>
     </div>
     <div id="tech-card" aria-hidden="true">
@@ -461,7 +493,7 @@
     <div class="sub">P OR SPACE TO RESUME</div>
   </div>
 
-  <div id="hint">← → ROTATE · HOLD W OR SPACE TO BURN · SHIFT FULL · S KILLS THE TRIM · LAND CLEAN ON A 4X FOR TECH · X ABORT · P PAUSE · R RESTART</div>
+  <div id="hint">← → ROTATE · HOLD W OR SPACE TO BURN · SHIFT FULL · S KILLS THE TRIM · 1 MISSILE · 2 LASER · CLICK A TARGET, CLICK AGAIN TO FIRE · RIGHT-CLICK CLEARS · C CHAFF · X ABORT · P PAUSE · R RESTART</div>
 
   <div id="controls">
     <button id="btn-pause" type="button">PAUSE</button>
@@ -547,10 +579,10 @@
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
   <script src="structures.js?v=2"></script>
-  <script src="game-core.js?v=8"></script>
+  <script src="game-core.js?v=9"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=7"></script>
+  <script type="module" src="game.js?v=8"></script>
 </body>
 </html>

@@ -89,6 +89,29 @@
   // early odds (the pity climb still fires), a rich deal lifts them. Chunk 0
   // always carries at least one.
   const FUEL_ODDS = [0.15, 0.35, 0.60, 0.85, 1.0];
+
+  // THE WEAPONS (Battle for the Moon, round two, 2026-09-06 — James's riff +
+  // answers, world CLAUDE.md "Round one design"). Two weapons from the start
+  // and chaff for round three. Ammo refills at pads the way fuel does: each
+  // pad may carry ONE supply (missiles / laser / chaff) on its own drought
+  // ladder, so you can always get some but may have to choose fuel or
+  // weapons this landing.
+  const LOADOUT = { missiles: 4, laser: 3, chaff: 3 };
+  const AMMO_MAX = { missiles: 6, laser: 5, chaff: 5 };
+  const PAD_SUPPLY = { missiles: 2, laser: 2, chaff: 2 };
+  const WEAPON_ODDS = [0.28, 0.45, 0.65, 0.85, 1.0];   // a supply on this pad, by the run of pads without one
+  const HIT_ODDS = 0.85;            // "pretty accurate... a very small likelihood that they could miss"
+  const MISSILE_SPEED = 260;        // ft/s, after a short boost
+  const MISSILE_TURN = 2.6;         // rad/s toward its aim point
+  const MISSILE_LIFE = 10;          // s, then it is spent wherever it is
+  const MISS_SPREAD = [70, 170];    // ft from the target where a miss lands
+  const TARGET_POINTS = 100;        // × the target's multiplier
+  const CIVILIAN_PENALTY = 150;     // a missile miss that lands on a civilian building
+  const OVERHANG_SLOPE = 0.9;       // a data centre under its rock lip: the shot comes from the open (right) side, rise/run under this
+  const RIDGE_ALT = 220;            // an ammo depot behind a ridge: the missile needs this much height over it to arc in
+  const DOOR_PERIOD = 12, DOOR_OPEN = 2.0;   // a bunker's blast door: open DOOR_OPEN s every DOOR_PERIOD s (round three ties it to its own SAM firing)
+  const LEVEL_CHUNKS = 8;           // level 1 is clear when every hostile in chunks 1..8 is gone (James's yes, 2026-09-06)
+  const BASE_MISS_CHECK = 22;       // ft: a miss within this of a civilian's box edge hits it
   const FUEL_DEAL_MULT = { standard: 1, sparse: 1, rich: 1.25, dry: 0.5, jackpot: 1 };
 
   // The ring accelerator beside every pad: rail base sits `offset` ft right of
@@ -323,7 +346,8 @@
       pads[Math.floor(rng() * pads.length)].relay = true;
     }
     // the fuel drought walk: flight order, odds climbing since the last fuel pad
-    let drought = carry || 0;
+    const carryIn = typeof carry === 'number' ? { fuel: carry, weapon: 0 } : (carry || { fuel: 0, weapon: 0 });
+    let drought = carryIn.fuel || 0;
     const byX = pads.slice().sort((a, b) => a.x0 - b.x0);
     const mult = FUEL_DEAL_MULT[deal];
     for (const p of byX) {
@@ -341,6 +365,22 @@
     if (k === 0 && pads.length && !byX.some((p) => p.fuel)) {
       byX[Math.floor(rng() * byX.length)].fuel = true;
       drought = 0; for (const p of byX) drought = p.fuel ? 0 : drought + 1;
+    }
+    // the weapon supply walk: one supply per pad at most, its own drought
+    // ladder across seams; which supply is the roll's (missiles favoured)
+    let wdrought = carryIn.weapon || 0;
+    for (const p of byX) {
+      p.supply = null;
+      const odds = WEAPON_ODDS[Math.min(wdrought, WEAPON_ODDS.length - 1)];
+      if (odds >= 1 || rng() < odds) {
+        const r = rng();
+        p.supply = r < 0.45 ? 'missiles' : r < 0.8 ? 'laser' : 'chaff';
+        wdrought = 0;
+      } else wdrought++;
+    }
+    if (k === 0 && pads.length && !byX.some((p) => p.supply)) {
+      byX[byX.length - 1].supply = 'missiles';
+      wdrought = 0;
     }
     // the secret flat — a strip that is not a pad
     let secret = null;
@@ -403,7 +443,7 @@
         taken.push([x0, x0 + w]);
         structures.push({ id: kind.id, name: kind.name, cls: kind.cls, mult: kind.mult, hard: kind.hard,
           x0: +(X0 + x0).toFixed(2), x1: +(X0 + x0 + w).toFixed(2), y: +y.toFixed(2), h: kind.h, k: k,
-          sid: k + ':s' + structures.length, alive: true });
+          sid: k + ':s' + structures.length, alive: true, hp: kind.hard === 'shield' ? 2 : 1 });
       }
     }
     // Build the polyline (absolute x): base samples with flats spliced in exactly.
@@ -430,7 +470,7 @@
       pts.push([x, ys[i4]]);
     }
     const zoneOut = zones.map((z) => ({ type: z.type, x0: X0 + z.i0 * TERRAIN_STEP, x1: X0 + z.i1 * TERRAIN_STEP }));
-    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought, structures: structures };
+    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought, wdrought: wdrought, structures: structures };
   }
 
   // ---- the world: chunks on demand, kept for the life ----------------------
@@ -441,7 +481,8 @@
     if (!c) {
       // the fuel drought carries across the seam from the chunk before (flight
       // goes right; chunks left of home start fresh)
-      const carry = k > 0 ? getChunk(state, k - 1).drought : 0;
+      const prev = k > 0 ? getChunk(state, k - 1) : null;
+      const carry = prev ? { fuel: prev.drought, weapon: prev.wdrought } : { fuel: 0, weapon: 0 };
       c = makeChunk(state.seed, k, state.opts, carry); w.chunks[k] = c; w.version++;
     }
     return c;
@@ -513,11 +554,179 @@
       launch: null,        // { pad } while phase === 'launch'
       farthest: 0,         // ft from the spawn, the furthest the ship has been
       gated: false,        // set once the ship has flown through a horizon ring
+      ammo: { missiles: LOADOUT.missiles, laser: LOADOUT.laser, chaff: LOADOUT.chaff },
+      shots: [],           // missiles in the air and chaff clouds falling
+      rolls: 0,            // the weapons' own seeded roll counter (hit / miss / spread)
+      hostilesTotal: 0,    // the level's goal: hostiles in chunks 1..LEVEL_CHUNKS
+      hostilesLeft: 0,
+      levelClear: false,   // every hostile in the level's stretch is gone — the relay ends the level
     };
     getChunk(state, 0);
+    // the level's stretch exists from the start: its hostiles are the goal,
+    // and a relay pad is promised inside it (chunk LEVEL_CHUNKS gets one if
+    // none was dealt) so the level can always be ended
+    let relay = false, n = 0;
+    for (let k = 1; k <= LEVEL_CHUNKS; k++) {
+      const c = getChunk(state, k);
+      for (const st of c.structures) if (st.cls !== 'civ') n++;
+      if (c.pads.some((p) => p.relay)) relay = true;
+    }
+    if (!relay) {
+      const c = getChunk(state, LEVEL_CHUNKS);
+      if (c.pads.length) c.pads[c.pads.length - 1].relay = true;
+    }
+    state.hostilesTotal = n; state.hostilesLeft = n;
     newAttempt(state);
     return state;
   }
+
+  // ---- the weapons --------------------------------------------------------------------------------
+  // The weapons' own rolls: hashed from the seed and a counter, so a game is
+  // the same game every time and the sim can count hits.
+  function rollW(state) { return mulberry32(hashSeed(state.seed ^ 0x5bd1e995, state.rolls++))(); }
+  function structureById(state, sid) {
+    const k = parseInt(sid, 10);
+    const c = state.world.chunks[k];
+    if (!c) return null;
+    for (const st of c.structures) if (st.sid === sid) return st;
+    return null;
+  }
+  // The hostile whose box holds (x, y), grown by `slack` ft; civilians never answer.
+  function hostileAt(state, x, y, slack) {
+    const g = slack || 0;
+    for (const st of structuresNear(state, x, 300)) {
+      if (st.cls === 'civ' || !st.alive) continue;
+      if (x >= st.x0 - g && x <= st.x1 + g && y >= st.y - g && y <= st.y + st.h + g) return st;
+    }
+    return null;
+  }
+  function doorOpen(state, st) {
+    const t = (state.time + st.k * 3.7) % DOOR_PERIOD;
+    return t < DOOR_OPEN;
+  }
+  // Can this weapon be fired at this structure from where the ship is now?
+  // { ok, why } — why is the one word the cursor tag shows: CIVILIAN / DESTROYED /
+  // OVERHANG / RIDGE / DOOR.
+  function targetable(state, st, weapon) {
+    if (!st || st.cls === 'civ') return { ok: false, why: 'CIVILIAN' };
+    if (!st.alive) return { ok: false, why: 'DESTROYED' };
+    const s = state.ship;
+    const cx = (st.x0 + st.x1) / 2;
+    if (st.hard === 'overhang') {
+      const dx = s.x - cx, dy = s.y - st.y;
+      if (dx <= st.x1 - cx || dy / dx > OVERHANG_SLOPE) return { ok: false, why: 'OVERHANG' };
+    } else if (st.hard === 'ridge') {
+      if (weapon !== 'missiles' || s.y - st.y < RIDGE_ALT) return { ok: false, why: 'RIDGE' };
+    } else if (st.hard === 'door') {
+      if (!doorOpen(state, st)) return { ok: false, why: 'DOOR' };
+    }
+    return { ok: true, why: st.hard === 'shield' && st.hp > 1 ? 'SHIELD' : null };
+  }
+  // A hit lands: the shield goes first on a shielded target, then the building.
+  function damage(state, st, events, x, y) {
+    st.hp -= 1;
+    if (st.hp > 0) { events.push({ type: 'shield', sid: st.sid, x: x, y: y }); return false; }
+    st.alive = false;
+    state.world.version++;
+    if (st.cls !== 'civ') {
+      const points = TARGET_POINTS * st.mult;
+      state.score += points;
+      events.push({ type: 'kill', sid: st.sid, id: st.id, name: st.name, mult: st.mult, points: points, x: (st.x0 + st.x1) / 2, y: st.y });
+      if (st.k >= 1 && st.k <= LEVEL_CHUNKS) {
+        state.hostilesLeft = Math.max(0, state.hostilesLeft - 1);
+        if (state.hostilesLeft === 0 && !state.levelClear) { state.levelClear = true; events.push({ type: 'levelClear', level: state.level }); }
+      }
+    } else {
+      state.score -= CIVILIAN_PENALTY;
+      events.push({ type: 'civHit', sid: st.sid, id: st.id, name: st.name, points: -CIVILIAN_PENALTY, x: (st.x0 + st.x1) / 2, y: st.y });
+    }
+    return true;
+  }
+  // Fire a weapon at a structure. Returns { ok, why, events } — the events are
+  // also what a shell would get from step(), returned here so an instant
+  // weapon (the laser) resolves in the same call.
+  function fire(state, weapon, sid) {
+    const events = [];
+    if (state.phase !== 'flying') return { ok: false, why: 'NOT FLYING', events: events };
+    if (weapon !== 'missiles' && weapon !== 'laser') return { ok: false, why: 'NO SUCH WEAPON', events: events };
+    if (state.ammo[weapon] <= 0) return { ok: false, why: 'EMPTY', events: events };
+    const st = structureById(state, sid);
+    const t = targetable(state, st, weapon);
+    if (!t.ok) return { ok: false, why: t.why, events: events };
+    state.ammo[weapon] -= 1;
+    const hit = rollW(state) < HIT_ODDS;
+    const s = state.ship;
+    const cx = (st.x0 + st.x1) / 2, cy = st.y + st.h * 0.5;
+    let ax = cx, ay = cy;
+    if (!hit) {
+      const spread = MISS_SPREAD[0] + rollW(state) * (MISS_SPREAD[1] - MISS_SPREAD[0]);
+      ax = cx + (rollW(state) < 0.5 ? -spread : spread);
+      ay = groundAt(state, ax);
+    }
+    if (weapon === 'laser') {
+      events.push({ type: 'laser', from: { x: s.x, y: s.y }, to: { x: ax, y: ay }, hit: hit, sid: sid });
+      if (hit) damage(state, st, events, ax, ay);
+      else events.push({ type: 'miss', weapon: 'laser', x: ax, y: ay, sid: sid });
+    } else {
+      const shot = { kind: 'missile', x: s.x, y: s.y - 6, vx: s.vx, vy: s.vy + 60, sid: sid, hit: hit, ax: ax, ay: ay, t: 0, id: 'm' + state.rolls };
+      state.shots.push(shot);
+      events.push({ type: 'launch', shot: shot.id, sid: sid });
+    }
+    return { ok: true, why: null, events: events };
+  }
+  function dropChaff(state) {
+    if (state.phase !== 'flying' || state.ammo.chaff <= 0) return false;
+    state.ammo.chaff -= 1;
+    const s = state.ship;
+    state.shots.push({ kind: 'chaff', x: s.x, y: s.y - 8, vx: s.vx * 0.5, vy: Math.min(0, s.vy) - 10, t: 0, life: 4.5, id: 'c' + (state.rolls++) });
+    return true;
+  }
+  // The shots in the air, one fixed step: a missile boosts then turns toward
+  // its aim point at MISSILE_TURN rad/s; it strikes when it reaches the point,
+  // meets the ground, or is spent. Chaff falls and drifts.
+  function stepShots(state, events) {
+    if (!state.shots.length) return;
+    const keep = [];
+    for (const sh of state.shots) {
+      sh.t += DT;
+      if (sh.kind === 'chaff') {
+        sh.vy -= GRAVITY * 0.35 * DT; sh.x += sh.vx * DT; sh.y += sh.vy * DT;
+        const gy = groundAt(state, sh.x);
+        if (sh.y < gy) sh.y = gy;
+        if (sh.t < sh.life) keep.push(sh);
+        continue;
+      }
+      const dx = sh.ax - sh.x, dy = sh.ay - sh.y;
+      const dist = Math.hypot(dx, dy);
+      const want = Math.atan2(dy, dx);
+      let have = Math.atan2(sh.vy, sh.vx);
+      let d = want - have;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      const turn = Math.max(-MISSILE_TURN * DT, Math.min(MISSILE_TURN * DT, d));
+      have += turn;
+      const speed = Math.min(MISSILE_SPEED, 40 + sh.t * 400);
+      sh.vx = Math.cos(have) * speed; sh.vy = Math.sin(have) * speed;
+      sh.x += sh.vx * DT; sh.y += sh.vy * DT;
+      const gy = groundAt(state, sh.x);
+      const arrived = dist < speed * DT * 1.5 || sh.y <= gy || sh.t >= MISSILE_LIFE;
+      if (!arrived) { keep.push(sh); continue; }
+      const ix = sh.x, iy = Math.max(sh.y, gy);
+      events.push({ type: 'impact', shot: sh.id, x: ix, y: iy, hit: sh.hit, sid: sh.sid });
+      const st = structureById(state, sh.sid);
+      if (sh.hit && st && st.alive) damage(state, st, events, ix, iy);
+      else {
+        events.push({ type: 'miss', weapon: 'missiles', x: ix, y: iy, sid: sh.sid });
+        // a miss can land on a civilian building
+        for (const c of structuresNear(state, ix, 300)) {
+          if (c.cls !== 'civ' || !c.alive) continue;
+          if (ix >= c.x0 - BASE_MISS_CHECK && ix <= c.x1 + BASE_MISS_CHECK) { damage(state, c, events, ix, iy); break; }
+        }
+      }
+    }
+    state.shots = keep;
+  }
+  function hostilesLeft(state) { return state.hostilesLeft; }
 
   // The next flight. The world stays. After a landing on a pad the ship sits on
   // it and the phase is 'launch' — the shell plays the accelerator sequence
@@ -765,6 +974,7 @@
     s.y += s.vy * DT;
     state.time += DT;
     state.attemptTime += DT;
+    stepShots(state, events);
     const range = Math.abs(s.x - SPAWN.x);
     if (range > state.farthest) state.farthest = range;
     // the horizon ring: fly through it and the world lets you go (once)
@@ -818,7 +1028,7 @@
       x: s.x, y: s.y,
       chunk: chunkIndex(s.x),
       range: Math.round(s.x - SPAWN.x),
-      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, used: !!pad.used, relay: !!pad.relay } : null,
+      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, supply: pad.supply || null, used: !!pad.used, relay: !!pad.relay } : null,
       secret: !!secret,
       struck: struck ? { id: struck.id, name: struck.name, cls: struck.cls } : null,
       time: +state.attemptTime.toFixed(1),
@@ -837,6 +1047,17 @@
       if (pad.fuel) {
         result.fuelPad = grade.name === 'perfect' ? FUEL_PAD_PERFECT : FUEL_PAD_REFILL;
         result.fuelBonus += result.fuelPad;
+      }
+      if (pad.supply) {
+        // the pad's supply, every landing, like fuel; capped
+        const before = state.ammo[pad.supply];
+        state.ammo[pad.supply] = Math.min(AMMO_MAX[pad.supply], before + PAD_SUPPLY[pad.supply]);
+        result.supply = { kind: pad.supply, amount: state.ammo[pad.supply] - before };
+      }
+      if (pad.relay && state.levelClear && !state.levelDone) {
+        // the level's end: the stretch is clear and you are down on the relay
+        state.levelDone = true;
+        result.levelDone = state.level;
       }
       state.score += result.points;
       state.fuel += result.fuelBonus;
@@ -897,6 +1118,10 @@
       tilt: Math.round(tiltOf(s.angle) * 180 / Math.PI),
       range: Math.round(s.x - SPAWN.x),      // ft downrange of the spawn (negative = left)
       chunk: chunkIndex(s.x),
+      ammo: state.ammo,
+      hostilesLeft: state.hostilesLeft,
+      hostilesTotal: state.hostilesTotal,
+      levelClear: state.levelClear,
     };
   }
 
@@ -951,6 +1176,11 @@
     launchExit: launchExit,
     cameraFollow: cameraFollow,
     hasTech: hasTech,
+    LOADOUT: LOADOUT, AMMO_MAX: AMMO_MAX, PAD_SUPPLY: PAD_SUPPLY, WEAPON_ODDS: WEAPON_ODDS, HIT_ODDS: HIT_ODDS,
+    MISSILE_SPEED: MISSILE_SPEED, TARGET_POINTS: TARGET_POINTS, CIVILIAN_PENALTY: CIVILIAN_PENALTY,
+    LEVEL_CHUNKS: LEVEL_CHUNKS, RIDGE_ALT: RIDGE_ALT, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
+    structureById: structureById, hostileAt: hostileAt, targetable: targetable, doorOpen: doorOpen,
+    fire: fire, dropChaff: dropChaff, hostilesLeft: hostilesLeft,
     techNext: techNext,
     gradesFor: gradesFor,
     autoLever: autoLever,

@@ -803,9 +803,18 @@ consistent. `npm run check-worlds` audits every world against the contract.
    dry Surge XT audition page (tmp/reich-machine/library.html, KEEP), his fifteen picks
    rendered as voice banks (assets/voices/, the voice-folder contract), engine.js (pure,
    sim 257 green), player.js (Web Audio sampler + effects + lookahead scheduler), the PLAIN
-   face. Read `src/worlds/reich-machine/CLAUDE.md` + changelog first. AWAITING HIS FIRST
-   DRIVE. NEXT, his go: the look pass (Glass Bead Game / Player of Games / Arcane, look-dev
-   page first), exits + ship wiring; Lumina panel parked at his word.
+   face. Read `src/worlds/reich-machine/CLAUDE.md` + changelog first. **HE DROVE IT 2026-09-06
+   ("cool and a great start... quite a lot as I envisioned it" — but "not a world, just software"
+   and "a little bit hard to use") → THE STUDIO + THE CONSOLE, PASS 1 BUILT the same day on his go**
+   (his calls: 1970s control room, FOUR reel-to-reel machines one per track, small free mouse look,
+   Meshy approved ~130 cr, four tracks, one big editor, the figures are "musical phrases", the ten
+   ease-of-use recs built; KEEP the old face for a mobile experience → `plain.html`). `studio.js`
+   three.js room (machines on a credenza with reels turning at each track's rate, monitors,
+   console shell), the console face rebuilt (`index.html`/`world.js`/`world.css`: meter bridge
+   with THE KEY window, four channel strips with the offset knob + clock face + tape/lean/piano-
+   phase switch + solo, one editor with draggable note pills + no lit column, record-to-steps,
+   the piano lip, scribble-strip help, the dice pair). Sim 2,512 green. AWAITING HIS FLIGHT
+   (room, look, layout); then exits + ship wiring; Lumina panel parked at his word.
 1. (moved 2026-08-17: DROPZILLA left Elastic Space — James's call, "not a good fit… I don't
    wanna see it in here anymore", not archived. It is now its own project at
    `C:\Users\brook\ai-projects\dropzilla` (own repo, own CLAUDE.md) heading for a mobile
@@ -1216,6 +1225,22 @@ consistent. `npm run check-worlds` audits every world against the contract.
    + radio chatter; then the feature round (multi-stage descents, moving pad,
    meteor showers, fuel crates, co-op tow, terrain sets), then drift exits +
    ship wiring. Battlezone discussed as the next vector sibling — not started.
+   **THE DIRECTION (James, 2026-09-06, recorded only): Lunar Lander grows into
+   BATTLE FOR THE MOON 2075** — the Battlezone mode inside it, battling from the
+   lander, more buildings on the ground, lander weapons + more goals, and
+   eventually climbing out of the lander into a lunar tank whose targets you
+   saw going by from the air. "Lots more to come on this down the road."
+   Recorded at the top of the world CLAUDE.md; each step is a conversation +
+   his go. Same day: fuel drought rule, zoom reads the pad, gyro + radar CUT.
+   **LATER 2026-09-06 — LEVEL 1 DESIGN AGREED (weapons, hostiles, structures,
+   target rating, no more 1979 selections, five levels + boss) — see the world
+   CLAUDE.md top. ROUND ONE BUILT the same day (structures.js + solid
+   structures in the chunks + the four selections gone; sim 201,382 green;
+   awaiting his eyes); ROUND TWO BUILT the same day on his "you can continue"
+   (missile + laser + targeting + pad supplies + the level-1 goal; sim
+   206,774 green; awaiting his eyes); round three (hostile fire) next. A SECOND SESSION owns the TANK half
+   (`src/worlds/lunar-lander/tank/`, brief `tank-brief.md`, needs in
+   `tank/NEEDS.md`); ownership split + git rules are in the brief.**
 8. UNITY CHARACTER PIPELINE (pilot BUILT 2026-07-31, James's go after the "sell me
    on Unity" conversation — his brief: real character machinery, "what we have is
    sort of a clunky puppet"): Unity 6.5 free Personal + project repo

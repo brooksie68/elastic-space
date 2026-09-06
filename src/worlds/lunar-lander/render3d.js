@@ -486,6 +486,7 @@ export class LanderScene {
     this.rcsTimer = 0;
     this.streak = 0;
     this._v = new THREE.Vector3();
+    this._v2 = new THREE.Vector3();
     this._buildPost();
     this.resize();
   }
@@ -583,6 +584,20 @@ export class LanderScene {
       const back = g[2] < 0 || g[5] < 0;
       B.seg(cx + g[0], cy + g[1], z + g[2], cx + g[3], cy + g[4], z + g[5], back ? bright * 0.55 : bright);
     }
+  }
+  // What is left of a destroyed structure: a few low broken strokes, hashed
+  // from its id so they never move.
+  _rubble(B, st) {
+    const C = globalThis.LunarCore;
+    const rng = C.mulberry32(C.hashSeed(st.k * 131 + 7, st.x0 | 0));
+    const cx = (st.x0 + st.x1) * 0.5, w = st.x1 - st.x0;
+    const n = 4 + Math.floor(rng() * 3);
+    for (let i = 0; i < n; i++) {
+      const x = cx + (rng() - 0.5) * w * 0.9, z = (rng() - 0.5) * 30;
+      const h = 3 + rng() * Math.min(14, st.h * 0.35), dx = (rng() - 0.5) * 16;
+      B.seg(x, st.y, z, x + dx, st.y + h, z, 0.42);
+    }
+    B.seg(st.x0 + 4, st.y + 0.5, 0, st.x1 - 4, st.y + 0.5, 0, 0.3);
   }
   // Two or three civilian silhouettes on the far line of each chunk, seated on
   // that line where it is level enough; hashed from the seed and chunk so they
@@ -709,7 +724,7 @@ export class LanderScene {
       }
       // the structures (structures.js): civilians dim, hostiles a step brighter
       for (const st of ch.structures || []) {
-        if (!st.alive) continue;
+        if (!st.alive) { this._rubble(B, st); continue; }
         this._structure(B, st, st.cls === 'civ' ? 0.62 : 0.85, 0);
       }
       // the horizon ring far above this chunk: faint, a way out for the high flyer
@@ -878,6 +893,46 @@ export class LanderScene {
     this.flash = 0.5;
     this.streak = 1.8;                 // seconds of speed trail behind the ship
   }
+  // ---- the weapons' animations (round two) ----
+  // The laser: a beam from the ship to the point, white-hot for a third of a
+  // second, sparks where it lands.
+  spawnLaser(from, to, hit) {
+    this.effects.push({ kind: 'beam', x0: from.x, y0: from.y, x1: to.x, y1: to.y, age: 0, life: 0.42, hit: hit });
+    for (let i = 0; i < (hit ? 26 : 10); i++) this._spark(to.x, to.y, 0, 30 + this._rand() * 110, 0.8, 1.4);
+    this.flash = Math.max(this.flash, hit ? 0.35 : 0.15);
+  }
+  // A missile strikes: a flash, a ring on the ground, sparks; a miss is smaller.
+  spawnImpact(x, y, hit) {
+    const gy = this.world ? this._groundAt(x) : y;
+    this.effects.push({ kind: 'ring', x: x, y: gy + 1, age: 0, life: hit ? 1.1 : 0.7, r0: 4, r1: hit ? 130 : 70, b: hit ? 1.5 : 0.9 });
+    for (let i = 0; i < (hit ? 60 : 24); i++) this._spark(x, y, 0, 40 + this._rand() * 150, 1.4, 1.3);
+    this.flash = Math.max(this.flash, hit ? 0.9 : 0.4);
+  }
+  // A structure comes apart along its own strokes, the way the lander does.
+  spawnBreak(st) {
+    const ST = globalThis.LunarStructures;
+    const segs3 = ST && ST.solid(st.id);
+    if (!segs3) return;
+    const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
+    for (const q of segs3) {
+      const mx = (q[0] + q[3]) / 2, my = (q[1] + q[4]) / 2, mz = (q[2] + q[5]) / 2;
+      const ang = this._rand() * Math.PI * 2;
+      const sp = 20 + this._rand() * 60;
+      this.effects.push({
+        kind: 'debris',
+        x: cx + mx, y: cy + my, z: mz, vx: Math.cos(ang) * sp, vy: Math.abs(Math.sin(ang)) * sp + 10 + my * 0.6, vz: (this._rand() - 0.5) * 50,
+        ang: 0, av: (this._rand() - 0.5) * 6,
+        seg: [q[0] - mx, q[1] - my, q[2] - mz, q[3] - mx, q[4] - my, q[5] - mz],
+        age: 0, life: 2.2 + this._rand() * 1.6,
+      });
+    }
+    this.effects.push({ kind: 'ring', x: cx, y: cy + 1, age: -0.1, life: 1.3, r0: 6, r1: 120 + (st.x1 - st.x0), b: 1.2 });
+  }
+  // A shield takes the hit: a bright arc over the building, then gone.
+  spawnShield(st) {
+    const cx = (st.x0 + st.x1) * 0.5;
+    this.effects.push({ kind: 'shieldflash', x: cx, y: st.y + st.h * 0.5, r: Math.max(st.x1 - st.x0, st.h) * 0.7, age: 0, life: 0.6 });
+  }
   spawnTally(x, y, text) {
     this.effects.push({ kind: 'tally', x, y: y + 34, text, age: 0, life: 2.8 });
   }
@@ -928,7 +983,7 @@ export class LanderScene {
     for (const e of this.effects) {
       e.age += dt;
       if (e.age >= e.life) continue;
-      if (e.kind === 'ring' || e.kind === 'tally') {
+      if (e.kind === 'ring' || e.kind === 'tally' || e.kind === 'beam' || e.kind === 'shieldflash') {
         if (e.kind === 'tally') e.y += 22 * dt;
         keep.push(e);
         continue;
@@ -1048,6 +1103,19 @@ export class LanderScene {
     for (const b of this.worldBatches) { b.mat.uniforms.uFogA.value = fogA; b.mat.uniforms.uFogB.value = fogB; }
   }
 
+  // The flight-plane point (z = 0) under a screen pixel: a ray from the camera
+  // through the pixel, met with the plane. For the cursor's targeting.
+  screenToWorld(px, py, out) {
+    out = out || {};
+    const nx = (px / this.w) * 2 - 1, ny = 1 - (py / this.h) * 2;
+    const a = this._v.set(nx, ny, -1).unproject(this.camera);
+    const b = this._v2.set(nx, ny, 1).unproject(this.camera);
+    const dz = b.z - a.z;
+    const t = Math.abs(dz) < 1e-9 ? 0 : -a.z / dz;
+    out.x = a.x + (b.x - a.x) * t;
+    out.y = a.y + (b.y - a.y) * t;
+    return out;
+  }
   projectToScreen(x, y, out) {
     const v = this._v.set(x, y, 0).project(this.camera);
     out = out || {};
@@ -1060,7 +1128,7 @@ export class LanderScene {
   // ---- the frame ------------------------------------------------------------------------------
   // view: { ship, thrust, rotate, zoomOn, gravity, showShip, secret, flying, launch: { pad, tilt, lit } | null,
   //         tech: [ids], fan: 0..1 (spider spread), squash: 0..1 (shock compression),
-  //         autoOn: bool,
+  //         autoOn: bool, shots: state.shots (missiles + chaff), hover: sid | null, target: sid | null,
   //         relayLit: padId | null (the tower you sit at), hatch: {x, y} | null (the wreck's door) }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
@@ -1245,6 +1313,61 @@ export class LanderScene {
       // it appears as the sequence begins (rise 0→1 over the first half second)
       this._accelerator(D, L.pad, L.tilt || 0, L.lit || 0, 0.9, L.sink || 0);
     }
+    // the weapons in the air (view.shots from the core), the hovered and the
+    // selected target
+    if (view && view.shots) {
+      for (const sh of view.shots) {
+        if (sh.kind === 'missile') {
+          const l = Math.hypot(sh.vx, sh.vy) || 1, ux = sh.vx / l, uy = sh.vy / l;
+          // a dart: body along the velocity, two fins, a bright nose
+          D.seg(sh.x - ux * 9, sh.y - uy * 9, 0, sh.x + ux * 5, sh.y + uy * 5, 0, 1.6);
+          D.seg(sh.x - ux * 8, sh.y - uy * 8, 0, sh.x - ux * 11 - uy * 4, sh.y - uy * 11 + ux * 4, 0, 1.0);
+          D.seg(sh.x - ux * 8, sh.y - uy * 8, 0, sh.x - ux * 11 + uy * 4, sh.y - uy * 11 - ux * 4, 0, 1.0);
+          // the plume
+          let n = 90 * dt + this._rand();
+          while (n >= 1 && this.particles.length < MAX_PARTICLES) {
+            n -= 1;
+            const j = (this._rand() - 0.5) * 30;
+            this.particles.push({ x: sh.x - ux * 10, y: sh.y - uy * 10, z: (this._rand() - 0.5) * 3,
+              vx: -ux * (60 + this._rand() * 40) + -uy * j, vy: -uy * (60 + this._rand() * 40) + ux * j, vz: (this._rand() - 0.5) * 20,
+              age: 0, life: 0.25 + this._rand() * 0.3, b: 0.9 });
+          }
+        } else if (sh.kind === 'chaff') {
+          // a shower of shreds under the drop point, hashed so each shred keeps its place
+          const rng = globalThis.LunarCore.mulberry32(globalThis.LunarCore.hashSeed(1234, sh.id.length + sh.id.charCodeAt(1)));
+          const spread = 18 + sh.t * 22, fall = sh.t * 26;
+          const fade = Math.max(0, 1 - sh.t / sh.life);
+          for (let i = 0; i < 34; i++) {
+            const ox = (rng() - 0.5) * 2 * spread, oy = -rng() * fall - (rng() - 0.5) * 8, oz = (rng() - 0.5) * 24;
+            const a = rng() * Math.PI * 2 + sh.t * (1 + rng() * 3);
+            const x = sh.x + ox, y = Math.max(sh.y + oy, this.world ? this._groundAt(x) + 0.5 : sh.y + oy);
+            D.seg(x, y, oz, x + Math.cos(a) * 2.2, y + Math.sin(a) * 2.2, oz, (0.6 + rng() * 0.6) * fade);
+          }
+        }
+      }
+    }
+    if (view && (view.hover || view.target)) {
+      const C = globalThis.LunarCore, ST = globalThis.LunarStructures;
+      for (const which of ['hover', 'target']) {
+        const sid = view[which];
+        if (!sid) continue;
+        const st = C.structureById(this.world, sid);
+        if (!st || !st.alive) continue;
+        const kind = ST.BY_ID[st.id];
+        const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
+        // the strokes step up toward white: hover a step, selected a pulse
+        const b = which === 'target' ? 1.7 + 0.5 * Math.sin(this.time * 9) : 1.25;
+        for (const g of kind.segs) D.seg(cx + g[0], cy + g[1], kind.d / 2, cx + g[2], cy + g[3], kind.d / 2, b);
+        if (which === 'target') {
+          // the bracket: four corners around the footprint, breathing
+          const m = 8 + 3 * Math.sin(this.time * 6), L = 10;
+          const x0 = st.x0 - m, x1 = st.x1 + m, y0 = st.y - m * 0.5, y1 = st.y + st.h + m;
+          for (const [x, y, sx, sy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x0, y1, 1, -1], [x1, y1, -1, -1]]) {
+            D.seg(x, y, 0, x + sx * L, y, 0, 1.6); D.seg(x, y, 0, x, y + sy * L, 0, 1.6);
+          }
+        }
+      }
+    }
     for (const e of this.effects) {
       const fade = 1 - e.age / e.life;
       if (e.kind === 'debris') {
@@ -1264,6 +1387,19 @@ export class LanderScene {
         for (let i = 0; i < n; i++) {
           const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
           D.seg(e.x + Math.cos(a0) * r, e.y, Math.sin(a0) * r * 0.55, e.x + Math.cos(a1) * r, e.y, Math.sin(a1) * r * 0.55, b);
+        }
+      } else if (e.kind === 'beam') {
+        const u = e.age / e.life;
+        const b = (e.hit ? 2.4 : 1.4) * (u < 0.25 ? 1 : 1 - (u - 0.25) / 0.75);
+        D.seg(e.x0, e.y0, 0, e.x1, e.y1, 0, b);
+        // a thin second line a hair off, so the beam reads as a beam and not a stroke of ground
+        D.seg(e.x0, e.y0, 2, e.x1, e.y1, 2, b * 0.5);
+      } else if (e.kind === 'shieldflash') {
+        const u = e.age / e.life, b = 1.8 * (1 - u);
+        const n = 18;
+        for (let i = 0; i < n; i++) {
+          const a0 = Math.PI * 0.1 + Math.PI * 0.8 * i / n, a1 = Math.PI * 0.1 + Math.PI * 0.8 * (i + 1) / n;
+          D.seg(e.x + Math.cos(a0) * e.r, e.y + Math.sin(a0) * e.r, 0, e.x + Math.cos(a1) * e.r, e.y + Math.sin(a1) * e.r, 0, b);
         }
       } else if (e.kind === 'tally') {
         const b = e.age < 1.6 ? 1.5 : 1.5 * (1 - (e.age - 1.6) / (e.life - 1.6));
