@@ -8,4 +8,11 @@
 <section id="panel" hidden><h2>Fire study</h2><div id="controls"></div><div class="actions"><button id="pause">Pause</button><button id="reset">Reset</button><button id="still">Logs only</button></div></section>
 <script src="../../src/core/dashboard-control.js" data-home="../../index.html"></script><script src="logs.js"></script>
 <script type="importmap">{"imports":{"three":"../../src/lib/three/three.module.js"}}</script>
-<script type="module" src="fire.js"></script></html>
+<script type="module">
+const stats=document.getElementById('stats'),error=document.getElementById('error');
+window.fireStudyFailure=reason=>{stats.textContent='Fire study could not start';error.hidden=false;error.textContent=String(reason?.message||reason)+' — Reload this page to retry.';};
+addEventListener('error',e=>window.fireStudyFailure(e.error||e.message));
+addEventListener('unhandledrejection',e=>window.fireStudyFailure(e.reason));
+const timeout=setTimeout(()=>{if(!stats.dataset.ready)window.fireStudyFailure('Loading took too long. Check that the local server is running');},30000);
+try{stats.textContent='Preparing fire renderer…';await import('./fire.js');clearTimeout(timeout);}catch(e){clearTimeout(timeout);window.fireStudyFailure(e);}
+</script></html>

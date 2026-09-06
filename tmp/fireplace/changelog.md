@@ -1,5 +1,27 @@
 # Fireplace study — KEEP
 
+## 2026-09-05 — Codex — Volume comparison and startup recovery
+
+James authorized a true volume beside the current fire, then reported the unfinished
+comparison stuck on Loading geometry. Both sides now verified rendering after reload.
+compare.html presents the unchanged flame approach beside a 40×56×24 heated-gas
+field: semi-Lagrangian advection, buoyancy, curl stirring, six pressure iterations,
+cooling, approximate log obstacles, and depth-clipped 48-step ray marching.
+Fire-only composite runs at 65% resolution; geometry remains full resolution.
+Simulation fixed at 1/45 second, capped at two steps/frame. Under load it slows
+rather than doing unlimited catch-up. Volume has separate saved settings.
+This is a softer, fuller experimental fire, not a complete combustion simulation
+or a claim of finished realism. No replacement of the existing world renderer.
+
+Startup now catches failed imports/construction, shader failures and context loss;
+a 30-second loading timeout gives a visible error. First render runs immediately,
+including in hidden previews. Original fire only imports the volume when requested.
+Existing pure-Node motion/zoom simulation and JS syntax checks passed. Browser
+reload rendered both sides at approximately 37 fps at 1280×720. Full-size Chrome
+performance remains to be judged; no claim of a passed final performance gate.
+check-worlds run: this scratch lab is outside the world audit; existing audit errors
+remain. No paid calls, room work, sound, registry edits, or push. Agent: Codex.
+
 ## 2026-09-05 — Codex — Independent motion, detached tips, then research
 
 Completed the two behavior changes before beginning web research, per James.

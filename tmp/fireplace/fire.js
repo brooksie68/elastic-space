@@ -1,10 +1,13 @@
 import * as THREE from 'three';
+const volumeMode=new URLSearchParams(location.search).has('volume');
+const settingsKey=volumeMode?'fireplace-volume-v1':'fireplace-study-v1';
 import {defaults,ranges,sanitize,flicker,zoomFov,makeMotion,stepMotion,wispState} from './model.js';
 const $=id=>document.getElementById(id);
-let cfg={...defaults};try{cfg=sanitize(JSON.parse(localStorage.getItem('fireplace-study-v1')));}catch{}
+let cfg={...defaults};try{cfg=sanitize(JSON.parse(localStorage.getItem(settingsKey)));}catch{}
 let seed=892;const rnd=()=>((seed=Math.imul(seed,1664525)+1013904223>>>0)/4294967296);
 const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=true;document.body.prepend(renderer.domElement);
+renderer.debug.onShaderError=(gl,program,vertex,fragment)=>{throw new Error('Fire shader failed: '+gl.getProgramInfoLog(program)+' '+gl.getShaderInfoLog(fragment));};
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080605');
 const camera=new THREE.PerspectiveCamera(44,innerWidth/innerHeight,.05,30);camera.position.set(0,1.42,4.05);
 scene.add(new THREE.HemisphereLight(0x8996aa,0x4b2c16,.24));
@@ -100,9 +103,12 @@ function shedTip(v){const q=wisps.find(w=>!w.active);if(!q)return;const y=.82,t=
 }
 const sparkCount=38,sparkPos=new Float32Array(sparkCount*3),sparkSeeds=Array.from({length:sparkCount},()=>({x:(rnd()-.5)*1.55,t:rnd()*25,v:.3+rnd()*.35}));
 const sparkGeo=new THREE.BufferGeometry();sparkGeo.setAttribute('position',new THREE.BufferAttribute(sparkPos,3));const sparks=new THREE.Points(sparkGeo,new THREE.PointsMaterial({color:0xff9d31,size:.012,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false}));flameGroup.add(sparks);
+const volume=volumeMode?new (await import('./volume-fire.js')).VolumeFire(renderer):null;
+if(volumeMode)$('note').innerHTML='Fireplace / 3D gas volume<span>Silent · moving gas, buoyancy & cooling · scroll to zoom</span>';
 const names={count:'Flame count',height:'Flame height',speed:'Movement speed',variation:'Speed variation',wisps:'Tip wisps',brightness:'Flame brightness',embers:'Ember glow',light:'Firelight',zoom:'Zoom',text:'Text size'};
-const inputs={};for(const k of Object.keys(defaults)){const l=document.createElement('label');l.textContent=names[k];const o=document.createElement('output'),i=document.createElement('input');i.type='range';i.min=ranges[k][0];i.max=ranges[k][1];i.step=ranges[k][2];i.value=cfg[k];i.setAttribute('aria-label',names[k]);o.textContent=Number(cfg[k]).toFixed(2);l.append(o,i);$('controls').append(l);inputs[k]={i,o};i.oninput=()=>{cfg[k]=+i.value;apply();};}
-function apply(){cfg=sanitize(cfg);flames.forEach((v,i)=>{const rank=Math.floor(i/27)*27+(i%27*10)%27;v.m.visible=rank<cfg.count;});camera.fov=zoomFov(44,cfg.zoom);camera.updateProjectionMatrix();$('panel').style.setProperty('--ui-scale',cfg.text);for(const k in inputs){inputs[k].i.value=cfg[k];inputs[k].o.textContent=cfg[k].toFixed(k==='count'?0:2);}try{localStorage.setItem('fireplace-study-v1',JSON.stringify(cfg));}catch{}}
+if(volumeMode){names.count='Fuel feed';names.height='Heat persistence';names.variation='Turbulence';}
+const inputs={};for(const k of Object.keys(defaults)){if(volumeMode&&k==='wisps')continue;const l=document.createElement('label');l.textContent=names[k];const o=document.createElement('output'),i=document.createElement('input');i.type='range';i.min=ranges[k][0];i.max=ranges[k][1];i.step=ranges[k][2];i.value=cfg[k];i.setAttribute('aria-label',names[k]);o.textContent=Number(cfg[k]).toFixed(2);l.append(o,i);$('controls').append(l);inputs[k]={i,o};i.oninput=()=>{cfg[k]=+i.value;apply();};}
+function apply(){cfg=sanitize(cfg);flames.forEach((v,i)=>{const rank=Math.floor(i/27)*27+(i%27*10)%27;v.m.visible=rank<cfg.count;});camera.fov=zoomFov(44,cfg.zoom);camera.updateProjectionMatrix();$('panel').style.setProperty('--ui-scale',cfg.text);for(const k in inputs){inputs[k].i.value=cfg[k];inputs[k].o.textContent=cfg[k].toFixed(k==='count'?0:2);}try{localStorage.setItem(settingsKey,JSON.stringify(cfg));}catch{}}
 apply();let paused=false,logsOnly=false;
 $('toggle').onclick=()=>{$('panel').hidden=!$('panel').hidden;$('toggle').setAttribute('aria-expanded',!$('panel').hidden);};
 document.addEventListener('pointerdown',e=>{if(!$('panel').contains(e.target)&&e.target!==$('toggle')){$('panel').hidden=true;$('toggle').setAttribute('aria-expanded','false');}});
@@ -110,7 +116,7 @@ $('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Resume':'P
 let px=0,py=0;renderer.domElement.addEventListener('pointermove',e=>{px=(e.clientX/innerWidth-.5)*.16;py=(e.clientY/innerHeight-.5)*.1;});renderer.domElement.addEventListener('pointerleave',()=>{px=py=0;});renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();cfg.zoom=Math.max(1,Math.min(1.2,cfg.zoom-e.deltaY*.0003));apply();},{passive:false});
 addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
 let clock=0,last=performance.now(),frames=0,start=last;const frameTimes=[];
-function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(document.hidden)return;const fireDt=paused?0:dt*cfg.speed;clock+=fireDt;
+function frame(now){const dt=Math.min((now-last)/1000,.05);last=now;if(document.hidden&&$('stats').dataset.ready){requestAnimationFrame(frame);return;}const fireDt=paused?0:dt*cfg.speed;clock+=fireDt;if(volume){volume.update(fireDt,cfg);flameGroup.visible=false;}
  const f=flicker(clock);firelight.intensity=3.8*f*cfg.light;other.intensity=1.8*(.94+.06*Math.sin(clock*4.1))*cfg.light;
  for(const v of flames){const shed=stepMotion(v.motion,fireDt,cfg.variation,cfg.wisps,v.m.visible&&!logsOnly);
  v.u.time.value=v.motion.clock;v.u.split.value=v.motion.split;v.u.brightness.value=cfg.brightness;
@@ -121,10 +127,13 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/10
  for(const u of coalUniforms){u.uCoal.value=cfg.embers;u.uTime.value=clock;}
  for(const c of coals)c.m.material.emissiveIntensity=cfg.embers*c.heat*(.7+.3*Math.sin(clock*.7+c.phase));
  for(let i=0;i<sparkCount;i++){const s=sparkSeeds[i],age=(clock*s.v+s.t)%5;const y=age<2?age:0;sparkPos[i*3]=s.x+Math.sin(age*3+s.t)*age*.035;sparkPos[i*3+1]=age<2?.35+y:-2;sparkPos[i*3+2]=-.1;}sparkGeo.attributes.position.needsUpdate=true;
- camera.position.x+=(px-camera.position.x)*Math.min(1,dt*2);camera.position.y+=(1.42-py-camera.position.y)*Math.min(1,dt*2);camera.lookAt(0,.93,-.13);renderer.render(scene,camera);
+ camera.position.x+=(px-camera.position.x)*Math.min(1,dt*2);camera.position.y+=(1.42-py-camera.position.y)*Math.min(1,dt*2);camera.lookAt(0,.93,-.13);if(volume)volume.render(scene,camera,cfg,!logsOnly);else renderer.render(scene,camera);
+ $('stats').dataset.ready='true';
+ if(volume)$('stats').dataset.volumeSteps=volume.steps;
  $('stats').dataset.activeWisps=wisps.filter(q=>q.active).length;
- frames++;if(dt>0)frameTimes.push(dt*1000);if(frameTimes.length>300)frameTimes.shift();if(now-start>1000){$('stats').textContent=`${Math.round(frames*1000/(now-start))} fps · ${Math.round(cfg.zoom*100)}% · silent`;frames=0;start=now;}
- window.fireStudyMetrics={triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length,zoom:cfg.zoom,flameLayers:cfg.count,paused,logsOnly};}
-requestAnimationFrame(frame);
-window.addEventListener('error',e=>{$('error').hidden=false;$('error').textContent=e.message;});
+ frames++;if(dt>0)frameTimes.push(dt*1000);if(frameTimes.length>300)frameTimes.shift();if(now-start>1000){$('stats').textContent=`${Math.round(frames*1000/(now-start))} fps · ${Math.round(cfg.zoom*100)}% · ${volumeMode?'volume':'silent'}`;frames=0;start=now;}
+ window.fireStudyMetrics={triangles:renderer.info.render.triangles,drawCalls:renderer.info.render.calls,meanFrameMs:frameTimes.reduce((a,b)=>a+b,0)/frameTimes.length,zoom:cfg.zoom,flameLayers:cfg.count,paused,logsOnly};requestAnimationFrame(frame);}
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();window.fireStudyFailure('The graphics context was lost');});
+$('stats').textContent='Starting fire…';
+frame(performance.now());
 
