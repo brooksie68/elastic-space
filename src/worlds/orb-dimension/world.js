@@ -102,6 +102,7 @@
     bldgFarBlur: 3, // v60: far-window mip follow (0 = v59 point-sampled twinkle); v72: default 3 (James keeps it there)
     trafSpeed: 1, // v72: one speed knob over every packet (struts, bridges, feeds)
     trafAmt: 1, // v72: how many packets — a chain keeps its spacing pattern with fewer beads
+    stnLights: 1, // v73: the station's window count (map + shader cells); towers unaffected
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -206,6 +207,7 @@
     { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
     { key: "trafSpeed", label: "traffic speed ×", min: 0.25, max: 3, step: 0.05 },
     { key: "trafAmt", label: "traffic amount", min: 0.1, max: 1, step: 0.05 },
+    { key: "stnLights", label: "station lights", min: 0, max: 2, step: 0.1 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -6557,6 +6559,7 @@ uniform float uTime;
 uniform float uTempo;
 uniform float uTrafSpeed; // v72
 uniform float uTrafAmt;
+uniform float uStnLights; // v73
 uniform float uFarBlur;
 uniform float uFade;
 uniform float uFams[5];
@@ -6611,7 +6614,7 @@ void main() {
     vec2 cell = floor(uvw), f2 = fract(uvw);
     float hc = mh(vec3(cell, floor(vE.x * 0.01)));
     float hr = mh(vec3(cell.y, 3.0, floor(vE.y * 0.01)));
-    float lit = step(mix(0.7, 0.86, straight), hc) * step(mix(0.4, 0.62, straight), hr); // v72: station members 6% → 14% of cells
+    float lit = step(mix(0.7, 1.0 - 0.08 * uStnLights, straight), hc) * step(mix(0.4, 0.62, straight), hr); // v73: station cells ~8% × "station lights"
     float pane = step(0.3, f2.x) * step(f2.x, 0.7) * step(0.36, f2.y) * step(f2.y, 0.64);
     vec3 wc = packetCol(mh(vec3(cell, 7.7)));
     float faceRoll = mh(floor(N * 3.0) + vE * 0.003);
@@ -6621,8 +6624,9 @@ void main() {
     float dash = step(0.5, fract(vUV.x * 40.0 * rdir - uTime * uTempo * rspd * 8.0 + faceRoll));
     vec3 rc = packetCol(mh(vec3(faceRoll, 5.0, 1.0)));
     float pxW = 1.0 / max(max(fwidth(uvw.x), fwidth(uvw.y)), 1e-6);
-    float crispW = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, pxW);
-    vec3 e = wc * lit * pane * mix(1.8, 2.6, straight) + rc * rail * (0.3 + dash * 1.4); // v72: station windows brighter
+    float mW = uMelt * (1.0 + 0.5 * uFarBlur * straight); // v73: the blur dial softens station cells the same way
+    float crispW = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * mW, 6.0 * mW, pxW);
+    vec3 e = wc * lit * pane * mix(1.8, 2.2, straight) + rc * rail * (0.3 + dash * 1.4); // v72/v73: station windows a little brighter
     e = mix(wc * 0.05 * step(0.4, hr) * (1.0 - straight * 0.7) + rc * 0.04 * step(0.62, faceRoll), e, crispW);
     col += e * 2.0;
   }
@@ -6829,6 +6833,7 @@ uniform float uTime;
 uniform float uTempo;
 uniform float uTrafSpeed; // v72
 uniform float uTrafAmt;
+uniform float uStnLights; // v73
 uniform float uFarBlur;
 uniform float uFade;
 uniform float uFams[5];
@@ -6962,7 +6967,7 @@ void main() {
   float keep = 1.0 - sA;
   oC = vec4(core.rgb * keep + aerial(scol, bd) * sA, core.a * keep + sA);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam", "uTrafSpeed", "uTrafAmt", "uFarBlur"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam", "uTrafSpeed", "uTrafAmt", "uFarBlur", "uStnLights"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -7689,6 +7694,7 @@ uniform float uFog;
 uniform float uMelt;
 uniform float uFarBlur;
 uniform float uFarFollow; // v70: 1 = past the cap, follow the pixel footprint fully (the station)
+uniform float uLightMul; // v73: the station's "station lights" dial; 1 for the towers
 uniform float uGlow;
 uniform float uLidMask;
 uniform float uTime;
@@ -7712,7 +7718,7 @@ void main() {
   vec3 base = texture(uTex, q.zy).rgb * an.x + texture(uTex, q.xz).rgb * an.y + texture(uTex, q.xy).rgb * an.z;
   vec3 base2 = texture(uTex2, q.zy).rgb * an.x + texture(uTex2, q.xz).rgb * an.y + texture(uTex2, q.xy).rgb * an.z;
   base = mix(base, base2 * 0.8, isStrut);   // v59: machined pale alloy, a notch under the ceramic's brightness
-  vec4 lm = texture(uLight, vUV) * (1.0 - isStrut);
+  vec4 lm = texture(uLight, vUV) * (1.0 - isStrut) * uLightMul; // v73: "station lights" (1 for towers)
   // v59: the tower BODY is cylindrically mapped, so a near-horizontal face (saucer top, cupola cap, domed lids)
   // sits at one map row and would smear it across the whole face (James's top-down "crazy whack"). Body rows are
   // vUV.y < 0.685 (painted V > 0.315); the island atlas above that (platform patches, pads) is planar and exempt.
@@ -7780,11 +7786,12 @@ void main() {
   // twinkle. Tap SPACING always stays in texels — a halo is a fixed size on
   // the building (scaling it with distance smeared towers into blobs).
   float lod0 = clamp(log2(max(px * 0.7, 1.0)), 0.0, 9.0);
-  float lodT = min(lod0, uFarBlur);
-  // v70 (James at 6 km: "a billion tiny lights... every one twinkling"): the
-  // station obeys the cap up close, then lets the taps follow the footprint
-  // all the way — far off the hull is one even glow, not point soup
-  lodT = mix(lodT, lod0, uFarFollow * smoothstep(uFarBlur + 0.5, uFarBlur + 3.5, lod0));
+  // v73 (James: building lights "out of control flicker until blur nine"): the taps
+  // ALWAYS sample at the pixel footprint — never a finer mip than the pixel can hold,
+  // so nothing twinkles at any dial value — and the dial adds softness ON TOP (half a
+  // mip per unit; 0 = sharp, 3 = the soft read he keeps). The v60 point-sample cap
+  // (twinkle below the dial) is retired.
+  float lodT = min(lod0 + uFarBlur * 0.5, 9.0);
   for (int j = -2; j <= 2; j++)
     for (int i = -2; i <= 2; i++) {
       vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, lodT);
@@ -7811,11 +7818,11 @@ void main() {
   // v72 (James: building windows "don't show up until I'm relatively close"): the far mips
   // average sparse panes toward nothing — a gain rising with the mip level (×1 near, ×3 by
   // mip 4) keeps far windows reading as a glow
-  glow *= 1.0 + min(lod0, 4.0) * 0.5;
+  glow *= 1.0 + clamp(lod0 - 2.0, 0.0, 2.0) * 0.5; // v73: ×1 to ×2, only past mip 2 (v72's ×3 fed the twinkle)
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "31"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "32"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
@@ -7833,7 +7840,7 @@ void main() {
   const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
     try {
-      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uFarFollow", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
+      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uFarFollow", "uLightMul", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
       const mkTex = (img, alpha, nearestMag) => {
         const tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 11); // scratch unit for upload; draw binds per kind
@@ -7841,6 +7848,10 @@ void main() {
         gl.texImage2D(gl.TEXTURE_2D, 0, alpha ? gl.RGBA8 : gl.RGB8, alpha ? gl.RGBA : gl.RGB, gl.UNSIGNED_BYTE, img);
         gl.generateMipmap(gl.TEXTURE_2D);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        // v73 (James: ring windows "getting smeared along"): anisotropic filtering, so an
+        // oblique ring keeps its windows instead of smearing them along its length
+        const anisoB = gl.getExtension("EXT_texture_filter_anisotropic");
+        if (anisoB) gl.texParameterf(gl.TEXTURE_2D, anisoB.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(anisoB.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
         // crisp pane edges: NEAREST when magnified (James: "still a little blurry on the edges"), mips for distance
         if (nearestMag) gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
@@ -8747,6 +8758,7 @@ void main() {
               // v70.2: the station shares "far window blur" (its own dial did nothing — its light
               // map is a few long lines; the twinkle was the seated towers) and follows past it
               gl.uniform1f(bldgMesh.prog.U.uFarFollow, k === bldgMesh.stationKind ? 1 : 0);
+              gl.uniform1f(bldgMesh.prog.U.uLightMul, k === bldgMesh.stationKind ? cfg.stnLights : 1); // v73
               bound = true;
             }
             bldgModel(b);
@@ -8769,6 +8781,7 @@ void main() {
         gl.uniform1f(commGL.solid.U.uTrafSpeed, cfg.trafSpeed); // v72
         gl.uniform1f(commGL.solid.U.uTrafAmt, cfg.trafAmt);
         gl.uniform1f(commGL.solid.U.uFarBlur, cfg.bldgFarBlur);
+        gl.uniform1f(commGL.solid.U.uStnLights, cfg.stnLights); // v73
         for (const cd of commDraw) {
           gl.uniform3fv(commGL.solid.U.uOrigin, cd.o);
           gl.uniform1f(commGL.solid.U.uFade, cd.fade);
@@ -9171,7 +9184,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "trafSpeed", "trafAmt", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "trafSpeed", "trafAmt", "stnLights", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },

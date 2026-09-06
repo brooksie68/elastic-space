@@ -3,6 +3,25 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v73 — 2026-09-06 (Claude, round one of James's v72 notes: flicker, smear, grains of sand)
+
+His read of v72: building lights "out of control flicker until blur nine"; station lights "a
+billion tiny grains of sand" and the ring windows "smeared along"; the three light types answer
+the blur dial differently; the traffic dials "incredibly effective". Round one (items 1/2/5 of
+the plan; item 4 — the station as a continuation of the ball — is its own round next):
+- **No twinkle at any dial value.** The building taps always sample at the pixel footprint
+  (lodT = lod0 + dial/2, never finer) — the v60 point-sample cap is retired; the dial is now
+  softness on top, one meaning for all three light types (packets already pixel-based; the
+  station's shader cells now soften with it too). Far gain ×1→×2 only past mip 2 (v72's ×3
+  fed the twinkle).
+- **Anisotropic filtering ×8** on every building surface + light map (mkTex) — the smear
+  along oblique rings is gone.
+- **"station lights" dial** (the societies, 0–2, default 1): scales the station map
+  (uLightMul, towers stay 1) and the shader cells (~8% at 1). Interim map back to 2,500
+  panes (BLDG_V 32); cells 2.2× (was 2.6×).
+- Cache tags ?v=730; sims + shader-check green; sheet tmp/snapshots/station-v73-6000.png.
+  OPEN: his traffic speed/amount numbers → DEFAULTS + james-prefs-01 (the file has none).
+
 ## v72 — 2026-09-06 (Claude, James's v71 flight notes, plan approved)
 
 His read of v71: the conduits "a pretty high rank," a little tuning left; the windows are two
