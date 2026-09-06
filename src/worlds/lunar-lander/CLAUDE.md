@@ -1,5 +1,103 @@
 # Lunar Lander — Claude instructions
 
+## WHERE THIS IS GOING (James, 2026-09-06 — recorded, nothing built)
+
+Lunar Lander is the seed of a bigger game: **Battle for the Moon 2075**. His
+words: it "is going to include the Battle Zone mode... some battling from the
+lander as well. We'll have more buildings on the ground. And we'll give the
+lander some weapons and some more goals. And eventually we get to a place where
+the user gets out of the lander and gets into the tank, a lunar tank. The things
+that you'll be dealing with in the tank, we'll see going by on the ground. Lots
+more to come on this down the road." So, in his order:
+
+1. Buildings on the ground (the lander flies over what the tank will fight in).
+2. Weapons on the lander and more goals than pads.
+3. The Battlezone mode — a lunar tank, first person, the vector sibling.
+4. Egress: land, climb out, get in the tank; the two halves share one moon.
+
+Every step is a design conversation and his go first. Until then the world is
+Lunar Lander as shipped; the endless chunked moon and its deals are the ground
+both halves will stand on — keep new ground features in the core's chunk data.
+
+### Round one design — WEAPONS, HOSTILES, STRUCTURES (James's riff 2026-09-06, agreed so far, NOT built)
+
+His brief: two weapons from the start — a guided missile and a laser beam.
+Activate the weapon, click the target (ground or air), click again to fire,
+right-click to disengage; "a cool little animation for each"; about 85%
+accurate (a small chance to miss, never impossible). Hostile fire = surface-to-
+air missiles only, slow enough to outfly, a warning on launch, a missile icon on
+the direction circle pointing at it with the range counting down in a small
+pink number, a couple percent chance per tick that the SAM corrects course,
+otherwise a straight shot. CHAFF drops shreds below the lander, stops a SAM 80%
+of the time. Missiles / laser charge refill at pads like fuel does — randomly
+mixed so you can always get some but may have to choose fuel or weapons this
+landing. Plus ten more man-made greebles on the ground.
+
+The plan (three rounds, his eyes between each):
+1. Structures — ten line-drawn greebles in the chunk data, dealt like pads:
+   radar tower, comm tower, hab modules, power generator, solar farm, fuel tank
+   farm, dish array, mining drill, rover garage, observatory dome, + the SAM
+   site. Chunk 0 safe.
+2. Weapons + refills — missile and laser, targeting by click, ammo + charge in
+   the console; pads carry fuel / missiles / laser / chaff in a mix, each on
+   its own drought ladder (fuel's odds unchanged).
+3. Hostile fire — SAM sites, warning + icon + pink range, chaff.
+Everything in the pure core with sim tests; animations in the renderer.
+
+THE TARGET SYSTEM (agreed):
+- Three classes. Hostile in the open (SAM site, gun pit, radar tower, jammer):
+  targetable from anywhere, 1X–2X. Hostile hardened: targetable only from the
+  right place or moment, 3X–5X. Civilian (habs, solar, observatory, garage,
+  drill, dome, tanks — lots of them): NEVER targetable, the cursor does nothing.
+- Hardening kinds: UNDER AN OVERHANG (shots from above hit rock; come in low
+  from the open side; laser and missile both need the line); BEHIND A RIDGE
+  (missile only, arcing from the far side); DOOR SHUT (a bunker's blast door
+  opens two seconds when its own SAM fires — bait it); SHIELDED (two hits, any
+  mix).
+- The rating is ONE number: a multiplier 1X–5X on the pad scale; value and
+  difficulty are the same number. Points = base × X; a miss pays nothing and
+  spends the ammo. Chunks deal hostiles like pads: most have one or two open
+  targets, a hardened one every few chunks, a jackpot chunk holds a 5X.
+- The cursor: over a hostile its strokes warm to amber and a small tag shows
+  name + X; a hardened one adds one word — OVERHANG / RIDGE / DOOR / SHIELD.
+  Selected = bracket + the ammo counter blinks; second click fires; right-click
+  clears. Over civilians: nothing.
+- A MISSILE MISS (small chance) can damage a civilian building and takes
+  points away — his call. The laser never harms civilians (line, not blast).
+
+HIS ANSWERS 2026-09-06: a SAM hit is a crash (same as the ground); the radar
+tower doubles SAM range in its chunk (kill it first); loadout 4 missiles /
+3 laser shots / 3 chaff; keys 1 missile, 2 laser, C chaff, right-click clears;
+structures are solid (a comm tower is a crash).
+
+**THE LEVELS (James, 2026-09-06): "I don't want those levels at all."** The
+four 1979 selections (Training / Cadet / Prime / Command) GO. Instead: a set
+of LEVELS with harder enemies and better weapons, then a BOSS. Everything
+above is LEVEL 1. The tank battle is its own part of the same game. Nothing
+built; the level structure (what completes a level, what escalates, the boss)
+is the next design conversation. Claude's picks to open it: level 1 flies
+with the Cadet feel (gravity ×1.0, hand-on-key rotation, 4-pad standard deal)
+and the physics never change between levels — only enemies, weapons, targets
+and the moon's deals do. **HIS YES TO ALL THREE (2026-09-06):** level 1 flies
+with the Cadet feel and the physics never change; level 1 is complete when
+every hostile in the first eight chunks is destroyed — then the relay tower
+lights and landing on it ends the level; five levels, then the boss, then the
+tank part opens.
+
+### TWO SESSIONS, ONE GAME (2026-09-06)
+
+James runs a second Claude session for the TANK half. Its brief is
+`tank-brief.md` in this folder (keep it current when the split changes). The
+split: the tank session owns `tank/` (its own html/js/core/render/CLAUDE.md/
+changelog) and `tmp/lunar-lander/tank-*`; it writes needs into
+`tank/NEEDS.md` — READ THAT FILE at every session start and act on it. This
+session owns everything else here plus the repo-level files. Coming from this
+side, promised to the tank: `chunk.structures` in the core and
+`structures.js` (pure segment lists for the ten structures + SAM site) so both
+renderers draw the same shapes; later, `vector-kit.js` (LineBatch + post
+chain + DEFAULT_PARAMS pulled out of render3d.js) with a heads-up to the tank
+session first. Commit prefix here: `Battle for the Moon (lander):`.
+
 ## START HERE (next session)
 
 **SHIPPED 2026-09-04** — James flew rounds three and four the same night, said
@@ -93,6 +191,14 @@ game.js). Verified headless: a ship bobbing 430↔570 ft across a 480 ft trigger
 stays zoomed throughout. The renderer only eases (`CAM_TAU` 0.9 s). Keep the
 zoom — "cool, effective, and necessary" — and keep it from pumping.
 
+**The zoom reads height above the nearest PAD, not the ground** (2026-09-05,
+James: a mountain top passing under the ship zoomed him in far from any pad —
+"disorienting... hard to see where the rest of everything is"). `zoomHeight()`
+in game.js: the smallest ship-minus-pad height over pads within `ZOOM_REACH`
+(700 ft sideways, edge to edge); no pad that near = Infinity = no zoom. Both
+the in and the out rule use it. `Core.altitude` (ground under the ship) stays
+for the instruments and the auto-throttle.
+
 ## Docs
 
 - `changelog.md` — session history, newest first.
@@ -159,12 +265,15 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
   vy limit, spider legs grow every tilt limit by half — the HUD and the
   attitude wedges must read the effective grades, never `GRADES` directly.
 - **Landing tech is a core rule, not a shell flourish**: `state.tech` (ids in
-  the order earned), `TECH` ladder, `techEarnedBy` (good/perfect on ≥4X; the
+  the order earned), `TECH` ladder — THREE pieces: shock, spider, auto
+  (the GYRO STABILIZER was cut 2026-09-05, James: "harder to fly rather than
+  helping"; the LANDING RADAR was cut 2026-09-06, "makes the experience and
+  flying worse"; never bring either back), `techEarnedBy` (good/perfect on ≥4X; the
   last piece a perfect on a 5X), crash pops the newest. The renderer only
   draws what `view.tech` says (`buildTech`); the shell owns engagement of the
   auto-throttle (`autoOn`: one tap of W under `AUTO_ALT`, any flight key
-  releases) and the shock-leg squash spring. `predictTouchdown()` and
-  `autoLever()` are pure and sim-tested — put new tech physics in the core.
+  releases) and the shock-leg squash spring. `autoLever()` is pure and
+  sim-tested — put new tech physics in the core.
 - **Fuel pads** are a flag on a pad (`pad.fuel`); the refill lives in
   `resolveContact` (`FUEL_PAD_REFILL` / `FUEL_PAD_PERFECT`) and the result
   carries `fuelPad`.
@@ -180,8 +289,14 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
   mountain; every pad has a flat 150 ft APRON to its right for the
   accelerator. The sim's TEST 10 guards the shape.
 - **Deals** (`chunk.deal`): standard / sparse / rich / dry / jackpot, rolled
-  per chunk; chunk 0 always standard with fuel. Tune the odds in `makeChunk`,
-  then re-read TEST 11's histogram.
+  per chunk; chunk 0 always standard. The deal picks the PADS only. Which
+  carry fuel is **the fuel drought** (2026-09-05): pads walked in flight
+  order across seams, each rolling fuel at `FUEL_ODDS[run of dry pads so
+  far]` (0.15 → 1.0 at four; dry deal halves, rich ×1.25, jackpot promises a
+  5X). `chunk.drought` carries the count to the next chunk via `getChunk`,
+  which builds k−1 first — never generate a chunk without its carry. Tune the
+  `FUEL_ODDS` ladder, then re-read TEST 11's drought line (share ~38%, no run
+  of five).
 - **A pad pays once per life** (`pad.used`, `result.reused`): no points, no
   tech, refuel still. `world.version` ticks on use — the renderer and the
   labels key their rebuilds on it.

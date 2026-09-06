@@ -77,8 +77,21 @@
 
   // Chunk deals — every chunk rolls its own character when it is first
   // generated (hashed, so it is fixed once rolled). Chunk 0 is always a fair
-  // standard deal with a fuel pad.
+  // standard deal with a fuel pad. The deal picks the pads; which of them
+  // carry fuel is the drought rule below.
   const DEALS = ['standard', 'sparse', 'rich', 'dry', 'jackpot'];
+
+  // THE FUEL DROUGHT (2026-09-05, James: "I went by like eight pads before
+  // there were suddenly two in a row and I died... it needs to be
+  // considerably more common" — but no every-other / every-third rule).
+  // Pads are walked in flight order, across chunk seams, and each one rolls
+  // for fuel with odds that climb with the number of fuel-less pads since the
+  // last fuel pad: FUEL_ODDS[drought] (low right after one, so fuel seldom comes twice running). Three dry pads in a row are ordinary;
+  // four is rare (about one run in fifty); five never. A dry deal halves the
+  // early odds (the pity climb still fires), a rich deal lifts them. Chunk 0
+  // always carries at least one.
+  const FUEL_ODDS = [0.15, 0.35, 0.60, 0.85, 1.0];
+  const FUEL_DEAL_MULT = { standard: 1, sparse: 1, rich: 1.25, dry: 0.5, jackpot: 1 };
 
   // The ring accelerator beside every pad: rail base sits `offset` ft right of
   // the pad's right edge, `rings` rings along a rail `railLen` ft long.
@@ -100,21 +113,21 @@
   // the newest piece. Each piece changes the rules a little:
   //   shock  — the vertical-speed limits of every grade double
   //   spider — the tilt limits of every grade grow by half
-  //   gyro   — the ship levels itself when no rotation key is held
-  //   radar  — no rule change; the shell shows the predicted touchdown
   //   auto   — no rule change; the shell may fly autoLever() under AUTO_ALT
   const TECH = [
     { id: 'shock',  name: 'SHOCK LEGS' },
     { id: 'spider', name: 'SPIDER LEGS' },
-    { id: 'gyro',   name: 'GYRO STABILIZER' },
-    { id: 'radar',  name: 'LANDING RADAR' },
     { id: 'auto',   name: 'AUTO-THROTTLE' },
   ];
   const TECH_MULT = 4;              // pad multiplier that earns a piece
   const TECH_FINAL_MULT = 5;        // the last piece: a perfect here
   const SHOCK_VY = 2.0;
   const SPIDER_TILT = 1.5;
-  const GYRO_RATE = 2.4;            // 1/s — angle decays toward upright
+  // (The GYRO STABILIZER — self-levelling with no key held — and the LANDING
+  // RADAR — a beam to the predicted touchdown — were pieces until 2026-09-05/06.
+  // James: the gyro "makes it harder to fly rather than helping", the radar
+  // "makes the experience and flying worse". Removed for good; do not bring
+  // either back.)
   const AUTO_ALT = 100;             // ft — auto-throttle may engage below this
   const AUTO_VY = -4;               // ft/s — the descent it holds
   const SPIDER_ALT = 60;            // ft — where the legs fan out (drawing only)
@@ -157,7 +170,7 @@
   // the SEAM index, so chunk k meets chunk k+1 exactly.
   function seamLevel(seed, k) { return 260 + hash01(seed, k * 7 + 3) * 120; }
 
-  function makeChunk(seed, k, difficulty, opts) {
+  function makeChunk(seed, k, difficulty, opts, carry) {
     const rng = mulberry32(hashSeed(seed, k));
     const n = Math.round(CHUNK_W / TERRAIN_STEP);      // 80 segments
     const X0 = k * CHUNK_W;
@@ -253,24 +266,18 @@
       deal = r < 0.16 ? 'sparse' : r < 0.34 ? 'rich' : r < 0.46 ? 'dry' : r < 0.54 ? 'jackpot' : 'standard';
     }
     const tiers = [];
-    let fuelCount = 0;
     if (deal === 'standard') {
       const count = DIFFICULTY[difficulty].pads;
       for (let q = 0; q < count; q++) tiers.push(PAD_TIERS[q % PAD_TIERS.length]);
-      fuelCount = 1 + (rng() < 0.34 ? 1 : 0);
     } else if (deal === 'sparse') {
       tiers.push(TIER_BY_MULT[5], TIER_BY_MULT[2]);
-      fuelCount = 1;
     } else if (deal === 'rich') {
       tiers.push(TIER_BY_MULT[2], TIER_BY_MULT[3], TIER_BY_MULT[4], TIER_BY_MULT[5], TIER_BY_MULT[4]);
-      fuelCount = 1 + (rng() < 0.5 ? 1 : 0);
     } else if (deal === 'dry') {
       tiers.push(TIER_BY_MULT[3], TIER_BY_MULT[2], TIER_BY_MULT[4]);
-      fuelCount = 0;
     } else {
-      // jackpot: two 5X pads, one of them fuel; a 3X to make the approach
+      // jackpot: two 5X pads (one of them will be fuel); a 3X to make the approach
       tiers.push(TIER_BY_MULT[5], TIER_BY_MULT[5], TIER_BY_MULT[3]);
-      fuelCount = 1;
     }
     for (let i2 = tiers.length - 1; i2 > 0; i2--) {
       const j = Math.floor(rng() * (i2 + 1));
@@ -317,10 +324,25 @@
     if (pads.length && Math.abs(k) >= RELAY_MIN_CHUNK && rng() < RELAY_ODDS) {
       pads[Math.floor(rng() * pads.length)].relay = true;
     }
-    if (pads.length && fuelCount) {
-      const order = pads.map((_, q) => q);
-      for (let i2 = order.length - 1; i2 > 0; i2--) { const j = Math.floor(rng() * (i2 + 1)); const t = order[i2]; order[i2] = order[j]; order[j] = t; }
-      for (let q = 0; q < Math.min(fuelCount, pads.length); q++) pads[order[q]].fuel = true;
+    // the fuel drought walk: flight order, odds climbing since the last fuel pad
+    let drought = carry || 0;
+    const byX = pads.slice().sort((a, b) => a.x0 - b.x0);
+    const mult = FUEL_DEAL_MULT[deal];
+    for (const p of byX) {
+      const odds = FUEL_ODDS[Math.min(drought, FUEL_ODDS.length - 1)];
+      p.fuel = odds >= 1 || rng() < odds * mult;
+      drought = p.fuel ? 0 : drought + 1;
+    }
+    if (deal === 'jackpot' && !byX.some((p) => p.mult === 5 && p.fuel)) {
+      // the jackpot's promise: one of its 5X pads is the fuel
+      const fives = byX.filter((p) => p.mult === 5);
+      const pick = fives[Math.floor(rng() * fives.length)];
+      if (pick) pick.fuel = true;
+      drought = 0; for (const p of byX) drought = p.fuel ? 0 : drought + 1;
+    }
+    if (k === 0 && pads.length && !byX.some((p) => p.fuel)) {
+      byX[Math.floor(rng() * byX.length)].fuel = true;
+      drought = 0; for (const p of byX) drought = p.fuel ? 0 : drought + 1;
     }
     // the secret flat — a strip that is not a pad
     let secret = null;
@@ -361,7 +383,7 @@
       pts.push([x, ys[i4]]);
     }
     const zoneOut = zones.map((z) => ({ type: z.type, x0: X0 + z.i0 * TERRAIN_STEP, x1: X0 + z.i1 * TERRAIN_STEP }));
-    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed };
+    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought };
   }
 
   // ---- the world: chunks on demand, kept for the life ----------------------
@@ -369,7 +391,12 @@
   function getChunk(state, k) {
     const w = state.world;
     let c = w.chunks[k];
-    if (!c) { c = makeChunk(state.seed, k, state.difficulty, state.opts); w.chunks[k] = c; w.version++; }
+    if (!c) {
+      // the fuel drought carries across the seam from the chunk before (flight
+      // goes right; chunks left of home start fresh)
+      const carry = k > 0 ? getChunk(state, k - 1).drought : 0;
+      c = makeChunk(state.seed, k, state.difficulty, state.opts, carry); w.chunks[k] = c; w.version++;
+    }
     return c;
   }
   function chunksBetween(state, xa, xb) {
@@ -599,32 +626,6 @@
     return next;
   }
 
-  // Where the ship touches down if nothing changes: coast under gravity with
-  // the current velocity and attitude until a foot (or the body) meets the
-  // ground. Pure prediction for the landing radar; never mutates state.
-  function predictTouchdown(state) {
-    const s = state.ship;
-    const d = DIFFICULTY[state.difficulty];
-    const g = GRAVITY * d.gravity * state.opts.gravityScale;
-    const h = 1 / 30;
-    const sim = { x: s.x, y: s.y, vx: s.vx, vy: s.vy, angle: s.angle };
-    for (let k = 0; k < 40 * 30; k++) {
-      sim.vy -= g * h;
-      sim.x += sim.vx * h;
-      sim.y += sim.vy * h;
-      const pts = shipPoints(sim);
-      const gl = groundAt(state, pts.footL[0]), gr = groundAt(state, pts.footR[0]);
-      const body = pts.top[1] <= groundAt(state, pts.top[0]) || pts.sideL[1] <= groundAt(state, pts.sideL[0]) || pts.sideR[1] <= groundAt(state, pts.sideR[0]);
-      if (pts.footL[1] <= gl || pts.footR[1] <= gr || body) {
-        const lx = Math.min(pts.footL[0], pts.footR[0]), rx = Math.max(pts.footL[0], pts.footR[0]);
-        const pad = body ? null : padUnder(state, lx, rx);
-        const fx = (pts.footL[0] + pts.footR[0]) * 0.5;
-        return { x: fx, y: groundAt(state, fx), t: (k + 1) * h, pad: pad, fits: !!pad, vy: -sim.vy, vx: Math.abs(sim.vx) };
-      }
-    }
-    return null;
-  }
-
   // The lever that holds a target descent rate right now (the auto-throttle
   // computes it every step; the shell decides when it is engaged). Thinks in
   // thrust, then undoes the lever curve.
@@ -682,15 +683,6 @@
       s.angVel = rot * d.rot * o.rotScale;
     }
     s.angle += s.angVel * DT;
-    if (rot === 0 && hasTech(state, 'gyro')) {
-      // the gyro: with no hand on the key the ship eases back to upright
-      const k = 1 - Math.exp(-GYRO_RATE * DT);
-      let a = s.angle % (Math.PI * 2);
-      if (a > Math.PI) a -= Math.PI * 2;
-      if (a < -Math.PI) a += Math.PI * 2;
-      s.angle = a - a * k;
-      if (d.inertia > 0) s.angVel -= s.angVel * k;
-    }
 
     // the lever and the abort burst
     s.lever = Math.max(0, Math.min(1, +input.lever || 0));
@@ -857,6 +849,7 @@
     GRADES: GRADES,
     PAD_TIERS: PAD_TIERS,
     DEALS: DEALS,
+    FUEL_ODDS: FUEL_ODDS,
     ACCEL: ACCEL,
     APRON: APRON,
     LAUNCH_HEIGHT: LAUNCH_HEIGHT,
@@ -871,7 +864,6 @@
     TECH_FINAL_MULT: TECH_FINAL_MULT,
     SHOCK_VY: SHOCK_VY,
     SPIDER_TILT: SPIDER_TILT,
-    GYRO_RATE: GYRO_RATE,
     AUTO_ALT: AUTO_ALT,
     AUTO_VY: AUTO_VY,
     SPIDER_ALT: SPIDER_ALT,
@@ -896,7 +888,6 @@
     hasTech: hasTech,
     techNext: techNext,
     gradesFor: gradesFor,
-    predictTouchdown: predictTouchdown,
     autoLever: autoLever,
     createGame: createGame,
     newAttempt: newAttempt,

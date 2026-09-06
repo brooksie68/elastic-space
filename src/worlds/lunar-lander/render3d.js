@@ -374,19 +374,6 @@ function buildTech(id, fan, squash) {
       seg(knee, toe);
       seg([toe[0] - 1.6 * sx, toe[1], toe[2] + 1.6 * sz], [toe[0] + 1.6 * sx, toe[1], toe[2] - 1.6 * sz]);
     }
-  } else if (id === 'gyro') {
-    // a gimbal ring around the pod's waist with a tilted inner ring
-    loop(ring(12, 7.4, 6.2));
-    const inner = [];
-    for (let i = 0; i < 10; i++) { const a = Math.PI * 2 * i / 10; inner.push([Math.cos(a) * 6.6, 6.2 + Math.sin(a) * 1.4, Math.sin(a) * 6.6]); }
-    loop(inner);
-  } else if (id === 'radar') {
-    // a dish under the descent stage, aimed down, on a short stalk
-    seg([5.2, -5, 3], [6.4, -7.4, 3.6]);
-    const d = [];
-    for (let i = 0; i < 8; i++) { const a = Math.PI * 2 * i / 8; d.push([6.4 + Math.cos(a) * 2.2, -7.4, 3.6 + Math.sin(a) * 2.2]); }
-    loop(d);
-    seg([6.4, -7.4, 3.6], [6.4, -9.2, 3.6]);
   } else if (id === 'auto') {
     // a computer box beside the bell with a whip antenna
     loop([[-6.6, -5.4, 4.4], [-3.6, -5.4, 4.4], [-3.6, -8.2, 4.4], [-6.6, -8.2, 4.4]]);
@@ -1023,7 +1010,7 @@ export class LanderScene {
   // ---- the frame ------------------------------------------------------------------------------
   // view: { ship, thrust, rotate, zoomOn, gravity, showShip, secret, flying, launch: { pad, tilt, lit } | null,
   //         tech: [ids], fan: 0..1 (spider spread), squash: 0..1 (shock compression),
-  //         autoOn: bool, radar: predictTouchdown() | null,
+  //         autoOn: bool,
   //         relayLit: padId | null (the tower you sit at), hatch: {x, y} | null (the wreck's door) }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
@@ -1132,31 +1119,6 @@ export class LanderScene {
             const r = [s.x + dx + Math.cos(h + half) * baseR, s.y + Math.sin(h + half) * baseR];
             const tb = tbase;
             D.seg(tip[0], tip[1], 0, l[0], l[1], 0, tb); D.seg(l[0], l[1], 0, r[0], r[1], 0, tb); D.seg(r[0], r[1], 0, tip[0], tip[1], 0, tb);
-          }
-        }
-      }
-      // the landing radar: a dashed beam to the predicted touchdown; the pad's
-      // edges brighten and bracket when the feet fit
-      if (view.flying && view.radar) {
-        const R = view.radar;
-        const tx = R.x;
-        const ax = s.x, ay = s.y - 11 * ds, bx = tx, by = R.y;
-        const len = Math.hypot(bx - ax, by - ay);
-        const dash = 14, gap = 10;
-        const phase = (this.time * 40) % (dash + gap);
-        for (let d0 = -phase; d0 < len; d0 += dash + gap) {
-          const t0 = Math.max(0, d0) / len, t1 = Math.min(len, d0 + dash) / len;
-          if (t1 <= t0) continue;
-          for (const dx of [0]) D.seg(ax + dx + (bx - ax) * t0, ay + (by - ay) * t0, 0, ax + dx + (bx - ax) * t1, ay + (by - ay) * t1, 0, R.fits ? 0.6 : 0.32);
-        }
-        for (const dx of [0]) {
-          const mk = [[bx + dx - 6, by], [bx + dx + 6, by]];
-          D.seg(mk[0][0], mk[0][1], 0, mk[1][0], mk[1][1], 0, R.fits ? 1.0 : 0.5);
-          if (R.pad && R.fits) {
-            const pd = R.pad;
-            D.seg2(pd.x0 + dx, pd.y, pd.x0 + dx, pd.y + 14, 2.2); D.seg2(pd.x0 + dx, pd.y + 14, pd.x0 + dx + 8, pd.y + 14, 1.6);
-            D.seg2(pd.x1 + dx, pd.y, pd.x1 + dx, pd.y + 14, 2.2); D.seg2(pd.x1 + dx, pd.y + 14, pd.x1 + dx - 8, pd.y + 14, 1.6);
-            D.seg2(pd.x0 + dx, pd.y, pd.x1 + dx, pd.y, 1.4);
           }
         }
       }

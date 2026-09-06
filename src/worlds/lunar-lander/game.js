@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=2';
 
 const Core = globalThis.LunarCore;
 
@@ -36,21 +36,19 @@ const LOOK_RANGES = {
 const ZOOM_OUT_RATIO = 1.3;    // was 1.75 — James: the camera "is not panning back soon enough"
 const ZOOM_DWELL = 1.6;        // was 3.0
 const ZOOM_CLIMB = 25;         // ft/s up: climbing this fast zooms out at once (see LAUNCH_WIDE)
+const ZOOM_REACH = 700;        // ft sideways: only a pad this near counts for the zoom (James, 2026-09-05:
+                               // "it shouldn't zoom you in when you go past the tip of a mountain")
 const LAUNCH_WIDE = 220;       // ft above the launch pad: the camera goes wide here after a launch, whatever the ground below is doing
 const TECH_NAMES = {};
 for (const t of globalThis.LunarCore.TECH) TECH_NAMES[t.id] = t.name;
 const TECH_HOW = {
   shock: 'Earned by a good or perfect landing on a 4X or 5X pad. The vertical-speed limit of every grade doubles: perfect up to 10 ft/s, hard up to 60.',
   spider: 'Earned next, the same way. The legs fan out under 60 ft and every tilt limit grows by half: a perfect allows 6°, a hard landing 27°.',
-  gyro: 'Earned next, the same way. Take your hand off the rotation keys and the ship eases itself back to upright. On Command it also kills the spin.',
-  radar: 'Earned next, the same way. A dashed beam shows where you will touch down if you do nothing. The pad brackets light when both feet fit.',
-  auto: 'The last piece: only a PERFECT on a 5X pad while holding the other four. Under 100 ft, tap W or Space once and it holds a 4 ft/s descent. Any flight key hands the ship back.',
+  auto: 'The last piece: only a PERFECT on a 5X pad while holding the other two. Under 100 ft, tap W or Space once and it holds a 4 ft/s descent. Any flight key hands the ship back.',
 };
 const TECH_BLURB = {
   shock: 'YOU CAN LAND TWICE AS HARD',
   spider: 'YOU CAN LAND HALF AGAIN AS TILTED',
-  gyro: 'LET GO OF THE KEY AND THE SHIP LEVELS ITSELF',
-  radar: 'THE BEAM SHOWS WHERE YOU WILL TOUCH DOWN',
   auto: 'TAP W UNDER 100 FT AND IT FLIES YOU DOWN',
 };
 // The ways out — hidden drift anchors the game clicks (drift.js picks the world)
@@ -119,7 +117,7 @@ let slowMo = 1;
 let zoomIn = false;
 let zoomChangedAt = -1e9;
 let clock = 0;
-// the landing tech in flight: auto-throttle engaged, shock-leg squash, radar prediction
+// the landing tech in flight: auto-throttle engaged, shock-leg squash
 let autoOn = false;
 // the ring accelerator sequence after a landing: slide → tilt → fire
 let launchT = -1;
@@ -128,13 +126,11 @@ let launchAfter = null;        // the launcher's exit after the shot: { pad, t }
 let launchLit = 0;
 let launchPadY = null;         // the pad the last launch left from (for the zoom-out rule)
 let squashT = -1;            // seconds since touchdown on shock legs, -1 = none
-let radarPred = null;
-let radarTimer = 0;
 let techDrawn = '';
 
 // Read-only handle for headless checks and the look-dev harness.
 Object.defineProperty(globalThis, 'LANDER_DEBUG', {
-  get() { return { scene, state, mode, look, play, lever, trim, zoomIn, autoOn, radarPred, launchT, input: currentInput(), tick: (dt) => frameStep(dt) }; },
+  get() { return { scene, state, mode, look, play, lever, trim, zoomIn, autoOn, launchT, input: currentInput(), tick: (dt) => frameStep(dt) }; },
 });
 
 // ---- renderer ------------------------------------------------------------------------
@@ -283,7 +279,7 @@ function makeGame() {
   clearFloats();
   buildPadLabels();
 }
-function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; radarPred = null; radarTimer = 0; launchAfter = null; }
+function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; launchAfter = null; }
 function enterAttract(resultLine, stamp) {
   mode = 'attract';
   document.body.classList.remove('paused');
@@ -629,20 +625,34 @@ function updateThrottle(dt) {
 function updateZoom(dt) {
   clock += dt;
   if (!play.zoom || !state || state.phase !== 'flying') return;
-  const alt = Core.altitude(state);
   const since = clock - zoomChangedAt;
+  // The zoom reads height above the nearest PAD, not the ground under the
+  // ship: a mountain top passing under you is not an approach (James: the
+  // mountain zoom "is disorienting and it makes it hard to see where the rest
+  // of everything is"). No pad within ZOOM_REACH sideways = no zoom.
+  const alt = zoomHeight();
   // climbing hard (a launch): stay close while the speed reads, then go wide
   // the moment the trigger altitude is passed — no ratio, no dwell, and no
-  // zooming back in on the way up
-  // `alt` is height above the ground UNDER the ship — over a mountain it stays
-  // small while you are high over the pad, which kept the camera in (James:
-  // "zoomed way in on me... all the way up over this big mountaintop"). After a
-  // launch the rule is height above the PAD you left.
+  // zooming back in on the way up. After a launch the rule is height above
+  // the PAD you left.
   const climbing = state.ship.vy > ZOOM_CLIMB;
   const overPad = launchPadY === null ? 0 : state.ship.y - launchPadY;
   if (!zoomIn && alt < look.zoomAlt && since > ZOOM_DWELL * 0.5 && !climbing) { zoomIn = true; zoomChangedAt = clock; }
   else if (zoomIn && ((alt > look.zoomAlt * ZOOM_OUT_RATIO && since > ZOOM_DWELL) || (climbing && (alt > look.zoomAlt || overPad > LAUNCH_WIDE)))) { zoomIn = false; zoomChangedAt = clock; }
   if (!climbing && state.ship.vy < 0) launchPadY = null;
+}
+// Height above the nearest pad within ZOOM_REACH sideways (edge to edge);
+// Infinity when no pad is that near.
+function zoomHeight() {
+  const sx = state.ship.x, sy = state.ship.y;
+  let best = Infinity;
+  for (const p of Core.padsNear(state, sx, ZOOM_REACH)) {
+    const dx = sx < p.x0 ? p.x0 - sx : sx > p.x1 ? sx - p.x1 : 0;
+    if (dx > ZOOM_REACH) continue;
+    const h = sy - p.y;
+    if (h < best) best = h;
+  }
+  return best;
 }
 function frameStep(dt) {
   if (!scene) return;
@@ -659,10 +669,6 @@ function frameStep(dt) {
     abortReq = false;
     handleEvents(r.events);
     const alt = Core.altitude(state);
-    if (state.phase === 'flying' && Core.hasTech(state, 'radar')) {
-      radarTimer -= dt;
-      if (radarTimer <= 0) { radarPred = Core.predictTouchdown(state); radarTimer = 1 / 20; }
-    } else radarPred = null;
     if (state.phase === 'flying' && alt < 300 && state.ship.vy < -1) {
       Sfx.beepTimer -= dt;
       if (Sfx.beepTimer <= 0) { Sfx.beep(); Sfx.beepTimer = 0.12 + (alt / 300) * 0.9; }
@@ -700,7 +706,6 @@ function frameStep(dt) {
     tech: state.tech,
     fan, squash,
     autoOn: autoOn && mode === 'play',
-    radar: mode === 'play' ? radarPred : null,
     launch: launchView,
     relayLit: state.result && state.result.kind !== 'crash' && state.result.pad && state.result.pad.relay ? state.result.pad.id : null,
     hatch: state.phase === 'over' && state.result ? { x: state.result.x, y: Core.groundAt(state, state.result.x) } : null,

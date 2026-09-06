@@ -2,6 +2,76 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (the direction: Battle for the Moon 2075) — Claude
+
+Recorded, nothing built. James: Lunar Lander will grow into "Battle for the
+Moon 2075" — the Battlezone mode inside it, battling from the lander, more
+buildings on the ground, weapons and more goals for the lander, and
+eventually getting out of the lander into a lunar tank whose targets you
+already saw going by from the air. "Lots more to come on this down the
+road." The world CLAUDE.md opens with it now.
+
+## 2026-09-06 (the radar is gone) — Claude
+
+James: "remove the landing radar from the game - it makes the experience and
+flying worse." Removed for good: the TECH ladder is three pieces — shock
+legs, spider legs, auto-throttle (a perfect on a 5X holding the other two).
+`predictTouchdown()` deleted from the core with its sim tests (nothing else
+used it); the dashed beam + pad brackets, the dish on the ship, the HUD
+piece, hover card and blurb are gone; the look-dev page lost its gyro and
+radar boxes. Sim TEST 12 asserts the three-piece ladder. Tags: game-core v7,
+game v6; smoke page rebuilt.
+
+## 2026-09-05 (the gyro is gone) — Claude
+
+James: the gyro stabilizer "is annoying. it makes it harder to fly rather
+than helping. I want to remove it from the game." Removed for good: the
+TECH ladder is four pieces — shock legs, spider legs, landing radar,
+auto-throttle (a perfect on a 5X holding the other three). Core rotation no
+longer self-levels; the gimbal drawing, HUD piece, hover card and blurb are
+gone; sim TEST 12 asserts the four-piece ladder and that a tilt stays with
+every piece held. Tags: game-core v6, game v5; smoke page rebuilt.
+
+## 2026-09-05 (the fuel drought) — Claude
+
+James: "I went by like eight pads before there were suddenly two in a row and I
+died... it needs to be considerably more common. It should still be challenging
+at times, but right now it's like impossible." No every-other / every-third rule.
+
+Measured over 400 cadet games × 12 chunks: fuel sat on 30% of pads and nothing
+stopped a dry deal landing beside a standard chunk whose only fuel pad was its
+last — dry runs of 8+ pads about once every five games, worst seen 13.
+
+The rule now (`game-core.js`): the per-deal fuel counts are gone. Pads are
+walked in flight order, across chunk seams, and each rolls for fuel with odds
+that climb with the run of fuel-less pads before it — `FUEL_ODDS`
+[0.30, 0.45, 0.65, 0.85, 1.0]. A dry deal halves the early odds, rich lifts
+them ×1.25, a jackpot still promises fuel on one of its 5X pads, chunk 0 always
+carries one. Each chunk records its trailing `drought`; `getChunk` builds
+chunk k−1 first to carry it over, so a chunk is still the same every time it
+is reached (sim-asserted). Result: fuel on 45% of pads, three dry in a row
+still happens, four is ~2%, five never. Sim TEST 11 rewritten around the
+drought; 354,014 green. Tune: the `FUEL_ODDS` ladder is the whole dial.
+
+Same day, his reload: "seven pads showing in view and five of them have fuel...
+did we go too much in the other direction?" The first rung was 30% right
+after a fuel pad, so fuel came twice running a third of the time. Ladder now
+[0.15, 0.35, 0.60, 0.85, 1.0]: share 38%, back-to-back fuel 17% (was 31%),
+the usual gap is one or two dry pads, four still ~2%, five never.
+
+## 2026-09-05 (the zoom reads the pad, not the mountain) — Claude
+
+James: passing the tip of a mountain zoomed the camera in while the pad was
+still far off — "disorienting... it makes it hard to see where the rest of
+everything is... it should only zoom when you're actually physically close
+to the pad in terms of the height to it." The gate used `Core.altitude`
+(ground under the ship). Now `zoomHeight()` in game.js: height above the
+nearest pad within `ZOOM_REACH` 700 ft sideways; no pad that near means no
+zoom at all. The hysteresis, dwell and launch rules are unchanged, just fed
+the new height. Checked headless over 535 mountain tops across 60 seeds with
+the ship 150 ft over the peak and no pad in reach: none would zoom. game.js
+tag v4, smoke page rebuilt.
+
 ## 2026-09-04 (shipped, the ring behind the HUD) — Claude
 
 James: the horizon rings "are obscured by the HUD... right when you think
