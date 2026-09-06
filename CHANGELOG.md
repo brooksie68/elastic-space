@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-05 — Codex — Fireplace volume refinement
+
+Thinned the experimental volume, reduced glare, and added sharper moving gaps;
+logs are clearer. Still a look study awaiting James. Agent: Codex.
+
 ## 2026-09-05 — Codex — Fireplace volume comparison
 
 Added a silent side-by-side heated-gas volume experiment and hardened startup

@@ -1,5 +1,22 @@
 # Fireplace study — KEEP
 
+## 2026-09-05 — Codex — Thinner volume iteration
+
+James green-lit iteration to reduce the yellow blanket and expose logs. Narrowed
+bed depth .43→.30 and upper source .14→.09; more intermittent, finer source noise.
+Raised cooling slightly, cut optical density 2.5→1.7 and emitted radiance by roughly
+30%. Yellow-white now requires hotter gas (threshold 1.25→1.9). Sharpened temperature
+edge and added upward-moving erosion/coordinate curl for gaps and irregular edges.
+These are shader changes; existing brightness slider remains 1, range .2–2, and
+other saved controls retain their values. Grid, 48 ray steps, and 65% fire buffer
+unchanged; curl adds a few trigonometric operations per ray sample, no extra passes.
+
+Visual check: logs substantially clearer and fire more separated; still soft/puffy,
+not yet a finished realistic flame. Initial overly sparse attempt was retuned.
+JS syntax and existing Node sim pass. Browser shader compiled and rendered; hidden
+preview reported 1 fps, so this turn cannot establish real foreground performance.
+World audit run with existing errors outside this scratch lab. Agent: Codex.
+
 ## 2026-09-05 — Codex — Volume comparison and startup recovery
 
 James authorized a true volume beside the current fire, then reported the unfinished
