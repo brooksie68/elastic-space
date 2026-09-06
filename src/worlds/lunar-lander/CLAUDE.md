@@ -97,6 +97,8 @@ side, promised to the tank: `chunk.structures` in the core and
 renderers draw the same shapes; later, `vector-kit.js` (LineBatch + post
 chain + DEFAULT_PARAMS pulled out of render3d.js) with a heads-up to the tank
 session first. Commit prefix here: `Battle for the Moon (lander):`.
+ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
+`state.score` through `hitStructure`; the joined game keeps one score.
 
 ## START HERE (next session)
 
