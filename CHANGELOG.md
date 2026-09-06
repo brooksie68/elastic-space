@@ -8,6 +8,13 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-06 — Claude — Orb Dimension v70–v75.2: the station's lights, the traffic mix, the ball's language
+- The day after the wipe: James's 6 km read ("a billion tiny lights, every one twinkling") → three rounds in circles (v70–v70.3), then plan mode and his brief; the Station Lab became the target picture.
+- v71 the quarter rule (a packet stream never lights more than a quarter of its length); v72 his flight notes (blur default, building far gain, station windows, white packets 45%, traffic speed + amount dials); v73 building taps at the pixel footprint (no twinkle at any blur), anisotropic building textures, "station lights" dial.
+- v74 the station as a continuation of the ball: per-class light-map bands (spine seams + orange collar rings, ring habitats, service conduits), blue edge seams on the members; v74.1 three crew decks on the spine.
+- v75 two blur dials — the station FROZEN at 0 behind "far window blur station lights" (memory station-lights-frozen), "far window blur" reaches the buildings' panes; v75.1 both default 0; v75.2 traffic speed/amount 0.65 (his numbers).
+- Traffic step 2 (three tube types) cancelled by James. NEXT: the rest of the buildings through the pipe onto Dominant, then reuse for Subdominant + Mediant.
+
 ## 2026-09-06 — Claude — Reich Machine: the studio + the bench (the console becomes a world)
 - James's read of the first pass: cool, but "not a world, just software" and a little hard to use → the 1970s control room (three.js): four Meshy reel-to-reels with reels turning at each track's rate, four wall cabinets, cloud lights.
 - The console rebuilt for ease of use (his ten): THE KEY window, offset knobs with clock faces, tape/lean/piano-phase switch, solo, musical-phrase chips that audition, draggable note pills with no lit column, record-to-steps, scribble-strip help, the dice pair.
