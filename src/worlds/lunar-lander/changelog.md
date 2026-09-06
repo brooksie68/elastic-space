@@ -2,6 +2,12 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (the launch, his notes) — Claude
+
+The ring tones start low and climb (150 Hz × 1.17 per ring, was 440 × 1.25 —
+"too high and dinky"); the burst at the accelerator's base (sparks, ring,
+flash) is gone — "there's no explosion" — only the speed trail stays.
+
 ## 2026-09-06 (for the tank side) — Claude
 
 From `tank/NEEDS.md`: revolved solids for the four round kinds (dome, tanks,

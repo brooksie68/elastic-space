@@ -885,9 +885,7 @@ export class LanderScene {
     this.effects.push({ kind: 'ring', x, y: y + 0.5, age: -0.18, life: 1.1, r0: 8, r1: 90 + strength * 90, b: 0.6 + strength * 0.4 });
   }
   spawnLaunch(x, y, angle) {
-    for (let i = 0; i < 40; i++) this._spark(x, y, 0, 60 + this._rand() * 160, 0.9, 1.2);
-    this.effects.push({ kind: 'ring', x, y: y + 0.5, age: 0, life: 0.8, r0: 6, r1: 90, b: 1.3 });
-    this.flash = 0.5;
+    // no burst at the base (James: "there's no explosion") — only the speed trail
     this.streak = 1.8;                 // seconds of speed trail behind the ship
   }
   // ---- the weapons' animations (round two) ----

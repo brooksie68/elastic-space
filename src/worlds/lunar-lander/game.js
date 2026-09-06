@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=6';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=7';
 
 const Core = globalThis.LunarCore;
 
@@ -249,7 +249,8 @@ const Sfx = {
   lose() { [440, 349].forEach((f, i) => setTimeout(() => this.env('sawtooth', f, 0.3, 0.06), 900 + i * 220)); },
   autoOn() { this.env('sine', 880, 0.08, 0.06); setTimeout(() => this.env('sine', 1320, 0.1, 0.06), 90); },
   autoOff() { this.env('sine', 660, 0.08, 0.05); },
-  ring(i) { this.env('sine', 440 * Math.pow(1.25, i), 0.18, 0.09); this.env('triangle', 880 * Math.pow(1.25, i), 0.12, 0.04); },
+  // the rings light one by one on the way up: a low tone climbing (James: it "starts off too high and dinky")
+  ring(i) { const f = 150 * Math.pow(1.17, i); this.env('sine', f, 0.22, 0.11); this.env('triangle', f * 2, 0.14, 0.035); },
   launch() { this.noise(0.7, 0.5, 1400); this.env('sawtooth', 120, 0.7, 0.12, 420); },
   refuel() { [392, 494, 587].forEach((f, i) => setTimeout(() => this.env('sine', f, 0.3, 0.08), 300 + i * 140)); },
   // the weapons
