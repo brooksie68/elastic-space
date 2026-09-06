@@ -100,7 +100,6 @@
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
     bldgFarBlur: 0, // v60: far-window mip follow (0 = v59 point-sampled twinkle)
-    stnFarBlur: 3, // v70: the station's own far-light blur (James landed on 3 by hand); follows the footprint fully past it
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -203,7 +202,6 @@
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
     { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
-    { key: "stnFarBlur", label: "station far blur", min: 0, max: 9, step: 0.5 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -8716,9 +8714,9 @@ void main() {
               gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight);
               gl.activeTexture(gl.TEXTURE0);
               gl.uniform1f(bldgMesh.prog.U.uLidMask, k.body === "sphere" ? 0 : 1); // v60
-              const stn = k === bldgMesh.stationKind; // v70: the station's own far blur, following past it
-              gl.uniform1f(bldgMesh.prog.U.uFarBlur, stn ? cfg.stnFarBlur : cfg.bldgFarBlur);
-              gl.uniform1f(bldgMesh.prog.U.uFarFollow, stn ? 1 : 0);
+              // v70.2: the station shares "far window blur" (its own dial did nothing — its light
+              // map is a few long lines; the twinkle was the seated towers) and follows past it
+              gl.uniform1f(bldgMesh.prog.U.uFarFollow, k === bldgMesh.stationKind ? 1 : 0);
               bound = true;
             }
             bldgModel(b);
@@ -9139,7 +9137,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "stnFarBlur", "homeSeed", "heartOp", "homeBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },

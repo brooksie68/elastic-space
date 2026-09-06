@@ -3,6 +3,13 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v70.2 — 2026-09-06 (Claude, James: "station far blur doesn't seem to be doing anything")
+
+Right — the station's light map is six long blue lines and a few windows; there was nothing for
+the dial to blur. The twinkle was the 130 seated towers, which obey "far window blur" (he keeps
+it at 3). The station dial is gone; the station shares the tower dial and keeps following the
+footprint past it. Cache tags ?v=702.
+
 ## v70.1 — 2026-09-06 (Claude, James: "a hard fail... super, super boring again... so little traffic")
 
 The v70 melt was the fail: the variety streams use 1.8 m beads, under a pixel from the pod, and

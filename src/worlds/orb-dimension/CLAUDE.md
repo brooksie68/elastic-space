@@ -35,7 +35,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 ## START HERE (open, James's timing)
 
 - **THE TOWNSHIP KERNELS (2026-09-05, James: the satellite cores are "a crazy, ridiculous
-  jumble of granite blocks") — DOMINANT BUILT AS v68, AWAITING HIS EYES.** v70 (2026-09-06): the far-light rules — station far blur 3 + footprint follow, packets melt under ~3 px, James's traffic mix (40% regular, variety without density, dense chains 5% and dim); see the changelog. Plan he nodded
+  jumble of granite blocks") — DOMINANT BUILT AS v68, AWAITING HIS EYES.** v70 (2026-09-06): the far-light rules — the station shares "far window blur" (James keeps 3) + footprint follow, packets melt under ~3 px, James's traffic mix (40% regular, variety without density, dense chains 5% and dim); see the changelog. Plan he nodded
   to: one kernel per town — Mediant an asteroid, Dominant a spine-and-ring station (built),
   Subdominant a stacked platform; the five finished buildings seat on pads at any scale /
   orientation / sink (his reuse rule: "get as much mileage out of this work as possible");
