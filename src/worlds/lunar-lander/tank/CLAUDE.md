@@ -120,7 +120,9 @@ one align on presentation by message (both sessions are live at once).
   tanks, squares for sites, a blinking dot for a missile; the note reads NO
   CONTACT / N CONTACTS / ENEMY IN RANGE / MISSILE INBOUND), SHELL + LASER,
   HEADING + SPEED, SCORE + mission meta, and HULL as the big bar under
-  everything (three cells; the last one blinks) with the tanks left.
+  everything (three cells; the last one blinks) with the tanks left. The
+  SHELL and LASER rows are buttons too (click fires), as on the lander's
+  console.
   Crosshair centred, warms to the line colour over a hostile; the hostile
   under it draws at 1.25 (the lander's hover value) with the lander's AMBER
   tag over it — #ffb457, NAME + X, one word under (OVERHANG / RIDGE / DOOR /

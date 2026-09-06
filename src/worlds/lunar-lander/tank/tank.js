@@ -478,6 +478,9 @@ canvas.addEventListener('pointerdown', (e) => {
   if (e.button === 2) laserEdge = true; else if (e.button === 0) fireEdge = true;
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// the console's weapon rows are buttons too (the lander's console got the same on James's ask)
+$('wpn-shell').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (mode === 'play') fireEdge = true; });
+$('wpn-laser').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (mode === 'play') laserEdge = true; });
 
 function togglePause() {
   if (mode === 'paused') { mode = pausedFrom; document.body.classList.remove('paused'); lastT = 0; }
