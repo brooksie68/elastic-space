@@ -89,3 +89,24 @@ wisps were observed and freeze under pause. In-app preview measured roughly 30�
 in this session, lower than the earlier 60 fps observation. Cause is unisolated;
 full-resolution Chrome performance remains open. Static shadow maps are now cached
 because the light positions and shadow-casting geometry do not move.
+
+
+## 2026-09-06 — Focused solver revision — Codex
+
+James reported slow regular motion, tiled patterns at higher speed, and inferior
+color/edge behavior versus the flame layers. Inspection confirmed periodic sine
+forcing and raymarch distortion, first-order scalar transport, heat-only emission,
+and a two-step accumulator that dropped time. This revision removes those patterns,
+uses a bounded/reporting clock, limited MacCormack for reaction and heat, world-space
+velocity, two-scale noise curl, and local vorticity confinement. Reaction lifetime
+now determines flame extinction separately from temperature. The procedural model
+is still an artistic approximation, not full fuel/oxygen chemistry.
+
+Primary implementation references:
+1. [NVIDIA GPU Gems 3 chapter 30](https://developer.nvidia.com/gpugems/gpugems3/part-v-physics-simulation/chapter-30-real-time-simulation-and-rendering-3d-fluids): limited MacCormack transport, reaction coordinate, artist-controlled flame transfer function.
+2. [NVIDIA GPU Gems chapter 38](https://developer.nvidia.com/gpugems/gpugems/part-vi-beyond-triangles/chapter-38-fast-fluid-dynamics-simulation-gpu): confinement restores rotational detail lost on coarse grids.
+3. [Bridson et al., Curl-Noise](https://www.cs.ubc.ca/~rbridson/docs/bridson-siggraph2007-curlnoise.pdf): curl of noise potentials for irregular flow. Our analytic value-noise gradient is an adaptation, not a copy of their implementation.
+4. [Fiedler, Fix Your Timestep](https://gafferongames.com/post/fix_your_timestep/): fixed updates and bounded catch-up require explicit overload handling.
+
+Validation retained in volume-sim.mjs and volume-check-lab.html. No technology
+migration was necessary for this experiment; browser performance remains a gate.

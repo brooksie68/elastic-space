@@ -1,5 +1,39 @@
 # Fireplace study — KEEP
 
+## 2026-09-06 — Codex — Reactive fire and irregular flow
+
+James approved the research-based revision after reporting slow, regular motion,
+visible tiling at higher speed, and better color/dancing in the original flame study.
+Replaced periodic sine forcing and rendering distortions with two-scale noise curl
+and vorticity confinement. Velocity now uses metres/second and cell-size-aware
+pressure/transport. Separate reaction lifetime and temperature fields replace
+heat-only emission. Limited MacCormack scalar transport preserves fine detail;
+velocity remains first-order. Flame age drives bright yellow-white cores, orange
+edges, and extinction while residual gas can remain hot. No new paid assets.
+
+Timing: 1/60-second fixed steps, maximum eight per frame, .5-second backlog cap.
+Excess is measured and overload displayed as simulation behind; no unlimited
+catch-up. Visibility return resets the wall clock. Movement speed remains 1 by
+default, range .2–2, now advances proportionally through 15–144fps in Node tests.
+Heat persistence is renamed Flame lifetime: same multiplier 1, range .4–1.8;
+nominal unrefuelled lifetime about .53 seconds at 1. Turbulence default 1,
+range 0–1.5; zero disables added noise and confinement. Saved values retained.
+
+Budget: 40×56×24 cells and 48 ray samples retained, gas at 65% render resolution.
+15 compute passes per step versus 9, 11 atlas targets versus 5 (about 2.58MB more).
+GPU-completed solver timing averaged 1.21ms/step in the silent checker, excluding
+rendering and initial shader compilation. This is not full-screen frame-rate proof.
+Background preview still reports 1fps; foreground Chrome performance awaits James.
+
+Verification: existing sim plus volume-sim.mjs pass speed ratios, pause, overload,
+and a bounded transport reference. Actual GPU checker passes finite/bounded fields,
+sustained burning (2224 active cells, peak .978), exact pause, and extinction to
+zero after removing fuel. All shaders compile and the final scene renders. World
+audit run; scratch lab outside audit, existing errors remain. Visual result has
+brighter cores and no imposed wave grid; realism and motion verdict await James.
+Research references saved in fire-research.md. Original flame method retained.
+Agent: Codex.
+
 ## 2026-09-05 — Codex — Thinner volume iteration
 
 James green-lit iteration to reduce the yellow blanket and expose logs. Narrowed
