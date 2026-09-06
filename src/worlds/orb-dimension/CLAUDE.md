@@ -34,6 +34,22 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
+- **STATION TRAFFIC — THE PLAN, NOT YET BUILT (2026-09-06 03:00, James: "I like your
+  plan... I need to review it again tomorrow. Don't lose it.").** Read the plan file FIRST:
+  `C:/Users/brook/.claude/plans/stop-rushing-forward-iterative-zebra.md` (a copy is in the changelog entry "2026-09-06 — the traffic plan"). Short form:
+  the STATION LAB AS IT STANDS IS THE TARGET PICTURE from every distance (his words: windows
+  and packets "look awesome... not much glinting"); the ring inner rails he LOVES — never
+  touch; the one fault is spokes so full of packets they read as lighted bars. Step 1 (his
+  nod given, build on his go after he re-reads): one rule in `trafficAt` — a stream never
+  lights more than ~a quarter of its length (spacing ≥ 4 bead lengths, every tier); v70.3's
+  2 px floor + 6 px thinning stay; rails/bridges/shares untouched; lab at 2.5/6/16 km, then
+  he flies Dominant and compares to the lab at the same distance (read the world's resScale
+  in flight — it drops to 0.5 under load, the lab never does). Step 2, its own go: the three
+  tube types from his brief (transport = current thickness, manufacturing = middle, data =
+  thinner; manufacturing most regular, data most varied like binary traffic, transport/cargo
+  bunched on loose timers, faked with lights + timers, no simulation; blue/green/white only).
+  Tonight's lesson (v70–v70.3 went in circles): judge every packet change against the LAB
+  picture, one small change per round, his eyes between.
 - **THE TOWNSHIP KERNELS (2026-09-05, James: the satellite cores are "a crazy, ridiculous
   jumble of granite blocks") — DOMINANT BUILT AS v68, AWAITING HIS EYES.** v70 (2026-09-06): the far-light rules — the station shares "far window blur" (James keeps 3) + footprint follow, packets melt under ~3 px, James's traffic mix (40% regular, variety without density, dense chains 5% and dim); see the changelog. Plan he nodded
   to: one kernel per town — Mediant an asteroid, Dominant a spine-and-ring station (built),

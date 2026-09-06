@@ -3,6 +3,68 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-06 — the traffic plan (Claude, James at 03:00: "I like your plan... review it again tomorrow. Don't lose it.")
+
+Nothing built after v70.3. After tonight's circles James put the session in plan mode and
+gave the brief; the plan below is the copy of record (also at
+`C:/Users/brook/.claude/plans/stop-rushing-forward-iterative-zebra.md`). His nod is given; the build waits for his re-read next session.
+
+    ## Context
+
+    Tonight's rounds (v70–v70.3) went in circles because each change was judged against the
+    wrong picture. James has now set the picture: **the Station Lab as it stands is the target**
+    (`src/labs/station-lab/index.html`, drawing the live world.js). His words: windows and
+    packets "look awesome in the station lab from every distance... not much glinting... teeny
+    little lights moving." The ring inner rails (white/blue, different directions, lots of
+    groupings) he loves. The one fault: some spokes carry so many packets with so little space
+    between them that they read as a lighted bar from a distance. Dense small streams are fine
+    when there is still visible space between packets.
+
+    His brief for where this goes (recorded for the next step, not this one): traffic is data,
+    information, manufacturing flows, people in transit cars, cargo — three tube thicknesses
+    (transport = current, manufacturing = middle, data = thinner), manufacturing the most regular,
+    data the most varied (binary-traffic patterns, back and forth, colour/group/speed variety,
+    occasional quick flashers), transport/cargo bunched on loose timers. Faked with lights and
+    timers, no simulation. Colours stay blue / green / white.
+
+    ## Step 1 — the lighted bars (this step, one small change)
+
+    Where: `trafficAt` in `src/worlds/orb-dimension/world.js` (~line 6376). Nothing else.
+
+    1. A packet stream may never fill more than about a quarter of its length with light.
+       Rule: spacing is at least four bead lengths, in every tier. The dense tier keeps its
+       small close packets but always shows dark between them.
+    2. The on-screen rule from v70.3 stays: beads never vanish (2 px floor) and thin out with
+       distance so neighbours stay at least 6 px apart.
+    3. The ring inner rails are untouched. The light bridges are untouched. Shares untouched.
+
+    Expected effect: the few spokes that read as solid bars break into visible packets; every
+    other member looks exactly as it does in the lab now.
+
+    ## Why the pod looked worse than the lab (to verify, not assume)
+
+    Same code, same melt (1), same tempo (1). Two known differences:
+    1. `chains.png` (02:07) was taken under v70.1/v70.2 — the 2 px floor without the thinning
+       rule — so beads 8–25 m apart merged into bars. v70.3 (02:09) added the thinning. James has
+       not judged v70.3 in flight against the lab yet.
+    2. The world drops its render resolution under load (`resScale`, world.js ~8040, down to
+       0.5); the lab always renders full. A lower render scale doubles the metres per pixel.
+       Check the world's resScale during his next flight before touching anything for it.
+
+    ## Step 2 (its own go, after step 1 flies) — the three tube types
+
+    Thickness per member role, and a traffic character per type as in the brief. Plan it with
+    him after step 1 is judged in flight.
+
+    ## Verification for step 1
+
+    1. `node --check world.js`, `tmp/orb-dimension/init-smoke.mjs`, `society-sim.mjs`,
+       `shader-check.html` (silent).
+    2. Station Lab by eye at 2.5 / 6 / 16 km via `LAB.set` + `LAB.capture` → tmp/snapshots;
+       the ring rails must look identical to now, the bar-like spokes must show gaps.
+    3. Local checkpoint commit. James flies Dominant and compares to the lab at the same
+       distance; resScale read during the flight.
+
 ## v70.3 — 2026-09-06 (Claude, James at Dominant: "almost all super thick chains of packets... what the hell happened?")
 
 The v70.1 two-pixel floor did it: from the pod a pixel is several metres, so beads 8–25 m
