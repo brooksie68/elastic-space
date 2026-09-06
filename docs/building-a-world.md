@@ -186,9 +186,17 @@ These are the only edits a new world makes elsewhere, and all of them are requir
 1. Commit locally. **Never push.** Pushing is done by James's global wrap-up process.
 2. Keep each commit under 30MB; split large asset drops across commits.
 3. Never `reset`, `amend`, `rebase`, or force-anything on a shared branch. If the
-   branch tip moves unexpectedly, stop and report.
+   branch tip moves unexpectedly, another session committed — commit on top.
 4. Never commit secrets; `.env` at the repo root is gitignored and stays that way.
    World code is client-side — anything it loads is public.
+5. Other agent sessions are live in this repo at the same time. Stage only the files
+   you touched, by explicit path (never `add -A`, `add .`, or `commit -a`); never
+   revert, stash, or clean files you did not touch. Take `.git/wrap.lock` (atomic
+   create, your agent name inside) before staging and delete it after the commit; if
+   it exists, wait and retry for up to 5 minutes, and treat one older than 10 minutes
+   as stale. Full text in `AGENTS.md`, "Working alongside other agents".
+6. Commit your own work before the session ends, with the changelog entry written the
+   same session and your agent named in both.
 
 ## 11. Ship checklist
 

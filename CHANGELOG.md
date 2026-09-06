@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-06 — Claude — AGENTS.md rewritten for Codex alongside live Claude sessions
+- AGENTS.md (untouched since 07-18) brought up to the wrap doctrine: stage by explicit path, leave other sessions' files alone, `.git/wrap.lock` around staging, commit your own work with a signed changelog before the session ends, never push, no wrap rituals; registry draft-leak gotcha, admin panel sections + unwired note, configuration-panel naming, spend-first-ask.
+- New sections: what the place is made of (browser target, James's laptop as the frame-rate gate, sims + look-dev harnesses, shared core, configuration panel pattern, labs), the paper trail (Todo handoff, per-world CLAUDE.md/changelog, World Ideas, drafts, docs, archive, tmp, admin API), and a full shared-tools section (ElevenLabs CLI, Meshy MCP/REST/canvas + credit table, Suno, Blender headless + MCP, KeenTools, Mixamo, Unity) with `.env` as the ONLY place a key value lives.
+- docs/building-a-world.md §10 mirrors the concurrency rules. Memory: `elastic-space-codex-boundaries` written; the 07-03 "git belongs to James + Codex" line retired. James removed the unscoped `git push` allow from his Codex rules file.
+
 ## 2026-09-06 — Claude — Orb Dimension v70–v75.2: the station's lights, the traffic mix, the ball's language
 - The day after the wipe: James's 6 km read ("a billion tiny lights, every one twinkling") → three rounds in circles (v70–v70.3), then plan mode and his brief; the Station Lab became the target picture.
 - v71 the quarter rule (a packet stream never lights more than a quarter of its length); v72 his flight notes (blur default, building far gain, station windows, white packets 45%, traffic speed + amount dials); v73 building taps at the pixel footprint (no twinkle at any blur), anisotropic building textures, "station lights" dial.
