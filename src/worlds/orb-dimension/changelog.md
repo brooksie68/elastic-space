@@ -3,6 +3,14 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v74.1 — 2026-09-06 (Claude, James: "definitely an improvement" — two notes)
+
+- The spine's band of the map: three amber crew decks (was one) and ~4× the small panes
+  (BLDG_V 34). The "station lights" dial scales all of it.
+- Building lights "don't have much definition": that is the far window blur dial at 3 under
+  its v73 meaning (0 = sharp, no flicker; each step adds softness). Told him to try ~1; no
+  code change. Cache tags ?v=750.
+
 ## v74 — 2026-09-06 (Claude, item 4: the station as a continuation of the ball — round one)
 
 James: "look at the ball and think about what the station is... have a reason why you're
