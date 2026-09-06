@@ -3,6 +3,25 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v74 — 2026-09-06 (Claude, item 4: the station as a continuation of the ball — round one)
+
+James: "look at the ball and think about what the station is... have a reason why you're
+making a line." The 02-sphere's map is the language: blue meridian seams, an equator band of
+amber windows (where people live), blue lines bracketing it, sparse panes, an orange ring.
+- **Each member class owns a v BAND of the station light map** (builder: `tubeS` takes a
+  band; pads moved to v 0.85+): A the spine (power seams along the core, one amber crew deck
+  row, blue deck lines every 1,500 m, orange collar rings), B the rings (the habitats — the
+  amber equator band on the outer face bracketed by blue edge conduits, hoop seams, small
+  panes), C the service spine + collar rims (three bright conduit seams + orange service
+  rings, no windows), pads a dim outline. Map re-authored in `gen_station_light.mjs` (KEEP,
+  the logic is in its header); BLDG_V 33.
+- **Spokes, braces, masts** (station metal, zFlag 2) carry a thin blue seam along each long
+  edge — gated by the bar's on-screen width (a thin far bar stays dark; the first cut lit
+  every bar solid blue) — packets unchanged.
+- Cache tags ?v=740; sims + shader-check green; sheets tmp/snapshots/station-v74b-ball.png /
+  -2500.png. AWAITING JAMES: the lab with the ball in frame, then a flight; rounds expected.
+  STILL OPEN: his traffic speed / amount numbers for the defaults.
+
 ## v73 — 2026-09-06 (Claude, round one of James's v72 notes: flicker, smear, grains of sand)
 
 His read of v72: building lights "out of control flicker until blur nine"; station lights "a

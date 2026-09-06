@@ -3195,7 +3195,9 @@ void main() {
         const SC = 400;
         const vS = (p, n, u, v) => stn.v.push(p[0] / SC, p[1] / SC, p[2] / SC, n[0], n[1], n[2], u, v);
         // an n-gon tube into the station mesh; u0 = metres already travelled (rings chain their segments)
-        const tubeS = (p, q, rad, sides, ext, u0) => {
+        // v74: band = [v0, v1] of the light map this member class owns — spine
+        // A 0.06–0.30, rings B 0.32–0.58, service spine + collar rims C 0.60–0.84
+        const tubeS = (p, q, rad, sides, ext, u0, band = [0.06, 0.84]) => {
           const d = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
           const [a, b, c2] = frame3(d);
           if (ext) { p = [p[0] - a[0] * ext, p[1] - a[1] * ext, p[2] - a[2] * ext]; q = [q[0] + a[0] * ext, q[1] + a[1] * ext, q[2] + a[2] * ext]; }
@@ -3205,7 +3207,7 @@ void main() {
             const n0 = [b[0] * Math.cos(t0) + c2[0] * Math.sin(t0), b[1] * Math.cos(t0) + c2[1] * Math.sin(t0), b[2] * Math.cos(t0) + c2[2] * Math.sin(t0)];
             const n1 = [b[0] * Math.cos(t1) + c2[0] * Math.sin(t1), b[1] * Math.cos(t1) + c2[1] * Math.sin(t1), b[2] * Math.cos(t1) + c2[2] * Math.sin(t1)];
             const nf = norm3(add3(n0, n1));
-            const v0 = 0.06 + 0.78 * (k / sides), v1 = 0.06 + 0.78 * ((k + 1) / sides);
+            const v0 = band[0] + (band[1] - band[0]) * (k / sides), v1 = band[0] + (band[1] - band[0]) * ((k + 1) / sides);
             const bI = stn.v.length / 8;
             vS(add3(p, sc3(n0, rad)), nf, u0 / 3000, v0);
             vS(add3(q, sc3(n0, rad)), nf, (u0 + len) / 3000, v0);
@@ -3225,21 +3227,21 @@ void main() {
               const n = sgn < 0 ? sc3(e, -1) : e;
               const eu = sc3(f1, s1), ev = sc3(f2, s2 * sgn);
               const bI = stn.v.length / 8;
-              const uw = s1 * 2 / 3000, vw = Math.min(0.5, s2 * 2 / 3000);
-              vS(add3(cc, add3(sc3(eu, -1), sc3(ev, -1))), n, u0 / 3000, 0.3);
-              vS(add3(cc, add3(eu, sc3(ev, -1))), n, u0 / 3000 + uw, 0.3);
-              vS(add3(cc, add3(eu, ev)), n, u0 / 3000 + uw, 0.3 + vw);
-              vS(add3(cc, add3(sc3(eu, -1), ev)), n, u0 / 3000, 0.3 + vw);
+              const uw = s1 * 2 / 3000, vw = Math.min(0.05, s2 * 2 / 3000);
+              vS(add3(cc, add3(sc3(eu, -1), sc3(ev, -1))), n, u0 / 3000, 0.85); // v74: pads own v 0.85+
+              vS(add3(cc, add3(eu, sc3(ev, -1))), n, u0 / 3000 + uw, 0.85);
+              vS(add3(cc, add3(eu, ev)), n, u0 / 3000 + uw, 0.85 + vw);
+              vS(add3(cc, add3(sc3(eu, -1), ev)), n, u0 / 3000, 0.85 + vw);
               stn.i.push(bI, bI + 1, bI + 2, bI, bI + 2, bI + 3);
             }
           }
         };
         const L = S * 1.15;                 // spine length
         const spineR = S * 0.056;           // ~300 m (v68.1: James, "twice as thick")
-        tubeS(along(-L / 2), along(L / 2), spineR, 12, 0, 0);
+        tubeS(along(-L / 2), along(L / 2), spineR, 12, 0, 0, [0.06, 0.30]); // v74: band A, the spine
         // a second, thinner service spine runs beside the main one
         const off2 = add3(sc3(sb, spineR * 2.6), sc3(sc, spineR * 0.8));
-        tubeS(add3(along(-L * 0.42), off2), add3(along(L * 0.42), off2), spineR * 0.3, 8, 0, 700);
+        tubeS(add3(along(-L * 0.42), off2), add3(along(L * 0.42), off2), spineR * 0.3, 8, 0, 700, [0.60, 0.84]); // v74: band C, service
         // the rings: four stations along the spine, radii varied, the two
         // middle ones biggest
         const NR = 4;
@@ -3254,7 +3256,7 @@ void main() {
           const pt = (th) => add3(cR, add3(sc3(sb, Math.cos(th) * rad), sc3(sc, Math.sin(th) * rad)));
           const ext = tubeR * Math.tan(Math.PI / segs) * 1.05;
           const segLen = TAU * rad / segs;
-          for (let k = 0; k < segs; k++) tubeS(pt((k / segs) * TAU), pt(((k + 1) / segs) * TAU), tubeR, 8, ext, r * 900 + k * segLen);
+          for (let k = 0; k < segs; k++) tubeS(pt((k / segs) * TAU), pt(((k + 1) / segs) * TAU), tubeR, 8, ext, r * 900 + k * segLen, [0.32, 0.58]); // v74: band B, the habitats
           // an inner rail 12% in, thinner, with traffic
           const rad2 = rad * 0.88;
           const pt2 = (th) => add3(cR, add3(sc3(sb, Math.cos(th) * rad2), sc3(sc, Math.sin(th) * rad2)));
@@ -3265,7 +3267,7 @@ void main() {
           // two titanium rims; the spokes land on the rims
           const hubR = spineR * 1.45, hubL = S * 0.06;
           tube(glass, add3(cR, along(-hubL)), add3(cR, along(hubL)), hubR, 24, [0, rr(0, TAU), 0, pickFam()], 0);
-          for (const sg of [-1, 1]) tubeS(add3(cR, along(sg * hubL)), add3(cR, along(sg * (hubL + S * 0.008))), hubR * 1.06, 16, 0, 1500 + r * 300);
+          for (const sg of [-1, 1]) tubeS(add3(cR, along(sg * hubL)), add3(cR, along(sg * (hubL + S * 0.008))), hubR * 1.06, 16, 0, 1500 + r * 300, [0.60, 0.84]); // v74: band C
           // spokes: eight, hub to ring, with traffic; ladder rungs between neighbours
           const NS = 8;
           const sp0 = rr(0, TAU);
@@ -6637,6 +6639,14 @@ void main() {
     float line = smoothstep(0.34, 0.22, abs(vUV.y - 0.5));   // a line down the bar, not the whole face
     float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo * uTrafSpeed, fwidth(vUV.x) * Lm * uMelt, uTrafAmt, uFarBlur);
     col += famc * (pkS * line * 2.2 + 0.03);
+    // v74 (James: the station must read as a continuation of the ball — "accents of this
+    // blue color that go in logical places along like edges"): the station's members
+    // (station metal, zFlag 2) carry a thin blue seam along each long edge
+    float edgeD = min(vUV.y, 1.0 - vUV.y);
+    float edgePx = edgeD / max(fwidth(vUV.y), 1e-6);
+    float barPx = 1.0 / max(fwidth(vUV.y), 1e-6);            // the bar's width on screen
+    float edgeL = smoothstep(2.5, 0.8, edgePx) * step(1.5, zFlag) * smoothstep(7.0, 16.0, barPx); // only once the bar is wide enough to show an edge
+    col += vec3(0.11, 0.6, 0.96) * edgeL * 0.4;
   }
   if (vAux.x > 2.5) {
     // v57 screens + neon (James: "lighted screens... advertising...
@@ -7822,7 +7832,7 @@ void main() {
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "32"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "33"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
