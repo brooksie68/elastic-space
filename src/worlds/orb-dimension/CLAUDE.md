@@ -34,6 +34,17 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
+- **START HERE (James, 2026-09-06 wrap): THE REST OF THE BUILDINGS.** His words: "do a bunch
+  more and add them here and fill this up. And when it feels pretty full and awesome, we'll use
+  that whole setup for Subdominant and Mediant." So: run the remaining concepts in
+  tmp/orb-dimension/building models/ through the pipe (read `buildings.md` first — it is the
+  whole pipeline; ~1 min per building for real; the ten tech pieces could skip the lit guide),
+  seat them on Dominant's pads as they land, until Dominant feels full. Then the other two
+  kernels reuse the setup. TRAFFIC STEP 2 (the three tube types) IS CANCELLED — his call
+  ("too much work for no important return"; the brief was only to shape the lights' logic).
+  THE STATION'S LIGHTS ARE FROZEN (rule below); both blur dials default 0 (v75.1). His traffic
+  speed/amount defaults: he asked to keep his panel values — they never reached the file; if
+  DEFAULTS still read 1/1, ask him for the two numbers.
 - **v71 + v72 BUILT 2026-09-06 (step 1 of the traffic plan + his flight notes):** a stream
   never lights more than a quarter of its length; far window blur defaults 3 (the start
   preset used to overwrite it — the save button now says when the file was not written);

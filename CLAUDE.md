@@ -276,7 +276,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Material Lab (src/labs/material-lab, admin Labs). AWAITING his read
    (lab, then a flight). NEXT: township kernels (d) with crust + this
    material from day one; his calls 1–2 standing on Claude's picks.
-   (c) BUILDINGS: he judged the fleet from flybys — "pretty neat," don't stand
+   (c) **BUILDINGS — NEXT, HIS CALL AT THE 2026-09-06 WRAP: "do a bunch more and add them
+   here and fill this up... when it feels pretty full and awesome, we'll use that whole setup
+   for Subdominant and Mediant."** Run the remaining concepts through the pipe (buildings.md),
+   seat them on Dominant. Same day: v70–v75.1 (the traffic mix + the quarter rule, two blur
+   dials both default 0, THE STATION'S LIGHTS FROZEN at his word — memory
+   station-lights-frozen, the station in the ball's language with per-class light-map bands,
+   traffic speed/amount dials); the three-tube-type traffic step CANCELLED by him. Older:
+   he judged the fleet from flybys — "pretty neat," don't stand
    up close. He finished 03-arch (concept) — DO NOT START IT until he says.
    Ten-ish concepts still to run through the pipe; he wants the pipe faster.
    (d) TOWNSHIP KERNELS — **DOMINANT BUILT AS v68 2026-09-05** (James's screenshot
