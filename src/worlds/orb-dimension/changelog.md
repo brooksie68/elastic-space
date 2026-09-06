@@ -3,6 +3,16 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v71 — 2026-09-06 (Claude, step 1 of the traffic plan on James's "let's execute")
+
+- **A stream never lights more than about a quarter of its length**: in `trafficAt`, spacing
+  is at least four bead lengths (`sp = max(sp, 8·hw)`) in every tier — the dense tier keeps
+  its small close packets but always shows dark between them; on screen the thinning keeps
+  neighbours ≥ 8 px apart (2 px beads = a quarter lit). Ring rails, bridges, shares, the 2 px
+  floor: untouched. Cache tags ?v=710.
+- Lab sheets tmp/snapshots/station-v71-{2500,6000,16000}.png; sims + shader-check green.
+  AWAITING JAMES: fly Dominant and compare to the lab at the same distance (read resScale).
+
 ## 2026-09-06 — the traffic plan (Claude, James at 03:00: "I like your plan... review it again tomorrow. Don't lose it.")
 
 Nothing built after v70.3. After tonight's circles James put the session in plan mode and

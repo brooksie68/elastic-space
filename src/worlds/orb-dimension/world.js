@@ -6401,6 +6401,10 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     } else {               // the rare dense chain — slow, and dimmer
       sp = mix(6.0, 12.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.04, 0.1, th3(es + 3.7)); hw = 1.6; gain = 0.45;
     }
+    // v71 (the plan James re-read: the lab is the picture; the one fault is spokes so
+    // full they read as lighted bars): a stream never lights more than about a quarter
+    // of its length — spacing is at least four bead lengths, in every tier
+    sp = max(sp, 8.0 * hw);
     float T = t * spd + phase * (1.0 + float(st));
     float xM;
     if (sway > 0.5) {
@@ -6425,7 +6429,7 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     // v70.3 (James: the 2 px floor turned every group into "super thick chains"):
     // beads thin out with distance so neighbours stay ≥ 6 px apart on screen —
     // dots with gaps at any range, never a solid line
-    float thin = max(1.0, ceil(6.0 * mpp / sp));
+    float thin = max(1.0, ceil(8.0 * mpp / sp)); // v71: 8 px apart on screen (2 px beads = a quarter lit)
     keep *= step(mod(idx, thin), 0.5);
     total += bead * keep * gain;
   }
