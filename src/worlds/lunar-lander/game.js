@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=3';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=4';
 
 const Core = globalThis.LunarCore;
 

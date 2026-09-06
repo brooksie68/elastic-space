@@ -37,8 +37,15 @@ Three things:
 
 Measured: hostiles seat on 99.5% of chunks past home; 4.6 structures per
 chunk on average; chunk 0 is crowded by its four pads and often holds one.
-Sim TEST 13 (drawings, placement, flat ground, clearances, the crash that
-names the building); 201,382 assertions green (fewer than before because
+THE SOLID (same day, on the tank session's request, James's rule "use the
+same wire model and build it into a 3-D shape"): each kind has a depth `d`
+and `LunarStructures.solid(id)` returns the profile extruded through it as
+[x0,y0,z0,x1,y1,z1] — one cached 3-D model both games draw; the lander's
+side view draws it foreshortened (back face + depth edges ×0.55). The tank
+session was answered by cross-session message (format, chunk fields, look
+constants unchanged, the four drawings it needs are in). Sim TEST 13
+(drawings, the solid, placement, flat ground, clearances, the crash that
+names the building); 202,793 assertions green (fewer than before because
 every loop ran four selections and now runs one). Tags: structures v1,
 game-core v8, game v7, render3d v3; smoke page rebuilt. NOT built yet:
 hover/targeting (round two), hostile fire (round three).

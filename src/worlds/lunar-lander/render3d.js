@@ -576,7 +576,13 @@ export class LanderScene {
     const kind = ST && ST.BY_ID[st.id];
     if (!kind) return;
     const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
-    for (const g of kind.segs) B.seg(cx + g[0], cy + g[1], z, cx + g[2], cy + g[3], z, bright);
+    // the same solid the tank walks around, seen from the side: the front
+    // face full, the back face and depth edges a step dimmer
+    const segs3 = ST.solid(st.id);
+    for (const g of segs3) {
+      const back = g[2] < 0 || g[5] < 0;
+      B.seg(cx + g[0], cy + g[1], z + g[2], cx + g[3], cy + g[4], z + g[5], back ? bright * 0.55 : bright);
+    }
   }
   // Two or three civilian silhouettes on the far line of each chunk, seated on
   // that line where it is level enough; hashed from the seed and chunk so they

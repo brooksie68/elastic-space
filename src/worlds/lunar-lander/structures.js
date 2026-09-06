@@ -60,8 +60,33 @@
   function def(o) {
     const segs = [];
     o.draw(segs);
-    const kind = { id: o.id, name: o.name, cls: o.cls, w: o.w, h: o.h, mult: o.mult || 0, hard: o.hard || null, segs: segs };
+    const kind = { id: o.id, name: o.name, cls: o.cls, w: o.w, h: o.h, d: o.d || Math.min(o.w, 40), mult: o.mult || 0, hard: o.hard || null, segs: segs, segs3: null };
     K.push(kind); BY_ID[o.id] = kind;
+  }
+
+  // THE SOLID (2026-09-06, James: "use the same wire model and build it into
+  // a 3-D shape"): the flat drawing is the PROFILE; the solid is that profile
+  // extruded through the kind's depth `d` (feet, z toward the camera in the
+  // lander's frame, centred on z = 0) — a front face at +d/2, a back face at
+  // -d/2, and a depth edge at every corner the profile touches. One model,
+  // both games: the lander's side view draws it foreshortened, the tank's
+  // first person walks around it. Segments are [x0,y0,z0,x1,y1,z1], cached.
+  function solid(id) {
+    const kind = BY_ID[id];
+    if (!kind) return null;
+    if (kind.segs3) return kind.segs3;
+    const out = [];
+    const hz = kind.d / 2;
+    const corners = new Map();
+    for (const g of kind.segs) {
+      out.push([g[0], g[1], hz, g[2], g[3], hz]);
+      out.push([g[0], g[1], -hz, g[2], g[3], -hz]);
+      corners.set(g[0] + ',' + g[1], [g[0], g[1]]);
+      corners.set(g[2] + ',' + g[3], [g[2], g[3]]);
+    }
+    for (const c of corners.values()) out.push([c[0], c[1], hz, c[0], c[1], -hz]);
+    kind.segs3 = out;
+    return out;
   }
 
   // ---- civilian ---------------------------------------------------------------------
@@ -73,7 +98,7 @@
     seg(o, -12, 6, -10, 6); seg(o, 10, 6, 12, 6);   // the tubes between modules
     seg(o, 28, 0, 28, 5); seg(o, 28, 5, 34, 5); seg(o, 34, 5, 34, 0);   // airlock
   } });
-  def({ id: 'comm', name: 'COMM TOWER', cls: 'civ', w: 14, h: 95, draw(o) {
+  def({ id: 'comm', d: 14, name: 'COMM TOWER', cls: 'civ', w: 14, h: 95, draw(o) {
     lattice(o, 14, 5, 80, 6);
     seg(o, 0, 80, 0, 95);
     seg(o, -4, 90, 4, 90); seg(o, -2.5, 95, 2.5, 95);
@@ -86,7 +111,7 @@
     for (let i = 0; i < 4; i++) seg(o, -4 + i * 4, 22, -4 + i * 4, 30);   // radiator fins
     seg(o, -4, 30, 8, 30);
   } });
-  def({ id: 'solar', name: 'SOLAR FARM', cls: 'civ', w: 120, h: 16, draw(o) {
+  def({ id: 'solar', d: 30, name: 'SOLAR FARM', cls: 'civ', w: 120, h: 16, draw(o) {
     for (let i = 0; i < 5; i++) {
       const cx = -48 + i * 24;
       seg(o, cx, 0, cx, 6);
@@ -95,7 +120,7 @@
     }
     seg(o, -56, 0, 56, 0);
   } });
-  def({ id: 'tanks', name: 'TANK FARM', cls: 'civ', w: 96, h: 26, draw(o) {
+  def({ id: 'tanks', d: 26, name: 'TANK FARM', cls: 'civ', w: 96, h: 26, draw(o) {
     for (const cx of [-32, 0, 32]) {
       arc(o, cx - 8, 13, 9, Math.PI / 2, Math.PI * 1.5, 6);
       arc(o, cx + 8, 13, 9, -Math.PI / 2, Math.PI / 2, 6);
@@ -108,7 +133,7 @@
     for (const cx of [-28, 0, 28]) { seg(o, cx, 0, cx, 14); dish(o, cx, 18, 11, 0.5); }
     seg(o, -34, 0, 34, 0);
   } });
-  def({ id: 'drill', name: 'MINING DRILL', cls: 'civ', w: 30, h: 72, draw(o) {
+  def({ id: 'drill', d: 30, name: 'MINING DRILL', cls: 'civ', w: 30, h: 72, draw(o) {
     lattice(o, 30, 10, 64, 5);
     seg(o, -8, 64, 8, 64); seg(o, -8, 64, -8, 72); seg(o, 8, 64, 8, 72); seg(o, -8, 72, 8, 72);   // crown block
     seg(o, 0, 0, 0, 60);   // the string
@@ -122,7 +147,7 @@
     box(o, 40, 4, 58, 10); seg(o, 43, 10, 43, 14); seg(o, 43, 14, 49, 14);
     arc(o, 43, 3, 3, 0, Math.PI * 2, 6); arc(o, 55, 3, 3, 0, Math.PI * 2, 6);
   } });
-  def({ id: 'dome', name: 'OBSERVATORY', cls: 'civ', w: 44, h: 36, draw(o) {
+  def({ id: 'dome', d: 44, name: 'OBSERVATORY', cls: 'civ', w: 44, h: 36, draw(o) {
     box(o, -20, 0, 20, 14);
     arc(o, 0, 14, 20, 0, Math.PI, 10, 22);
     seg(o, 0, 36, 0, 26); seg(o, 3, 35.5, 3, 27);   // the slit
@@ -149,13 +174,13 @@
     arc(o, 0, 6, 8, 0, Math.PI, 5, 5);
     seg(o, 0, 9, 16, 22);   // the barrel — spills past h on purpose; the box is the pit
   } });
-  def({ id: 'radar', name: 'RADAR TOWER', cls: 'open', mult: 1, w: 30, h: 60, draw(o) {
+  def({ id: 'radar', d: 30, name: 'RADAR TOWER', cls: 'open', mult: 1, w: 30, h: 60, draw(o) {
     lattice(o, 30, 12, 46, 4);
     seg(o, 0, 46, 0, 52);
     poly(o, [[-16, 52], [16, 52], [14, 60], [-14, 60]], true);   // the panel
     seg(o, -8, 56, 8, 56);
   } });
-  def({ id: 'jammer', name: 'JAMMER MAST', cls: 'open', mult: 2, w: 16, h: 70, draw(o) {
+  def({ id: 'jammer', d: 16, name: 'JAMMER MAST', cls: 'open', mult: 2, w: 16, h: 70, draw(o) {
     seg(o, -2, 0, -2, 60); seg(o, 2, 0, 2, 60);
     for (let i = 1; i < 6; i++) seg(o, -2, i * 10, 2, i * 10);
     seg(o, 0, 60, 0, 70);
@@ -182,7 +207,7 @@
     // its own SAM on the roof
     seg(o, 8, 22, 8, 26); seg(o, 4, 26, 12, 26); seg(o, 6, 26, 22, 34); seg(o, 9, 30, 19, 35);
   } });
-  def({ id: 'core', name: 'POWER CORE', cls: 'hard', hard: 'shield', mult: 5, w: 60, h: 50, draw(o) {
+  def({ id: 'core', d: 40, name: 'POWER CORE', cls: 'hard', hard: 'shield', mult: 5, w: 60, h: 50, draw(o) {
     arc(o, 0, 24, 14, 0, Math.PI * 2, 12);
     seg(o, -14, 24, -22, 0); seg(o, 14, 24, 22, 0); seg(o, -26, 0, 26, 0);   // cradle
     seg(o, 0, 38, 0, 44);
@@ -193,5 +218,5 @@
   const OPEN = K.filter((k) => k.cls === 'open').map((k) => k.id);
   const HARD = K.filter((k) => k.cls === 'hard').map((k) => k.id);
 
-  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD };
+  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, solid: solid };
 })();

@@ -279,7 +279,9 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
 - **The structures** (`structures.js`, global `LunarStructures`, loaded
   BEFORE the core): pure segment lists in feet, origin at the ground centre;
   `w`×`h` is the solid footprint; `cls` civ / open / hard; `mult` 0–5;
-  `hard` overhang / ridge / door / shield. The core seats them in
+  `hard` overhang / ridge / door / shield; `d` is the depth and `solid(id)`
+  the extruded 3-D wire model ([x0,y0,z0,x1,y1,z1], cached) that BOTH games
+  draw — the tank in first person, this side view foreshortened. The core seats them in
   `makeChunk` (hostiles first, then civilians; chunk 0 civilian only; each
   footprint flattens the ground; clear of pads, aprons, the 130 ft launch
   lane past every apron, and mountains) as `chunk.structures`
