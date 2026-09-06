@@ -99,7 +99,7 @@
     saeNotice: 400,
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
-    bldgFarBlur: 3, // v60: far-window mip follow (0 = v59 point-sampled twinkle); v72: default 3 (James keeps it there)
+    bldgFarBlur: 0, // v75.1: the BUILDINGS' blur — 0 = sharp, no twinkle (James: "zero for both is the best setting")
     trafSpeed: 1, // v72: one speed knob over every packet (struts, bridges, feeds)
     trafAmt: 1, // v72: how many packets — a chain keeps its spacing pattern with fewer beads
     stnLights: 1, // v73: the station's window count (map + shader cells); towers unaffected

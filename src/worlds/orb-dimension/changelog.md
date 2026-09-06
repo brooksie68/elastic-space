@@ -3,6 +3,11 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v75.1 — 2026-09-06 (James: "zero for both is the best setting")
+
+- "far window blur" defaults to 0 (DEFAULTS + james-prefs-01); the station dial was already 0.
+  Both frozen. Cache tags ?v=761.
+
 ## v75 — 2026-09-06 (Claude, James: the station at blur 0 is PERFECT — "freeze that and never change it again")
 
 - **"far window blur station lights"** (new key `stnFarBlur`, default 0): the station's map

@@ -47,7 +47,7 @@
       "citizens": 9,
       "saeNotice": 600,
       "bldgGlow": 1,
-      "bldgFarBlur": 3,
+      "bldgFarBlur": 0,
       "nebGlow": 1,
       "nebDensity": 1,
       "nebScale": 1.6,
