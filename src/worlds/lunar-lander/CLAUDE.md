@@ -34,10 +34,9 @@ mixed so you can always get some but may have to choose fuel or weapons this
 landing. Plus ten more man-made greebles on the ground.
 
 The plan (three rounds, his eyes between each):
-1. Structures — ten line-drawn greebles in the chunk data, dealt like pads:
-   radar tower, comm tower, hab modules, power generator, solar farm, fuel tank
-   farm, dish array, mining drill, rover garage, observatory dome, + the SAM
-   site. Chunk 0 safe.
+1. Structures — BUILT 2026-09-06 (changelog "round one"): `structures.js`
+   (18 drawings), `chunk.structures`, solid, the four selections gone.
+   AWAITING HIS EYES.
 2. Weapons + refills — missile and laser, targeting by click, ammo + charge in
    the console; pads carry fuel / missiles / laser / chaff in a mix, each on
    its own drought ladder (fuel's odds unchanged).
@@ -277,6 +276,21 @@ any time through `/api/dev-snapshot` (`toDataURL` right after a tick).
 - **Fuel pads** are a flag on a pad (`pad.fuel`); the refill lives in
   `resolveContact` (`FUEL_PAD_REFILL` / `FUEL_PAD_PERFECT`) and the result
   carries `fuelPad`.
+- **The structures** (`structures.js`, global `LunarStructures`, loaded
+  BEFORE the core): pure segment lists in feet, origin at the ground centre;
+  `w`×`h` is the solid footprint; `cls` civ / open / hard; `mult` 0–5;
+  `hard` overhang / ridge / door / shield. The core seats them in
+  `makeChunk` (hostiles first, then civilians; chunk 0 civilian only; each
+  footprint flattens the ground; clear of pads, aprons, the 130 ft launch
+  lane past every apron, and mountains) as `chunk.structures`
+  ({id, name, cls, mult, hard, x0, x1, y, h, k, sid, alive}). SOLID: `step`
+  crashes the ship on any point inside a live footprint (`reason` 'struck',
+  `result.struck`). Both renderers draw from this file — the tank session
+  imports it; never author a building anywhere else. The renderer also
+  scatters hashed civilian silhouettes on the far line (decoration only).
+- **One feel, levels not selections** (`FLIGHT`, 2026-09-06): there is no
+  `DIFFICULTY` any more; `state.level` starts at 1; physics never change
+  between levels.
 - **The moon is endless and chunked** (`makeChunk`, `getChunk`,
   `chunksBetween`, `padsNear`; `CHUNK_W` 4000): chunks hash from the seed
   and index, meet at hashed seam levels, and live in `state.world.chunks`

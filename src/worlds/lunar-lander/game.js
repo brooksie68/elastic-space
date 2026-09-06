@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=2';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=3';
 
 const Core = globalThis.LunarCore;
 
@@ -11,7 +11,7 @@ const Core = globalThis.LunarCore;
 const PLAY_KEY = 'lunar-lander-play-v2';
 const LOOK_KEY = 'lunar-lander-look-v2';
 const LEDGER_KEY = 'lunar-lander-ledger-v1';
-const PLAY_DEFAULTS = { difficulty: 'cadet', fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75 };
+const PLAY_DEFAULTS = { fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75 };
 const LOOK_RANGES = {
   hue:        { min: 0, max: 1, step: 0.01, label: 'line colour' },
   saturation: { min: 0, max: 1, step: 0.05, label: 'colour depth' },
@@ -76,6 +76,7 @@ const MESSAGES = {
     drift: ['SKIDDED OFF THE PAD', 'THE LANDER IS SCRAP'],
     terrain: ['MISSED THE PAD', 'THE LANDER IS A CRATER NOW'],
     body: ['INVERTED', 'MISSION CONTROL IS SPEECHLESS'],
+    struck: ['FLEW INTO A BUILDING', 'THE STRUCTURES ARE SOLID. SO WAS THE LANDER.'],
   },
 };
 
@@ -266,7 +267,7 @@ function renderLedger(highlight) {
   list.forEach((e, i) => {
     const cls = highlight && e.stamp === highlight ? ' me' : '';
     el.insertAdjacentHTML('beforeend',
-      `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">${e.difficulty.toUpperCase()} · ${e.attempts} FLIGHTS</span>`);
+      `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">${e.level ? 'LEVEL ' + e.level : (e.difficulty || 'cadet').toUpperCase()} · ${e.attempts} FLIGHTS</span>`);
   });
 }
 
@@ -274,7 +275,7 @@ function renderLedger(highlight) {
 function makeGame() {
   let seed = parseInt(play.seed, 10);
   if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
-  state = Core.createGame({ seed, difficulty: play.difficulty, fuel: play.fuel, gravityScale: play.gravity });
+  state = Core.createGame({ seed, level: 1, fuel: play.fuel, gravityScale: play.gravity });
   if (scene) { scene.setWorld(state); scene.clearEffects(); }
   clearFloats();
   buildPadLabels();
@@ -300,7 +301,7 @@ function startGame() {
   carry = 0;
   resetThrottle();
   Sfx.beepTimer = 0;
-  $('ro-select').textContent = Core.DIFFICULTY[state.difficulty].label;
+  $('ro-select').textContent = 'LEVEL ' + state.level;
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
 function nextAttempt() {
@@ -308,7 +309,7 @@ function nextAttempt() {
   if (state.phase === 'over') {
     const stamp = Date.now();
     const list = readLedger();
-    list.push({ score: state.score, attempts: state.attempt, difficulty: state.difficulty, stamp });
+    list.push({ score: state.score, attempts: state.attempt, level: state.level, stamp });
     list.sort((a, b) => b.score - a.score);
     writeLedger(list);
     const line = 'OUT OF FUEL — FINAL SCORE ' + pad(state.score, 4) + ' IN ' + state.attempt + ' FLIGHTS';
@@ -434,8 +435,9 @@ function showResult(result) {
   mode = 'result';
   const isCrash = result.kind === 'crash';
   const msg = isCrash ? MESSAGES.crash[result.reason] || MESSAGES.crash.speed : MESSAGES[result.kind];
+  const struckLine = result.struck ? 'YOU HIT THE ' + result.struck.name : null;
   $('r-word').textContent = isCrash ? 'CRASHED' : result.kind === 'secret' ? 'WELCOME' : 'LANDED';
-  $('r-msg').textContent = msg[0];
+  $('r-msg').textContent = struckLine || msg[0];
   $('r-detail').textContent = msg[1] + ' — ' + result.vy + ' FT/S DOWN · ' + result.vx + ' FT/S ACROSS · ' + result.tilt + '° TILT';
   let pts = '';
   if (result.kind === 'secret') pts = 'NO POINTS. NO REGRETS.';
@@ -700,7 +702,7 @@ function frameStep(dt) {
     rotate: mode === 'play' ? rotHeld : 0,
     flying: state.phase === 'flying' && mode === 'play',
     zoomOn: zoomIn && (mode === 'play' || mode === 'settle' || mode === 'result' || mode === 'launch'),
-    gravity: Core.GRAVITY * Core.DIFFICULTY[state.difficulty].gravity * play.gravity,
+    gravity: Core.GRAVITY * Core.FLIGHT.gravity * play.gravity,
     showShip: state.ship.alive,
     secret: state.result && state.result.kind === 'secret',
     tech: state.tech,
@@ -942,7 +944,6 @@ function seg(id, key, parse) {
     });
   });
 }
-seg('t-diff', 'difficulty');
 seg('t-fuel', 'fuel', (v) => parseInt(v, 10));
 seg('t-zoom', 'zoom', (v) => parseInt(v, 10));
 $('t-grav').addEventListener('input', (e) => { play.gravity = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); if (state) state.opts.gravityScale = play.gravity; });
@@ -954,7 +955,6 @@ $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
 function syncPlayUI() {
   const on = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  on('t-diff', play.difficulty);
   on('t-fuel', play.fuel);
   on('t-zoom', play.zoom);
   $('t-grav').value = play.gravity; $('t-grav-val').textContent = play.gravity.toFixed(2) + '×';
@@ -963,7 +963,7 @@ function syncPlayUI() {
   $('t-langle').value = play.launchAngle; $('t-langle-val').textContent = play.launchAngle + '°';
   $('t-lapex').value = play.launchApex; $('t-lapex-val').textContent = Math.round(play.launchApex * 100) + '% of the way up';
   $('t-seed').value = play.seed || '';
-  if (mode === 'attract') $('ro-select').textContent = Core.DIFFICULTY[play.difficulty].label;
+  if (mode === 'attract') $('ro-select').textContent = 'LEVEL 1';
 }
 
 const lookRows = $('look-rows');

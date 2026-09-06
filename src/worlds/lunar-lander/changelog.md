@@ -2,6 +2,47 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (Battle for the Moon, round one: the structures) — Claude
+
+Built on James's go after the level-1 design was agreed (world CLAUDE.md top).
+Three things:
+
+1. THE FOUR 1979 SELECTIONS ARE GONE. `FLIGHT` in the core is the one feel
+   (the old Cadet: gravity ×1.0, rotation 1.6 rad/s, no inertia, four-pad
+   standard deal, rough rationed at 2 / 75). `createGame` takes `level`
+   (default 1); `state.level`; the console's meta reads LEVEL 1; the PLAY
+   tab lost its Selection row; the ledger stores `level` (old entries with
+   `difficulty` still print). `makeChunk(seed, k, opts, carry)`.
+2. STRUCTURES.JS — a new pure file, side-effect global `LunarStructures`:
+   eighteen line drawings as segment lists in feet, origin at the ground
+   centre, with a footprint (`w` × `h`), a class and a multiplier. Ten
+   civilians (hab modules, comm tower, power generator, solar farm, tank
+   farm, dish array, mining drill, rover garage, observatory, greenhouse),
+   four open hostiles (SAM site 2X, gun pit 1X, radar tower 1X, jammer mast
+   2X), four hardened (data centre under an overhang 4X, ammo depot behind a
+   ridge 3X, bunker with a shut door 3X, shielded power core 5X). Loaded
+   BEFORE game-core.js (index.html, the sim, lookdev, the smoke builder).
+   The tank session draws from the same file.
+3. IN THE CORE: `chunk.structures` — hostiles seated first (one or two open
+   per chunk past home, a hardened one on ~26% of chunks from k=2, the power
+   core on every jackpot chunk, none on chunk 0), then 3–6 civilians. Placed
+   on level-ish ground clear of pads, aprons, the launch lane (130 ft past
+   every apron) and mountains; each footprint FLATTENS the ground under it
+   like a pad. SOLID: any ship point inside a footprint is a crash —
+   `result.reason` 'struck', `result.struck` {id, name, cls}; the card says
+   "YOU HIT THE COMM TOWER". `structuresNear(state, x, reach)`.
+   Renderer: structures on the flight line (civilians 0.62, hostiles 0.85)
+   and two or three hashed civilian silhouettes per chunk on the far line
+   for depth (decoration, never solid).
+
+Measured: hostiles seat on 99.5% of chunks past home; 4.6 structures per
+chunk on average; chunk 0 is crowded by its four pads and often holds one.
+Sim TEST 13 (drawings, placement, flat ground, clearances, the crash that
+names the building); 201,382 assertions green (fewer than before because
+every loop ran four selections and now runs one). Tags: structures v1,
+game-core v8, game v7, render3d v3; smoke page rebuilt. NOT built yet:
+hover/targeting (round two), hostile fire (round three).
+
 ## 2026-09-06 (the direction: Battle for the Moon 2075) — Claude
 
 Recorded, nothing built. James: Lunar Lander will grow into "Battle for the

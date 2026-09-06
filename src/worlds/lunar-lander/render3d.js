@@ -569,6 +569,43 @@ export class LanderScene {
     this.builtKey = '';
     this._buildStatic();
   }
+  // A structure from structures.js at its footprint: segments are local feet,
+  // origin at the ground centre.
+  _structure(B, st, bright, z) {
+    const ST = globalThis.LunarStructures;
+    const kind = ST && ST.BY_ID[st.id];
+    if (!kind) return;
+    const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
+    for (const g of kind.segs) B.seg(cx + g[0], cy + g[1], z, cx + g[2], cy + g[3], z, bright);
+  }
+  // Two or three civilian silhouettes on the far line of each chunk, seated on
+  // that line where it is level enough; hashed from the seed and chunk so they
+  // never move. Decoration only — the core knows nothing of them.
+  _farStructures(F, far, k0, k1, z) {
+    const ST = globalThis.LunarStructures;
+    if (!ST || !this.world) return;
+    const C = globalThis.LunarCore;
+    const yAt = (x) => {
+      let lo = 0, hi = far.length - 1;
+      if (x <= far[0][0]) return far[0][1];
+      if (x >= far[hi][0]) return far[hi][1];
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (far[m][0] <= x) lo = m; else hi = m; }
+      const a = far[lo], b = far[hi];
+      return a[1] + (b[1] - a[1]) * ((x - a[0]) / Math.max(1e-6, b[0] - a[0]));
+    };
+    for (let k = k0; k <= k1; k++) {
+      const rng = C.mulberry32(C.hashSeed(this.world.seed ^ 0x5f3759df, k));
+      const n = 2 + (rng() < 0.5 ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const kind = ST.BY_ID[ST.CIV[Math.floor(rng() * ST.CIV.length)]];
+        const cx = k * CHUNK_W + 200 + rng() * (CHUNK_W - 400);
+        const ya = yAt(cx - kind.w * 0.5), yb = yAt(cx + kind.w * 0.5);
+        if (Math.abs(ya - yb) > 30) continue;
+        const cy = Math.max(ya, yb);
+        for (const g of kind.segs) F.seg(cx + g[0], cy + g[1], z, cx + g[2], cy + g[3], z, 0.42);
+      }
+    }
+  }
   // A parallax range for chunk k: seam heights hashed so neighbours meet.
   _range(kind, k) {
     const key = kind + ':' + k;
@@ -641,10 +678,12 @@ export class LanderScene {
     const FF = this.fartherBatch;
     FF.begin(); FF.poly2(farther, 0.38, 0, 0, zFarther); FF.end();
     this.fartherFill.set(farther, zFarther);
-    // far line
+    // far line, with a few civilian silhouettes per chunk for depth (hashed, never solid)
     const far = join('far');
     const F = this.farBatch;
-    F.begin(); F.poly2(far, 0.55, 0, 0, zFar); F.end();
+    F.begin(); F.poly2(far, 0.55, 0, 0, zFar);
+    this._farStructures(F, far, k0, k1, zFar);
+    F.end();
     this.farFill.set(far, zFar);
     // the flight line, with pads (their aprons are part of the terrain) and the accelerators at rest
     const B = this.flightBatch;
@@ -661,6 +700,11 @@ export class LanderScene {
         // the multiplier and the fuel mark are DOM labels the shell places (contemporary type, not stroke lettering).
         // The accelerator is NOT drawn at rest (James: "they should just appear magically when the person finishes their landing").
         if (p.relay) this._relayTower(B, p, 0.55);
+      }
+      // the structures (structures.js): civilians dim, hostiles a step brighter
+      for (const st of ch.structures || []) {
+        if (!st.alive) continue;
+        this._structure(B, st, st.cls === 'civ' ? 0.62 : 0.85, 0);
       }
       // the horizon ring far above this chunk: faint, a way out for the high flyer
       {

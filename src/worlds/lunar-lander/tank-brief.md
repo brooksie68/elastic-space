@@ -44,10 +44,10 @@ landing, landing tech earned on clean landings. James's standing word: **this
 is NOT a faithful recreation of the 1979 game.** It shipped 2026-09-04. Today
 (2026-09-06) James turned it into Level 1 of a bigger game:
 
-- The four 1979 difficulty selections are GONE (not yet removed from code —
-  the lander session does that). Level 1 flies with the old "Cadet" feel and
-  the physics never change between levels; enemies, weapons, targets and the
-  moon's deals do.
+- The four 1979 difficulty selections are GONE (removed 2026-09-06: the core
+  has one `FLIGHT` feel and `state.level`). Level 1 flies with the old "Cadet"
+  feel and the physics never change between levels; enemies, weapons, targets
+  and the moon's deals do.
 - Levels climb to a boss (five levels, then the boss). The tank part opens
   after the boss. How the tank part plays is James's to tell you.
 - Level 1, being built now by the lander session: ten line-drawn structures on
@@ -122,15 +122,18 @@ constant identical. When both halves are stable the lander session will pull
 the shared kit out into one `vector-kit.js` that both import — that is its
 job, one commit, with a heads-up to you first. Until then, a copy.
 
-**Structures:** the lander session is putting the ten structures + SAM sites
-into the chunk data (`chunk.structures`, each with `kind`, `x`, `hostile`,
-`mult`, hardening) and their line drawings into a new file
-`src/worlds/lunar-lander/structures.js` — pure segment lists, no three.js —
-so both renderers draw the same shapes. That file is the lander session's to
-write and yours to import. Until it lands, build with placeholder shapes in
-your own file and swap them out; do not author your own versions of those ten.
-If you need a structure the lander does not have (a tank-only thing), it goes
-in YOUR files, and you tell James so it can be added to the shared file later.
+**Structures — LANDED 2026-09-06:** `src/worlds/lunar-lander/structures.js`
+(side-effect global `LunarStructures`, load it BEFORE game-core.js) holds
+eighteen drawings: `KINDS` / `BY_ID` / `CIV` / `OPEN` / `HARD`; each kind is
+`{ id, name, cls, w, h, mult, hard, segs }` with `segs` as `[x0, y0, x1, y1]`
+in feet, origin at the centre of the footprint on the ground, y up. Draw one
+at a footprint by adding its centre x and base y to every segment. The core
+seats them per chunk as `chunk.structures` (`{ id, name, cls, mult, hard, x0,
+x1, y, h, k, sid, alive }`), flattens the ground under each, and treats them
+as solid. That file is the lander session's to write and yours to import; do
+not author your own versions of those kinds. If you need a structure the
+lander does not have (a tank-only thing), it goes in YOUR files, and you tell
+James so it can be added to the shared file later.
 
 **The moon:** you can load `game-core.js` as a script (it sets
 `globalThis.LunarCore`) and call `LunarCore.getChunk(state, k)` /

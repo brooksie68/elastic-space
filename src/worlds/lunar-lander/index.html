@@ -415,7 +415,7 @@
       </div>
       <div class="panel" id="hud-right">
         <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
-        <div id="meta"><span id="ro-select">CADET</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span><span id="v-range">HOME</span></div>
+        <div id="meta"><span id="ro-select">LEVEL 1</span><span id="v-time">0:00</span><span id="v-flight">FLIGHT 1</span><span id="v-range">HOME</span></div>
       </div>
     </div>
     <div id="tech-card" aria-hidden="true">
@@ -477,15 +477,6 @@
 
     <div class="tab-body on" data-body="play">
       <div class="t-row">
-        <div class="t-label"><span>Selection</span><span></span></div>
-        <div class="t-seg" id="t-diff">
-          <button data-v="training" type="button">TRAINING</button>
-          <button data-v="cadet" type="button">CADET</button>
-          <button data-v="prime" type="button">PRIME</button>
-          <button data-v="command" type="button">COMMAND</button>
-        </div>
-      </div>
-      <div class="t-row">
         <div class="t-label"><span>Fuel</span><span></span></div>
         <div class="t-seg" id="t-fuel">
           <button data-v="500" type="button">500</button>
@@ -528,7 +519,7 @@
           <button class="t-btn" id="t-seed-roll" type="button" style="width: auto; margin: 0; padding: 0 0.7rem">ROLL</button>
         </div>
       </div>
-      <div class="t-note">selection · fuel · seed take hold at the next START</div>
+      <div class="t-note">fuel · seed take hold at the next START</div>
     </div>
 
     <div class="tab-body" data-body="look">
@@ -555,10 +546,11 @@
   <script src="../../core/sound-control.js"></script>
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
-  <script src="game-core.js?v=7"></script>
+  <script src="structures.js?v=1"></script>
+  <script src="game-core.js?v=8"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=6"></script>
+  <script type="module" src="game.js?v=7"></script>
 </body>
 </html>

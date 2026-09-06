@@ -1,7 +1,6 @@
-// Lunar Lander — the game core.
+// Battle for the Moon 2075 — the lander core (born as Lunar Lander).
 //
-// A faithful model of Atari's 1979 cabinet — lunar gravity, momentum, a
-// proportional thrust lever that burns fuel, four difficulty selections,
+// Lunar gravity, momentum, a proportional thrust lever that burns fuel,
 // landings graded by vertical speed, drift, and attitude — flown over an
 // ENDLESS moon (2026-09-04, James: "fly as far as you have the fuel for").
 // The moonscape is generated in 4,000 ft chunks, each hashed from the game's
@@ -42,15 +41,14 @@
     sideR: [13, 2],
   };
 
-  // The four selections on the cabinet. Gravity multiplies GRAVITY; rot is the
-  // hand-on-key rotation rate (rad/s); inertia > 0 means rotation carries
-  // momentum (Command) and must be countered. pads = the standard deal's count.
-  const DIFFICULTY = {
-    training: { label: 'TRAINING', gravity: 0.55, rot: 1.9, inertia: 0, pads: 5 },
-    cadet:    { label: 'CADET',    gravity: 1.0,  rot: 1.6, inertia: 0, pads: 4 },
-    prime:    { label: 'PRIME',    gravity: 1.35, rot: 1.45, inertia: 0, pads: 4 },
-    command:  { label: 'COMMAND',  gravity: 1.7,  rot: 0,   inertia: 2.6, pads: 3 },
-  };
+  // THE FLIGHT (2026-09-06, James: "I don't want those levels at all"): the
+  // four 1979 cabinet selections are gone. One feel — the old Cadet — and it
+  // never changes between LEVELS; levels change enemies, weapons, targets and
+  // the moon's deals. Gravity multiplies GRAVITY; rot is the hand-on-key
+  // rotation rate (rad/s); inertia 0 = rotation stops when the key lifts;
+  // pads = the standard deal's count. roughMax / roughAmp ration the rough
+  // zones per chunk.
+  const FLIGHT = { gravity: 1.0, rot: 1.6, inertia: 0, pads: 4, roughMax: 2, roughAmp: 75 };
 
   // Landing grades — vertical speed, horizontal drift, tilt from upright.
   const GRADES = [
@@ -134,7 +132,7 @@
 
   const DEFAULTS = {
     seed: 1,
-    difficulty: 'cadet',
+    level: 1,
     fuel: 750,
     gravityScale: 1,       // tuner: stretch the selection's gravity
     rotScale: 1,
@@ -170,15 +168,15 @@
   // the SEAM index, so chunk k meets chunk k+1 exactly.
   function seamLevel(seed, k) { return 260 + hash01(seed, k * 7 + 3) * 120; }
 
-  function makeChunk(seed, k, difficulty, opts, carry) {
+  function makeChunk(seed, k, opts, carry) {
     const rng = mulberry32(hashSeed(seed, k));
     const n = Math.round(CHUNK_W / TERRAIN_STEP);      // 80 segments
     const X0 = k * CHUNK_W;
     const ys = new Array(n + 1).fill(0);
     const levelA = seamLevel(seed, k), levelB = seamLevel(seed, k + 1);
     const base = (levelA + levelB) * 0.5;
-    const roughMax = difficulty === 'training' ? 1 : difficulty === 'cadet' ? 2 : 3;
-    const roughAmp = difficulty === 'training' ? 55 : difficulty === 'cadet' ? 75 : 100;
+    const roughMax = FLIGHT.roughMax;
+    const roughAmp = FLIGHT.roughAmp;
     const mountains = 1 + (rng() < 0.5 ? 1 : 0);
 
     // zone sequence in samples; the first and last are maria (the seams)
@@ -267,7 +265,7 @@
     }
     const tiers = [];
     if (deal === 'standard') {
-      const count = DIFFICULTY[difficulty].pads;
+      const count = FLIGHT.pads;
       for (let q = 0; q < count; q++) tiers.push(PAD_TIERS[q % PAD_TIERS.length]);
     } else if (deal === 'sparse') {
       tiers.push(TIER_BY_MULT[5], TIER_BY_MULT[2]);
@@ -360,10 +358,59 @@
         break;
       }
     }
+    // ---- the structures (Battle for the Moon, round one): civilians on every
+    // chunk, hostiles by the deal, none hostile on chunk 0. Drawings live in
+    // structures.js (LunarStructures); the core keeps the footprint, the class
+    // and the multiplier. Each footprint flattens the ground under it like a
+    // pad does. Solid: the ship crashes into them (step → struck).
+    const structures = [];
+    const ST = globalThis.LunarStructures;
+    if (ST) {
+      const pick = (list) => list[Math.floor(rng() * list.length)];
+      // hostiles are seated first (they are the game), civilians fill what is left
+      const want = [];
+      if (k !== 0) {
+        if (deal === 'jackpot') want.push('core');
+        else if (Math.abs(k) >= 2 && rng() < 0.3) want.push(pick(ST.HARD));
+        const nOpen = 1 + (rng() < 0.45 ? 1 : 0);
+        for (let q = 0; q < nOpen; q++) want.push(pick(['sam', 'sam', 'gunpit', 'radar', 'jammer']));
+      }
+      const nCiv = 3 + Math.floor(rng() * 4);   // 3–6 civilians
+      for (let q = 0; q < nCiv; q++) want.push(pick(ST.CIV));
+      const launchClear = (x0, x1) => { for (const p of pads) if (x0 < p.apron - X0 + 130 && x1 > p.x0 - X0 - 30) return false; return true; };
+      for (const id of want) {
+        const kind = ST.BY_ID[id];
+        if (!kind) continue;
+        const w = kind.w;
+        const pools = [flats, hillsZ, anyZ];
+        let ok = false, x0 = 0, y = 0;
+        for (const pool of pools) {
+          for (let tries = 0; tries < 160 && !ok; tries++) {
+            const f = pool[Math.floor(rng() * pool.length)];
+            if (!f || f[1] - f[0] < w + 40) continue;
+            x0 = f[0] + 20 + rng() * (f[1] - f[0] - w - 40);
+            if (x0 + w > CHUNK_W - 20 || !clear(x0, x0 + w, 60) || !launchClear(x0, x0 + w)) continue;
+            const i0 = Math.floor(x0 / TERRAIN_STEP), i1 = Math.ceil((x0 + w) / TERRAIN_STEP);
+            let sum = 0, lo = 1e9, hi = -1e9;
+            for (let i3 = i0; i3 <= i1; i3++) { sum += ys[i3]; lo = Math.min(lo, ys[i3]); hi = Math.max(hi, ys[i3]); }
+            if (hi - lo > Math.max(40, w * 0.35)) continue;   // needs level-ish ground
+            y = sum / (i1 - i0 + 1);
+            ok = true;
+          }
+          if (ok) break;
+        }
+        if (!ok) continue;
+        taken.push([x0, x0 + w]);
+        structures.push({ id: kind.id, name: kind.name, cls: kind.cls, mult: kind.mult, hard: kind.hard,
+          x0: +(X0 + x0).toFixed(2), x1: +(X0 + x0 + w).toFixed(2), y: +y.toFixed(2), h: kind.h, k: k,
+          sid: k + ':s' + structures.length, alive: true });
+      }
+    }
     // Build the polyline (absolute x): base samples with flats spliced in exactly.
     const pts = [];
     const flatsAll = pads.map((p) => ({ x0: p.x0, x1: p.apron, y: p.y }));
     if (secret) flatsAll.push({ x0: secret.x0, x1: secret.x1, y: secret.y });
+    for (const st of structures) flatsAll.push({ x0: st.x0, x1: st.x1, y: st.y });
     flatsAll.sort((a, b) => a.x0 - b.x0);
     let fi = 0;
     for (let i4 = 0; i4 <= n; i4++) {
@@ -383,7 +430,7 @@
       pts.push([x, ys[i4]]);
     }
     const zoneOut = zones.map((z) => ({ type: z.type, x0: X0 + z.i0 * TERRAIN_STEP, x1: X0 + z.i1 * TERRAIN_STEP }));
-    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought };
+    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought, structures: structures };
   }
 
   // ---- the world: chunks on demand, kept for the life ----------------------
@@ -395,7 +442,7 @@
       // the fuel drought carries across the seam from the chunk before (flight
       // goes right; chunks left of home start fresh)
       const carry = k > 0 ? getChunk(state, k - 1).drought : 0;
-      c = makeChunk(state.seed, k, state.difficulty, state.opts, carry); w.chunks[k] = c; w.version++;
+      c = makeChunk(state.seed, k, state.opts, carry); w.chunks[k] = c; w.version++;
     }
     return c;
   }
@@ -407,6 +454,11 @@
   function padsNear(state, x, reach) {
     const out = [];
     for (const c of chunksBetween(state, x - reach, x + reach)) for (const p of c.pads) out.push(p);
+    return out;
+  }
+  function structuresNear(state, x, reach) {
+    const out = [];
+    for (const c of chunksBetween(state, x - reach, x + reach)) for (const st of c.structures) out.push(st);
     return out;
   }
 
@@ -443,11 +495,10 @@
   // ---- game --------------------------------------------------------------
   function createGame(opts) {
     const o = Object.assign({}, DEFAULTS, opts || {});
-    if (!DIFFICULTY[o.difficulty]) o.difficulty = 'cadet';
     const state = {
       opts: o,
       seed: o.seed >>> 0,
-      difficulty: o.difficulty,
+      level: o.level || 1,
       fuel: o.fuel,
       fuelStart: o.fuel,
       score: 0,
@@ -511,7 +562,7 @@
   // The exit state for a launch at `angleDeg`: where the ship leaves the rail
   // and how fast, so that it coasts to apexFrac of LAUNCH_HEIGHT above the pad.
   function launchExit(state, pad, angleDeg, apexFrac) {
-    const d = DIFFICULTY[state.difficulty];
+    const d = FLIGHT;
     const g = GRAVITY * d.gravity * state.opts.gravityScale;
     const ang = angleDeg * Math.PI / 180;
     const frac = apexFrac === undefined ? LAUNCH_DEFAULTS.apexFrac : apexFrac;
@@ -631,7 +682,7 @@
   // thrust, then undoes the lever curve.
   function autoLever(state, vyTarget) {
     const s = state.ship;
-    const d = DIFFICULTY[state.difficulty];
+    const d = FLIGHT;
     const o = state.opts;
     const g = GRAVITY * d.gravity * o.gravityScale;
     const target = vyTarget === undefined ? AUTO_VY : vyTarget;
@@ -670,7 +721,7 @@
   function step(state, input) {
     const events = [];
     if (state.phase !== 'flying') return events;
-    const d = DIFFICULTY[state.difficulty];
+    const d = FLIGHT;
     const o = state.opts;
     const s = state.ship;
     const g = GRAVITY * d.gravity * o.gravityScale;
@@ -727,13 +778,25 @@
     const bodyHit = pts.top[1] <= groundAt(state, pts.top[0]) ||
       pts.sideL[1] <= groundAt(state, pts.sideL[0]) ||
       pts.sideR[1] <= groundAt(state, pts.sideR[0]);
-    if (footHit || bodyHit) {
-      resolveContact(state, pts, bodyHit, events);
+    // the structures are solid: any point of the ship inside one is a crash
+    let struck = null;
+    if (!footHit && !bodyHit) {
+      for (const st of structuresNear(state, s.x, 200)) {
+        if (!st.alive) continue;
+        for (const key of ['footL', 'footR', 'top', 'sideL', 'sideR']) {
+          const p = pts[key];
+          if (p[0] >= st.x0 && p[0] <= st.x1 && p[1] >= st.y && p[1] <= st.y + st.h) { struck = st; break; }
+        }
+        if (struck) break;
+      }
+    }
+    if (footHit || bodyHit || struck) {
+      resolveContact(state, pts, bodyHit || !!struck, events, struck);
     }
     return events;
   }
 
-  function resolveContact(state, pts, bodyHit, events) {
+  function resolveContact(state, pts, bodyHit, events, struck) {
     const s = state.ship;
     const tilt = tiltOf(s.angle);
     const vy = -s.vy;                 // positive = descending
@@ -757,6 +820,7 @@
       range: Math.round(s.x - SPAWN.x),
       pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, used: !!pad.used, relay: !!pad.relay } : null,
       secret: !!secret,
+      struck: struck ? { id: struck.id, name: struck.name, cls: struck.cls } : null,
       time: +state.attemptTime.toFixed(1),
     };
     if (grade && secret) {
@@ -785,7 +849,7 @@
     } else {
       result.kind = 'crash';
       result.points = CRASH_POINTS;
-      result.reason = bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
+      result.reason = struck ? 'struck' : bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
         vy > grades[2].vy ? 'speed' : tilt > grades[2].tilt ? 'tilt' : 'drift';
       state.score += CRASH_POINTS;
       state.fuel = Math.max(0, state.fuel - CRASH_FUEL);
@@ -845,7 +909,7 @@
     MAX_THRUST: MAX_THRUST,
     FUEL_BURN: FUEL_BURN,
     LEVER_CURVE: LEVER_CURVE,
-    DIFFICULTY: DIFFICULTY,
+    FLIGHT: FLIGHT,
     GRADES: GRADES,
     PAD_TIERS: PAD_TIERS,
     DEALS: DEALS,
@@ -877,6 +941,7 @@
     getChunk: getChunk,
     chunksBetween: chunksBetween,
     padsNear: padsNear,
+    structuresNear: structuresNear,
     groundAt: groundAt,
     padUnder: padUnder,
     accelBase: accelBase,
