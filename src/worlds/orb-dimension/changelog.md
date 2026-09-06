@@ -3,6 +3,11 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v75.2 — 2026-09-06 (James's traffic numbers)
+
+- "traffic speed ×" and "traffic amount" default to 0.65 each (DEFAULTS + james-prefs-01) — his
+  panel values from the day's flights. Cache tags ?v=762.
+
 ## v75.1 — 2026-09-06 (James: "zero for both is the best setting")
 
 - "far window blur" defaults to 0 (DEFAULTS + james-prefs-01); the station dial was already 0.

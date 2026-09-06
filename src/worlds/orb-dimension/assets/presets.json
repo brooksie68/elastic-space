@@ -48,6 +48,8 @@
       "saeNotice": 600,
       "bldgGlow": 1,
       "bldgFarBlur": 0,
+      "trafSpeed": 0.65,
+      "trafAmt": 0.65,
       "nebGlow": 1,
       "nebDensity": 1,
       "nebScale": 1.6,

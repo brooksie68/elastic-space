@@ -100,8 +100,8 @@
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
     bldgFarBlur: 0, // v75.1: the BUILDINGS' blur — 0 = sharp, no twinkle (James: "zero for both is the best setting")
-    trafSpeed: 1, // v72: one speed knob over every packet (struts, bridges, feeds)
-    trafAmt: 1, // v72: how many packets — a chain keeps its spacing pattern with fewer beads
+    trafSpeed: 0.65, // v72: one speed knob over every packet (struts, bridges, feeds); v75.2: James's number
+    trafAmt: 0.65, // v72: how many packets — a chain keeps its spacing pattern with fewer beads; v75.2: James's number
     stnLights: 1, // v73: the station's window count (map + shader cells); towers unaffected
     stnFarBlur: 0, // v75: the STATION's blur (map halos, shader cells, packets). 0 = the look James froze 2026-09-06 — never change its default
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.

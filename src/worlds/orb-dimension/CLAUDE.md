@@ -43,8 +43,7 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
   kernels reuse the setup. TRAFFIC STEP 2 (the three tube types) IS CANCELLED — his call
   ("too much work for no important return"; the brief was only to shape the lights' logic).
   THE STATION'S LIGHTS ARE FROZEN (rule below); both blur dials default 0 (v75.1). His traffic
-  speed/amount defaults: he asked to keep his panel values — they never reached the file; if
-  DEFAULTS still read 1/1, ask him for the two numbers.
+  speed/amount defaults are 0.65 / 0.65 (v75.2, his numbers).
 - **v71 + v72 BUILT 2026-09-06 (step 1 of the traffic plan + his flight notes):** a stream
   never lights more than a quarter of its length; far window blur defaults 3 (the start
   preset used to overwrite it — the save button now says when the file was not written);
