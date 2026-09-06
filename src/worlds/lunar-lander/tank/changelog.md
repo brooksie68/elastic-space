@@ -3,6 +3,31 @@
 Newest entries first. Never rewrite or delete earlier entries. The lander
 half's changelog is one folder up.
 
+## 2026-09-06 (later) — Claude (tank session) — round two matched
+
+The lander session sent its round-two presentation values by message and
+answered NEEDS.md (revolved forms for dome / tanks / core / depot are in
+`solid()` now; `LunarCore.hitStructure` is the one rule for structure
+damage). Matched here, nothing else touched:
+
+1. The hostile under the crosshair draws at 1.25 (the lander's hover value),
+   enemies too; the DOM tag is the lander's amber exactly (#ffb457, 0.78rem,
+   700, 0.2em, the glow) — NAME + X, one word under (OVERHANG / RIDGE / DOOR /
+   SHIELD), DOOR SHUT in pink #ff8fa3 as the refusal. Civilians: nothing.
+   The select bracket is the lander's alone — the tank aims, it does not
+   select.
+2. Rubble is the lander's `_rubble` recipe stroke for stroke (same rng seed,
+   same draws), keyed by sid, so a building killed from the ground looks the
+   same from the air.
+3. Structure damage goes through `LunarCore.hitStructure` (the tank gates
+   civilians and the shut door, reads `alive` back from the lander's object,
+   keeps its own score tally). `damageStructure` / `damageEnemy` exported;
+   the look-dev KILL NEAREST uses them. Readout contacts carry sid / id /
+   name / mult / hard / doorShut for the tag.
+
+Sim 78 green; the game page verified silent in the pane: a SAM killed through
+the shared rule flips on both sides, both tallies read 200.
+
 ## 2026-09-06 — Claude (tank session) — THE TANK, first build
 
 James's brief: "like Battle Zone!" First person, full 3-D (turn, look up and
@@ -89,28 +114,3 @@ pane at 1920×1080 and run headless through `LAB.tick` / `TANK_DEBUG.tick`
 (a drive, a shot, a missile inbound, the console reading right). NOT yet
 seen by James. Where to look first: `tmp/lunar-lander/tank-lookdev.html`,
 then `src/worlds/lunar-lander/tank/tank.html`.
-
-## 2026-09-06 (later) — Claude (tank session) — round two matched
-
-The lander session sent its round-two presentation values by message and
-answered NEEDS.md (revolved forms for dome / tanks / core / depot are in
-`solid()` now; `LunarCore.hitStructure` is the one rule for structure
-damage). Matched here, nothing else touched:
-
-1. The hostile under the crosshair draws at 1.25 (the lander's hover value),
-   enemies too; the DOM tag is the lander's amber exactly (#ffb457, 0.78rem,
-   700, 0.2em, the glow) — NAME + X, one word under (OVERHANG / RIDGE / DOOR /
-   SHIELD), DOOR SHUT in pink #ff8fa3 as the refusal. Civilians: nothing.
-   The select bracket is the lander's alone — the tank aims, it does not
-   select.
-2. Rubble is the lander's `_rubble` recipe stroke for stroke (same rng seed,
-   same draws), keyed by sid, so a building killed from the ground looks the
-   same from the air.
-3. Structure damage goes through `LunarCore.hitStructure` (the tank gates
-   civilians and the shut door, reads `alive` back from the lander's object,
-   keeps its own score tally). `damageStructure` / `damageEnemy` exported;
-   the look-dev KILL NEAREST uses them. Readout contacts carry sid / id /
-   name / mult / hard / doorShut for the tag.
-
-Sim 78 green; the game page verified silent in the pane: a SAM killed through
-the shared rule flips on both sides, both tallies read 200.
