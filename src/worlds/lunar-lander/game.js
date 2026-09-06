@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=5';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=6';
 
 const Core = globalThis.LunarCore;
 
@@ -1004,6 +1004,16 @@ function renderWeapons() {
   const hs = $('v-hostiles');
   if (hs) hs.textContent = state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + ' HOSTILES';
 }
+// the weapon rows in the console are buttons too (James: "click on the weapons in the HUD")
+document.querySelectorAll('#weapons .wpn').forEach((row) => {
+  row.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    if (mode !== 'play' || !state) return;
+    const w = row.dataset.w;
+    if (w === 'chaff') { if (Core.dropChaff(state)) { Sfx.chaff(); floatLabel(state.ship.x, state.ship.y - 30, 'CHAFF', 'fuel', 0); renderWeapons(); } }
+    else toggleArm(w);
+  });
+});
 const tagEl = $('target-tag');
 function placeTargetTag(dt) {
   if (denyT > 0) { denyT -= dt; if (denyT <= 0) denyWhy = null; }

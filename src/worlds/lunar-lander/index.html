@@ -128,7 +128,7 @@
     /* ---- the weapons (round two): three rows, the armed one lit ---- */
     #weapons-panel { gap: 0.35em; }
     #weapons { display: flex; flex-direction: column; gap: 0.18em; margin-top: 0.3em; }
-    .wpn { display: flex; align-items: baseline; gap: 0.55em; font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); padding: 0.12em 0.45em; border-radius: 6px; border: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
+    .wpn { pointer-events: auto; cursor: pointer; display: flex; align-items: baseline; gap: 0.55em; font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); padding: 0.12em 0.45em; border-radius: 6px; border: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
     .wpn .key { display: inline-block; min-width: 1.2em; text-align: center; font-size: 0.85em; color: var(--ink-faint); border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0 0.15em; letter-spacing: 0; }
     .wpn .wname { flex: 1; }
     .wpn .wcount { font-variant-numeric: tabular-nums; font-size: 1.25em; font-weight: 300; letter-spacing: 0; color: var(--ink); }
@@ -136,6 +136,7 @@
     .wpn.armed .key { color: var(--ph); border-color: var(--ph); }
     .wpn.armed.locked { animation: hot 520ms ease-in-out infinite alternate; }
     .wpn.empty .wcount { color: var(--ink-faint); }
+    .wpn:hover { color: var(--ink); border-color: var(--ink-faint); }
     #weapon-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; min-height: 1.2em; }
     /* the cursor's tag over a hostile: amber, name + X, one word of the trick */
     #target-tag { display: none; color: #ffb457; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.2em; text-indent: 0.2em; text-shadow: 0 0 12px rgba(255, 180, 87, 0.45); }
@@ -583,6 +584,6 @@
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=8"></script>
+  <script type="module" src="game.js?v=9"></script>
 </body>
 </html>

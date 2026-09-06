@@ -2,6 +2,13 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (his first look at the weapons: "pretty fun") — Claude
+
+Two notes, both done: the structures are drawn FLAT again in the lander's
+side view (the extruded back face "just makes it look kind of weird and
+blurry"; `solid()` stays in structures.js for the tank); and the three
+weapon rows in the console are clickable — missile / laser arm, chaff drops.
+
 ## 2026-09-06 (Battle for the Moon, round two: the weapons) — Claude
 
 Built on James's "you can continue" after round one. Everything is in the pure

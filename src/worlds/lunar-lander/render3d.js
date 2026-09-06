@@ -577,13 +577,10 @@ export class LanderScene {
     const kind = ST && ST.BY_ID[st.id];
     if (!kind) return;
     const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
-    // the same solid the tank walks around, seen from the side: the front
-    // face full, the back face and depth edges a step dimmer
-    const segs3 = ST.solid(st.id);
-    for (const g of segs3) {
-      const back = g[2] < 0 || g[5] < 0;
-      B.seg(cx + g[0], cy + g[1], z + g[2], cx + g[3], cy + g[4], z + g[5], back ? bright * 0.55 : bright);
-    }
+    // the flat profile on the flight plane (James, 2026-09-06: the extruded
+    // back face "just makes it look kind of weird and blurry" — 2-D here; the
+    // tank draws the solid)
+    for (const g of kind.segs) B.seg(cx + g[0], cy + g[1], z, cx + g[2], cy + g[3], z, bright);
   }
   // What is left of a destroyed structure: a few low broken strokes, hashed
   // from its id so they never move.
@@ -911,10 +908,10 @@ export class LanderScene {
   // A structure comes apart along its own strokes, the way the lander does.
   spawnBreak(st) {
     const ST = globalThis.LunarStructures;
-    const segs3 = ST && ST.solid(st.id);
-    if (!segs3) return;
+    const kind = ST && ST.BY_ID[st.id];
+    if (!kind) return;
     const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
-    for (const q of segs3) {
+    for (const q of kind.segs.map((g) => [g[0], g[1], 0, g[2], g[3], 0])) {
       const mx = (q[0] + q[3]) / 2, my = (q[1] + q[4]) / 2, mz = (q[2] + q[5]) / 2;
       const ang = this._rand() * Math.PI * 2;
       const sp = 20 + this._rand() * 60;
@@ -1357,7 +1354,7 @@ export class LanderScene {
         const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
         // the strokes step up toward white: hover a step, selected a pulse
         const b = which === 'target' ? 1.7 + 0.5 * Math.sin(this.time * 9) : 1.25;
-        for (const g of kind.segs) D.seg(cx + g[0], cy + g[1], kind.d / 2, cx + g[2], cy + g[3], kind.d / 2, b);
+        for (const g of kind.segs) D.seg(cx + g[0], cy + g[1], 0, cx + g[2], cy + g[3], 0, b);
         if (which === 'target') {
           // the bracket: four corners around the footprint, breathing
           const m = 8 + 3 * Math.sin(this.time * 6), L = 10;
