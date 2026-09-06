@@ -3,6 +3,16 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v70.1 — 2026-09-06 (Claude, James: "a hard fail... super, super boring again... so little traffic")
+
+The v70 melt was the fail: the variety streams use 1.8 m beads, under a pixel from the pod, and
+the melt dissolved them into near-nothing — only the big regular pulses survived, so the mix
+read as one boring pattern with almost no traffic. Now a bead NEVER melts away: below ~2 px it
+grows to 2 px on screen and keeps at least 60% of its light (moving beads do not twinkle).
+More of it too: regular 3–8 pulses per length (was 2–5), groups 4–10, sliding groups 3–6,
+variety beads 2.4 m, the second stream on 45% of members (was 30%). Shares unchanged.
+Sheet: tmp/snapshots/station-v70-1-6km.png. Cache tags ?v=701; sims + shader-check green.
+
 ## v70 — 2026-09-06 (Claude, James at 6.3 km: "a billion tiny lights... every one of those lights is twinkling")
 
 His read of Dominant from the pod: the whole station shimmered when the ship moved, and every

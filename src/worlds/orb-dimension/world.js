@@ -6373,13 +6373,13 @@ float th3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5
 // v70 traffic (James: the v68.13 mix had "too many densely packed, unbroken
 // streams"; the old way — evenly spaced, medium speed, regular — is most of
 // it; variety without density; dense chains almost never, and dimmer).
-// mpp = metres per pixel along the member × the melt dial: a bead below a
-// few pixels dissolves into its faint duty-cycle average instead of strobing.
+// mpp = metres per pixel along the member × the melt dial: a bead below ~2 px
+// grows to 2 px on screen (v70.1) so the variety survives at flying distance.
 float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) {
   float total = 0.0;
   for (int st = 0; st < 2; st++) {
     vec3 sd = seedP * (0.019 + float(st) * 0.007) + float(st) * 3.3;
-    if (st == 1 && th3(sd + 0.5) > 0.3) break;
+    if (st == 1 && th3(sd + 0.5) > 0.45) break;
     float per = mix(40.0, 90.0, th3(sd + 2.2));
     float epoch = floor(t / per + th3(sd + 7.0));
     vec3 es = sd + epoch * 1.37;
@@ -6387,14 +6387,14 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     float dir = (th3(es + 8.1) < 0.5 ? -1.0 : 1.0) * (st == 1 ? -1.0 : 1.0);
     float sp, N, G, spd, hw, gain = 1.0, morse = 0.0, sway = 0.0;
     if (r < 0.40) {        // regular: pulse, gap, pulse, gap — 2–5 per length, medium speed
-      float k = floor(2.0 + th3(es + 1.9) * 4.0);
+      float k = floor(3.0 + th3(es + 1.9) * 6.0);
       sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.12, 0.26, th3(es + 3.7)); hw = max(3.0, sp * 0.03);
     } else if (r < 0.55) { // small groups with real gaps: 3–8 beads, then a long quiet
-      sp = mix(8.0, 25.0, th3(es + 1.9)); N = floor(3.0 + th3(es + 4.1) * 6.0); G = mix(60.0, 400.0, th3(es + 4.4)); spd = mix(0.08, 0.3, th3(es + 3.7)); hw = 1.8;
+      sp = mix(8.0, 25.0, th3(es + 1.9)); N = floor(4.0 + th3(es + 4.1) * 7.0); G = mix(60.0, 300.0, th3(es + 4.4)); spd = mix(0.08, 0.3, th3(es + 3.7)); hw = 2.4;
     } else if (r < 0.67) { // Morse: an even ladder with beads dropped at random — odd and even clumps
-      sp = mix(8.0, 20.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.06, 0.2, th3(es + 3.7)); hw = 1.8; morse = 1.0;
+      sp = mix(8.0, 20.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.06, 0.2, th3(es + 3.7)); hw = 2.4; morse = 1.0;
     } else if (r < 0.78) { // back and forth: one small group sliding to and fro along the member
-      sp = mix(10.0, 20.0, th3(es + 1.9)); N = floor(2.0 + th3(es + 4.1) * 4.0); G = 0.0; spd = mix(0.05, 0.15, th3(es + 3.7)); hw = 1.8; sway = 1.0;
+      sp = mix(10.0, 20.0, th3(es + 1.9)); N = floor(3.0 + th3(es + 4.1) * 4.0); G = 0.0; spd = mix(0.05, 0.15, th3(es + 3.7)); hw = 2.4; sway = 1.0;
     } else if (r < 0.90) { // a sparse singleton, slow or quick
       sp = Lm; N = 1e6; G = 0.0; spd = mix(0.08, 0.35, th3(es + 3.7)); hw = max(3.0, Lm * 0.008);
     } else if (r < 0.95) { // quick and few: 2–3 per length, fast
@@ -6417,14 +6417,14 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     float pos = N > 1e5 ? xM : mod(xM, P);
     float idx = floor(pos / sp);
     float dd = abs(fract(pos / sp) - 0.5) * sp;
-    float bead = smoothstep(hw + 1.6, hw * 0.5, dd) + exp(-dd / (hw * 2.5)) * 0.15;
+    // v70.1 (James: the v70 melt made it "super, super boring... so little
+    // traffic"): a bead never melts away — below ~2 px it grows to 2 px on
+    // screen and keeps at least 60% of its light. Moving beads don't twinkle.
+    float hwS = max(hw, 1.0 * mpp);
+    float bead = (smoothstep(hwS + 1.6, hwS * 0.5, dd) + exp(-dd / (hwS * 2.5)) * 0.15) * max(0.6, hw / hwS);
     float keep = step(idx, N - 0.5) * step(0.0, pos);
     keep *= mix(1.0, step(0.42, th3(vec3(idx, es.x, es.y))), morse);
-    // the melt: beads under ~3 px on screen become their average
-    float px = 2.0 * hw / max(mpp, 1e-6);
-    float crisp = smoothstep(2.0, 6.0, px);
-    float duty = clamp(2.0 * hw / sp, 0.0, 1.0) * (N > 1e5 ? 1.0 : N * sp / P) * mix(1.0, 0.58, morse) * 0.7;
-    total += mix(duty, bead * keep, crisp) * gain;
+    total += bead * keep * gain;
   }
   return total;
 }`;
