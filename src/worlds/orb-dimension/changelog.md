@@ -3,6 +3,17 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v75 — 2026-09-06 (Claude, James: the station at blur 0 is PERFECT — "freeze that and never change it again")
+
+- **"far window blur station lights"** (new key `stnFarBlur`, default 0): the station's map
+  halos, its shader window cells and every packet now take THIS dial. At 0 the station renders
+  through the same shader paths with the same values it had at his dial 0 — the look he froze.
+  Its default is never to change (memory `station-lights-frozen`).
+- **"far window blur"** is the buildings' dial only, and it finally reaches the pane itself
+  (`uCoreBlur` 1 for towers): the old code only blurred the halo, which amber tower windows
+  barely carry, so the dial "did nothing" on buildings. Dial 0 = unchanged.
+- Lab: station 0, towers 3. Cache tags ?v=760; sims + shader-check green.
+
 ## v74.1 — 2026-09-06 (Claude, James: "definitely an improvement" — two notes)
 
 - The spine's band of the map: three amber crew decks (was one) and ~4× the small panes

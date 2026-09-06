@@ -103,6 +103,7 @@
     trafSpeed: 1, // v72: one speed knob over every packet (struts, bridges, feeds)
     trafAmt: 1, // v72: how many packets — a chain keeps its spacing pattern with fewer beads
     stnLights: 1, // v73: the station's window count (map + shader cells); towers unaffected
+    stnFarBlur: 0, // v75: the STATION's blur (map halos, shader cells, packets). 0 = the look James froze 2026-09-06 — never change its default
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -205,6 +206,7 @@
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
     { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
+    { key: "stnFarBlur", label: "far window blur station lights", min: 0, max: 9, step: 0.5 },
     { key: "trafSpeed", label: "traffic speed ×", min: 0.25, max: 3, step: 0.05 },
     { key: "trafAmt", label: "traffic amount", min: 0.1, max: 1, step: 0.05 },
     { key: "stnLights", label: "station lights", min: 0, max: 2, step: 0.1 },
@@ -7705,6 +7707,7 @@ uniform float uMelt;
 uniform float uFarBlur;
 uniform float uFarFollow; // v70: 1 = past the cap, follow the pixel footprint fully (the station)
 uniform float uLightMul; // v73: the station's "station lights" dial; 1 for the towers
+uniform float uCoreBlur; // v75: 1 = the dial blurs the pane itself (towers); 0 = halo only (the station, frozen)
 uniform float uGlow;
 uniform float uLidMask;
 uniform float uTime;
@@ -7802,6 +7805,10 @@ void main() {
   // mip per unit; 0 = sharp, 3 = the soft read he keeps). The v60 point-sample cap
   // (twinkle below the dial) is retired.
   float lodT = min(lod0 + uFarBlur * 0.5, 9.0);
+  // v75 (James: the dial "no longer responding at all" on the buildings — it only ever
+  // reached the halo, and amber panes carry almost none): for the towers the dial softens
+  // the pane itself. Dial 0, or the station (uCoreBlur 0): lm untouched.
+  lm = mix(lm, textureLod(uLight, vUV, lodT) * (1.0 - isStrut) * uLightMul, uCoreBlur * step(0.01, uFarBlur));
   for (int j = -2; j <= 2; j++)
     for (int i = -2; i <= 2; i++) {
       vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, lodT);
@@ -7850,7 +7857,7 @@ void main() {
   const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
     try {
-      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uFarFollow", "uLightMul", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
+      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uFarFollow", "uLightMul", "uCoreBlur", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
       const mkTex = (img, alpha, nearestMag) => {
         const tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 11); // scratch unit for upload; draw binds per kind
@@ -8769,6 +8776,10 @@ void main() {
               // map is a few long lines; the twinkle was the seated towers) and follows past it
               gl.uniform1f(bldgMesh.prog.U.uFarFollow, k === bldgMesh.stationKind ? 1 : 0);
               gl.uniform1f(bldgMesh.prog.U.uLightMul, k === bldgMesh.stationKind ? cfg.stnLights : 1); // v73
+              // v75: two dials — the station's (frozen at 0 by James) and the buildings'; only the
+              // buildings' reaches the pane itself (uCoreBlur), the station keeps its halo-only path
+              gl.uniform1f(bldgMesh.prog.U.uFarBlur, k === bldgMesh.stationKind ? cfg.stnFarBlur : cfg.bldgFarBlur);
+              gl.uniform1f(bldgMesh.prog.U.uCoreBlur, k === bldgMesh.stationKind ? 0 : 1);
               bound = true;
             }
             bldgModel(b);
@@ -8790,7 +8801,7 @@ void main() {
         gl.uniform1f(commGL.solid.U.uTempo, cfg.pulseTempo);
         gl.uniform1f(commGL.solid.U.uTrafSpeed, cfg.trafSpeed); // v72
         gl.uniform1f(commGL.solid.U.uTrafAmt, cfg.trafAmt);
-        gl.uniform1f(commGL.solid.U.uFarBlur, cfg.bldgFarBlur);
+        gl.uniform1f(commGL.solid.U.uFarBlur, cfg.stnFarBlur); // v75: the station's dial
         gl.uniform1f(commGL.solid.U.uStnLights, cfg.stnLights); // v73
         for (const cd of commDraw) {
           gl.uniform3fv(commGL.solid.U.uOrigin, cd.o);
@@ -8821,7 +8832,7 @@ void main() {
           gl.uniform1f(pr.U.uTime, t);
           gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
           if (pass === "bridge") gl.uniform1f(pr.U.uWear, cfg.wear); // v67: the sheaths never got the dial in v66
-          if (pass === "bridge") { gl.uniform1f(pr.U.uTrafSpeed, cfg.trafSpeed); gl.uniform1f(pr.U.uTrafAmt, cfg.trafAmt); gl.uniform1f(pr.U.uFarBlur, cfg.bldgFarBlur); } // v72
+          if (pass === "bridge") { gl.uniform1f(pr.U.uTrafSpeed, cfg.trafSpeed); gl.uniform1f(pr.U.uTrafAmt, cfg.trafAmt); gl.uniform1f(pr.U.uFarBlur, cfg.stnFarBlur); } // v72; v75: the station's dial
           if (pass === "glass") {
             gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
             gl.uniform1f(pr.U.uHomePass, 0);
@@ -9194,7 +9205,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "trafSpeed", "trafAmt", "stnLights", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "trafSpeed", "trafAmt", "stnLights", "citizens", "bldgGlow", "bldgFarBlur", "stnFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },

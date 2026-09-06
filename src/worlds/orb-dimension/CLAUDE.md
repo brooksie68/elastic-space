@@ -91,6 +91,13 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## World-specific rules
 
+- THE STATION LIGHTS ARE FROZEN (James, 2026-09-06: "the exact right number of lights...
+  freeze that and never change it again. If that ever changes again, I'm going to be so
+  fucking pissed off"): the Dominant station's light look at `stnFarBlur` 0 / `stnLights` 1 —
+  the map (gen_station_light.mjs v74.1, BLDG_V 34), the shader window cells (~8% at 2.2×), the
+  packets, and the halo path in BLDG_FS — is his. Do not change their defaults, counts,
+  brightness or blur. "far window blur" is the BUILDINGS' dial; "far window blur station lights"
+  is the station's and defaults to 0.
 - THE BALL (v63): orbs are per-pixel sphere impostors. The rules that hold it up —
   (1) the fragment shader writes `gl_FragDepth` on EVERY path (default
   `gl_FragCoord.z` at the top; a path that skips it makes depth undefined);
