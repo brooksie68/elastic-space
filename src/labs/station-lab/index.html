@@ -55,7 +55,7 @@ const TAU = Math.PI * 2;
     return p;
   };
   const mk = (vs, fs, names) => { const p = link(vs, fs); const U = {}; for (const n of names) U[n] = gl.getUniformLocation(p, n); return { p, U }; };
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam", "uTrafSpeed", "uTrafAmt", "uFarBlur"];
   const solid = mk(grab("COMM_VS"), sub("COMM_FS_SOLID"), COMM_US);
   const bridge = mk(grab("COMM_VS"), sub("COMM_FS_BRIDGE"), COMM_US);
   const glass = mk(grab("COMM_VS"), sub("COMM_FS_GLASS"), COMM_US.concat(["uHomePass", "uHomeSharp"]));
@@ -84,7 +84,7 @@ const TAU = Math.PI * 2;
     gl.uniform1fv(pr.U["uFams[0]"], fams);
     gl.uniform3fv(pr.U.uCamPos, [0, 0, 0]);
     gl.uniform1f(pr.U.uFog, 0.0); gl.uniform1f(pr.U.uAer, 1.0 / 120000); gl.uniform1f(pr.U.uMelt, 1.0);
-    gl.uniform1f(pr.U.uTempo, 1.0); gl.uniform1f(pr.U.uFade, 1.0); gl.uniform1f(pr.U.uGlow, 1.0); gl.uniform1f(pr.U.uWear, 0.8);
+    gl.uniform1f(pr.U.uTempo, 1.0); gl.uniform1f(pr.U.uTrafSpeed, 1.0); gl.uniform1f(pr.U.uTrafAmt, 1.0); gl.uniform1f(pr.U.uFarBlur, 3.0); gl.uniform1f(pr.U.uFade, 1.0); gl.uniform1f(pr.U.uGlow, 1.0); gl.uniform1f(pr.U.uWear, 0.8);
     if (pr.U.uBridgeFam) gl.uniform1f(pr.U.uBridgeFam, -1);
     if (pr.U.uHomePass) { gl.uniform1f(pr.U.uHomePass, 0); gl.uniform1f(pr.U.uHomeSharp, 1); }
   }
@@ -190,7 +190,7 @@ const TAU = Math.PI * 2;
       let bound = false;
       for (const b of bldgMesh.list) {
         if (b.kind !== k) continue;
-        if (!bound) { gl.bindVertexArray(k.vao); gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf); gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight); gl.activeTexture(gl.TEXTURE0); gl.uniform1f(bprog.U.uLidMask, k.body === "sphere" ? 0 : 1); gl.uniform1f(bprog.U.uFarBlur, k.station ? 3 : 0); gl.uniform1f(bprog.U.uFarFollow, k.station ? 1 : 0); bound = true; }
+        if (!bound) { gl.bindVertexArray(k.vao); gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf); gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight); gl.activeTexture(gl.TEXTURE0); gl.uniform1f(bprog.U.uLidMask, k.body === "sphere" ? 0 : 1); gl.uniform1f(bprog.U.uFarBlur, 3); gl.uniform1f(bprog.U.uFarFollow, k.station ? 1 : 0); bound = true; }
         bldgModel(b); gl.uniformMatrix4fv(bprog.U.uModel, false, bldgMat); gl.drawElements(gl.TRIANGLES, k.count, gl.UNSIGNED_INT, 0);
       }
     }

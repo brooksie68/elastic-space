@@ -34,7 +34,13 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
-- **STATION TRAFFIC — THE PLAN, NOT YET BUILT (2026-09-06 03:00, James: "I like your
+- **v71 + v72 BUILT 2026-09-06 (step 1 of the traffic plan + his flight notes):** a stream
+  never lights more than a quarter of its length; far window blur defaults 3 (the start
+  preset used to overwrite it — the save button now says when the file was not written);
+  building windows show earlier (far gain); station windows ×3 + brighter
+  (`gen_station_light.mjs`, KEEP); white packets 45%; dials "traffic speed ×" + "traffic
+  amount"; packets soften with far window blur. AWAITING HIS FLIGHT; then traffic step 2.
+- **STATION TRAFFIC — THE PLAN, STEP 1 BUILT AS v71, STEP 2 OPEN (2026-09-06 03:00, James: "I like your
   plan... I need to review it again tomorrow. Don't lose it.").** Read the plan file FIRST:
   `C:/Users/brook/.claude/plans/stop-rushing-forward-iterative-zebra.md` (a copy is in the changelog entry "2026-09-06 — the traffic plan"). Short form:
   the STATION LAB AS IT STANDS IS THE TARGET PICTURE from every distance (his words: windows

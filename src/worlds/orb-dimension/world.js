@@ -99,7 +99,9 @@
     saeNotice: 400,
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
-    bldgFarBlur: 0, // v60: far-window mip follow (0 = v59 point-sampled twinkle)
+    bldgFarBlur: 3, // v60: far-window mip follow (0 = v59 point-sampled twinkle); v72: default 3 (James keeps it there)
+    trafSpeed: 1, // v72: one speed knob over every packet (struts, bridges, feeds)
+    trafAmt: 1, // v72: how many packets — a chain keeps its spacing pattern with fewer beads
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -202,6 +204,8 @@
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
     { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
+    { key: "trafSpeed", label: "traffic speed ×", min: 0.25, max: 3, step: 0.05 },
+    { key: "trafAmt", label: "traffic amount", min: 0.1, max: 1, step: 0.05 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -290,17 +294,20 @@
   let onPresetStoreReplaced = null; // the tuner hooks its picker refresh here
   let lateApplyStart = null; // the tuner hooks the late start-preset apply here (v54.3)
   function pushPresetFile() {
-    fetch(PRESET_API, {
+    // v72: resolves true when the file took the write, false when it did not
+    // (file:// or server down — localStorage still has it, but the file's start
+    // preset wins on the next reload, so the tuner tells James)
+    return fetch(PRESET_API, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(presetStore),
-    }).catch(() => {}); // file:// or server down — localStorage still has it
+    }).then((r) => r.ok).catch(() => false);
   }
   function savePresetStore() {
     try {
       localStorage.setItem(PRESET_KEY, JSON.stringify(presetStore));
     } catch {}
-    pushPresetFile();
+    return pushPresetFile();
   }
   // v54.3: the API route only exists on the dev server — on a public
   // static host, fall back to the committed file itself, so a visitor
@@ -6358,7 +6365,7 @@ vec3 hueCol(float h) {
 // — deep blue, sky blue, white — picked per piece from r in [0,1). Never a
 // family hue.
 vec3 packetCol(float r) {
-  return r < 0.34 ? vec3(0.18, 0.42, 1.0) : r < 0.67 ? vec3(0.30, 0.86, 0.96) : vec3(0.88, 0.94, 1.0); // v67.1: the middle one is aqua
+  return r < 0.28 ? vec3(0.18, 0.42, 1.0) : r < 0.55 ? vec3(0.30, 0.86, 0.96) : vec3(0.88, 0.94, 1.0); // v67.1: the middle one is aqua; v72: white 45%
 }
 // v68.13 THE TRAFFIC (James's mix, for EVERY light-carrying member — struts,
 // spokes, hoops, rails, bridges, feeds): 50% the standard — evenly spaced
@@ -6373,7 +6380,7 @@ float th3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5
 // it; variety without density; dense chains almost never, and dimmer).
 // mpp = metres per pixel along the member × the melt dial: a bead below ~2 px
 // grows to 2 px on screen (v70.1) so the variety survives at flying distance.
-float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) {
+float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp, float amt, float blur) {
   float total = 0.0;
   for (int st = 0; st < 2; st++) {
     vec3 sd = seedP * (0.019 + float(st) * 0.007) + float(st) * 3.3;
@@ -6422,7 +6429,7 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     // v70.1 (James: the v70 melt made it "super, super boring... so little
     // traffic"): a bead never melts away — below ~2 px it grows to 2 px on
     // screen and keeps at least 60% of its light. Moving beads don't twinkle.
-    float hwS = max(hw, 1.0 * mpp);
+    float hwS = max(hw, (1.0 + 0.5 * blur) * mpp); // v72: "far window blur" softens far beads too
     float bead = (smoothstep(hwS + 1.6, hwS * 0.5, dd) + exp(-dd / (hwS * 2.5)) * 0.15) * max(0.6, hw / hwS);
     float keep = step(idx, N - 0.5) * step(0.0, pos);
     keep *= mix(1.0, step(0.42, th3(vec3(idx, es.x, es.y))), morse);
@@ -6430,6 +6437,7 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) 
     // beads thin out with distance so neighbours stay ≥ 6 px apart on screen —
     // dots with gaps at any range, never a solid line
     float thin = max(1.0, ceil(8.0 * mpp / sp)); // v71: 8 px apart on screen (2 px beads = a quarter lit)
+    thin *= max(1.0, floor(1.0 / max(amt, 0.05) + 0.5)); // v72 "traffic amount": every k-th bead, spacing pattern kept
     keep *= step(mod(idx, thin), 0.5);
     total += bead * keep * gain;
   }
@@ -6547,6 +6555,9 @@ uniform vec3 uCamPos;
 uniform float uFog;
 uniform float uTime;
 uniform float uTempo;
+uniform float uTrafSpeed; // v72
+uniform float uTrafAmt;
+uniform float uFarBlur;
 uniform float uFade;
 uniform float uFams[5];
 uniform float uMelt;
@@ -6600,7 +6611,7 @@ void main() {
     vec2 cell = floor(uvw), f2 = fract(uvw);
     float hc = mh(vec3(cell, floor(vE.x * 0.01)));
     float hr = mh(vec3(cell.y, 3.0, floor(vE.y * 0.01)));
-    float lit = step(mix(0.7, 0.94, straight), hc) * step(mix(0.4, 0.62, straight), hr);
+    float lit = step(mix(0.7, 0.86, straight), hc) * step(mix(0.4, 0.62, straight), hr); // v72: station members 6% → 14% of cells
     float pane = step(0.3, f2.x) * step(f2.x, 0.7) * step(0.36, f2.y) * step(f2.y, 0.64);
     vec3 wc = packetCol(mh(vec3(cell, 7.7)));
     float faceRoll = mh(floor(N * 3.0) + vE * 0.003);
@@ -6611,7 +6622,7 @@ void main() {
     vec3 rc = packetCol(mh(vec3(faceRoll, 5.0, 1.0)));
     float pxW = 1.0 / max(max(fwidth(uvw.x), fwidth(uvw.y)), 1e-6);
     float crispW = uMelt < 0.001 ? 1.0 : smoothstep(2.0 * uMelt, 6.0 * uMelt, pxW);
-    vec3 e = wc * lit * pane * 1.8 + rc * rail * (0.3 + dash * 1.4);
+    vec3 e = wc * lit * pane * mix(1.8, 2.6, straight) + rc * rail * (0.3 + dash * 1.4); // v72: station windows brighter
     e = mix(wc * 0.05 * step(0.4, hr) * (1.0 - straight * 0.7) + rc * 0.04 * step(0.62, faceRoll), e, crispW);
     col += e * 2.0;
   }
@@ -6620,7 +6631,7 @@ void main() {
     // v68.13: the shared traffic roll (COMM_HUE trafficAt) — his 50/15/10/15/10 mix
     float Lm = max(strutLen, 40.0);
     float line = smoothstep(0.34, 0.22, abs(vUV.y - 0.5));   // a line down the bar, not the whole face
-    float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo, fwidth(vUV.x) * Lm * uMelt);
+    float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo * uTrafSpeed, fwidth(vUV.x) * Lm * uMelt, uTrafAmt, uFarBlur);
     col += famc * (pkS * line * 2.2 + 0.03);
   }
   if (vAux.x > 2.5) {
@@ -6816,6 +6827,9 @@ uniform vec3 uCamPos;
 uniform float uFog;
 uniform float uTime;
 uniform float uTempo;
+uniform float uTrafSpeed; // v72
+uniform float uTrafAmt;
+uniform float uFarBlur;
 uniform float uFade;
 uniform float uFams[5];
 in vec3 vP;
@@ -6856,20 +6870,23 @@ void main() {
   // form: per-bridge speed on a log scale, one to three 5 m packets each way.
   float bSpd = 0.03 * exp(2.6 * bh(vE * 0.029 + 2.2));
   float bCnt = floor(bh(vE * 0.031 + 6.1) * 2.999) + 1.0;
-  float p1 = fract(vUV.x - uTime * uTempo * bSpd + vAux.z);
-  float p2 = fract(-vUV.x - uTime * uTempo * bSpd * 0.8 + vAux.z * 1.7);
+  bCnt = max(1.0, floor(bCnt * uTrafAmt + 0.5)); // v72 "traffic amount"
+  float p1 = fract(vUV.x - uTime * uTempo * uTrafSpeed * bSpd + vAux.z);
+  float p2 = fract(-vUV.x - uTime * uTempo * uTrafSpeed * bSpd * 0.8 + vAux.z * 1.7);
   float pk = 0.0;
   float spanM = max(vAux.x, 100.0);                         // aux.x = the span in metres
+  // v72: "far window blur" softens far bridge packets — the bead grows with metres-per-pixel
+  float bw = max(1.6, fwidth(vUV.x) * spanM * (1.0 + 0.5 * uFarBlur));
   for (float k = 0.0; k < 3.0; k += 1.0) {
     if (k < bCnt) {
       float d1 = abs(fract(p1 + k * 14.0 / spanM) - 0.5) * spanM, d2 = abs(fract(p2 + k * 14.0 / spanM) - 0.5) * spanM;
-      pk += smoothstep(4.5, 1.6, d1) + exp(-d1 * 0.3) * 0.18 + smoothstep(4.5, 1.6, d2) + exp(-d2 * 0.3) * 0.18;
+      pk += (smoothstep(bw * 2.8, bw, d1) + exp(-d1 * 0.3) * 0.18 + smoothstep(bw * 2.8, bw, d2) + exp(-d2 * 0.3) * 0.18) * min(1.0, 1.6 / bw + 0.6);
     }
   }
   if (vAux.w > 0.5) {
     // a skull feed (v51): no return traffic — three packets streaming into
     // the bone, a hotter carrier line under them
-    float pf = fract(vUV.x - uTime * uTempo * 0.16 + vAux.z);
+    float pf = fract(vUV.x - uTime * uTempo * uTrafSpeed * 0.16 + vAux.z);
     pk = 0.0;
     for (float k = 0.0; k < 3.0; k += 1.0) {
       float df = abs(fract(pf + k * 0.333) - 0.5) * spanM;
@@ -6945,7 +6962,7 @@ void main() {
   float keep = 1.0 - sA;
   oC = vec4(core.rgb * keep + aerial(scol, bd) * sA, core.a * keep + sA);
 }`;
-  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam"];
+  const COMM_US = ["uVP", "uOrigin", "uCamPos", "uFog", "uAer", "uMelt", "uTime", "uTempo", "uFade", "uGlow", "uFams[0]", "uHomePass", "uHomeSharp", "uHull", "uIron", "uSteel", "uArmor", "uWear", "uBridgeFam", "uTrafSpeed", "uTrafAmt", "uFarBlur"];
   function makeCommVao(mesh) {
     const vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
@@ -7791,10 +7808,14 @@ void main() {
   vec3 core = lm.rgb + vec3(1.0) * inside * inside * uGlow * 0.55 * wCore;   // toward white ONLY in the middle
   vec3 spread = halo * uGlow * 0.06 + haloW * uGlow * 1.5;                       // pane whisper + neon bloom
   vec3 glow = mix(core, halo * (1.0 + uGlow), melt * 0.6) + spread;
+  // v72 (James: building windows "don't show up until I'm relatively close"): the far mips
+  // average sparse panes toward nothing — a gain rising with the mip level (×1 near, ×3 by
+  // mip 4) keeps far windows reading as a glow
+  glow *= 1.0 + min(lod0, 4.0) * 0.5;
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "30"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "31"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
@@ -8745,6 +8766,9 @@ void main() {
         gl.uniform1f(commGL.solid.U.uMelt, cfg.melt);
         gl.uniform1f(commGL.solid.U.uTime, t);
         gl.uniform1f(commGL.solid.U.uTempo, cfg.pulseTempo);
+        gl.uniform1f(commGL.solid.U.uTrafSpeed, cfg.trafSpeed); // v72
+        gl.uniform1f(commGL.solid.U.uTrafAmt, cfg.trafAmt);
+        gl.uniform1f(commGL.solid.U.uFarBlur, cfg.bldgFarBlur);
         for (const cd of commDraw) {
           gl.uniform3fv(commGL.solid.U.uOrigin, cd.o);
           gl.uniform1f(commGL.solid.U.uFade, cd.fade);
@@ -8774,6 +8798,7 @@ void main() {
           gl.uniform1f(pr.U.uTime, t);
           gl.uniform1f(pr.U.uTempo, cfg.pulseTempo);
           if (pass === "bridge") gl.uniform1f(pr.U.uWear, cfg.wear); // v67: the sheaths never got the dial in v66
+          if (pass === "bridge") { gl.uniform1f(pr.U.uTrafSpeed, cfg.trafSpeed); gl.uniform1f(pr.U.uTrafAmt, cfg.trafAmt); gl.uniform1f(pr.U.uFarBlur, cfg.bldgFarBlur); } // v72
           if (pass === "glass") {
             gl.uniform1f(pr.U.uGlow, cfg.nodeGlow);
             gl.uniform1f(pr.U.uHomePass, 0);
@@ -9146,7 +9171,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "trafSpeed", "trafAmt", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },
@@ -9252,7 +9277,9 @@ void main() {
     const name = nameInput.value.trim() || presetSel.value;
     if (!name) { say("type a name, or pick a preset to overwrite, then save"); return; }
     presetStore.presets[name] = cfgSnapshot();
-    savePresetStore();
+    savePresetStore().then((ok) => {
+      if (!ok) say(`"${name}" is saved in this browser only — the presets FILE was not written (server not reached), so a reload may load the old start preset`);
+    });
     refreshPresets();
     presetSel.value = name;
     nameInput.value = "";
