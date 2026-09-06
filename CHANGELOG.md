@@ -8,6 +8,14 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-06 — Claude — Lunar Lander becomes Battle for the Moon 2075 (lander side)
+- Fuel drought rule, zoom reads the pad, gyro + landing radar cut (his notes).
+- Level-1 design agreed and built as rounds one and two: `structures.js` (18 shared
+  drawings + the 3-D solid for the tank), chunk structures, the four 1979 selections
+  gone, missile / laser / targeting / pad supplies, level goal; he flew it, "pretty fun".
+- A second session owns the TANK half (`tank/`, brief `tank-brief.md`); one shared score.
+- Round three (hostile fire) is next, on his go. Detail: world changelog.
+
 ## 2026-09-05 — Codex — Fireplace volume refinement
 
 Thinned the experimental volume, reduced glare, and added sharper moving gaps;

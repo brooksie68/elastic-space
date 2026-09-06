@@ -36,12 +36,14 @@ landing. Plus ten more man-made greebles on the ground.
 The plan (three rounds, his eyes between each):
 1. Structures — BUILT 2026-09-06 (changelog "round one"): `structures.js`
    (18 drawings), `chunk.structures`, solid, the four selections gone.
-   AWAITING HIS EYES.
+   HE FLEW IT: structures drawn FLAT in this view (his call), 2-D stays.
 2. Weapons + refills — BUILT 2026-09-06 (changelog "round two"): `fire` /
    `targetable` / `stepShots` / pad supplies in the core; 1 / 2 / C / right-
    click in the shell; the tag, the bracket, the dart, the beam, the break.
-   AWAITING HIS EYES.
-3. Hostile fire — SAM sites, warning + icon + pink range, chaff.
+   HE FLEW IT: "pretty fun"; weapon rows are buttons (his ask). Done.
+3. Hostile fire — SAM sites, warning + icon + pink range, chaff. **NEXT —
+   START HERE next session, on his go** (the design above is agreed; nothing
+   built for it yet: no SAM launches, no warning icon, chaff only drops).
 Everything in the pure core with sim tests; animations in the renderer.
 
 THE TARGET SYSTEM (agreed):
@@ -101,6 +103,10 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 `state.score` through `hitStructure`; the joined game keeps one score.
 
 ## START HERE (next session)
+
+**2026-09-06: start at "Round one design" item 3 above (hostile fire), on
+James's go.** Read `tank/NEEDS.md` first. The rest of this section is the
+shipped Lunar Lander state underneath.
 
 **SHIPPED 2026-09-04** — James flew rounds three and four the same night, said
 "I really like this. It's fun," and asked for egress: four ways out are in and
