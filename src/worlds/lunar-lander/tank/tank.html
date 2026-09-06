@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battle for the Moon 2075 — the tank</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23020604'/%3E%3Cpath d='M5 20h22l-3 5H8z M10 14h12l3 6H7z M16 10v4 M16 12h9' fill='none' stroke='%2358ff7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+  <style>
+    /* ---- COPY of the lander's index.html :root / panel / lbl / num / unit (2026-09-06) so the two consoles are one family ---- */
+    :root {
+      --ph: #6dff8e;                 /* the line colour — set live from the look's hue */
+      --ph-dim: rgba(109, 255, 142, 0.55);
+      --ph-faint: rgba(109, 255, 142, 0.2);
+      --ink: rgba(236, 255, 240, 0.94);
+      --ink-dim: rgba(236, 255, 240, 0.5);
+      --ink-faint: rgba(236, 255, 240, 0.24);
+      --bg: #020403;
+      --glass: rgba(6, 14, 9, 0.5);
+      --glass-edge: rgba(109, 255, 142, 0.16);
+      --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      overflow: hidden;
+      font-family: var(--sans);
+      color: var(--ink);
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    #field { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: crosshair; }
+
+    /* ---- instruments: one console, top centre, in panels ------------------------- */
+    #console {
+      font-size: 0.8rem;
+      pointer-events: none;
+      position: fixed; top: 0.9rem; left: 50%; transform: translateX(-50%); z-index: 10;
+      width: min(944px, 94vw);
+      display: flex; flex-direction: column; gap: 0.5rem;
+      transition: opacity 500ms ease;
+    }
+    .row { display: flex; gap: 0.5em; align-items: stretch; }
+    .panel {
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 14px;
+      backdrop-filter: blur(16px) saturate(1.2);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      padding: 0.7em 1em 0.75em;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .lbl {
+      font-size: 0.851em; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink);
+      opacity: 0.85;
+    }
+    .num {
+      font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1;
+      color: var(--ink);
+    }
+    .unit { font-size: 0.644rem; font-weight: 600; letter-spacing: 0.18em; color: var(--ink-dim); margin-left: 0.4em; }
+    @keyframes hot { from { opacity: 1; } to { opacity: 0.45; } }
+
+    /* radar: the sweep, the contacts, you at the centre */
+    #radar-panel { align-items: center; gap: 0.3em; padding: 0.5em 0.9em; }
+    #radar { width: min(11vh, 100px); height: min(11vh, 100px); overflow: visible; }
+    #radar .ring { fill: none; stroke: var(--ink-faint); stroke-width: 1; }
+    #radar .ring.outer { stroke: var(--ink-dim); }
+    #radar .cone { fill: color-mix(in srgb, var(--ph) 10%, transparent); stroke: none; }
+    #radar .sweep { stroke: var(--ph); stroke-width: 1.4; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--ph-dim)); }
+    #radar .me { fill: var(--ink); }
+    #radar .blip { fill: var(--ph); filter: drop-shadow(0 0 3px var(--ph-dim)); }
+    #radar .blip.site { fill: none; stroke: var(--ph); stroke-width: 1.2; }
+    #radar .blip.missile { fill: var(--ink); animation: hot 300ms ease-in-out infinite alternate; }
+    #radar-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; min-height: 1.2em; }
+    #radar-note.hot { color: var(--ph); opacity: 1; animation: hot 700ms ease-in-out infinite alternate; }
+
+    /* the gun: shell + laser */
+    #gun { flex: 1.2; flex-direction: row; gap: 1.6em; align-items: center; }
+    #gun .big { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
+    #gun .big.ready { color: var(--ph); }
+    #gun .big.wait { color: var(--ink-dim); }
+    #laser-track { position: relative; width: 7.5em; height: 0.55em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.55em; }
+    #laser-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); transition: width 90ms linear; }
+    #laser-fill.charging { background: var(--ink-dim); box-shadow: none; }
+
+    /* heading + speed */
+    #nav { flex: 1; flex-direction: row; gap: 1.6em; align-items: center; }
+    #nav .num { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
+
+    /* score + mission meta */
+    #hud-right { flex: 1; text-align: right; align-items: flex-end; }
+    #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.2em; }
+    #meta { white-space: nowrap; margin-top: 0.55em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
+    #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-dim); }
+
+    /* HULL — the critical one: its own large bar under everything, three cells */
+    #hull { flex-direction: row; align-items: center; gap: 1.2em; padding: 0.8em 1.2em; }
+    #hull .lbl { font-size: 1.035em; letter-spacing: 0.3em; }
+    #hull-track { flex: 1; display: flex; gap: 0.4em; height: 1.15em; }
+    #hull-track span {
+      flex: 1; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.12);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--ph) 85%, white) 0%, var(--ph) 55%, color-mix(in srgb, var(--ph) 70%, black) 100%);
+      box-shadow: 0 0 14px var(--ph-dim);
+      transition: opacity 300ms ease, background 300ms ease;
+    }
+    #hull-track span.gone { background: rgba(255, 255, 255, 0.06); box-shadow: none; }
+    #hull-track span.last { animation: hot 500ms ease-in-out infinite alternate; }
+    #hull .num { font-size: clamp(1.2em, 2.4vh, 1.8em); font-weight: 300; letter-spacing: 0.1em; white-space: nowrap; }
+    #lives { display: flex; gap: 0.45em; align-items: center; }
+    #lives svg { width: 1.6em; height: 1.1em; fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+    #lives svg.gone { opacity: 0.2; }
+
+    /* ---- the crosshair + the in-range word ---------------------------------------- */
+    #cross { position: fixed; left: 50%; top: 50%; width: 3.2rem; height: 3.2rem; transform: translate(-50%, -50%); pointer-events: none; z-index: 6; }
+    #cross line { stroke: var(--ink); stroke-width: 1.3; opacity: 0.6; transition: stroke 200ms ease, opacity 200ms ease; }
+    #cross circle { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.3; transition: stroke 200ms ease, opacity 200ms ease; }
+    #cross.on line, #cross.on circle { stroke: var(--ph); opacity: 0.95; filter: drop-shadow(0 0 4px var(--ph-dim)); }
+    #range-word { position: fixed; left: 50%; top: calc(50% + 2.6rem); transform: translateX(-50%); z-index: 6; pointer-events: none;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3em; text-indent: 0.3em; color: var(--ph); opacity: 0; transition: opacity 260ms ease; white-space: nowrap; }
+    #range-word.on { opacity: 1; animation: hot 900ms ease-in-out infinite alternate; }
+    /* tags over the world: name + X over a hostile you are looking at */
+    #labels { position: fixed; inset: 0; z-index: 5; pointer-events: none; overflow: hidden; }
+    #labels > div { position: absolute; left: 0; top: 0; will-change: transform; white-space: nowrap; }
+    .tag { font-size: 0.69rem; font-weight: 700; letter-spacing: 0.22em; color: var(--ink-dim); transition: opacity 200ms ease; }
+    .tag .x { color: var(--ph); margin-left: 0.5em; }
+    .float { font-size: 1.1rem; font-weight: 300; letter-spacing: 0; color: var(--ink); text-shadow: 0 0 14px var(--ph-faint); }
+    .float.word { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.22em; text-indent: 0.22em; color: var(--ink-dim); }
+
+    /* ---- the hull's damage: the picture fractures, the 2026 way (no red flash) ------ */
+    #cracks { position: fixed; inset: 0; z-index: 7; pointer-events: none; }
+    #cracks path { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; opacity: 0; transition: opacity 600ms ease; filter: drop-shadow(0 0 3px rgba(236, 255, 240, 0.35)); }
+    #cracks path.on { opacity: 0.55; }
+    #cracks path.fine { stroke-width: 0.7; }
+    #veil { position: fixed; inset: 0; z-index: 8; pointer-events: none; background: #000; opacity: 0; transition: opacity 120ms ease; }
+
+    /* ---- cards ------------------------------------------------------------------- */
+    #centre { position: fixed; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .card {
+      display: none; pointer-events: auto; text-align: center;
+      padding: 2.1rem 3rem 2.3rem; min-width: min(30rem, 88vw);
+      background: var(--glass);
+      border: 1px solid var(--glass-edge);
+      border-radius: 22px;
+      backdrop-filter: blur(18px) saturate(1.2);
+      -webkit-backdrop-filter: blur(18px) saturate(1.2);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .card.show { display: block; }
+    .card .word { font-size: clamp(1.7rem, 5vh, 2.6rem); font-weight: 200; letter-spacing: 0.4em; text-indent: 0.4em; color: var(--ink); text-shadow: 0 0 40px var(--ph-faint); }
+    .card .line { margin-top: 0.8rem; font-size: 0.828rem; font-weight: 600; letter-spacing: 0.2em; text-indent: 0.2em; line-height: 1.9; color: var(--ink); }
+    .card .line.big { font-size: 1.012rem; color: var(--ph); }
+    .card .line.dim { color: var(--ink-faint); font-size: 0.713rem; }
+    .card .line:empty { display: none; }
+    .card button {
+      margin-top: 1.5rem;
+      background: color-mix(in srgb, var(--ph) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--ph) 55%, transparent);
+      border-radius: 999px; color: var(--ink);
+      font: 700 0.874rem/1 var(--sans);
+      letter-spacing: 0.34em; text-indent: 0.34em;
+      padding: 0.85rem 2.4rem; cursor: pointer;
+      box-shadow: 0 0 24px color-mix(in srgb, var(--ph) 22%, transparent);
+      transition: background 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+    }
+    .card button:hover { background: color-mix(in srgb, var(--ph) 22%, transparent); box-shadow: 0 0 38px color-mix(in srgb, var(--ph) 45%, transparent); transform: translateY(-1px); }
+    #ledger { display: grid; grid-template-columns: auto auto auto; gap: 0.25rem 1.2rem; margin: 1rem auto 0; width: max-content; font-size: 0.713rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: left; }
+    #ledger:empty { display: none; }
+    #ledger .r { text-align: right; color: var(--ink-dim); }
+    #ledger .me { color: var(--ph); }
+    #pause-card { position: fixed; inset: 0; z-index: 11; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(2, 4, 3, 0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); pointer-events: none; }
+    body.paused #pause-card { display: flex; }
+    #pause-card .word { font-size: clamp(2.07rem, 6.9vh, 3.68rem); font-weight: 200; letter-spacing: 0.44em; text-indent: 0.44em; color: var(--ink); text-shadow: 0 0 40px var(--ph-faint); }
+    #pause-card .sub { margin-top: 1rem; font-size: 0.759rem; font-weight: 600; letter-spacing: 0.28em; text-indent: 0.28em; color: var(--ink-dim); }
+
+    /* ---- chrome ------------------------------------------------------------------ */
+    #hint { position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10; font-size: 0.667rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint); transition: opacity 800ms ease; white-space: nowrap; }
+    .faded { opacity: 0 !important; }
+    #controls { position: fixed; bottom: 1rem; right: 1rem; z-index: 12; display: flex; gap: 0.4rem; }
+    #controls button, #tuner-toggle {
+      background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px;
+      color: var(--ink-dim); font: 700 0.69rem/1 var(--sans); letter-spacing: 0.2em;
+      padding: 0.55rem 0.95rem; cursor: pointer;
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
+    }
+    #controls button:hover, #tuner-toggle:hover { color: var(--ink); }
+    #btn-restart.armed { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); background: color-mix(in srgb, var(--ph) 14%, transparent); }
+    #tuner-toggle { position: fixed; bottom: 2.9rem; left: 1.6rem; z-index: 12; }
+
+    /* ---- tuner (the lander's, verbatim) ------------------------------------------- */
+    #tuner {
+      position: fixed; bottom: 5.4rem; left: 1.6rem; z-index: 12;
+      width: min(320px, calc(100vw - 2rem));
+      max-height: calc(100vh - 7rem); overflow-y: auto;
+      background: rgba(4, 9, 6, 0.9);
+      border: 1px solid var(--glass-edge); border-radius: 16px;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      padding: 0.85rem 0.95rem 0.8rem; display: none;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6);
+    }
+    #tuner.open { display: block; }
+    #tabs { display: flex; gap: 0.3rem; margin-bottom: 0.75rem; }
+    #tabs button { flex: 1; background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; border-radius: 9px; color: var(--ink-dim); font: 700 0.69rem/1 var(--sans); letter-spacing: 0.16em; padding: 0.5rem 0; cursor: pointer; }
+    #tabs button.on { background: color-mix(in srgb, var(--ph) 14%, transparent); border-color: color-mix(in srgb, var(--ph) 42%, transparent); color: var(--ink); }
+    .tab-body { display: none; }
+    .tab-body.on { display: block; }
+    .t-row { margin-bottom: 0.62rem; }
+    .t-label { display: flex; justify-content: space-between; font-size: 0.644rem; font-weight: 700; letter-spacing: 0.15em; color: var(--ink-dim); margin-bottom: 0.26rem; text-transform: uppercase; }
+    .t-label span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .t-row input[type="range"] { width: 100%; accent-color: var(--ph); }
+    .t-row input[type="text"] { width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-edge); border-radius: 8px; color: var(--ink); font: 600 0.759rem/1 var(--sans); padding: 0.45rem 0.5rem; }
+    .t-seg { display: flex; gap: 0.28rem; }
+    .t-seg button { flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid transparent; border-radius: 8px; color: var(--ink-dim); font: 700 0.644rem/1 var(--sans); letter-spacing: 0.06em; padding: 0.45rem 0; cursor: pointer; }
+    .t-seg button.on { background: color-mix(in srgb, var(--ph) 16%, transparent); border-color: color-mix(in srgb, var(--ph) 50%, transparent); color: var(--ink); }
+    .t-btn { width: 100%; background: none; border: 1px solid var(--glass-edge); border-radius: 9px; color: var(--ink-dim); font: 700 0.667rem/1 var(--sans); letter-spacing: 0.16em; padding: 0.45rem 0; cursor: pointer; margin-top: 0.25rem; }
+    .t-btn:hover { color: var(--ink); }
+    .t-note { font-size: 0.621rem; letter-spacing: 0.07em; color: var(--ink-faint); margin-top: 0.5rem; text-align: center; line-height: 1.5; }
+    #t-seed-row { display: flex; gap: 0.3rem; }
+
+    #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 2rem; font-size: 0.977rem; letter-spacing: 0.12em; color: var(--ink-dim); z-index: 30; }
+    body.nogl #nogl { display: flex; }
+    @media (max-width: 720px) { #console { top: 0.5rem; width: 98vw; } .row { flex-wrap: wrap; } #hint { display: none; } }
+  </style>
+</head>
+<body>
+  <canvas id="field"></canvas>
+  <div id="labels" aria-hidden="true"></div>
+  <svg id="cross" viewBox="-20 -20 40 40" aria-hidden="true"><circle r="12" /><line x1="-18" y1="0" x2="-6" y2="0" /><line x1="6" y1="0" x2="18" y2="0" /><line x1="0" y1="-18" x2="0" y2="-6" /><line x1="0" y1="6" x2="0" y2="18" /></svg>
+  <div id="range-word">ENEMY IN RANGE</div>
+  <svg id="cracks" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">
+    <path id="crack-1" d="M0 300 L180 420 L260 380 L420 520 L470 500 L560 640 M180 420 L140 560 L60 600 M420 520 L400 640 L330 700 M260 380 L300 260 L270 180" />
+    <path id="crack-1b" class="fine" d="M140 560 L200 620 M300 260 L360 240 M470 500 L520 470" />
+    <path id="crack-2" d="M1920 700 L1700 620 L1640 660 L1460 560 L1400 590 L1300 480 M1640 660 L1690 780 L1780 830 M1460 560 L1480 440 L1560 400 M1400 590 L1330 700 L1240 740" />
+    <path id="crack-2b" class="fine" d="M1690 780 L1640 850 M1480 440 L1420 400 M1330 700 L1360 760" />
+  </svg>
+  <div id="veil"></div>
+
+  <div id="console">
+    <div class="row">
+      <div class="panel" id="radar-panel">
+        <svg id="radar" viewBox="-52 -52 104 104" aria-hidden="true">
+          <path class="cone" id="radar-cone" d="M0 0 L-22 -46 A50 50 0 0 1 22 -46 Z" />
+          <circle class="ring outer" r="50" /><circle class="ring" r="33" /><circle class="ring" r="16" />
+          <line class="sweep" id="radar-sweep" x1="0" y1="0" x2="0" y2="-50" />
+          <g id="radar-blips"></g>
+          <circle class="me" r="2.2" />
+        </svg>
+        <div id="radar-note"></div>
+      </div>
+      <div class="panel" id="gun">
+        <div><div class="lbl">Shell</div><div class="num big ready" id="v-shell">READY</div></div>
+        <div><div class="lbl">Laser</div><div id="laser-track"><div id="laser-fill"></div></div></div>
+      </div>
+      <div class="panel" id="nav">
+        <div><div class="lbl">Heading</div><div class="num" id="v-hdg">090<span class="unit">°</span></div></div>
+        <div><div class="lbl">Speed</div><div class="num" id="v-spd">00<span class="unit">FT/S</span></div></div>
+      </div>
+      <div class="panel" id="hud-right">
+        <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
+        <div id="meta"><span id="v-mission">MISSION 1</span><span id="v-time">0:00</span><span id="v-left">— LEFT</span></div>
+      </div>
+    </div>
+    <div class="panel" id="hull">
+      <div class="lbl">Hull</div>
+      <div id="hull-track"><span></span><span></span><span></span></div>
+      <div class="num" id="v-hull">WHOLE</div>
+      <div id="lives" aria-label="tanks left">
+        <svg viewBox="0 0 32 22"><path d="M4 16h24l-3 4H7z M9 10h14l3 6H6z M16 6v4 M16 8h10" /></svg>
+        <svg viewBox="0 0 32 22"><path d="M4 16h24l-3 4H7z M9 10h14l3 6H6z M16 6v4 M16 8h10" /></svg>
+        <svg viewBox="0 0 32 22"><path d="M4 16h24l-3 4H7z M9 10h14l3 6H6z M16 6v4 M16 8h10" /></svg>
+      </div>
+    </div>
+  </div>
+
+  <div id="centre">
+    <div class="card" id="start-card">
+      <div class="word">BATTLE FOR THE MOON</div>
+      <div class="line big" id="start-mission">MISSION 1 — FIRST PATROL</div>
+      <div class="line" id="start-result" style="display: none"></div>
+      <div class="line dim">CLEAR EVERY HOSTILE IN THE STRETCH<br />W S DRIVE · A D TURN · MOUSE LOOKS UP AND DOWN · CLICK OR SPACE FIRES · RIGHT CLICK OR L IS THE LASER</div>
+      <div id="ledger"></div>
+      <button id="btn-start" type="button">ROLL OUT</button>
+    </div>
+    <div class="card" id="result-card">
+      <div class="word" id="r-word">HULL BREACHED</div>
+      <div class="line big" id="r-msg"></div>
+      <div class="line dim" id="r-detail"></div>
+      <div class="line" id="r-points"></div>
+      <button id="btn-next" type="button">NEXT TANK</button>
+    </div>
+  </div>
+
+  <div id="pause-card"><div class="word">PAUSED</div><div class="sub">P OR SPACE TO RESUME</div></div>
+  <div id="hint">W S DRIVE · A D TURN · MOUSE LOOKS · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · P PAUSE · R RESTART</div>
+  <div id="controls"><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
+
+  <button id="tuner-toggle" type="button">TUNE</button>
+  <div id="tuner">
+    <div id="tabs"><button data-tab="play" class="on" type="button">PLAY</button><button data-tab="look" type="button">LOOK</button></div>
+    <div class="tab-body on" data-body="play">
+      <div class="t-row">
+        <div class="t-label"><span>Mission</span><span></span></div>
+        <div class="t-seg" id="t-mission">
+          <button data-v="1" type="button">1</button><button data-v="2" type="button">2</button><button data-v="3" type="button">3</button>
+          <button data-v="4" type="button">4</button><button data-v="5" type="button">5</button><button data-v="6" type="button">BOSS</button>
+        </div>
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Mouse looks up and down</span><span></span></div>
+        <div class="t-seg" id="t-mouse"><button data-v="0" type="button">OFF</button><button data-v="1" type="button">ON</button></div>
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Turn rate</span><span id="t-turn-val">1.00×</span></div>
+        <input id="t-turn" type="range" min="0.5" max="1.8" step="0.05" />
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Moonscape seed</span><span></span></div>
+        <div id="t-seed-row"><input id="t-seed" type="text" placeholder="random" /><button class="t-btn" id="t-seed-roll" type="button" style="width: auto; margin: 0; padding: 0 0.7rem">ROLL</button></div>
+      </div>
+      <div class="t-note">mission · seed take hold at the next ROLL OUT</div>
+    </div>
+    <div class="tab-body" data-body="look">
+      <div id="look-rows"></div>
+      <button class="t-btn" id="t-reset" type="button">RESET DEFAULTS</button>
+      <div class="t-note">the look is kept in this browser</div>
+    </div>
+  </div>
+
+  <div id="nogl">THIS ONE NEEDS WEBGL — TRY A DIFFERENT BROWSER OR TURN ON HARDWARE ACCELERATION.</div>
+
+  <script src="../../../core/dashboard-control.js"></script>
+  <script src="../../../core/sound-control.js"></script>
+  <script src="../structures.js"></script>
+  <script src="../game-core.js"></script>
+  <script src="tank-core.js?v=1"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../../lib/three/three.module.js" } }
+  </script>
+  <script type="module" src="tank.js?v=1"></script>
+</body>
+</html>
