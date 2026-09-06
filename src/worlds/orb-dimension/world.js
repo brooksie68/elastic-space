@@ -100,6 +100,7 @@
     // v58: neon strength on the buildings' windows (hue-exact core lift + saturated halo)
     bldgGlow: 1.0,
     bldgFarBlur: 0, // v60: far-window mip follow (0 = v59 point-sampled twinkle)
+    stnFarBlur: 3, // v70: the station's own far-light blur (James landed on 3 by hand); follows the footprint fully past it
     // v53 the nebulae — glow is the permanent feel knob; density rebuilds.
     // v54: scale too (James: "they seem kinda small for the space").
     nebGlow: 1,
@@ -202,6 +203,7 @@
     { key: "saeNotice", label: "greet range m", min: 100, max: 1500, step: 25 },
     { key: "bldgGlow", label: "building glow", min: 0, max: 3, step: 0.1 },
     { key: "bldgFarBlur", label: "far window blur", min: 0, max: 9, step: 0.5 },
+    { key: "stnFarBlur", label: "station far blur", min: 0, max: 9, step: 0.5 },
     { key: "nebGlow", label: "nebula glow", min: 0, max: 2, step: 0.05 },
     // density's ceiling is 1.2 because nebula-sim bars interior overdraw at
     // the SLIDER MAX, not just the default — the tuner can't outrun the GPU
@@ -6368,7 +6370,12 @@ vec3 packetCol(float r) {
 // 40–90 s ("shouldn't stay that way all the time"). u = along 0..1, Lm =
 // the member's length in metres, seedP = its centre, t = uTime·uTempo.
 float th3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-float trafficAt(float u, float Lm, vec3 seedP, float phase, float t) {
+// v70 traffic (James: the v68.13 mix had "too many densely packed, unbroken
+// streams"; the old way — evenly spaced, medium speed, regular — is most of
+// it; variety without density; dense chains almost never, and dimmer).
+// mpp = metres per pixel along the member × the melt dial: a bead below a
+// few pixels dissolves into its faint duty-cycle average instead of strobing.
+float trafficAt(float u, float Lm, vec3 seedP, float phase, float t, float mpp) {
   float total = 0.0;
   for (int st = 0; st < 2; st++) {
     vec3 sd = seedP * (0.019 + float(st) * 0.007) + float(st) * 3.3;
@@ -6378,27 +6385,46 @@ float trafficAt(float u, float Lm, vec3 seedP, float phase, float t) {
     vec3 es = sd + epoch * 1.37;
     float r = th3(es + 6.3);
     float dir = (th3(es + 8.1) < 0.5 ? -1.0 : 1.0) * (st == 1 ? -1.0 : 1.0);
-    float sp, N, G, spd, hw;
-    if (r < 0.5) {        // standard: pulse, gap, pulse, gap — 2–5 per length, medium speed
+    float sp, N, G, spd, hw, gain = 1.0, morse = 0.0, sway = 0.0;
+    if (r < 0.40) {        // regular: pulse, gap, pulse, gap — 2–5 per length, medium speed
       float k = floor(2.0 + th3(es + 1.9) * 4.0);
       sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.12, 0.26, th3(es + 3.7)); hw = max(3.0, sp * 0.03);
-    } else if (r < 0.65) { // an unbroken dense chain, slow to medium
-      sp = mix(6.0, 16.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.04, 0.15, th3(es + 3.7)); hw = 1.6;
-    } else if (r < 0.75) { // trains with gaps
-      sp = mix(6.0, 30.0, th3(es + 1.9)); N = floor(4.0 + th3(es + 4.1) * 12.0); G = mix(40.0, 300.0, th3(es + 4.4)); spd = mix(0.08, 0.3, th3(es + 3.7)); hw = 1.8;
-    } else if (r < 0.9) {  // a sparse singleton
-      sp = Lm; N = 1e6; G = 0.0; spd = mix(0.1, 0.3, th3(es + 3.7)); hw = max(3.0, Lm * 0.008);
-    } else {               // fast or dense — the few
-      sp = mix(5.0, 12.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.4, 0.9, th3(es + 3.7)); hw = 1.6;
+    } else if (r < 0.55) { // small groups with real gaps: 3–8 beads, then a long quiet
+      sp = mix(8.0, 25.0, th3(es + 1.9)); N = floor(3.0 + th3(es + 4.1) * 6.0); G = mix(60.0, 400.0, th3(es + 4.4)); spd = mix(0.08, 0.3, th3(es + 3.7)); hw = 1.8;
+    } else if (r < 0.67) { // Morse: an even ladder with beads dropped at random — odd and even clumps
+      sp = mix(8.0, 20.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.06, 0.2, th3(es + 3.7)); hw = 1.8; morse = 1.0;
+    } else if (r < 0.78) { // back and forth: one small group sliding to and fro along the member
+      sp = mix(10.0, 20.0, th3(es + 1.9)); N = floor(2.0 + th3(es + 4.1) * 4.0); G = 0.0; spd = mix(0.05, 0.15, th3(es + 3.7)); hw = 1.8; sway = 1.0;
+    } else if (r < 0.90) { // a sparse singleton, slow or quick
+      sp = Lm; N = 1e6; G = 0.0; spd = mix(0.08, 0.35, th3(es + 3.7)); hw = max(3.0, Lm * 0.008);
+    } else if (r < 0.95) { // quick and few: 2–3 per length, fast
+      float k = floor(2.0 + th3(es + 1.9) * 2.0);
+      sp = Lm / k; N = 1e6; G = 0.0; spd = mix(0.35, 0.6, th3(es + 3.7)); hw = max(3.0, sp * 0.02);
+    } else {               // the rare dense chain — slow, and dimmer
+      sp = mix(6.0, 12.0, th3(es + 1.9)); N = 1e6; G = 0.0; spd = mix(0.04, 0.1, th3(es + 3.7)); hw = 1.6; gain = 0.45;
     }
     float T = t * spd + phase * (1.0 + float(st));
-    float xM = fract(u * dir - T) * Lm;
+    float xM;
+    if (sway > 0.5) {
+      // the group's centre wanders 30% of the length either side of the middle
+      float c = 0.5 + 0.3 * sin(t * spd * 2.0 + phase * 6.0 + float(st) * 2.1);
+      xM = fract(u * dir - c + 0.5) * Lm - Lm * 0.5 + N * sp * 0.5; // group centred at c
+      G = Lm; // never wraps into a second copy
+    } else {
+      xM = fract(u * dir - T) * Lm;
+    }
     float P = N * sp + G;
     float pos = N > 1e5 ? xM : mod(xM, P);
     float idx = floor(pos / sp);
     float dd = abs(fract(pos / sp) - 0.5) * sp;
     float bead = smoothstep(hw + 1.6, hw * 0.5, dd) + exp(-dd / (hw * 2.5)) * 0.15;
-    total += bead * step(idx, N - 0.5);
+    float keep = step(idx, N - 0.5) * step(0.0, pos);
+    keep *= mix(1.0, step(0.42, th3(vec3(idx, es.x, es.y))), morse);
+    // the melt: beads under ~3 px on screen become their average
+    float px = 2.0 * hw / max(mpp, 1e-6);
+    float crisp = smoothstep(2.0, 6.0, px);
+    float duty = clamp(2.0 * hw / sp, 0.0, 1.0) * (N > 1e5 ? 1.0 : N * sp / P) * mix(1.0, 0.58, morse) * 0.7;
+    total += mix(duty, bead * keep, crisp) * gain;
   }
   return total;
 }`;
@@ -6587,7 +6613,7 @@ void main() {
     // v68.13: the shared traffic roll (COMM_HUE trafficAt) — his 50/15/10/15/10 mix
     float Lm = max(strutLen, 40.0);
     float line = smoothstep(0.34, 0.22, abs(vUV.y - 0.5));   // a line down the bar, not the whole face
-    float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo);
+    float pkS = trafficAt(vUV.x, Lm, vE, vAux.y, uTime * uTempo, fwidth(vUV.x) * Lm * uMelt);
     col += famc * (pkS * line * 2.2 + 0.03);
   }
   if (vAux.x > 2.5) {
@@ -7638,6 +7664,7 @@ uniform vec3 uCamPos;
 uniform float uFog;
 uniform float uMelt;
 uniform float uFarBlur;
+uniform float uFarFollow; // v70: 1 = past the cap, follow the pixel footprint fully (the station)
 uniform float uGlow;
 uniform float uLidMask;
 uniform float uTime;
@@ -7730,6 +7757,10 @@ void main() {
   // the building (scaling it with distance smeared towers into blobs).
   float lod0 = clamp(log2(max(px * 0.7, 1.0)), 0.0, 9.0);
   float lodT = min(lod0, uFarBlur);
+  // v70 (James at 6 km: "a billion tiny lights... every one twinkling"): the
+  // station obeys the cap up close, then lets the taps follow the footprint
+  // all the way — far off the hull is one even glow, not point soup
+  lodT = mix(lodT, lod0, uFarFollow * smoothstep(uFarBlur + 0.5, uFarBlur + 3.5, lod0));
   for (int j = -2; j <= 2; j++)
     for (int i = -2; i <= 2; i++) {
       vec4 s = textureLod(uLight, vUV + vec2(float(i), float(j)) * tx * 1.2, lodT);
@@ -7774,7 +7805,7 @@ void main() {
   const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
     try {
-      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
+      const pr = makeProg(BLDG_VS, BLDG_FS, ["uVP", "uModel", "uCamPos", "uFog", "uAer", "uMelt", "uGlow", "uFarBlur", "uFarFollow", "uLidMask", "uTime", "uTex", "uTex2", "uLight"]);
       const mkTex = (img, alpha, nearestMag) => {
         const tex = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 11); // scratch unit for upload; draw binds per kind
@@ -8685,6 +8716,9 @@ void main() {
               gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight);
               gl.activeTexture(gl.TEXTURE0);
               gl.uniform1f(bldgMesh.prog.U.uLidMask, k.body === "sphere" ? 0 : 1); // v60
+              const stn = k === bldgMesh.stationKind; // v70: the station's own far blur, following past it
+              gl.uniform1f(bldgMesh.prog.U.uFarBlur, stn ? cfg.stnFarBlur : cfg.bldgFarBlur);
+              gl.uniform1f(bldgMesh.prog.U.uFarFollow, stn ? 1 : 0);
               bound = true;
             }
             bldgModel(b);
@@ -9105,7 +9139,7 @@ void main() {
     // v50: society dials — scale/height/jitter freeze with the geography;
     // node glow and pulse tempo are permanent feel knobs. Satellite DISTANCE
     // is deliberately absent: it derives from colonyDist/2 (the hexagram).
-    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "homeSeed", "heartOp", "homeBlur"] },
+    { label: "the societies", keys: ["commScale", "commSat", "commVert", "commJitter", "nodeGlow", "pulseTempo", "citizens", "bldgGlow", "bldgFarBlur", "stnFarBlur", "homeSeed", "heartOp", "homeBlur"] },
     // v61: the Saelyri crowds get their own group (James tunes these by feel)
     { label: "the crowds", keys: ["saeCap", "saeSat", "saeGroup", "saeKnot", "saeStream", "saeForm", "saeTide", "saeNotice"] },
     { label: "the nebulae", keys: ["nebGlow", "nebDensity", "nebScale"] },

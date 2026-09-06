@@ -3,6 +3,30 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v70 — 2026-09-06 (Claude, James at 6.3 km: "a billion tiny lights... every one of those lights is twinkling")
+
+His read of Dominant from the pod: the whole station shimmered when the ship moved, and every
+bar had packets running. Diagnosis: the v69 station draws through the building program, whose
+far look is the v60 point-sampled light map (a few twinkling points on a tower = every texel
+of a 4096 map fighting for a pixel on a 6 km hull); the packets (1.6–3 m beads, under half a
+pixel at 6 km) had no melt rule at all; and v68.13 put a stream on 100% of members with too
+many dense unbroken chains (his word: the chains "should probably almost never happen").
+He set "far window blur" to 3 by hand and the windows were solved. Built on his go:
+- **"station far blur"** (the societies), default 3, the station's own dial; the towers keep
+  "far window blur" and the v60 look. Past the cap the station's taps FOLLOW the pixel
+  footprint (`uFarFollow`), so at 20 km the hull is one even glow, never point soup.
+- **Packets melt**: `trafficAt` takes metres-per-pixel × the melt dial; a bead under ~3 px
+  crossfades into its faint duty-cycle average instead of strobing.
+- **THE TRAFFIC MIX, his numbers**: 40% the old regular way (2–5 evenly spaced pulses,
+  medium speed) / 15% small groups of 3–8 with long gaps / 12% Morse (an even ladder with
+  beads dropped at random — odd and even clumps) / 11% one small group sliding back and forth
+  / 12% a lone packet / 5% quick and few / **5% the dense chain, slow and at 0.45
+  brightness**. Nothing in the variety is densely packed. Second stream on 30%, patterns
+  re-roll every 40–90 s as before. The light bridges keep their own v68.14 traffic.
+- Station Lab draws the station with blur 3 + follow. Sheets: tmp/snapshots/station-v70-near
+  .png / -far.png. Cache tags ?v=700; init-smoke / society-sim / shader-check green.
+  AWAITING JAMES: a flight to Dominant at 6 and 20 km.
+
 ## v68.14 — 2026-09-05 (Claude, James: "the entire space station looks pretty awesome")
 
 - The light bridges to the Saelyri glow homes are back on their own v68.6 traffic (per-bridge
