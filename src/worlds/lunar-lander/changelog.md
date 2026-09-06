@@ -2,6 +2,14 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-06 (for the tank side) — Claude
+
+From `tank/NEEDS.md`: revolved solids for the four round kinds (dome, tanks,
+core, depot — wire globes / cylinders / vaults in `solid()`), and
+`LunarCore.hitStructure(state, sid, x, y)` so the tank kills structures
+through the same rules (shield, score, level count, version tick) instead of
+flipping `alive`. Sim guards both; 206,782 green.
+
 ## 2026-09-06 (his first look at the weapons: "pretty fun") — Claude
 
 Two notes, both done: the structures are drawn FLAT again in the lander's

@@ -727,6 +727,16 @@
     state.shots = keep;
   }
   function hostilesLeft(state) { return state.hostilesLeft; }
+  // For the tank side (or any other shooter): a hit on a structure through the
+  // same rules — shield first, then dead, score, the level's count. Returns
+  // the events a shell would draw.
+  function hitStructure(state, sid, x, y) {
+    const events = [];
+    const st = structureById(state, sid);
+    if (!st || !st.alive) return events;
+    damage(state, st, events, x === undefined ? (st.x0 + st.x1) / 2 : x, y === undefined ? st.y : y);
+    return events;
+  }
 
   // The next flight. The world stays. After a landing on a pad the ship sits on
   // it and the phase is 'launch' — the shell plays the accelerator sequence
@@ -1180,7 +1190,7 @@
     MISSILE_SPEED: MISSILE_SPEED, TARGET_POINTS: TARGET_POINTS, CIVILIAN_PENALTY: CIVILIAN_PENALTY,
     LEVEL_CHUNKS: LEVEL_CHUNKS, RIDGE_ALT: RIDGE_ALT, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
     structureById: structureById, hostileAt: hostileAt, targetable: targetable, doorOpen: doorOpen,
-    fire: fire, dropChaff: dropChaff, hostilesLeft: hostilesLeft,
+    fire: fire, dropChaff: dropChaff, hostilesLeft: hostilesLeft, hitStructure: hitStructure,
     techNext: techNext,
     gradesFor: gradesFor,
     autoLever: autoLever,

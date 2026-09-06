@@ -71,11 +71,83 @@
   // -d/2, and a depth edge at every corner the profile touches. One model,
   // both games: the lander's side view draws it foreshortened, the tank's
   // first person walks around it. Segments are [x0,y0,z0,x1,y1,z1], cached.
+  // ---- 3-D helpers for the round kinds (the tank session's ask: a sphere
+  // drawn as a box with a circle on each face looks like a box up close) ----
+  // a ring of n segments in the plane given by two unit axes u, v around c
+  function ring3(out, c, r, u, v, n) {
+    for (let i = 0; i < n; i++) {
+      const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+      out.push([c[0] + (Math.cos(a0) * u[0] + Math.sin(a0) * v[0]) * r, c[1] + (Math.cos(a0) * u[1] + Math.sin(a0) * v[1]) * r, c[2] + (Math.cos(a0) * u[2] + Math.sin(a0) * v[2]) * r,
+                c[0] + (Math.cos(a1) * u[0] + Math.sin(a1) * v[0]) * r, c[1] + (Math.cos(a1) * u[1] + Math.sin(a1) * v[1]) * r, c[2] + (Math.cos(a1) * u[2] + Math.sin(a1) * v[2]) * r]);
+    }
+  }
+  // a cylinder along z (rings at both ends + generators), centre (cx, cy), from z0 to z1
+  function cylinderZ(out, cx, cy, r, z0, z1, n, half) {
+    const m = half ? n / 2 : n;
+    for (let i = 0; i < m; i++) {
+      const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+      const x0 = cx + Math.cos(a0) * r, y0 = cy + Math.sin(a0) * r, x1 = cx + Math.cos(a1) * r, y1 = cy + Math.sin(a1) * r;
+      out.push([x0, y0, z0, x1, y1, z0]); out.push([x0, y0, z1, x1, y1, z1]);
+      if (i % 2 === 0) out.push([x0, y0, z0, x0, y0, z1]);
+    }
+    if (half) { out.push([cx + r, cy, z0, cx - r, cy, z0]); out.push([cx + r, cy, z1, cx - r, cy, z1]); }
+  }
+  // a sphere: three latitude rings + four meridians (a wire globe)
+  function sphere3(out, c, r, lat0, lat1) {
+    const L0 = lat0 === undefined ? -1 : lat0, L1 = lat1 === undefined ? 1 : lat1;
+    for (const t of [-0.6, -0.2, 0.2, 0.6]) if (t >= L0 && t <= L1) ring3(out, [c[0], c[1] + r * t, c[2]], r * Math.sqrt(1 - t * t), [1, 0, 0], [0, 0, 1], 16);
+    for (let m = 0; m < 4; m++) {
+      const a = Math.PI * m / 4, u = [Math.cos(a), 0, Math.sin(a)];
+      const pts = [];
+      for (let i = 0; i <= 12; i++) { const t = L0 + (L1 - L0) * i / 12; const rr = r * Math.sqrt(Math.max(0, 1 - t * t)); pts.push([c[0] + u[0] * rr, c[1] + r * t, c[2] + u[2] * rr]); }
+      for (let i = 1; i < pts.length; i++) out.push([pts[i - 1][0], pts[i - 1][1], pts[i - 1][2], pts[i][0], pts[i][1], pts[i][2]]);
+    }
+  }
+  const BUILD3 = {
+    dome(out, k) {
+      const d = k.d / 2;
+      // the drum: a box the profile already gives, then the dome as a hemisphere on it
+      for (const g of [[-20, 0, 20, 0], [20, 0, 20, 14], [20, 14, -20, 14], [-20, 14, -20, 0]]) { out.push([g[0], g[1], d, g[2], g[3], d]); out.push([g[0], g[1], -d, g[2], g[3], -d]); }
+      for (const x of [-20, 20]) out.push([x, 0, d, x, 0, -d], [x, 14, d, x, 14, -d]);
+      sphere3(out, [0, 14, 0], 21, 0, 1);
+      out.push([0, 35, 0, 0, 27, 0], [3, 34.5, 0, 3, 27, 0]);   // the slit
+    },
+    tanks(out, k) {
+      for (const cx of [-32, 0, 32]) {
+        // a horizontal cylinder along x: rings around x, generators along x
+        for (const x of [-9, 0, 9]) ring3(out, [cx + x, 13, 0], 9, [0, 1, 0], [0, 0, 1], 12);
+        for (let i = 0; i < 6; i++) { const a = Math.PI * 2 * i / 6; out.push([cx - 9, 13 + Math.sin(a) * 9, Math.cos(a) * 9, cx + 9, 13 + Math.sin(a) * 9, Math.cos(a) * 9]); }
+        for (const z of [-5, 5]) out.push([cx - 10, 0, z, cx - 8, 4, z], [cx + 10, 0, z, cx + 8, 4, z]);
+      }
+      out.push([-40, 24, 0, 40, 24, 0], [40, 24, 0, 46, 24, 0], [46, 24, 0, 46, 0, 0]);
+    },
+    core(out, k) {
+      sphere3(out, [0, 24, 0], 14);
+      for (const z of [-6, 6]) out.push([-14, 24, z, -22, 0, z], [14, 24, z, 22, 0, z], [-26, 0, z, 26, 0, z]);
+      out.push([0, 38, 0, 0, 44, 0]);
+      // the shield: a cap of a larger sphere over the core
+      sphere3(out, [0, 24, 0], 24, 0.45, 1);
+      ring3(out, [0, 24 + 24 * 0.45, 0], 24 * Math.sqrt(1 - 0.45 * 0.45), [1, 0, 0], [0, 0, 1], 20);
+    },
+    depot(out, k) {
+      const d = k.d / 2;
+      for (const cx of [-26, 0, 26]) {
+        cylinderZ(out, cx, 0, 11, -d, d, 12, true);
+        out.push([cx - 3, 0, d, cx - 3, 6, d], [cx + 3, 0, d, cx + 3, 6, d], [cx - 3, 6, d, cx + 3, 6, d]);
+      }
+      out.push([-40, 0, d, 40, 0, d], [-40, 0, -d, 40, 0, -d]);
+    },
+  };
   function solid(id) {
     const kind = BY_ID[id];
     if (!kind) return null;
     if (kind.segs3) return kind.segs3;
     const out = [];
+    if (BUILD3[id]) {
+      BUILD3[id](out, kind);
+      kind.segs3 = out.map((g) => g.map((v) => +v.toFixed(2)));
+      return kind.segs3;
+    }
     const hz = kind.d / 2;
     const corners = new Map();
     for (const g of kind.segs) {
@@ -197,7 +269,7 @@
     poly(o, [[-40, 40], [-36, 34], [-30, 30]], false);
     seg(o, 48, 28, 40, 26); seg(o, 40, 26, 34, 28);
   } });
-  def({ id: 'depot', name: 'AMMO DEPOT', cls: 'hard', hard: 'ridge', mult: 3, w: 80, h: 18, draw(o) {
+  def({ id: 'depot', d: 30, name: 'AMMO DEPOT', cls: 'hard', hard: 'ridge', mult: 3, w: 80, h: 18, draw(o) {
     for (const cx of [-26, 0, 26]) { arc(o, cx, 0, 11, 0, Math.PI, 6, 16); seg(o, cx - 3, 0, cx - 3, 6); seg(o, cx + 3, 0, cx + 3, 6); seg(o, cx - 3, 6, cx + 3, 6); }
     seg(o, -40, 0, 40, 0);
   } });
