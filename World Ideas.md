@@ -301,7 +301,10 @@ Battlezone is the obvious next in the vector family. SHIPPED the same day after 
 rounds with James: the 1979 look pulled all the way to 2026 (max-blend lines, no CRT),
 a two-stage LEM, landing tech, the endless chunked moon that remembers your life, the
 ring accelerator, and four ways out (drive-through door, relay tower, horizon ring, the
-hatch in your wreck). Missions are the next round.
+hatch in your wreck). Missions are the next round. **2026-09-06, James's direction: this
+grows into BATTLE FOR THE MOON 2075** — Battlezone mode inside it, battling from the lander,
+buildings on the ground, lander weapons + goals, and eventually out of the lander into a
+lunar tank whose targets you saw from the air. Recorded, not started.
 
 ### 64. Jabberwocky — *one session* — `draft` (built 2026-09-05)
 
