@@ -36,6 +36,11 @@ this file tracks project-level activity.
 - The old plain face kept whole as plain.html for a possible mobile experience. Meshy ~130 cr (remesh at Meshy, never Blender-decimate a raw soup). Sim 2,512 green.
 - His verdict at wrap: "this direction is good... a bunch more tuning still" — continues next session.
 
+## 2026-09-08 — Claude — Moon Battle 2075: the tank after James's first drive
+- "W and S are reversed": driving is view-relative now (W goes where you look, the hull swings onto the view; S backs away). Sim TEST 11.
+- His three notes: the start is high clear ground with no hostile within 1,300 ft and waves 1,900+ ft out (sim-guarded over 120 starts); the barrel drawing is gone and the crosshair is the aim (amber + dot over a target, dashed over a civilian, dim while the gun catches up); a faint grid under everything, then doubled to 100 ft.
+- One-in-the-air replaced by a 0.8 s reload with a reload bar (his go). Tank sim 223 green.
+
 ## 2026-09-07 — Claude — Lunar Lander is MOON BATTLE 2075, back in progress, with a mode switch
 - Renamed everywhere on James's word (admin row moved Completed → In progress, still in the drift; world.json, page title, start card, tank page, docs). Folder/slug stay `lunar-lander`.
 - Start card: CAMPAIGN | FREE MODE → LANDER / TANKS. Free lander = the same moon with no level goal (core `opts.free`, sim TEST 15, 211,843 green); TANKS opens `tank/tank.html`.

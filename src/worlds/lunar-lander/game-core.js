@@ -1,4 +1,4 @@
-// Battle for the Moon 2075 — the lander core (born as Lunar Lander).
+// Moon Battle 2075 — the lander core (born as Lunar Lander).
 //
 // Lunar gravity, momentum, a proportional thrust lever that burns fuel,
 // landings graded by vertical speed, drift, and attitude — flown over an
@@ -90,7 +90,7 @@
   // always carries at least one.
   const FUEL_ODDS = [0.15, 0.35, 0.60, 0.85, 1.0];
 
-  // THE WEAPONS (Battle for the Moon, round two, 2026-09-06 — James's riff +
+  // THE WEAPONS (Moon Battle 2075, round two, 2026-09-06 — James's riff +
   // answers, world CLAUDE.md "Round one design"). Two weapons from the start
   // and chaff for round three. Ammo refills at pads the way fuel does: each
   // pad may carry ONE supply (missiles / laser / chaff) on its own drought
@@ -162,6 +162,7 @@
     thrustScale: 1,
     leverCurve: LEVER_CURVE,
     secretOdds: 0.35,      // chance a chunk hides the secret flat
+    free: false,           // FREE MODE (2026-09-07): the same moon with no level goal
   };
 
   // ---- rng ---------------------------------------------------------------
@@ -398,7 +399,7 @@
         break;
       }
     }
-    // ---- the structures (Battle for the Moon, round one): civilians on every
+    // ---- the structures (Moon Battle 2075, round one): civilians on every
     // chunk, hostiles by the deal, none hostile on chunk 0. Drawings live in
     // structures.js (LunarStructures); the core keeps the footprint, the class
     // and the multiplier. Each footprint flattens the ground under it like a
@@ -540,6 +541,7 @@
       opts: o,
       seed: o.seed >>> 0,
       level: o.level || 1,
+      free: !!o.free,      // free flight: no hostile count, no level end
       fuel: o.fuel,
       fuelStart: o.fuel,
       score: 0,
@@ -566,12 +568,12 @@
     // and a relay pad is promised inside it (chunk LEVEL_CHUNKS gets one if
     // none was dealt) so the level can always be ended
     let relay = false, n = 0;
-    for (let k = 1; k <= LEVEL_CHUNKS; k++) {
+    for (let k = 1; k <= LEVEL_CHUNKS && !state.free; k++) {
       const c = getChunk(state, k);
       for (const st of c.structures) if (st.cls !== 'civ') n++;
       if (c.pads.some((p) => p.relay)) relay = true;
     }
-    if (!relay) {
+    if (!relay && !state.free) {
       const c = getChunk(state, LEVEL_CHUNKS);
       if (c.pads.length) c.pads[c.pads.length - 1].relay = true;
     }
@@ -632,7 +634,7 @@
       const points = TARGET_POINTS * st.mult;
       state.score += points;
       events.push({ type: 'kill', sid: st.sid, id: st.id, name: st.name, mult: st.mult, points: points, x: (st.x0 + st.x1) / 2, y: st.y });
-      if (st.k >= 1 && st.k <= LEVEL_CHUNKS) {
+      if (!state.free && st.k >= 1 && st.k <= LEVEL_CHUNKS) {
         state.hostilesLeft = Math.max(0, state.hostilesLeft - 1);
         if (state.hostilesLeft === 0 && !state.levelClear) { state.levelClear = true; events.push({ type: 'levelClear', level: state.level }); }
       }
@@ -1064,7 +1066,7 @@
         state.ammo[pad.supply] = Math.min(AMMO_MAX[pad.supply], before + PAD_SUPPLY[pad.supply]);
         result.supply = { kind: pad.supply, amount: state.ammo[pad.supply] - before };
       }
-      if (pad.relay && state.levelClear && !state.levelDone) {
+      if (pad.relay && state.levelClear && !state.levelDone && !state.free) {
         // the level's end: the stretch is clear and you are down on the relay
         state.levelDone = true;
         result.levelDone = state.level;

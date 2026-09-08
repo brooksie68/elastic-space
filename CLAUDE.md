@@ -1205,7 +1205,11 @@ consistent. `npm run check-worlds` audits every world against the contract.
    mission content written and some enhancements." **THE TANK, same day, one session now: the
    mouse aims (pointer lock, the gun follows with mass), W S A D drive the hull, the look pass
    items 1/2/6/7 (moon not grid, weight by distance, Earth + glow + three ridges, the modern
-   cockpit), item 8 dropped by him; sim 94 green; AWAITING his drive — `tank/CLAUDE.md`):
+   cockpit), item 8 dropped by him. HE DROVE IT 2026-09-08: "W and S are reversed" → view-relative
+   driving; his three notes done (start never in the kill box, the crosshair IS the aim — no barrel
+   drawing, a faint grid then doubled to 100 ft); one-in-the-air → a 0.8 s reload. Tank sim 223 green.
+   AWAITING his next drive; then the rest of the nine (3 living structures, 4 turrets/dust/aim
+   line, 5 marks that stay, 9 death as signal loss) and the lander's mission content — `tank/CLAUDE.md`):
    Atari's 1979 vector cabinet, BUILT 2026-09-04 as a draft on
    James's go ("the same treatment as Surround" — modernize, bells and whistles,
    retro vibe intact) — `src/worlds/lunar-lander/` (read its CLAUDE.md first).

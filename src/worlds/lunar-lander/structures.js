@@ -1,4 +1,4 @@
-// Battle for the Moon 2075 — the structures on the ground.
+// Moon Battle 2075 — the structures on the ground.
 //
 // Pure line drawings: every kind is a list of segments [x0, y0, x1, y1] in
 // feet, origin at the centre of the footprint on the ground, y up. Both

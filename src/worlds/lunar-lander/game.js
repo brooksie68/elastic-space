@@ -1,4 +1,4 @@
-// Lunar Lander — the shell: attempt flow, input, instruments, sound, tuner.
+// Moon Battle 2075 — the lander shell (born as Lunar Lander): attempt flow, input, instruments, sound, tuner.
 //
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
@@ -11,6 +11,8 @@ const Core = globalThis.LunarCore;
 const PLAY_KEY = 'lunar-lander-play-v2';
 const LOOK_KEY = 'lunar-lander-look-v2';
 const LEDGER_KEY = 'lunar-lander-ledger-v1';
+const MODE_KEY = 'lunar-lander-mode-v1';       // the start card's choice: campaign | free, lander | tanks
+const TANK_PAGE = './tank/tank.html';         // FREE MODE → TANKS opens the tank half (the tank session's page)
 const PLAY_DEFAULTS = { fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75 };
 const LOOK_RANGES = {
   hue:        { min: 0, max: 1, step: 0.01, label: 'line colour' },
@@ -284,15 +286,49 @@ function renderLedger(highlight) {
   list.forEach((e, i) => {
     const cls = highlight && e.stamp === highlight ? ' me' : '';
     el.insertAdjacentHTML('beforeend',
-      `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">${e.level ? 'LEVEL ' + e.level : (e.difficulty || 'cadet').toUpperCase()} · ${e.attempts} FLIGHTS</span>`);
+      `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">${e.free ? 'FREE' : e.level ? 'LEVEL ' + e.level : (e.difficulty || 'cadet').toUpperCase()} · ${e.attempts} FLIGHTS</span>`);
   });
 }
+
+// ---- the mode switch (James, 2026-09-07): CAMPAIGN | FREE MODE → LANDER / TANKS -----------------
+// Campaign is the level game as built. Free lander is the same moon with no
+// goal (core opts.free). Tanks hands off to the tank page. Remembered per browser.
+let gameMode = 'campaign';   // campaign | free
+let freeKind = 'lander';     // lander | tanks
+try {
+  const m = JSON.parse(localStorage.getItem(MODE_KEY) || '{}');
+  if (m.mode === 'free') gameMode = 'free';
+  if (m.kind === 'tanks') freeKind = 'tanks';
+} catch (e) {}
+const BRIEF = {
+  campaign: 'LEVEL 1 — DESTROY EVERY HOSTILE IN THE STRETCH, THEN LAND ON THE RELAY<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · X ABORTS',
+  lander: 'FREE FLIGHT — THE ENDLESS MOON, NO GOAL BUT THE SCORE<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · X ABORTS',
+  tanks: 'FREE ROLL — CLIMB INTO THE LUNAR TANK<br />W S DRIVE · A D TURN · MOUSE LOOKS · CLICK FIRES · RIGHT CLICK IS THE LASER',
+};
+function modeChoice() { return gameMode === 'campaign' ? 'campaign' : freeKind; }
+function renderModes() {
+  document.querySelectorAll('#m-mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === gameMode));
+  document.querySelectorAll('#m-free button').forEach((b) => b.classList.toggle('on', b.dataset.v === freeKind));
+  $('m-free').hidden = gameMode !== 'free';
+  $('start-brief').innerHTML = BRIEF[modeChoice()];
+  $('btn-start').textContent = modeChoice() === 'tanks' ? 'ROLL OUT' : 'START';
+  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL 1';
+}
+function setMode(m, k) {
+  if (m) gameMode = m;
+  if (k) freeKind = k;
+  try { localStorage.setItem(MODE_KEY, JSON.stringify({ mode: gameMode, kind: freeKind })); } catch (e) {}
+  renderModes();
+}
+document.querySelectorAll('#m-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.v, null)));
+document.querySelectorAll('#m-free button').forEach((b) => b.addEventListener('click', () => setMode(null, b.dataset.v)));
+renderModes();
 
 // ---- flow -----------------------------------------------------------------------------------
 function makeGame() {
   let seed = parseInt(play.seed, 10);
   if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
-  state = Core.createGame({ seed, level: 1, fuel: play.fuel, gravityScale: play.gravity });
+  state = Core.createGame({ seed, level: 1, fuel: play.fuel, gravityScale: play.gravity, free: gameMode === 'free' });
   if (scene) { scene.setWorld(state); scene.clearEffects(); }
   clearFloats();
   buildPadLabels();
@@ -312,13 +348,15 @@ function enterAttract(resultLine, stamp) {
 }
 function startGame() {
   if (mode !== 'attract') return;
+  if (modeChoice() === 'tanks') { window.location.href = TANK_PAGE; return; }
+  if (state && state.free !== (gameMode === 'free')) state = null;   // the card's choice changed since the last game was dealt
   makeGame();
   $('start-card').classList.remove('show');
   mode = 'play';
   carry = 0;
   resetThrottle();
   Sfx.beepTimer = 0;
-  $('ro-select').textContent = 'LEVEL ' + state.level;
+  $('ro-select').textContent = state.free ? 'FREE FLIGHT' : 'LEVEL ' + state.level;
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
 function nextAttempt() {
@@ -326,7 +364,7 @@ function nextAttempt() {
   if (state.phase === 'over') {
     const stamp = Date.now();
     const list = readLedger();
-    list.push({ score: state.score, attempts: state.attempt, level: state.level, stamp });
+    list.push({ score: state.score, attempts: state.attempt, level: state.level, free: state.free, stamp });
     list.sort((a, b) => b.score - a.score);
     writeLedger(list);
     const line = 'OUT OF FUEL — FINAL SCORE ' + pad(state.score, 4) + ' IN ' + state.attempt + ' FLIGHTS';
@@ -1003,7 +1041,7 @@ function renderWeapons() {
   const note = $('weapon-note');
   if (note) note.textContent = !armed ? '' : target ? 'CLICK AGAIN TO FIRE' : (armed === 'missiles' ? 'MISSILE ARMED — CLICK A TARGET' : 'LASER ARMED — CLICK A TARGET');
   const hs = $('v-hostiles');
-  if (hs) hs.textContent = state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + ' HOSTILES';
+  if (hs) hs.textContent = state.free ? '' : state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + ' HOSTILES';
 }
 // the weapon rows in the console are buttons too (James: "click on the weapons in the HUD")
 document.querySelectorAll('#weapons .wpn').forEach((row) => {
@@ -1124,7 +1162,7 @@ function syncPlayUI() {
   $('t-langle').value = play.launchAngle; $('t-langle-val').textContent = play.launchAngle + '°';
   $('t-lapex').value = play.launchApex; $('t-lapex-val').textContent = Math.round(play.launchApex * 100) + '% of the way up';
   $('t-seed').value = play.seed || '';
-  if (mode === 'attract') $('ro-select').textContent = 'LEVEL 1';
+  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL 1';
 }
 
 const lookRows = $('look-rows');

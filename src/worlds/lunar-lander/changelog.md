@@ -1,6 +1,35 @@
-# Lunar Lander — changelog
+# Moon Battle 2075 — changelog (folder `lunar-lander`; born as Lunar Lander)
 
 Newest entries first. Never rewrite or delete earlier entries.
+
+## 2026-09-07 (the name, the shelf, the mode switch) — Claude
+
+James: "Move Lunar Lander back to In Progress Worlds and rename it Moon Battle
+2075 everywhere... then make a function ingame where the user can switch
+between Campaign and Free Mode and under Free Mode select Lander or Tanks."
+
+- **Renamed MOON BATTLE 2075**: the admin row (moved from Completed to In
+  progress — still in the drift registry with its four exits), `world.json`,
+  the page title, the start card's word, the tank page's title and card, every
+  file header, the world CLAUDE.md, the repo CLAUDE.md item, World Ideas #63,
+  the tank brief. "Battle for the Moon 2075" in older entries is this same
+  game. The folder, slug, preset route and localStorage keys stay
+  `lunar-lander` — ids, not names.
+- **The mode switch** on the start card: CAMPAIGN | FREE MODE, and under
+  FREE MODE, LANDER | TANKS (pill segments in the card's own register; the
+  brief line and the START / ROLL OUT button follow the choice; remembered
+  in `lunar-lander-mode-v1`).
+  - Campaign = level 1 as built (hostiles, the relay, the level end). This is
+    where the new lander work lands.
+  - Free lander = the same moon, dealt identically (sim-proven), with no goal:
+    core `opts.free` → no hostile count, no relay promise, no level end, the
+    console reads FREE FLIGHT and the hostile counter is blank; kills still
+    pay; the ledger marks free games FREE.
+  - Tanks = `tank/tank.html` (the tank session's page, opened in place).
+- Sim TEST 15 (free mode): 211,843 green. Smoke page regenerated.
+- AWAITING JAMES: his review of the campaign as it stands (round three,
+  hostile fire, is still NOT built — his "if that's not ready yet don't start
+  it").
 
 ## 2026-09-06 (the launch, his notes) — Claude
 

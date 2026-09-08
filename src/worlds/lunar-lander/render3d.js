@@ -1,4 +1,4 @@
-// Lunar Lander — the renderer.
+// Moon Battle 2075 — the lander renderer (born as Lunar Lander).
 //
 // Pure presentation: no game rules, no DOM, no audio, no input. game.js drives
 // it in the world; tmp/lunar-lander/lookdev.html drives it silently for look

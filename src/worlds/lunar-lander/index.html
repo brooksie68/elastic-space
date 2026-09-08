@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lunar Lander</title>
+  <title>Moon Battle 2075</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23020604'/%3E%3Cpath d='M12 8h8l3 3v6l-3 3h-8l-3-3v-6z M9 20l-4 6 M23 20l4 6 M4 26h4 M24 26h4' fill='none' stroke='%2358ff7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <style>
     :root {
@@ -262,6 +262,17 @@
       box-shadow: 0 0 38px color-mix(in srgb, var(--ph) 45%, transparent);
       transform: translateY(-1px);
     }
+    #modes { margin-top: 1.1rem; display: flex; flex-direction: column; gap: 0.45rem; align-items: center; }
+    #modes .t-seg { width: max-content; gap: 0.4rem; }
+    #modes .t-seg button {
+      flex: 0 0 auto; min-width: 8.6rem; padding: 0.62rem 1.3rem;
+      font-size: 0.72rem; letter-spacing: 0.22em; text-indent: 0.22em; border-radius: 999px;
+      border-color: color-mix(in srgb, var(--ph) 22%, transparent);
+    }
+    #modes .t-seg button:hover { color: var(--ink); }
+    #modes .t-seg button.on { box-shadow: 0 0 18px color-mix(in srgb, var(--ph) 22%, transparent); }
+    #m-free button { min-width: 7rem; font-size: 0.66rem; }
+    #m-free[hidden] { display: none; }
     #ledger {
       display: grid; grid-template-columns: auto auto auto; gap: 0.25rem 1.2rem;
       margin: 1rem auto 0; width: max-content;
@@ -471,9 +482,19 @@
 
   <div id="centre">
     <div class="card" id="start-card">
-      <div class="word">LUNAR LANDER</div>
+      <div class="word">MOON BATTLE 2075</div>
       <div class="line" id="start-result" style="display: none"></div>
-      <div class="line dim">LAND ON A PAD — SLOW, LEVEL, ON THE MARK<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · SPACE ABORTS</div>
+      <div id="modes">
+        <div class="t-seg" id="m-mode" role="group" aria-label="game mode">
+          <button data-v="campaign" class="on" type="button">CAMPAIGN</button>
+          <button data-v="free" type="button">FREE MODE</button>
+        </div>
+        <div class="t-seg" id="m-free" role="group" aria-label="free mode" hidden>
+          <button data-v="lander" class="on" type="button">LANDER</button>
+          <button data-v="tanks" type="button">TANKS</button>
+        </div>
+      </div>
+      <div class="line dim" id="start-brief">LEVEL 1 — DESTROY EVERY HOSTILE IN THE STRETCH, THEN LAND ON THE RELAY<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · X ABORTS</div>
       <div id="ledger"></div>
       <button id="btn-start" type="button">START</button>
     </div>

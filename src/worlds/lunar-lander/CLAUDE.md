@@ -1,8 +1,21 @@
-# Lunar Lander — Claude instructions
+# Moon Battle 2075 — Claude instructions (folder `lunar-lander`)
+
+**RENAMED 2026-09-07 (James): the world is MOON BATTLE 2075** — in the admin
+panel, world.json, the page title, the start card, the tank page, every doc.
+The folder / slug / preset route / localStorage keys stay `lunar-lander` (ids,
+not names). "Lunar Lander" below means the 1979 Atari game or the world's
+history; "Battle for the Moon 2075" in old changelog entries is this same
+game. Same day he moved it back to **In progress worlds** (it stays in the
+drift registry with its four exits). **THE MODE SWITCH** is on the start
+card: CAMPAIGN (level 1 as built — hostiles, the relay) | FREE MODE →
+LANDER (the same moon with no goal: `opts.free`, no hostile count, no level
+end, kills still pay) or TANKS (opens `tank/tank.html`). The choice is
+remembered (`lunar-lander-mode-v1`). Campaign is where the new lander work
+lands; free mode never grows rules of its own.
 
 ## WHERE THIS IS GOING (James, 2026-09-06 — recorded, nothing built)
 
-Lunar Lander is the seed of a bigger game: **Battle for the Moon 2075**. His
+Lunar Lander is the seed of a bigger game: **Moon Battle 2075**. His
 words: it "is going to include the Battle Zone mode... some battling from the
 lander as well. We'll have more buildings on the ground. And we'll give the
 lander some weapons and some more goals. And eventually we get to a place where
@@ -86,7 +99,7 @@ every hostile in the first eight chunks is destroyed — then the relay tower
 lights and landing on it ends the level; five levels, then the boss, then the
 tank part opens.
 
-### TWO SESSIONS, ONE GAME (2026-09-06)
+### TWO SESSIONS, ONE GAME (2026-09-06) — ONE SESSION AGAIN since 2026-09-07 (James: "just in this session, rather than trying to run two at the same time"); this session owns `tank/` too now. THE TANK'S CONTROLS + LOOK PASS 1/2/6/7 built 2026-09-07 — read `tank/CLAUDE.md`.
 
 James runs a second Claude session for the TANK half. Its brief is
 `tank-brief.md` in this folder (keep it current when the split changes). The
@@ -98,7 +111,7 @@ side, promised to the tank: `chunk.structures` in the core and
 `structures.js` (pure segment lists for the ten structures + SAM site) so both
 renderers draw the same shapes; later, `vector-kit.js` (LineBatch + post
 chain + DEFAULT_PARAMS pulled out of render3d.js) with a heads-up to the tank
-session first. Commit prefix here: `Battle for the Moon (lander):`.
+session first. Commit prefix here: `Moon Battle 2075 (lander):`.
 ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 `state.score` through `hitStructure`; the joined game keeps one score.
 
