@@ -74,12 +74,34 @@ $('reset').addEventListener('click', () => { reset(); hint('RESET'); });
 reset();
 
 // ---- input ---------------------------------------------------------------------------------------------------
-const NOLOCK = q.get('nolock') === '1';
-const locked = () => NOLOCK || document.pointerLockElement === canvas;
-function lock() { if (NOLOCK || locked()) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
-canvas.addEventListener('mousedown', (e) => { if (!locked()) { lock(); return; } if (e.button === 0) input.fire = true; });
-addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
-addEventListener('mousemove', (e) => { if (!locked()) return; lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens; });
+// Two mouse modes (James: "I'm trapped" — the captured mouse locked him out of the panel). FREE is the default:
+// the pointer is never taken, left click fires, hold the RIGHT button and drag to look, the panel is always live.
+// CAPTURED is the game's way: click the room to take the mouse, esc gives it back. ?nolock=1 forces free.
+let mouseMode = q.get('nolock') === '1' ? 'free' : (prefs.mouse || 'free');
+const locked = () => mouseMode === 'free' || document.pointerLockElement === canvas;
+function lock() { if (mouseMode === 'free' || locked()) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+function unlock() { if (document.pointerLockElement === canvas) document.exitPointerLock(); }
+let dragLook = false;
+canvas.addEventListener('mousedown', (e) => {
+  if (mouseMode === 'free') { if (e.button === 2) dragLook = true; else if (e.button === 0) input.fire = true; return; }
+  if (!locked()) { lock(); return; }
+  if (e.button === 0) input.fire = true;
+});
+addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; if (e.button === 2) dragLook = false; });
+addEventListener('mousemove', (e) => {
+  if (mouseMode === 'free' ? !dragLook : !locked()) return;
+  lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens;
+});
+function setMouse(m) {
+  mouseMode = m; prefs.mouse = m; savePrefs(); dragLook = false;
+  if (m === 'free') unlock();
+  $('mouse').querySelectorAll('button').forEach((b) => b.classList.toggle('go', b.dataset.m === m));
+  $('keys').innerHTML = m === 'free'
+    ? '<b>left click</b> fires · <b>hold right button + drag</b> to look · <b>WASD</b> · <b>arrows</b> turn · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier'
+    : '<b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier';
+}
+$('mouse').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setMouse(b.dataset.m)));
+setMouse(mouseMode);
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT');
 addEventListener('keydown', (e) => {
@@ -335,4 +357,4 @@ pick(current);
 poll(); setInterval(poll, POLL_MS);
 R.load((k) => { $('load').textContent = 'LOADING THE DUNGEON ' + Math.round(k * 100) + '%'; }).then(() => { $('load').classList.add('off'); });
 requestAnimationFrame(frame);
-globalThis.LAB = { get state() { return state; }, R, C, T, pick, reset, input, view, get notes() { return notes; }, poll, step: (n) => { for (let i = 0; i < n; i++) simTick(1 / 60); } };
+globalThis.LAB = { get state() { return state; }, R, C, T, pick, reset, input, view, lookBank, setMouse, get notes() { return notes; }, poll, step: (n) => { for (let i = 0; i < n; i++) simTick(1 / 60); } };

@@ -27,6 +27,9 @@ appends an entry: date, author, what changed, and where things stand. Never rewr
 - `tmp/jabberwocky/lab-smoke.mjs` (208 assertions: passive for 20 s, all 100 gags, respawn, type swap). Sim 116,893
   green. Verified in the pane: respawn at 2 s after dead, pacified back at 2 s, note save, update → toast + dot →
   opened → seen.
+- **MOUSE FREE (his first flight: "I'm trapped")**: the lab no longer captures the pointer by default. Left click fires,
+  hold the right button and drag to look, arrows turn, the panel is always live. A MOUSE FREE / CAPTURED switch in the
+  bar (persisted); captured is the game's way (click the room, esc gives it back). `?nolock=1` forces free.
 - NEXT: his flight of the lab; then notes arrive and get acted on one by one.
 
 ## 2026-09-06 (James flying the gore pass) — Claude (Fable 5.1) — map flip, eased mouse look

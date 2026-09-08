@@ -58,6 +58,7 @@
     button.go { background: var(--pink); color: #120a12; border-color: var(--pink); }
     button.go:hover { filter: brightness(1.1); color: #120a12; }
     #search { flex: 1; min-width: 0; font-size: 0.8rem; }
+    #mouse { display: inline-flex; gap: 0.25rem; }
     #list { flex: 1 1 0; min-height: 120px; overflow: auto; padding: 0.3rem 0; }
     #list h3 { position: sticky; top: 0; background: rgba(12, 7, 14, 0.98); padding: 0.45rem 1rem 0.3rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); z-index: 1; }
     #list h3 span { color: var(--ink-dim); margin-left: 0.5em; letter-spacing: 0.08em; }
@@ -130,6 +131,7 @@
         <option value="ratlings">three ratlings</option>
         <option value="stalkers">three stalkers</option>
       </select>
+      <span id="mouse" title="free: the panel is always live, hold the right button to look · captured: the game's way, esc gives it back"><button data-m="free" type="button">MOUSE FREE</button><button data-m="lock" type="button">CAPTURED</button></span>
       <button id="reset" type="button" title="creatures back on the pads, floor cleaned">RESET</button>
       <button id="fire" class="go" type="button">FIRE</button>
     </div>
@@ -164,6 +166,6 @@
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="lab.js?v=1"></script>
+  <script type="module" src="lab.js?v=2"></script>
 </body>
 </html>
