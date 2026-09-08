@@ -19,7 +19,7 @@
     #view { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: crosshair; }
     #overlay { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
     #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%); }
-    #cross { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
+    #cross { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 50%; z-index: 5; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
     #cross::before, #cross::after { content: ''; position: absolute; background: var(--ink); box-shadow: 0 0 3px #000; }
     #cross::before { left: 6px; top: 0; width: 2px; height: 14px; }
     #cross::after { top: 6px; left: 0; width: 14px; height: 2px; }
@@ -131,7 +131,7 @@
         <option value="ratlings">three ratlings</option>
         <option value="stalkers">three stalkers</option>
       </select>
-      <span id="mouse" title="free: the panel is always live, hold the right button to look · captured: the game's way, esc gives it back"><button data-m="free" type="button">MOUSE FREE</button><button data-m="lock" type="button">CAPTURED</button></span>
+      <span id="mouse" title="cursor aim: the rifle points at the cursor, the panel is always live · mouse look: the game's way, esc gives the mouse back"><button data-m="cursor" type="button">CURSOR AIM</button><button data-m="lock" type="button">MOUSE LOOK</button></span>
       <button id="reset" type="button" title="creatures back on the pads, floor cleaned">RESET</button>
       <button id="fire" class="go" type="button">FIRE</button>
     </div>
@@ -160,12 +160,12 @@
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
   <script src="gags.js?v=2"></script>
-  <script src="core.js?v=4"></script>
+  <script src="core.js?v=5"></script>
   <script src="draw.js?v=3"></script>
   <script src="sound.js?v=4"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="lab.js?v=2"></script>
+  <script type="module" src="lab.js?v=3"></script>
 </body>
 </html>

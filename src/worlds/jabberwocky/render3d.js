@@ -897,7 +897,7 @@ export function createRenderer(canvas) {
   vmScene.add(new THREE.AmbientLight(0xffffff, 0.9));
   const chamberLight = new THREE.PointLight(0xff2fb8, 2.5, 1.2, 2); vmRoot.add(chamberLight);
   let vmWindow = null, vmMuzzle = null, vmFlash = null;
-  const vm = { recoil: 0, spin: 0, mood: 'idle', dead: 0, bob: 0, t: 0, muzzle: 0 };
+  const vm = { recoil: 0, spin: 0, mood: 'idle', dead: 0, bob: 0, t: 0, muzzle: 0, aim: 0, aimY: 0 };   // aim / aimY: cursor-aim yaw + pitch the rifle swings to (radians, eased by the host)
   function buildViewmodel() {
     while (vmRoot.children.length > 1) vmRoot.remove(vmRoot.children[vmRoot.children.length - 1]);
     let rifle;
@@ -935,7 +935,7 @@ export function createRenderer(canvas) {
     const shud = vm.mood === 'shudder' ? (Math.random() - 0.5) * 0.012 : 0;
     const bobY = Math.abs(Math.sin(vm.bob * TAU)) * look.bob * 0.02, bobX = Math.sin(vm.bob * TAU) * look.bob * 0.015;
     vmRoot.position.set(look.vmX + bobX + shud, look.vmY + bobY + shud - vm.dead * 0.25 + vm.recoil * 0.04, look.vmZ + vm.recoil * 0.12);
-    vmRoot.rotation.set(-vm.recoil * 0.22 + vm.dead * 0.35, 0.06, vm.dead * 0.3);
+    vmRoot.rotation.set(-vm.recoil * 0.22 + vm.dead * 0.35 + vm.aimY, 0.06 - vm.aim, vm.dead * 0.3);
     vmRoot.scale.setScalar(look.vmScale);
     if (vmWindow) vmWindow.material.map = vm.spin > 0 ? runeTex(-Math.floor(vm.spin * 14)) : runeTex(Math.floor(vm.t * 0.5) % RUNES.length);
     chamberLight.intensity = vm.mood === 'purr' ? 1.2 + Math.sin(vm.t * 18) * 1.0 : 0.5;

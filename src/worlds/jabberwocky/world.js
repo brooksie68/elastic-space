@@ -1,7 +1,8 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=3';
+import { createRenderer, S } from './render3d.js?v=4';
+import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
 const $ = (id) => document.getElementById(id);
@@ -10,7 +11,7 @@ const TAU = Math.PI * 2;
 
 // ---- settings ------------------------------------------------------------------------------------
 const PLAY_KEY = 'jabberwocky-play-v2', LOOK_KEY = 'jabberwocky-look-v2', UI_KEY = 'jabberwocky-ui-v1';
-const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, startLevel: 1, seed: '', forceGag: '' };
+const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '' };
 const LOOK_RANGES = {
   fov:         { label: 'Field of view', min: 60, max: 100, step: 1, def: 76, sum: 'Wider sees more of the corridor at once.' },
   fog:         { label: 'Fog distance', min: 10, max: 60, step: 1, def: 34, sum: 'How far down a hall you can see before it goes dark. In metres.' },
@@ -71,8 +72,24 @@ function liveOpts() { if (!state) return; Object.assign(state.opts, { goonSpeed:
 // ---- input --------------------------------------------------------------------------------------------
 // ?nolock=1 plays without capturing the mouse (arrow keys turn) — for headless checks and anyone who hates pointer lock
 const NOLOCK = new URLSearchParams(location.search).get('nolock') === '1';
-const locked = () => NOLOCK || document.pointerLockElement === canvas;
-function lock() { if (NOLOCK) return; if (!locked()) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
+// mouse: 'look' = the mouse is the camera (captured; esc gives it back) · 'cursor' = a real cursor, the rifle points
+// at it, turning on the arrows or by pushing the cursor into the screen's edge (added 2026-09-07 for James's testing;
+// the maths in cursor-aim.js, shared with the weapon lab)
+const cursorMode = () => play.mouse === 'cursor';
+const locked = () => NOLOCK || cursorMode() || document.pointerLockElement === canvas;
+function lock() { if (NOLOCK || cursorMode()) return; if (!locked()) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
+const cursor = { x: 0, y: 0, in: false, push: 0, pitchPush: 0 };
+const cross = $('cross');
+function aimFromCursor(dt) {
+  const p = state.player;
+  if (!cursorMode() || !cursor.in || mode !== 'play') { p.aim = 0; R.vm.aim += (0 - R.vm.aim) * Math.min(1, dt * 10); R.vm.aimY += (0 - R.vm.aimY) * Math.min(1, dt * 10); cross.style.left = ''; cross.style.top = ''; cursor.push = cursor.pitchPush = 0; return; }
+  const w = innerWidth, h = innerHeight;
+  p.aim = yawFromCursor(cursor.x, w, h, look.fov || 76);
+  R.vm.aim += (p.aim * 0.9 - R.vm.aim) * Math.min(1, dt * 14);
+  R.vm.aimY += (pitchFromCursor(cursor.y, h, look.fov || 76) - R.vm.aimY) * Math.min(1, dt * 14);
+  cross.style.left = cursor.x + 'px'; cross.style.top = cursor.y + 'px';
+  cursor.push = edgePush(cursor.x, w, 0.1); cursor.pitchPush = edgePush(cursor.y, h, 0.1);
+}
 function unlock() { if (!NOLOCK && document.pointerLockElement === canvas) document.exitPointerLock(); }
 document.addEventListener('pointerlockchange', () => {
   if (NOLOCK) return;
@@ -84,8 +101,10 @@ canvas.addEventListener('mousedown', (e) => {
   if (!locked()) { lock(); return; }
   if (e.button === 0) input.fire = true;
 });
+canvas.addEventListener('mouseleave', () => { cursor.in = false; });
 addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; });
 addEventListener('mousemove', (e) => {
+  if (cursorMode()) { cursor.x = e.clientX; cursor.y = e.clientY; cursor.in = !e.target.closest || !e.target.closest('#tuner, #tuner-toggle, #card'); return; }
   if (mode !== 'play' || !locked()) return;
   // the mouse feeds a bank; each frame drains a share of it so the turn eases instead of jumping (James: "herky jerky")
   lookBank.x += e.movementX * 0.0022 * play.sens;
@@ -136,6 +155,8 @@ $('card-btn').addEventListener('click', () => skipCard());
 card.addEventListener('click', () => { if (mode === 'card' && cardTimer) skipCard(); });
 
 const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>space</b> fires · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration · <b>esc</b> frees the mouse';
+const KEYS_LINE_CURSOR = '<b>WASD</b> walk · <b>the rifle points at the cursor</b> · <b>click</b> or <b>space</b> fires · <b>arrows</b> or <b>the screen edge</b> turn · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration';
+const keysLine = () => cursorMode() ? KEYS_LINE_CURSOR : KEYS_LINE;
 const BLURBS = {
   1: 'The gate. Ghouls, mostly. Find the key. It opens the door. The door is not where the key is.',
   2: 'Catacombs. Cultists throw flaming skulls, ratlings are faster than you would like. The key is further.',
@@ -148,7 +169,7 @@ function attract() {
   showCard({
     kicker: 'A MAZE · A RIFLE · NO IDEA WHAT IT SHOOTS', title: 'JABBERWOCKY',
     sub: 'Find the key. Find the door. Four mazes down, the Jabberwock waits in the middle with a rifle exactly like yours. Every pull of the trigger is a different thing. Some of them are your problem.',
-    btn: R.ready ? 'BEGIN' : 'LOADING THE DUNGEON', disabled: !R.ready, keys: KEYS_LINE, action: begin,
+    btn: R.ready ? 'BEGIN' : 'LOADING THE DUNGEON', disabled: !R.ready, keys: keysLine(), action: begin,
   });
 }
 function begin() {
@@ -163,7 +184,7 @@ function begin() {
 function pause() {
   if (mode !== 'play') return;
   mode = 'paused';
-  showCard({ kicker: 'PAUSED', title: state.level.name, sub: 'The dungeon holds its breath. The rifle is thinking.', btn: 'RESUME', keys: KEYS_LINE, action: resume });
+  showCard({ kicker: 'PAUSED', title: state.level.name, sub: 'The dungeon holds its breath. The rifle is thinking.', btn: 'RESUME', keys: keysLine(), action: resume });
 }
 function resume() { if (mode !== 'paused') return; hideCard(); mode = 'play'; lock(); }
 function levelCard(n, name) {
@@ -328,6 +349,9 @@ function frame(now) {
   if (!state) return;
   if (mode === 'play') {
     readKeys();
+    aimFromCursor(dt);
+    if (cursor.push) input.turn += cursor.push * 0.8;
+    if (cursor.pitchPush) view.pitch = Math.max(-1, Math.min(1, view.pitch - cursor.pitchPush * dt * 1.2));
     const k = 1 - Math.exp(-dt * LOOK_EASE);
     input.look = lookBank.x * k; lookBank.x -= input.look;
     const dy = lookBank.y * k; lookBank.y -= dy;
@@ -388,6 +412,8 @@ for (const tier of T.TIERS) { const og = document.createElement('optgroup'); og.
 force.addEventListener('change', () => { play.forceGag = force.value; save(PLAY_KEY, play); liveOpts(); });
 function seg(id, key, parse) { $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { play[key] = parse ? parse(b.dataset.v) : b.dataset.v; save(PLAY_KEY, play); syncPlayUI(); })); }
 seg('t-map', 'map', (v) => parseInt(v, 10));
+seg('t-mouse', 'mouse');
+$('t-mouse').addEventListener('click', () => { if (cursorMode()) unlock(); else if (state) state.player.aim = 0; });
 seg('t-level', 'startLevel', (v) => parseInt(v, 10));
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
@@ -395,6 +421,7 @@ function syncPlayUI() {
   for (const s of syncs) s();
   force.value = play.forceGag || '';
   $('t-map').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(play.map)));
+  $('t-mouse').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === play.mouse));
   $('t-level').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(play.startLevel)));
   $('t-seed').value = play.seed || '';
   const total = play.odds.dispatch + play.odds.weird + play.odds.dud + play.odds.backfire || 1;

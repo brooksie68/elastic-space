@@ -3,7 +3,8 @@
 // that Claude reads from disk (`notes.json` via /api/worlds/jabberwocky/notes). The page polls the file
 // every ten seconds; a weapon Claude has changed since you last opened it shows a green dot, and the
 // change arrives as a toast. Same core, same renderer, same sound as the game.
-import { createRenderer } from './render3d.js?v=3';
+import { createRenderer } from './render3d.js?v=4';
+import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
 const $ = (id) => document.getElementById(id);
@@ -74,31 +75,56 @@ $('reset').addEventListener('click', () => { reset(); hint('RESET'); });
 reset();
 
 // ---- input ---------------------------------------------------------------------------------------------------
-// Two mouse modes (James: "I'm trapped" — the captured mouse locked him out of the panel). FREE is the default:
-// the pointer is never taken, left click fires, hold the RIGHT button and drag to look, the panel is always live.
-// CAPTURED is the game's way: click the room to take the mouse, esc gives it back. ?nolock=1 forces free.
-let mouseMode = q.get('nolock') === '1' ? 'free' : (prefs.mouse || 'free');
-const locked = () => mouseMode === 'free' || document.pointerLockElement === canvas;
-function lock() { if (mouseMode === 'free' || locked()) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+// Two mouse modes (James, first flight: "I'm trapped"; then the cursor-aim conversation). CURSOR is the default:
+// the mouse is a real cursor, the reticle rides it, the rifle points at it, left click fires; the camera turns on
+// the arrow keys, by pushing the cursor into the left/right edge of the room, or by holding the right button and
+// dragging. CAPTURED is the game's mouse look: click the room to take the mouse, esc gives it back. ?nolock=1 = cursor.
+let mouseMode = q.get('nolock') === '1' ? 'cursor' : (prefs.mouse === 'lock' ? 'lock' : 'cursor');
+const cursor = { x: 0, y: 0, in: false, push: 0, pitchPush: 0 };
+const EDGE = 0.1;
+const playW = () => innerWidth - 400, playH = () => innerHeight;
+const locked = () => mouseMode === 'cursor' || document.pointerLockElement === canvas;
+function lock() { if (mouseMode === 'cursor' || locked()) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
 function unlock() { if (document.pointerLockElement === canvas) document.exitPointerLock(); }
 let dragLook = false;
 canvas.addEventListener('mousedown', (e) => {
-  if (mouseMode === 'free') { if (e.button === 2) dragLook = true; else if (e.button === 0) input.fire = true; return; }
+  if (mouseMode === 'cursor') { if (e.button === 2) dragLook = true; else if (e.button === 0) input.fire = true; return; }
   if (!locked()) { lock(); return; }
   if (e.button === 0) input.fire = true;
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; if (e.button === 2) dragLook = false; });
 addEventListener('mousemove', (e) => {
-  if (mouseMode === 'free' ? !dragLook : !locked()) return;
+  if (mouseMode === 'cursor') {
+    cursor.x = e.clientX; cursor.y = e.clientY; cursor.in = e.clientX < playW();
+    if (dragLook) { lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens; }
+    return;
+  }
+  if (!locked()) return;
   lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens;
 });
+canvas.addEventListener('mouseleave', () => { cursor.in = false; });
+// each frame under cursor aim: the aim offset from the cursor, the reticle on it, the edge push into the turn
+const cross = $('cross');
+function aimFromCursor(dt) {
+  const p = state.player;
+  if (mouseMode !== 'cursor' || !cursor.in) { p.aim = 0; R.vm.aim += (0 - R.vm.aim) * Math.min(1, dt * 10); R.vm.aimY += (0 - R.vm.aimY) * Math.min(1, dt * 10); cross.style.left = ''; cross.style.top = ''; cursor.push = 0; return; }
+  const w = playW(), h = playH();
+  p.aim = yawFromCursor(cursor.x, w, h, look.fov || 76);
+  const py = pitchFromCursor(cursor.y, h, look.fov || 76);
+  R.vm.aim += (p.aim * 0.9 - R.vm.aim) * Math.min(1, dt * 14);
+  R.vm.aimY += (py - R.vm.aimY) * Math.min(1, dt * 14);
+  cross.style.left = cursor.x + 'px'; cross.style.top = cursor.y + 'px';
+  cursor.push = edgePush(cursor.x, w, EDGE);
+  cursor.pitchPush = edgePush(cursor.y, h, EDGE);
+}
 function setMouse(m) {
-  mouseMode = m; prefs.mouse = m; savePrefs(); dragLook = false;
-  if (m === 'free') unlock();
+  mouseMode = m; prefs.mouse = m; savePrefs(); dragLook = false; cursor.in = false;
+  if (m === 'cursor') unlock();
+  state.player.aim = 0;
   $('mouse').querySelectorAll('button').forEach((b) => b.classList.toggle('go', b.dataset.m === m));
-  $('keys').innerHTML = m === 'free'
-    ? '<b>left click</b> fires · <b>hold right button + drag</b> to look · <b>WASD</b> · <b>arrows</b> turn · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier'
-    : '<b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier';
+  $('keys').innerHTML = m === 'cursor'
+    ? '<b>the rifle points at the cursor</b> · <b>left click</b> fires · <b>WASD</b> · <b>arrows</b> or <b>push the cursor into the edge</b> to turn · <b>right-drag</b> looks · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> a tier'
+    : '<b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> a tier';
 }
 $('mouse').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setMouse(b.dataset.m)));
 setMouse(mouseMode);
@@ -187,6 +213,9 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; view.t += dt;
   readKeys();
+  aimFromCursor(dt);
+  if (cursor.push) input.turn += cursor.push * 0.8;
+  if (cursor.pitchPush) view.pitch = Math.max(-1, Math.min(1, view.pitch - cursor.pitchPush * dt * 1.2));
   const k = 1 - Math.exp(-dt * LOOK_EASE);
   input.look = lookBank.x * k; lookBank.x -= input.look;
   const dy = lookBank.y * k; lookBank.y -= dy;
@@ -357,4 +386,4 @@ pick(current);
 poll(); setInterval(poll, POLL_MS);
 R.load((k) => { $('load').textContent = 'LOADING THE DUNGEON ' + Math.round(k * 100) + '%'; }).then(() => { $('load').classList.add('off'); });
 requestAnimationFrame(frame);
-globalThis.LAB = { get state() { return state; }, R, C, T, pick, reset, input, view, lookBank, setMouse, get notes() { return notes; }, poll, step: (n) => { for (let i = 0; i < n; i++) simTick(1 / 60); } };
+globalThis.LAB = { get state() { return state; }, R, C, T, pick, reset, input, view, lookBank, setMouse, cursor, aimFromCursor, get notes() { return notes; }, poll, step: (n) => { for (let i = 0; i < n; i++) simTick(1 / 60); } };

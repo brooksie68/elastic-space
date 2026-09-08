@@ -55,7 +55,7 @@
     @keyframes throb { from { opacity: 1; } to { opacity: 0.5; } }
     #minimap { position: fixed; right: 1rem; bottom: 1rem; width: 220px; height: 220px; border-radius: 12px; opacity: 0.85; }
     #minimap.off { display: none; }
-    #cross { position: fixed; left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
+    #cross { position: fixed; left: 50%; top: 50%; z-index: 5; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
     #cross::before, #cross::after { content: ''; position: absolute; background: var(--ink); box-shadow: 0 0 3px #000; }
     #cross::before { left: 6px; top: 0; width: 2px; height: 14px; }
     #cross::after { top: 6px; left: 0; width: 14px; height: 2px; }
@@ -161,6 +161,7 @@
         <h3 class="t-h">You</h3>
         <div class="t-row"><div class="t-label"><span>Walk speed</span><span id="t-move-val"></span></div><input id="t-move" type="range" min="1.5" max="6" step="0.1" /></div>
         <div class="t-row"><div class="t-label"><span>Mouse look</span><span id="t-sens-val"></span></div><input id="t-sens" type="range" min="0.2" max="3" step="0.05" /></div>
+        <div class="t-row"><div class="t-label"><span>Mouse</span><span></span></div><div class="t-seg" id="t-mouse"><button data-v="look" type="button">LOOK</button><button data-v="cursor" type="button">CURSOR AIM</button></div><div class="t-sum">Look: the mouse is the camera and the game holds it (esc lets go). Cursor aim: a real cursor, the rifle points at it, turn with the arrows or by pushing the cursor into the edge of the screen.</div></div>
         <div class="t-row"><div class="t-label"><span>Corner map</span><span></span></div><div class="t-seg" id="t-map"><button data-v="1" type="button">ON</button><button data-v="0" type="button">OFF</button></div></div>
         <div class="t-row"><div class="t-label"><span>Start at</span><span></span></div><div class="t-seg" id="t-level"><button data-v="1" type="button">1</button><button data-v="2" type="button">2</button><button data-v="3" type="button">3</button><button data-v="4" type="button">4</button><button data-v="5" type="button">BOSS</button></div></div>
         <div class="t-row"><div class="t-label"><span>Maze seed</span><span></span></div><div style="display:flex;gap:0.4em"><input id="t-seed" type="text" placeholder="random" style="flex:1" /><button class="t-btn" id="t-seed-roll" type="button" style="margin:0">ROLL</button></div></div>
@@ -202,12 +203,12 @@
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
   <script src="gags.js?v=2"></script>
-  <script src="core.js?v=4"></script>
+  <script src="core.js?v=5"></script>
   <script src="draw.js?v=3"></script>
   <script src="sound.js?v=4"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="world.js?v=9"></script>
+  <script type="module" src="world.js?v=10"></script>
 </body>
 </html>

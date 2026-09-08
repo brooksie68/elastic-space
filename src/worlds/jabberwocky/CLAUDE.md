@@ -24,6 +24,8 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   or sound, under ~50 credits per note, cost written in the reply; bigger asks get the non-spend part done and
   the cost named in the reply. Run `sim.mjs` + `tmp/jabberwocky/lab-smoke.mjs` before marking anything done.
 - Bump `lab.js?v=` in lab.html when lab.js changes; the game's `core.js?v=` when the core changes.
+- TWO MOUSE MODELS (2026-09-07): mouse look (captured, the game's default) and CURSOR AIM (`cursor-aim.js`; the lab's
+  default; the game's configuration → PLAY → Mouse). Keep both working; he is deciding which he prefers.
 
 ## Docs
 

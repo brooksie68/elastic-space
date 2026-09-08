@@ -394,7 +394,7 @@
     const level = buildLevel(n, state.seed, state.opts);
     state.n = n; state.level = level; state.phase = 'play';
     state.player = {
-      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100,
+      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100,
       cool: 0, slow: 1, vx: 0, vy: 0, fx: { snot: 0, bees: 0, lump: 0, spin: 0, dead: 0, fall: 0, flash: 0, hurt: 0 },
       safe: { x: level.spawn.x, y: level.spawn.y }, driftPush: { i: -1, t: 0 }, spinDir: 1, ringing: 0,
     };
@@ -488,9 +488,10 @@
     const { gag } = state.pending;
     state.pending = null;
     const p = state.player;
-    launch(state, gag, p.x, p.y, p.a, 'player');
+    const a = p.a + (p.aim || 0);   // aim = cursor-aim yaw offset from the facing (0 under mouse look)
+    launch(state, gag, p.x, p.y, a, 'player');
     state.plate = { name: gag.name, line: gag.line || '', tier: gag.tier, t: 0, id: gag.id };
-    state.events.push({ type: 'fire', gag, x: p.x, y: p.y, a: p.a });
+    state.events.push({ type: 'fire', gag, x: p.x, y: p.y, a });
   }
 
   // launch a gag from a point in a direction; owner 'player' | 'boss' | 'rifle' (the little one)

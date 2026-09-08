@@ -30,6 +30,13 @@ appends an entry: date, author, what changed, and where things stand. Never rewr
 - **MOUSE FREE (his first flight: "I'm trapped")**: the lab no longer captures the pointer by default. Left click fires,
   hold the right button and drag to look, arrows turn, the panel is always live. A MOUSE FREE / CAPTURED switch in the
   bar (persisted); captured is the game's way (click the room, esc gives it back). `?nolock=1` forces free.
+- **CURSOR AIM (his "what am I missing?" — the answer was the second mouse model, and he wants to feel it)**: a real
+  cursor, the reticle rides it, the rifle swings to point at it (`vm.aim` / `vm.aimY`, eased), the shot leaves at the
+  cursor's yaw (`player.aim`, added to the facing in `launchPending`), turning on the arrows or by pushing the cursor
+  into the outer 10% of the screen (eased), right-drag looks; the maths in `cursor-aim.js` (yaw from the horizontal
+  fov, cosmetic pitch, edge push). THE LAB defaults to it (CURSOR AIM / MOUSE LOOK in the bar). THE GAME keeps mouse
+  look as the default and gets a **Mouse: LOOK / CURSOR AIM** row in configuration → PLAY (persisted; the cards' key
+  line follows). Under cursor aim the game never captures the pointer, so nothing to esc out of.
 - NEXT: his flight of the lab; then notes arrive and get acted on one by one.
 
 ## 2026-09-06 (James flying the gore pass) — Claude (Fable 5.1) — map flip, eased mouse look
