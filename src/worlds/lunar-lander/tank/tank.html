@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Battle for the Moon 2075 — the tank</title>
+  <title>Moon Battle 2075 — the tank</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23020604'/%3E%3Cpath d='M5 20h22l-3 5H8z M10 14h12l3 6H7z M16 10v4 M16 12h9' fill='none' stroke='%2358ff7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <style>
     /* ---- COPY of the lander's index.html :root / panel / lbl / num / unit (2026-09-06) so the two consoles are one family ---- */
@@ -86,13 +86,30 @@
     /* the weapon rows are buttons too (James, on the lander's console): click SHELL to fire, LASER to blast */
     #gun .wpn { pointer-events: auto; cursor: pointer; border-radius: 10px; padding: 0.2em 0.5em; margin: -0.2em -0.5em; transition: background 160ms ease; }
     #gun .wpn:hover { background: color-mix(in srgb, var(--ph) 10%, transparent); }
+    #reload-track { position: relative; width: 7.5em; height: 0.35em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.35em; }
+    #reload-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 8px var(--ph-dim); transition: width 60ms linear; }
+    #reload-fill.charging { background: var(--ink-dim); box-shadow: none; }
     #laser-track { position: relative; width: 7.5em; height: 0.55em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.55em; }
     #laser-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); transition: width 90ms linear; }
     #laser-fill.charging { background: var(--ink-dim); box-shadow: none; }
 
-    /* heading + speed */
-    #nav { flex: 1; flex-direction: row; gap: 1.6em; align-items: center; }
+    /* the compass tape + speed */
+    #nav { flex: 2.4; flex-direction: row; gap: 1.2em; align-items: center; }
     #nav .num { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
+    #tape-wrap { flex: 1; min-width: 12em; }
+    #tape-wrap .lbl { display: flex; justify-content: space-between; }
+    #tape-wrap .lbl #v-look { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; color: var(--ph); }
+    #tape { width: 100%; height: 3.4em; overflow: visible; display: block; margin-top: 0.15em; }
+    #tape .tk { stroke: var(--ink-dim); stroke-width: 0.8; }
+    #tape .tk.big { stroke: var(--ink); stroke-width: 1; }
+    #tape .tn { fill: var(--ink); font: 700 7px var(--sans); letter-spacing: 0.08em; text-anchor: middle; }
+    #tape .lub { stroke: var(--ph); stroke-width: 1.4; filter: drop-shadow(0 0 3px var(--ph-dim)); }
+    #tape .ct { fill: var(--ph); }
+    #tape .ct.site { fill: none; stroke: var(--ph); stroke-width: 0.9; }
+    #tape .ct.missile { fill: var(--ink); animation: hot 300ms ease-in-out infinite alternate; }
+    #tape .hull path { fill: none; stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; opacity: 0.9; }
+    #tape .hull.off { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.6; }
+    #tape .gun { fill: var(--ink-dim); }
 
     /* score + mission meta */
     #hud-right { flex: 1; text-align: right; align-items: flex-end; }
@@ -118,10 +135,36 @@
     #lives svg.gone { opacity: 0.2; }
 
     /* ---- the crosshair + the in-range word ---------------------------------------- */
-    #cross { position: fixed; left: 50%; top: 50%; width: 3.2rem; height: 3.2rem; transform: translate(-50%, -50%); pointer-events: none; z-index: 6; }
-    #cross line { stroke: var(--ink); stroke-width: 1.3; opacity: 0.6; transition: stroke 200ms ease, opacity 200ms ease; }
-    #cross circle { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.3; transition: stroke 200ms ease, opacity 200ms ease; }
-    #cross.on line, #cross.on circle { stroke: var(--ph); opacity: 0.95; filter: drop-shadow(0 0 4px var(--ph-dim)); }
+    /* THE CROSSHAIR IS THE AIM (2026-09-07): dim while the gun is still catching up, solid when laid,
+       amber over a hostile (fire), a dashed ring over a civilian (don't) */
+    #cross { position: fixed; left: 50%; top: 50%; width: 4rem; height: 4rem; transform: translate(-50%, -50%); pointer-events: none; z-index: 6; opacity: 0.5; transition: opacity 120ms ease; }
+    #cross.laid { opacity: 1; }
+    #cross line { stroke: var(--ink); stroke-width: 1.4; opacity: 0.85; transition: stroke 150ms ease, opacity 150ms ease; }
+    #cross circle { fill: none; stroke: var(--ink); stroke-width: 1.1; opacity: 0.45; transition: stroke 150ms ease, opacity 150ms ease, r 150ms ease; }
+    #cross .dot { fill: var(--ink); stroke: none; opacity: 0.9; }
+    #cross.on line, #cross.on circle, #cross.on .dot { stroke: #ffb457; opacity: 1; filter: drop-shadow(0 0 5px rgba(255, 180, 87, 0.6)); }
+    #cross.on .dot { fill: #ffb457; }
+    #cross.civ circle { stroke-dasharray: 3 3; opacity: 0.7; }
+    #cross.civ line { opacity: 0.35; }
+    /* the gun's reticle: a diamond where the barrel points, sliding onto the crosshair as the turret arrives */
+    #gunret { position: fixed; left: 0; top: 0; width: 2.2rem; height: 2.2rem; pointer-events: none; z-index: 6; opacity: 0; transition: opacity 160ms ease; will-change: transform; }
+    #gunret path { fill: none; stroke: var(--ink); stroke-width: 1.2; opacity: 0.55; }
+    /* the projected range under the crosshair */
+    #gun-range { position: fixed; left: 50%; top: calc(50% + 2.1rem); transform: translateX(-50%); z-index: 6; pointer-events: none; white-space: nowrap;
+      font-size: 0.86rem; font-weight: 300; letter-spacing: 0.04em; color: var(--ink); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 200ms ease; }
+    #gun-range.on { opacity: 0.85; }
+    #gun-range .unit { margin-left: 0.25em; }
+    #gun-range .what { margin-left: 0.9em; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.24em; color: var(--ink-dim); }
+    #gun-range .what.hot { color: var(--ph); }
+    body.scoped #range-word { top: calc(50% + 3.6rem); }
+    body.scoped #gun-range { top: calc(50% + 2.4rem); font-size: 1rem; }
+    /* the scope: a ring, stadia, corner brackets; the field of view narrows under it */
+    #scope { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 5; opacity: 0; transition: opacity 220ms ease; }
+    body.scoped #scope { opacity: 1; }
+    #scope .ring { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.35; }
+    #scope .stad { stroke: var(--ink); stroke-width: 1; opacity: 0.45; }
+    #scope .brk { fill: none; stroke: var(--ink-dim); stroke-width: 1; }
+    #scope .txt { fill: var(--ink-dim); font: 700 11px var(--sans); letter-spacing: 0.3em; }
     #range-word { position: fixed; left: 50%; top: calc(50% + 2.6rem); transform: translateX(-50%); z-index: 6; pointer-events: none;
       font-size: 0.72rem; font-weight: 700; letter-spacing: 0.3em; text-indent: 0.3em; color: var(--ph); opacity: 0; transition: opacity 260ms ease; white-space: nowrap; }
     #range-word.on { opacity: 1; animation: hot 900ms ease-in-out infinite alternate; }
@@ -186,14 +229,15 @@
     #hint { position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10; font-size: 0.667rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint); transition: opacity 800ms ease; white-space: nowrap; }
     .faded { opacity: 0 !important; }
     #controls { position: fixed; bottom: 1rem; right: 1rem; z-index: 12; display: flex; gap: 0.4rem; }
-    #controls button, #tuner-toggle {
+    #controls button, #controls a, #tuner-toggle {
+      text-decoration: none; display: inline-block; line-height: 1;
       background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px;
       color: var(--ink-dim); font: 700 0.69rem/1 var(--sans); letter-spacing: 0.2em;
       padding: 0.55rem 0.95rem; cursor: pointer;
       backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       transition: color 200ms ease, border-color 200ms ease, background 200ms ease;
     }
-    #controls button:hover, #tuner-toggle:hover { color: var(--ink); }
+    #controls button:hover, #controls a:hover, #tuner-toggle:hover { color: var(--ink); }
     #btn-restart.armed { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); background: color-mix(in srgb, var(--ph) 14%, transparent); }
     #tuner-toggle { position: fixed; bottom: 2.9rem; left: 1.6rem; z-index: 12; }
 
@@ -235,8 +279,19 @@
 <body>
   <canvas id="field"></canvas>
   <div id="labels" aria-hidden="true"></div>
-  <svg id="cross" viewBox="-20 -20 40 40" aria-hidden="true"><circle r="12" /><line x1="-18" y1="0" x2="-6" y2="0" /><line x1="6" y1="0" x2="18" y2="0" /><line x1="0" y1="-18" x2="0" y2="-6" /><line x1="0" y1="6" x2="0" y2="18" /></svg>
+  <svg id="cross" viewBox="-20 -20 40 40" aria-hidden="true"><circle r="12" /><circle class="dot" r="1.3" /><line x1="-19" y1="0" x2="-7" y2="0" /><line x1="7" y1="0" x2="19" y2="0" /><line x1="0" y1="-19" x2="0" y2="-7" /><line x1="0" y1="7" x2="0" y2="19" /></svg>
+  <svg id="gunret" viewBox="-12 -12 24 24" aria-hidden="true"><path d="M0 -9 L9 0 L0 9 L-9 0 Z" /><path d="M0 -3 V3 M-3 0 H3" /></svg>
+  <div id="gun-range"></div>
   <div id="range-word">ENEMY IN RANGE</div>
+  <svg id="scope" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <circle class="ring" cx="960" cy="540" r="420" /><circle class="ring" cx="960" cy="540" r="300" />
+    <line class="stad" x1="540" y1="540" x2="760" y2="540" /><line class="stad" x1="1160" y1="540" x2="1380" y2="540" />
+    <line class="stad" x1="960" y1="120" x2="960" y2="340" /><line class="stad" x1="960" y1="740" x2="960" y2="960" />
+    <line class="stad" x1="860" y1="600" x2="880" y2="600" /><line class="stad" x1="1040" y1="600" x2="1060" y2="600" />
+    <line class="stad" x1="840" y1="660" x2="870" y2="660" /><line class="stad" x1="1050" y1="660" x2="1080" y2="660" />
+    <path class="brk" d="M420 200 v-60 h60 M1500 200 v-60 h-60 M420 880 v60 h60 M1500 880 v60 h-60" />
+    <text class="txt" x="440" y="130">SCOPE</text><text class="txt" x="1380" y="130">Z TO CLOSE</text>
+  </svg>
   <svg id="cracks" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">
     <path id="crack-1" d="M0 300 L180 420 L260 380 L420 520 L470 500 L560 640 M180 420 L140 560 L60 600 M420 520 L400 640 L330 700 M260 380 L300 260 L270 180" />
     <path id="crack-1b" class="fine" d="M140 560 L200 620 M300 260 L360 240 M470 500 L520 470" />
@@ -258,11 +313,11 @@
         <div id="radar-note"></div>
       </div>
       <div class="panel" id="gun">
-        <div class="wpn" id="wpn-shell" role="button" aria-label="fire the shell"><div class="lbl">Shell</div><div class="num big ready" id="v-shell">READY</div></div>
+        <div class="wpn" id="wpn-shell" role="button" aria-label="fire the shell"><div class="lbl">Shell</div><div class="num big ready" id="v-shell">READY</div><div id="reload-track"><div id="reload-fill"></div></div></div>
         <div class="wpn" id="wpn-laser" role="button" aria-label="fire the laser"><div class="lbl">Laser</div><div id="laser-track"><div id="laser-fill"></div></div></div>
       </div>
       <div class="panel" id="nav">
-        <div><div class="lbl">Heading</div><div class="num" id="v-hdg">090<span class="unit">°</span></div></div>
+        <div id="tape-wrap"><div class="lbl"><span>Heading</span><span id="v-look">090</span></div><svg id="tape" viewBox="-100 -14 200 28" preserveAspectRatio="none" aria-label="compass tape"></svg></div>
         <div><div class="lbl">Speed</div><div class="num" id="v-spd">00<span class="unit">FT/S</span></div></div>
       </div>
       <div class="panel" id="hud-right">
@@ -284,10 +339,10 @@
 
   <div id="centre">
     <div class="card" id="start-card">
-      <div class="word">BATTLE FOR THE MOON</div>
+      <div class="word">MOON BATTLE 2075</div>
       <div class="line big" id="start-mission">MISSION 1 — FIRST PATROL</div>
       <div class="line" id="start-result" style="display: none"></div>
-      <div class="line dim">CLEAR EVERY HOSTILE IN THE STRETCH<br />W S DRIVE · A D TURN · MOUSE LOOKS UP AND DOWN · CLICK OR SPACE FIRES · RIGHT CLICK OR L IS THE LASER</div>
+      <div class="line dim">CLEAR EVERY HOSTILE IN THE STRETCH<br />THE MOUSE AIMS — THE CROSSHAIR TURNS AMBER ON A TARGET, THEN CLICK · A SHELL EVERY 0.8 S · W GOES WHERE YOU LOOK · RIGHT CLICK IS THE LASER · Z IS THE SCOPE</div>
       <div id="ledger"></div>
       <button id="btn-start" type="button">ROLL OUT</button>
     </div>
@@ -301,8 +356,8 @@
   </div>
 
   <div id="pause-card"><div class="word">PAUSED</div><div class="sub">P OR SPACE TO RESUME</div></div>
-  <div id="hint">W S DRIVE · A D TURN · MOUSE LOOKS · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · P PAUSE · R RESTART</div>
-  <div id="controls"><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
+  <div id="hint">MOUSE AIMS · W S DRIVE · A D TURN THE HULL · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · Z SCOPE · ESC OR P PAUSE · R RESTART</div>
+  <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
 
   <button id="tuner-toggle" type="button">TUNE</button>
   <div id="tuner">
@@ -316,11 +371,11 @@
         </div>
       </div>
       <div class="t-row">
-        <div class="t-label"><span>Mouse looks up and down</span><span></span></div>
-        <div class="t-seg" id="t-mouse"><button data-v="0" type="button">OFF</button><button data-v="1" type="button">ON</button></div>
+        <div class="t-label"><span>Mouse — aim sensitivity</span><span id="t-sens-val">1.00×</span></div>
+        <input id="t-sens" type="range" min="0.3" max="2.5" step="0.05" />
       </div>
       <div class="t-row">
-        <div class="t-label"><span>Turn rate</span><span id="t-turn-val">1.00×</span></div>
+        <div class="t-label"><span>Hull turn rate (A D)</span><span id="t-turn-val">1.00×</span></div>
         <input id="t-turn" type="range" min="0.5" max="1.8" step="0.05" />
       </div>
       <div class="t-row">
@@ -342,10 +397,10 @@
   <script src="../../../core/sound-control.js"></script>
   <script src="../structures.js"></script>
   <script src="../game-core.js"></script>
-  <script src="tank-core.js?v=1"></script>
+  <script src="tank-core.js?v=5"></script>
   <script type="importmap">
     { "imports": { "three": "../../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="tank.js?v=2"></script>
+  <script type="module" src="tank.js?v=5"></script>
 </body>
 </html>

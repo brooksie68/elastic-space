@@ -1,4 +1,4 @@
-// Battle for the Moon 2075 — the TANK renderer.
+// Moon Battle 2075 — the TANK renderer.
 //
 // First person out of the tank's slit, drawn in the lander's register: one
 // green-to-white line drawing on black, max-blended, tightly glowed, no CRT
@@ -15,7 +15,11 @@
 // near plane in the shader and writes real depth, because a first-person world
 // occludes by depth (a tank behind a building), where the side view occludes
 // by draw order. LineBatch takes { depth: true } to use it; the lander's
-// batches are untouched by default.
+// batches are untouched by default. SECOND EXTENSION (2026-09-07, the look
+// pass, item 2): LINE WEIGHT BY DISTANCE — the depth shader carries a per-
+// vertex width and a near brightness lift (uNearA/uNearB/uWNear/uWFar/uBNear),
+// so near lines are heavy and whiten, far lines are hairlines and green. The
+// no-depth shader (the gun) keeps the flat width.
 import * as THREE from 'three';
 
 // ---- tunables (COPY: render3d.js DEFAULT_PARAMS, plus the tank's own at the end) ----
@@ -38,17 +42,28 @@ export const DEFAULT_PARAMS = {
   res: 1.0,           // render scale
   // ---- the tank's own (not in the lander's file) ----
   tankFov: 56,        // vertical field of view out of the slit, degrees
-  gridBright: 0.28,   // the ground grid
-  gridPitch: 100,     // ft between grid lines
-  traceBright: 0.5,   // the flight line: the path the lander flew, drawn on the ground
+  gridBright: 0.11,   // a faint wide grid under everything (James, 2026-09-07: "massively flat and black... feels like nothing's there")
+  gridPitch: 100,     // ft between grid lines (James, 2026-09-08: "double up... still too much black")
+  traceBright: 0.55,  // the flight line: the path the lander flew, a ticked trail on the ground
+  contourBright: 0.34,// the contour lines (every contourStep ft of height; every fifth heavier)
+  contourStep: 28,    // ft between contours: the lander's profile is walls along z, so a fine step drew stripes; coarse = one crest line per wall, a few per hill
+  craterBright: 0.5,  // crater rims + their rays
+  rockBright: 0.55,   // rock fields
+  weightNear: 1.45,   // line weight ×, right at the tank (item 2: near heavy + white)
+  weightFar: 0.62,    // line weight ×, past weightRange (far hairline + green)
+  weightRange: 1100,  // ft over which the weight falls from near to far
+  nearWhite: 1.3,     // brightness × at the tank (whitens through the composite)
   fogNear: 500,       // ft: ground lines start fading here
   fogFar: 2600,       // ft: ...and are at 25% here
-  skyBright: 0.55,    // the far skyline
-  skyFarBright: 0.38, // the farther skyline
+  ridgeBright: 0.7,   // the NEAR ridges (two lines along the flight line, 3,000 ft out)
+  skyBright: 0.55,    // the mid skyline (a ring 6,500 ft out, anchored at the stretch)
+  skyFarBright: 0.38, // the far skyline (11,000 ft)
+  hazeBright: 0.6,    // the horizon glow along the far crest
+  earthBright: 1.0,   // the Earth in the sky
   civBright: 0.62,    // civilian structures (the lander's flight-line value)
   hostBright: 0.85,   // hostile structures (the lander's flight-line value)
   enemyBright: 0.95,  // enemy tanks
-  gunBright: 0.5,     // your own gun in the foreground
+  gunBright: 0,       // your own gun in the foreground — OFF (James, 2026-09-07: "this little goofy-looking thing... a circle with two lines"); the crosshair is the aim
   slopePitch: 0.6,    // how much of the ground's pitch the view takes (eased)
 };
 
@@ -56,7 +71,12 @@ const PIXEL_BUDGET = 2.9e6;
 const MAX_PARTICLES = 2600;
 const CHUNK_W = 4000;
 const SKY_R = 7000, SKY_FAR_R = 11000, STAR_R = 14000, SKY_FLOOR = -4000;
-const GROUND_HALF = 2400;   // ft: the ground mesh + grid extend this far around the tank
+const GROUND_HALF = 2400;   // ft: the ground mesh + contours extend this far around the tank
+const RIDGE_Z = 3000;       // ft: the near ridges stand this far either side of the flight line
+const RIDGE_STEP = 120;     // ft between ridge samples
+const CRATER_CELL = 520;    // ft: one crater roll per cell
+const ROCK_CELL = 260;      // ft: one rock-field roll per cell
+const SKY_MID_R = 6500;     // ft: the mid ring, anchored at the stretch's start
 const GROUND_CELL = 25;     // ft: mesh cell — the grid lines ride the mesh's own rows, so they never sink under it
 const GROUND_REBUILD = 320; // ft: the tank moves this far before the ground is re-laid
 const PITCH_TAU = 0.6;      // s: the view eases onto the ground's pitch
@@ -70,13 +90,16 @@ const LINE_VERT = `
   attribute float aBright;
   uniform vec2 uRes;
   uniform float uHalf;      // half width + feather, px
+  uniform float uWidth;
   uniform float uFogA;
   uniform float uFogB;
   varying vec2 vP;
   varying vec2 vS0;
   varying vec2 vS1;
   varying float vBright;
+  varying float vWidth;
   void main() {
+    vWidth = uWidth;
     vec4 c0 = projectionMatrix * modelViewMatrix * vec4(aP0, 1.0);
     vec4 c1 = projectionMatrix * modelViewMatrix * vec4(aP1, 1.0);
     float w0 = max(c0.w, 1e-3), w1 = max(c1.w, 1e-3);
@@ -103,18 +126,25 @@ const LINE_VERT_DEPTH = `
   attribute float aBright;
   uniform vec2 uRes;
   uniform float uHalf;
+  uniform float uWidth;
   uniform float uFogA;
   uniform float uFogB;
   uniform float uNear;
+  uniform float uNearA;     // EXTENSION 2: weight by distance
+  uniform float uNearB;
+  uniform float uWNear;
+  uniform float uWFar;
+  uniform float uBNear;
   varying vec2 vP;
   varying vec2 vS0;
   varying vec2 vS1;
   varying float vBright;
+  varying float vWidth;
   void main() {
     vec4 v0 = modelViewMatrix * vec4(aP0, 1.0);
     vec4 v1 = modelViewMatrix * vec4(aP1, 1.0);
     float zn = -uNear;
-    if (v0.z > zn && v1.z > zn) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vBright = 0.0; vP = vec2(0.0); vS0 = vec2(0.0); vS1 = vec2(1.0, 0.0); return; }
+    if (v0.z > zn && v1.z > zn) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vBright = 0.0; vWidth = 1.0; vP = vec2(0.0); vS0 = vec2(0.0); vS1 = vec2(1.0, 0.0); return; }
     if (v0.z > zn) { float t = (zn - v0.z) / (v1.z - v0.z); v0 = mix(v0, v1, t); }
     else if (v1.z > zn) { float t = (zn - v1.z) / (v0.z - v1.z); v1 = mix(v1, v0, t); }
     vec4 c0 = projectionMatrix * v0;
@@ -131,7 +161,9 @@ const LINE_VERT_DEPTH = `
     vec2 p = base + d * aCorner.x * uHalf + n * aCorner.y * uHalf;
     float depth = aCorner.x < 0.0 ? w0 : w1;
     float fog = 1.0 - smoothstep(uFogA, uFogB, depth);
-    vP = p; vS0 = s0; vS1 = s1; vBright = aBright * mix(0.25, 1.0, fog);
+    float nf = 1.0 - smoothstep(uNearA, uNearB, depth);
+    vWidth = uWidth * mix(uWFar, uWNear, nf);
+    vP = p; vS0 = s0; vS1 = s1; vBright = aBright * mix(0.25, 1.0, fog) * mix(1.0, uBNear, nf);
     gl_Position = vec4(p / (uRes * 0.5) * cb.w, cb.z, cb.w);
   }
 `;
@@ -141,15 +173,15 @@ const LINE_FRAG = `
   varying vec2 vS0;
   varying vec2 vS1;
   varying float vBright;
-  uniform float uWidth;
+  varying float vWidth;
   uniform float uGain;
   void main() {
     vec2 ab = vS1 - vS0;
     float l2 = dot(ab, ab);
     float t = l2 > 1e-6 ? clamp(dot(vP - vS0, ab) / l2, 0.0, 1.0) : 0.0;
     float d = length(vP - (vS0 + ab * t));
-    float core = 1.0 - smoothstep(uWidth * 0.5 - 0.9, uWidth * 0.5 + 0.9, d);
-    float halo = exp(-d / (uWidth * 0.9)) * 0.05;
+    float core = 1.0 - smoothstep(vWidth * 0.5 - 0.9, vWidth * 0.5 + 0.9, d);
+    float halo = exp(-d / (vWidth * 0.9)) * 0.05;
     float v = (core + halo) * vBright * uGain;
     gl_FragColor = vec4(v, v, v, 1.0);
   }
@@ -190,6 +222,7 @@ class LineBatch {
         uFogA: { value: 1e8 },
         uFogB: { value: 1e9 },
         uNear: { value: 1 },
+        uNearA: { value: 40 }, uNearB: { value: 1100 }, uWNear: { value: 1 }, uWFar: { value: 1 }, uBNear: { value: 1 },
       },
       // MAX blend: a stroke crossing a stroke is one stroke's brightness, never two
       blending: THREE.CustomBlending,
@@ -424,25 +457,29 @@ export class TankScene {
     // depth is the occlusion model here: black fills write depth (ground,
     // skyline, structure and hull boxes); line batches test it. Draw order
     // only matters for the no-depth foreground (your gun, the beam flash).
-    this.starBatch = new LineBatch(1400, 0, { depth: true });
+    this.starBatch = new LineBatch(2600, 0, { depth: true });     // stars + the Earth
     this.skyFarFill = new GroundFill(1, SKY_FLOOR, true);
-    this.skyFarBatch = new LineBatch(400, 2, { depth: true });
+    this.skyFarBatch = new LineBatch(900, 2, { depth: true });     // the far ring + the horizon glow copies
     this.skyFill = new GroundFill(3, SKY_FLOOR, true);
-    this.skyBatch = new LineBatch(400, 4, { depth: true });
+    this.skyBatch = new LineBatch(400, 4, { depth: true });        // the mid ring
+    this.ridgeFill = new GroundFill(4.2, SKY_FLOOR, true);
+    this.ridgeBatch = new LineBatch(600, 4.4, { depth: true });    // the two near ridges
     this.groundMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthTest: true, depthWrite: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 }));
     this.groundMesh.frustumCulled = false; this.groundMesh.renderOrder = 5;
-    this.groundBatch = new LineBatch(26000, 6, { depth: true });
+    this.groundBatch = new LineBatch(90000, 6, { depth: true });   // contours + craters + rocks + the trail
     this.boxMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, depthTest: true, depthWrite: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 }));
     this.boxMesh.frustumCulled = false; this.boxMesh.renderOrder = 7;
     this.structBatch = new LineBatch(12000, 8, { depth: true });
     this.dynBatch = new LineBatch(9000, 9, { depth: true });
     this.gunBatch = new LineBatch(600, 10);   // no depth: always in front
-    for (const m of [this.starBatch.mesh, this.skyFarFill.mesh, this.skyFarBatch.mesh, this.skyFill.mesh, this.skyBatch.mesh, this.groundMesh, this.groundBatch.mesh, this.boxMesh, this.structBatch.mesh, this.dynBatch.mesh, this.gunBatch.mesh]) this.scene.add(m);
-    this.worldBatches = [this.starBatch, this.skyFarBatch, this.skyBatch, this.groundBatch, this.structBatch, this.dynBatch, this.gunBatch];
+    for (const m of [this.starBatch.mesh, this.skyFarFill.mesh, this.skyFarBatch.mesh, this.skyFill.mesh, this.skyBatch.mesh, this.ridgeFill.mesh, this.ridgeBatch.mesh, this.groundMesh, this.groundBatch.mesh, this.boxMesh, this.structBatch.mesh, this.dynBatch.mesh, this.gunBatch.mesh]) this.scene.add(m);
+    this.worldBatches = [this.starBatch, this.skyFarBatch, this.skyBatch, this.ridgeBatch, this.groundBatch, this.structBatch, this.dynBatch, this.gunBatch];
     this.world = null;
     this.stars = [];
     this.skyPts = null; this.skyFarPts = null;
     this.groundCentre = null;
+    this.ringsLaid = false; this.anchor = [0, 0];
+    this.scopeShown = 0;
     this.boxKey = '';
     this.effects = [];
     this.particles = [];
@@ -479,9 +516,10 @@ export class TankScene {
     this.quadScene.add(this.quad);
   }
   setParams(p) {
-    const before = { stars: this.params.stars, gridPitch: this.params.gridPitch, gridBright: this.params.gridBright, traceBright: this.params.traceBright, skyBright: this.params.skyBright, skyFarBright: this.params.skyFarBright };
+    const before = {};
+    for (const k of ['stars', 'gridPitch', 'gridBright', 'traceBright', 'contourBright', 'contourStep', 'craterBright', 'rockBright', 'ridgeBright', 'skyBright', 'skyFarBright', 'hazeBright', 'earthBright']) before[k] = this.params[k];
     Object.assign(this.params, p);
-    for (const k of Object.keys(before)) if (before[k] !== this.params[k]) { this.groundCentre = null; this.skyPts = null; }
+    for (const k of Object.keys(before)) if (before[k] !== this.params[k]) { this.groundCentre = null; this.skyPts = null; this.ringsLaid = false; }
   }
   resize(w, h) {
     w = Math.max(2, Math.floor(w || window.innerWidth || this.canvas.clientWidth || 2));
@@ -517,8 +555,14 @@ export class TankScene {
       this.stars.push([Math.cos(a) * Math.cos(e), Math.sin(e), Math.sin(a) * Math.cos(e), 0.3 + this._rand() * this._rand() * 1.0]);
     }
     this.groundCentre = null; this.skyPts = null; this.boxKey = '';
+    this.ringsLaid = false;
+    this.anchor = state.tank ? [state.tank.x, 0] : [0, 0];   // the rings stand here; driving through them is the parallax
     this.effects.length = 0; this.particles.length = 0;
     this.rubble = {};
+    // the Earth: a fixed place in this moon's sky
+    const C = globalThis.LunarCore;
+    const r = C.mulberry32(C.hashSeed(this.rngState, 77));
+    this.earth = { az: r() * Math.PI * 2, el: 0.32 + r() * 0.22, rad: 0.052, phase: 0.25 + r() * 0.5, tilt: (r() - 0.5) * 0.8, seed: (r() * 1e6) | 0 };
   }
   _core() { return globalThis.LunarTankCore; }
   _groundAt(x, z) { return this.world ? this._core().groundAt(this.world, x, z) : 0; }
@@ -540,31 +584,135 @@ export class TankScene {
     this.skyH = mk(120, 380, 980, 23, 0.5);
     this.skyFarH = mk(96, 700, 1700, 11, 0.45);
   }
-  _laySky(cx, cz, baseY) {
+  // The rings (mid + far) are laid ONCE per world around the anchor — the
+  // stretch's start — so driving moves you through them and the three depths
+  // slide past each other (item 6: parallax). The far crest carries the
+  // horizon glow: two dimmer copies just above it widen the bloom into a rim
+  // of light along the horizon. Black to the floor beneath each.
+  _layRings(baseY) {
     if (!this.skyH) this._buildSky();
     const P = this.params;
-    const lay = (hs, R, batch, fill, bright) => {
+    const ax = this.anchor[0], az = this.anchor[1];
+    const lay = (hs, R, batch, fill, bright, haze) => {
       const pts = [];
       const n = hs.length;
       for (let i = 0; i <= n; i++) {
         const a = Math.PI * 2 * i / n;
-        pts.push([cx + Math.cos(a) * R, baseY + hs[i % n], cz + Math.sin(a) * R]);
+        pts.push([ax + Math.cos(a) * R, baseY + hs[i % n], az + Math.sin(a) * R]);
       }
       batch.begin();
       for (let i = 1; i < pts.length; i++) batch.seg(pts[i - 1][0], pts[i - 1][1], pts[i - 1][2], pts[i][0], pts[i][1], pts[i][2], bright);
+      if (haze > 0) for (const [lift, b] of [[5, haze * 0.5], [11, haze * 0.28], [18, haze * 0.14]]) {   // a few ft apart at 11,000 ft: under a pixel each, so they fuse into a rim of light
+        for (let i = 1; i < pts.length; i++) batch.seg(pts[i - 1][0], pts[i - 1][1] + lift, pts[i - 1][2], pts[i][0], pts[i][1] + lift, pts[i][2], b);
+      }
       batch.end();
       fill.set3(pts);
     };
-    lay(this.skyH, SKY_R, this.skyBatch, this.skyFill, P.skyBright);
-    lay(this.skyFarH, SKY_FAR_R, this.skyFarBatch, this.skyFarFill, P.skyFarBright);
+    lay(this.skyH, SKY_MID_R, this.skyBatch, this.skyFill, P.skyBright, 0);
+    lay(this.skyFarH, SKY_FAR_R, this.skyFarBatch, this.skyFarFill, P.skyFarBright + P.hazeBright * 0.9, P.hazeBright);
+    this.ringsLaid = true;
+  }
+  // the near ridges: two crests along the flight line, RIDGE_Z either side,
+  // heights hashed by x (so they never move), re-laid with the ground
+  _ridgeH(x, side) {
+    const C = globalThis.LunarCore;
+    const seed = (this.world && this.world.seed) || 1;
+    const i = Math.floor(x / RIDGE_STEP), t = x / RIDGE_STEP - i;
+    const h = (k) => { const r = C.hashSeed(seed ^ (side > 0 ? 0x51 : 0x77), k) / 4294967296; return 160 + r * r * 620; };
+    const a = h(i), b = h(i + 1);
+    const e = t * t * (3 - 2 * t);
+    return a + (b - a) * e;
+  }
+  _layRidges(cx, baseY) {
+    const P = this.params;
+    const B = this.ridgeBatch;
+    B.begin();
+    const x0 = Math.floor((cx - 5000) / RIDGE_STEP) * RIDGE_STEP;
+    const n = Math.round(10000 / RIDGE_STEP) + 1;
+    const all = [];
+    for (const side of [-1, 1]) {
+      const z = side * RIDGE_Z;
+      const pts = [];
+      for (let i = 0; i < n; i++) { const x = x0 + i * RIDGE_STEP; pts.push([x, baseY + this._ridgeH(x, side) * 0.55, z]); }
+      for (let i = 1; i < n; i++) B.seg(pts[i - 1][0], pts[i - 1][1], pts[i - 1][2], pts[i][0], pts[i][1], pts[i][2], P.ridgeBright);
+      all.push(pts);
+    }
+    B.end();
+    // one fill for both: the strip drops to the floor under each crest; join the two by a hidden pass under the floor
+    const joined = all[0].concat([[all[0][all[0].length - 1][0], SKY_FLOOR, all[0][all[0].length - 1][2]], [all[1][0][0], SKY_FLOOR, all[1][0][2]]], all[1]);
+    this.ridgeFill.set3(joined);
+  }
+  // the stars and the Earth ride with the tank (infinitely far): re-laid every 200 ft
+  _laySky(cx, cz, baseY) {
+    const P = this.params;
     const S = this.starBatch;
     S.begin();
     if (P.stars > 0) for (const s of this.stars) {
       const x = cx + s[0] * STAR_R, y = baseY + s[1] * STAR_R, z = cz + s[2] * STAR_R;
       S.seg(x, y, z, x, y, z, s[3] * P.stars * 3.2);
     }
+    if (P.earthBright > 0 && this.earth) this._layEarth(S, cx, cz, baseY);
     S.end();
     this.skyPts = [cx, cz];
+  }
+  // The Earth: a disc on the star sphere — the lit limb bright, the dark limb
+  // faint, the terminator an ellipse of the phase, a few latitude arcs and
+  // three hashed continents on the lit side. Lines only, like everything.
+  _layEarth(S, cx, cz, baseY) {
+    const E = this.earth, P = this.params;
+    const R = STAR_R * 0.96;
+    const ca = Math.cos(E.az), sa = Math.sin(E.az), ce = Math.cos(E.el), se = Math.sin(E.el);
+    // basis: centre direction d, right r (horizontal), up u
+    const d = [ca * ce, se, sa * ce];
+    const r0 = [-sa, 0, ca];
+    const u0 = [-ca * se, ce, -sa * se];
+    const ct = Math.cos(E.tilt), st = Math.sin(E.tilt);
+    const r = [r0[0] * ct + u0[0] * st, r0[1] * ct + u0[1] * st, r0[2] * ct + u0[2] * st];
+    const u = [-r0[0] * st + u0[0] * ct, -r0[1] * st + u0[1] * ct, -r0[2] * st + u0[2] * ct];
+    const rad = E.rad;
+    const pt = (px, py) => [cx + (d[0] + r[0] * px * rad + u[0] * py * rad) * R, baseY + (d[1] + r[1] * px * rad + u[1] * py * rad) * R, cz + (d[2] + r[2] * px * rad + u[2] * py * rad) * R];
+    const b = P.earthBright;
+    const lit = (px) => px * (E.phase > 0.5 ? 1 : -1) > 0;   // which side the sun is on
+    // the limb
+    const n = 48;
+    for (let i = 0; i < n; i++) {
+      const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+      const p0 = pt(Math.cos(a0), Math.sin(a0)), p1 = pt(Math.cos(a1), Math.sin(a1));
+      S.seg(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], lit(Math.cos(a0)) ? 1.5 * b : 0.28 * b);
+    }
+    // the terminator: an ellipse whose width is the phase
+    const k = Math.cos(E.phase * Math.PI * 2);
+    for (let i = 0; i < n; i++) {
+      const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n;
+      const p0 = pt(Math.cos(a0) * k, Math.sin(a0)), p1 = pt(Math.cos(a1) * k, Math.sin(a1));
+      S.seg(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], 0.7 * b);
+    }
+    // latitude arcs on the lit side
+    for (const ly of [-0.62, -0.3, 0, 0.3, 0.62]) {
+      const w = Math.sqrt(1 - ly * ly);
+      const m = 10;
+      for (let i = 0; i < m; i++) {
+        const t0 = i / m, t1 = (i + 1) / m;
+        const x0 = -w + 2 * w * t0, x1 = -w + 2 * w * t1;
+        if (!lit(x0) && !lit(x1)) continue;
+        const p0 = pt(x0, ly), p1 = pt(x1, ly);
+        S.seg(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], 0.32 * b);
+      }
+    }
+    // continents: three wobbly loops, hashed
+    const C = globalThis.LunarCore;
+    const rng = C.mulberry32(E.seed);
+    for (let c = 0; c < 3; c++) {
+      const ox = (rng() - 0.5) * 1.1, oy = (rng() - 0.5) * 1.1, sz = 0.18 + rng() * 0.22;
+      const m = 14, ptsC = [];
+      for (let i = 0; i < m; i++) { const a = Math.PI * 2 * i / m; const rr = sz * (0.6 + rng() * 0.7); ptsC.push([ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.8]); }
+      for (let i = 0; i < m; i++) {
+        const a = ptsC[i], bb = ptsC[(i + 1) % m];
+        if (a[0] * a[0] + a[1] * a[1] > 0.9 || bb[0] * bb[0] + bb[1] * bb[1] > 0.9) continue;
+        const p0 = pt(a[0], a[1]), p1 = pt(bb[0], bb[1]);
+        S.seg(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], (lit(a[0]) ? 0.9 : 0.2) * b);
+      }
+    }
   }
   // The ground around the tank: a black mesh that writes depth, a grid of
   // lines that follow the relief, and the flight line — the path the lander
@@ -590,14 +738,108 @@ export class TankScene {
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     g.setIndex(new THREE.BufferAttribute(idx, 1));
     g.computeBoundingSphere();
-    // the grid: lines every gridPitch ft both ways, laid exactly along the
-    // mesh's own rows and columns (same samples), lifted 0.6 ft, so a line
-    // is always on its surface — never under a chord of it
     const B = this.groundBatch;
     B.begin();
     const pitch = Math.max(cell, Math.round(P.gridPitch / cell) * cell);
     const gb = P.gridBright;
     const yAt = (i, j) => pos[(j * n + i) * 3 + 1] + 1.1;
+    // ---- the moon (item 1): CONTOURS — marching squares over the mesh's own
+    // samples, every contourStep ft, every fifth heavier; a topographic moon
+    // instead of a grid. Cells under a structure are flat and draw nothing.
+    if (P.contourBright > 0 && P.contourStep > 0) {
+      const step = P.contourStep;
+      const lift = 0.9;
+      const hv = (i, j) => pos[(j * n + i) * 3 + 1] + 0.5;   // the true height (the mesh sits 0.5 under)
+      const cross = (L, ha, hb, xa, za, xb, zb) => { const t = (L - ha) / (hb - ha); return [xa + (xb - xa) * t, za + (zb - za) * t]; };
+      for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
+        const x = x0 + i * cell, z = z0 + j * cell;
+        const a = hv(i, j), b = hv(i + 1, j), c = hv(i + 1, j + 1), d = hv(i, j + 1);
+        const lo = Math.min(a, b, c, d), hi = Math.max(a, b, c, d);
+        if (hi - lo < 0.05) continue;
+        // the slope sets the weight: the plains draw nothing (craters and rocks are their texture), a rise draws faint, a hill draws
+        const sl = (hi - lo) / cell;
+        if (sl < 0.11) continue;                       // a grade is not a hill: the plains stay black
+        const su = Math.min(1, (sl - 0.11) / 0.25);
+        const slopeW = 0.35 + 0.65 * su * su * (3 - 2 * su);
+        for (let L = Math.ceil(lo / step) * step; L < hi; L += step) {
+          const pts = [];
+          if ((a < L) !== (b < L)) pts.push(cross(L, a, b, x, z, x + cell, z));
+          if ((b < L) !== (c < L)) pts.push(cross(L, b, c, x + cell, z, x + cell, z + cell));
+          if ((c < L) !== (d < L)) pts.push(cross(L, c, d, x + cell, z + cell, x, z + cell));
+          if ((d < L) !== (a < L)) pts.push(cross(L, d, a, x, z + cell, x, z));
+          const heavy = Math.round(L / step) % 5 === 0;
+          const br = P.contourBright * (heavy ? 1.45 : 1) * slopeW;
+          const y = L + lift;
+          if (pts.length === 2) B.seg(pts[0][0], y, pts[0][1], pts[1][0], y, pts[1][1], br);
+          else if (pts.length === 4) { B.seg(pts[0][0], y, pts[0][1], pts[1][0], y, pts[1][1], br); B.seg(pts[2][0], y, pts[2][1], pts[3][0], y, pts[3][1], br); }
+        }
+      }
+    }
+    // ---- CRATER RIMS: one roll per CRATER_CELL, a rim ring following the
+    // ground, an inner ring, a few rays out of the rim. ROCK FIELDS: one roll
+    // per ROCK_CELL, a cluster of small tetrahedra. Both hashed, so they never
+    // move. (Visual: the physics ground is the lander's, untouched.)
+    if (this.world && (P.craterBright > 0 || P.rockBright > 0)) {
+      const C = globalThis.LunarCore;
+      const seed = this.world.seed;
+      const T = this._core();
+      const inStruct = (x, z) => { for (const o of T.structuresNear(this.world, x, z, 60)) if (T.boxDist(o, x, z) < 50) return true; return false; };
+      const gAt = (x, z) => this._groundAt(x, z);
+      if (P.craterBright > 0) {
+        const H = GROUND_HALF - 40;
+        for (let gz = Math.floor((cz - H) / CRATER_CELL); gz <= Math.floor((cz + H) / CRATER_CELL); gz++) for (let gx = Math.floor((cx - H) / CRATER_CELL); gx <= Math.floor((cx + H) / CRATER_CELL); gx++) {
+          const rng = C.mulberry32(C.hashSeed(seed ^ 0xc4a7e4, gx * 7919 + gz * 104729));
+          if (rng() > 0.42) continue;
+          const x = (gx + 0.15 + rng() * 0.7) * CRATER_CELL, z = (gz + 0.15 + rng() * 0.7) * CRATER_CELL;
+          if (Math.abs(z) < 60) continue;                        // never on the flight line
+          const rr = 28 + rng() * rng() * 190;
+          if (inStruct(x, z)) continue;
+          const m = rr > 120 ? 40 : 28;
+          const br = P.craterBright * (0.8 + rng() * 0.4);
+          const ring = (radius, b, wob) => {
+            let px = null, py = 0, pz = 0;
+            for (let i = 0; i <= m; i++) {
+              const a = Math.PI * 2 * i / m;
+              const w = 1 + (wob ? (Math.sin(a * 3 + rng() * 0.2) * 0.05 + Math.sin(a * 7) * 0.03) : 0);
+              const qx = x + Math.cos(a) * radius * w, qz = z + Math.sin(a) * radius * w;
+              const qy = gAt(qx, qz) + 1.0;
+              if (px !== null) B.seg(px, py, pz, qx, qy, qz, b);
+              px = qx; py = qy; pz = qz;
+            }
+          };
+          ring(rr, br, true);
+          ring(rr * 0.58, br * 0.5, false);
+          const rays = 4 + Math.floor(rng() * 6);
+          for (let k = 0; k < rays; k++) {
+            const a = rng() * Math.PI * 2, l0 = rr * (1.05 + rng() * 0.1), l1 = rr * (1.3 + rng() * 0.6);
+            const ax = x + Math.cos(a) * l0, az = z + Math.sin(a) * l0, bx = x + Math.cos(a) * l1, bz = z + Math.sin(a) * l1;
+            B.seg(ax, gAt(ax, az) + 0.9, az, bx, gAt(bx, bz) + 0.9, bz, br * 0.45);
+          }
+        }
+      }
+      if (P.rockBright > 0) {
+        const H = GROUND_HALF - 20;
+        for (let gz = Math.floor((cz - H) / ROCK_CELL); gz <= Math.floor((cz + H) / ROCK_CELL); gz++) for (let gx = Math.floor((cx - H) / ROCK_CELL); gx <= Math.floor((cx + H) / ROCK_CELL); gx++) {
+          const rng = C.mulberry32(C.hashSeed(seed ^ 0x90c7, gx * 3571 + gz * 65537));
+          if (rng() > 0.3) continue;
+          const fx = (gx + rng()) * ROCK_CELL, fz = (gz + rng()) * ROCK_CELL;
+          if (Math.abs(fz) < 40 || inStruct(fx, fz)) continue;
+          const count = 3 + Math.floor(rng() * 7), spread = 25 + rng() * 60;
+          const br = P.rockBright;
+          for (let k = 0; k < count; k++) {
+            const x = fx + (rng() - 0.5) * spread, z = fz + (rng() - 0.5) * spread;
+            const sz = 1.0 + rng() * rng() * 2.6, h = sz * (0.5 + rng() * 0.7);
+            const base = gAt(x, z) + 0.3;
+            const a0 = rng() * Math.PI * 2;
+            const p = [];
+            for (let q = 0; q < 3; q++) { const a = a0 + Math.PI * 2 * q / 3; p.push([x + Math.cos(a) * sz, base, z + Math.sin(a) * sz]); }
+            const ap = [x + (rng() - 0.5) * sz * 0.6, base + h, z + (rng() - 0.5) * sz * 0.6];
+            for (let q = 0; q < 3; q++) { const a = p[q], b = p[(q + 1) % 3]; B.seg(a[0], a[1], a[2], b[0], b[1], b[2], br * 0.8); B.seg(a[0], a[1], a[2], ap[0], ap[1], ap[2], br); }
+          }
+        }
+      }
+    }
+    // the old grid stays a dial (default off)
     if (gb > 0) {
       for (let i = 0; i < n; i++) {
         const x = x0 + i * cell;
@@ -610,10 +852,17 @@ export class TankScene {
         for (let i = 1; i < n; i++) B.seg(x0 + (i - 1) * cell, yAt(i - 1, j), z, x0 + i * cell, yAt(i, j), z, gb);
       }
     }
-    // the flight line: the path the lander flew, along z = 0 (a mesh row)
+    // the flight line: the path the lander flew, along z = 0 (a mesh row) —
+    // a TICKED TRAIL: dashes with a cross-tick every 200 ft, so distance reads
     if (P.traceBright > 0 && z0 <= 0 && z0 + (n - 1) * cell >= 0) {
       const j = Math.round(-z0 / cell);
-      for (let i = 1; i < n; i++) B.seg(x0 + (i - 1) * cell, yAt(i - 1, j) + 0.2, 0, x0 + i * cell, yAt(i, j) + 0.2, 0, P.traceBright);
+      const yTrail = (x) => { const u = (x - x0) / cell; const i = Math.min(n - 2, Math.max(0, Math.floor(u))); const t = Math.min(1, Math.max(0, u - i)); return yAt(i, j) + (yAt(i + 1, j) - yAt(i, j)) * t + 0.3; };
+      const xs = Math.ceil(x0 / 50) * 50, xe = x0 + (n - 1) * cell;
+      for (let x = xs; x < xe; x += 50) {
+        const x1 = Math.min(xe, x + 30);
+        B.seg(x, yTrail(x), 0, x1, yTrail(x1), 0, P.traceBright);
+        if (x % 200 === 0) { const y = yTrail(x); B.seg(x, y, -7, x, y, 7, P.traceBright * 1.3); }
+      }
     }
     B.end();
     this.groundCentre = [cx, cz];
@@ -747,8 +996,8 @@ export class TankScene {
   }
 
   // ---- the frame ---------------------------------------------------------------------------------
-  // view: { tank: {x,y,z,heading,pitch,recoil,alive}, enemies, missiles, eshells, shell, beam,
-  //         structures: [placed structures near the tank], dead: bool, flash,
+  // view: { tank: {x,y,z,heading,look,pitch,turret,gunPitch,recoil,alive}, enemies, missiles, eshells, shells, beam,
+  //         structures: [placed structures near the tank], dead: bool, flash, scope: bool,
   //         hover: the sid (structure) or id (enemy) under the crosshair, drawn at 1.25 }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
@@ -767,26 +1016,32 @@ export class TankScene {
       // turn), the look pitch direct (rate-limited in the core), the ground's
       // pitch and side-roll eased in, a few degrees at most. No shake, ever.
       const eye = t.y + T.TANK.eye;
+      const look = t.look === undefined ? t.heading : t.look;   // the VIEW is the mouse's (2026-09-07); the hull is elsewhere
       let gp = 0, gr = 0;
       if (this.world) {
-        gp = -Math.atan(T.slopeAlong(this.world, t.x, t.z, t.heading)) * P.slopePitch;
-        gr = Math.max(-MAX_ROLL, Math.min(MAX_ROLL, Math.atan(T.slopeAlong(this.world, t.x, t.z, t.heading + Math.PI / 2)) * 0.5));
+        gp = -Math.atan(T.slopeAlong(this.world, t.x, t.z, look)) * P.slopePitch;
+        gr = Math.max(-MAX_ROLL, Math.min(MAX_ROLL, Math.atan(T.slopeAlong(this.world, t.x, t.z, look + Math.PI / 2)) * 0.5));
       }
       const k = 1 - Math.exp(-dt / PITCH_TAU);
       this.pitchShown += (gp - this.pitchShown) * k;
       this.rollShown += (gr - this.rollShown) * k;
+      // the scope (item 7): the field of view narrows, eased — never a cut
+      const scopeWant = view.scope ? 1 : 0;
+      this.scopeShown += (scopeWant - this.scopeShown) * (1 - Math.exp(-dt / 0.16));
       // death: the view sags forward and down, slowly
       let dead = 0;
       if (view.dead) { this.deathT += dt; dead = 1 - Math.exp(-this.deathT / 1.1); } else this.deathT = 0;
       cam.position.set(t.x, eye - dead * 4, t.z);
-      cam.rotation.set(t.pitch + this.pitchShown - dead * 0.32, -t.heading, this.rollShown + dead * 0.06, 'YXZ');
-      cam.fov = P.tankFov;
+      cam.rotation.set(t.pitch + this.pitchShown - dead * 0.32, -look, this.rollShown + dead * 0.06, 'YXZ');
+      cam.fov = P.tankFov * (1 - this.scopeShown * 0.7);
       cam.near = 1.5; cam.far = 40000;
       cam.updateProjectionMatrix();
       cam.updateMatrixWorld();
-      // ---- the static layers follow the tank in big steps
-      if (!this.groundCentre || Math.hypot(t.x - this.groundCentre[0], t.z - this.groundCentre[1]) > GROUND_REBUILD) this._layGround(t.x, t.z);
-      if (!this.skyPts || Math.hypot(t.x - this.skyPts[0], t.z - this.skyPts[1]) > 200) this._laySky(t.x, t.z, this.world ? T.baseAt(this.world, t.x) : 0);
+      // ---- the static layers follow the tank in big steps; the rings stand at the anchor
+      const baseY = this.world ? T.baseAt(this.world, t.x) : 0;
+      if (!this.ringsLaid) this._layRings(this.world ? T.baseAt(this.world, this.anchor[0]) : 0);
+      if (!this.groundCentre || Math.hypot(t.x - this.groundCentre[0], t.z - this.groundCentre[1]) > GROUND_REBUILD) { this._layGround(t.x, t.z); this._layRidges(t.x, baseY); }
+      if (!this.skyPts || Math.hypot(t.x - this.skyPts[0], t.z - this.skyPts[1]) > 200) this._laySky(t.x, t.z, baseY);
     }
     const structs = (view && view.structures) || [];
     const enemies = (view && view.enemies) || [];
@@ -837,7 +1092,8 @@ export class TankScene {
       D.seg(m.x - f[0] * cp * 3, m.y - sp * 3, m.z - f[1] * cp * 3, m.x - f[0] * cp * (3 + fl), m.y - sp * (3 + fl), m.z - f[1] * cp * (3 + fl), 1.2 + this._rand() * 0.8);
     }
     const tracer = (sh, b, len) => D.seg(sh.x, sh.y, sh.z, sh.x - sh.vx * len, sh.y - sh.vy * len, sh.z - sh.vz * len, b);
-    if (view && view.shell) tracer(view.shell, 2.2, 0.035);
+    for (const sh of (view && view.shells) || []) tracer(sh, 2.2, 0.035);
+    if (view && view.shell) tracer(view.shell, 2.2, 0.035);   // (the old single-shell view still draws)
     for (const sh of (view && view.eshells) || []) tracer(sh, 1.7, 0.03);
     // effects
     for (const e of this.effects) {
@@ -871,12 +1127,19 @@ export class TankScene {
     // ---- the foreground: your own gun out of the slit, and the beam
     const G = this.gunBatch;
     G.begin();
-    if (t && !view.dead) {
-      // camera space (x right, y up, -z forward) → world through the camera matrix
-      const m = cam.matrixWorld;
+    if (t && !view.dead && this.scopeShown < 0.6) {
+      // the gun's own frame (x right, y up, -z along the GUN): the barrel points
+      // where the turret points, not where the eye looks, so the muzzle drifts
+      // across the view while the turret catches up (the lag you can see)
+      const gy = t.turret === undefined ? t.heading : t.turret, gpch = t.gunPitch === undefined ? t.pitch : t.gunPitch;
+      this._gunM = this._gunM || new THREE.Matrix4();
+      this._gunE = this._gunE || new THREE.Euler(0, 0, 0, 'YXZ');
+      this._gunE.set(gpch, -gy, 0, 'YXZ');
+      this._gunM.makeRotationFromEuler(this._gunE).setPosition(t.x, t.y + T.TANK.eye, t.z);
+      const m = this._gunM;
       const cs = (x, y, z) => { const v = this._v.set(x, y, z).applyMatrix4(m); return [v.x, v.y, v.z]; };
       const rc = (t.recoil || 0) * 1.2;
-      const gb = P.gunBright;
+      const gb = P.gunBright * (1 - this.scopeShown / 0.6);
       // only the last stretch of the barrel shows out of the slit: two rails
       // from 9 ft out to a small muzzle ring at 15, low under the crosshair.
       // (A full barrel from the eye read as a giant V — the eye is too close.)
@@ -901,13 +1164,19 @@ export class TankScene {
     const scale = this.ph / 1080;
     const width = Math.max(1.0, P.lineWeight * scale);
     const gain = P.brightness * (1 + this.flash * 0.5) * (view && view.dead ? Math.max(0.35, 1 - this.deathT * 0.5) : 1);
+    const wNear = Math.max(0.3, P.weightNear), wFar = Math.max(0.2, P.weightFar);
     for (const b of this.worldBatches) {
-      b.mat.uniforms.uWidth.value = width;
-      b.mat.uniforms.uHalf.value = width * 0.5 + width * 2.0 + 1.5;
-      b.mat.uniforms.uGain.value = gain;
-      b.mat.uniforms.uNear.value = cam.near + 0.05;
-      b.mat.uniforms.uFogA.value = P.fogNear; b.mat.uniforms.uFogB.value = P.fogFar;
+      const u = b.mat.uniforms;
+      u.uWidth.value = width;
+      u.uHalf.value = width * Math.max(1, wNear) * 0.5 + width * 2.0 + 1.5;
+      u.uGain.value = gain;
+      u.uNear.value = cam.near + 0.05;
+      u.uFogA.value = P.fogNear; u.uFogB.value = P.fogFar;
+      u.uNearA.value = 40; u.uNearB.value = Math.max(80, P.weightRange);
+      u.uWNear.value = wNear; u.uWFar.value = wFar; u.uBNear.value = Math.max(0.5, P.nearWhite);
     }
+    // the skylines, stars and ridges keep a flat weight (they are the far); the gun is near
+    for (const b of [this.skyBatch, this.skyFarBatch, this.starBatch, this.ridgeBatch]) { b.mat.uniforms.uWNear.value = wFar; b.mat.uniforms.uWFar.value = wFar; b.mat.uniforms.uBNear.value = 1; }
     // the skylines and stars sit past the fog: no fade (their brightness is authored)
     for (const b of [this.skyBatch, this.skyFarBatch, this.starBatch]) { b.mat.uniforms.uFogA.value = 1e8; b.mat.uniforms.uFogB.value = 1e9; }
     this.dynBatch.mat.uniforms.uGain.value = 1 + this.flash * 0.5;
@@ -948,13 +1217,21 @@ export class TankScene {
     cu.tScene.value = this.sceneRT.texture;
     cu.tB0.value = this.bloomRT[0][0].texture;
     cu.uGlow.value = P.glow;
-    cu.uFlash.value = this.flash * 0.3 + ((view && view.flash) || 0);
+    // the recoil is a pulse in the glow, never a camera move (item 7)
+    cu.uFlash.value = this.flash * 0.3 + ((view && view.flash) || 0) + (t && t.recoil ? t.recoil * 0.09 : 0);
     cu.uTint.value.setHSL(P.hue, 1, 0.5).lerp(new THREE.Color(1, 1, 1), 1 - P.saturation);
     this.quad.material = this.compMat;
     r.setRenderTarget(null);
     r.render(this.quadScene, this.quadCam);
   }
 
+  // where the gun points, on screen (the lagging reticle): a point 1,000 ft down the barrel
+  gunReticle(t, out) {
+    const T = this._core();
+    const gy = t.turret === undefined ? t.heading : t.turret, gpch = t.gunPitch === undefined ? t.pitch : t.gunPitch;
+    const f = T.forward(gy), cp = Math.cos(gpch), sp = Math.sin(gpch);
+    return this.projectToScreen(t.x + f[0] * cp * 1000, t.y + T.TANK.eye + sp * 1000, t.z + f[1] * cp * 1000, out);
+  }
   // world → screen, for DOM tags
   projectToScreen(x, y, z, out) {
     const v = this._v.set(x, y, z).project(this.camera);

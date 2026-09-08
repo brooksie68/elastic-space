@@ -1,7 +1,7 @@
-// Battle for the Moon 2075 — the TANK shell: mission flow, input, instruments,
+// Moon Battle 2075 — the TANK shell: mission flow, input, instruments,
 // sound, tuner. Rules live in tank-core.js (pure, sim-tested); the picture in
 // tank-render.js. This file wires them and owns nothing else.
-import { TankScene, DEFAULT_PARAMS, MODELS } from './tank-render.js?v=1';
+import { TankScene, DEFAULT_PARAMS, MODELS } from './tank-render.js?v=3';
 
 const T = globalThis.LunarTankCore;
 const ST = globalThis.LunarStructures;
@@ -11,7 +11,8 @@ const SILENT = /[?&]silent=1/.test(location.search);   // pane-safe: no AudioCon
 const PLAY_KEY = 'bftm-tank-play-v1';
 const LOOK_KEY = 'bftm-tank-look-v1';
 const LEDGER_KEY = 'bftm-tank-ledger-v1';
-const PLAY_DEFAULTS = { mission: 1, mouse: 1, turn: 1, seed: '' };
+const PLAY_DEFAULTS = { mission: 1, sens: 1, turn: 1, seed: '' };
+const SENS = 0.0021;          // rad per mouse pixel at sens 1 (the mouse aims: 2026-09-07)
 const LOOK_RANGES = {
   hue:          { min: 0, max: 1, step: 0.01, label: 'line colour' },
   saturation:   { min: 0, max: 1, step: 0.05, label: 'colour depth' },
@@ -19,13 +20,24 @@ const LOOK_RANGES = {
   lineWeight:   { min: 1, max: 4, step: 0.1, label: 'line weight' },
   glow:         { min: 0, max: 2.5, step: 0.05, label: 'glow' },
   tankFov:      { min: 40, max: 80, step: 1, label: 'field of view' },
-  gridBright:   { min: 0, max: 0.8, step: 0.02, label: 'ground grid' },
-  gridPitch:    { min: 50, max: 300, step: 25, label: 'grid spacing' },
+  weightNear:   { min: 0.6, max: 2.5, step: 0.05, label: 'line weight up close' },
+  weightFar:    { min: 0.2, max: 1.2, step: 0.02, label: 'line weight far off' },
+  weightRange:  { min: 200, max: 3000, step: 50, label: 'weight falls over (ft)' },
+  nearWhite:    { min: 0.6, max: 2, step: 0.05, label: 'near lines whiten' },
+  contourBright:{ min: 0, max: 1, step: 0.02, label: 'contour lines' },
+  contourStep:  { min: 4, max: 40, step: 1, label: 'contour spacing (ft)' },
+  craterBright: { min: 0, max: 1.2, step: 0.02, label: 'craters' },
+  rockBright:   { min: 0, max: 1.2, step: 0.02, label: 'rock fields' },
   traceBright:  { min: 0, max: 1.5, step: 0.05, label: 'the flight line' },
+  gridBright:   { min: 0, max: 0.8, step: 0.02, label: 'the old grid' },
+  gridPitch:    { min: 50, max: 300, step: 25, label: 'grid spacing' },
   fogNear:      { min: 100, max: 2000, step: 50, label: 'fade starts' },
   fogFar:       { min: 800, max: 6000, step: 100, label: 'fade ends' },
-  skyBright:    { min: 0, max: 1.2, step: 0.02, label: 'skyline' },
+  ridgeBright:  { min: 0, max: 1.2, step: 0.02, label: 'near ridges' },
+  skyBright:    { min: 0, max: 1.2, step: 0.02, label: 'mid skyline' },
   skyFarBright: { min: 0, max: 1.2, step: 0.02, label: 'far skyline' },
+  hazeBright:   { min: 0, max: 1.5, step: 0.02, label: 'horizon glow' },
+  earthBright:  { min: 0, max: 2, step: 0.05, label: 'the earth' },
   civBright:    { min: 0.1, max: 1.5, step: 0.02, label: 'civilian buildings' },
   hostBright:   { min: 0.1, max: 1.8, step: 0.02, label: 'hostile buildings' },
   enemyBright:  { min: 0.2, max: 2, step: 0.02, label: 'enemy tanks' },
@@ -58,14 +70,16 @@ let mode = 'attract';         // attract | play | settle | result | paused
 let pausedFrom = 'play';
 let carry = 0, lastT = 0, clock = 0;
 const keys = {};
-let pitchIn = 0;              // -1..1 look target
+let lookYaw = 0, lookPitch = 0;   // the view, radians: the mouse writes these (pointer lock), the core reads them
+let lookFor = null;               // the tank object the look was last synced to
+let scope = false;                // Z: the scope
 let fireEdge = false, laserEdge = false;
 let restartArmed = 0, resultTimer = 0, hintFadeDone = false;
 let hullFlash = 0, veilT = 0, contactsSeen = new Set(), inRangeWas = false;
 let shellWasReady = true;
 
 Object.defineProperty(globalThis, 'TANK_DEBUG', {
-  get() { return { scene, state, mode, look, play, input: currentInput(), tick: (dt) => frameStep(dt), setPitch: (p) => { pitchIn = p; }, fire: () => { fireEdge = true; }, laser: () => { laserEdge = true; } }; },
+  get() { return { scene, state, mode, look, play, input: currentInput(), tick: (dt) => frameStep(dt), setLook: (yaw, pitch) => { lookYaw = yaw; lookPitch = pitch; }, setScope: (v) => { scope = !!v; }, fire: () => { fireEdge = true; }, laser: () => { laserEdge = true; } }; },
 });
 
 // ---- renderer ------------------------------------------------------------------------
@@ -183,7 +197,12 @@ function makeGame() {
   contactsSeen = new Set(); inRangeWas = false;
   setCracks(0);
 }
-function resetInput() { pitchIn = 0; fireEdge = false; laserEdge = false; for (const k of Object.keys(keys)) keys[k] = false; }
+function resetInput() { fireEdge = false; laserEdge = false; scope = false; lookFor = null; for (const k of Object.keys(keys)) keys[k] = false; }
+// the view follows the core's tank when a new one appears (start, respawn, the next mission)
+function syncLook() { if (state && state.tank !== lookFor) { lookFor = state.tank; lookYaw = state.tank.look; lookPitch = state.tank.pitch; } }
+// pointer lock: the mouse aims while you play; Esc lets go and pauses
+function lockPointer() { if (SILENT) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+function unlockPointer() { try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
 function enterAttract(resultLine, stamp) {
   mode = 'attract';
   document.body.classList.remove('paused');
@@ -203,7 +222,7 @@ function startGame() {
   if (mode !== 'attract') return;
   makeGame();
   $('start-card').classList.remove('show');
-  mode = 'play'; carry = 0; resetInput();
+  mode = 'play'; carry = 0; resetInput(); syncLook(); lockPointer();
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
 function nextStep() {
@@ -236,10 +255,11 @@ function nextStep() {
     play.mission = state.mission; save(PLAY_KEY, play); syncPlayUI();
   }
   $('result-card').classList.remove('show');
-  mode = 'play'; carry = 0; resetInput();
+  mode = 'play'; carry = 0; resetInput(); syncLook(); lockPointer();
 }
 function showResult() {
   mode = 'result';
+  unlockPointer();
   const ph = state.phase;
   const w = $('r-word'), msg = $('r-msg'), det = $('r-detail'), pts = $('r-points'), btn = $('btn-next');
   if (ph === 'complete') {
@@ -322,18 +342,18 @@ function placeLabels(dt) {
     f.el.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + (_pt.y - rise).toFixed(1) + 'px) translate(-50%, -100%)';
     f.el.style.opacity = _pt.on ? fade.toFixed(3) : 0;
   }
-  // the tag over the hostile you are looking at: name + X (civilians get nothing)
+  // the tag over the hostile the GUN is on (or nearly): name + X (civilians get nothing)
   const t = state.tank;
   const r = lastReadouts;
   let best = null;
-  if (r) for (const c of r.contacts) if (c.kind !== 'missile' && Math.abs(c.bearing) < 0.06 && c.range < 1400 && (!best || c.range < best.range)) best = c;
+  if (r) for (const c of r.contacts) if (c.kind !== 'missile' && Math.abs(c.gunBearing) < 0.06 && c.range < 1400 && (!best || c.range < best.range)) best = c;
   if (best) {
     if (!hostTag) { hostTag = document.createElement('div'); hostTag.className = 'tag'; labelLayer.appendChild(hostTag); }
     // NAME + X, then one word under it: the hardening (OVERHANG / RIDGE / DOOR / SHIELD), in pink when the door is shut (a refusal)
     const word = best.doorShut ? '<span class="word refuse">DOOR SHUT</span>' : best.hard ? '<span class="word">' + best.hard.toUpperCase() + '</span>' : '';
     hostTag.innerHTML = best.name + '<span class="x">' + best.mult + 'X</span>' + word;
     hoverId = best.sid || best.id || null;
-    const f = T.forward(t.heading + best.bearing);
+    const f = T.forward(t.turret + best.gunBearing);
     scene.projectToScreen(t.x + f[0] * best.range, t.y + T.TANK.eye + best.dy + 16, t.z + f[1] * best.range, _pt);
     hostTag.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -100%)';
     hostTag.style.opacity = _pt.on ? 1 : 0;
@@ -345,13 +365,15 @@ let hoverId = null;
 function currentInput() {
   const drive = (keys['w'] || keys['arrowup'] ? 1 : 0) - (keys['s'] || keys['arrowdown'] ? 1 : 0);
   const turn = ((keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0)) * (play.turn || 1);
-  if (keys['q']) pitchIn = clamp(pitchIn + 0.04, -1, 1); else if (keys['e']) pitchIn = clamp(pitchIn - 0.04, -1, 1);
-  return { drive, turn, pitch: pitchIn, fire: fireEdge, laser: laserEdge };
+  // Q / E still tilt the view for a mouseless hand; the mouse owns it otherwise
+  if (keys['q']) lookPitch = clamp(lookPitch + 0.012, T.TANK.pitchMin, T.TANK.pitchMax); else if (keys['e']) lookPitch = clamp(lookPitch - 0.012, T.TANK.pitchMin, T.TANK.pitchMax);
+  return { drive, turn, look: lookYaw, tilt: lookPitch, fire: fireEdge, laser: laserEdge };
 }
 let lastReadouts = null;
 function frameStep(dt) {
   if (!scene) return;
   if (mode === 'play') {
+    syncLook();
     const inp = currentInput();
     fireEdge = false; laserEdge = false;
     const r = T.advance(state, inp, dt, carry);
@@ -373,14 +395,16 @@ function frameStep(dt) {
     lastReadouts = T.readouts(state);
     const view = {
       tank: t,
-      enemies: state.enemies, missiles: state.missiles, eshells: state.eshells, shell: state.shell, beam: state.laser.beam,
+      enemies: state.enemies, missiles: state.missiles, eshells: state.eshells, shells: state.shells, beam: state.laser.beam,
       structures: T.structuresNear(state, t.x, t.z, 2800),
       dead: state.phase === 'dead' || state.phase === 'over',
       flash: hullFlash * 0.22,
       hover: hoverId,
+      scope: scope && mode === 'play',
     };
     scene.render(view, dt);
     placeLabels(dt);
+    placeReticle();
     renderInstruments();
   }
 }
@@ -389,6 +413,19 @@ function frame(t) {
   lastT = t;
   if (mode !== 'paused') frameStep(dt);
   requestAnimationFrame(frame);
+}
+
+// ---- the gun's reticle: where the barrel points, lagging the crosshair until it arrives ------------
+const _gr = {};
+function placeReticle() {
+  const el = $('gunret');
+  if (!state || !scene || mode !== 'play') { el.style.opacity = 0; return; }
+  const r = lastReadouts;
+  scene.gunReticle(state.tank, _gr);
+  el.style.transform = 'translate(' + _gr.x.toFixed(1) + 'px,' + _gr.y.toFixed(1) + 'px) translate(-50%, -50%)';
+  el.style.opacity = _gr.on && r && !r.gunOnView ? 0.9 : 0;
+  $('cross').classList.toggle('laid', !!(r && r.gunOnView));
+  document.body.classList.toggle('scoped', scope);
 }
 
 // ---- instruments ----------------------------------------------------------------------------------
@@ -402,12 +439,22 @@ function renderInstruments() {
   $('v-mission').textContent = 'MISSION ' + r.mission + (r.missionName ? ' · ' + r.missionName : '');
   $('v-time').textContent = fmtTime(r.time);
   $('v-left').textContent = r.hostilesLeft + ' LEFT' + (r.waves ? ' · WAVE ' + r.wave + '/' + r.waves : '');
-  $('v-hdg').innerHTML = pad(r.headingDeg, 3) + '<span class="unit">°</span>';
-  $('v-spd').innerHTML = pad(Math.abs(r.speed), 2) + '<span class="unit">FT/S</span>';
+  renderTape(r);
+  $('v-spd').innerHTML = pad(Math.abs(r.speed), 2) + '<span class="unit">' + (r.speed < -0.5 ? 'REV' : 'FT/S') + '</span>';
+  // the projected range: what the gun's line meets, and how far
+  const gr = $('gun-range');
+  if (mode === 'play' && r.gunRange !== null) {
+    const what = r.gunHit === 'enemy' ? 'TANK' : r.gunHit === 'structure' ? 'TARGET' : r.gunHit === 'civilian' ? 'CIVILIAN' : r.gunHit === 'missile' ? 'MISSILE' : 'GROUND';
+    gr.innerHTML = pad(r.gunRange, 4) + '<span class="unit">FT</span><span class="what' + (r.gunHit === 'enemy' || r.gunHit === 'structure' ? ' hot' : '') + '">' + what + '</span>';
+    gr.classList.add('on');
+  } else gr.classList.remove('on');
   // the gun
   const sh = $('v-shell');
-  sh.textContent = r.shellReady ? 'READY' : 'IN FLIGHT';
+  sh.textContent = r.shellReady ? 'READY' : 'LOADING';
   sh.classList.toggle('ready', r.shellReady); sh.classList.toggle('wait', !r.shellReady);
+  const rf = $('reload-fill');
+  rf.style.width = (r.reload * 100).toFixed(1) + '%';
+  rf.classList.toggle('charging', !r.shellReady);
   const lf = $('laser-fill');
   lf.style.width = (r.laser * 100).toFixed(1) + '%';
   lf.classList.toggle('charging', r.laser < 1);
@@ -446,10 +493,55 @@ function renderInstruments() {
   note.classList.toggle('hot', incoming || r.inRange);
   if (r.inRange && !inRangeWas && mode === 'play') Sfx.ping();
   inRangeWas = r.inRange;
-  // the crosshair warms when a hostile is under it
-  const under = r.contacts.some((c) => c.kind !== 'missile' && Math.abs(c.bearing) < 0.035 && c.range < 1400);
-  $('cross').classList.toggle('on', under);
+  // the crosshair: amber when the GUN is on a hostile, dashed over a civilian, dim while catching up
+  const cr = $('cross');
+  cr.classList.toggle('on', r.gunHit === 'enemy' || r.gunHit === 'structure' || r.gunHit === 'missile');
+  cr.classList.toggle('civ', r.gunHit === 'civilian');
   $('range-word').classList.toggle('on', r.inRange && mode === 'play');
+}
+
+// ---- the compass tape (item 7): a window of ±55° around the view; the lubber line is where you
+// look, the HULL marker where W will take you, the caret where the gun is, blips at every contact
+const tape = $('tape');
+const TAPE_HALF = 55, TAPE_W = 100;   // degrees shown either side; SVG half-width
+let tapeKey = '';
+function renderTape(r) {
+  const deg = (rad) => rad * 180 / Math.PI;
+  const px = (relDeg) => relDeg / TAPE_HALF * TAPE_W;
+  const key = r.lookDeg + '|' + Math.round(deg(r.hullBearing)) + '|' + Math.round(deg(r.gunBearing) * 2) + '|' + r.contacts.map((c) => c.kind[0] + Math.round(deg(c.bearing))).join(',');
+  if (key === tapeKey) return;
+  tapeKey = key;
+  let h = '';
+  // ticks every 10°, a number every 30°
+  const start = Math.floor((r.lookDeg - TAPE_HALF) / 10) * 10;
+  for (let d = start; d <= r.lookDeg + TAPE_HALF; d += 10) {
+    const rel = d - r.lookDeg;
+    if (Math.abs(rel) > TAPE_HALF) continue;
+    const x = px(rel), big = ((d % 30) + 30) % 30 === 0;
+    const fade = 1 - Math.pow(Math.abs(rel) / TAPE_HALF, 3);
+    h += '<line class="tk' + (big ? ' big' : '') + '" x1="' + x.toFixed(1) + '" y1="' + (big ? -3 : 0) + '" x2="' + x.toFixed(1) + '" y2="' + (big ? 6 : 4) + '" opacity="' + fade.toFixed(2) + '" />';
+    if (big) h += '<text class="tn" x="' + x.toFixed(1) + '" y="-6" opacity="' + fade.toFixed(2) + '">' + pad(((d % 360) + 360) % 360, 3) + '</text>';
+  }
+  // contacts
+  for (const c of r.contacts) {
+    const rel = deg(c.bearing);
+    if (Math.abs(rel) > TAPE_HALF) continue;
+    const x = px(rel);
+    if (c.kind === 'missile') h += '<circle class="ct missile" cx="' + x.toFixed(1) + '" cy="2" r="2.2" />';
+    else if (ENEMY_NAMES[c.kind]) h += '<circle class="ct" cx="' + x.toFixed(1) + '" cy="2" r="1.9" />';
+    else h += '<rect class="ct site" x="' + (x - 1.8).toFixed(1) + '" y="0.2" width="3.6" height="3.6" />';
+  }
+  // the hull: a small tank glyph where the keys will take you; an arrow at the edge when it is off the tape
+  const hb = deg(r.hullBearing);
+  if (Math.abs(hb) <= TAPE_HALF) h += '<g class="hull" transform="translate(' + px(hb).toFixed(1) + ',10)"><path d="M-5 2h10l-1.5 2.5h-7z M-3 -1h6l1 3h-8z M0 -3.5v2.5" /></g>';
+  else h += '<path class="hull off" d="' + (hb > 0 ? 'M' + (TAPE_W - 6) + ' 9 l6 3 l-6 3' : 'M' + (-TAPE_W + 6) + ' 9 l-6 3 l6 3') + '" />';
+  // the gun: a caret under the tape, sliding toward the lubber line
+  const gb = deg(r.gunBearing);
+  if (Math.abs(gb) <= TAPE_HALF) h += '<path class="gun" d="M' + px(gb).toFixed(1) + ' 7 l-2.5 4 h5z" />';
+  // the lubber line: where you look
+  h += '<line class="lub" x1="0" y1="-5" x2="0" y2="7" />';
+  tape.innerHTML = h;
+  $('v-look').textContent = pad(r.lookDeg, 3);
 }
 
 // ---- input ------------------------------------------------------------------------------------------
@@ -464,18 +556,32 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'result') nextStep();
     else if (mode === 'attract') startGame();
   } else if (k === 'l') { if (mode === 'play' && !e.repeat) laserEdge = true; }
+  else if (k === 'z') { if (mode === 'play' && !e.repeat) scope = !scope; }
   else if (k === 'enter') { if (mode === 'attract') startGame(); else if (mode === 'result') nextStep(); }
-  else if (k === 'p' || k === 'escape') togglePause();
+  else if (k === 'p') togglePause();
+  else if (k === 'escape') { if (mode === 'play') togglePause(); }   // Esc also drops the pointer lock (the browser's own)
   else if (k === 'r') armRestart();
 });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-window.addEventListener('blur', () => { resetInput(); if (mode === 'play') togglePause(); });
+window.addEventListener('blur', () => { const sc = scope; resetInput(); scope = sc; if (mode === 'play') togglePause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') togglePause(); });
-// the mouse: its height on the screen is the look (no pointer lock — the cursor stays yours); left fires, right is the laser
-canvas.addEventListener('pointermove', (e) => { if (play.mouse) pitchIn = clamp((0.5 - e.clientY / Math.max(1, window.innerHeight)) * 2.4, -1, 1); });
+// THE MOUSE AIMS (2026-09-07, James: turning the hull to aim was "so goofy and hard to use"):
+// pointer lock while you play, so the view turns with the mouse any way round, up and down;
+// the gun follows the view with mass (the core's TURRET); left fires, right is the laser.
+// The first click after the lock is lost only takes the lock back — it never fires.
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== canvas || mode !== 'play') return;
+  const k = SENS * (play.sens || 1) * (scope ? 0.45 : 1);
+  lookYaw = T.wrapAngle(lookYaw + e.movementX * k);
+  lookPitch = clamp(lookPitch - e.movementY * k, T.TANK.pitchMin, T.TANK.pitchMax);
+});
 canvas.addEventListener('pointerdown', (e) => {
   if (mode !== 'play') return;
+  if (document.pointerLockElement !== canvas && !SILENT) { lockPointer(); return; }
   if (e.button === 2) laserEdge = true; else if (e.button === 0) fireEdge = true;
+});
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && mode === 'play') togglePause();
 });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 // the console's weapon rows are buttons too (the lander's console got the same on James's ask)
@@ -483,8 +589,8 @@ $('wpn-shell').addEventListener('pointerdown', (e) => { e.stopPropagation(); if 
 $('wpn-laser').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (mode === 'play') laserEdge = true; });
 
 function togglePause() {
-  if (mode === 'paused') { mode = pausedFrom; document.body.classList.remove('paused'); lastT = 0; }
-  else if (mode === 'play' || mode === 'settle') { pausedFrom = mode; mode = 'paused'; document.body.classList.add('paused'); Sfx.quiet(); }
+  if (mode === 'paused') { mode = pausedFrom; document.body.classList.remove('paused'); lastT = 0; if (mode === 'play') lockPointer(); }
+  else if (mode === 'play' || mode === 'settle') { pausedFrom = mode; mode = 'paused'; document.body.classList.add('paused'); Sfx.quiet(); unlockPointer(); }
 }
 function armRestart() {
   if (mode === 'attract') return;
@@ -529,13 +635,14 @@ function seg(id, key, parse) {
   $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { play[key] = parse ? parse(b.dataset.v) : b.dataset.v; save(PLAY_KEY, play); syncPlayUI(); }));
 }
 seg('t-mission', 'mission', (v) => parseInt(v, 10));
-seg('t-mouse', 'mouse', (v) => parseInt(v, 10));
+$('t-sens').addEventListener('input', (e) => { play.sens = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
 $('t-turn').addEventListener('input', (e) => { play.turn = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
 function syncPlayUI() {
   const on = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  on('t-mission', play.mission); on('t-mouse', play.mouse);
+  on('t-mission', play.mission);
+  $('t-sens').value = play.sens; $('t-sens-val').textContent = (+play.sens).toFixed(2) + '×';
   $('t-turn').value = play.turn; $('t-turn-val').textContent = (+play.turn).toFixed(2) + '×';
   $('t-seed').value = play.seed || '';
   if (mode === 'attract') { const m = T.MISSIONS[clamp(play.mission | 0, 1, 6)]; $('start-mission').textContent = 'MISSION ' + play.mission + ' — ' + m.name; }
