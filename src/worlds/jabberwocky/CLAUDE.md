@@ -6,6 +6,25 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
+## THE WEAPON LAB — START HERE (2026-09-07)
+
+`lab.html` + `lab.js` (admin panel → Labs → Weapon Lab; `?silent=1&nolock=1` for the pane). One bare lit hall
+(core `startLevel: 'lab'`, `LAB_LEVEL`, `makeLabGoon` / `respawnLabGoon`), passive creatures on pads (notice 0,
+they drift about their pad) that come back two seconds after they die or dance, every gag in a list with plain
+facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's channel to Claude for weapon work:**
+- `notes.json` in this folder, served by `/api/worlds/jabberwocky/notes` (GET; POST ops add / edit / delete /
+  seen). Shape: `notes[] {id, gag|null, text, at, status new|done, reply}`, `updates{gag: {at, note}}`,
+  `seen{gag: at}`. Committed with the world — it is the paper trail.
+- Claude's side: `node tmp/jabberwocky/notes.mjs new | done <id> "reply" | update <gag> "what changed" | watch`.
+  `watch` polls every 10 s and prints each new note once — run it under the Monitor tool (persistent) at the
+  start of any Jabberwocky session so a note wakes the session.
+- THE RULE (his brief): act on a note without asking or commenting; when a weapon changes, `update <gag>` (the
+  page shows a green dot on that row + a toast + the tab title count, and PushNotification him), then `done`
+  the note with a one-line reply. Spend rule: Meshy / ElevenLabs / Blender only when a note needs a new prop
+  or sound, under ~50 credits per note, cost written in the reply; bigger asks get the non-spend part done and
+  the cost named in the reply. Run `sim.mjs` + `tmp/jabberwocky/lab-smoke.mjs` before marking anything done.
+- Bump `lab.js?v=` in lab.html when lab.js changes; the game's `core.js?v=` when the core changes.
+
 ## Docs
 
 - `changelog.md` — session history, newest first. Read the top entry first.
@@ -20,6 +39,7 @@ Meshy creatures, PG-13 cartoon gore.
   and a plan (`catalog.py` words, `verdicts.py` scores, `review.py` builds `rifle-review.html`). Recapture:
   lab `?level=5&manual=1`, the `CAP` script in the changelog entry; strips land in `tmp/snapshots/gag-*.jpg`.
 - `tmp/jabberwocky/sim.mjs` — ten tests, ~117k assertions on the core. Run it before saying anything is done.
+  `tmp/jabberwocky/lab-smoke.mjs` — the weapon lab headless: passive pads, all 100 gags, respawn.
 - `tmp/jabberwocky/meshy.mjs` (KEEP) — the Meshy helper: `images`, `models`, `rigs`, `animate`, `anims`
   poll and download in bulk with the API key from `.env`. Manifests of every task id sit beside it
   (`meshy-images.json`, `meshy-models.json`, `meshy-rigs.json`, `meshy-anims.json`, `actions.json`).

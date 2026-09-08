@@ -287,7 +287,7 @@ function drawMap() {
   mctx.setTransform(1, 0, 0, 1, 0, 0);
   mctx.clearRect(0, 0, size, size);
   mctx.fillStyle = 'rgba(8,5,10,0.8)'; mctx.fillRect(0, 0, size, size);
-  mctx.setTransform(1, 0, 0, -1, 0, size);   // the maze's y grows away from you; the map's grows down — flip it so forward is up
+  mctx.setTransform(-1, 0, 0, -1, size, size);   // rotate the map 180°: forward is up AND left stays left (a Y-only flip mirrored it)
   for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
     const i = y * L.w + x;
     if (!seen.has(i)) continue;

@@ -1455,6 +1455,78 @@ async function handleApi(request, response, pathname) {
     return true;
   }
 
+  // Notes (added 2026-09-07 for the Jabberwocky weapon lab): a per-world notes file James writes
+  // from inside a page and Claude reads from disk. `src/worlds/<slug>/notes.json`, shape
+  // { version, notes: [{ id, gag, text, at, status: new|done, reply, doneAt }], updates: { <gag>: { at, note } }, seen: { <gag>: at } }.
+  // GET returns it; POST applies one small op (add / edit / delete / seen) with a read-modify-write so
+  // a page and a script editing the same file do not clobber each other's fields.
+  const notesMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/notes$/i);
+  if (notesMatch) {
+    const notesSlug = slugify(notesMatch[1]);
+    if (!isValidSlug(notesSlug) || !(await pathExists(join(worldsDir, notesSlug)))) {
+      sendJson(response, 404, { error: "World not found." });
+      return true;
+    }
+    const notesPath = join(worldsDir, notesSlug, "notes.json");
+    const readNotes = async () => {
+      try {
+        const data = JSON.parse(await readFile(notesPath, "utf8"));
+        return { version: 1, notes: [], updates: {}, seen: {}, ...data };
+      } catch {
+        return { version: 1, notes: [], updates: {}, seen: {} };
+      }
+    };
+    if (request.method === "GET") {
+      sendJson(response, 200, await readNotes());
+      return true;
+    }
+    if (request.method !== "POST") {
+      sendJson(response, 405, { error: "Method not allowed." });
+      return true;
+    }
+    const op = await readBody(request);
+    const data = await readNotes();
+    const now = new Date().toISOString();
+    const gagOk = (g) => g == null || (typeof g === "string" && /^[a-z0-9_-]{1,40}$/i.test(g));
+    if (op.op === "add") {
+      const text = String(op.text ?? "").trim();
+      if (!text || text.length > 4000 || !gagOk(op.gag)) {
+        sendJson(response, 400, { error: "A note is 1-4000 characters; gag is an id or null." });
+        return true;
+      }
+      const id = `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      data.notes.push({ id, gag: op.gag || null, text, at: now, status: "new" });
+    } else if (op.op === "edit") {
+      const note = data.notes.find((n) => n.id === op.id);
+      const text = String(op.text ?? "").trim();
+      if (!note || note.status !== "new" || !text || text.length > 4000) {
+        sendJson(response, 400, { error: "Only a new note can be edited, and it needs text." });
+        return true;
+      }
+      note.text = text;
+      note.editedAt = now;
+    } else if (op.op === "delete") {
+      const i = data.notes.findIndex((n) => n.id === op.id);
+      if (i < 0 || data.notes[i].status !== "new") {
+        sendJson(response, 400, { error: "Only a new note can be deleted." });
+        return true;
+      }
+      data.notes.splice(i, 1);
+    } else if (op.op === "seen") {
+      if (!gagOk(op.gag) || !op.gag) {
+        sendJson(response, 400, { error: "seen needs a gag id." });
+        return true;
+      }
+      data.seen[op.gag] = now;
+    } else {
+      sendJson(response, 400, { error: "op must be add, edit, delete or seen." });
+      return true;
+    }
+    await writeFile(notesPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+    sendJson(response, 200, data);
+    return true;
+  }
+
   // Presets serve both worlds and labs (labs added 2026-07-29 for the Being
   // Editor): same store shape, same validation, labs back up under tmp/labs-<slug>/.
   const presetsMatch = pathname.match(/^\/api\/(worlds|labs)\/([a-z0-9-]+)\/presets$/i);

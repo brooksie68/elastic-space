@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jabberwocky — the weapon lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23120a12'/%3E%3Crect x='4' y='13' width='20' height='6' rx='3' fill='%235a2a9a'/%3E%3Ccircle cx='21' cy='18' r='7' fill='%2358ff7a'/%3E%3Ctext x='21' y='21' font-size='8' font-family='Impact' fill='%23120a12' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --ink: #f4ecf2; --ink-dim: rgba(244, 236, 242, 0.55); --pink: #ff2fb8; --gold: #ffd23a; --green: #58ff7a; --red: #ff2040; --blue: #7fd7ff;
+      --bg: #08050a; --glass: rgba(14, 8, 16, 0.86); --glass-edge: rgba(255, 47, 184, 0.28);
+      --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+      --carny: Impact, "Arial Black", "Franklin Gothic Heavy", sans-serif;
+      --panel-w: 400px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { background: var(--bg); overflow: hidden; font-family: var(--sans); color: var(--ink); font-size: 14px; }
+    #view { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; cursor: crosshair; }
+    #overlay { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; }
+    #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%); }
+    #cross { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); pointer-events: none; opacity: 0.7; }
+    #cross::before, #cross::after { content: ''; position: absolute; background: var(--ink); box-shadow: 0 0 3px #000; }
+    #cross::before { left: 6px; top: 0; width: 2px; height: 14px; }
+    #cross::after { top: 6px; left: 0; width: 14px; height: 2px; }
+
+    /* the plate */
+    #plate { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 9vh; transform: translateX(-50%) rotate(-2deg); text-align: center; pointer-events: none; opacity: 0; transition: opacity 180ms ease; max-width: calc(100vw - var(--panel-w) - 4rem); }
+    #plate.show { opacity: 1; }
+    #plate.pop { animation: pop 320ms cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes pop { 0% { transform: translateX(-50%) rotate(-2deg) scale(0.6); } 100% { transform: translateX(-50%) rotate(-2deg) scale(1); } }
+    #plate-name { font-family: var(--carny); font-size: clamp(1.4rem, 3.4vw, 2.8rem); letter-spacing: 0.04em; color: var(--gold); text-shadow: 0 0 2px #000, 3px 3px 0 #120a12, 0 0 24px rgba(255, 210, 58, 0.45); line-height: 1; }
+    #plate.dud #plate-name { color: #c9c1cc; } #plate.backfire #plate-name { color: var(--red); } #plate.weird #plate-name { color: var(--pink); }
+    #plate-line { margin-top: 0.5em; font-size: 1rem; font-weight: 600; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000; }
+
+    /* HUD bits on the canvas side */
+    #hud-top { position: fixed; left: 1rem; top: 1rem; padding: 0.55rem 0.9rem; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 12px; backdrop-filter: blur(12px); pointer-events: none; }
+    #hud-top .t { font-family: var(--carny); font-size: 1.15rem; letter-spacing: 0.08em; color: var(--green); }
+    #hud-top .m { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); margin-top: 0.15rem; }
+    #hud-top .m b { color: var(--ink); }
+    #hint { position: fixed; left: calc((100vw - var(--panel-w)) / 2); bottom: 2rem; transform: translateX(-50%); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); text-shadow: 0 1px 2px #000; pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity 300ms; }
+    #hint.show { opacity: 1; }
+    #health { position: fixed; left: 1rem; bottom: 1rem; width: 220px; padding: 0.5rem 0.8rem 0.6rem; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 12px; pointer-events: none; }
+    #health .lbl { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.26em; color: var(--ink-dim); display: flex; justify-content: space-between; }
+    #hp-track { margin-top: 0.35rem; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+    #hp-fill { height: 100%; width: 100%; background: var(--green); border-radius: 4px; transition: width 160ms ease; }
+
+    /* ---- the panel ---- */
+    #panel { position: fixed; right: 0; top: 0; bottom: 0; width: var(--panel-w); display: flex; flex-direction: column; background: rgba(12, 7, 14, 0.96); border-left: 1px solid var(--glass-edge); z-index: 10; }
+    #panel-head { padding: 0.9rem 1rem 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+    #panel-head h1 { font-family: var(--carny); font-size: 1.3rem; letter-spacing: 0.1em; color: var(--gold); }
+    #panel-head .sub { font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); margin-top: 0.15rem; }
+    #panel-head .sub b { color: var(--ink); font-weight: 800; }
+    #bar { display: flex; gap: 0.4rem; padding: 0.55rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); align-items: center; flex-wrap: wrap; }
+    button, select, input, textarea { font: inherit; color: var(--ink); background: #1a0f1e; border: 1px solid var(--glass-edge); border-radius: 8px; padding: 0.4rem 0.7rem; }
+    button { cursor: pointer; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); background: transparent; }
+    button:hover { color: var(--ink); border-color: var(--pink); }
+    button.go { background: var(--pink); color: #120a12; border-color: var(--pink); }
+    button.go:hover { filter: brightness(1.1); color: #120a12; }
+    #search { flex: 1; min-width: 0; font-size: 0.8rem; }
+    #list { flex: 1 1 0; min-height: 120px; overflow: auto; padding: 0.3rem 0; }
+    #list h3 { position: sticky; top: 0; background: rgba(12, 7, 14, 0.98); padding: 0.45rem 1rem 0.3rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); z-index: 1; }
+    #list h3 span { color: var(--ink-dim); margin-left: 0.5em; letter-spacing: 0.08em; }
+    .row { display: flex; align-items: center; gap: 0.55rem; padding: 0.32rem 1rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-dim); border-left: 3px solid transparent; }
+    .row:hover { color: var(--ink); background: rgba(255, 255, 255, 0.03); }
+    .row.on { color: var(--ink); border-left-color: var(--gold); background: rgba(255, 210, 58, 0.06); }
+    .row .k { margin-left: auto; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 236, 242, 0.35); }
+    .row .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex: none; }
+    .row .dot.hidden { visibility: hidden; }
+    .row .pend { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--blue); flex: none; }
+    .row.hid { display: none; }
+    #detail { flex: 0 0 auto; max-height: 52vh; overflow: auto; border-top: 1px solid var(--glass-edge); padding: 0.8rem 1rem 1rem; background: rgba(20, 10, 24, 0.7); }
+    #d-name { font-family: var(--carny); font-size: 1.25rem; letter-spacing: 0.04em; color: var(--gold); line-height: 1.05; }
+    #d-name.dud { color: #c9c1cc; } #d-name.backfire { color: var(--red); } #d-name.weird { color: var(--pink); }
+    #d-line { margin-top: 0.3rem; font-style: italic; color: var(--ink); font-size: 0.85rem; }
+    #d-facts { margin-top: 0.55rem; display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.8rem; font-size: 0.74rem; }
+    #d-facts dt { color: var(--ink-dim); font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.6rem; padding-top: 0.15em; }
+    #d-facts dd { color: var(--ink); }
+    #d-update { display: none; margin-top: 0.7rem; padding: 0.55rem 0.7rem; border-radius: 8px; background: rgba(88, 255, 122, 0.1); border: 1px solid rgba(88, 255, 122, 0.4); font-size: 0.78rem; }
+    #d-update.show { display: block; }
+    #d-update b { display: block; font-size: 0.6rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--green); margin-bottom: 0.2rem; }
+    #d-update small { display: block; margin-top: 0.3rem; color: var(--ink-dim); font-size: 0.65rem; }
+    .notes-h { margin-top: 0.85rem; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); display: flex; justify-content: space-between; align-items: center; }
+    .notes-h span { color: var(--ink-dim); letter-spacing: 0.06em; text-transform: none; font-weight: 600; }
+    textarea { width: 100%; margin-top: 0.4rem; min-height: 4.2em; resize: vertical; font-size: 0.82rem; line-height: 1.4; background: #130b17; }
+    textarea:focus { outline: none; border-color: var(--gold); }
+    .note-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; align-items: center; }
+    .note-row .st { flex: 1; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
+    .note { margin-top: 0.45rem; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgba(255, 255, 255, 0.04); font-size: 0.76rem; line-height: 1.4; }
+    .note .meta { font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); display: flex; gap: 0.6rem; align-items: center; }
+    .note .meta .new { color: var(--blue); } .note .meta .done { color: var(--green); }
+    .note .meta button { margin-left: auto; padding: 0.1rem 0.4rem; font-size: 0.56rem; }
+    .note .txt { margin-top: 0.2rem; white-space: pre-wrap; }
+    .note .rep { margin-top: 0.3rem; padding-left: 0.6rem; border-left: 2px solid var(--green); color: var(--ink); white-space: pre-wrap; }
+    #general { border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 0.6rem 1rem 0.9rem; max-height: 30vh; overflow: auto; }
+    #general.closed .body { display: none; }
+    #keys { padding: 0.45rem 1rem 0.6rem; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); border-top: 1px solid rgba(255, 255, 255, 0.06); line-height: 1.7; }
+    #keys b { color: var(--ink); }
+    #toast { position: fixed; left: 50%; top: 1.2rem; transform: translate(-50%, -140%); padding: 0.7rem 1.2rem; background: rgba(12, 7, 14, 0.96); border: 1px solid var(--green); border-radius: 12px; color: var(--ink); font-size: 0.85rem; font-weight: 600; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(88, 255, 122, 0.25); transition: transform 300ms cubic-bezier(.2, 1.4, .4, 1); z-index: 40; pointer-events: none; max-width: 70vw; }
+    #toast.show { transform: translate(-50%, 0); }
+    #toast b { color: var(--green); }
+    #load { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 50%; transform: translate(-50%, -50%); font-family: var(--carny); font-size: 1.4rem; letter-spacing: 0.1em; color: var(--ink-dim); pointer-events: none; }
+    #load.off { display: none; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <canvas id="overlay"></canvas>
+  <div id="vignette"></div>
+  <div id="plate"><div id="plate-name"></div><div id="plate-line"></div></div>
+  <div id="hud-top"><div class="t">THE WEAPON LAB</div><div class="m">loaded: <b id="hud-weapon">—</b></div></div>
+  <div id="health"><div class="lbl"><span>YOU</span><span id="hp-num">100</span></div><div id="hp-track"><div id="hp-fill"></div></div></div>
+  <div id="cross"></div>
+  <div id="hint"></div>
+  <div id="load">LOADING THE DUNGEON</div>
+  <div id="toast"></div>
+
+  <aside id="panel">
+    <div id="panel-head">
+      <h1>THE WEAPON LAB</h1>
+      <div class="sub"><b id="cnt-total">100</b> weapons · <b id="cnt-updates">0</b> updated · <b id="cnt-open">0</b> notes waiting · <span id="sync">—</span></div>
+    </div>
+    <div id="bar">
+      <input id="search" type="text" placeholder="find a weapon" autocomplete="off" />
+      <select id="creatures" title="who stands on the pads">
+        <option value="trio">ghoul · brute · cultist</option>
+        <option value="five">all five, in a row</option>
+        <option value="ghouls">three ghouls</option>
+        <option value="brutes">three brutes</option>
+        <option value="ratlings">three ratlings</option>
+        <option value="stalkers">three stalkers</option>
+      </select>
+      <button id="reset" type="button" title="creatures back on the pads, floor cleaned">RESET</button>
+      <button id="fire" class="go" type="button">FIRE</button>
+    </div>
+    <div id="list"></div>
+    <div id="detail">
+      <div id="d-name">—</div>
+      <div id="d-line"></div>
+      <dl id="d-facts"></dl>
+      <div id="d-update"><b>UPDATED</b><span id="d-update-text"></span><small id="d-update-when"></small></div>
+      <div class="notes-h">NOTES ON THIS WEAPON <span>Claude reads these</span></div>
+      <textarea id="w-note" placeholder="what should change about this one?"></textarea>
+      <div class="note-row"><span class="st" id="w-note-st"></span><button id="w-note-save" class="go" type="button">SAVE NOTE</button></div>
+      <div id="w-notes"></div>
+    </div>
+    <div id="general" class="closed">
+      <div class="notes-h" id="general-h" style="margin-top:0;cursor:pointer">GENERAL NOTES <span id="general-cnt">▸ open</span></div>
+      <div class="body">
+        <textarea id="g-note" placeholder="anything about the lab, the rifle, the creatures, the room…"></textarea>
+        <div class="note-row"><span class="st" id="g-note-st"></span><button id="g-note-save" class="go" type="button">SAVE NOTE</button></div>
+        <div id="g-notes"></div>
+      </div>
+    </div>
+    <div id="keys"><b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier</div>
+  </aside>
+
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="gags.js?v=2"></script>
+  <script src="core.js?v=4"></script>
+  <script src="draw.js?v=3"></script>
+  <script src="sound.js?v=4"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module" src="lab.js?v=1"></script>
+</body>
+</html>

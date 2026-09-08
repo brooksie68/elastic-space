@@ -41,6 +41,10 @@
     { n: 4, name: 'THE DEEP',        w: 27, h: 27, goons: 18, loops: 10, rooms: 5, theme: 3, mix: { ghoul: 3, ratling: 3, cultist: 3, brute: 3, stalker: 3 } },
     { n: 5, name: 'THE MIDDLE',      w: 21, h: 21, goons: 6,  loops: 0,  rooms: 0, theme: 4, arena: true, mix: { ghoul: 2, ratling: 2, cultist: 1, brute: 1 } },
   ];
+  // THE WEAPON LAB (2026-09-07): one big bare hall, no key, no door, no boss; the creatures on the pads are
+  // passive (notice 0 — they wander and never chase) and the lab host respawns them. startLevel(state, 'lab').
+  const LAB_LEVEL = { n: 'lab', name: 'THE WEAPON LAB', w: 17, h: 17, goons: 0, loops: 0, rooms: 0, theme: 2, arena: true, lab: true, mix: {} };
+  const LAB_PADS = [{ type: 'ghoul', dx: 4.5, dy: -1.6 }, { type: 'brute', dx: 5.5, dy: 0.2 }, { type: 'cultist', dx: 4.5, dy: 2.0 }];
 
   // cell values
   const OPEN = 0, WALL_A = 1, WALL_B = 2, WALL_C = 3, WALL_D = 4, DOOR = 5, DRIFT = 6;
@@ -95,11 +99,12 @@
     return g;
   }
 
-  function makeArena(w, h, rand) {
+  function makeArena(w, h, rand, bare) {
     const g = new Uint8Array(w * h).fill(0);
     const at = (x, y) => y * w + x;
     for (let x = 0; x < w; x++) { g[at(x, 0)] = 1; g[at(x, h - 1)] = 1; }
     for (let y = 0; y < h; y++) { g[at(0, y)] = 1; g[at(w - 1, y)] = 1; }
+    if (bare) return g;
     // a ring of pillars, a few broken
     const cx = (w - 1) / 2, cy = (h - 1) / 2;
     for (let y = 3; y < h - 3; y += 3) for (let x = 3; x < w - 3; x += 3) {
@@ -178,11 +183,11 @@
     }
   }
   function buildLevel(n, seedStr, opts) {
-    const def = LEVELS[n - 1];
+    const def = n === 'lab' ? LAB_LEVEL : LEVELS[n - 1];
     const rand = mulberry(hashStr(seedStr + ':' + n));
     const w = def.w, h = def.h;
-    const map = def.arena ? makeArena(w, h, rand) : makeMaze(w, h, rand, def.loops);
-    const level = { n, name: def.name, w, h, map, theme: def.theme, arena: !!def.arena, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [] };
+    const map = def.arena ? makeArena(w, h, rand, def.lab) : makeMaze(w, h, rand, def.loops);
+    const level = { n, name: def.name, w, h, map, theme: def.theme, arena: !!def.arena, lab: !!def.lab, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [] };
     const at = (x, y) => y * w + x;
     // rooms: open chambers carved into the maze with a tall ceiling; the arena is one big hall
     if (def.arena) level.tall.fill(1); else carveRooms(level, def.rooms || 0, rand);
@@ -194,6 +199,13 @@
     const open = [];
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (map[at(x, y)] === OPEN) open.push([x, y]);
 
+    if (def.lab) {
+      // the lab: you stand near the west wall facing east; the pads are a few cells ahead
+      level.spawn = { x: 3.5, y: h / 2, a: 0 };
+      level.pads = LAB_PADS.map((d, i) => ({ i, type: d.type, x: level.spawn.x + d.dx, y: level.spawn.y + d.dy }));
+      for (const pad of level.pads) level.goonSpawns.push({ x: pad.x, y: pad.y, type: pad.type, pad: pad.i });
+      return level;
+    }
     if (def.arena) {
       level.spawn = { x: 1.5, y: h - 1.5, a: -Math.PI / 4 };
       level.bossSpawn = { x: w / 2, y: h / 2 };
@@ -374,7 +386,7 @@
       key: null, doorOpen: false, kills: 0, shotsFired: 0, recent: [], events: [], plate: null, pending: null,
       deaths: 0, deathBy: null, gagsSeen: {},
     };
-    startLevel(state, Math.max(1, Math.min(LEVELS.length, opts.startLevel || 1)));
+    startLevel(state, opts.startLevel === 'lab' ? 'lab' : Math.max(1, Math.min(LEVELS.length, opts.startLevel || 1)));
     return state;
   }
   let nextId = 1;
@@ -386,7 +398,7 @@
       cool: 0, slow: 1, vx: 0, vy: 0, fx: { snot: 0, bees: 0, lump: 0, spin: 0, dead: 0, fall: 0, flash: 0, hurt: 0 },
       safe: { x: level.spawn.x, y: level.spawn.y }, driftPush: { i: -1, t: 0 }, spinDir: 1, ringing: 0,
     };
-    state.goons = level.goonSpawns.map((s) => makeGoon(s.type, s.x, s.y, state.rand));
+    state.goons = level.goonSpawns.map((s) => level.lab ? makeLabGoon(state, s) : makeGoon(s.type, s.x, s.y, state.rand));
     if (level.bossSpawn) {
       const b = makeGoon('jabberwock', level.bossSpawn.x, level.bossSpawn.y, state.rand);
       b.isBoss = true; b.hp = 100; b.maxHp = 100; b.cool = 2.5; b.strafeT = 0; b.strafeDir = 1; b.recent = [];
@@ -406,6 +418,24 @@
       id: nextId++, type, def, x, y, a: rand() * TAU, r: def.r, hp: 1, state: 'idle', t: 0, dieT: 0, dieDur: 0, outcome: null, gagId: null,
       path: null, pathT: rand() * 0.4, wanderT: rand() * 2, atkT: 0, windup: 0, vx: 0, vy: 0, scale: 1, seed: rand(), pacT: 0, isBoss: false, blink: 0,
     };
+  }
+
+  // a lab creature: passive (never notices you), faces you, remembers its pad so the host can put it back
+  function makeLabGoon(state, s) {
+    const g = makeGoon(s.type, s.x, s.y, state.rand);
+    g.def = Object.assign({}, g.def, { notice: 0 });
+    g.pad = s.pad; g.home = { x: s.x, y: s.y };
+    g.a = Math.atan2(state.player.y - s.y, state.player.x - s.x);
+    g.wanderT = 1 + state.rand() * 2;
+    return g;
+  }
+  // put a lab creature back on its pad (a fresh goon, new id, so the renderer builds it clean); type may change
+  function respawnLabGoon(state, g, type) {
+    const i = state.goons.indexOf(g);
+    const s = { x: g.home.x, y: g.home.y, type: type || g.type, pad: g.pad };
+    const n = makeLabGoon(state, s);
+    if (i >= 0) state.goons[i] = n; else state.goons.push(n);
+    return n;
   }
 
   // ---------------------------------------------------------------- the roll
@@ -1093,7 +1123,9 @@
         else if (g.wanderT <= 0) {
           g.wanderT = 1.5 + state.rand() * 3;
           const a = state.rand() * TAU;
-          g.target = { x: g.x + Math.cos(a) * 2.5, y: g.y + Math.sin(a) * 2.5 };
+          // lab creatures drift about their pad and come back to it
+          if (g.home) g.target = { x: g.home.x + Math.cos(a) * 0.8, y: g.home.y + Math.sin(a) * 0.8 };
+          else g.target = { x: g.x + Math.cos(a) * 2.5, y: g.y + Math.sin(a) * 2.5 };
         } else if (g.target) {
           const ang = Math.atan2(g.target.y - g.y, g.target.x - g.x);
           g.a = ang;
@@ -1216,7 +1248,7 @@
 
   // ---------------------------------------------------------------- flow
   function nextLevel(state) {
-    if (state.n >= LEVELS.length) return false;
+    if (state.n === 'lab' || state.n >= LEVELS.length) return false;
     startLevel(state, state.n + 1);
     return true;
   }
@@ -1228,8 +1260,9 @@
   function goonsLeft(state) { return state.goons.filter((g) => g.state !== 'dead' && g.state !== 'dying' && g.state !== 'pacified').length; }
 
   globalThis.JabberwockyCore = {
-    VERSION: 1, DEFAULTS, GOON_TYPES, LEVELS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT },
+    VERSION: 1, DEFAULTS, GOON_TYPES, LEVELS, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT },
     hashStr, mulberry, makeMaze, buildLevel, bfs, bfsPath, cellAt, solidAt, castRay, lineOfSight, aimPoint,
     newGame, startLevel, nextLevel, retryLevel, step, fire, rollGag, launch, hitGoon, hurtPlayer, addScar, goonsLeft, angDiff,
+    makeLabGoon, respawnLabGoon,
   };
 })();

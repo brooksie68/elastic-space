@@ -3,6 +3,32 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-07 — Claude (Fable 5.1) — the map mirror, THE WEAPON LAB, the notes loop
+
+- **Corner map left/right were backwards** (his first line of the session): yesterday's "ahead is up" flip was a
+  Y-only mirror, which swaps left and right. Now a 180° rotation (`setTransform(-1, 0, 0, -1, size, size)`), so
+  forward is up and left stays left.
+- **THE WEAPON LAB, built on his go** (his brief: a big room, a couple of bad guys who don't fight back, an easy
+  selector with info on each weapon, kills reset in 2 s, a notes field Claude reads and acts on, a check every 10 s,
+  a notification + a clear indicator when a weapon is updated): `lab.html` / `lab.js`, linked from the admin panel
+  Labs list. Core: `LAB_LEVEL` (17×17 bare hall, tall, theme 2, no key/door/boss/drift), `startLevel(state, 'lab')`,
+  `makeLabGoon` (notice 0, `home` pad, faces you, wanders within 0.8 of the pad), `respawnLabGoon` (a fresh goon,
+  new id, on the pad; type may change). Host: the list by tier with a search box, facts per weapon (tier, how, the
+  victim's fate incl. alt outcomes, the numbers, what it does to you, the scar + hazard, sprite, sound, the line),
+  Q/E step, 1–4 jump to a tier, R reset, a creatures picker (trio / all five / three of one kind), the plate, the
+  real sound through the shared control, the lab heals you and a death is a hint. Whatever dies or dances comes back
+  two seconds after it is dead/pacified. Lit brighter than the game (brightness ≥ 1.35, torches ≥ 1.4).
+- **THE NOTES LOOP**: `notes.json` in the world folder + server route `/api/worlds/:slug/notes` (generic; GET, POST
+  add/edit/delete/seen with read-modify-write). Per-weapon notes + general notes on the page, each note shows
+  waiting/done + Claude's reply; the page polls every 10 s; an `updates[gag]` newer than `seen[gag]` = green dot on
+  the row, toast, tab-title count, a browser Notification if allowed, a chime; opening the weapon marks it seen.
+  Claude's tools: `tmp/jabberwocky/notes.mjs` (new / done / update / watch) — `watch` runs under Monitor and wakes
+  the session on a new note. The server was restarted for the route (its own minimized window, as the launcher does).
+- `tmp/jabberwocky/lab-smoke.mjs` (208 assertions: passive for 20 s, all 100 gags, respawn, type swap). Sim 116,893
+  green. Verified in the pane: respawn at 2 s after dead, pacified back at 2 s, note save, update → toast + dot →
+  opened → seen.
+- NEXT: his flight of the lab; then notes arrive and get acted on one by one.
+
 ## 2026-09-06 (James flying the gore pass) — Claude (Fable 5.1) — map flip, eased mouse look
 
 - Corner map: the maze's forward axis drew downward — flipped with a canvas transform so ahead is up (his
