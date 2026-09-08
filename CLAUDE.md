@@ -37,6 +37,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
   explosion kit, nothing at the lens, drop shadows + dust, tornado rings, five ElevenLabs one-shots) and
   28 MESHY PROPS + 4 primitives replacing the stickers (537 cr; `PROPS` table in render3d.js, props.mjs).
   Sim 116,893 green. He flew the gore pass: "more good progress today. I like it." Coming back tonight.
+  **2026-09-07/08: the corner map's LEFT/RIGHT MIRROR fixed (a 180° rotation, not a Y flip); THE WEAPON
+  LAB built on his go** (`lab.html`, admin panel → Labs: one bare lit hall, passive creatures on pads that come
+  back two seconds after they die, every gag listed with plain facts, and THE NOTES LOOP — `notes.json` via
+  `/api/worlds/:slug/notes`, he writes notes in the page, `tmp/jabberwocky/notes.mjs watch` under Monitor wakes
+  Claude every 10 s, Claude acts without asking, `update <gag>` = green dot + toast + push; spend rule ~50 cr per
+  note, cost in the reply); then CURSOR AIM on his "I'm trapped" + the two-mouse-models conversation (a real
+  cursor the rifle points at, edge push turns; the lab's default; the game's configuration → PLAY → Mouse
+  LOOK / CURSOR AIM, mouse look stays the game's default — he is deciding which he prefers); the lab's aim
+  centre bug fixed (shots went left of the cursor by the panel's half-width; pane test: cursor on a creature
+  kills it); no music in the lab. READ THE WORLD CLAUDE.md "START HERE" + changelog first; arm the watcher.
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).

@@ -8,6 +8,13 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 — Claude — Jabberwocky: the map mirror, THE WEAPON LAB + the notes loop, cursor aim
+- Corner map left/right were backwards (yesterday's flip was a mirror) — a 180° rotation now.
+- THE WEAPON LAB (`src/worlds/jabberwocky/lab.html`, admin panel → Labs): one bare lit hall, passive creatures that respawn two seconds after they die, every gag with plain facts, Q/E, creature picker, no music.
+- THE NOTES LOOP: per-world `notes.json` + generic server route `/api/worlds/:slug/notes`; James writes notes in the page, `tmp/jabberwocky/notes.mjs watch` under Monitor wakes Claude every 10 s; an update = green dot + toast + push notification. Server restarted for the route.
+- CURSOR AIM (`cursor-aim.js`): a real cursor the rifle points at, edge push turns; the lab's default, a Mouse LOOK / CURSOR AIM switch in the game's configuration. The lab's aim-centre bug fixed (shots went left by the panel's half-width).
+- New sim `tmp/jabberwocky/lab-smoke.mjs` (208 assertions); the core sim 116,893 green.
+
 ## 2026-09-08 — Claude — THE PHASE LAB (was The Reich Machine): the console stood up, then went flat; renamed
 - 2026-09-07 on James's go: the console stood nearly upright at real size, type up a step, credenza raised so the reels clear it, speakers bigger and higher, half the ceiling to the desk. Then at his word ("kill all of the artificial perspective... this is just software") the four panels became a flat CSS grid over the bottom of the window; the three.js room is the picture behind. Never put perspective on the panels again (world CLAUDE.md).
 - 2026-09-08: RENAMED THE PHASE LAB (his call: more people react to "reich" with concern than know Steve Reich). Folder/slug/globals/storage keys/tmp folder/admin row/draft title moved; old storage keys read once as a fallback; sim 2,512 green; both faces load clean. World Todo: a Steve Reich info card later.
