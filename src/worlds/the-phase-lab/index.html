@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Reich Machine</title>
-  <link rel="stylesheet" href="./world.css?v=4" />
+  <title>The Phase Lab</title>
+  <link rel="stylesheet" href="./world.css?v=6" />
 </head>
 <body>
   <canvas id="stage"></canvas>
 
-  <!-- THE BENCH: four control panels placed in the room's perspective by studio.js -->
+  <!-- THE BENCH: four flat control panels in a row over the bottom of the window (the room behind is studio.js) -->
   <div id="bench">
     <div class="cam" id="benchCam">
 
@@ -143,7 +143,7 @@
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
   <script type="module">
-    import { createStudio } from './studio.js?v=10';
+    import { createStudio } from './studio.js?v=11';
     createStudio({ canvas: document.getElementById('stage'), base: './', panels: {
       root: document.getElementById('bench'), cam: document.getElementById('benchCam'),
       screen: document.getElementById('screen'), lip: document.getElementById('lip'),

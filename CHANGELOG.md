@@ -8,6 +8,10 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 — Claude — THE PHASE LAB (was The Reich Machine): the console stood up, then went flat; renamed
+- 2026-09-07 on James's go: the console stood nearly upright at real size, type up a step, credenza raised so the reels clear it, speakers bigger and higher, half the ceiling to the desk. Then at his word ("kill all of the artificial perspective... this is just software") the four panels became a flat CSS grid over the bottom of the window; the three.js room is the picture behind. Never put perspective on the panels again (world CLAUDE.md).
+- 2026-09-08: RENAMED THE PHASE LAB (his call: more people react to "reich" with concern than know Steve Reich). Folder/slug/globals/storage keys/tmp folder/admin row/draft title moved; old storage keys read once as a fallback; sim 2,512 green; both faces load clean. World Todo: a Steve Reich info card later.
+
 ## 2026-09-08 — Claude — RAMPAGE planned + set up (the Retro arcade, fourth sibling)
 - James's plan request → `src/worlds/rampage/plan.md` (faithful 1986 rules in a pure core, a real 3-D side-on city, collapse as the set piece, Meshy rigged monsters, four played-through exits, ~540 cr estimate). His monsters: three giant fast-food mascots (a clown, a pigtailed girl, a plastic-grinned king), each with a restaurant on every street — "love this idea." Set up on his "we're going to build it": folder scaffold, draft world.json, CLAUDE.md START HERE, admin row under In progress (unwired), World Ideas #66. Nothing built, no credits spent; his six calls in the plan unanswered by choice.
 

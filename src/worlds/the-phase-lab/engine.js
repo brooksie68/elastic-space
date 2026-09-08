@@ -1,4 +1,4 @@
-// The Reich Machine — engine core. Pure: no DOM, no audio, no timers. Runs in Node for the
+// The Phase Lab — engine core. Pure: no DOM, no audio, no timers. Runs in Node for the
 // sim and in the browser for the player. Everything the machine IS lives here: tracks, the
 // step grid, the master clock, per-track rate (the drift), pull-to-grid, hold, nudge, the
 // scale/chord quantizer, the microtonal line.
@@ -284,6 +284,6 @@
   const api = { SCALES, CHORDS, ROOTS, FIGURES, DEFAULT_FX, scaleNotes, degreeToMidi, quantize, createMachine, makeTrack, addTrack,
     removeTrack, advance, play, stop, rewind, nudge, offsetOf, driftSteps, cycleSeconds, effectiveRate, setLength, fillFigure,
     requantize, snapshot, restore, stepsPerSecond, rollPhrase, rollMachine };
-  root.ReichEngine = api;
+  root.PhaseEngine = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,10 +1,10 @@
-// The Reich Machine — Web Audio player. Turns engine events into sound: the sampler (voice
+// The Phase Lab — Web Audio player. Turns engine events into sound: the sampler (voice
 // banks, nearest-note + rate bend, hit/hold articulations with a real release crossfade), a
 // per-track effects chain, a master chain, and the lookahead scheduler that keeps the drift
 // sample-accurate. Falls back to a synthesized tone voice when banks can't load (file://).
 (function (root) {
   'use strict';
-  const E = root.ReichEngine;
+  const E = root.PhaseEngine;
 
   const LOOKAHEAD = 0.15, TICK = 25, CHUNK = 0.025, XFADE = 0.015;
 
@@ -201,5 +201,5 @@
     return b;
   }
 
-  root.ReichPlayer = { create };
+  root.PhasePlayer = { create };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,23 +1,35 @@
-# The Reich Machine — Claude instructions
+# The Phase Lab — Claude instructions (was The Reich Machine until 2026-09-08)
 
 A phase-shifting step machine after Steve Reich's tape and Piano Phase pieces: up to four tracks,
 each a step sequence on one voice, each running a little faster or slower than the master, drifting
-past each other. Draft world (In progress, unwired). James's brief: `world-drafts.json` → "The Reich
-Machine". Since 2026-09-06 it is a WORLD: a 1970s control room (three.js) with the machine's console
+past each other. Draft world (In progress, unwired). James's brief: `world-drafts.json` → "The Phase Lab"
+(draft id the-reich-machine). Since 2026-09-06 it is a WORLD: a 1970s control room (three.js) with the machine's console
 laid over the bottom of the view. The earlier Glass Bead Game / Player of Games / Arcane direction is
 superseded by the studio at James's word.
 
-## START HERE (2026-09-06)
+## START HERE (2026-09-08)
 
-THE BENCH is built to his pen sketch (changelog 2026-09-06 later still) and he flew it: "this direction
-is good. We're going to do a bunch more tuning still. It's not quite right yet" — tuning continues the
-next session, by his eye, against the sketch. Open on his side: panel text size at the new distance,
-desk tilt/size, the room. Then exits + ship wiring.
+RENAMED THE PHASE LAB 2026-09-08 (James: "a lot more people are going to react to 'reich' with concern
+than are going to know who Steve Reich is"). Slug `the-phase-lab`, globals `PhaseEngine` / `PhasePlayer` /
+`PhaseStudio`, storage keys `the-phase-lab-*` (the old `reich-machine-*` keys are read once as a fallback),
+`tmp/the-phase-lab/`. The draft in world-drafts.json keeps its id `the-reich-machine`.
+
+THE CONSOLE IS FLAT SOFTWARE over a picture of the room (James, 2026-09-07: "kill all of the artificial
+perspective... this is just software"; changelog 2026-09-07 later). Four plain DOM panels in a CSS grid
+at the bottom of the window; the three.js room above is the visualization (reels turn, speakers, lights).
+Never put perspective back on the panels. AWAITING HIS EYES on the flat pass; tuning continues by his
+eye. Then exits + ship wiring.
+
+## Todo
+
+1. An INFO CARD about Steve Reich in this world — who he is, the tape pieces and Piano Phase, why the
+   machine drifts the way it does (James, 2026-09-08, at the rename: the name went, the credit stays).
+   Not built; design + his go first.
 
 ## Docs
 
 - `changelog.md` — session history, newest first. Read it before touching anything.
-- `tmp/reich-machine/` (gitignored, James's machine only) — the sound pipeline
+- `tmp/the-phase-lab/` (gitignored, James's machine only) — the sound pipeline
   (`render_library.py` + `library.html`, the 3,008-patch Surge audition page; `james-picks.txt`;
   `render_banks.py` → `encode_banks.mjs` into `assets/voices/`), `sim.mjs` (the engine sim),
   `shrink.py` (Meshy GLB → lean GLB), `meshy/` (raw + remeshed GLBs). KEEP all of it.
@@ -37,14 +49,14 @@ desk tilt/size, the room. Then exits + ship wiring.
   banks can't load (file://).
 - `index.html` + `world.js` + `world.css` — THE BENCH: four DOM panels (`#screen` editor, `#lip`
   button row + piano + scribble strip, `#wingL` four strips, `#wingR` key / transport / master /
-  dice / presets) that studio.js places in the room with CSS 3-D (1 DOM px = 1.3 mm; sizes are
-  fixed px in world.css — change a panel's size there and the desk slab follows). Every control
+  dice / presets) in a flat CSS grid at the bottom of the window (`#bench .cam` in world.css; sizes are
+  fixed px there). No perspective on the software, ever (James, 2026-09-07). Every control
   carries a `data-help` sentence — keep that when adding controls. James's sketch is the layout
   reference (changelog 2026-09-06 later still).
 - `studio.js` — THE ROOM (three.js module via the import map): the control room, four reel-to-reel
-  machines on the credenza (reels turn at each track's rate), two monitors, the console shell,
-  lights, the free look. Fed by `window.ReichStudio.update({ playing, master, tracks })` from
-  world.js each frame. `window.ReichStudio.snapshot(name)` posts a real render to
+  machines on the tall credenza (reels turn at each track's rate), four speaker cabinets high on the
+  side walls, a plain walnut desk, lights, a fixed camera. Fed by `window.PhaseStudio.update({ playing, master, tracks })` from
+  world.js each frame. `window.PhaseStudio.snapshot(name)` posts a real render to
   /api/dev-snapshot — USE IT: the Browser pane does not composite WebGL frames reliably here.
 - `plain.html` + `plain.js` + `plain.css` — THE OLD PLAIN FACE, kept whole at James's word as the
   seed of a possible MOBILE experience. Same engine + player. Do not delete; do not let it rot
@@ -75,6 +87,6 @@ desk tilt/size, the room. Then exits + ship wiring.
   is "shift". The phase bar is the clock face.
 - Four tracks maximum: one reel-to-reel machine each in the room.
 - THE VIEW DOES NOT MOVE. No mouse look of any kind (James, 2026-09-06, twice: "crazy town", then "kill the mouse movement entirely").
-- `node tmp/reich-machine/sim.mjs` must stay green when the engine changes.
+- `node tmp/the-phase-lab/sim.mjs` must stay green when the engine changes.
 - No autoplay of the machine itself: the page opens stopped; the shared speaker button only
   gates the AudioContext.

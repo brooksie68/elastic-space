@@ -1,18 +1,18 @@
-// The Reich Machine — the console face. Wires the engine + player to the 1970s control surface:
+// The Phase Lab — the console face. Wires the engine + player to the 1970s control surface:
 // the meter bridge (transport · the key · master), four channel strips, one big editor for the
 // selected track, the piano on the lip, the effects drawer. The studio behind it (studio.js) gets
 // a state object every frame. The plain face this replaced is kept whole as plain.html.
 (function () {
   'use strict';
-  const E = window.ReichEngine;
+  const E = window.PhaseEngine;
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
-  const STORE = 'reich-machine-state', PRESETS = 'reich-machine-presets';
+  const STORE = 'the-phase-lab-state', PRESETS = 'the-phase-lab-presets';
   const MAX_TRACKS = 4;
   const DEFAULT_HINT = 'click a step, then play the piano · drag a note to move it, drag across empty steps to draw · right-click clears';
 
   const m = E.createMachine();
-  const P = window.ReichPlayer.create({ machine: m, base: './assets/voices/' });
+  const P = window.PhasePlayer.create({ machine: m, base: './assets/voices/' });
   let sel = null;                   // selected track id (the editor shows it)
   let armed = null;                 // { track, step } — the piano writes here
   let recording = false;
@@ -67,7 +67,7 @@
   $('#mComp').addEventListener('input', () => P.setMasterFx({ compressor: +$('#mComp').value }));
   $('#savePreset').addEventListener('click', () => { const name = prompt('preset name'); if (!name) return; const all = loadPresets(); all[name] = E.snapshot(m); localStorage.setItem(PRESETS, JSON.stringify(all)); fillPresets(name); });
   $('#presets').addEventListener('change', () => { const all = loadPresets(); const s = all[$('#presets').value]; if (s) { P.stop(); Object.keys(P.chains).forEach(id => P.dropChain(+id)); E.restore(m, s); renderAll(); save(); } });
-  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS) || '{}'); } catch (e) { return {}; } }
+  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS) || localStorage.getItem('reich-machine-presets') || '{}'); } catch (e) { return {}; } }
   function fillPresets(value) { const all = loadPresets(); $('#presets').innerHTML = '<option value="">presets…</option>' + Object.keys(all).map(k => `<option>${k}</option>`).join(''); if (value) $('#presets').value = value; }
 
   // the dice
@@ -324,7 +324,7 @@
     }
     vuState.a = ballistics(vuState.a, lv.master, dt, 28, 5); vuState.b = ballistics(vuState.b, lv.master, dt, 22, 7);
     vuA.style.transform = `rotate(${vuAngle(vuState.a).toFixed(1)}deg)`; vuB.style.transform = `rotate(${vuAngle(vuState.b * 0.96).toFixed(1)}deg)`;
-    if (window.ReichStudio) window.ReichStudio.update({ playing, master: vuState.a, tracks: m.tracks.map(t => ({ rate: t.rate, level: levels[t.id] || 0, on: !t.mute })) });
+    if (window.PhaseStudio) window.PhaseStudio.update({ playing, master: vuState.a, tracks: m.tracks.map(t => ({ rate: t.rate, level: levels[t.id] || 0, on: !t.mute })) });
     requestAnimationFrame(frame);
   }
 
@@ -347,10 +347,10 @@
     const v = document.createElement('div'); v.id = 'veil'; document.body.appendChild(v);
     buildPhrases();
     await P.loadList();
-    let snap = null; try { snap = JSON.parse(localStorage.getItem(STORE)); } catch (e) {}
+    let snap = null; try { snap = JSON.parse(localStorage.getItem(STORE) || localStorage.getItem('reich-machine-state')); } catch (e) {}   // the old key = the world's name until 2026-09-08
     if (snap && snap.tracks && snap.tracks.length) { E.restore(m, snap); m.tracks.length = Math.min(m.tracks.length, MAX_TRACKS); renderAll(); } else demo();
     fillPresets(); requestAnimationFrame(frame);
   }
-  window.__reich = { m, P, E, get sel() { return sel; }, select: id => { sel = id; renderAll(); } };   // diagnostics handle (sims, the pane)
+  window.__phase = { m, P, E, get sel() { return sel; }, select: id => { sel = id; renderAll(); } };   // diagnostics handle (sims, the pane)
   boot();
 })();

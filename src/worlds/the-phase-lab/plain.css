@@ -1,4 +1,4 @@
-/* The Reich Machine — the plain face. Functional only; the look is a later pass. */
+/* The Phase Lab — the plain face. Functional only; the look is a later pass. */
 :root { --bg: #141416; --panel: #1c1c1f; --line: #2c2c31; --ink: #e4e2dc; --dim: #8a8a90; --hot: #e8c268; --hot2: #f0d89a; --on: #3a3a44; --play: #6fd3a0; }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }

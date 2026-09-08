@@ -1,13 +1,13 @@
-// The Reich Machine — the plain face. Wires the engine + player to controls. No look yet.
+// The Phase Lab — the plain face. Wires the engine + player to controls. No look yet.
 (function () {
   'use strict';
-  const E = window.ReichEngine;
+  const E = window.PhaseEngine;
   const $ = (s, el) => (el || document).querySelector(s);
   const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
-  const STORE = 'reich-machine-state', PRESETS = 'reich-machine-presets';
+  const STORE = 'the-phase-lab-state', PRESETS = 'the-phase-lab-presets';
 
   const m = E.createMachine();
-  const P = window.ReichPlayer.create({ machine: m, base: './assets/voices/' });
+  const P = window.PhasePlayer.create({ machine: m, base: './assets/voices/' });
   let armed = null;                 // { track, step } — the keyboard writes here
   let kbBase = 60;
 
@@ -41,7 +41,7 @@
   $('#mComp').addEventListener('input', () => P.setMasterFx({ compressor: +$('#mComp').value }));
   $('#savePreset').addEventListener('click', () => { const name = prompt('preset name'); if (!name) return; const all = loadPresets(); all[name] = E.snapshot(m); localStorage.setItem(PRESETS, JSON.stringify(all)); fillPresets(name); });
   $('#presets').addEventListener('change', () => { const all = loadPresets(); const s = all[$('#presets').value]; if (s) { P.stop(); Object.keys(P.chains).forEach(id => P.dropChain(+id)); E.restore(m, s); renderAll(); save(); } });
-  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS) || '{}'); } catch (e) { return {}; } }
+  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS) || localStorage.getItem('reich-machine-presets') || '{}'); } catch (e) { return {}; } }
   function fillPresets(value) { const all = loadPresets(); $('#presets').innerHTML = '<option value="">presets…</option>' + Object.keys(all).map(k => `<option>${k}</option>`).join(''); if (value) $('#presets').value = value; }
 
   window.addEventListener('keydown', e => {
@@ -185,10 +185,10 @@
   }
   async function boot() {
     await P.loadList();
-    let snap = null; try { snap = JSON.parse(localStorage.getItem(STORE)); } catch (e) {}
+    let snap = null; try { snap = JSON.parse(localStorage.getItem(STORE) || localStorage.getItem('reich-machine-state')); } catch (e) {}   // the old key = the world's name until 2026-09-08
     if (snap && snap.tracks && snap.tracks.length) { E.restore(m, snap); renderAll(); } else demo();
     fillPresets(); requestAnimationFrame(frame);
   }
-  window.__reich = { m, P, E };   // diagnostics handle (sims, the pane)
+  window.__phase = { m, P, E };   // diagnostics handle (sims, the pane)
   boot();
 })();

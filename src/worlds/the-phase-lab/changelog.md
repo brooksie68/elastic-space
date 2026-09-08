@@ -1,7 +1,60 @@
-# Changelog — The Reich Machine
+# Changelog — The Phase Lab (The Reich Machine until 2026-09-08)
 
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
+
+## 2026-09-08 — Claude (Fable 5.1) — RENAMED: The Reich Machine → THE PHASE LAB
+
+James: "a lot more people are going to react to 'reich' with concern than are going to know who Steve
+Reich is." Folder `src/worlds/reich-machine` → `src/worlds/the-phase-lab` (git mv), slug + title in
+world.json, page titles, globals `ReichEngine` / `ReichPlayer` / `ReichStudio` → `PhaseEngine` /
+`PhasePlayer` / `PhaseStudio`, diagnostics handle `__reich` → `__phase`, localStorage keys
+`reich-machine-*` → `the-phase-lab-*` (old keys read once as a fallback so his saved machine and presets
+carry over), `tmp/reich-machine` → `tmp/the-phase-lab` (sim + pipeline scripts re-pathed; sim 2,512
+green), admin row moved to its alphabetical place, draft retitled (id unchanged). Earlier changelog
+entries keep the old name on purpose. Todo (world CLAUDE.md): an info card about Reich in the world, later.
+
+## 2026-09-07 (later) — Claude (Fable 5.1) — THE CONSOLE GOES FLAT: "this is just software"
+
+James on the standing console: improved, but "kill all of the artificial perspective... it's making
+everything hard to read. It's distorted. All the drop downs are actually straight, and so they look really
+weird next to the tilted tracks... the room looks really nice in the background... it'll be a hybrid.
+That'll just be some software." And: bring the side panels down, lower than or equal to the screen's top;
+the piano panel and the note grid are plain rectangles.
+
+- The four panels are flat DOM again: a CSS grid at the bottom centre of the window (wings 410 × 620
+  either side, screen 940 × 460 over the lip 940 × 170, 10 px gaps, 14 px off the bottom edge). The wings
+  align to the bottom, so their top sits 10 px below the screen's. No transforms, no `.cam` matrices;
+  `studio.js` no longer places panels (benchLayout, placePanels and the CSS-3D matrices are gone).
+- The room keeps everything from the morning pass (upright reels on the tall credenza, big high
+  speakers, the half ceiling) plus a plain walnut desk with a brushed top under where the console sits,
+  so the picture still has a desk in it.
+- Pane check 1920 × 1080: room fills the top ~40 %, all four decks and speakers in view, no console
+  errors. His read: this is as far as it goes tonight, "all good though" (said of the standing pass;
+  the flat pass awaits his eyes).
+
+## 2026-09-07 — Claude (Fable 5.1) — THE CONSOLE STANDS UP: half the ceiling given to the desk, on James's go
+
+His read of the bench (after "great job on the UI... the light, the wood, the layout — just what I was
+looking for"): more space for the console in a readable, usable format — fake the wraparound rather than
+pay for it in perspective, push the console up and flatten it, take about half the ceiling for it, raise
+the reels so they stay in view, the words are too small everywhere, speakers bigger and higher. Plan agreed,
+built as one pass:
+
+- **Upright**: screen tilt 55° → 76°, wings share it, wing swing 28° → 12° (a hint of wrap, no
+  foreshortening). Screen centre 1.1 → 1.2 m up.
+- **Bigger, at real size**: 1 DOM px = 1.5 mm → 2.1 mm (the panels render at ~0.93× their DOM size on a
+  1080p frame instead of 0.7×); screen 920 × 360 → 940 × 460, lip 150 → 170 tall, wings 400 × 560 →
+  410 × 620. The console now spans the bottom ~65 % of the frame, wings inside the edges at 1920.
+- **Type up everywhere**: base 13 → 15 px; silkscreen 10 → 12; step numbers / switch legends 9 → 11;
+  strip labels, chips, drift and cycle readouts +2; key window and the big buttons 20 → 24; editor title
+  15 → 18; knobs 54 → 60, clocks 44 → 48, VUs 96 × 56 → 112 × 66, piano 460 × 62 → 560 × 74.
+- **Reels**: credenza 1.15 → 1.72 m so the whole deck clears the standing console; the machine spot
+  re-aimed at the raised decks (the outer two had gone dark).
+- **Speakers**: cabinets 1.5 → 2.2 m, centred at 2.55 m (were 1.55), still toed in.
+- **Ceiling**: camera pitch −0.06 → −0.09, eye 1.62 m; the cloud-light strip is about half what it was.
+- Pane check 1920 × 1080 (screenshots + tmp/snapshots/reich-bench-v3.jpg): all four panels in frame,
+  all four decks lit, no console errors. AWAITING HIS EYES for the by-eye tuning round.
 
 ## 2026-09-06 (later still) — Claude — THE BENCH: the console is furniture in the room, per James's sketch
 
