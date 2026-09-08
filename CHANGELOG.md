@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 — Claude — Asteroids BUILT as a one-shot (the Retro arcade, third sibling)
+- James's plan request → `tmp/asteroids/plan.md` → his "ok" → built whole: `src/worlds/asteroids/` (pure core + 2,230-assertion sim, three.js glow-line renderer, shell with the attract gate / console / synthesis sound / configuration panel + presets, four ways out: the derelict's bay, the long jump, the hollow rock, the smudge). Draft, unwired, awaiting his flight.
+- Three headless self-critique rounds in the silent look-dev page (NaN aspect from a zero-size window, pie-slice creases → a broken chord, dash stars → dots, ship 1.2×); smoke page pumped through a whole life clean.
+- James's running list of games to emulate started in the repo CLAUDE.md Todo (Asteroids, Rampage, Double Dragon); World Ideas #65.
+- NOTE for the global wrap: the Asteroids world commit (3aee77e) also carried the Phase Lab rename that another session had already staged in the shared index — committed as staged, nothing lost.
+
 ## 2026-09-06 — Claude — AGENTS.md rewritten for Codex alongside live Claude sessions
 - AGENTS.md (untouched since 07-18) brought up to the wrap doctrine: stage by explicit path, leave other sessions' files alone, `.git/wrap.lock` around staging, commit your own work with a signed changelog before the session ends, never push, no wrap rituals; registry draft-leak gotcha, admin panel sections + unwired note, configuration-panel naming, spend-first-ask.
 - New sections: what the place is made of (browser target, James's laptop as the frame-rate gate, sims + look-dev harnesses, shared core, configuration panel pattern, labs), the paper trail (Todo handoff, per-world CLAUDE.md/changelog, World Ideas, drafts, docs, archive, tmp, admin API), and a full shared-tools section (ElevenLabs CLI, Meshy MCP/REST/canvas + credit table, Suno, Blender headless + MCP, KeenTools, Mixamo, Unity) with `.env` as the ONLY place a key value lives.
@@ -26,6 +32,12 @@ this file tracks project-level activity.
 - His pen sketch → THE BENCH: the controls are DOM panels placed in the room's perspective (CSS 3-D off the three.js camera) on a tipped wraparound desk; camera fixed, no mouse look (his call, twice).
 - The old plain face kept whole as plain.html for a possible mobile experience. Meshy ~130 cr (remesh at Meshy, never Blender-decimate a raw soup). Sim 2,512 green.
 - His verdict at wrap: "this direction is good... a bunch more tuning still" — continues next session.
+
+## 2026-09-07 — Claude — Lunar Lander is MOON BATTLE 2075, back in progress, with a mode switch
+- Renamed everywhere on James's word (admin row moved Completed → In progress, still in the drift; world.json, page title, start card, tank page, docs). Folder/slug stay `lunar-lander`.
+- Start card: CAMPAIGN | FREE MODE → LANDER / TANKS. Free lander = the same moon with no level goal (core `opts.free`, sim TEST 15, 211,843 green); TANKS opens `tank/tank.html`.
+- Awaiting his review of the campaign as built; hostile fire (round three) not started.
+- THE TANK (same day, one session now): the mouse aims under pointer lock, the gun follows with mass, W S A D drive the hull, Z scope; the look pass items 1/2/6/7 (contours/craters/rocks/trail, weight by distance, Earth + horizon glow + three parallax ridges, compass tape + projected range + scope + recoil in the glow); item 8 dropped by James. Tank sim 94 green.
 
 ## 2026-09-06 — Claude — Jabberwocky: the rifle review + the gore pass + 28 Meshy props
 - Vertical look, meat-pie health pickups, a real corner map (LOS reveal, flipped so ahead is up), eased mouse look, `C` for configuration.

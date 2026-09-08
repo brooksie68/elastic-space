@@ -290,7 +290,7 @@ Combat/Arachno lineage. Co-build, plan-first — not started.
 
 James, 2026-09-01, spun off roll 7 of the Valence Lab rethink: a continuous, scrubbable zoom from a glass of water down through the molecule, the atom, the electron cloud, past the Planck length, and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world (those endings double as drift exits). The honest middle of the zoom can reuse the Valence Lab's baked Hartree-Fock densities. In the admin panel's page drafts as "Powers of Ten (it ends somewhere silly)".
 
-### 63. Lunar Lander — *one session* — `live` (built 2026-09-04, shipped 2026-09-04)
+### 63. Moon Battle 2075 (born as Lunar Lander) — *one session* — `live`, back in progress (built 2026-09-04, shipped 2026-09-04, renamed 2026-09-07)
 
 Atari's 1979 vector cabinet, the Surround treatment: faithful physics (lunar gravity, the
 proportional lever, four selections, pads worth 2×–5×, landings graded by speed / drift /
@@ -302,9 +302,11 @@ rounds with James: the 1979 look pulled all the way to 2026 (max-blend lines, no
 a two-stage LEM, landing tech, the endless chunked moon that remembers your life, the
 ring accelerator, and four ways out (drive-through door, relay tower, horizon ring, the
 hatch in your wreck). Missions are the next round. **2026-09-06, James's direction: this
-grows into BATTLE FOR THE MOON 2075** — Battlezone mode inside it, battling from the lander,
+grows into MOON BATTLE 2075** — Battlezone mode inside it, battling from the lander,
 buildings on the ground, lander weapons + goals, and eventually out of the lander into a
-lunar tank whose targets you saw from the air. Recorded, not started.
+lunar tank whose targets you saw from the air. Recorded, not started. **RENAMED MOON
+BATTLE 2075 on 2026-09-07** (James) and moved back to In progress worlds while it grows;
+the start card now switches CAMPAIGN | FREE MODE (lander or tanks).
 
 ### 64. Jabberwocky — *one session* — `draft` (built 2026-09-05)
 
@@ -321,6 +323,30 @@ with Meshy tiles and baked torch light, rooms carved into the mazes, five dungeo
 rigged Meshy models (the Jabberwock a posed statue, Meshy's rigger being humanoid-only), giblets
 with physics, PG-13 cartoon gore, the rifle as a real viewmodel, ElevenLabs one-shots. Draft,
 unwired, awaiting James's flight of the rebuild and his Suno track.
+
+
+### 65. Asteroids — *one session* — `draft` (built 2026-09-08)
+
+Atari's Asteroids (1979), the Retro arcade treatment: the rules kept (20/50/100, the two
+saucers at 200 and 1000 with the small one aiming better as the score climbs, four shots,
+hyperspace with a small chance of death, an extra ship every 10,000, the later ROM's lurk
+rule) and the look taken to 2026 inside the single-line constraint — wireframe rocks with a
+black fill and a facet crease that break along their strokes, a 2036 dart of a ship, a fixed
+camera with the field filling the window and wrap copies at the seams, a heartbeat that
+quickens as the field thins. Four ways out: the derelict's lit bay, a hyperspace jump that
+goes too far, the hollow rock (shoot it open, fly through), and a dusty smudge at the edge.
+`src/worlds/asteroids/`. Built in one shot on James's "ok" to the plan (`tmp/asteroids/plan.md`);
+awaiting his flight before ship wiring. James's running list of games to emulate (2026-09-08):
+Asteroids, Rampage, Double Dragon — kept in the repo CLAUDE.md Todo.
+
+### 66. Rampage (working title) — *one session* — `draft`, in progress (set up 2026-09-08)
+
+Bally Midway 1986, the Retro arcade treatment: the rules kept (climb, punch, collapse, the
+window deals, soldiers / tanks / helicopters, the revert, 128 cities), the look taken to 2026
+(a real 3-D side-on city, collapse as the set piece, Meshy rigged monsters). James's monsters:
+three giant fast-food mascots — a clown, a pigtailed girl, a plastic-grinned king — each with a
+restaurant on every street and a bonus for wrecking a rival's. `src/worlds/rampage/plan.md` is
+the plan; scaffold in the folder; nothing built, six of his calls open.
 
 ## Built on commission — 2026-07-12
 

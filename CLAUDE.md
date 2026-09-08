@@ -41,6 +41,17 @@ consistent. `npm run check-worlds` audits every world against the contract.
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).
 
+- RETRO ARCADE — THE RUNNING LIST (James, 2026-09-08: "keep a running list for me of
+  the games I want to emulate"; Surround and Moon Battle 2075 are the reference treatment —
+  faithful rules, 2026 look). Keep this list current whenever he adds one:
+  1. Asteroids — BUILT 2026-09-08 as a one-shot on his "ok" (`src/worlds/asteroids/`, read its
+     CLAUDE.md first; draft, unwired, sim 2,230 green, smoke-pumped, World Ideas #65). AWAITING
+     HIS FLIGHT, then ship wiring on his word.
+  2. Rampage — SET UP 2026-09-08 as a draft world on his word ("we're going to build it"):
+     `src/worlds/rampage/` (plan.md + CLAUDE.md START HERE, admin row under In progress,
+     World Ideas #66). The mascots are the monsters. Nothing built; his six calls unanswered
+     by choice — build on the plan's defaults.
+  3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
    communities (capital Tonic + Mediant/Dominant/Subdominant on the hexagram at
@@ -814,7 +825,12 @@ consistent. `npm run check-worlds` audits every world against the contract.
    the scope. Open list is in the world CLAUDE.md START HERE (hold view
    everywhere = the HF solver batch, trophies, the pullback, the copy thread). Also: memory `no-flags-after-the-answer` ("flagging
    things is like a compulsion with you").
-0.8. THE REICH MACHINE (engaged draft, James's #1, 2026-09-05): a phase-shifting step
+0.8. THE PHASE LAB (`src/worlds/the-phase-lab/`; RENAMED 2026-09-08 from THE REICH MACHINE on James's word —
+   "a lot more people are going to react to 'reich' with concern than are going to know who Steve Reich is";
+   folder, slug, globals, storage keys, tmp folder, admin row and draft title all moved; world Todo: a Reich
+   INFO CARD later. 2026-09-07: the console stood up on his go, then went FLAT at his word — "this is just
+   software", the room is the picture behind; never put perspective on the panels again.) The original entry:
+   THE REICH MACHINE (engaged draft, James's #1, 2026-09-05): a phase-shifting step
    machine after Steve Reich — N tracks, each a step figure on one voice, each a little
    faster or slower than the master, drifting past each other. BUILT AS A DRAFT WORLD
    2026-09-05 on his go, sound gate first (his rule: "not with shitty sounds"): a 3,008-patch
@@ -1182,7 +1198,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
-7.5. LUNAR LANDER: Atari's 1979 vector cabinet, BUILT 2026-09-04 as a draft on
+7.5. MOON BATTLE 2075 (born as LUNAR LANDER, folder `lunar-lander`; RENAMED 2026-09-07 on
+   James's word and moved back to In progress worlds — still in the drift registry; the
+   start card switches CAMPAIGN | FREE MODE → LANDER / TANKS, free lander = no goal, tanks
+   = `tank/tank.html`; his read: "the Lander levels are in a good position... ready to have some
+   mission content written and some enhancements." **THE TANK, same day, one session now: the
+   mouse aims (pointer lock, the gun follows with mass), W S A D drive the hull, the look pass
+   items 1/2/6/7 (moon not grid, weight by distance, Earth + glow + three ridges, the modern
+   cockpit), item 8 dropped by him; sim 94 green; AWAITING his drive — `tank/CLAUDE.md`):
+   Atari's 1979 vector cabinet, BUILT 2026-09-04 as a draft on
    James's go ("the same treatment as Surround" — modernize, bells and whistles,
    retro vibe intact) — `src/worlds/lunar-lander/` (read its CLAUDE.md first).
    Pure sim-tested core (`node tmp/lunar-lander/sim.mjs`, 66,899 assertions,
@@ -1249,7 +1273,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
    meteor showers, fuel crates, co-op tow, terrain sets), then drift exits +
    ship wiring. Battlezone discussed as the next vector sibling — not started.
    **THE DIRECTION (James, 2026-09-06, recorded only): Lunar Lander grows into
-   BATTLE FOR THE MOON 2075** — the Battlezone mode inside it, battling from the
+   MOON BATTLE 2075** — the Battlezone mode inside it, battling from the
    lander, more buildings on the ground, lander weapons + more goals, and
    eventually climbing out of the lander into a lunar tank whose targets you
    saw going by from the air. "Lots more to come on this down the road."
