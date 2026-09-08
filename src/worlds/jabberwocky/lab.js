@@ -28,10 +28,9 @@ addEventListener('resize', () => R.resize());
 
 // ---- sound ------------------------------------------------------------------------------------------------
 const SILENT = q.get('silent') === '1';
-if (window.ElasticSoundControl && !SILENT) ElasticSoundControl.attach({
-  start: () => Sfx.start(), stop: () => Sfx.stop(), setVolume: (v) => Sfx.setVolume(v),
-  channels: [{ label: 'music', value: Sfx.musicLevel, setVolume: (v) => Sfx.setMusicVolume(v) }],
-});
+// no music in the lab, ever (James) — the effects and the room bed only, one volume
+Sfx.setMusic(false);
+if (window.ElasticSoundControl && !SILENT) ElasticSoundControl.attach({ start: () => Sfx.start(), stop: () => Sfx.stop(), setVolume: (v) => Sfx.setVolume(v) });
 const pan = (x, y) => { const p = state.player; return Math.sin(Math.atan2(y - p.y, x - p.x) - p.a) * 0.8; };
 
 // ---- state -------------------------------------------------------------------------------------------------
@@ -108,13 +107,13 @@ const cross = $('cross');
 function aimFromCursor(dt) {
   const p = state.player;
   if (mouseMode !== 'cursor' || !cursor.in) { p.aim = 0; R.vm.aim += (0 - R.vm.aim) * Math.min(1, dt * 10); R.vm.aimY += (0 - R.vm.aimY) * Math.min(1, dt * 10); cross.style.left = ''; cross.style.top = ''; cursor.push = 0; return; }
-  const w = playW(), h = playH();
+  const w = innerWidth, h = innerHeight;   // the camera fills the whole window (the panel just covers its right edge), so the centre + fov are the window's
   p.aim = yawFromCursor(cursor.x, w, h, look.fov || 76);
   const py = pitchFromCursor(cursor.y, h, look.fov || 76);
   R.vm.aim += (p.aim * 0.9 - R.vm.aim) * Math.min(1, dt * 14);
   R.vm.aimY += (py - R.vm.aimY) * Math.min(1, dt * 14);
   cross.style.left = cursor.x + 'px'; cross.style.top = cursor.y + 'px';
-  cursor.push = edgePush(cursor.x, w, EDGE);
+  cursor.push = edgePush(cursor.x, playW(), EDGE);   // the push bands sit on the play area's edges
   cursor.pitchPush = edgePush(cursor.y, h, EDGE);
 }
 function setMouse(m) {
@@ -208,10 +207,11 @@ function simTick(dt) {
 }
 
 // ---- the loop ------------------------------------------------------------------------------------------------------
-let last = performance.now(), lastHud = 0;
+let last = performance.now(), lastHud = 0, sizeW = 0, sizeH = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; view.t += dt;
+  if (canvas.clientWidth !== sizeW || canvas.clientHeight !== sizeH) { sizeW = canvas.clientWidth; sizeH = canvas.clientHeight; R.resize(); }   // a missed resize event would skew the aim
   readKeys();
   aimFromCursor(dt);
   if (cursor.push) input.turn += cursor.push * 0.8;

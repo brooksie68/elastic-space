@@ -37,6 +37,14 @@ appends an entry: date, author, what changed, and where things stand. Never rewr
   fov, cosmetic pitch, edge push). THE LAB defaults to it (CURSOR AIM / MOUSE LOOK in the bar). THE GAME keeps mouse
   look as the default and gets a **Mouse: LOOK / CURSOR AIM** row in configuration → PLAY (persisted; the cards' key
   line follows). Under cursor aim the game never captures the pointer, so nothing to esc out of.
+- **"Why can't it shoot where the cursor is?"** — because the lab measured the cursor against the play area (the window
+  minus the panel) while the camera fills the whole window: the view's centre was 200 px right of where the maths
+  thought, so every shot went left of the cursor. Now measured against the window; pane test: a bullet with the cursor
+  on each creature kills it, aim angle = true angle ±0.1°. The lab's loop also re-fits the renderer if a resize is
+  missed (the pane's fake resize never reached it, which skewed the first test). The reticle's rest position is the
+  window centre. Shots still fly level — hits are two-dimensional in this engine, so the cursor's height is cosmetic.
+- **No music in the lab** (his ask): `Sfx.setMusic(false)` — no element is ever created; the music channel is gone from
+  the lab's speaker.
 - NEXT: his flight of the lab; then notes arrive and get acted on one by one.
 
 ## 2026-09-06 (James flying the gore pass) — Claude (Fable 5.1) — map flip, eased mouse look

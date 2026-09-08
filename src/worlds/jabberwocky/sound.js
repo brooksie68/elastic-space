@@ -358,8 +358,10 @@
   }
   // ---- music: a track James drops in as assets/audio/theme.mp3 (Suno), looped under everything ------------
   let musicEl = null, musicGain = null, musicLevel = 0.22;   // low out of the box (James); the music slider on the speaker raises it
+  let musicOn = true;   // the weapon lab turns it off entirely (setMusic(false)) — no element, no gain, nothing
+  function setMusic(on) { musicOn = !!on; if (!on) stopMusic(); }
   function startMusic() {
-    if (musicEl || !ctx) return;
+    if (!musicOn || musicEl || !ctx) return;
     musicEl = new Audio(scriptBase + 'assets/audio/theme.mp3'); musicEl.loop = true; musicEl.preload = 'auto';
     musicEl.addEventListener('error', () => { musicEl = null; }, { once: true });
     try { const src = ctx.createMediaElementSource(musicEl); musicGain = ctx.createGain(); musicGain.gain.value = musicLevel; src.connect(musicGain); musicGain.connect(comp); } catch (e) { musicEl.volume = musicLevel; }
@@ -370,5 +372,5 @@
   function reel(dur) { if (!running || !ctx) return; K.reel(dur); }
   function reveal(tier) { if (!running || !ctx) return; K.reveal(tier); }
 
-  globalThis.JabberwockySfx = { start, stop, setVolume, play, outcome, reel, reveal, setBedLevel, setMusicVolume, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; } };
+  globalThis.JabberwockySfx = { start, stop, setVolume, play, outcome, reel, reveal, setBedLevel, setMusicVolume, setMusic, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; } };
 })();
