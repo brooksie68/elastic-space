@@ -328,7 +328,7 @@ unwired, awaiting James's flight of the rebuild and his Suno track.
 ### 65. Asteroids — *one session* — `draft` (built 2026-09-08)
 
 Atari's Asteroids (1979), the Retro arcade treatment: the rules kept (20/50/100, the two
-saucers at 200 and 1000 with the small one aiming better as the score climbs, four shots,
+saucers at 200 and 1000 with the small one aiming better as the score climbs, shots without limit (his call; 1979's four is a dial),
 hyperspace with a small chance of death, an extra ship every 10,000, the later ROM's lurk
 rule) and the look taken to 2026 inside the single-line constraint — wireframe rocks with a
 black fill and a facet crease that break along their strokes, a 2036 dart of a ship, a fixed
@@ -339,14 +339,16 @@ goes too far, the hollow rock (shoot it open, fly through), and a dusty smudge a
 awaiting his flight before ship wiring. James's running list of games to emulate (2026-09-08):
 Asteroids, Rampage, Double Dragon — kept in the repo CLAUDE.md Todo.
 
-### 66. Rampage (working title) — *one session* — `draft`, in progress (set up 2026-09-08)
+### 66. Carnage (was Rampage) — *one session* — `draft`, in progress (set up + named 2026-09-08)
 
 Bally Midway 1986, the Retro arcade treatment: the rules kept (climb, punch, collapse, the
 window deals, soldiers / tanks / helicopters, the revert, 128 cities), the look taken to 2026
 (a real 3-D side-on city, collapse as the set piece, Meshy rigged monsters). James's monsters:
 three giant fast-food mascots — a clown, a pigtailed girl, a plastic-grinned king — each with a
-restaurant on every street and a bonus for wrecking a rival's. `src/worlds/rampage/plan.md` is
-the plan; scaffold in the folder; nothing built, six of his calls open.
+restaurant on every street and a bonus for wrecking a rival's. `src/worlds/carnage/plan.md` is
+the plan; scaffold in the folder; nothing built. Named Carnage 2026-09-08; his calls: score kept
+across lives, nothing saved between visits, no Suno for now, Meshy spend go with a 550-credit cap;
+the flavour dial and the companions await his numbers.
 
 ## Built on commission — 2026-07-12
 

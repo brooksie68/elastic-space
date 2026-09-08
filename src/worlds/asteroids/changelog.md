@@ -2,6 +2,15 @@
 
 Newest first. Never rewrite or delete earlier entries.
 
+## 2026-09-08 (later) — the shot cap removed (Claude Fable 5.1, James's ask)
+
+James: "remove the shot restriction. i want to be able to shoot as much as I want."
+`shotCap` 0 = no limit is the default (core: `o.shotCap <= 0` skips the count), held
+fire streams at 0.12 s (was 0.2); the PLAY dial reads NO LIMIT / 4 / 8 with the 1979
+four kept as an option. Play storage key → `asteroids-play-v2` so a saved four does
+not survive. Sim TEST 4 now proves both: the default floods the field, the dial still
+caps at four. Smoke page regenerated.
+
 ## 2026-09-08 — BUILT as a one-shot (Claude Fable 5.1, James's "ok" on the plan)
 
 The plan (`tmp/asteroids/plan.md`) was okayed with one word and built whole:

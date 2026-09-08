@@ -19,7 +19,7 @@ choice wins, inside the one constraint (single-weight glowing lines on black).
 
 - `game-core.js` — ALL rules, pure: no DOM, no timers, no Math.random (seeded
   rng in the state). The torus (H = 750, W follows the window's aspect), the
-  ship (rotate / thrust with inertia + the cabinet's brake / wrap / four shots /
+  ship (rotate / thrust with inertia + the cabinet's brake / wrap / shots without limit /
   hyperspace), rocks (three sizes, four normalised outlines, splits, points),
   waves (4, +2, cap 11), the two saucers (big sprays, small aims better as the
   score climbs), the lurk rule, safe respawn, extra ships, the three played-
@@ -61,9 +61,12 @@ loop on its own clock. **Regenerate it after editing index.html.**
 
 ## World-specific rules
 
+- **NO SHOT LIMIT (James, 2026-09-08: "remove the shot restriction. i want to be able to
+  shoot as much as I want")**: `shotCap` 0 = unlimited is the default, held fire streams at
+  `fireRepeat` 0.12 s; the 1979 four-shot cap is a PLAY dial (NO LIMIT / 4 / 8), never the
+  default again. Play storage key moved to v2 so his saved cap of four is gone.
 - **The rules are the cabinet's**: large 20 / medium 50 / small 100, big saucer
-  200, small saucer 1000 (aimed; its error shrinks to ~2° by 40,000), four shots
-  on screen, shots carry the ship's drift, a saucer's shots split rocks for no
+  200, small saucer 1000 (aimed; its error shrinks to ~2° by 40,000), shots carry the ship's drift, a saucer's shots split rocks for no
   points, a saucer flying into a rock dies for nothing, an extra ship every
   10,000, respawn at the centre only once a 130-unit circle is clear. Tune feel
   through `state.opts` (the PLAY dials write there), not by editing these.

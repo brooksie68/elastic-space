@@ -5,11 +5,11 @@ import { AsteroidsScene, DEFAULT_PARAMS } from './render3d.js';
 
 const Core = globalThis.AsteroidsCore;
 
-const PLAY_KEY = 'asteroids-play-v1';
+const PLAY_KEY = 'asteroids-play-v2';   // v2: the shot cap went (James, 2026-09-08)
 const LOOK_KEY = 'asteroids-look-v1';
 const HI_KEY = 'asteroids-hi-v1';
 const UI_KEY = 'asteroids-ui-v1';
-const PLAY_DEFAULTS = { lives: 3, rotRate: 3.8, thrust: 330, drag: 0.55, shotCap: 4, fireRepeat: 0.2, saucer: 7, hyperRisk: 0.06, lurk: 1, seed: '' };
+const PLAY_DEFAULTS = { lives: 3, rotRate: 3.8, thrust: 330, drag: 0.55, shotCap: 0, fireRepeat: 0.12, saucer: 7, hyperRisk: 0.06, lurk: 1, seed: '' };
 const LOOK_RANGES = {
   hue: { label: 'Hue', min: 0, max: 1, step: 0.01 },
   saturation: { label: 'Colour', min: 0, max: 1, step: 0.05 },

@@ -23,8 +23,8 @@
     maxSpeed: 520,
     shotSpeed: 620,
     shotLife: 1.4,         // s — about two-thirds of the field's width
-    shotCap: 4,            // on screen at once
-    fireRepeat: 0.2,       // s between shots while the key is held (0 = tap only)
+    shotCap: 0,            // on screen at once; 0 = no limit (James, 2026-09-08: "shoot as much as I want")
+    fireRepeat: 0.12,      // s between shots while the key is held (0 = tap only)
     hyperRisk: 0.06,       // chance a jump ends you
     hyperCooldown: 2.0,
     saucerMin: 7,          // s between saucers, low end
@@ -310,7 +310,7 @@
       ship.fireCd = Math.max(0, ship.fireCd - dt);
       const firePress = input.fire && !state.firePrev;
       const fireHold = input.fire && o.fireRepeat > 0 && ship.fireCd <= 0;
-      if ((firePress || fireHold) && countShots(state, 'ship') < o.shotCap) {
+      if ((firePress || fireHold) && (o.shotCap <= 0 || countShots(state, 'ship') < o.shotCap)) {
         state.bullets.push({
           x: wrap(ship.x + Math.cos(ship.a) * SHIP.NOSE, state.W), y: wrap(ship.y + Math.sin(ship.a) * SHIP.NOSE, state.H),
           vx: ship.vx + Math.cos(ship.a) * o.shotSpeed, vy: ship.vy + Math.sin(ship.a) * o.shotSpeed,
