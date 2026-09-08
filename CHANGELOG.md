@@ -8,6 +8,9 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 — Claude — RAMPAGE planned + set up (the Retro arcade, fourth sibling)
+- James's plan request → `src/worlds/rampage/plan.md` (faithful 1986 rules in a pure core, a real 3-D side-on city, collapse as the set piece, Meshy rigged monsters, four played-through exits, ~540 cr estimate). His monsters: three giant fast-food mascots (a clown, a pigtailed girl, a plastic-grinned king), each with a restaurant on every street — "love this idea." Set up on his "we're going to build it": folder scaffold, draft world.json, CLAUDE.md START HERE, admin row under In progress (unwired), World Ideas #66. Nothing built, no credits spent; his six calls in the plan unanswered by choice.
+
 ## 2026-09-08 — Claude — Asteroids BUILT as a one-shot (the Retro arcade, third sibling)
 - James's plan request → `tmp/asteroids/plan.md` → his "ok" → built whole: `src/worlds/asteroids/` (pure core + 2,230-assertion sim, three.js glow-line renderer, shell with the attract gate / console / synthesis sound / configuration panel + presets, four ways out: the derelict's bay, the long jump, the hollow rock, the smudge). Draft, unwired, awaiting his flight.
 - Three headless self-critique rounds in the silent look-dev page (NaN aspect from a zero-size window, pie-slice creases → a broken chord, dash stars → dots, ship 1.2×); smoke page pumped through a whole life clean.
