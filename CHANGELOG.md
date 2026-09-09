@@ -39,6 +39,7 @@ this file tracks project-level activity.
 - James's plan request → `tmp/asteroids/plan.md` → his "ok" → built whole: `src/worlds/asteroids/` (pure core + 2,230-assertion sim, three.js glow-line renderer, shell with the attract gate / console / synthesis sound / configuration panel + presets, four ways out: the derelict's bay, the long jump, the hollow rock, the smudge). Draft, unwired, awaiting his flight.
 - Three headless self-critique rounds in the silent look-dev page (NaN aspect from a zero-size window, pie-slice creases → a broken chord, dash stars → dots, ship 1.2×); smoke page pumped through a whole life clean.
 - James's running list of games to emulate started in the repo CLAUDE.md Todo (Asteroids, Rampage, Double Dragon); World Ideas #65.
+- Later: the shot cap removed on James's ask ("shoot as much as I want") — NO LIMIT default, held fire streams, 1979's four kept on the PLAY dial; he called the keep-it-as-an-option choice "great". Committed.
 - NOTE for the global wrap: the Asteroids world commit (3aee77e) also carried the Phase Lab rename that another session had already staged in the shared index — committed as staged, nothing lost.
 
 ## 2026-09-06 — Claude — AGENTS.md rewritten for Codex alongside live Claude sessions
