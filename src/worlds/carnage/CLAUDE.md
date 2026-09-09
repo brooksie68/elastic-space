@@ -86,5 +86,7 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
 
 ## Status
 
-BUILT 2026-09-08, unjudged — James has not flown it. His eyes decide: the feel of the keys, the pace of the
-army, the look of the rooms and the holes, the copy. The campaign is unwritten (the start card says SOON).
+BUILT 2026-09-08. His first look, later that night: "this looks amazing!" — then, before playing, the size
+(2.7 floors, a dial) and the CONTROLS panel, both built the same night. He has not flown it yet. His eyes decide:
+the feel of the keys, the pace of the army, the look of the rooms and the holes, the copy. The campaign is
+unwritten (the start card says SOON).

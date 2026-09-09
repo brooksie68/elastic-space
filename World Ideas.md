@@ -350,7 +350,9 @@ the plan. Named Carnage 2026-09-08, then BUILT the same night on his evening bri
 first, 2026, PG-13 cynical, detailed damage, a Damage Lab): pure core + 1.9 M-assertion sim, the
 three.js city with the facade shader, Meshy rigged mascots (522 of his 550 credits), 54 ElevenLabs
 sounds and three voice sets, the shell with the map between days, the Damage Lab with the notes
-loop. Unjudged — his flight decides; the campaign is his to write.
+loop. His first look: "this looks amazing!" — the monsters made half again as big (a size dial, 2.7
+floors) and a readable CONTROLS panel added on his two asks before playing. His flight decides; the
+campaign is his to write.
 
 ## Built on commission — 2026-07-12
 

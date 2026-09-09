@@ -84,8 +84,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
      between days, configuration + presets, four ways out); THE DAMAGE LAB (admin Labs, 53 verbs,
      STAGE IT, ranks/verdicts/notes → `tmp/carnage/notes.mjs watch`). Smoke-pumped through a day,
      the map and a game over; check-worlds clean but the registry (draft). NOTHING SAVED between
-     visits. UNJUDGED — awaiting his flight; then the copy/feel thread, the campaign, ship.
-     Same night, first: the Jabberwocky bed's drip + chain chirps cut for good (his order).
+     visits. Same night, first: the Jabberwocky bed's drip + chain chirps cut for good (his order).
+     HIS FIRST LOOK, later that night: "this looks amazing!" — then two asks before playing, both
+     BUILT: the monsters half again as big (a size dial, `opts.monsterH` default 2.7 floors so a
+     standing giant's fists sit in the second-floor window; hands / reach / hitbox / every aim point
+     and the drone's swipe follow it; the street punch is a downward stomp; they stand clear of the
+     wall by their own thickness) and a CONTROLS button bottom right opening a panel with every key
+     in readable type (the text-size dial scales it). Sim 1,904,917 green. AWAITING HIS FLIGHT; then
+     the copy/feel thread, the campaign (the start card says SOON), ship wiring on his word.
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four

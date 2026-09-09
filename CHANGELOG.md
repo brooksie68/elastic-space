@@ -8,6 +8,10 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 (late) — Claude — CARNAGE: his first look, the size dial, the controls panel
+- James's first look: "this looks amazing!" Two asks before playing, both built: the monsters half again as big — `opts.monsterH`, default 2.7 floors (a standing giant's fists sit in the middle of the second-floor window), configuration → PLAY → Monster size 2–4; the hands, reach, hitbox, the soldiers' and the truck's aim, the drone's hover and swipe, the blimp catch and the rival punch all follow it; the street punch is the stomp clip; the monsters stand clear of the wall by their own thickness on a wider pavement.
+- A CONTROLS button (bottom right, always) opens a panel with every key in readable type, sized off the configuration base so the text-size dial moves it; it pauses a live game and closes on click-away or Esc. The hint line bigger and brighter. From the captures: single-cell punch dust hugs the wall instead of washing out the monster; the two wreckers spread across columns. Sim 1,904,917 green. Awaiting his flight; the campaign unwritten (SOON on the start card).
+
 ## 2026-09-08/09 — Claude — JABBERWOCKY: the weapon lab's first review night
 - The lab's note box no longer wiped by the poll (drafts per weapon), seven-line boxes + SUBMIT, a 1–5 RANK (1 = best), PASSED / TRASH verdicts with list sections, the update / pass / trash dropdown by SUBMIT; trash writes `cuts.js` so the roll skips it (core `liveGags()`); server route ops rank + verdict (three restarts).
 - ~30 of James's notes acted on the same night: knives, rocket, baseballs, pie, sand, jello, fist, flamethrower, gas, eagle — three Meshy props (45 cr), a Blender wing split, his own sfx files, numbered sound sets (`<name>-01..NN`), the lab cursor-only, no icons in the lab, the muzzle = the viewmodel's barrel tip. Twelve weapons PASSED. Sim 122,903 green.

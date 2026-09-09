@@ -12,7 +12,7 @@ appends an entry: date, author, what changed, and where things stand. Never rewr
   (`monHand`), the reach (`monReach`), the hitbox, the drone's hover height and swipe reach, the soldiers' and
   the truck's aim, the blimp catch and the rival punch all follow the size. On the street the giant now
   SMASHES DOWN (the stomp clip) instead of jabbing above the storefront. The sim's helpers place a monster
-  by the cell its hands reach (`placeAtCell`); 1,893,814 assertions green. (He asked whether they grow as
+  by the cell its hands reach (`placeAtCell`); 1,904,917 assertions green. (He asked whether they grow as
   the game goes — no, never did, the cabinet never did; the potion he remembered is a later game.)
 - "I can't read the controls well at all": a CONTROLS button, always at the bottom right, opens a panel with
   every key in readable type (sized off the same base as configuration, so the text-size dial moves it too),
