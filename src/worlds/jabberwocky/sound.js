@@ -106,13 +106,14 @@
     knives: (p) => { for (let i = 0; i < 9; i++) noise({ dur: 0.12, f: 6000, f2: 2000, type: 'highpass', gain: 0.25, delay: i * 0.03, pan: p }); },
     chainsaw: (p) => { tone({ f: 110, dur: 2.2, type: 'sawtooth', gain: 0.25, vib: 18, vibRate: 22, filter: 'lowpass', ff: 900, pan: p }); tone({ f: 55, dur: 2.2, type: 'square', gain: 0.15, vib: 5, vibRate: 30, pan: p }); },
     rocket: (p) => { noise({ dur: 1.4, f: 300, f2: 2500, type: 'bandpass', q: 0.8, gain: 0.45, a: 0.05, pan: p }); },
-    baseballs: (p) => { for (let i = 0; i < 12; i++) whoosh({ dur: 0.18, gain: 0.2, pan: p }); for (let i = 0; i < 6; i++) tone({ f: 900 - i * 60, dur: 0.06, type: 'square', gain: 0.15, delay: 0.3 + i * 0.09, pan: p }); },
+    baseballs: (p) => { for (let i = 0; i < 20; i++) whoosh({ dur: 0.18, gain: 0.2, pan: p }); for (let i = 0; i < 6; i++) tone({ f: 900 - i * 60, dur: 0.06, type: 'square', gain: 0.15, delay: 0.3 + i * 0.09, pan: p }); },
     splat: (p) => splat({ pan: p }),
     sand: (p) => { tone({ f: 8000, f2: 60, dur: 0.15, type: 'sine', gain: 0.3, pan: p }); setTimeout(() => { if (running) { boom({ pan: p }); tone({ f: 3000, dur: 3, type: 'sine', gain: 0.05, pan: p }); } }, 700); },
     thud: (p) => { thud({ pan: p }); whoosh({ dur: 0.2, gain: 0.3, pan: p }); },
     jello: (p) => { tone({ f: 180, f2: 90, dur: 0.6, type: 'sine', gain: 0.4, vib: 40, vibRate: 14, pan: p }); splat({ pan: p }); },
     flame: (p) => { noise({ dur: 1.2, f: 800, f2: 1200, type: 'bandpass', q: 0.6, gain: 0.5, a: 0.1, pan: p }); },
     hiss: (p) => { noise({ dur: 2.5, f: 3000, f2: 1500, type: 'highpass', gain: 0.35, a: 0.2, pan: p }); },
+    gasss: (p) => { noise({ dur: 2.5, f: 3000, f2: 1500, type: 'highpass', gain: 0.35, a: 0.2, pan: p }); },   // the gas: James's gasss.mp3 in FILES; this is the file:// fallback
     screech: (p) => { for (let i = 0; i < 3; i++) tone({ f: 1800, f2: 3200, dur: 0.25, type: 'sawtooth', gain: 0.18, delay: i * 0.3, vib: 60, vibRate: 25, pan: p }); },
     hose: (p) => { noise({ dur: 1.4, f: 500, f2: 900, type: 'bandpass', q: 0.5, gain: 0.4, a: 0.1, pan: p }); tone({ f: 60, dur: 1.4, type: 'sine', gain: 0.15, vib: 8, vibRate: 40, pan: p }); },
     chomp: (p) => { for (let i = 0; i < 10; i++) { clicks(1, 0, { f: 2200, gain: 0.3, delay: i * 0.12, pan: p }); noise({ dur: 0.08, f: 900, f2: 300, gain: 0.25, delay: i * 0.12 + 0.03, pan: p }); } },
@@ -302,11 +303,11 @@
     hurt: ['hurt1', 'hurt2'], death: 'death', swing: 'swing', throw: 'throw', chainsaw: 'chainsaw', train: 'train', moo: 'moo', honk: 'honk',
     yowl: 'yowl', sneeze: 'sneeze', thud: 'thud', clang: 'clang', zap: 'zap', hiss: 'hiss', key: 'key', door: 'door', wallbreak: 'wallbreak',
     fall: 'fall', buzz: 'buzz', screech: 'screech', pop: 'pop', win: 'win', bosswind: 'bossroar', bosshit: 'bosshit', bossdead: 'bossdie',
-    crunch: 'crunch', boing: 'boing', wallsplat: 'wallsplat',
+    crunch: 'crunch', boing: 'boing', wallsplat: 'wallsplat', batterup: 'batterup', punch: 'punch', gasss: 'gasss', sand: 'grainofsand', eagleattack: 'eagleattack',   /* grainofsand + eagleattack: James's own files (2026-09-08) */   // batterup = ElevenLabs TTS (Harry); punch = James's own file (the fist), 2026-09-08
     flame: 'burn', lava: 'burn', nitrogen: 'freeze', hose: 'glue', jello: 'glue', gravy: 'glue', crash: 'explosion', catbag: 'yowl',
   };
   const NOTICE = { ghoul: 'ghoul', brute: 'brute', ratling: 'ratling', cultist: 'cultist', stalker: 'stalker', jabberwock: 'bossroar' };
-  const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'icecrack', glue: 'glue', burn: 'burn', fling: 'boing', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue', vapor: 'vapor' };
+  const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'icecrack', glue: 'glue', burn: 'burnttoast',   /* burnttoast: James's own file for a creature dying by fire, 2026-09-08 */ fling: 'boing', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue', vapor: 'vapor' };
   const available = new Set();
   let preflighted = false;
   function preflight() {
@@ -319,12 +320,25 @@
       const a = new Audio(); a.preload = 'auto';
       a.addEventListener('canplaythrough', () => available.add(n), { once: true });
       a.src = SFX_DIR + n + '.mp3';
+      probeSeries(n, 1);
     }
   }
+  // NUMBERED SETS (James 2026-09-08): drop <name>-01.mp3, <name>-02.mp3 … beside any one-shot and every play of <name>
+  // picks one of them at random. Found by counting up from 01 until a number is missing, so keep them contiguous.
+  const series = {};
+  function probeSeries(name, i) {
+    const id = name + '-' + String(i).padStart(2, '0');
+    const a = new Audio(); a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { (series[name] = series[name] || []).push(id); available.add(id); probeSeries(name, i + 1); }, { once: true });
+    a.addEventListener('error', () => {}, { once: true });
+    a.src = SFX_DIR + id + '.mp3';
+  }
+  const FILE_GAIN = { batterup: 2.6 };   // per-file level over the 0.9 house level (batterup: James, 'louder, the death yell is overpowering it')
   function playFile(name, pan) {
+    if (series[name] && series[name].length) name = series[name][Math.floor(Math.random() * series[name].length)];
     if (!available.has(name)) return false;
     const a = new Audio(SFX_DIR + name + '.mp3');
-    try { const src = ctx.createMediaElementSource(a); const g = ctx.createGain(); g.gain.value = 0.9; src.connect(g); out(g, pan); } catch (e) { a.volume = volume; }
+    try { const src = ctx.createMediaElementSource(a); const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); } catch (e) { a.volume = volume; }
     a.play().catch(() => {});
     return true;
   }

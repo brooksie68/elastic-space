@@ -8,6 +8,10 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08/09 — Claude — JABBERWOCKY: the weapon lab's first review night
+- The lab's note box no longer wiped by the poll (drafts per weapon), seven-line boxes + SUBMIT, a 1–5 RANK (1 = best), PASSED / TRASH verdicts with list sections, the update / pass / trash dropdown by SUBMIT; trash writes `cuts.js` so the roll skips it (core `liveGags()`); server route ops rank + verdict (three restarts).
+- ~30 of James's notes acted on the same night: knives, rocket, baseballs, pie, sand, jello, fist, flamethrower, gas, eagle — three Meshy props (45 cr), a Blender wing split, his own sfx files, numbered sound sets (`<name>-01..NN`), the lab cursor-only, no icons in the lab, the muzzle = the viewmodel's barrel tip. Twelve weapons PASSED. Sim 122,903 green.
+
 ## 2026-09-08 — Claude — CARNAGE BUILT (was Rampage): named, his calls answered, then the whole world in one night
 - Morning: the name is CARNAGE (folder `src/worlds/carnage/`, slug, admin row, World Ideas #66 all moved); score kept across lives, nothing saved between visits; no Suno for now; Meshy spend approved with a hard cap of 550 credits.
 - Evening, his brief: variety on, company none / one / both, free mode first (a small campaign later, his), not a 100% copy — detailed building damage, creatures and backgrounds, a cool HUD, PG-13 cynical and funny, a Damage Lab, the year 2026. FIRST, on his order: the Jabberwocky bed's drip ping and chain clicks (the "small chirping noise" in the game and the lab) cut for good in `sound.js`.

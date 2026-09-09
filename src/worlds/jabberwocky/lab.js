@@ -3,7 +3,14 @@
 // that Claude reads from disk (`notes.json` via /api/worlds/jabberwocky/notes). The page polls the file
 // every ten seconds; a weapon Claude has changed since you last opened it shows a green dot, and the
 // change arrives as a toast. Same core, same renderer, same sound as the game.
-import { createRenderer } from './render3d.js?v=4';
+// 2026-09-08: the note boxes keep what you type until you SUBMIT (the poll used to wipe them every ten
+// seconds — his "the first line disappears"); drafts ride in localStorage per weapon; a 1–5 RANK per weapon
+// saves the moment it is picked (`ranks` in notes.json), shows on the row, and rides along on the next note.
+// Same day, PASSED / TRASH: a verdict switch under the facts moves a weapon to a section at the bottom of the list
+// with its notes (`verdicts` in notes.json); trash also has the server write cuts.js, and the game's roll skips
+// those ids from its next load. Then the ACTION dropdown by SUBMIT (update — the default — / pass / trash): the
+// note carries its verdict, applied by the server in the same save, so he never has to write it in the note.
+import { createRenderer } from './render3d.js?v=33';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -16,6 +23,7 @@ const RESPAWN_S = 2;
 const LS = 'jabberwocky-lab-v1';
 let prefs = {}; try { prefs = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) {}
 const savePrefs = () => { try { localStorage.setItem(LS, JSON.stringify(prefs)); } catch (e) {} };
+const drafts = prefs.drafts && typeof prefs.drafts === 'object' ? prefs.drafts : (prefs.drafts = {});   // typed, not yet submitted: per weapon id, '_general' for the general box
 
 // ---- renderer --------------------------------------------------------------------------------------------
 const canvas = $('view');
@@ -30,7 +38,13 @@ addEventListener('resize', () => R.resize());
 const SILENT = q.get('silent') === '1';
 // no music in the lab, ever (James) — the effects and the room bed only, one volume
 Sfx.setMusic(false);
-if (window.ElasticSoundControl && !SILENT) ElasticSoundControl.attach({ start: () => Sfx.start(), stop: () => Sfx.stop(), setVolume: (v) => Sfx.setVolume(v) });
+// no shared speaker in the lab (James): sound starts on the first click or key in the room, the SOUND button in the bar mutes it
+let soundOn = prefs.sound !== false, soundStarted = false;
+function soundUi() { $('sound').classList.toggle('go', soundOn); $('sound').textContent = soundOn ? 'SOUND' : 'MUTED'; }
+function startSound() { if (SILENT || !soundOn || soundStarted) return; soundStarted = true; try { Sfx.start(); } catch (e) {} }
+$('sound').addEventListener('click', () => { soundOn = !soundOn; prefs.sound = soundOn; savePrefs(); soundUi(); if (soundOn) { soundStarted = false; startSound(); } else { soundStarted = false; try { Sfx.stop(); } catch (e) {} } });
+soundUi();
+canvas.addEventListener('mousedown', startSound); addEventListener('keydown', (e) => { if (!typing(e)) startSound(); });
 const pan = (x, y) => { const p = state.player; return Math.sin(Math.atan2(y - p.y, x - p.x) - p.a) * 0.8; };
 
 // ---- state -------------------------------------------------------------------------------------------------
@@ -78,7 +92,9 @@ reset();
 // the mouse is a real cursor, the reticle rides it, the rifle points at it, left click fires; the camera turns on
 // the arrow keys, by pushing the cursor into the left/right edge of the room, or by holding the right button and
 // dragging. CAPTURED is the game's mouse look: click the room to take the mouse, esc gives it back. ?nolock=1 = cursor.
-let mouseMode = q.get('nolock') === '1' ? 'cursor' : (prefs.mouse === 'lock' ? 'lock' : 'cursor');
+// 2026-09-08 James: in the lab the mouse moves the cursor and the rifle follows; the camera turns ONLY on a right-button
+// drag or the keys (A/D, arrows) — the edge push that turned him whenever the cursor neared the sides is gone.
+let mouseMode = 'cursor';
 const cursor = { x: 0, y: 0, in: false, push: 0, pitchPush: 0 };
 const EDGE = 0.1;
 const playW = () => innerWidth - 400, playH = () => innerHeight;
@@ -95,7 +111,7 @@ addEventListener('mouseup', (e) => { if (e.button === 0) input.fire = false; if 
 addEventListener('mousemove', (e) => {
   if (mouseMode === 'cursor') {
     cursor.x = e.clientX; cursor.y = e.clientY; cursor.in = e.clientX < playW();
-    if (dragLook) { lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens; }
+    if (dragLook) { lookBank.x += e.movementX * 0.0022 * sens; lookBank.y += e.movementY * 0.0022 * sens; }   // hold the right button to look; nothing else about the mouse turns the camera
     return;
   }
   if (!locked()) return;
@@ -113,19 +129,14 @@ function aimFromCursor(dt) {
   R.vm.aim += (p.aim * 0.9 - R.vm.aim) * Math.min(1, dt * 14);
   R.vm.aimY += (py - R.vm.aimY) * Math.min(1, dt * 14);
   cross.style.left = cursor.x + 'px'; cross.style.top = cursor.y + 'px';
-  cursor.push = edgePush(cursor.x, playW(), EDGE);   // the push bands sit on the play area's edges
-  cursor.pitchPush = edgePush(cursor.y, h, EDGE);
+  cursor.push = 0; cursor.pitchPush = 0;   // no edge push: the mouse never turns the camera here (James)
 }
 function setMouse(m) {
   mouseMode = m; prefs.mouse = m; savePrefs(); dragLook = false; cursor.in = false;
   if (m === 'cursor') unlock();
   state.player.aim = 0;
-  $('mouse').querySelectorAll('button').forEach((b) => b.classList.toggle('go', b.dataset.m === m));
-  $('keys').innerHTML = m === 'cursor'
-    ? '<b>the rifle points at the cursor</b> · <b>left click</b> fires · <b>WASD</b> · <b>arrows</b> or <b>push the cursor into the edge</b> to turn · <b>right-drag</b> looks · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> a tier'
-    : '<b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> a tier';
+  $('keys').innerHTML = '<b>the rifle points at the cursor</b> · <b>left click</b> fires · <b>W</b>/<b>S</b> move · <b>A</b>/<b>D</b> or <b>arrows</b> turn · <b>Q</b>/<b>E</b> strafe · <b>right-drag</b> looks · <b>[</b>/<b>]</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> a tier';
 }
-$('mouse').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => setMouse(b.dataset.m)));
 setMouse(mouseMode);
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 const typing = (e) => e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT');
@@ -133,17 +144,17 @@ addEventListener('keydown', (e) => {
   if (typing(e)) return;
   keys[e.code] = true;
   if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
-  if (e.code === 'KeyQ') stepPick(-1);
-  if (e.code === 'KeyE') stepPick(1);
+  if (e.code === 'BracketLeft') stepPick(-1);
+  if (e.code === 'BracketRight') stepPick(1);
   if (e.code === 'KeyR') { reset(); hint('RESET'); }
-  if (e.code >= 'Digit1' && e.code <= 'Digit4') { const tier = T.TIERS[+e.code.slice(5) - 1]; const g = T.GAGS.find((x) => x.tier === tier); if (g) pick(g.id); }
+  if (e.code >= 'Digit1' && e.code <= 'Digit4') { const tier = T.TIERS[+e.code.slice(5) - 1]; const g = T.GAGS.find((x) => x.tier === tier && verdictOf(x.id) === 'review') || T.GAGS.find((x) => x.tier === tier); if (g) pick(g.id); }
 });
 addEventListener('keyup', (e) => { keys[e.code] = false; if (e.code === 'Space') input.fire = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; input.fire = false; });
 function readKeys() {
   input.fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-  input.strafe = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
-  input.turn = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+  input.strafe = (keys.KeyE ? 1 : 0) - (keys.KeyQ ? 1 : 0);
+  input.turn = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
   input.run = !!(keys.ShiftLeft || keys.ShiftRight);
 }
 $('fire').addEventListener('click', () => { state.player.cool = 0; C.fire(state, current); });
@@ -166,14 +177,14 @@ function handleEvents() {
   const ev = state.events; state.events = [];
   for (const e of ev) {
     switch (e.type) {
-      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
-      case 'fire': R.fire(); Sfx.play(e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
+      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
+      case 'fire': R.fire(); Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
+      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'hurt': R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); hint('THAT ONE KILLED YOU · NEVER MIND', 2600); state.phase = 'play'; state.player.hp = 100; break;
       case 'splat': Sfx.play('splat', pan(e.x, e.y)); break;
-      case 'boom': Sfx.play('boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;
+      case 'boom': Sfx.play(e.gag.splashSound || 'boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;   // a pie lands wet, not with an explosion
       case 'impact': R.impact(e.x, e.y, e.r); Sfx.play('thud', pan(e.x, e.y)); break;
       case 'wallbreak': Sfx.play('wallbreak', pan(e.x, e.y)); R.shake(0.5); R.buildLevel(state); break;
       case 'crash': Sfx.play('boom', pan(e.x, e.y)); break;
@@ -242,32 +253,44 @@ const HAZ = { slow: 'slows anyone in it', dps: 'hurts anyone standing in it', fa
 const list = $('list');
 const rows = new Map();
 let current = prefs.pick && T.byId[prefs.pick] ? prefs.pick : T.GAGS[0].id;
-let notes = { notes: [], updates: {}, seen: {} };
+let notes = { notes: [], updates: {}, seen: {}, ranks: {}, verdicts: {} };
+function verdictOf(id) { const v = (notes.verdicts || {})[id]; return v && v.status ? v.status : 'review'; }
+let listKey = null;
+// the four tiers hold what is still in review; PASSED and TRASH sit at the bottom and only show when they hold something
 function buildList() {
-  list.innerHTML = '';
-  for (const tier of T.TIERS) {
-    const h = document.createElement('h3'); h.textContent = tier; const n = T.GAGS.filter((g) => g.tier === tier).length; h.innerHTML = tier + '<span>' + n + '</span>'; list.appendChild(h);
-    for (const g of T.GAGS) {
-      if (g.tier !== tier) continue;
-      const r = document.createElement('div'); r.className = 'row'; r.dataset.id = g.id;
-      r.innerHTML = `<i class="dot hidden"></i><span class="nm">${g.name}</span><span class="k">${g.kind}</span>`;
+  list.innerHTML = ''; rows.clear();
+  const sections = T.TIERS.map((tier) => [tier, T.GAGS.filter((g) => g.tier === tier && verdictOf(g.id) === 'review')]);
+  for (const v of ['passed', 'trash']) { const gs = T.GAGS.filter((g) => verdictOf(g.id) === v); if (gs.length) sections.push([v, gs]); }
+  for (const [key, gags] of sections) {
+    const h = document.createElement('h3'); h.className = key; h.innerHTML = key + '<span>' + gags.length + '</span>'; list.appendChild(h);
+    const moved = key === 'passed' || key === 'trash';
+    for (const g of gags) {
+      const r = document.createElement('div'); r.className = 'row' + (key === 'trash' ? ' trash' : ''); r.dataset.id = g.id;
+      r.innerHTML = `<i class="dot hidden"></i><span class="nm">${g.name}</span><b class="rk"></b><span class="k">${moved ? g.tier + ' · ' : ''}${g.kind}</span>`;
       r.addEventListener('click', () => pick(g.id));
       list.appendChild(r); rows.set(g.id, r);
     }
   }
+  listKey = JSON.stringify(notes.verdicts || {});
+  if ($('search').value) $('search').dispatchEvent(new Event('input'));   // keep a live filter applied
 }
 function unseen(id) { const u = notes.updates[id]; return !!(u && (!notes.seen[id] || u.at > notes.seen[id])); }
+function rankOf(id) { const r = (notes.ranks || {})[id]; return r && r.rank ? r.rank : 0; }
 function openNotes(id) { return notes.notes.filter((n) => n.gag === id && n.status === 'new').length; }
 function syncRows() {
   let updated = 0;
+  if (JSON.stringify(notes.verdicts || {}) !== listKey) buildList();   // a verdict moved a row: regroup
   for (const [id, r] of rows) {
     r.classList.toggle('on', id === current);
     const dot = r.querySelector('.dot'); const u = unseen(id); dot.classList.toggle('hidden', !u); if (notes.updates[id]) updated++;
+    const rk = rankOf(id); r.querySelector('.rk').textContent = rk ? String(rk) : '';
     let pend = r.querySelector('.pend'); const o = openNotes(id) > 0;
     if (o && !pend) { pend = document.createElement('i'); pend.className = 'pend'; pend.title = 'a note is waiting'; r.insertBefore(pend, r.querySelector('.k')); }
     if (!o && pend) pend.remove();
   }
   $('cnt-total').textContent = T.GAGS.length;
+  $('cnt-passed').textContent = T.GAGS.filter((g) => verdictOf(g.id) === 'passed').length;
+  $('cnt-trash').textContent = T.GAGS.filter((g) => verdictOf(g.id) === 'trash').length;
   $('cnt-updates').textContent = updated;
   $('cnt-open').textContent = notes.notes.filter((n) => n.status === 'new').length;
   const badge = Object.keys(notes.updates).filter(unseen).length;
@@ -275,6 +298,8 @@ function syncRows() {
 }
 function stepPick(d) { const ids = [...rows.keys()].filter((id) => !rows.get(id).classList.contains('hid')); const i = ids.indexOf(current); pick(ids[(i + d + ids.length) % ids.length]); }
 function pick(id) {
+  $('w-note').value = drafts[id] || '';   // the box follows the weapon; what was typed for another one keeps
+  $('w-action').value = 'update';   // the action is per note: back to the default
   current = id; prefs.pick = id; savePrefs();
   state.opts.forceGag = id;
   $('hud-weapon').textContent = T.byId[id].name;
@@ -312,17 +337,18 @@ function showDetail() {
   $('d-name').textContent = g.name; $('d-name').className = g.tier;
   $('d-line').textContent = g.line || '';
   $('d-facts').innerHTML = facts(g).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  const v = verdictOf(current); $('verdict').querySelectorAll('button').forEach((b) => b.classList.toggle('go', b.dataset.v === v));
   const u = notes.updates[current];
   $('d-update').classList.toggle('show', !!u);
   if (u) { $('d-update-text').textContent = u.note || 'changed'; $('d-update-when').textContent = when(u.at); }
-  $('w-note').value = '';
+  const rk = String(rankOf(current)); if ($('w-rank').value !== rk) $('w-rank').value = rk;   // never touch the note box here: the poll calls this while he types
   $('w-notes').innerHTML = notes.notes.filter((n) => n.gag === current).slice().reverse().map(noteHtml).join('');
   wireNoteButtons($('w-notes'));
 }
 function when(iso) { const d = new Date(iso); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 function noteHtml(n) {
-  return `<div class="note" data-id="${n.id}"><div class="meta"><span class="${n.status}">${n.status === 'done' ? 'done' : 'waiting'}</span><span>${when(n.at)}</span>${n.status === 'new' ? '<button data-del type="button">delete</button>' : ''}</div><div class="txt">${esc(n.text)}</div>${n.reply ? `<div class="rep">${esc(n.reply)}</div>` : ''}</div>`;
+  return `<div class="note" data-id="${n.id}"><div class="meta"><span class="${n.status}">${n.status === 'done' ? 'done' : 'waiting'}</span><span>${when(n.at)}</span>${n.rank ? '<span class="rk">rank ' + n.rank + '</span>' : ''}${n.action ? '<span class="ac ' + n.action + '">' + n.action + '</span>' : ''}${n.status === 'new' ? '<button data-del type="button">delete</button>' : ''}</div><div class="txt">${esc(n.text)}</div>${n.reply ? `<div class="rep">${esc(n.reply)}</div>` : ''}</div>`;
 }
 function wireNoteButtons(root) { root.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => { const id = b.closest('.note').dataset.id; const d = await post({ op: 'delete', id }); if (d) { notes = d; syncRows(); showDetail(); showGeneral(); } })); }
 function showGeneral() {
@@ -341,18 +367,49 @@ async function post(op) {
   catch (e) { $('sync').textContent = 'save failed: ' + e.message; return null; }
 }
 async function saveNote(gag, ta, st) {
-  const text = ta.value.trim(); if (!text) return;
+  const text = ta.value.trim();
+  const rank = gag ? rankOf(gag) : 0, action = gag ? $('w-action').value : null;
+  if (!text) {
+    // an empty box with pass / trash picked is a plain move (James: "select pass… press submit… immediately")
+    if (gag && action && action !== 'update') { $('verdict').querySelector('[data-v=' + (action === 'pass' ? 'passed' : 'trash') + ']').click(); $('w-action').value = 'update'; return; }
+    st.textContent = 'nothing to submit'; return;
+  }
   st.textContent = 'saving…';
-  const d = await post({ op: 'add', gag, text });
+  const op = { op: 'add', gag, text }; if (rank) op.rank = rank; if (action) op.action = action;
+  const d = await post(op);
   if (!d) { st.textContent = 'not saved'; return; }
-  notes = d; ta.value = '';
+  notes = d; ta.value = ''; delete drafts[gag || '_general']; savePrefs();
+  if (gag) $('w-action').value = 'update';
   askNotify();
   syncRows(); showDetail(); showGeneral();
-  st.textContent = 'saved · Claude checks every ten seconds';
+  if (gag) { const r = rows.get(gag); if (r) r.scrollIntoView({ block: 'nearest' }); }   // pass / trash moved the row
+  st.textContent = action === 'pass' ? 'submitted · moved to PASSED with this note' : action === 'trash' ? 'submitted · moved to TRASH · out of the game from its next load' : 'submitted · Claude checks every ten seconds';
 }
 $('w-note-save').addEventListener('click', () => saveNote(current, $('w-note'), $('w-note-st')));
 $('g-note-save').addEventListener('click', () => saveNote(null, $('g-note'), $('g-note-st')));
 for (const id of ['w-note', 'g-note']) $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $(id + '-save').click(); });
+$('w-note').addEventListener('input', () => { drafts[current] = $('w-note').value; savePrefs(); });
+$('g-note').addEventListener('input', () => { drafts._general = $('g-note').value; savePrefs(); });
+$('g-note').value = drafts._general || '';
+// the 1–5 rank: saves the moment it is picked, shows on the row, rides along on any note submitted after it
+$('w-rank').addEventListener('change', async () => {
+  const rank = +$('w-rank').value || 0, gag = current, st = $('w-note-st');
+  st.textContent = 'saving rank…';
+  const d = await post({ op: 'rank', gag, rank });
+  if (!d) { st.textContent = 'rank not saved'; return; }
+  notes = d; syncRows();
+  st.textContent = rank ? 'rank ' + rank + ' saved' : 'rank cleared';
+});
+// the verdict: IN REVIEW (the tier list) / PASSED / TRASH — the row moves to its section with everything on it
+$('verdict').querySelectorAll('button').forEach((b) => b.addEventListener('click', async () => {
+  const status = b.dataset.v, gag = current;
+  if (status === verdictOf(gag)) return;
+  const d = await post({ op: 'verdict', gag, status });
+  if (!d) return;
+  notes = d; syncRows(); showDetail();
+  hint(status === 'review' ? 'BACK IN THE LIST' : status === 'passed' ? 'PASSED · MOVED WITH ITS NOTES' : 'TRASHED · OUT OF THE GAME FROM ITS NEXT LOAD', 2400);
+  const r = rows.get(gag); if (r) r.scrollIntoView({ block: 'nearest' });
+}));
 
 let lastUpdateKeys = null;
 async function poll() {

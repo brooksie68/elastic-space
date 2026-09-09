@@ -50,7 +50,7 @@ const PROPS = {
   sink:      { size: 1.2,  motion: 'tumble', stays: true },
   sneaker:   { size: 1.8,  motion: 'tumble', stays: true },
   chainsaw:  { size: 0.9,  motion: 'spin',   stays: true },
-  rocket:    { size: 1.0,  motion: 'fly',    stays: false },
+  rocket:    { size: 1.1,  motion: 'fly',    stays: false, prim: 'rocket' },   // 2026-09-08 James: the Meshy one stood nose-up like a kids'-book rocket; now a Quake rocket that flies nose-first with fire out the back
   cart:      { size: 1.1,  motion: 'drive',  stays: true },
   ham:       { size: 0.5,  motion: 'roll',   stays: true },
   jackbox:   { size: 0.8,  motion: 'tumble', stays: true },
@@ -72,11 +72,12 @@ const PROPS = {
   cannonball:{ size: 0.42, motion: 'roll',   stays: true, prim: 'ball', color: 0x2a2a30 },
   bowling:   { size: 0.4,  motion: 'roll',   stays: true, prim: 'ball', color: 0x101a5a, holes: true },
   baseball:  { size: 0.2,  motion: 'roll',   stays: true, prim: 'ball', color: 0xf4f0e8 },
-  knife:     { size: 0.55, motion: 'spin',   stays: false, prim: 'knife' },
+  knife:     { size: 2.0, motion: 'endover', stays: false },
+  fist:      { size: 3.2, motion: 'punch',   stays: false },   // James 2026-09-08: a Meshy fist, stupid big, knuckles first, lunges and comes back   // 2026-09-08 James, three notes: a Meshy knife (the code-built one read as a cigarette), twice the size, four of them, spinning fast; primProp 'knife' stands by if the file is missing
 };
 const BOOM_GAGS = new Set(['rocket', 'wrongway', 'meteor', 'piledriver']);   // the only splashes that are explosions
-const SPLASH_COLOR = { pie: 0x6a3aa0, jello: 0x3ddc5a, gravy: 0x6b3a1a, lava: 0xff6a20, chowder: 0xf0e0c0, burrito: 0xd0a060, legos: 0xe03030, lovepotion: 0xff6ab0, monkeypaw: 0x3a2a2a, catbag: 0x8a7a6a, jack: 0xffd23a, porcupine: 0x8a6a4a, cow: 0xf0f0f0, yak: 0x6a4a2a, frogs: 0x3a9a2a, tent: 0xc8202a, sneaker: 0xf0f0f0, anvil: 0x505058, piano: 0x202020, vending: 0xd02020, sink: 0xf0f0f0 };
-const SMOTHER_COLOR = { jello: 0x3ddc5a, gravy: 0x6b3a1a, frogs: 0x3a9a2a, tent: 0xc8202a, glue: 0xf0eee6, yak: 0x6b4a2a };
+const SPLASH_COLOR = { pie: 0x6a3aa0, jello: 0x2f8a1e, gravy: 0x6b3a1a, lava: 0xff6a20, chowder: 0xf0e0c0, burrito: 0xd0a060, legos: 0xe03030, lovepotion: 0xff6ab0, monkeypaw: 0x3a2a2a, catbag: 0x8a7a6a, jack: 0xffd23a, porcupine: 0x8a6a4a, cow: 0xf0f0f0, yak: 0x6a4a2a, frogs: 0x3a9a2a, tent: 0xc8202a, sneaker: 0xf0f0f0, anvil: 0x505058, piano: 0x202020, vending: 0xd02020, sink: 0xf0f0f0 };
+const SMOTHER_COLOR = { jello: 0x2f8a1e, gravy: 0x6b3a1a, frogs: 0x3a9a2a, tent: 0xc8202a, glue: 0xf0eee6, yak: 0x6b4a2a };
 
 export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -164,11 +165,26 @@ export function createRenderer(canvas) {
       if (name === 'baseball') { const seam = new THREE.Mesh(new THREE.TorusGeometry(r * 0.98, r * 0.03, 4, 32), new THREE.MeshBasicMaterial({ color: 0xc02020 })); seam.rotation.x = 0.8; g.add(seam); }
       g.userData.halfH = r; g.userData.halfW = r;
     } else if (def.prim === 'knife') {
-      const blade = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.62, 0.05, 0.008), new THREE.MeshStandardMaterial({ color: 0xd8dce8, metalness: 0.9, roughness: 0.25 }));
+      // a mirror-metal blade (metalness 0.9) has nothing to reflect down here and paints near black: keep it pale, part-lit
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.62, 0.09, 0.028), new THREE.MeshStandardMaterial({ color: 0xf0f4fa, metalness: 0.2, roughness: 0.3, emissive: 0xdfe6f0, emissiveIntensity: 0.9 }));   // self-lit: reads as steel in torchlight
       blade.position.x = def.size * 0.19; g.add(blade);
-      const handle = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.38, 0.065, 0.03), new THREE.MeshStandardMaterial({ color: 0x4a2a14, roughness: 0.8 }));
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(def.size * 0.38, 0.11, 0.05), new THREE.MeshStandardMaterial({ color: 0x9a6a3a, roughness: 0.8, emissive: 0x6a4020, emissiveIntensity: 0.6 }));
       handle.position.x = -def.size * 0.31; g.add(handle);
-      g.userData.halfH = 0.04; g.userData.halfW = def.size / 2;
+      g.userData.halfH = 0.06; g.userData.halfW = def.size / 2;
+    } else if (def.prim === 'rocket') {
+      // nose along +Z (the flight axis syncPropShot turns props to), exhaust at -Z
+      const L = def.size, r = L * 0.085;
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L * 0.62, 14), new THREE.MeshStandardMaterial({ color: 0x5a5e52, metalness: 0.3, roughness: 0.55, emissive: 0x2a2c26, emissiveIntensity: 0.6 }));
+      body.rotation.x = Math.PI / 2; body.position.z = L * 0.03; g.add(body);
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(r, L * 0.24, 14), new THREE.MeshStandardMaterial({ color: 0xc02020, metalness: 0.2, roughness: 0.5, emissive: 0x501010, emissiveIntensity: 0.7 }));
+      nose.rotation.x = Math.PI / 2; nose.position.z = L * 0.03 + L * 0.31 + L * 0.12; g.add(nose);
+      const finMat = new THREE.MeshStandardMaterial({ color: 0x3a3e36, roughness: 0.7, emissive: 0x1a1c18, emissiveIntensity: 0.6, side: THREE.DoubleSide });
+      for (let i = 0; i < 4; i++) { const fin = new THREE.Mesh(new THREE.BoxGeometry(r * 2.4, 0.012, L * 0.2), finMat); fin.rotation.z = i * Math.PI / 2; fin.position.set(Math.cos(i * Math.PI / 2) * r * 1.1, Math.sin(i * Math.PI / 2) * r * 1.1, -L * 0.2); g.add(fin); }
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(r * 1.1, L * 0.55, 10), new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); flame.name = 'flame';
+      flame.rotation.x = -Math.PI / 2; flame.position.z = -L * 0.28 - L * 0.27; g.add(flame);
+      const core = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, L * 0.3, 8), new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); core.name = 'flamecore';
+      core.rotation.x = -Math.PI / 2; core.position.z = -L * 0.28 - L * 0.15; g.add(core);
+      g.userData.halfH = r * 1.4; g.userData.halfW = L / 2;
     }
     return g;
   }
@@ -389,7 +405,7 @@ export function createRenderer(canvas) {
   function clearEntities() {
     for (const v of goonViews.values()) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.block) entGroup.remove(v.block); }
     for (const v of shotViews.values()) entGroup.remove(v);
-    for (const v of zoneViews.values()) { entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); }
+    for (const v of zoneViews.values()) { entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); if (v.cloud) entGroup.remove(v.cloud); }
     for (const v of scarViews.values()) entGroup.remove(v);
     for (const v of beamViews.values()) entGroup.remove(v);
     for (const g of gibs) entGroup.remove(g.mesh);
@@ -501,11 +517,20 @@ export function createRenderer(canvas) {
     const u = g.dieDur ? Math.min(1, g.dieT / g.dieDur) : 1;
     const o = g.outcome, root = view.root, model = view.model;
     const hgt = g.def.h || 1.8;
+    if (view.hole) {   // the sand hole shrinks WITH the fall: sized by how far the chest bone has dropped toward the floor (James, round five)
+      const h = view.hole, k0 = h.userData.k || 0.55;
+      let k = 1;
+      if (h.parent && h.parent.isBone) { const wy = h.parent.getWorldPosition(_hv).y; const y0 = h.userData.y0 != null ? h.userData.y0 : (h.userData.y0 = wy); k = Math.min(1, Math.max(0, (wy - 0.3) / Math.max(0.2, y0 - 0.3))); k = k * k; }
+      else k = 1 - Math.min(1, Math.max(0, (u - 0.4) / 0.3));
+      if (g.dieT > (g.dieDur || 1)) k = 0;
+      h.scale.set(k0 * k, k0 * k * (0.35 + 0.65 * k), 1);
+      if (k <= 0.02) { if (h.parent) h.parent.remove(h); view.hole = null; }
+    }
     if (view.started !== o) {
       view.started = o;
       root.position.set(g.x * S, 0, g.y * S);
       if (view.current) view.current.paused = true;
-      if (o === 'expire') { if (!play(view, g.gagId === 'audit' ? 'hit' : 'die', { once: true, restart: true })) view.fallOver = true; }
+      if (o === 'expire') { if (!play(view, g.gagId === 'audit' ? 'hit' : 'die', { once: true, restart: true })) view.fallOver = true; if (g.gagId === 'sand') holeOn(view, g, hgt); }
       if (o === 'gib') { hide(view); gibBurst(g.x * S, hgt * 0.5, g.y * S, g.isBoss ? 30 : 20, g.isBoss ? 2 : 1); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 1.6); }
       if (o === 'squash') { pool(g.x * S, g.y * S, 2.2); puff(g.x * S, 0.3, g.y * S, 0x8a7a6a, 1.6); blood.burst(g.x * S, 0.3, g.y * S, 24, 2.2); setTint(view, new THREE.Color(0xff6a7a), new THREE.Color(0x802030), 0.45); }
       if (o === 'freeze') { const block = new THREE.Mesh(new THREE.BoxGeometry(0.9 * g.def.size + 0.3, hgt + 0.15, 0.7 * g.def.size + 0.3), new THREE.MeshLambertMaterial({ color: 0xbfe8ff, emissive: 0x3a7ab0, emissiveIntensity: 0.35, transparent: true, opacity: 0.42, depthWrite: false })); block.position.set(g.x * S, (hgt + 0.15) / 2, g.y * S); block.scale.set(0.01, 0.01, 0.01); entGroup.add(block); view.block = block; }
@@ -563,7 +588,7 @@ export function createRenderer(canvas) {
   function hide(view) { view.hidden = true; if (view.model) view.model.visible = false; if (view.fire) view.fire.visible = false; if (view.block) { entGroup.remove(view.block); view.block = null; } }
 
   // gibs: real Meshy pieces with a little physics; they stay as scars (capped — the oldest settled ones go)
-  const MAX_GIBS = 80;
+  const MAX_GIBS = 240;   // 2026-09-08: room for the jello pile (140) beside the gibs
   function spawnGib(name, x, y, z, big, tint, sp, up) {
     const src = models.gibByName[name] || models.gibs[Math.floor(Math.random() * models.gibs.length)] || null;
     const mesh = src ? src.clone() : new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshLambertMaterial({ color: 0xa01020 }));
@@ -658,6 +683,66 @@ export function createRenderer(canvas) {
       gibs.push({ mesh, v: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5, (Math.random() - 0.5) * 2), av: new THREE.Vector3(3, 3, 3), settled: false, bounces: 0 });
     }
   }
+  // blueberries in every direction (the pie, James 2026-09-08): little spheres on the gib physics, they settle as litter
+  // chunks(): n little pieces on the gib physics that settle as a pile — the pie's berries, the jello's blobs (James 2026-09-08)
+  const CHUNK_GEOS = {};
+  function chunkGeos(kind) {
+    if (CHUNK_GEOS[kind]) return CHUNK_GEOS[kind];
+    const gs = kind === 'blobby'
+      ? [new THREE.SphereGeometry(0.06, 7, 5), new THREE.IcosahedronGeometry(0.065, 0), new THREE.DodecahedronGeometry(0.06, 0), new THREE.BoxGeometry(0.09, 0.05, 0.07), new THREE.CylinderGeometry(0.03, 0.06, 0.08, 6), new THREE.TetrahedronGeometry(0.075, 0)]
+      : [new THREE.SphereGeometry(0.055, 8, 6)];
+    return (CHUNK_GEOS[kind] = gs);
+  }
+  function chunks(x, y, z, n, opt) {
+    const geos = chunkGeos(opt.shapes || 'round');
+    const mat = new THREE.MeshStandardMaterial({ color: opt.color, roughness: opt.roughness != null ? opt.roughness : 0.5, emissive: opt.emissive, emissiveIntensity: 0.7, transparent: !!opt.opacity, opacity: opt.opacity || 1 });
+    const spread = opt.spread || 1, up = opt.up || 1;
+    for (let i = 0; i < n; i++) {
+      const mesh = new THREE.Mesh(geos[Math.floor(Math.random() * geos.length)], mat); mesh.scale.setScalar((0.7 + Math.random() * 0.8) * (opt.size || 1)); mesh.rotation.set(Math.random() * TAU, Math.random() * TAU, 0);
+      mesh.position.set(x, y + Math.random() * 0.2, z); entGroup.add(mesh);
+      const a = Math.random() * TAU, sp = (1.5 + Math.random() * 3.5) * spread;
+      gibs.push({ mesh, v: new THREE.Vector3(Math.cos(a) * sp, (1.5 + Math.random() * 3.5) * up, Math.sin(a) * sp), av: new THREE.Vector3(0, 0, 0), settled: false, bounces: 0 });
+      if (gibs.length > MAX_GIBS) { const j = gibs.findIndex((b) => b.settled); const old = gibs.splice(j < 0 ? 0 : j, 1)[0]; entGroup.remove(old.mesh); }
+    }
+    for (let i = 0; i < 3; i++) puff(x, y, z, opt.puff || opt.color, 1.1);
+  }
+  function berries(x, y, z, n) { chunks(x, y, z, n, { color: 0x2a2e8a, emissive: 0x1a1c60, puff: 0x4a3a9a }); }
+  // lime jello: darker, translucent, blobby shapes that don't make sense, a tight pile four times the berries
+  function jelloPile(x, y, z) { chunks(x, y, z, 140, { color: 0x2f8a1e, emissive: 0x1a5a12, opacity: 0.78, roughness: 0.25, shapes: 'blobby', spread: 0.45, up: 0.9, size: 1.15, puff: 0x2f8a1e }); }
+  // the grain of sand leaves a hole (James 2026-09-08): a black disc with a white-hot rim at chest height that sinks and
+  // fades as the body drops
+  let holeMap = null; const _hv = new THREE.Vector3();
+  function holeTex() {
+    if (holeMap) return holeMap;
+    const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d');
+    const g = x.createRadialGradient(48, 48, 0, 48, 48, 48);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.5, 'rgba(0,0,0,1)'); g.addColorStop(0.56, 'rgba(255,240,200,1)'); g.addColorStop(0.68, 'rgba(255,120,40,0.9)'); g.addColorStop(1, 'rgba(255,80,20,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 96, 96);
+    holeMap = new THREE.CanvasTexture(c); holeMap.colorSpace = THREE.SRGBColorSpace; return holeMap;
+  }
+  // round two (James: "the hole drifts… doesn't stay with the character"): a messy hole hung on the chest bone, so it
+  // rides the die clip and the fall; drawn through the body (no depth test) so it reads as a hole from any side
+  let messyMap = null;
+  function messyHoleTex() {
+    if (messyMap) return messyMap;
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+    const blob = (r0, jag) => { x.beginPath(); for (let i = 0; i < 26; i++) { const a = i / 26 * TAU, r = r0 * (1 - jag + Math.random() * jag * 2); x.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); } x.closePath(); };
+    blob(52, 0.28); x.fillStyle = 'rgba(120,10,20,0.95)'; x.fill();     // torn flesh
+    blob(44, 0.22); x.fillStyle = 'rgba(255,150,60,0.9)'; x.fill();     // the cauterised rim
+    blob(36, 0.25); x.fillStyle = 'rgba(0,0,0,1)'; x.fill();            // the hole
+    messyMap = new THREE.CanvasTexture(c); messyMap.colorSpace = THREE.SRGBColorSpace; return messyMap;
+  }
+  function holeOn(view, g, hgt) {
+    const x = g.x * S, y = hgt * 0.55, z = g.y * S;
+    flash(x, y, z, 0xffffff, 1.2); puff(x, y, z, 0x8a8a90, 0.7); blood.burst(x, y, z, 10, 1.2);
+    const bone = view.model && (view.model.getObjectByName('Spine02') || view.model.getObjectByName('Spine01') || view.model.getObjectByName('Spine'));
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: messyHoleTex(), transparent: true, depthWrite: false, depthTest: false }));
+    spr.renderOrder = 5;
+    if (bone) {
+      bone.add(spr); const ws = bone.getWorldScale(new THREE.Vector3()); const k = 0.37 / Math.max(1e-6, ws.x); spr.scale.set(k, k, 1); spr.userData.k = k;   // a third smaller (James, round six)
+    } else { spr.position.set(0, y, 0); spr.scale.set(0.37, 0.37, 1); spr.userData.k = 0.37; view.root.add(spr); }
+    view.hole = spr;
+  }
   function iceShards(x, y, z, n, hgt) {
     for (let i = 0; i < n; i++) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.12 + Math.random() * 0.35, 0.08), new THREE.MeshLambertMaterial({ color: 0xbfe8ff, emissive: 0x3a7ab0, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 }));
@@ -748,10 +833,22 @@ export function createRenderer(canvas) {
       if (!spr) {
         const src = propFor(s.sprite);
         if (src) { spr = src.clone(); spr.userData.prop = s.sprite; spr.userData.halfH = src.userData.halfH; spr.userData.halfW = src.userData.halfW; }
+        else if (s.sprite === 'flame') { spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); spr.userData.fire = true; }   // the flamethrower: the burning creatures' fire, as a stream (James 2026-09-08)
         else spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(s.sprite, 0), transparent: true, depthWrite: false }));
         entGroup.add(spr); shotViews.set(s.id, spr);
       }
       if (spr.userData.prop) { syncPropShot(s, spr, state); continue; }
+      if (spr.userData.fire) {   // each tongue grows, lifts and licks as it flies, then thins out
+        const k = Math.min(1, s.t / (s.life || 0.8));
+        spr.material.map = flameTex(Math.floor(s.t * 14 + s.id) % 4);
+        const sz = 0.55 + k * 1.4; spr.scale.set(sz * 0.85, sz * 1.3, 1);
+        spr.position.set(s.x * S, (s.z != null ? s.z : 0.3) * S + 0.15 + k * 0.6, s.y * S);
+        if (!s.hostile) { const m = Math.min(1, s.t / 0.32), e = 1 - (1 - m) * (1 - m); spr.position.lerp(_muzzleWorld, 1 - e); }   // born at the barrel, not the player's centre (James)
+        const dp = Math.hypot(s.x - state.player.x, s.y - state.player.y);
+        spr.material.opacity = Math.min(s.hostile && dp < 0.9 ? Math.max(0, (dp - 0.45) / 0.45) : 1, k < 0.55 ? 1 : (1 - k) * 2.2);
+        if (Math.random() < 0.12) embers.emit(s.x * S, 0.7, s.y * S, 1);
+        continue;
+      }
       spr.material.map = gagSprite(s.sprite, s.t);
       let sz = 0.5;
       if (s.kind === 'train') sz = 1.4; else if (s.kind === 'melee') sz = 0.55; else if (s.kind === 'summon') sz = 0.6; else if (s.gag.count) sz = 0.3; else if (s.gag.kind === 'stream') sz = 0.22;
@@ -776,17 +873,47 @@ export function createRenderer(canvas) {
   function syncPropShot(s, obj, state) {
     const def = PROPS[obj.userData.prop], hh = obj.userData.halfH;
     const a = s.a != null ? s.a : Math.atan2(s.vy || 0, s.vx || 1);
+    if (def.motion === 'punch') {   // a melee prop: lunge from the muzzle to the reach and back at chest height, knuckles along the swing
+      const k = Math.min(1, s.t / s.life), out = (0.35 + Math.sin(k * Math.PI) * Math.max(0.4, (s.reach || 2) - 0.35)) * 0.65;   // a smaller arc that starts and ends close to the player (James, rounds five + six)
+      // a roundhouse: a quarter circle around the player from the right (facing a, the right is a + 90°) swinging to
+      // straight ahead at full reach, then back the same way; the fist faces along the swing (James, round three)
+      const w = Math.sin(k * Math.PI), phi = (Math.PI / 2) * (1 - w);
+      const px = s.x + Math.cos(a + phi) * out, py = s.y + Math.sin(a + phi) * out;
+      obj.position.set(px * S, 0.95, py * S);
+      const heading = a + phi - Math.PI / 2;   // the arc's tangent: straight ahead as it comes out, turning with the swing like a hook (James, round four)
+      obj.rotation.set(0, -heading + Math.PI / 2, 0); obj.rotateZ(w * 0.3);
+      obj.visible = s.t < s.life * 0.92; return;
+    }
     let y = (s.z != null ? s.z : 0.3) * S;
     if (def.motion === 'drive' || def.motion === 'walk' || def.motion === 'none') y = hh;
-    if (def.motion === 'flyhigh') y = 1.3 + Math.sin(s.t * 6) * 0.15;
+    if (def.motion === 'flyhigh') {
+      y = 1.3 + Math.sin(s.t * 6) * 0.15;
+      // the flap: wings split off in Blender (split_wings.py) as LWing / RWing with their pivots at the root
+      const lw = obj.getObjectByName('LWing'), rw = obj.getObjectByName('RWing');
+      if (lw && rw) { const f = Math.sin(s.t * 11) * 0.55; lw.rotation.z = f; rw.rotation.z = -f; }
+    }
     if (def.motion === 'walk') y = hh + Math.abs(Math.sin(s.t * 9)) * 0.08;
     obj.position.set(s.x * S, y, s.y * S);
     obj.rotation.set(0, -a + Math.PI / 2, 0);     // Meshy props face -Z at rest; turn them to face along the flight
     if (def.motion === 'spin') obj.rotateY(s.t * 14);
+    if (def.motion === 'endover') obj.rotateX(s.t * 16);   // end over end along the flight, fast (the knives)
     if (def.motion === 'roll') obj.rotateX(s.t * 9);
     if (def.motion === 'tumble') { obj.rotateX(s.t * 4); obj.rotateZ(s.t * 2.5); }
     if (def.motion === 'walk') obj.rotateZ(Math.sin(s.t * 9) * 0.08);
-    if (def.motion === 'fly') obj.rotateX(-0.2);
+    if (def.motion === 'fly' && !def.prim) obj.rotateX(-0.2);
+    if (def.prim === 'rocket') {   // the exhaust: a flickering flame and a smoke trail out the back
+      const f = obj.getObjectByName('flame'), fc = obj.getObjectByName('flamecore');
+      if (f) f.scale.set(0.8 + Math.random() * 0.4, 0.7 + Math.random() * 0.6, 0.8 + Math.random() * 0.4);
+      if (fc) fc.scale.set(1, 0.7 + Math.random() * 0.6, 1);
+      if (!(obj.userData.lastPuff >= 0) || s.t - obj.userData.lastPuff > 0.09) {
+        obj.userData.lastPuff = s.t;
+        const bx = obj.position.x - Math.cos(a) * def.size * 0.5, bz = obj.position.z - Math.sin(a) * def.size * 0.5;
+        puff(bx, y, bz, 0x4a4a50, 0.22);   // a thin dark trail: the white cloud hid the rocket (pane, first cut)
+        const hot = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0xff9a30, transparent: true, depthWrite: false, opacity: 0.7, blending: THREE.AdditiveBlending }));
+        hot.position.set(bx, y, bz); hot.scale.set(0.45, 0.45, 1); entGroup.add(hot);
+        extras.push({ obj: hot, life: 0.18, t: 0, fade: true, grow: 0.5 });
+      }
+    }
     const dp = Math.hypot(s.x - state.player.x, s.y - state.player.y);
     obj.visible = dp > 0.5 && (s.kind !== 'melee' || s.t < s.life * 0.85);
   }
@@ -797,6 +924,52 @@ export function createRenderer(canvas) {
     if (levelRef) { const cx = obj.position.x / S, cz = obj.position.z / S; if (CORE().cellAt(levelRef, cx, cz) !== 0) { obj.position.x = (Math.floor(cx) + 0.5) * S; obj.position.z = (Math.floor(cz) + 0.5) * S; } }
     obj.visible = true;
     extras.push({ obj });
+  }
+  // POISON GAS (James: grow from small, the blobs drifting / rocking / pulsing in size and opacity on their own, soft-edged):
+  // eight soft green sprites, each with its own phase; the cloud grows over the first second and thins out at the end
+  // The volume is the SCAR (the zone lives 0.2 s; the scar is the nine seconds of gas). Ink-like: many overlapping wisps
+  // of a soft noise texture, gross yellow-green, very translucent, each drifting, turning and pulsing on its own; grows in
+  // over 1.5 s from nothing, thins out over the scar's last two seconds. (James 2026-09-08, two notes.)
+  let wispMaps = null;
+  function wispTex(i) {
+    if (!wispMaps) {
+      wispMaps = [];
+      for (let k = 0; k < 4; k++) {
+        const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+        for (let j = 0; j < 34; j++) {
+          const r = 10 + Math.random() * 26, px = 64 + (Math.random() - 0.5) * 70, py = 64 + (Math.random() - 0.5) * 70;
+          const g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(255,255,255,' + (0.10 + Math.random() * 0.14) + ')'); g.addColorStop(1, 'rgba(255,255,255,0)');
+          x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, TAU); x.fill();
+        }
+        // keep it soft at the edge of the card
+        const edge = x.createRadialGradient(64, 64, 30, 64, 64, 64); edge.addColorStop(0, 'rgba(0,0,0,0)'); edge.addColorStop(1, 'rgba(0,0,0,1)');
+        x.globalCompositeOperation = 'destination-out'; x.fillStyle = edge; x.fillRect(0, 0, 128, 128);
+        const m = new THREE.CanvasTexture(c); m.colorSpace = THREE.SRGBColorSpace; wispMaps.push(m);
+      }
+    }
+    return wispMaps[i % wispMaps.length];
+  }
+  function makeGasVolume() {
+    const g = new THREE.Group();
+    for (let i = 0; i < 48; i++) {   // tripled (James: 'triple the volume')
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: wispTex(i), color: i % 4 === 0 ? 0xc8e050 : 0x9ccc36, transparent: true, depthWrite: false, opacity: 0.3 }));
+      const a = Math.random() * TAU, rr = i < 8 ? Math.random() * 0.3 : 0.3 + Math.random() * 0.85;
+      spr.userData = { ox: Math.cos(a) * rr, oz: Math.sin(a) * rr, oy: 0.25 + Math.random() * 1.5, ph: Math.random() * TAU, sp: 0.35 + Math.random() * 0.7, sz: 1.6 + Math.random() * 1.6, spin: (Math.random() - 0.5) * 0.5, rot: Math.random() * TAU };
+      g.add(spr);
+    }
+    return g;
+  }
+  function updateGasVolume(g, s, t) {
+    const grow = 1 - Math.pow(1 - Math.min(1, s.t / 1.5), 3);
+    const fade = s.life === Infinity ? 1 : Math.min(1, Math.max(0, (s.life - s.t) / 2));
+    const r = (s.r || 1.5) * S;
+    for (const spr of g.children) {
+      const d = spr.userData, w = t * d.sp + d.ph;
+      spr.position.set(s.x * S + (d.ox * r + Math.sin(w) * 0.35) * grow, (d.oy + Math.sin(w * 0.6 + 1) * 0.18) * (0.3 + 0.7 * grow), s.y * S + (d.oz * r + Math.cos(w * 0.8) * 0.35) * grow);
+      const k = d.sz * grow * (1 + Math.sin(w * 1.1) * 0.12); spr.scale.set(k, k * 0.85, 1);
+      spr.material.rotation = d.rot + t * d.spin;
+      spr.material.opacity = (0.26 + Math.sin(w * 0.9 + 2) * 0.08) * fade * (0.2 + 0.8 * grow);
+    }
   }
   function syncZones(state, t) {
     const seen = new Set();
@@ -832,7 +1005,7 @@ export function createRenderer(canvas) {
       else if (z.mode === 'flash' && v.prop) { spr.position.set(z.x * S, spr.userData.halfH, z.y * S); }
       else if (z.mode === 'flash') { const sz = 1.3 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, sz * 0.4, z.y * S); spr.material.opacity = z.gag.scar ? 0 : Math.max(0, 1 - z.t / z.dur); }
     }
-    for (const [id, v] of zoneViews) if (!seen.has(id)) { if (v.prop && PROPS[v.obj.userData.prop].stays) { v.obj.rotation.x = 0; extras.push({ obj: v.obj }); } else entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); zoneViews.delete(id); }
+    for (const [id, v] of zoneViews) if (!seen.has(id)) { if (v.prop && PROPS[v.obj.userData.prop].stays) { v.obj.rotation.x = 0; extras.push({ obj: v.obj }); } else entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); if (v.cloud) entGroup.remove(v.cloud); zoneViews.delete(id); }
   }
   const BILLBOARD_SCARS = new Set(['gas', 'stink']);
   function syncScars(state, t) {
@@ -844,7 +1017,8 @@ export function createRenderer(canvas) {
         if (s.gag && PROPS[s.gag.sprite] && PROPS[s.gag.sprite].stays && models.props[s.gag.sprite] && s.type !== 'blood' && s.type !== 'scorch') continue;   // the prop itself is the scar
         const map = scarTex(s.type, s.seed);
         if (!map) continue;
-        if (BILLBOARD_SCARS.has(s.type)) {
+        if (s.type === 'gas') { m = makeGasVolume(); m.userData.gas = true; }
+        else if (BILLBOARD_SCARS.has(s.type)) {
           m = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, opacity: 0.8 }));
           const sz = s.r * 2 * S; m.scale.set(sz, sz * 0.8, 1); m.position.set(s.x * S, sz * 0.35, s.y * S);
         } else {
@@ -859,6 +1033,7 @@ export function createRenderer(canvas) {
         }
         entGroup.add(m); scarViews.set(s.id, m);
       }
+      if (m.userData.gas) { updateGasVolume(m, s, t); continue; }
       if (s.life !== Infinity) m.material.opacity = Math.min(BILLBOARD_SCARS.has(s.type) ? 0.8 : 1, (s.life - s.t) / 2);
       if (BILLBOARD_SCARS.has(s.type)) { m.material.rotation = Math.sin(t * 0.7 + s.id) * 0.2; }
     }
@@ -896,7 +1071,7 @@ export function createRenderer(canvas) {
   const vmLight = new THREE.DirectionalLight(0xfff0dc, 1.6); vmLight.position.set(-0.4, 1, 0.6); vmScene.add(vmLight);
   vmScene.add(new THREE.AmbientLight(0xffffff, 0.9));
   const chamberLight = new THREE.PointLight(0xff2fb8, 2.5, 1.2, 2); vmRoot.add(chamberLight);
-  let vmWindow = null, vmMuzzle = null, vmFlash = null;
+  let vmWindow = null, vmMuzzle = null, vmFlash = null, vmTip = null;
   const vm = { recoil: 0, spin: 0, mood: 'idle', dead: 0, bob: 0, t: 0, muzzle: 0, aim: 0, aimY: 0 };   // aim / aimY: cursor-aim yaw + pitch the rifle swings to (radians, eased by the host)
   function buildViewmodel() {
     while (vmRoot.children.length > 1) vmRoot.remove(vmRoot.children[vmRoot.children.length - 1]);
@@ -911,6 +1086,8 @@ export function createRenderer(canvas) {
     vmWindow = new THREE.Sprite(new THREE.SpriteMaterial({ map: runeTex(0), transparent: true, depthTest: false }));
     vmWindow.scale.set(0.075, 0.048, 1); vmWindow.position.set(-0.01, 0.075, 0.13); vmWindow.renderOrder = 5; vmRoot.add(vmWindow);
     vmMuzzle = new THREE.Object3D(); vmMuzzle.position.set(0, 0.02, -0.75); vmRoot.add(vmMuzzle);
+    // the actual end of the barrel (the rifle is fitTo 0.7 about its centre): beams and the flame stream are born here — the flash sits 0.4 beyond it and swung wide with the aim (James's screenshot)
+    vmTip = new THREE.Object3D(); vmTip.position.set(0, 0.02, -0.36); vmRoot.add(vmTip);
     vmFlash = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0xffd080, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, opacity: 0 }));
     vmFlash.scale.set(0.5, 0.5, 1); vmMuzzle.add(vmFlash);
   }
@@ -927,7 +1104,7 @@ export function createRenderer(canvas) {
   function runeTex(frame) {
     return canvasTex('rune|' + frame, (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#12060f'; g.beginPath(); g.roundRect(0, 0, 128, 80, 14); g.fill(); g.font = '900 34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = frame < 0 ? '#ff2fb8' : '#ffd23a'; const i = Math.abs(frame); g.fillText(RUNES[i % RUNES.length] + ' ' + RUNES[(i * 7 + 3) % RUNES.length] + ' ' + RUNES[(i * 3 + 11) % RUNES.length], 64, 40 + (frame < 0 ? (i % 3) * 6 - 6 : 0)); return c; })());
   }
-  const _muzzleWorld = new THREE.Vector3();
+  const _muzzleWorld = new THREE.Vector3(), _mzTmp = new THREE.Vector3();
   function updateViewmodel(dt, p) {
     vm.t += dt;
     vm.recoil = Math.max(0, vm.recoil - dt * 4.5);
@@ -995,8 +1172,17 @@ export function createRenderer(canvas) {
     syncZones(state, view.t);
     syncScars(state, view.t);
     // muzzle in world space for beams
-    _muzzleWorld.copy(camera.position).addScaledVector(_fwd, 0.9); _muzzleWorld.y -= 0.32;
-    const right = new THREE.Vector3(-_fwd.z, 0, _fwd.x); _muzzleWorld.addScaledVector(right, 0.25);
+    // the barrel tip, exactly where it is on screen: the viewmodel's muzzle flash projected through the viewmodel camera,
+    // then unprojected through the world camera 0.9 m out (James: the beam and the flames come from the tip of the gun)
+    if (vmTip) {
+      camera.updateMatrixWorld(); vmCamera.updateMatrixWorld();
+      vmTip.getWorldPosition(_mzTmp).project(vmCamera);
+      _mzTmp.z = 0.5; _mzTmp.unproject(camera).sub(camera.position).normalize();
+      _muzzleWorld.copy(camera.position).addScaledVector(_mzTmp, 0.9);
+    } else {
+      const th = state.player.a + (state.player.aim || 0);
+      _muzzleWorld.set(camera.position.x + Math.cos(th) * 0.9 - Math.sin(th) * 0.25, camera.position.y - 0.32 + vm.aimY * 0.6, camera.position.z + Math.sin(th) * 0.9 + Math.cos(th) * 0.25);
+    }
     syncBeams(state, _muzzleWorld);
     stepBodies(gibs, dt); stepBodies(shards, dt);
     blood.step(dt); embers.step(dt);
@@ -1023,7 +1209,7 @@ export function createRenderer(canvas) {
   }
   let skipRender = false;
 
-  return { setSkipRender(v) { skipRender = !!v; }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
+  return { setSkipRender(v) { skipRender = !!v; }, get debugMuzzle() { return { muzzle: _muzzleWorld.clone(), camera, vmCamera, vmFlash, vmTip, vmRoot }; }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); if (gagId === 'pie') berries(x * S, 0.5, y * S, 36); if (gagId === 'jello') jelloPile(x * S, 0.5, y * S); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
     load, buildLevel, update, resize, setLook, shake, look, vm, scene, camera, renderer, vmRoot, models, goonViews,
     fire() { vm.recoil = 1; vm.muzzle = 1; vm.spin = 0; vm.mood = 'idle'; },
     get ready() { return assetsReady; }, get failed() { return assetsFailed; },

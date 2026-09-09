@@ -1,6 +1,604 @@
 {
   "version": 1,
-  "notes": [],
-  "updates": {},
-  "seen": {}
+  "notes": [
+    {
+      "id": "nmttdxj77ef2h",
+      "gag": "knives",
+      "text": "these are too dark and too small. lighter metal and a bit slower",
+      "at": "2026-09-09T00:53:36.499Z",
+      "status": "done",
+      "rank": 4,
+      "reply": "Done: lighter blade, bigger (0.55 → 0.8), slower (11 → 8.5). Reload the lab.",
+      "doneAt": "2026-09-09T00:54:38.633Z"
+    },
+    {
+      "id": "nmttdzplvw98y",
+      "gag": "rocket",
+      "text": "This looks stupid. The rocket is pointing straight up and down. Also it's like a white and red round rocket like from my little kids book. This should look like a rocket, like a rocket launcher that comes out of the rocket launcher and. And Quake. In Quake. The game Quake as a rocket launcher. The rockets fly away from you. With like fire coming out of the back.",
+      "at": "2026-09-09T00:55:18.115Z",
+      "status": "done",
+      "rank": 4,
+      "reply": "Done: a Quake-style rocket that flies nose-first with fire and smoke out the back. Reload the lab.",
+      "doneAt": "2026-09-09T01:00:34.379Z"
+    },
+    {
+      "id": "nmtte13mh04jc",
+      "gag": "baseballs",
+      "text": "needs more baseballs flying at different velocities and a man yelling \"batter up!\"",
+      "at": "2026-09-09T00:56:22.937Z",
+      "status": "done",
+      "rank": 3,
+      "reply": "Done: 20 balls at spread-out speeds and a man yelling BATTER UP. Reload the lab (sound on).",
+      "doneAt": "2026-09-09T01:00:34.778Z"
+    },
+    {
+      "id": "nmtte373eog5c",
+      "gag": "knives",
+      "text": "I still can't really see them very well. Could they? I don't know if they can fly end over end instead of like flying laterally like they are. That might help. Or if they could be self lighted. Still just or I can't see them that well. Maybe they could be. Slower again. It's just hard to tell that they're nice. They don't really read as nice, they just read as some kind of like. Brown, Gray objects flying, spinning away like it doesn't look like a knife.",
+      "at": "2026-09-09T00:58:00.746Z",
+      "status": "done",
+      "rank": 3,
+      "reply": "Done: end over end, self-lit blade, bigger again, slower again (6.5). Reload the lab.",
+      "doneAt": "2026-09-09T01:00:34.514Z"
+    },
+    {
+      "id": "nmtte4y9vqtj1",
+      "gag": "pie",
+      "text": "the pie explosion is lacking. there should be an explosion of blueberries in all directions and a wet splat noise",
+      "at": "2026-09-09T00:59:22.627Z",
+      "status": "done",
+      "rank": 3,
+      "reply": "Done: an explosion of blueberries and a wet splat on landing. Reload the lab (sound on).",
+      "doneAt": "2026-09-09T01:01:48.581Z"
+    },
+    {
+      "id": "nmtte61s0jwxs",
+      "gag": "sand",
+      "text": "This looks a lot like the way baseball actually looks, but I'm gonna allow it if the damage can be a hole in the creature.",
+      "at": "2026-09-09T01:00:13.824Z",
+      "status": "done",
+      "rank": 3,
+      "reply": "Done: a hole through the creature, then it drops. Reload the lab.",
+      "doneAt": "2026-09-09T01:02:43.274Z"
+    },
+    {
+      "id": "nmttec4ezihf2",
+      "gag": "baseballs",
+      "text": "\"batter up!\" needs to be louder, the death yell is overpowering it",
+      "at": "2026-09-09T01:04:57.179Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Done: batter up is nearly three times louder. Reload the lab.",
+      "doneAt": "2026-09-09T01:05:22.827Z"
+    },
+    {
+      "id": "nmttenjgn27my",
+      "gag": "bullet",
+      "text": "this looks cool. but not like a bullet it looks like a laser blast. rename it Laser Blast and put it in passed",
+      "at": "2026-09-09T01:13:49.895Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Done: it is A LASER BLAST now, and it is in PASSED.",
+      "doneAt": "2026-09-09T01:14:18.278Z"
+    },
+    {
+      "id": "nmttg3cq6ewo0",
+      "gag": "knives",
+      "text": "Now it looks distinctly like. Large cigarettes flying away. Which is sort of cool in a way, but isn't what we're looking for here. I want you to go to. Meshy and get a. Like a stylized, you know, weapon knife. The handle and a blade. And then I want you to. I want them to be much larger. Like twice as large as what you were just showing. And only have like 4 of them. Have them spinning pretty fast.",
+      "at": "2026-09-09T01:54:07.278Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: a real Meshy knife, four of them, twice the size, spinning fast. 15 credits. Reload the lab.",
+      "doneAt": "2026-09-09T02:00:08.702Z"
+    },
+    {
+      "id": "nmttg569q89co",
+      "gag": "sand",
+      "text": "It makes something that looks like a hole, but the hole doesn't stay attached to the body, it just sort of falls away independently, which makes it look kind of like a black hole. It's actually just floating there. I know you already have like an animation for the for the character. I'm wondering if you can do a version of the character that you swap in that has like a big messy hole in it. It doesn't have to be a perfect circle. You can do a kind of a crappy job of taking one of these models, or taking all of them actually and. You know, just just hacking a big hole in the center of it. I don't know. Try something because right now the hole is drifting. It doesn't stay with the character so it looks cool the 2nd you hit them, but then they move a different way and the hole moves a different way and it looks like it fails.",
+      "at": "2026-09-09T01:55:32.222Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: the hole is on the body now, on the chest bone, ragged not round. Reload the lab.",
+      "doneAt": "2026-09-09T01:57:11.984Z"
+    },
+    {
+      "id": "nmttg70kttwxj",
+      "gag": "baseballs",
+      "text": "needs a timing adjustment, too. have it yell Batter up. Like a 10th of a second earlier than it is before the actual baseballs come out, and also delay the sound of the yell when the baseball's hit by like another. Two or three tenths of a second. It's really not the volume, it's the fact that the sounds are being triggered at the same time. You gotta have the. It has to appear somewhere in the animation the. The batter up has to come before the L.",
+      "at": "2026-09-09T01:56:58.157Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Done: batter up a tenth before the balls, the hit sounds a quarter second after. Reload the lab.",
+      "doneAt": "2026-09-09T01:57:45.580Z"
+    },
+    {
+      "id": "nmttgda9gytbt",
+      "gag": "fist",
+      "text": "get a big fist from meshy and use it... have the fist in front of you with the fingers curling in and the thumb over them. make the fist as big as the characters... stupid big - then use this sound for the impact: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\punch.mp3",
+      "at": "2026-09-09T02:01:50.644Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: a giant Meshy fist that punches out and back, your punch sound on the hit. 15 credits. Reload the lab.",
+      "doneAt": "2026-09-09T02:07:40.098Z"
+    },
+    {
+      "id": "nmttgfyygly9f",
+      "gag": "sand",
+      "text": "Improved. I see what you did there and it was cheesy, but it works. All that needs to happen now is that when the. Model hits the floor. Your little. Whole image needs to compress down. And basically disappear. Right, because what's happening is is that it looks realistic until the model hits the floor and then now the model's facing down and now the hole is like on its shoulder. So when a model, just when it's hitting the floor that needs to compress down and kind of flatten. Like the height could be brought down until it just disappears.",
+      "at": "2026-09-09T02:03:55.960Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: the hole squashes away as the body hits the floor. Reload the lab.",
+      "doneAt": "2026-09-09T02:04:30.080Z"
+    },
+    {
+      "id": "nmttgi5292jhd",
+      "gag": "jello",
+      "text": "I think that instead of these big blobs of orange coming up. You should reuse what you did for the. Blueberry pie. Except instead of. Blue spheres. Use this lime color. The lime color is too light light green. Also lime jello is more translucent and more darker colored. And instead of spheres coming up. It could be some spheres and some other. Random shapes. Some blobby shapes that don't really make sense. And those just like the. Blueberries hang around. These blobby shapes should hang around but in a tighter clump and like 3 times four times as many of them as there are blueberries. Like a big pile of these shapes.",
+      "at": "2026-09-09T02:05:37.185Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: a tight pile of 140 dark translucent lime blobs in random shapes that hangs around. Reload the lab.",
+      "doneAt": "2026-09-09T02:06:26.848Z"
+    },
+    {
+      "id": "nmttgk2gwvcrq",
+      "gag": "flamethrower",
+      "text": "The Geforce like fire effect that you apply to the actual characters when they're burning. Is a much cooler fire than what's coming out of the gun. Is it possible for you to create a stream of that? Type of fire like that we use with Lumina also. And that we use with the what's the fireplace that we made? I was actually. Codex is working on. Fireplace. The Yule log. And I was experimenting with fire. That was using the same type of fire that. There's an effect we use in Lumina. Anyway, a stream would be a lot better. Then like. What looks like triangular pieces of fire that are like going upward that that are then flying horizontally. That doesn't work like my.",
+      "at": "2026-09-09T02:07:07.136Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: the flamethrower throws the same fire the creatures burn with, as a stream. Reload the lab.",
+      "doneAt": "2026-09-09T02:08:55.237Z"
+    },
+    {
+      "id": "nmttgnkz2rnnv",
+      "gag": "gas",
+      "text": "Instead of popping into existence, this would be better if it grew. From from something small into something larger. And if the. All the little. Green spheres that make up the cloud. Could move. Independently of each other a little bit. And I would go rock back and forth or rotate if there's because it looks like there's about 5 or 6. Circles if they all moved a little bit differently and if they could all. Pulse in and out in size a little bit and also increase. Pulse their opacity, make them a little bit more and a little bit less opaque. A little bit of blur alley. Some blur to them. also use this sound: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\gasss.mp3",
+      "at": "2026-09-09T02:09:51.086Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: the cloud grows in, the blobs each move and pulse on their own, your gas sound plays. Reload the lab.",
+      "doneAt": "2026-09-09T02:11:47.986Z"
+    },
+    {
+      "id": "nmttgp4cir6k6",
+      "gag": "sand",
+      "text": "now it goes away too soon. can you not time it to when they drop? give it like 2 more seconds anyway",
+      "at": "2026-09-09T02:11:02.850Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: two more seconds on the hole. Reload the lab.",
+      "doneAt": "2026-09-09T02:11:48.221Z"
+    },
+    {
+      "id": "nmttgr261x7bb",
+      "gag": "fist",
+      "text": "this is awesome. make it come around from the right a little bit, in an arc like a sort of half-roundhouse and make it's range at least 2X",
+      "at": "2026-09-09T02:12:33.337Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: half-roundhouse from the right, twice the reach. Reload the lab.",
+      "doneAt": "2026-09-09T02:13:10.854Z"
+    },
+    {
+      "id": "nmttgtynt7cxj",
+      "gag": "fist",
+      "text": "Now it's coming in from the left side. And its facing front the whole time and sliding in it like a. 45 degree angle looks really goofy. It was supposed to come from the right side and come around in an arc. You know what an arc is, right? Like a quarter of a circle. To come around like someone swinging their arm around. And punch.",
+      "at": "2026-09-09T02:14:48.761Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: a proper roundhouse from the right, pane-checked. Reload the lab.",
+      "doneAt": "2026-09-09T02:15:48.867Z"
+    },
+    {
+      "id": "nmtth0pu6e9mc",
+      "gag": "gas",
+      "text": "I refreshed twice for this one. But all I'm saying is the cloud still appears pretty much instantly. Than the entire cloud rotates back and forth a couple times. Sounds like you are using my new sound. But you're not doing any of the stuff I originally asked for. let me ask this: Can you try to use? There's a background effect in in Lumina called Ink. Is it possible for you to repurpose that here? But give it like. A lot more. Make it more translucent by far, and make it like a really gross looking yellowygreen color. Make a volume of that. Substance.?",
+      "at": "2026-09-09T02:20:03.918Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: the gas is a translucent yellow-green volume now that grows in and drifts; the old cloud was the scar sprite. Reload the lab.",
+      "doneAt": "2026-09-09T02:22:05.074Z"
+    },
+    {
+      "id": "nmtth2ts94ria",
+      "gag": "fist",
+      "text": "We're almost here with this one. The only problem is that the first still. The first model is tracing the path of the arc nicely. But the model itself? Is not. Rotating as it moves along the arc. It's staying like facing front and then moving along the arc, always facing like at a straight. It's pointing directly at the far wall and it doesn't. It doesn't turn in a natural way. When it first comes out. Should be facing almost straight. But as it begins to go around. The whole arm and wrist needs to rotate. If you were looking at top down, it would be going counterclockwise a little bit so that it rotates along the arc and turns with the arc.",
+      "at": "2026-09-09T02:21:42.345Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: it turns with the arc now, straight out, hooking in. Reload the lab.",
+      "doneAt": "2026-09-09T02:22:42.777Z"
+    },
+    {
+      "id": "nmtth46mcloao",
+      "gag": "gas",
+      "text": "This worked awesome. What a good idea that was. All you need to do now is. Triple the volume. Of the actual gas, it just doesn't look like enough. It looks great though, and it sounds really good too.",
+      "at": "2026-09-09T02:22:45.636Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: three times the gas. Reload the lab.",
+      "doneAt": "2026-09-09T02:23:10.457Z"
+    },
+    {
+      "id": "nmtth56xpl17w",
+      "gag": "fist",
+      "text": "slow it down 20% and pull it 20% closer to the gun",
+      "at": "2026-09-09T02:23:32.701Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: 20% slower, 20% closer. Reload the lab.",
+      "doneAt": "2026-09-09T02:24:09.288Z"
+    },
+    {
+      "id": "nmtth6gcxolz9",
+      "gag": "flamethrower",
+      "text": "This is awesome. Way better than. Before looks really cool. The only problem with it is that it's not coming out of the end of the gun, it's coming out of the center of the screen, right in front of the player. Looks killer though. Just have it coming out of the end of the gun, please.",
+      "at": "2026-09-09T02:24:31.569Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: it comes out of the end of the gun now. Reload the lab.",
+      "doneAt": "2026-09-09T02:25:01.875Z"
+    },
+    {
+      "id": "nmtthcm2xx90e",
+      "gag": "flamethrower",
+      "text": "use this sound for the creature's dying from fire: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\burnttoast.mp3",
+      "at": "2026-09-09T02:29:18.921Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: burnttoast on every death by fire. Reload the lab (sound on).",
+      "doneAt": "2026-09-09T02:29:37.113Z"
+    },
+    {
+      "id": "nmtthec3qgwmm",
+      "gag": "fist",
+      "text": "make the arc smaller so it starts and finishes closer to the player",
+      "at": "2026-09-09T02:30:39.302Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: a tighter arc, closer at both ends. Reload the lab.",
+      "doneAt": "2026-09-09T02:30:59.919Z"
+    },
+    {
+      "id": "nmtthfz54v09e",
+      "gag": "flamethrower",
+      "text": "if i hold it down it should run out after 10 seconds (and not return cause that's what this gun does)",
+      "at": "2026-09-09T02:31:55.816Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: hold to stream, ten seconds a game, then it is gone for good. Reload the lab.",
+      "doneAt": "2026-09-09T02:33:55.463Z"
+    },
+    {
+      "id": "nmtthhfdx5dda",
+      "gag": "sand",
+      "text": "This one seems a little tough. Before you were making it go away way before the drop now. You're holding it way past the drop. What I want is for it to be perfect. It should disappear during the drop right? As the character is going down. This should be also getting smaller and disappearing. Please make that happen.",
+      "at": "2026-09-09T02:33:03.525Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: it shrinks as the body goes down and is gone when the chest reaches the floor. Reload the lab.",
+      "doneAt": "2026-09-09T02:33:55.655Z"
+    },
+    {
+      "id": "nmtti5mrq3mxi",
+      "gag": "sand",
+      "text": "that's working pretty well. make the hole 1/3 smaller and it'll be perfect",
+      "at": "2026-09-09T02:51:52.837Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: a third smaller. Reload the lab.",
+      "doneAt": "2026-09-09T02:52:07.945Z"
+    },
+    {
+      "id": "nmtti7tx6510l",
+      "gag": "flamethrower",
+      "text": "That's not correct that the world can never deal it again. It's just random, right? That's the way it's supposed to be, anyway. Umm, it's still not tracking with the end of the muzzle. The tracks with the center of the player's body, so when I move it stays with me, but it does not. Move the muzzle of the gun.",
+      "at": "2026-09-09T02:53:35.418Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: it tracks the muzzle now, and a dry one still comes up in the roll. Reload the lab.",
+      "doneAt": "2026-09-09T02:54:31.573Z"
+    },
+    {
+      "id": "nmttig5sk3rdb",
+      "gag": "sand",
+      "text": "use this sound for the blast: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\grainofsand.mp3",
+      "at": "2026-09-09T03:00:04.052Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: grainofsand on the blast. Reload the lab (sound on).",
+      "doneAt": "2026-09-09T03:00:26.084Z"
+    },
+    {
+      "id": "nmttije2xzv25",
+      "gag": "eagle",
+      "text": "make it flap its wings and have feather texture and look more realistic\n\nuse this for the attack sound:\n\nC:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\grainofsand.mp3",
+      "at": "2026-09-09T03:02:34.761Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: a realistic eagle that flaps, your sound on the attack. 15 credits. Reload the lab.",
+      "doneAt": "2026-09-09T03:07:12.145Z"
+    },
+    {
+      "id": "nmttikmhzjuue",
+      "gag": "sand",
+      "text": "this beam is not emitting from the tip of the gun",
+      "at": "2026-09-09T03:03:32.327Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: it comes off the tip of the gun now, wherever the rifle is pointing. Reload the lab.",
+      "doneAt": "2026-09-09T03:05:21.725Z"
+    },
+    {
+      "id": "nmttin1ijw0mt",
+      "gag": "flamethrower",
+      "text": "The fire does emit correctly from the end of the weapon, but it still continues to only point in the direction that it was pointing. When you pull the trigger. Unlike. When you move. When you when you strafe left or right or turn. And then. The Fire fans. But not when you move just the weapon. All it does is it moves the tip to the left and the fire is still coming out of the tip, but it's still curving around and pointing to where it first was pointing. Now if you swing the. Weapon all the way around to the right. Now the fire is bending the other way and going to the same place that you started pointing. It will not fan unless your body moves.",
+      "at": "2026-09-09T03:05:25.099Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: the fire turns with the gun now, not just with the body. Reload the lab.",
+      "doneAt": "2026-09-09T03:05:51.528Z"
+    },
+    {
+      "id": "nmttipgldqxiu",
+      "gag": "sand",
+      "text": "here's what I see when i aim to the left. the beam begins way off even further to the left:\n\nC:\\Users\\brook\\Desktop\\tip-wrong.png",
+      "at": "2026-09-09T03:07:17.953Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: found it — the flash point was floating past the barrel; the beam starts at the barrel's end now, checked aiming left.",
+      "doneAt": "2026-09-09T03:11:52.427Z"
+    },
+    {
+      "id": "nmttirp3s8ldc",
+      "gag": "eagle",
+      "text": "the eagle attack should use this sound: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\eagleattack.mp3",
+      "at": "2026-09-09T03:09:02.296Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: eagleattack on the attack. Reload the lab (sound on).",
+      "doneAt": "2026-09-09T03:09:42.750Z"
+    },
+    {
+      "id": "nmttis629lfaj",
+      "gag": "flamethrower",
+      "text": "perfecto!",
+      "at": "2026-09-09T03:09:24.273Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Noted. It sits in PASSED.",
+      "doneAt": "2026-09-09T03:13:55.623Z"
+    },
+    {
+      "id": "nmttitwnflwqd",
+      "gag": "eagle",
+      "text": "There's another sound playing before the. Eagle Sound. Please remove that. Only play the Eagle Sound.",
+      "at": "2026-09-09T03:10:45.387Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: just the eagle sound. Reload the lab.",
+      "doneAt": "2026-09-09T03:11:52.566Z"
+    },
+    {
+      "id": "nmttix31wpe6x",
+      "gag": "eagle",
+      "text": "OK. The first time I shoot this weapon, there's no sound for like two full seconds and then the eagle cry plays. The 2nd time I shoot it, there is another sound that happens 1st and then the eagle plays. Every subsequent time I play it after that, I shoot it after that. There's a secondary sound. Plays first and then the Eagle Sound. And I don't want you to tell me there's no other sound playing, because I'm telling you there is a sound playing. So you must find that sound and stop it from playing. Play only the Eagle Sound.",
+      "at": "2026-09-09T03:13:13.652Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: that first sound was the launch screech. Removed. Only the eagle sound plays now, on the attack. Reload the lab.",
+      "doneAt": "2026-09-09T03:13:47.702Z"
+    },
+    {
+      "id": "nmttiyujckeur",
+      "gag": "eagle",
+      "text": "Oh, Jesus Christ, remove the pause. Trigger the eagle sound the second I press the trigger. And the eagle flies out.",
+      "at": "2026-09-09T03:14:35.928Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: the eagle sound on the trigger, no pause. Reload the lab.",
+      "doneAt": "2026-09-09T03:15:00.593Z"
+    },
+    {
+      "id": "nmttjeev367pe",
+      "gag": "bullet",
+      "text": "make this attack trigger scream_01 through 05 randomly",
+      "at": "2026-09-09T03:26:42.111Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "Already covered: the death scream rotates through scream-01 to 05 now, this one included. Reload the lab. Put it back in PASSED for you.",
+      "doneAt": "2026-09-09T03:26:59.245Z"
+    }
+  ],
+  "updates": {
+    "knives": {
+      "at": "2026-09-09T02:00:08.639Z",
+      "note": "Round three: a Meshy throwing knife (wide steel blade, leather handle, brass guard; 15 cr) replaces the code-built one — four of them at twice the size, tumbling end over end fast"
+    },
+    "rocket": {
+      "at": "2026-09-09T01:00:34.314Z",
+      "note": "Rebuilt as a Quake rocket: olive body, red nose, four fins, flies nose-first the way it goes, flame flickering out the back + a smoke trail (the Meshy kids'-book one stood nose-up)"
+    },
+    "baseballs": {
+      "at": "2026-09-09T01:57:45.517Z",
+      "note": "Timing: BATTER UP fires on the trigger pull, a tenth of a second before the balls leave; the hits' death sounds wait a quarter second so the yell stands alone"
+    },
+    "pie": {
+      "at": "2026-09-09T01:01:48.518Z",
+      "note": "36 blueberries burst in every direction on the gib physics (they settle as litter) + purple puffs; the landing plays the wet splat instead of the explosion file"
+    },
+    "sand": {
+      "at": "2026-09-09T03:11:52.359Z",
+      "note": "The beam is born at the true end of the barrel: the muzzle-flash point sat 0.4 past the tip and swung wide with the aim — a separate tip point now, pane-checked aiming left"
+    },
+    "bullet": {
+      "at": "2026-09-09T03:26:59.153Z",
+      "note": "Its kill plays the death scream, which now rotates through scream-01…05 at random (and any you add)"
+    },
+    "jello": {
+      "at": "2026-09-09T02:06:26.766Z",
+      "note": "The pie's burst generalised: 140 translucent dark-lime blobs of mixed nonsense shapes (spheres, icosahedra, boxes, wedges, tetrahedra) in a tight pile that stays; splash + smother colours darkened to match; wet splat on landing"
+    },
+    "fist": {
+      "at": "2026-09-09T02:30:59.854Z",
+      "note": "A smaller arc: starts and finishes 0.35 cells from the gun (was 0.6), the sweep radius 65% of the reach (was 80%)"
+    },
+    "flamethrower": {
+      "at": "2026-09-09T03:05:51.460Z",
+      "note": "The stream follows the rifle's aim while you hold it — the emitter read only the facing, not the cursor aim"
+    },
+    "gas": {
+      "at": "2026-09-09T02:23:10.349Z",
+      "note": "Tripled: 48 wisps (was 16), a wider and taller spread, a touch more opacity each"
+    },
+    "eagle": {
+      "at": "2026-09-09T03:15:00.536Z",
+      "note": "Your eagle sound fires the instant you pull the trigger, as the eagle flies out; the hit itself is silent"
+    }
+  },
+  "seen": {
+    "knives": "2026-09-09T02:02:02.152Z",
+    "rocket": "2026-09-09T01:02:55.533Z",
+    "baseballs": "2026-09-09T02:02:38.872Z",
+    "pie": "2026-09-09T01:50:39.412Z",
+    "sand": "2026-09-09T03:16:55.991Z",
+    "fist": "2026-09-09T02:32:10.662Z",
+    "jello": "2026-09-09T02:12:47.882Z",
+    "gas": "2026-09-09T02:33:06.311Z",
+    "flamethrower": "2026-09-09T03:09:08.385Z",
+    "eagle": "2026-09-09T03:15:30.123Z",
+    "bullet": "2026-09-09T03:16:57.621Z"
+  },
+  "ranks": {
+    "bullet": {
+      "rank": 1,
+      "at": "2026-09-08T22:45:17.595Z"
+    },
+    "knives": {
+      "rank": 2,
+      "at": "2026-09-09T02:02:24.789Z"
+    },
+    "chainsaw": {
+      "rank": 1,
+      "at": "2026-09-09T00:53:52.827Z"
+    },
+    "rocket": {
+      "rank": 1,
+      "at": "2026-09-09T01:05:32.237Z"
+    },
+    "baseballs": {
+      "rank": 2,
+      "at": "2026-09-09T01:04:21.408Z"
+    },
+    "pie": {
+      "rank": 3,
+      "at": "2026-09-09T00:59:21.423Z"
+    },
+    "sand": {
+      "rank": 2,
+      "at": "2026-09-09T03:10:54.118Z"
+    },
+    "fist": {
+      "rank": 2,
+      "at": "2026-09-09T02:52:34.398Z"
+    },
+    "jello": {
+      "rank": 2,
+      "at": "2026-09-09T02:13:34.449Z"
+    },
+    "flamethrower": {
+      "rank": 1,
+      "at": "2026-09-09T03:09:16.126Z"
+    },
+    "gas": {
+      "rank": 1,
+      "at": "2026-09-09T02:33:19.572Z"
+    },
+    "eagle": {
+      "rank": 2,
+      "at": "2026-09-09T03:15:39.834Z"
+    }
+  },
+  "verdicts": {
+    "chainsaw": {
+      "status": "passed",
+      "at": "2026-09-09T00:53:54.246Z"
+    },
+    "rocket": {
+      "status": "passed",
+      "at": "2026-09-09T01:05:34.993Z"
+    },
+    "pie": {
+      "status": "passed",
+      "at": "2026-09-09T01:51:12.341Z"
+    },
+    "knives": {
+      "status": "passed",
+      "at": "2026-09-09T02:02:31.921Z"
+    },
+    "baseballs": {
+      "status": "passed",
+      "at": "2026-09-09T02:02:51.070Z"
+    },
+    "jello": {
+      "status": "passed",
+      "at": "2026-09-09T02:13:43.908Z"
+    },
+    "gas": {
+      "status": "passed",
+      "at": "2026-09-09T02:33:25.492Z"
+    },
+    "fist": {
+      "status": "passed",
+      "at": "2026-09-09T02:52:38.409Z"
+    },
+    "flamethrower": {
+      "status": "passed",
+      "at": "2026-09-09T03:09:24.273Z"
+    },
+    "sand": {
+      "status": "passed",
+      "at": "2026-09-09T03:11:05.684Z"
+    },
+    "eagle": {
+      "status": "passed",
+      "at": "2026-09-09T03:15:57.412Z"
+    },
+    "bullet": {
+      "status": "passed",
+      "at": "2026-09-09T03:26:59.300Z"
+    }
+  }
 }

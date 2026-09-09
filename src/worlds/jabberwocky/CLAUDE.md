@@ -13,9 +13,22 @@ Meshy creatures, PG-13 cartoon gore.
 they drift about their pad) that come back two seconds after they die or dance, every gag in a list with plain
 facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's channel to Claude for weapon work:**
 - `notes.json` in this folder, served by `/api/worlds/jabberwocky/notes` (GET; POST ops add / edit / delete /
-  seen). Shape: `notes[] {id, gag|null, text, at, status new|done, reply}`, `updates{gag: {at, note}}`,
-  `seen{gag: at}`. Committed with the world — it is the paper trail.
-- Claude's side: `node tmp/jabberwocky/notes.mjs new | done <id> "reply" | update <gag> "what changed" | watch`.
+  seen / rank). Shape: `notes[] {id, gag|null, text, at, status new|done, reply, rank?}`, `updates{gag: {at, note}}`,
+  `seen{gag: at}`, `ranks{gag: {rank 1–5, at}}` (2026-09-08: his 1–5 per weapon, 1 = BEST and 5 = worst, from the dropdown beside SUBMIT, saved
+  the moment it is picked, shown on the row; a note carries the rank he had given the weapon; for sorting later).
+  Committed with the world — it is the paper trail.
+- The boxes hold what he types as a draft per weapon (localStorage) until SUBMIT — the poll must never touch them
+  (2026-09-08, the wiped-box bug).
+- VERDICTS (2026-09-08): `verdicts{gag: {status passed|trash, at}}` — the lab's IN REVIEW / PASSED / TRASH switch; the
+  list groups the tiers (in review) then PASSED and TRASH. TRASH is out of the roll at once: the server writes
+  `cuts.js` (`JABBERWOCKY_CUTS`, loaded by index.html after gags.js; core `liveGags()`), so a trash needs nothing from
+  Claude — delete trashed gags from gags.js for real only at ship, on his word. PASSED is his bookkeeping.
+  `notes.mjs verdicts` lists both with their notes; `watch` prints every verdict change.
+- A NOTE'S ACTION (2026-09-08): the dropdown by SUBMIT — `update` (default) / `pass` / `trash` — rides on the note
+  (`note.action`) and the server applies the verdict in the same save. THE RULE, refined: an `update` note is a change
+  request — act on it as before; a `pass` or `trash` note is his comment on a verdict already applied — nothing to
+  build unless the text asks for something. He should never have to write "pass" or "trash" in a note.
+- Claude's side: `node tmp/jabberwocky/notes.mjs new | done <id> "reply" | update <gag> "what changed" | ranks | watch`.
   `watch` polls every 10 s and prints each new note once — run it under the Monitor tool (persistent) at the
   start of any Jabberwocky session so a note wakes the session.
 - THE RULE (his brief): act on a note without asking or commenting; when a weapon changes, `update <gag>` (the
@@ -24,8 +37,10 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   or sound, under ~50 credits per note, cost written in the reply; bigger asks get the non-spend part done and
   the cost named in the reply. Run `sim.mjs` + `tmp/jabberwocky/lab-smoke.mjs` before marking anything done.
 - Bump `lab.js?v=` in lab.html when lab.js changes; the game's `core.js?v=` when the core changes.
-- TWO MOUSE MODELS (2026-09-07): mouse look (captured, the game's default) and CURSOR AIM (`cursor-aim.js`; the lab's
-  default; the game's configuration → PLAY → Mouse). Keep both working; he is deciding which he prefers.
+- TWO MOUSE MODELS (2026-09-07): mouse look (captured, the game's default) and CURSOR AIM (`cursor-aim.js`; the game's
+  configuration → PLAY → Mouse). Keep both working in the game; he is deciding which he prefers. THE LAB IS CURSOR-ONLY
+  (2026-09-08, his order): no edge push, ever — the camera turns only on a right-drag or the keys (A/D + arrows), Q/E
+  strafe, [ / ] step weapons.
 
 ## Docs
 
@@ -85,7 +100,9 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   that replace the billboard stickers: they fly/spin/roll/tumble/walk by `PROPS[name].motion` in render3d.js
   and the heavy ones rest where they land as the scar. A missing file falls back to the sprite. New prop =
   one PROPS row + a prompt in props.mjs + run it + slim (`slim_models.py` on the props dir). Never run
-  slim_models.py on a mixed dir: anything not named base.glb outside gibs/props is stripped to a clip.
+  slim_models.py on a mixed dir: anything not named base.glb outside gibs/props is stripped to a clip. To slim ONE
+  prop, put the file at the ROOT of a scratch dir and pass that dir (a `props/` subfolder in scratch reads as a clip dir
+  and strips it to 132 bytes — 2026-09-08, recovered from the Meshy task id in props-manifest.json).
 - Concept images and raw downloads live in `tmp/jabberwocky/meshy/` and `models/` (gitignored).
 
 ## World-specific rules
@@ -107,7 +124,12 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
 - **The boss uses the same table** including duds and backfires (his backfires hurt him).
 - **Drift doors** are the three odd doors on the boundary; keep walking into one for 0.7 s.
 - **Sound is the shared control only.** New one-shots: add the prompt to `sfx-batch.mjs`, run it, map
-  the id in `sound.js` `FILES`; keep a recipe fallback.
+  the id in `sound.js` `FILES`; keep a recipe fallback. James drops his own files into `assets/audio/sfx/` too;
+  NUMBERED SETS: `<name>-01.mp3`, `-02` … beside any one-shot name are found at preflight (contiguous from 01) and
+  every play picks one at random (2026-09-08; the death scream is the first set).
+- **The bed has no chirps.** The drip ping and the chain clicks were cut 2026-09-08 (James: "a small
+  chirping noise... i hate it. please make it stop"). The bed is the drone, a rare far moan and a rare
+  low thud. Nothing short or high-pitched goes back into it, in the game or the lab.
 - **Meshy:** rigging is humanoid-only (pose estimation) — anything with a long neck, tail or wings will
   be refused; generate posed instead and move it procedurally. Animation clips download with skins by
   default; slim them. Text-to-image concepts with words in them bake the words into the mesh.

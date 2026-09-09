@@ -51,7 +51,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
   (`ranks` in notes.json, `notes.mjs ranks`) for his sorting later; server restarted for the `rank` op; then PASSED / TRASH verdicts per weapon (list sections;
   trash leaves the roll at once via a server-written `cuts.js` the game loads, core `liveGags()`; at ship the trashed
   gags get deleted for real on his word); an update / pass / trash dropdown by SUBMIT (default update) so a note
-  carries its verdict and he never writes it.** READ THE
+  carries its verdict and he never writes it. THEN THE FIRST REVIEW NIGHT (2026-09-08/09, ~30 notes acted on
+  without asking, each `update` + done): knives (Meshy prop, 15 cr), rocket (code-built Quake rocket), baseballs,
+  pie berries, sand hole on the chest bone, jello pile, fist (Meshy, 15 cr, roundhouse), flamethrower (the burn fire
+  as a stream, ten-second tank), gas volume, eagle (realistic Meshy, 15 cr, wings split in Blender + flap), his own
+  sfx files + NUMBERED SOUND SETS (`<name>-01..NN` picked at random), the lab is cursor-only with no edge push, no
+  dashboard/speaker icons in the lab, the beam/flame muzzle = the viewmodel's real barrel tip. PASSED so far:
+  bullet (A LASER BLAST), chainsaw, rocket, pie, knives, baseballs, jello, gas, fist, sand, flamethrower, eagle.
+  Read the world changelog 2026-09-08 entry (long) before touching any of it.** READ THE
   WORLD CLAUDE.md "START HERE" + changelog first; arm the watcher.
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,

@@ -65,11 +65,21 @@
     .row { display: flex; align-items: center; gap: 0.55rem; padding: 0.32rem 1rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-dim); border-left: 3px solid transparent; }
     .row:hover { color: var(--ink); background: rgba(255, 255, 255, 0.03); }
     .row.on { color: var(--ink); border-left-color: var(--gold); background: rgba(255, 210, 58, 0.06); }
-    .row .k { margin-left: auto; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 236, 242, 0.35); }
+    .row .nm { flex: 1; min-width: 0; }
+    .row .k { font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(244, 236, 242, 0.35); }
+    .row .rk { font-family: var(--carny); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--gold); border: 1px solid rgba(255, 210, 58, 0.45); border-radius: 5px; padding: 0 0.34em; line-height: 1.35; flex: none; }
+    .row .rk:empty { display: none; }
     .row .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex: none; }
     .row .dot.hidden { visibility: hidden; }
     .row .pend { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--blue); flex: none; }
     .row.hid { display: none; }
+    .row.trash .nm { text-decoration: line-through; opacity: 0.7; }
+    #list h3.passed { color: var(--green); } #list h3.trash { color: var(--red); }
+    .verdict-row { margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
+    .verdict-row .lbl { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim); }
+    #verdict { display: inline-flex; gap: 0.25rem; }
+    #verdict button.bad:hover { border-color: var(--red); color: var(--red); }
+    #verdict button.go.bad { background: var(--red); border-color: var(--red); color: #120a12; }
     #detail { flex: 0 0 auto; max-height: 52vh; overflow: auto; border-top: 1px solid var(--glass-edge); padding: 0.8rem 1rem 1rem; background: rgba(20, 10, 24, 0.7); }
     #d-name { font-family: var(--carny); font-size: 1.25rem; letter-spacing: 0.04em; color: var(--gold); line-height: 1.05; }
     #d-name.dud { color: #c9c1cc; } #d-name.backfire { color: var(--red); } #d-name.weird { color: var(--pink); }
@@ -83,10 +93,17 @@
     #d-update small { display: block; margin-top: 0.3rem; color: var(--ink-dim); font-size: 0.65rem; }
     .notes-h { margin-top: 0.85rem; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--pink); display: flex; justify-content: space-between; align-items: center; }
     .notes-h span { color: var(--ink-dim); letter-spacing: 0.06em; text-transform: none; font-weight: 600; }
-    textarea { width: 100%; margin-top: 0.4rem; min-height: 4.2em; resize: vertical; font-size: 0.82rem; line-height: 1.4; background: #130b17; }
+    textarea { width: 100%; margin-top: 0.4rem; min-height: 5em; resize: vertical; font-size: 0.82rem; line-height: 1.4; background: #130b17; }
     textarea:focus { outline: none; border-color: var(--gold); }
     .note-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; align-items: center; }
     .note-row .st { flex: 1; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
+    .note-row label { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim); }
+    .note-row select { padding: 0.3rem 0.45rem; font-size: 0.82rem; font-weight: 800; color: var(--gold); cursor: pointer; }
+    .note .meta .rk { color: var(--gold); }
+    .note .meta .ac { color: var(--ink); } .note .meta .ac.pass { color: var(--green); } .note .meta .ac.trash { color: var(--red); }
+    .note-row .sp { flex: 1; }
+    #w-action { color: var(--ink); }
+    div.st { margin-top: 0.3rem; min-height: 1em; font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-dim); }
     .note { margin-top: 0.45rem; padding: 0.45rem 0.6rem; border-radius: 8px; background: rgba(255, 255, 255, 0.04); font-size: 0.76rem; line-height: 1.4; }
     .note .meta { font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); display: flex; gap: 0.6rem; align-items: center; }
     .note .meta .new { color: var(--blue); } .note .meta .done { color: var(--green); }
@@ -119,7 +136,7 @@
   <aside id="panel">
     <div id="panel-head">
       <h1>THE WEAPON LAB</h1>
-      <div class="sub"><b id="cnt-total">100</b> weapons · <b id="cnt-updates">0</b> updated · <b id="cnt-open">0</b> notes waiting · <span id="sync">—</span></div>
+      <div class="sub"><b id="cnt-total">100</b> weapons · <b id="cnt-passed">0</b> passed · <b id="cnt-trash">0</b> trash · <b id="cnt-updates">0</b> updated · <b id="cnt-open">0</b> notes waiting · <span id="sync">—</span></div>
     </div>
     <div id="bar">
       <input id="search" type="text" placeholder="find a weapon" autocomplete="off" />
@@ -131,7 +148,7 @@
         <option value="ratlings">three ratlings</option>
         <option value="stalkers">three stalkers</option>
       </select>
-      <span id="mouse" title="cursor aim: the rifle points at the cursor, the panel is always live · mouse look: the game's way, esc gives the mouse back"><button data-m="cursor" type="button">CURSOR AIM</button><button data-m="lock" type="button">MOUSE LOOK</button></span>
+      <button id="sound" type="button" title="the lab's sound (it starts on your first click in the room)">SOUND</button>
       <button id="reset" type="button" title="creatures back on the pads, floor cleaned">RESET</button>
       <button id="fire" class="go" type="button">FIRE</button>
     </div>
@@ -140,32 +157,33 @@
       <div id="d-name">—</div>
       <div id="d-line"></div>
       <dl id="d-facts"></dl>
+      <div class="verdict-row"><span class="lbl">VERDICT</span><span id="verdict"><button data-v="review" type="button" title="still in the list, still being looked at">IN REVIEW</button><button data-v="passed" type="button" title="reviewed and good — moves to PASSED at the bottom of the list, notes and all">PASSED</button><button data-v="trash" class="bad" type="button" title="out of the game — the rifle never deals it from the next load; moves to TRASH, notes and all">TRASH</button></span></div>
       <div id="d-update"><b>UPDATED</b><span id="d-update-text"></span><small id="d-update-when"></small></div>
       <div class="notes-h">NOTES ON THIS WEAPON <span>Claude reads these</span></div>
-      <textarea id="w-note" placeholder="what should change about this one?"></textarea>
-      <div class="note-row"><span class="st" id="w-note-st"></span><button id="w-note-save" class="go" type="button">SAVE NOTE</button></div>
+      <textarea id="w-note" rows="7" placeholder="what should change about this one? (ctrl+enter submits)"></textarea>
+      <div class="note-row"><label for="w-rank">RANK</label><select id="w-rank" title="your rank for this weapon · 1 = best, 5 = worst · saves the moment you pick it"><option value="0">—</option><option value="1">1 — best</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 — worst</option></select><select id="w-action" title="what this note asks for · update: change it, it stays in review (the default) · pass: it is good, it moves to PASSED with this note · trash: out of the game, it moves to TRASH with this note"><option value="update">update</option><option value="pass">pass</option><option value="trash">trash</option></select><span class="sp"></span><button id="w-note-save" class="go" type="button">SUBMIT</button></div>
+      <div class="st" id="w-note-st"></div>
       <div id="w-notes"></div>
     </div>
     <div id="general" class="closed">
       <div class="notes-h" id="general-h" style="margin-top:0;cursor:pointer">GENERAL NOTES <span id="general-cnt">▸ open</span></div>
       <div class="body">
-        <textarea id="g-note" placeholder="anything about the lab, the rifle, the creatures, the room…"></textarea>
-        <div class="note-row"><span class="st" id="g-note-st"></span><button id="g-note-save" class="go" type="button">SAVE NOTE</button></div>
+        <textarea id="g-note" rows="7" placeholder="anything about the lab, the rifle, the creatures, the room… (ctrl+enter submits)"></textarea>
+        <div class="note-row"><span class="st" id="g-note-st"></span><button id="g-note-save" class="go" type="button">SUBMIT</button></div>
         <div id="g-notes"></div>
       </div>
     </div>
     <div id="keys"><b>click the room</b> to take the mouse · <b>esc</b> gives it back · <b>click</b>/<b>space</b> fires · <b>WASD</b> · <b>Q</b>/<b>E</b> previous/next weapon · <b>R</b> reset · <b>1–4</b> jump to a tier</div>
   </aside>
 
-  <script src="../../core/dashboard-control.js"></script>
-  <script src="../../core/sound-control.js"></script>
-  <script src="gags.js?v=2"></script>
-  <script src="core.js?v=5"></script>
+  <!-- no dashboard icon, no shared speaker: the lab is not a world and they fought the panel (James 2026-09-08) -->
+  <script src="gags.js?v=14"></script>
+  <script src="core.js?v=11"></script>
   <script src="draw.js?v=3"></script>
-  <script src="sound.js?v=5"></script>
+  <script src="sound.js?v=15"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="lab.js?v=4"></script>
+  <script type="module" src="lab.js?v=44"></script>
 </body>
 </html>

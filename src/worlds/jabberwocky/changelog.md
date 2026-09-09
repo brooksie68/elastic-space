@@ -3,6 +3,177 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-08 (evening) — Claude (the Carnage session) — THE CHIRP IS GONE
+
+- James, from the Carnage session, first order of business: "there's a small chirping noise or
+  noises happening in this game and in the lab and i hate it. please make it stop." It was the
+  dungeon bed in `sound.js`: the water DRIP (a 1.8–3.4 kHz sine ping, gain 0.5, more than half of
+  all bed events, one every 1.5–6.5 s) and the CHAIN (bursts of bandpassed square clicks at
+  0.9–2.4 kHz). Both cut for good; the bed is now the drone + a rare far moan + a rare low wooden
+  thud, one event every 7–19 s. Same bed in the game and the lab, so both are quiet now. Rule
+  added to CLAUDE.md: nothing short or high-pitched goes back into the bed.
+
+## 2026-09-08 — Claude (Fable 5.1) — the note box kept, the 1–5 rank
+
+- NUMBERED SOUND SETS (his ask: rotate randomly through scream-01 … scream-NN, he will add more): sound.js probes
+  `<name>-01.mp3`, `-02` … for every one-shot name at preflight, counting up until a number is missing, and `playFile`
+  picks one of the set at random. Works for any name in FILES / OUT_FILES / NOTICE; the plain `<name>.mp3` is the fallback
+  when there is no set. Five screams are in. Also: SUBMIT with an empty box and pass / trash picked applies the verdict
+  (it used to say 'nothing to submit').
+- EAGLE sound round four ("remove the pause, trigger the eagle sound the second I press the trigger"): the gag's sound
+  is eagleattack (plays on the fire event); the hit is silent.
+- EAGLE sound round three ("there's a secondary sound first… don't tell me there's no other sound"): it was the
+  gag's launch `screech` on the fire event; the gag's sound is `none` now, eagleattack on the attack is the only one.
+- THE BARREL TIP, FOR REAL (his screenshot: aiming left, the beam began far left of the gun): the muzzle-flash object
+  sits at z −0.75 in the viewmodel while the rifle is fitTo 0.7 about its centre — 0.4 past the barrel, a long lever that
+  swung wide with the aim. `vmTip` (z −0.36) is the point projected now; the flash stays where it was. Pane, aiming
+  left: the beam's near end sits on the barrel. (Pane gotcha recorded: the lab's cameras only get their first real
+  resize on a screenshot-driven frame — probe after a screenshot, or the aspect reads NaN.) EAGLE sound: his
+  eagleattack.mp3 alone on the attack (the chew's chomp no longer doubles it). SAND + FLAMETHROWER passed.
+- FLAMETHROWER round five ("still points where it was pointing when you pull the trigger… not when you move just the
+  weapon"): `stepEmitters` aims the player's stream at `p.a + p.aim` (the cursor aim), not the facing alone.
+- THE MUZZLE POINT IS THE VIEWMODEL'S (his "this beam is not emitting from the tip of the gun"): `_muzzleWorld` = the
+  viewmodel muzzle-flash sprite projected through vmCamera to the screen and unprojected through the world camera 0.9 m
+  out — so beams and the flame stream leave exactly under the drawn barrel tip, aim, pitch and placement dials included.
+- EAGLE (his note: flap its wings, feather texture, more realistic, grainofsand for the attack): a realistic Meshy harpy
+  eagle (15 cr; the manifest's old entry had to be cleared — `done: true` just re-downloads), `tmp/jabberwocky/
+  split_wings.py` (headless Blender: separates the mesh beyond 28% of the half-width into LWing / RWing with origins at
+  the root, textures to 1024), the flyhigh motion flaps LWing / RWing ±0.55 rad at 11 rad/s when present; the eagle's
+  kill plays `eagleattack` (= grainofsand.mp3, his call). LANDED: `props/eagle.glb` = Body + RWing + LWing (320 KB; the
+  split script's first pass renamed the wrong object — it now picks the object that did not exist before the separate).
+  Pane: it flies at the pads, wings at different angles frame to frame. The cartoon eagle is in the manifest as
+  `eagle-cartoon`. Note done.
+- SAND's blast plays James's `grainofsand.mp3` (FILES sand; the recipe stays as the fallback).
+- FLAMETHROWER round four ("a dry one can still be dealt, it's random… still not tracking the end of the muzzle"):
+  `_muzzleWorld` is now built from the player's facing + cursor-aim yaw (+ pitch), where the rifle actually points, not
+  the camera's forward — flames and beams alike; the roll exclusion is gone, a dry pull just clicks. Sim TEST 13 updated.
+- SAND round six ("make the hole 1/3 smaller and it'll be perfect"): 0.55 → 0.37 m.
+- FLAMETHROWER round three ("if I hold it down it should run out after 10 seconds and not return"): `state.fuel` (10 s
+  a game, never refills); while a player flamethrower emitter lives, fuel burns and, with the trigger held, the emitter
+  is extended and the cool held so no re-roll happens mid-stream; dry: the stream ends, a forced pull (the lab) shows
+  the plate 'Empty. Ten seconds was all it ever had.' + the hosts click instead of the flame sound (`fire.empty`), and
+  `rollGag` never deals it again. Sim TEST 13 — 122,903 green.
+- SAND round five ("it should disappear during the drop… getting smaller as the character is going down"): the hole is
+  sized by the chest bone's world height against its height at the hit (squared), gone as the chest reaches 0.3 m.
+- FIST round six ("make the arc smaller so it starts and finishes closer to the player"): base radius 0.35, sweep × 0.65.
+- The burn outcome's sound is James's `burnttoast.mp3` (OUT_FILES burn; his note on the flamethrower).
+- FLAMETHROWER round two ("coming out of the center of the screen… have it coming out of the end of the gun"): the
+  player's flame sprites lerp from `_muzzleWorld` (the beams' barrel point, one frame stale) onto their true position over
+  the first 0.32 s, eased; the near-player fade no longer applies to the player's own flames.
+- FIST round five ("slow it down 20% and pull it 20% closer"): core melee shots take `gag.swingLife` (fist 0.54, default
+  0.45); the punch arc radius × 0.8. Sim green.
+- POISON GAS round three ("worked awesome… triple the volume"): 48 wisps, spread 0.85 r and 1.75 m tall, base opacity 0.26.
+- FIST round four ("the model itself is not rotating as it moves along the arc… the whole arm and wrist needs to
+  rotate"): heading = a + φ − π/2, the arc's tangent — straight ahead as it leaves, a full quarter turn by the peak.
+- POISON GAS round two ("still appears instantly… the entire cloud rotates back and forth… repurpose Lumina's Ink…
+  more translucent by far… gross yellowy-green… a volume"): the first cut hung on the ZONE, which lives 0.2 s — the nine
+  seconds of gas is the SCAR (`gas`, a billboard). Now `makeGasVolume` / `updateGasVolume` replace the gas scar's
+  billboard: sixteen sprites of four baked wisp textures (34 soft discs each, edge-faded), 0x9ccc36 / 0xc8e050, base
+  opacity 0.22, own drift / spin / pulse, eased in over 1.5 s, fading over the scar's last 2 s. Pane: nothing at
+  0.2 s, a drifting haze at 2 s. The zone cloud is gone.
+- FIST round three ("coming in from the left… sliding in at 45°… you know what an arc is, right?"): the right vector was
+  left-handed (right of heading a in x/z is (−sin a, cos a)); the punch is now a quarter circle around the player from
+  a + 90° to a at full reach and back, the fist yawed along the swing. Pane: enters from the right, flattens the row.
+- FIST round two ("awesome… come around from the right in an arc like a half-roundhouse… range at least 2X"): reach
+  3.2 → 6.4; the punch motion adds a lateral term 1.4 × (1 − sin πk) along the player's right, and yaws the fist with it.
+- POISON GAS (his note: grow from small, blobs moving / pulsing / fading on their own, some blur, his gasss.mp3):
+  `makeGasCloud` / `updateGasCloud` in render3d.js — eight soft-dot green sprites with their own phase, drift, size and
+  opacity pulses, eased in over a second, thinning over the last 1.5 s; the gag's sound is `gasss` (FILES + a hiss
+  recipe fallback). SAND round four ("goes away too soon… two more seconds"): the hole holds until 2 s past the
+  drop, then squashes away over 0.6 s.
+- FLAMETHROWER ("the fire on the burning characters is much cooler than what comes out of the gun… a stream of that"):
+  stream particles with sprite `flame` are additive `flameTex` sprites (the burn outcome's fire) that grow 0.55 → 1.95,
+  lift, animate through the four frames and thin out over the particle's life, embers off them; the draw.js triangles
+  are gone from the gun. Pane: a roaring cone. Note done.
+- FIST landed: `props/fist.glb` (Meshy 15 cr, slimmed from a scratch root), size 3.2 after the pane showed 2.2 reading
+  smaller than a creature (the forearm sets the fit). Note done.
+- JELLO (his note: reuse the pie's burst, darker translucent lime, blobby nonsense shapes, a tighter pile three or four
+  times the berries): `berries()` became `chunks(x, y, z, n, opt)` (colour, shapes round|blobby, opacity, spread, up, size);
+  `jelloPile()` = 140 translucent 0x2f8a1e pieces of six geometries in a tight clump; MAX_GIBS 80 → 240 so the pile
+  stays beside the gibs; splash + smother colours darkened; jello lands with the splat. Note done.
+- SAND round three ("cheesy, but it works… when the model hits the floor the hole needs to compress down and disappear"):
+  `view.hole` shrinks (width and, faster, height) between 32% and 60% of the die clip and is removed. FIST (his note: a
+  Meshy fist "stupid big… fingers curling in, thumb over them" + his own punch.mp3): PROPS `fist` size 2.2 with a new
+  `punch` motion (lunge from the muzzle to the reach and back at chest height, knuckles along the swing, a little roll),
+  the hit plays `punch` in both hosts instead of the squash file; the Meshy prop (props.mjs, 15 cr) — sprite until it lands.
+- KNIVES round three landed: `assets/models/props/knife.glb` (Meshy, 15 cr, slimmed to 1024 textures via slim_models.py on a
+  scratch copy — never on the mixed models dir). Pane: four big knives tumbling end over end toward the pads. Note done.
+- BASEBALLS round three ("timing… batter up a tenth of a second earlier than the balls… delay the yell when the ball
+  hits by two or three tenths"): BATTER UP now fires on the trigger pull, timed revealDelay − 0.1 s so it lands a tenth
+  before the balls leave; the baseballs' kill sounds wait 260 ms (both hosts); the recipe no longer plays it.
+- SAND round two ("the hole drifts… doesn't stay with the character"): `holeOn()` hangs a messy hole (torn-flesh blob,
+  cauterised rim, black through; no depth test, renderOrder 5) on the Spine02/Spine01/Spine bone of the creature (all five
+  rigs carry those), scaled against the bone's world scale, so it rides the die clip and the fall. Pane: the brute wears
+  it through the drop. `render3d.js?v=11`. KNIVES round three ("large cigarettes… go to Meshy… twice as large… only 4…
+  spinning pretty fast"): four knives, size 2.0, endover at 16 rad/s; a Meshy prop `knife` (props.mjs, 15 cr) replaces the
+  code-built one — primProp stands by if the file is missing.
+- **NO DASHBOARD ICON, NO SHARED SPEAKER IN THE LAB** (his ask: "this isn't really like a world… they're conflicting"):
+  lab.html no longer loads dashboard-control.js or sound-control.js. Sound starts on the first click or key in the room; a
+  SOUND / MUTED button in the bar (persisted) is the mute. The game page is untouched. `lab.js?v=16`.
+- BULLET → **A LASER BLAST** (his pass note: "looks cool, but not like a bullet… rename it Laser Blast"): name, verb
+  (LASERED) and line in gags.js; the id stays `bullet` so its rank, notes and verdict keep. It is in PASSED.
+- **THE LAB'S EDGE PUSH IS GONE** (his ask, then his correction after the first cut also took the right-drag: "KEEP the
+  hold-right-click… remove the incidental mouse motion… driving me crazy"): the mouse moves the cursor and the rifle
+  follows; the camera turns only on a right-button drag or the keys. The CURSOR AIM / MOUSE LOOK switch left the lab
+  (the game keeps both). W/S move, A/D or the arrows turn, Q/E strafe, [ / ] step weapons. `lab.js?v=15`.
+- BASEBALLS again ("batter up! needs to be louder, the death yell is overpowering it"): `FILE_GAIN` in sound.js — a per-file
+  level over the 0.9 house level; batterup 2.6. Note done.
+- **FIVE MORE NOTES, THE SAME HOUR** (each `update` + done; sim 122,896 + smoke green after each):
+  ROCKET ("pointing straight up and down… kids book… Quake") — the Meshy prop is out; `prim: 'rocket'` in PROPS builds a
+  Quake rocket (olive body, red nose, four fins) nose along the flight axis, a flickering additive flame + hot sprite +
+  a thin dark smoke trail out the back (`syncPropShot`); the first cut's white puffs hid it in the pane, thinned.
+  KNIVES round two ("still can't see them… end over end… self lighted… slower") — `motion: 'endover'` (rotateX along
+  the flight), the blade self-lit pale steel, 1.0 long, 6.5 cells/s, life 2.8. BASEBALLS ("more… different velocities…
+  a man yelling batter up") — 20 balls, a per-gag `speedVar` in the bolt launch (0.9 = 55–145%; every other volley keeps
+  the old 80–120%), and `batterup.mp3` (ElevenLabs TTS, Harry, `tools/eleven.mjs tts`) mapped in FILES and played by
+  the baseballs recipe before the whooshes. PIE ("an explosion of blueberries… a wet splat") — `berries()` throws 36
+  little spheres on the gib physics (they settle as litter) + purple puffs from `R.boom` for the pie; a lob's landing
+  now plays `gag.splashSound` if set (pie: splat) instead of the explosion file, in world.js + lab.js. SAND ("allow it
+  if the damage can be a hole in the creature") — outcome vapor → expire, verb HOLED CLEAN THROUGH, `holeAt()` hangs a
+  black disc with a white-hot rim at chest height that sinks and fades with the fall. Cache tags bumped throughout.
+- **FIRST NOTE ACTED ON — A HAIL OF KNIVES** (his note, rank 4: "too dark and too small. lighter metal and a bit slower"):
+  the blade was metalness 0.9 with nothing to reflect down here, so it painted near black — now pale steel with its own
+  glow (metalness 0.35, emissive), thicker (0.022) so it reads edge-on, the knife 0.55 → 0.8; speed 11 → 8.5 cells/s, life
+  1.6 → 2.1 s (gags.js). Sim 122,896 + smoke green; `update knives` + note done. His first PASSED (chainsaw) landed the
+  same minute — nothing to build on a pass.
+- **The note box was being wiped every ten seconds** (his "as soon as it does a line break, the first line
+  disappears… I can't see my comment before sending"): the page's poll re-rendered the weapon detail and cleared the
+  box each time, so whatever he had typed vanished at the next poll and only what he typed after it showed.
+  `showDetail()` never touches the box now. What is typed is a DRAFT per weapon (plus one for the general box) in
+  localStorage: it survives the poll, a weapon switch (the box follows the weapon; the other weapon's draft keeps) and
+  a reload, and clears only on submit. Pane test: two lines typed, two polls forced, both lines still there.
+- **Boxes seven lines tall** (rows="7", drag to grow), **SUBMIT** buttons (were SAVE NOTE), ctrl+enter still
+  submits, "nothing to submit" on an empty box.
+- **THE RANK** (his ask, "so I can rank each one as well as give a note, and then we can do some sorting later"): a
+  1–5 dropdown (— clears) beside SUBMIT under the weapon's box. Saves the moment it is picked (`ranks{gag: {rank,
+  at}}` in notes.json, server op `rank`), shows as a gold number on the weapon's row, and rides along on any note
+  submitted after it (`note.rank`; the note's meta line shows "rank N"). Nothing sorts yet. Claude's side:
+  `notes.mjs ranks` lists every ranked weapon best first; `list` / `new` / `watch` lines show the rank in the brackets.
+- **1 = best, 5 = worst** (his "1 good 5 bad, right?" — a ranking, so first place is 1; the first cut had no direction and
+  the Claude-side listing assumed 5 was best): the dropdown says so on its two ends, `ranks` lists 1 first.
+- server.mjs: the notes route gained the `rank` op, `rank` on `add`, and `ranks: {}` in the default shape (generic,
+  any world); the server was restarted for it, the launcher's way. No core change, sim untouched. `lab.js?v=5`.
+- The watcher (`notes.mjs watch` under Monitor) re-armed at the start of the session, his first ask.
+- **PASSED and TRASH** (his ask: "add a 'passed' status so that I can move them there with the comments… a trash
+  category for ones I want to be permanently removed"): a VERDICT switch under the weapon's facts — IN REVIEW /
+  PASSED / TRASH. The list is now the four tiers (what is still in review) with PASSED and TRASH sections at the
+  bottom, shown only when they hold something; a weapon moves there with its rank badge and every note it has (notes
+  are keyed by weapon, nothing to copy); the header counts both. `verdicts{gag: {status passed|trash, at}}` in
+  notes.json, server op `verdict` (review clears it). **Trash is out of the game from its next load**: the server
+  writes `cuts.js` beside notes.json (`globalThis.JABBERWOCKY_CUTS = [ids]`), index.html loads it right after gags.js
+  (a plain script, so it works from file://), and `liveGags()` in core.js takes those ids out of both rolls (the
+  player's and the boss's; an emptied tier falls back to the rest; a forced gag — the lab — still fires). Back to
+  IN REVIEW restores it. Claude's side: `notes.mjs verdicts` lists both groups with rank + notes; `watch` prints every
+  verdict change. Sim TEST 12 (cut gags never roll, forced still fires, everything cut still stands) — 122,896 green.
+- At ship, trashed gags get deleted from gags.js for real, on his word — not before.
+- **THE ACTION DROPDOWN** (his "add another drop down for update, pass, trash to make it so I don't have to say it
+  every time. make update the default"): beside RANK under the weapon's box — update / pass / trash, update by
+  default, back to update after every submit and on every weapon switch. The note carries it (`note.action`, shown on
+  the note's meta line) and the server applies the verdict in the same save: pass → PASSED, trash → TRASH (+ cuts.js),
+  update → back in review. So a pass or trash note IS the comment that moved the weapon; the VERDICT switch stays for
+  moving one without a note. The status line moved under the row to make room. `notes.mjs` lines show the action in
+  the brackets (update = act; pass / trash = his comment, nothing to build unless the text asks). Server restarted.
+
 ## 2026-09-07 — Claude (Fable 5.1) — the map mirror, THE WEAPON LAB, the notes loop
 
 - **Corner map left/right were backwards** (his first line of the session): yesterday's "ahead is up" flip was a

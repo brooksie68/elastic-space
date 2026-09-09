@@ -1457,8 +1457,12 @@ async function handleApi(request, response, pathname) {
 
   // Notes (added 2026-09-07 for the Jabberwocky weapon lab): a per-world notes file James writes
   // from inside a page and Claude reads from disk. `src/worlds/<slug>/notes.json`, shape
-  // { version, notes: [{ id, gag, text, at, status: new|done, reply, doneAt }], updates: { <gag>: { at, note } }, seen: { <gag>: at } }.
-  // GET returns it; POST applies one small op (add / edit / delete / seen) with a read-modify-write so
+  // { version, notes: [{ id, gag, text, at, status: new|done, reply, doneAt, rank?, action? }], updates: { <gag>: { at, note } },
+  //   seen: { <gag>: at }, ranks: { <gag>: { rank 1-5, at } }, verdicts: { <gag>: { status passed|trash, at } } }
+  //   (ranks + verdicts added 2026-09-08 — James's 1-5 per weapon and his PASSED / TRASH calls). A verdict op also
+  //   rewrites `src/worlds/<slug>/cuts.js` (`globalThis.<SLUG>_CUTS = [trashed ids]`) so the world can load the trash
+  //   list as a plain script from file:// and keep those ids out of play.
+  // GET returns it; POST applies one small op (add / edit / delete / seen / rank / verdict) with a read-modify-write so
   // a page and a script editing the same file do not clobber each other's fields.
   const notesMatch = pathname.match(/^\/api\/worlds\/([a-z0-9-]+)\/notes$/i);
   if (notesMatch) {
@@ -1471,9 +1475,9 @@ async function handleApi(request, response, pathname) {
     const readNotes = async () => {
       try {
         const data = JSON.parse(await readFile(notesPath, "utf8"));
-        return { version: 1, notes: [], updates: {}, seen: {}, ...data };
+        return { version: 1, notes: [], updates: {}, seen: {}, ranks: {}, verdicts: {}, ...data };
       } catch {
-        return { version: 1, notes: [], updates: {}, seen: {} };
+        return { version: 1, notes: [], updates: {}, seen: {}, ranks: {}, verdicts: {} };
       }
     };
     if (request.method === "GET") {
@@ -1487,6 +1491,7 @@ async function handleApi(request, response, pathname) {
     const op = await readBody(request);
     const data = await readNotes();
     const now = new Date().toISOString();
+    let writeCuts = false;
     const gagOk = (g) => g == null || (typeof g === "string" && /^[a-z0-9_-]{1,40}$/i.test(g));
     if (op.op === "add") {
       const text = String(op.text ?? "").trim();
@@ -1495,7 +1500,24 @@ async function handleApi(request, response, pathname) {
         return true;
       }
       const id = `n${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      data.notes.push({ id, gag: op.gag || null, text, at: now, status: "new" });
+      const added = { id, gag: op.gag || null, text, at: now, status: "new" };
+      const noteRank = Number(op.rank ?? 0);
+      if (Number.isInteger(noteRank) && noteRank >= 1 && noteRank <= 5) added.rank = noteRank; // the rank he had given it when he wrote the note
+      // the note's action (2026-09-08, the dropdown by SUBMIT): update = a change request, the weapon is back in
+      // review; pass / trash = the verdict, applied here in the same save so the note is the comment that moved it
+      const action = op.action == null ? null : String(op.action);
+      if (action && !["update", "pass", "trash"].includes(action)) {
+        sendJson(response, 400, { error: "action must be update, pass or trash." });
+        return true;
+      }
+      if (action) added.action = action;
+      if (action && added.gag) {
+        data.verdicts = data.verdicts || {};
+        if (action === "update") delete data.verdicts[added.gag];
+        else data.verdicts[added.gag] = { status: action === "pass" ? "passed" : "trash", at: now };
+        writeCuts = true;
+      }
+      data.notes.push(added);
     } else if (op.op === "edit") {
       const note = data.notes.find((n) => n.id === op.id);
       const text = String(op.text ?? "").trim();
@@ -1518,11 +1540,41 @@ async function handleApi(request, response, pathname) {
         return true;
       }
       data.seen[op.gag] = now;
+    } else if (op.op === "rank") {
+      // one 1-5 rank per weapon (2026-09-08); 0 or null clears it
+      const rank = Number(op.rank ?? 0);
+      if (!gagOk(op.gag) || !op.gag || !Number.isInteger(rank) || rank < 0 || rank > 5) {
+        sendJson(response, 400, { error: "rank needs a gag id and a rank 0-5 (0 clears)." });
+        return true;
+      }
+      data.ranks = data.ranks || {};
+      if (rank) data.ranks[op.gag] = { rank, at: now };
+      else delete data.ranks[op.gag];
+    } else if (op.op === "verdict") {
+      // per-weapon verdict (2026-09-08): passed = reviewed and good, trash = out of the game; review clears it.
+      const status = String(op.status ?? "review");
+      if (!gagOk(op.gag) || !op.gag || !["review", "passed", "trash"].includes(status)) {
+        sendJson(response, 400, { error: "verdict needs a gag id and a status: review, passed or trash." });
+        return true;
+      }
+      data.verdicts = data.verdicts || {};
+      if (status === "review") delete data.verdicts[op.gag];
+      else data.verdicts[op.gag] = { status, at: now };
+      writeCuts = true;
     } else {
-      sendJson(response, 400, { error: "op must be add, edit, delete or seen." });
+      sendJson(response, 400, { error: "op must be add, edit, delete, seen, rank or verdict." });
       return true;
     }
     await writeFile(notesPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+    if (writeCuts) {
+      const cutIds = Object.keys(data.verdicts || {}).filter((g) => data.verdicts[g].status === "trash").sort();
+      const cutsGlobal = `${notesSlug.toUpperCase().replace(/-/g, "_")}_CUTS`;
+      await writeFile(
+        join(worldsDir, notesSlug, "cuts.js"),
+        `// Written by the dev server from the weapon lab's TRASH verdicts (notes.json). The roll skips these ids.\nglobalThis.${cutsGlobal} = ${JSON.stringify(cutIds)};\n`,
+        "utf8",
+      );
+    }
     sendJson(response, 200, data);
     return true;
   }

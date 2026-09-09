@@ -384,7 +384,7 @@
       n: 0, level: null, phase: 'play', t: 0,
       player: null, goons: [], shots: [], zones: [], scars: [], beams: [], emitters: [],
       key: null, doorOpen: false, kills: 0, shotsFired: 0, recent: [], events: [], plate: null, pending: null,
-      deaths: 0, deathBy: null, gagsSeen: {},
+      deaths: 0, deathBy: null, gagsSeen: {}, fuel: 10,   // fuel: the flamethrower's seconds for the whole game — it never refills (James 2026-09-08)
     };
     startLevel(state, opts.startLevel === 'lab' ? 'lab' : Math.max(1, Math.min(LEVELS.length, opts.startLevel || 1)));
     return state;
@@ -439,6 +439,15 @@
   }
 
   // ---------------------------------------------------------------- the roll
+  // cuts.js (written by the dev server from the weapon lab's TRASH verdicts, loaded after gags.js) lists ids the
+  // roll never deals; a forced gag (the lab, the configuration panel) still fires. Never empty: with everything
+  // cut, the whole table stands. (2026-09-08)
+  function liveGags() {
+    const c = globalThis.JABBERWOCKY_CUTS;
+    if (!Array.isArray(c) || !c.length) return GAGS;
+    const live = GAGS.filter((g) => !c.includes(g.id));
+    return live.length ? live : GAGS;
+  }
   function rollGag(state, forcedId) {
     if (forcedId && T.byId[forcedId]) return T.byId[forcedId];
     const o = state.opts.odds;
@@ -446,8 +455,9 @@
     let r = state.rand() * total;
     let tier = 'dispatch';
     for (const t of T.TIERS) { r -= o[t]; if (r <= 0) { tier = t; break; } }
-    const pool = GAGS.filter((g) => g.tier === tier && !state.recent.includes(g.id));
-    const src = pool.length ? pool : GAGS.filter((g) => g.tier === tier);
+    const live = liveGags();   // a dry flamethrower still comes up — it just clicks (James: 'it's just random, right?')
+    const pool = live.filter((g) => g.tier === tier && !state.recent.includes(g.id));
+    const src = pool.length ? pool : (live.some((g) => g.tier === tier) ? live.filter((g) => g.tier === tier) : live);
     const g = src[Math.floor(state.rand() * src.length)];
     state.recent.push(g.id);
     if (state.recent.length > 8) state.recent.shift();
@@ -490,8 +500,9 @@
     const p = state.player;
     const a = p.a + (p.aim || 0);   // aim = cursor-aim yaw offset from the facing (0 under mouse look)
     launch(state, gag, p.x, p.y, a, 'player');
-    state.plate = { name: gag.name, line: gag.line || '', tier: gag.tier, t: 0, id: gag.id };
-    state.events.push({ type: 'fire', gag, x: p.x, y: p.y, a });
+    const empty = gag.id === 'flamethrower' && state.fuel <= 0;
+    state.plate = { name: gag.name, line: empty ? 'Empty. Ten seconds was all it ever had.' : (gag.line || ''), tier: empty ? 'dud' : gag.tier, t: 0, id: gag.id };
+    state.events.push({ type: 'fire', gag, x: p.x, y: p.y, a, empty });
   }
 
   // launch a gag from a point in a direction; owner 'player' | 'boss' | 'rifle' (the little one)
@@ -506,7 +517,8 @@
         for (let i = 0; i < n; i++) {
           const spread = n > 1 ? (state.rand() - 0.5) * (gag.spread || 0) : 0;
           const aa = a0 + spread;
-          const sp = gag.speed * (n > 1 ? 0.8 + state.rand() * 0.4 : 1);
+          const v = gag.speedVar != null ? gag.speedVar : 0.4;   // a volley's speed spread: 0.4 = 80-120% (speedVar per gag; the baseballs 0.9 = 55-145%)
+          const sp = gag.speed * (n > 1 ? 1 - v / 2 + state.rand() * v : 1);
           state.shots.push({
             id: nextId++, gag, kind: 'bolt', sprite: gag.sprite, x: ox + Math.cos(aa) * 0.45, y: oy + Math.sin(aa) * 0.45, z: gag.floats ? 0.5 : 0.35, a: aa,
             vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: gag.life, t: 0, hitR: gag.hitR || 0.4, pierce: !!gag.pierce, bounce: !!gag.bounce,
@@ -522,6 +534,7 @@
         return;
       }
       case 'stream':
+        if (gag.id === 'flamethrower' && state.fuel <= 0) return;   // the tank is dry
         state.emitters.push({ gag, t: 0, dur: gag.dur, rate: gag.rate, acc: 0, hostile, owner, aIsPlayer: owner === 'player', ox, oy, a });
         return;
       case 'area': {
@@ -535,7 +548,7 @@
         return;
       }
       case 'melee': {
-        state.shots.push({ id: nextId++, gag, kind: 'melee', sprite: gag.sprite, x: mx, y: my, z: 0.45, a, t: 0, life: 0.45, reach: gag.reach, hostile, owner, dead: false, visual: true });
+        state.shots.push({ id: nextId++, gag, kind: 'melee', sprite: gag.sprite, x: mx, y: my, z: 0.45, a, t: 0, life: gag.swingLife || 0.45, reach: gag.reach, hostile, owner, dead: false, visual: true });   // swingLife: a slower swing for the fist (James)
         // the reach lands a beat in: the sprite lunges first
         state.zones.push({ id: nextId++, gag, mode: 'meleehit', x: ox, y: oy, a, t: 0, dur: 0.12, hostile, owner, done: false });
         return;
@@ -812,6 +825,13 @@
       p.driftPush.t += dt;
       if (p.driftPush.t >= 0.7) { p.driftPush.t = -99; state.events.push({ type: 'drift', i: di }); }
     } else if (p.driftPush.t > 0) p.driftPush.t = Math.max(0, p.driftPush.t - dt * 2);
+    // the flamethrower streams while the trigger is held, off a ten-second tank that never refills; no re-roll mid-stream
+    const fe = state.emitters.find((e) => e.owner === 'player' && e.gag.id === 'flamethrower' && e.t < e.dur);
+    if (fe) {
+      state.fuel = Math.max(0, state.fuel - dt);
+      if (state.fuel <= 0) fe.dur = fe.t;
+      else if (input.fire) { fe.dur = Math.max(fe.dur, fe.t + 0.12); p.cool = Math.max(p.cool, 0.2); }
+    }
     // fire
     if (input.fire) fire(state);
   }
@@ -830,7 +850,7 @@
       e.t += dt;
       e.acc += e.rate * dt;
       const p = state.player;
-      const ox = e.aIsPlayer ? p.x : e.ox, oy = e.aIsPlayer ? p.y : e.oy, a = e.aIsPlayer ? p.a : e.a;
+      const ox = e.aIsPlayer ? p.x : e.ox, oy = e.aIsPlayer ? p.y : e.oy, a = e.aIsPlayer ? p.a + (p.aim || 0) : e.a;   // the stream follows the rifle's aim, not just the facing (James)
       while (e.acc >= 1) {
         e.acc -= 1;
         const aa = a + (state.rand() - 0.5) * 0.24;
@@ -1241,7 +1261,10 @@
     const total = o.dispatch + o.weird + o.dud + o.backfire;
     let r = state.rand() * total, tier = 'dispatch';
     for (const t of T.TIERS) { r -= o[t]; if (r <= 0) { tier = t; break; } }
-    const pool = GAGS.filter((g) => g.tier === tier && !b.recent.includes(g.id) && g.kind !== 'train');
+    const live = liveGags().filter((g) => g.kind !== 'train');
+    let pool = live.filter((g) => g.tier === tier && !b.recent.includes(g.id));
+    if (!pool.length) pool = live.filter((g) => g.tier === tier);
+    if (!pool.length) pool = live.length ? live : GAGS;
     const g = pool[Math.floor(state.rand() * pool.length)];
     b.recent.push(g.id); if (b.recent.length > 6) b.recent.shift();
     return g;
@@ -1263,7 +1286,7 @@
   globalThis.JabberwockyCore = {
     VERSION: 1, DEFAULTS, GOON_TYPES, LEVELS, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT },
     hashStr, mulberry, makeMaze, buildLevel, bfs, bfsPath, cellAt, solidAt, castRay, lineOfSight, aimPoint,
-    newGame, startLevel, nextLevel, retryLevel, step, fire, rollGag, launch, hitGoon, hurtPlayer, addScar, goonsLeft, angDiff,
+    newGame, startLevel, nextLevel, retryLevel, step, fire, rollGag, bossRoll, launch, hitGoon, hurtPlayer, addScar, goonsLeft, angDiff,
     makeLabGoon, respawnLabGoon,
   };
 })();

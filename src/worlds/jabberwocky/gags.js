@@ -15,6 +15,8 @@
 //           plate   nothing but the words
 //
 //   outcome how the victim goes (see OUTCOMES); scar = what stays on the floor until you leave the level.
+//   cuts.js beside this file (written by the dev server from the weapon lab's TRASH verdicts) lists ids the roll
+//   skips — core.js liveGags(). Delete a trashed gag from this table for real only at ship, on James's word.
 (function () {
   const OUTCOMES = {
     squash:  { verb: 'SQUASHED',            dur: 1.6 },
@@ -92,18 +94,18 @@
   const add = (o) => { G.push(o); return o; };
 
   // ---------------------------------------------------------------- DISPATCH
-  add({ id: 'bullet', name: 'A BULLET', tier: 'dispatch', kind: 'beam', range: 14, outcome: 'expire', verb: 'SHOT', sprite: 'none', sound: 'gunshot', line: 'Just a bullet. Huh.' });
-  add({ id: 'knives', name: 'A HAIL OF KNIVES', tier: 'dispatch', kind: 'bolt', count: 9, spread: 0.5, speed: 11, life: 1.6, hitR: 0.45, outcome: 'gib', verb: 'PERFORATED', sprite: 'knife', scar: 'knives', sound: 'knives', line: 'The cutlery drawer is empty now.' });
+  add({ id: 'bullet', name: 'A LASER BLAST', tier: 'dispatch', kind: 'beam', range: 14, outcome: 'expire', verb: 'LASERED', sprite: 'none', sound: 'gunshot', line: 'Pew. Just pew.' });   // was A BULLET; James 2026-09-08: 'it looks like a laser blast' (id kept: ranks/notes/verdicts key on it)
+  add({ id: 'knives', name: 'A HAIL OF KNIVES', tier: 'dispatch', kind: 'bolt', count: 4, spread: 0.4, speed: 7, life: 2.8, hitR: 0.45, outcome: 'gib', verb: 'PERFORATED', sprite: 'knife', scar: 'knives', sound: 'knives', line: 'The cutlery drawer is empty now.' });
   add({ id: 'chainsaw', name: 'A FLYING CHAINSAW', tier: 'dispatch', kind: 'bolt', speed: 7, life: 2.2, hitR: 0.6, pierce: true, spin: true, outcome: 'gib', verb: 'SAWED IN HALF', sprite: 'chainsaw', scar: 'blood', sound: 'chainsaw', line: 'It was running. Of course it was running.' });
   add({ id: 'rocket', name: 'A ROCKET', tier: 'dispatch', kind: 'bolt', speed: 9, life: 2.5, hitR: 0.4, splash: 1.6, outcome: 'gib', verb: 'BLOWN UP', sprite: 'rocket', scar: 'scorch', sound: 'rocket', line: 'The classic.' });
-  add({ id: 'baseballs', name: 'A HAIL OF BASEBALLS', tier: 'dispatch', kind: 'bolt', count: 12, spread: 0.6, speed: 10, life: 1.5, hitR: 0.45, outcome: 'expire', verb: 'BEANED', sprite: 'baseball', scar: 'balls', sound: 'baseballs', line: 'Heads up.' });
-  add({ id: 'pie', name: 'A FROZEN BLUEBERRY PIE', tier: 'dispatch', kind: 'lob', speed: 7, arc: 1.2, splash: 0.9, outcome: 'freeze', verb: 'PIED', sprite: 'pie', scar: 'pie', sound: 'splat', line: 'Frozen. Not thawed. There is a difference.' });
-  add({ id: 'sand', name: 'A GRAIN OF SAND AT ALMOST THE SPEED OF LIGHT', tier: 'dispatch', kind: 'beam', range: 60, pierce: true, walls: true, outcome: 'vapor', verb: 'ATOMIZED', sprite: 'none', sound: 'sand', flash: 1, line: 'You will hear the boom in a moment.' });
-  add({ id: 'fist', name: 'A HUGE FIST', tier: 'dispatch', kind: 'melee', reach: 3.2, arc: 0.7, outcome: 'squash', verb: 'PUNCHED FLAT', sprite: 'fist', sound: 'thud', line: 'Whose fist? Nobody asks.' });
-  add({ id: 'jello', name: 'A SMOTHERING BLAST OF JELLO', tier: 'dispatch', kind: 'lob', speed: 6, arc: 1.0, splash: 1.5, outcome: 'smother', sprite: 'jello', scar: 'jello', sound: 'jello', line: 'Lime. It is always lime.' });
+  add({ id: 'baseballs', name: 'A HAIL OF BASEBALLS', tier: 'dispatch', kind: 'bolt', count: 20, spread: 0.7, speed: 10, speedVar: 0.9, life: 1.9, hitR: 0.45, outcome: 'expire', verb: 'BEANED', sprite: 'baseball', scar: 'balls', sound: 'baseballs', line: 'Heads up.' });
+  add({ id: 'pie', name: 'A FROZEN BLUEBERRY PIE', tier: 'dispatch', kind: 'lob', speed: 7, arc: 1.2, splash: 0.9, outcome: 'freeze', verb: 'PIED', sprite: 'pie', scar: 'pie', sound: 'splat', splashSound: 'splat', line: 'Frozen. Not thawed. There is a difference.' });   // splashSound: what the landing plays instead of the explosion (2026-09-08)
+  add({ id: 'sand', name: 'A GRAIN OF SAND AT ALMOST THE SPEED OF LIGHT', tier: 'dispatch', kind: 'beam', range: 60, pierce: true, walls: true, outcome: 'expire', verb: 'HOLED CLEAN THROUGH', sprite: 'none', sound: 'sand', flash: 1, line: 'You will hear the boom in a moment.' });
+  add({ id: 'fist', name: 'A HUGE FIST', tier: 'dispatch', kind: 'melee', reach: 6.4, arc: 0.7, swingLife: 0.54, outcome: 'squash', verb: 'PUNCHED FLAT', sprite: 'fist', sound: 'thud', line: 'Whose fist? Nobody asks.' });
+  add({ id: 'jello', name: 'A SMOTHERING BLAST OF JELLO', tier: 'dispatch', kind: 'lob', speed: 6, arc: 1.0, splash: 1.5, outcome: 'smother', sprite: 'jello', scar: 'jello', sound: 'jello', splashSound: 'splat', line: 'Lime. It is always lime.' });
   add({ id: 'flamethrower', name: 'A FLAMETHROWER', tier: 'dispatch', kind: 'stream', rate: 40, dur: 1.1, speed: 6, range: 4.5, hitR: 0.5, outcome: 'burn', sprite: 'flame', scar: 'scorch', sound: 'flame', line: 'Well, that is warm.' });
-  add({ id: 'gas', name: 'POISON GAS', tier: 'dispatch', kind: 'area', mode: 'linger', r: 1.7, dur: 9, dps: 40, outcome: 'gas', sprite: 'gascloud', scar: 'gas', sound: 'hiss', line: 'Hold your breath. It is not going anywhere.' });
-  add({ id: 'eagle', name: 'A RABID HARPY EAGLE', tier: 'dispatch', kind: 'summon', speed: 6.5, turn: 5, life: 5, hitR: 0.55, outcome: 'chew', verb: 'EATEN BY AN EAGLE', sprite: 'eagle', scar: 'feathers', sound: 'screech', line: 'Rabid. Somebody should tell the eagle.' });
+  add({ id: 'gas', name: 'POISON GAS', tier: 'dispatch', kind: 'area', mode: 'linger', r: 1.7, dur: 9, dps: 40, outcome: 'gas', sprite: 'gascloud', scar: 'gas', sound: 'gasss', line: 'Hold your breath. It is not going anywhere.' });
+  add({ id: 'eagle', name: 'A RABID HARPY EAGLE', tier: 'dispatch', kind: 'summon', speed: 6.5, turn: 5, life: 5, hitR: 0.55, outcome: 'chew', verb: 'EATEN BY AN EAGLE', sprite: 'eagle', scar: 'feathers', sound: 'eagleattack',   /* his eagleattack.mp3 the moment the eagle flies out, nothing on the hit (James 2026-09-08, round four) */ line: 'Rabid. Somebody should tell the eagle.' });
   add({ id: 'glue', name: 'A FIREHOSE OF GLUE', tier: 'dispatch', kind: 'stream', rate: 30, dur: 1.3, speed: 7, range: 5, hitR: 0.5, outcome: 'glue', sprite: 'glueblob', scar: 'glue', sound: 'hose', line: 'Non-toxic. Very sticky.' });
   add({ id: 'piranhas', name: 'A STREAM OF LIVE PIRANHAS', tier: 'dispatch', kind: 'stream', rate: 18, dur: 1.4, speed: 6, range: 5, hitR: 0.5, outcome: 'chew', verb: 'NIBBLED TO DEATH', sprite: 'piranha', scar: 'fish', sound: 'chomp', line: 'They are very much alive.' });
   add({ id: 'blackhole', name: 'A TINY BLACK HOLE', tier: 'dispatch', kind: 'area', mode: 'pull', r: 2.6, dur: 1.8, pullsPlayer: 2.0, outcome: 'vapor', verb: 'SPAGHETTIFIED', sprite: 'blackhole', sound: 'blackhole', line: 'Tiny. Still a black hole.' });
