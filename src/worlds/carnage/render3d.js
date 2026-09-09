@@ -451,25 +451,25 @@ export function createRenderer(canvas, lookIn) {
     const W = width * CELL + 400;
     const x0 = -200;
     const mk = (w, d, z, t, rep) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tile(t, w / rep, d / rep), roughness: 0.95, metalness: 0 })); m.rotation.x = -Math.PI / 2; m.position.set(x0 + w / 2, 0, z); return m; };
-    ground.add(mk(W, 3.6, 1.8, 'sidewalk', 3.2));               // the pavement in front of the faces
-    const road = mk(W, 22, 3.6 + 11, 'asphalt', 6); road.position.y = -0.04; ground.add(road);
-    const near = mk(W, 30, 3.6 + 22 + 15, 'sidewalk', 3.2); ground.add(near);   // the near pavement, all the way under the camera
+    ground.add(mk(W, SW, SW / 2, 'sidewalk', 3.2));             // the pavement in front of the faces, deep enough for a giant
+    const road = mk(W, ROAD, SW + ROAD / 2, 'asphalt', 6); road.position.y = -0.04; ground.add(road);
+    const near = mk(W, 30, SW + ROAD + 15, 'sidewalk', 3.2); ground.add(near);   // the near pavement, all the way under the camera
     const back = new THREE.Mesh(new THREE.PlaneGeometry(W, 500), new THREE.MeshStandardMaterial({ color: 0x1c1a1e, roughness: 1 }));
     back.rotation.x = -Math.PI / 2; back.position.set(x0 + W / 2, -0.08, -100); ground.add(back);
     // planters and a low fence along the near pavement, low enough to stay under the road in the frame
     const planterMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.8 }), leafMat = new THREE.MeshStandardMaterial({ color: 0x2f6a34, roughness: 0.9 });
     for (let x = -10; x < width * CELL + 10; x += 6) {
-      const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, 3.6 + 22 + 6); ground.add(pl);
-      const lf = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.6, 1.0), leafMat); lf.position.set(x, 0.95, 3.6 + 22 + 6); ground.add(lf);
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, SW + ROAD + 6); ground.add(pl);
+      const lf = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.6, 1.0), leafMat); lf.position.set(x, 0.95, SW + ROAD + 6); ground.add(lf);
     }
     const fence = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.6 }));
-    fence.position.set(x0 + W / 2, 0.45, 3.6 + 22 + 9.5); ground.add(fence);
+    fence.position.set(x0 + W / 2, 0.45, SW + ROAD + 9.5); ground.add(fence);
     // parked cars along the near kerb: the real taxi and cruiser when they are loaded, dark blocks with wheels otherwise
     const carGeo = new THREE.BoxGeometry(4.4, 1.2, 1.9), roofGeo = new THREE.BoxGeometry(2.4, 0.65, 1.7), wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 10);
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.9 });
     for (let x = 3, i = 0; x < width * CELL; x += 7 + (i * 37 % 9), i++) {
       if (i % 3 === 1) continue;
-      const z = 3.6 + 22 - 1.6;
+      const z = SW + ROAD - 1.6;
       const model = i % 5 === 0 ? models.statics.taxi : i % 5 === 3 ? models.statics.cruiser : null;
       if (model) {
         const m = model.clone(true);
@@ -489,14 +489,14 @@ export function createRenderer(canvas, lookIn) {
     // a kerb and the centre line
     const kerbMat = new THREE.MeshStandardMaterial({ color: 0x8a8880, roughness: 0.9 });
     const kerb = new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, 0.3), kerbMat);
-    kerb.position.set(x0 + W / 2, 0.09, 3.6); ground.add(kerb);
+    kerb.position.set(x0 + W / 2, 0.09, SW); ground.add(kerb);
     const kerb2 = new THREE.Mesh(new THREE.BoxGeometry(W, 0.18, 0.3), kerbMat);
-    kerb2.position.set(x0 + W / 2, 0.09, 3.6 + 22); ground.add(kerb2);
+    kerb2.position.set(x0 + W / 2, 0.09, SW + ROAD); ground.add(kerb2);
     const dashGeo = new THREE.PlaneGeometry(2.2, 0.16);
     const dashMat = new THREE.MeshBasicMaterial({ color: 0xd8c86a });
     const dashes = new THREE.InstancedMesh(dashGeo, dashMat, Math.ceil(W / 5));
     const mm = new THREE.Matrix4();
-    for (let i = 0; i < dashes.count; i++) { mm.makeRotationX(-Math.PI / 2); mm.setPosition(x0 + i * 5 + 1, 0.01, 3.6 + 11); dashes.setMatrixAt(i, mm); }
+    for (let i = 0; i < dashes.count; i++) { mm.makeRotationX(-Math.PI / 2); mm.setPosition(x0 + i * 5 + 1, 0.01, SW + ROAD / 2); dashes.setMatrixAt(i, mm); }
     ground.add(dashes);
     // street lamps every nine cells
     const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 9, 6), armGeo = new THREE.BoxGeometry(2.2, 0.12, 0.12), headGeo = new THREE.BoxGeometry(0.9, 0.22, 0.4);
@@ -757,7 +757,7 @@ export function createRenderer(canvas, lookIn) {
       if (d.alive) continue;
       d.alive = true; d.sp.visible = true; d.life = 0; d.max = life * (0.7 + rnd() * 0.6);
       d.x = x + (rnd() - 0.5) * 2; d.y = y + rnd() * 1.5; d.z = z + rnd() * 2;
-      d.vx = (vx || 0) + (rnd() - 0.5) * 2.5; d.vy = (vy || 0) + rnd() * 1.2; d.vz = 0.5 + rnd() * 2.5;
+      d.vx = (vx || 0) + (rnd() - 0.5) * 2.5; d.vy = (vy || 0) + rnd() * 1.2; d.vz = (z < 0.5 ? 0.15 : 0.5) + rnd() * (z < 0.5 ? 0.6 : 2.5);   // dust born at the wall stays near it
       d.s = size * (0.6 + rnd() * 0.8); d.grow = 0.9 + rnd() * 0.8; d.a = (alpha || 0.5) * (0.7 + rnd() * 0.5);
       d.sp.material.opacity = 0; d.sp.material.color.setHex(night ? 0x3e3834 : 0xc9bda8); if (night) d.a *= 0.55;
       if (++made >= n) break;
@@ -854,7 +854,8 @@ export function createRenderer(canvas, lookIn) {
   scene.add(actorGroup);
   const monsterViews = new Map(), soldierViews = new Map(), carViews = new Map();
   let tankView = null, droneView = null, blimpView = null, subwayView = null;
-  const MON_Z = 1.2, SOLDIER_Z = 2.4, CAR_Z = 9.6, TANK_Z = 8.0, DRONE_Z = 1.5, BOT_Z = 1.9;
+  const SW = 5.4, ROAD = 22;   // the front pavement and the road, in metres from the faces
+  const MON_Z = 1.2, SOLDIER_Z = 2.4, CAR_Z = SW + 4.4, TANK_Z = SW + 3.0, DRONE_Z = 3.2, BOT_Z = 1.9;
   const FALLBACK_COLOR = { george: 0xffd23a, lizzie: 0x3f7fd8, ralph: 0xf28c28 };
   function fitModel(model, height, faceYaw) {
     // precise: Meshy rigs keep the geometry at a hundredth under the armature and the bones in centimetres —
@@ -866,16 +867,18 @@ export function createRenderer(canvas, lookIn) {
     model.scale.setScalar(k);
     model.position.set(-(box.min.x + box.max.x) / 2 * k, -box.min.y * k, -(box.min.z + box.max.z) / 2 * k);
     model.rotation.y = faceYaw || 0;
+    fitModel.last = { w: (box.max.x - box.min.x) * k, h: h * k, d: (box.max.z - box.min.z) * k };
     return k;
   }
   function makeRig(asset, height, fallback) {
     const root = new THREE.Group();
-    const view = { root, model: null, mixer: null, actions: {}, current: null, currentName: '', mats: [], fitted: 1, inner: new THREE.Group() };
+    const view = { root, model: null, mixer: null, actions: {}, current: null, currentName: '', mats: [], fitted: 1, inner: new THREE.Group(), size: { w: height * 0.4, h: height, d: height * 0.4 } };
     root.add(view.inner);
     if (asset) {
       const model = skeletonClone(asset.scene);
       model.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); view.mats.push(o.material); } });
       view.fitted = fitModel(model, height, 0);
+      view.size = fitModel.last;
       view.inner.add(model); view.model = model;
       view.mixer = new THREE.AnimationMixer(model);
       for (const k in asset.clips) view.actions[k] = view.mixer.clipAction(asset.clips[k]);
@@ -906,9 +909,11 @@ export function createRenderer(canvas, lookIn) {
     for (const m of state.monsters) {
       seen.add(m.id);
       let v = monsterViews.get(m.id);
+      const mh = state.opts.monsterH || 2.7;
+      if (v && v.height !== mh) { actorGroup.remove(v.root); monsterViews.delete(m.id); v = null; }   // the size dial moved
       if (!v) {
-        v = makeRig(models.monsters[m.slug], CELL * 1.8, FALLBACK_COLOR[m.slug]);
-        v.teen = null; v.slug = m.slug; v.prevAnim = ''; v.punchSide = 0; v.shadow = makeShadow(3.2);
+        v = makeRig(models.monsters[m.slug], CELL * mh, FALLBACK_COLOR[m.slug]);
+        v.height = mh; v.teen = null; v.slug = m.slug; v.prevAnim = ''; v.punchSide = 0; v.shadow = makeShadow(CELL * mh * 0.45);
         v.root.add(v.shadow);
         v.smoothX = m.x * CELL; v.smoothY = m.y * CELL; v.yaw = 0; v.scaleK = 1;
         monsterViews.set(m.id, v);
@@ -921,8 +926,8 @@ export function createRenderer(canvas, lookIn) {
       const k = m.st === 'climb' ? Math.min(1, dt * 14) : 1;
       v.smoothX += (tx - v.smoothX) * k; v.smoothY = ty;
       const onFace = m.st === 'climb';
-      const z = onFace ? MON_Z - 0.4 : MON_Z;
-      v.root.position.set(v.smoothX, v.smoothY, m.st === 'roof' ? z - DEPTH * 0.3 : z);
+      const z = (onFace ? 0.25 : 0.5) + v.size.d * 0.5;   // the model's own thickness keeps it in front of the wall
+      v.root.position.set(v.smoothX, v.smoothY, m.st === 'roof' ? Math.min(z, DEPTH * 0.5) - DEPTH * 0.5 : z);
       // facing: on the street, left or right; on a face, into the wall; the revert faces us
       let targetYaw = onFace ? Math.PI : (m.facing > 0 ? Math.PI / 2 : -Math.PI / 2);
       if (m.st === 'revert') targetYaw = 0;
@@ -955,7 +960,7 @@ export function createRenderer(canvas, lookIn) {
       v.shadow.position.y = -v.smoothY + 0.03; v.shadow.material.opacity = Math.max(0.05, 0.4 - v.smoothY * 0.008);
       // animation
       let anim = m.anim;
-      if (anim === 'punch') { if (v.prevAnim !== 'punch') v.punchSide ^= 1; anim = v.punchSide ? 'punchR' : 'punchL'; }
+      if (anim === 'punch') { if (m.st === 'street') anim = 'stomp'; else { if (v.prevAnim !== 'punch') v.punchSide ^= 1; anim = v.punchSide ? 'punchR' : 'punchL'; } }   // on the street the giant smashes down
       if (anim !== v.prevAnim || (anim === 'punchL' || anim === 'punchR')) {
         const restart = (anim === 'punchL' || anim === 'punchR') && v.prevAnim !== 'punch' && v.currentName !== anim;
         if (anim === 'idle') play(v, 'idle', { speed: 0.9 });
@@ -963,6 +968,7 @@ export function createRenderer(canvas, lookIn) {
         else if (anim === 'climb') play(v, 'climb', { speed: 1.2 });
         else if (anim === 'hang') play(v, 'climb', { speed: 0.001 });
         else if (anim === 'punchL' || anim === 'punchR') { if (restart || v.currentName !== anim) play(v, anim, { once: true, restart: true, speed: 2.2 * (m.flavour ? m.flavour.punch : 1), fade: 0.05 }); }
+        else if (anim === 'stomp') { if (v.prevAnim !== 'punch') play(v, 'stomp', { once: true, restart: true, speed: 2.6 * (m.flavour ? m.flavour.punch : 1), fade: 0.05 }); }
         else if (anim === 'eat') play(v, 'eat', { once: true, restart: true, speed: 2.5, fade: 0.06 });
         else if (anim === 'hit') play(v, 'hit', { once: true, restart: v.prevAnim !== 'hit', speed: 1.6, fade: 0.05 });
         else if (anim === 'fall') play(v, 'fall', { speed: 1 });
@@ -1183,8 +1189,8 @@ export function createRenderer(canvas, lookIn) {
           refreshCells(bv, b);
           const inn = FAMILY_INNARDS[bv.fam.id];
           const x = e.x * CELL, y = (e.y + 0.5) * CELL;
-          if (e.cellType === 1) { spawnDebris(x, y, 0.6, Math.round(10 * look.debris), 2.5, inn, false); spawnDust(x, y - 1, 1, 6, 2.2, 1.6, 0, 0.6, 0.55); }
-          else { spawnShards(x, y, 0.4, Math.round(14 * look.debris)); spawnDebris(x, y, 0.6, Math.round(4 * look.debris), 2, [0.5, 0.5, 0.52], false); spawnDust(x, y - 1.2, 1, 4, 1.6, 1.2, 0, 0.4, 0.4); }
+          if (e.cellType === 1) { spawnDebris(x, y, 0.6, Math.round(10 * look.debris), 2.5, inn, false); spawnDust(x, y - 1, 0.2, 4, 1.1, 1.3, 0, 0.5, 0.4); }
+          else { spawnShards(x, y, 0.4, Math.round(14 * look.debris)); spawnDebris(x, y, 0.6, Math.round(4 * look.debris), 2, [0.5, 0.5, 0.52], false); spawnDust(x, y - 1.2, 0.2, 3, 0.9, 1.0, 0, 0.35, 0.3); }
           if (e.cellType === 2) spawnSparks(x, y, 0.5, 20, 6);
         }
         break;
@@ -1195,7 +1201,7 @@ export function createRenderer(canvas, lookIn) {
       case 'neonShock': spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 0.8, 30, 8); flash(e.x * CELL, (e.y + 0.6) * CELL, 1.2, 6, 0x9ad8ff, 0.25); break;
       case 'collapseStart': if (bv) { bv.collapsing = true; thudT = 0.35; thudAmt = 0.5; } break;
       case 'collapseEnd': if (bv && b) { finishCollapse(bv, b); thudT = 0.45; thudAmt = 1; } break;
-      case 'punchLand': if (e.hit) spawnDust(e.x * CELL, (e.y + 1.2) * CELL, MON_Z, 2, 1.2, 0.5, 0, 0.5, 0.35); break;
+      case 'punchLand': if (e.hit) spawnDust(e.x * CELL, (e.y + 1.2) * CELL, 0.2, 2, 0.8, 0.45, 0, 0.5, 0.3); break;
       case 'eat': { const x = e.x * CELL, y = (e.y + 0.5) * CELL; spawnDebris(x, y, 0.4, 6, 1.2, [0.9, 0.7, 0.3], false); break; }
       case 'boom': spawnDebris(e.x * CELL, (e.y + 0.5) * CELL, 0.6, Math.round(30 * look.debris), 3, [0.3, 0.25, 0.2], true); spawnDust(e.x * CELL, (e.y + 0.5) * CELL, 1, 14, 3, 2.2, 0, 1.5, 0.7); flash(e.x * CELL, (e.y + 0.5) * CELL, 1.5, 14, 0xffa040, 0.35); spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 1, 40, 9); thudT = 0.2; thudAmt = 0.4; break;
       case 'flash': flash(e.x * CELL, (e.y + 0.5) * CELL, 1.2, 22, 0xffffff, 0.4); screenFlash = 1; break;

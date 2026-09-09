@@ -11,7 +11,7 @@ const PLAY_KEY = 'carnage-play-v1';
 const LOOK_KEY = 'carnage-look-v1';
 const UI_KEY = 'carnage-ui-v1';
 const MODE_KEY = 'carnage-mode-v1';
-const PLAY_DEFAULTS = { lives: 3, flavour: 0.6, thresholdScale: 1, fallDmg: 8, spawnScale: 1, hazardScale: 1, streamerT: 1.5, dealShift: 0, day: 1, seed: '' };
+const PLAY_DEFAULTS = { lives: 3, flavour: 0.6, monsterH: 2.7, thresholdScale: 1, fallDmg: 8, spawnScale: 1, hazardScale: 1, streamerT: 1.5, dealShift: 0, day: 1, seed: '' };
 const LOOK_RANGES = {
   viewCells: { label: 'How wide the picture is (cells)', min: 16, max: 40, step: 1 },
   pitch: { label: 'Camera tilt', min: 0, max: 14, step: 0.5 },
@@ -207,13 +207,13 @@ function coreOpts(attract) {
     lives: attract ? 99 : play.lives,
     monster: attract ? Core.SLUGS[Math.floor(Math.random() * 3)] : choice.monster,
     companions: attract ? 2 : choice.companions,
-    flavour: play.flavour, thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT, dealShift: play.dealShift,
+    flavour: play.flavour, monsterH: play.monsterH, thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT, dealShift: play.dealShift,
     exits: attract ? 0 : 1, enemies: 1, free: 1,
   };
 }
 function applyLiveOpts() {
   if (!state) return;
-  Object.assign(state.opts, { thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT });
+  Object.assign(state.opts, { monsterH: play.monsterH, thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT });
 }
 function showCard(id) {
   for (const c of document.querySelectorAll('.card')) c.classList.toggle('show', c.id === id);
@@ -329,6 +329,7 @@ function currentInput() {
 document.addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
   if (e.code === 'KeyC') { e.preventDefault(); if (tuner.classList.contains('open')) closeTuner(); else openTuner(); return; }
+  if (e.code === 'Escape' && keysPanel.classList.contains('open')) { e.preventDefault(); closeKeys(); return; }
   if (mode === 'attract') { if (e.code === 'Enter') { e.preventDefault(); startGame(); } return; }
   if (mode === 'over') { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); enterAttract(); } return; }
   if (mode === 'map') { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); drive(); } return; }
@@ -461,6 +462,14 @@ function frame(t) {
   renderHud();
 }
 
+// ---- the controls panel: every key in readable type --------------------------------------------------------------------------
+const keysPanel = $('keys-panel');
+let keysPaused = false;
+function openKeys() { keysPanel.classList.add('open'); $('btn-controls').classList.add('on'); if (mode === 'play') { togglePause(); keysPaused = true; } }
+function closeKeys() { keysPanel.classList.remove('open'); $('btn-controls').classList.remove('on'); if (keysPaused && mode === 'paused') togglePause(); keysPaused = false; }
+$('btn-controls').addEventListener('click', (e) => { e.stopPropagation(); if (keysPanel.classList.contains('open')) closeKeys(); else openKeys(); });
+document.addEventListener('pointerdown', (e) => { if (!keysPanel.classList.contains('open')) return; if (e.target.closest('#keys-panel') || e.target.closest('#btn-controls')) return; closeKeys(); });
+
 // ---- the configuration panel ----------------------------------------------------------------------------------------------
 const tuner = $('tuner');
 function openTuner() { tuner.classList.add('open'); if (mode === 'play') { togglePause(); tunerPaused = true; } }
@@ -475,13 +484,14 @@ document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('cli
 function seg(id, key, parse) { $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { play[key] = parse ? parse(b.dataset.v) : b.dataset.v; save(PLAY_KEY, play); syncPlayUI(); applyLiveOpts(); })); }
 seg('t-lives', 'lives', (v) => parseInt(v, 10));
 function slider(id, key) { $(id).addEventListener('input', (e) => { play[key] = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); applyLiveOpts(); }); }
-slider('t-flavour', 'flavour'); slider('t-thr', 'thresholdScale'); slider('t-fall', 'fallDmg'); slider('t-spawn', 'spawnScale'); slider('t-haz', 'hazardScale'); slider('t-streamer', 'streamerT'); slider('t-deal', 'dealShift'); slider('t-day', 'day');
+slider('t-flavour', 'flavour'); slider('t-size', 'monsterH'); slider('t-thr', 'thresholdScale'); slider('t-fall', 'fallDmg'); slider('t-spawn', 'spawnScale'); slider('t-haz', 'hazardScale'); slider('t-streamer', 'streamerT'); slider('t-deal', 'dealShift'); slider('t-day', 'day');
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
 function syncPlayUI() {
   const on = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
   on('t-lives', play.lives);
   $('t-flavour').value = play.flavour; $('t-flavour-val').textContent = play.flavour <= 0 ? 'ALL THE SAME' : Math.round(play.flavour * 100) + '%';
+  $('t-size').value = play.monsterH; $('t-size-val').textContent = play.monsterH.toFixed(1) + ' FLOORS';
   $('t-thr').value = play.thresholdScale; $('t-thr-val').textContent = '×' + play.thresholdScale.toFixed(2);
   $('t-fall').value = play.fallDmg; $('t-fall-val').textContent = play.fallDmg;
   $('t-spawn').value = play.spawnScale; $('t-spawn-val').textContent = play.spawnScale < 1 ? 'MORE (' + play.spawnScale.toFixed(1) + ')' : play.spawnScale > 1 ? 'FEWER (' + play.spawnScale.toFixed(1) + ')' : 'AS DEALT';

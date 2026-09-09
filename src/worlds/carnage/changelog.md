@@ -3,6 +3,21 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-08 (later that night) — Claude — his first two asks before flying it
+
+- "This looks amazing!" — then, before playing: the characters larger, half again at least. Answered with the
+  natural size: standing on the street, a monster's fists should sit in the middle of the second-floor window,
+  which with hands at 55% of the body puts it at 2.7 floors tall — exactly half again the first cut's 1.8.
+  Built as a dial: `opts.monsterH` (default 2.7; configuration → PLAY → Monster size, 2–4 floors). The hands
+  (`monHand`), the reach (`monReach`), the hitbox, the drone's hover height and swipe reach, the soldiers' and
+  the truck's aim, the blimp catch and the rival punch all follow the size. On the street the giant now
+  SMASHES DOWN (the stomp clip) instead of jabbing above the storefront. The sim's helpers place a monster
+  by the cell its hands reach (`placeAtCell`); 1,893,814 assertions green. (He asked whether they grow as
+  the game goes — no, never did, the cabinet never did; the potion he remembered is a later game.)
+- "I can't read the controls well at all": a CONTROLS button, always at the bottom right, opens a panel with
+  every key in readable type (sized off the same base as configuration, so the text-size dial moves it too),
+  pausing a live game; click-away or Esc closes it. The hint line at the bottom left is bigger and brighter.
+
 ## 2026-09-08 (night) — Claude — BUILT, the whole thing, on James's brief
 
 His brief in the evening (plan.md, THE BRIEF at the top): variety on, companions none / one / both,

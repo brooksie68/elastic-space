@@ -115,11 +115,25 @@
     #loading.gone { opacity: 0; pointer-events: none; }
 
     /* ---- chrome ------------------------------------------------------------------------------------- */
-    #hint { position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint); transition: opacity 800ms ease; white-space: nowrap; }
+    #hint { position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.14em; color: var(--ink-dim); text-shadow: 0 1px 2px #000; transition: opacity 800ms ease; white-space: nowrap; }
     .faded { opacity: 0 !important; }
-    #controls { position: fixed; bottom: 1rem; right: 1rem; z-index: 12; display: flex; gap: 0.4rem; }
-    #controls button, #tuner-toggle { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px; color: var(--ink-dim); font: 700 0.69rem/1 var(--sans); letter-spacing: 0.2em; padding: 0.55rem 0.95rem; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: color 200ms ease, border-color 200ms ease, background 200ms ease; }
-    #controls button:hover, #tuner-toggle:hover { color: var(--ink); }
+    #controls { position: fixed; bottom: 1rem; right: 8.4rem; z-index: 12; display: flex; gap: 0.4rem; }
+    #btn-controls { position: fixed; bottom: 1rem; right: 1rem; z-index: 12; }
+    #controls button, #tuner-toggle, #btn-controls { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px; color: var(--ink-dim); font: 700 0.69rem/1 var(--sans); letter-spacing: 0.2em; padding: 0.55rem 0.95rem; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: color 200ms ease, border-color 200ms ease, background 200ms ease; }
+    #controls button:hover, #tuner-toggle:hover, #btn-controls:hover { color: var(--ink); }
+    #btn-controls.on { color: var(--ink); border-color: color-mix(in srgb, var(--amber) 55%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+    /* the controls panel: every key in readable type, sized in em off the one base */
+    #keys-panel { font-size: calc(var(--ui-base) * 1.3 * var(--ui-scale)); position: fixed; bottom: 3.6rem; right: 1rem; z-index: 13; width: min(34em, calc(100vw - 2rem)); max-height: calc(100vh - 5rem); overflow-y: auto; background: rgba(10, 7, 10, 0.94); border: 1px solid var(--glass-edge); border-radius: 1em; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 1em 1.2em 1.1em; display: none; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6); }
+    #keys-panel.open { display: block; }
+    #keys-panel h2 { font-family: var(--heavy); font-size: 1.5em; letter-spacing: 0.08em; color: var(--amber); margin-bottom: 0.5em; }
+    #keys-panel table { border-collapse: collapse; width: 100%; }
+    #keys-panel td { padding: 0.32em 0.4em; vertical-align: top; line-height: 1.35; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+    #keys-panel td.k { white-space: nowrap; width: 9.5em; }
+    #keys-panel kbd { display: inline-block; font: 700 0.95em/1 var(--sans); letter-spacing: 0.06em; color: var(--ink); background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); border-bottom-width: 3px; border-radius: 0.35em; padding: 0.3em 0.5em; margin: 0.1em 0.15em 0.1em 0; }
+    #keys-panel td.w { font-size: 1em; color: var(--ink); }
+    #keys-panel td.w small { display: block; color: var(--ink-dim); font-size: 0.85em; margin-top: 0.1em; }
+    #keys-panel .ways { margin-top: 0.8em; padding-top: 0.6em; border-top: 1px solid var(--glass-edge); color: var(--ink-dim); font-size: 0.9em; line-height: 1.5; }
+    #keys-panel .ways b { color: var(--ink); }
     #btn-restart.armed { color: var(--ink); border-color: color-mix(in srgb, var(--amber) 55%, transparent); background: color-mix(in srgb, var(--amber) 14%, transparent); }
     #tuner-toggle { position: fixed; bottom: 2.9rem; left: 1.6rem; z-index: 12; }
 
@@ -216,6 +230,23 @@
     <button id="btn-pause" type="button">BREAK</button>
     <button id="btn-restart" type="button">RESTART</button>
   </div>
+  <button id="btn-controls" type="button">CONTROLS</button>
+  <div id="keys-panel">
+    <h2>THE CONTROLS</h2>
+    <table>
+      <tr><td class="k"><kbd>A</kbd><kbd>D</kbd> or <kbd>←</kbd><kbd>→</kbd></td><td class="w">Walk along the street<small>On a building: step one window sideways. Step off the side and you fall.</small></td></tr>
+      <tr><td class="k"><kbd>W</kbd> or <kbd>↑</kbd></td><td class="w">Grab the building in front of you, then climb<small>Keep going past the top and you are on the roof.</small></td></tr>
+      <tr><td class="k"><kbd>S</kbd> or <kbd>↓</kbd></td><td class="w">Climb down<small>At the bottom it puts you back on the street. Hold it over the subway stairs to go down there.</small></td></tr>
+      <tr><td class="k"><kbd>SPACE</kbd></td><td class="w">Jump<small>On a building it lets go. From a roof it can reach the blimp.</small></td></tr>
+      <tr><td class="k"><kbd>J</kbd> <kbd>K</kbd> or <kbd>CLICK</kbd></td><td class="w">Punch<small>A punch also eats whatever is in an open window. Hold it to keep punching. On the street the giant smashes down.</small></td></tr>
+      <tr><td class="k"><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> + punch</td><td class="w">Aim the punch up, down or sideways</td></tr>
+      <tr><td class="k"><kbd>P</kbd> or <kbd>ESC</kbd></td><td class="w">Take a break (pause)<small>SPACE resumes.</small></td></tr>
+      <tr><td class="k"><kbd>R</kbd></td><td class="w">Restart<small>Press it twice.</small></td></tr>
+      <tr><td class="k"><kbd>C</kbd></td><td class="w">Configuration<small>Lives, variety, monster size, the collapse, falls, the army, hazards, the look, text size.</small></td></tr>
+      <tr><td class="k"><kbd>ENTER</kbd></td><td class="w">Clock in, or drive on from the map</td></tr>
+    </table>
+    <div class="ways"><b>The ways out of the world:</b> the subway stairs, a window that is not a room, the blimp's banner from a roof, and a smear on the far skyline.</div>
+  </div>
 
   <button id="tuner-toggle" type="button">CONFIGURATION</button>
   <div id="tuner">
@@ -226,6 +257,7 @@
     <div class="tab-body on" data-body="play">
       <div class="t-row"><div class="t-label"><span>Lives</span><span></span></div><div class="t-seg" id="t-lives"><button data-v="1" type="button">1</button><button data-v="3" type="button">3</button><button data-v="5" type="button">5</button><button data-v="9" type="button">9</button></div></div>
       <div class="t-row"><div class="t-label"><span>Variety — how different the three play</span><span id="t-flavour-val"></span></div><input id="t-flavour" type="range" min="0" max="1" step="0.05" /></div>
+      <div class="t-row"><div class="t-label"><span>Monster size — floors tall</span><span id="t-size-val"></span></div><input id="t-size" type="range" min="2" max="4" step="0.1" /></div>
       <div class="t-row"><div class="t-label"><span>Collapse — how much of a building must go</span><span id="t-thr-val"></span></div><input id="t-thr" type="range" min="0.6" max="1.4" step="0.05" /></div>
       <div class="t-row"><div class="t-label"><span>Falls — health per floor past two</span><span id="t-fall-val"></span></div><input id="t-fall" type="range" min="0" max="20" step="1" /></div>
       <div class="t-row"><div class="t-label"><span>The army — how often they come</span><span id="t-spawn-val"></span></div><input id="t-spawn" type="range" min="0.4" max="2.5" step="0.1" /></div>

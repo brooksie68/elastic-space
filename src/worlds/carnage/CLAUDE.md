@@ -64,6 +64,10 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   rotates headlines. Never cute.
 - NOTHING IS SAVED between visits (James): no high score. Dials persist like every sibling's; presets are
   tuning, file-backed.
+- THE SIZE is a dial (`opts.monsterH`, default 2.7 floors — half again the first cut, chosen so a standing
+  monster's fists sit in the middle of the second-floor window). Hands at 55% of the height, reach 70%:
+  everything that aims at or reaches from a monster goes through `monH / monHand / monReach`, never a
+  number. On the street the punch is the stomp clip (a downward smash); on a face the jabs.
 - Camera restraint: a fixed side camera, a long-eased follow, one low thud on a collapse, nothing else.
 - The rules are the cabinet's where they are the game: a window in one punch, a wall in two, a building
   down past 55–65% broken (bigger needs more), two floors of fall are free, the revert at zero. Points:
