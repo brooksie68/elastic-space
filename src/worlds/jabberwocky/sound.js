@@ -262,29 +262,14 @@
     try { bedTimer.drone.stop(); } catch (e) {}
     clearInterval(bedTimer); bedTimer = null;
   }
-  // the dungeon bed: over the drone, water drips, a chain shifts somewhere, and now and then something
-  // far away moans. Nothing keeps time. (The calliope that used to live here is gone for good.)
+  // the dungeon bed: over the drone, now and then something far away moans, or a wooden thud lands behind
+  // a wall. Nothing keeps time. THE DRIPS AND THE CHAIN ARE GONE FOR GOOD (James, 2026-09-08: "a small
+  // chirping noise or noises happening in this game and in the lab and i hate it") — nothing short or
+  // high-pitched lives in the bed any more, and nothing may be added back.
   function bedEvent(t0) {
     const r = Math.random();
     const into = (g) => { g.connect(bedGain); };
-    if (r < 0.55) {
-      // a drip: a short high ping with a soft body, panned somewhere
-      const f = 1800 + Math.random() * 1600;
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * 0.55, t0 + 0.12);
-      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.5, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
-      const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; if (p) p.pan.value = Math.random() * 1.6 - 0.8;
-      o.connect(g); if (p) { g.connect(p); into(p); } else into(g);
-      o.start(t0); o.stop(t0 + 0.25);
-    } else if (r < 0.8) {
-      // a chain shifting: a few metallic clicks, ringing
-      for (let i = 0; i < 3 + Math.floor(Math.random() * 4); i++) {
-        const tt = t0 + i * (0.05 + Math.random() * 0.08);
-        const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 900 + Math.random() * 1500;
-        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = o.frequency.value * 2; bp.Q.value = 12;
-        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, tt); g.gain.linearRampToValueAtTime(0.25, tt + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.25);
-        o.connect(bp); bp.connect(g); into(g); o.start(tt); o.stop(tt + 0.3);
-      }
-    } else if (r < 0.92) {
+    if (r < 0.6) {
       // a far moan: a slow voice-ish swell, very quiet
       const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(90 + Math.random() * 60, t0); o.frequency.linearRampToValueAtTime(70 + Math.random() * 40, t0 + 2.5);
       const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 500; f1.Q.value = 5;
@@ -301,7 +286,7 @@
     if (!ctx || !running) return;
     while (bedNext < ctx.currentTime + 0.5) {
       bedEvent(bedNext);
-      bedNext += 1.5 + Math.random() * 5;
+      bedNext += 7 + Math.random() * 12;
       bedStep++;
     }
   }

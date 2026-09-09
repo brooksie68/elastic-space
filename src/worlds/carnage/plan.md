@@ -1,4 +1,6 @@
-# Rampage — one-shot plan (2026-09-08, awaiting James's go)
+# Carnage — one-shot plan (written 2026-09-08 as Rampage; named Carnage and the
+# calls answered the same day — see "His calls" at the end)
+# BUILT 2026-09-08, the same night, on the brief below. The record of what landed is changelog.md.
 
 Reference family: the Retro arcade (Surround, Moon Battle 2075, the Asteroids
 plan, this). Same architecture: pure core + sim, three.js renderer, shell with
@@ -9,12 +11,28 @@ THE ONE CONSTRAINT (what makes it Rampage): a flat side-on city, buildings as a
 grid of window cells, you climb them and punch them down, and everything that
 matters happens in that grid. Everything else is 2026.
 
+## THE BRIEF, 2026-09-08 evening (James, answering the calls) — this amends everything below
+1. "Variety is good" — the flavour dial is ON, with a noticeable spread (call #1 answered).
+2. Companions: none / one / both on the start card (call #3 answered). There will be a small
+   CAMPAIGN (details TBD, his) and a FREE MODE. FREE MODE FIRST "so we can try things".
+3. IMPORTANT: "just like the other games we're not here to 100% copy Rampage. we have much
+   more processing power and graphical options than when Rampage was made. keep it retro but
+   put the time in for some good looking and detailed building damage and creatures and
+   backgrounds. a cool HUD. a PG-13 vibe, cynical and funny."
+4. A DAMAGE LAB "so we can work out and refine the things that monsters do" (the Weapon
+   Lab pattern: one street, every verb on a button, the notes loop to Claude).
+5. The time period is RIGHT NOW, 2026: the city, the people, the things in the windows, the
+   things that shoot at you — all 2026, not 1986.
+6. His words on the build: "take your time and check your own work throughout. let's see
+   something worthy of Claude."
+Name: CARNAGE. No Suno for now. Meshy: go, hard cap 550. Nothing saved between visits.
+
 ## Files
-src/worlds/rampage/ index.html, game-core.js, city.js (pure: city deals from a
+src/worlds/carnage/ index.html, game-core.js, city.js (pure: city deals from a
 seed), render3d.js, game.js, world.json (draft), CLAUDE.md, changelog.md,
 assets/presets.json, assets/models/ (Meshy), assets/tiles/ (Meshy),
 assets/audio/ (ElevenLabs one-shots), assets/cities.js (the day list).
-tmp/rampage/ sim.mjs, lookdev.html, make-smoke.mjs -> smoke.html, meshy/ (the
+tmp/carnage/ sim.mjs, lookdev.html, make-smoke.mjs -> smoke.html, meshy/ (the
 pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
 "unwired". Registry NOT run until ship. World Ideas #66.
 
@@ -48,8 +66,8 @@ pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
    off the edge to clock out; a companion monster can eat him for points
    (the cabinet's naked-human beat, recast). That costs one life; the next
    life re-enters at full health on the same day (the flies-in beat). Three
-   lives, an extra at a score gate. Score keeps across lives (the cabinet
-   reset it on a continue; ours is a life system — his call #2).
+   lives, an extra at a score gate. Score keeps across lives (his call #2,
+   answered 2026-09-08: kept; the cabinet zeroed it on a continue).
 6. Windows deal from a seeded table when broken: empty, a PERSON — a
    customer (grab = eat, 500; a waver builds points while you hold the
    cell), FOOD on-brand (fries, a shake, nuggets, a square patty, a paper
@@ -75,7 +93,9 @@ pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
     they climb, punch, eat, punch YOU if you're adjacent (and you them), and
     revert like you do. Simple, honest, sim-tested; never smarter than a
     wrecker needs to be. No two-human play in this shot (his call #3).
-11. High score in localStorage. No DOM/timers/Math.random in the core.
+11. High score for the session only — NOTHING SAVED between visits (James,
+    2026-09-08: "there's not going to be any saving long term"). No DOM/
+    timers/Math.random in the core.
 
 ## The 2026 look (renderer only)
 1. A real 3-D city seen from a fixed side camera, slightly raised, slight
@@ -108,8 +128,9 @@ pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
    clown laughs, the girl is sweet and murderous, the king never says a word
    and just stares; punch hits, glass, the crumble,
    the scream, soldier bark, heli, tank shot, the revert whimper) + synthesis
-   for the continuous (rotor, dust roll, neon hum, car alarms). A Suno track
-   from James if he wants one; default 0.22 like Jabberwocky.
+   for the continuous (rotor, dust roll, neon hum, car alarms). No Suno track
+   for now (his call #4, 2026-09-08); if one comes later it plays at 0.22
+   like Jabberwocky's.
 
 ## Shell
 1. Attract gate: never runs alone; START card (monster pick + companions);
@@ -120,7 +141,7 @@ pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
 3. Configuration PLAY (collapse threshold, fall damage, deal weights, spawn
    cadence, monster flavour, companions, photographer window, life count) +
    LOOK (glow, dust, debris count, room light mix, res cap, tile wear);
-   text-size control; click-away; presets via PUT /api/worlds/rampage/presets.
+   text-size control; click-away; presets via PUT /api/worlds/carnage/presets.
 4. Exits (data-drift, played through, never labelled): the SUBWAY entrance
    on some streets (walk in); a window whose room is not a room — a corridor
    of light (punch it open, climb in); the blimp towing a banner across every
@@ -131,8 +152,9 @@ pipeline scripts, Jabberwocky's pattern). Admin row under In progress +
 Three monsters (text-to-3D + refine + rig + ~6 clips) ~55 cr each; the naked
 human ~30; soldier rigged ~40; tank, helicopter, police car, taxi, trolley
 ~30 each as statics; three restaurant fronts ~90; ~12 seamless tiles ~36.
-Roughly 540 cr total; balance
-before/after in the wrap.
+Roughly 540 cr total. APPROVED 2026-09-08 with a HARD CAP OF 550 CREDITS:
+stop and tell James before any call that would take the running total past
+550 (his balance 3,100 at his count). Balance before/after in the wrap.
 
 ## Verification before hand-over
 1. Sim green (grid moves, climb faces, punch / break / collapse thresholds by
@@ -145,10 +167,14 @@ before/after in the wrap.
    walk-off, a night city, the map card, each exit.
 3. Smoke page pumped through a whole life. npm run check-worlds clean.
 
-## His calls (only these change the work)
-1. Cabinet-equal stats or the small flavour dial on (plan says on, small).
-2. Score kept across lives (plan) or reset each life (the cabinet continue).
-3. Companions: default 1 CPU monster (plan), 0, or 2.
-4. Suno track: yes / no.
-5. Meshy spend ~540 cr: go / trim (statics as code-built + tiles saves ~150).
-6. The world's name (working title stays Rampage; the mascots want a better one).
+## His calls (answered 2026-09-08 unless marked OPEN)
+1. The flavour dial — ANSWERED: "variety is good." On, default 60% of the
+   spread (the clown hits harder, the girl climbs faster, the king runs
+   faster), the Variety dial in configuration → PLAY.
+2. Score kept across lives — KEPT. And nothing is saved between visits.
+3. Companions — ANSWERED: none / one / both on the start card (ALONE · ONE
+   RIVAL · BOTH RIVALS). A small campaign later (his); FREE MODE first, built.
+4. Suno track — NO for now ("I'll deal with it later if we want one").
+5. Meshy spend ~540 cr — GO, HARD CAP 550: stop and tell him before any
+   call that would pass it.
+6. The name — CARNAGE.

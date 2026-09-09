@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carnage — the damage lab</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23120a0c'/%3E%3Cpath d='M6 26V12h4v6h3v-8h4v4h3V9h4v17z' fill='%23ffb347'/%3E%3Ccircle cx='23' cy='7' r='3' fill='%237ed957'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --ink: #faf4ec; --ink-dim: rgba(250, 244, 236, 0.55); --amber: #ffb347; --red: #ff3b3b; --green: #7ed957; --blue: #7fd7ff;
+      --bg: #07060a; --glass: rgba(12, 9, 12, 0.86); --glass-edge: rgba(255, 179, 71, 0.28);
+      --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+      --heavy: Impact, "Arial Black", "Franklin Gothic Heavy", sans-serif;
+      --panel-w: 420px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { background: var(--bg); overflow: hidden; font-family: var(--sans); color: var(--ink); font-size: 14px; }
+    #view { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.35) 100%); }
+    /* the plate: the verb's name, punched in when it is staged */
+    #plate { position: fixed; left: calc((100vw - var(--panel-w)) / 2); top: 8vh; transform: translateX(-50%) rotate(-1.5deg); text-align: center; pointer-events: none; opacity: 0; transition: opacity 180ms ease; max-width: calc(100vw - var(--panel-w) - 4rem); }
+    #plate.show { opacity: 1; }
+    #plate.pop { animation: pop 320ms cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes pop { 0% { transform: translateX(-50%) rotate(-1.5deg) scale(0.6); } 100% { transform: translateX(-50%) rotate(-1.5deg) scale(1); } }
+    #plate-name { font-family: var(--heavy); font-size: clamp(1.4rem, 3.2vw, 2.6rem); letter-spacing: 0.05em; color: var(--amber); text-shadow: 0 0 2px #000, 3px 3px 0 #120a0c, 0 0 24px rgba(255, 179, 71, 0.4); line-height: 1; }
+    #plate-line { margin-top: 0.5em; font-size: 1rem; font-weight: 600; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000; }
+    #hud-top { position: fixed; left: 1rem; top: 1rem; padding: 0.55rem 0.9rem; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 12px; backdrop-filter: blur(12px); pointer-events: none; }
+    #hud-top .t { font-family: var(--heavy); font-size: 1.15rem; letter-spacing: 0.08em; color: var(--green); }
+    #hud-top .m { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); margin-top: 0.15rem; }
+    #hud-top .m b { color: var(--ink); }
+    #health { position: fixed; left: 1rem; bottom: 1rem; width: 230px; padding: 0.5rem 0.8rem 0.6rem; background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 12px; pointer-events: none; }
+    #health .lbl { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.26em; color: var(--ink-dim); display: flex; justify-content: space-between; }
+    #hp-track { margin-top: 0.35rem; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+    #hp-fill { height: 100%; width: 100%; background: var(--green); border-radius: 4px; transition: width 160ms ease; }
+    #hint { position: fixed; left: calc((100vw - var(--panel-w)) / 2); bottom: 2rem; transform: translateX(-50%); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-dim); text-shadow: 0 1px 2px #000; pointer-events: none; white-space: nowrap; }
+    #toast { position: fixed; left: 1rem; bottom: 5.4rem; max-width: 22rem; padding: 0.6rem 0.9rem; background: rgba(20, 60, 30, 0.92); border: 1px solid var(--green); border-radius: 10px; font-size: 0.8rem; opacity: 0; transition: opacity 250ms; pointer-events: none; }
+    #toast.show { opacity: 1; }
+
+    /* ---- the panel ---- */
+    #panel { position: fixed; right: 0; top: 0; bottom: 0; width: var(--panel-w); display: flex; flex-direction: column; background: rgba(10, 7, 10, 0.96); border-left: 1px solid var(--glass-edge); z-index: 10; }
+    #panel-head { padding: 0.9rem 1rem 0.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+    #panel-head h1 { font-family: var(--heavy); font-size: 1.35rem; letter-spacing: 0.1em; color: var(--amber); }
+    #panel-head .sub { font-size: 0.66rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); margin-top: 0.15rem; }
+    #panel-head .sub b { color: var(--ink); font-weight: 800; }
+    #bar { display: flex; gap: 0.4rem; padding: 0.55rem 1rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); align-items: center; flex-wrap: wrap; }
+    button, select, input, textarea { font: inherit; color: var(--ink); background: #1a1216; border: 1px solid var(--glass-edge); border-radius: 8px; padding: 0.4rem 0.7rem; }
+    button { cursor: pointer; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); background: transparent; }
+    button:hover { color: var(--ink); border-color: var(--amber); }
+    button.go { background: var(--amber); color: #120a0c; border-color: var(--amber); }
+    button.go:hover { filter: brightness(1.1); color: #120a0c; }
+    #search { flex: 1; min-width: 0; font-size: 0.8rem; }
+    #list { flex: 1 1 0; min-height: 120px; overflow: auto; padding: 0.3rem 0; }
+    #list h3 { position: sticky; top: 0; background: rgba(10, 7, 10, 0.98); padding: 0.45rem 1rem 0.3rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: var(--amber); z-index: 1; }
+    #list h3 span { color: var(--ink-dim); margin-left: 0.5em; letter-spacing: 0.08em; }
+    #list h3.passed { color: var(--green); } #list h3.trash { color: var(--red); }
+    .row { display: flex; align-items: center; gap: 0.55rem; padding: 0.32rem 1rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-dim); border-left: 3px solid transparent; }
+    .row:hover { color: var(--ink); background: rgba(255, 255, 255, 0.03); }
+    .row.on { color: var(--ink); border-left-color: var(--amber); background: rgba(255, 179, 71, 0.06); }
+    .row .nm { flex: 1; min-width: 0; }
+    .row .rk { font-family: var(--heavy); font-size: 0.72rem; letter-spacing: 0.04em; color: var(--amber); border: 1px solid rgba(255, 179, 71, 0.45); border-radius: 5px; padding: 0 0.34em; line-height: 1.35; flex: none; }
+    .row .rk:empty { display: none; }
+    .row .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); flex: none; }
+    .row .dot.hidden { visibility: hidden; }
+    .row .pend { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--blue); flex: none; }
+    .row.hid { display: none; }
+    .row.trash .nm { text-decoration: line-through; opacity: 0.7; }
+    #detail { border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 0.7rem 1rem 0.8rem; max-height: 52vh; overflow: auto; }
+    #d-name { font-family: var(--heavy); font-size: 1.15rem; letter-spacing: 0.06em; color: var(--ink); }
+    #d-group { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: var(--amber); margin-top: 0.1rem; }
+    #facts { margin-top: 0.5rem; font-size: 0.78rem; line-height: 1.45; }
+    #facts div { display: flex; gap: 0.6rem; padding: 0.12rem 0; }
+    #facts b { flex: none; width: 5.2rem; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-dim); padding-top: 0.15rem; }
+    #d-do { margin-top: 0.6rem; display: flex; gap: 0.4rem; align-items: center; }
+    .verdict-row { margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
+    .verdict-row .lbl { font-size: 0.6rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-dim); }
+    #verdict { display: inline-flex; gap: 0.25rem; }
+    #verdict button.go.passed { background: var(--green); border-color: var(--green); }
+    #verdict button.go.trash { background: var(--red); border-color: var(--red); color: #fff; }
+    .write { margin-top: 0.7rem; }
+    .write textarea { width: 100%; min-height: 7.6em; resize: vertical; font-size: 0.82rem; line-height: 1.45; }
+    .write .row2 { display: flex; gap: 0.4rem; margin-top: 0.4rem; align-items: center; }
+    .write .row2 .st { flex: 1; font-size: 0.66rem; letter-spacing: 0.12em; color: var(--ink-dim); }
+    .write select { font-size: 0.7rem; }
+    .notes { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .note { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 0.45rem 0.6rem; font-size: 0.78rem; }
+    .note .meta { display: flex; gap: 0.6rem; align-items: center; font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 0.25rem; }
+    .note .meta .new { color: var(--blue); } .note .meta .done { color: var(--green); }
+    .note .meta .rk { color: var(--amber); } .note .meta .ac { color: var(--ink); } .note .meta .ac.trash { color: var(--red); } .note .meta .ac.pass { color: var(--green); }
+    .note .meta button { margin-left: auto; padding: 0.1rem 0.45rem; font-size: 0.58rem; }
+    .note .txt { white-space: pre-wrap; }
+    .note .rep { margin-top: 0.35rem; padding-top: 0.3rem; border-top: 1px dashed rgba(255, 255, 255, 0.12); color: var(--green); font-size: 0.74rem; }
+    #general { border-top: 1px solid rgba(255, 255, 255, 0.06); padding: 0.6rem 1rem 0.8rem; }
+    #general h4 { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 0.3rem; }
+    #general textarea { min-height: 3.6em; }
+    #keys { font-size: 0.66rem; letter-spacing: 0.06em; color: var(--ink-dim); line-height: 1.6; padding: 0.4rem 1rem 0.6rem; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+    #keys b { color: var(--ink); font-weight: 700; }
+    #err { position: fixed; left: 0; right: var(--panel-w); bottom: 0; background: #600; color: #fff; padding: 6px 10px; display: none; z-index: 9; white-space: pre-wrap; font-size: 11px; max-height: 30vh; overflow: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="vignette"></div>
+  <div id="hud-top"><div class="t">THE DAMAGE LAB</div><div class="m"><b id="who">the clown</b> · <span id="where">peoria</span> · <span id="cells">0 cells</span></div></div>
+  <div id="plate"><div id="plate-name"></div><div id="plate-line"></div></div>
+  <div id="health"><div class="lbl"><span>HEALTH</span><span id="hp-num">100</span></div><div id="hp-track"><div id="hp-fill"></div></div></div>
+  <div id="hint">A D WALK · W CLIMBS · S DOWN · SPACE JUMPS · J OR CLICK PUNCHES · Q E STEP THE LIST · ENTER STAGES IT · R RESET · N NIGHT</div>
+  <div id="toast"></div>
+  <div id="err"></div>
+
+  <div id="panel">
+    <div id="panel-head"><h1>THE DAMAGE LAB</h1><div class="sub"><b id="cnt">0</b> verbs · <b id="cnt-new">0</b> notes waiting · <b id="cnt-passed">0</b> passed · <b id="cnt-trash">0</b> trash</div></div>
+    <div id="bar">
+      <input id="search" type="search" placeholder="find a verb" />
+      <select id="monster"><option value="george">the clown</option><option value="lizzie">the girl</option><option value="ralph">the king</option></select>
+      <select id="company"><option value="dummy">rival: dummy</option><option value="wrecker">rival: wrecker</option><option value="none">rival: none</option></select>
+      <select id="army"><option value="off">the army: only when staged</option><option value="on">the army: on its clock</option></select>
+      <button id="night" type="button">NIGHT</button>
+      <button id="reset" type="button">RESET</button>
+    </div>
+    <div id="list"></div>
+    <div id="detail">
+      <div id="d-name">—</div><div id="d-group"></div>
+      <div id="facts"></div>
+      <div id="d-do"><button id="do" class="go" type="button">STAGE IT</button><span class="st" id="do-st" style="font-size:0.66rem;letter-spacing:0.12em;color:var(--ink-dim)"></span></div>
+      <div class="verdict-row"><span class="lbl">Verdict</span><div id="verdict"><button data-v="review" type="button">IN REVIEW</button><button data-v="passed" type="button">PASSED</button><button data-v="trash" type="button">TRASH</button></div></div>
+      <div class="write">
+        <textarea id="w-note" placeholder="a note for Claude about this verb — what is wrong, what would be better"></textarea>
+        <div class="row2">
+          <select id="w-rank" title="your rank for this verb: 1 = best"><option value="0">rank —</option><option value="1">rank 1 · best</option><option value="2">rank 2</option><option value="3">rank 3</option><option value="4">rank 4</option><option value="5">rank 5 · worst</option></select>
+          <select id="w-action" title="what this note asks"><option value="update">update it</option><option value="pass">pass</option><option value="trash">trash</option></select>
+          <button id="w-submit" class="go" type="button">SUBMIT</button>
+          <span class="st" id="w-note-st"></span>
+        </div>
+      </div>
+      <div class="notes" id="d-notes"></div>
+    </div>
+    <div id="general"><h4>General notes</h4><div class="write"><textarea id="g-note" placeholder="anything about the lab, the city, the feel"></textarea><div class="row2"><button id="g-submit" class="go" type="button">SUBMIT</button><span class="st" id="g-note-st"></span></div></div><div class="notes" id="g-notes"></div></div>
+    <div id="keys"><b>A D</b> walk · <b>W</b> grabs and climbs · <b>S</b> down · <b>Space</b> jumps or lets go · <b>J</b> or <b>click</b> punches (hold W S A D to aim) · <b>Q E</b> previous and next verb · <b>Enter</b> stages the verb · <b>R</b> reset · <b>N</b> night</div>
+  </div>
+
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="city.js?v=1"></script>
+  <script src="game-core.js?v=1"></script>
+  <script src="icons.js?v=1"></script>
+  <script src="sound.js?v=1"></script>
+  <script src="verbs.js?v=1"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module" src="lab.js?v=1"></script>
+</body>
+</html>

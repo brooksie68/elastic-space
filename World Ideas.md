@@ -339,16 +339,18 @@ goes too far, the hollow rock (shoot it open, fly through), and a dusty smudge a
 awaiting his flight before ship wiring. James's running list of games to emulate (2026-09-08):
 Asteroids, Rampage, Double Dragon — kept in the repo CLAUDE.md Todo.
 
-### 66. Carnage (was Rampage) — *one session* — `draft`, in progress (set up + named 2026-09-08)
+### 66. Carnage (was Rampage) — *one session* — `draft`, BUILT 2026-09-08, unwired, awaiting his flight
 
 Bally Midway 1986, the Retro arcade treatment: the rules kept (climb, punch, collapse, the
 window deals, soldiers / tanks / helicopters, the revert, 128 cities), the look taken to 2026
 (a real 3-D side-on city, collapse as the set piece, Meshy rigged monsters). James's monsters:
 three giant fast-food mascots — a clown, a pigtailed girl, a plastic-grinned king — each with a
 restaurant on every street and a bonus for wrecking a rival's. `src/worlds/carnage/plan.md` is
-the plan; scaffold in the folder; nothing built. Named Carnage 2026-09-08; his calls: score kept
-across lives, nothing saved between visits, no Suno for now, Meshy spend go with a 550-credit cap;
-the flavour dial and the companions await his numbers.
+the plan. Named Carnage 2026-09-08, then BUILT the same night on his evening brief (free mode
+first, 2026, PG-13 cynical, detailed damage, a Damage Lab): pure core + 1.9 M-assertion sim, the
+three.js city with the facade shader, Meshy rigged mascots (522 of his 550 credits), 54 ElevenLabs
+sounds and three voice sets, the shell with the map between days, the Damage Lab with the notes
+loop. Unjudged — his flight decides; the campaign is his to write.
 
 ## Built on commission — 2026-07-12
 

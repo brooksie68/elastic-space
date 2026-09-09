@@ -46,7 +46,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
   cursor the rifle points at, edge push turns; the lab's default; the game's configuration → PLAY → Mouse
   LOOK / CURSOR AIM, mouse look stays the game's default — he is deciding which he prefers); the lab's aim
   centre bug fixed (shots went left of the cursor by the panel's half-width; pane test: cursor on a creature
-  kills it); no music in the lab. READ THE WORLD CLAUDE.md "START HERE" + changelog first; arm the watcher.
+  kills it); no music in the lab. **2026-09-08: the note box was being wiped by the ten-second poll (his "the first
+  line disappears") — fixed, drafts per weapon; boxes seven lines + SUBMIT; THE RANK, a 1–5 dropdown per weapon (1 = best)
+  (`ranks` in notes.json, `notes.mjs ranks`) for his sorting later; server restarted for the `rank` op; then PASSED / TRASH verdicts per weapon (list sections;
+  trash leaves the roll at once via a server-written `cuts.js` the game loads, core `liveGags()`; at ship the trashed
+  gags get deleted for real on his word); an update / pass / trash dropdown by SUBMIT (default update) so a note
+  carries its verdict and he never writes it.** READ THE
+  WORLD CLAUDE.md "START HERE" + changelog first; arm the watcher.
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).
@@ -57,10 +63,22 @@ consistent. `npm run check-worlds` audits every world against the contract.
   1. Asteroids — BUILT 2026-09-08 as a one-shot on his "ok" (`src/worlds/asteroids/`, read its
      CLAUDE.md first; draft, unwired, sim 2,230 green, smoke-pumped, World Ideas #65). AWAITING
      HIS FLIGHT, then ship wiring on his word.
-  2. Rampage — SET UP 2026-09-08 as a draft world on his word ("we're going to build it"):
-     `src/worlds/rampage/` (plan.md + CLAUDE.md START HERE, admin row under In progress,
-     World Ideas #66). The mascots are the monsters. Nothing built; his six calls unanswered
-     by choice — build on the plan's defaults.
+  2. Rampage → CARNAGE — **BUILT 2026-09-08 (night) as a one-shot on his evening brief**
+     (`src/worlds/carnage/`, READ ITS CLAUDE.md FIRST; his brief is the top of plan.md: variety
+     on, company none/one/both, FREE MODE first + a small campaign later that is his to write,
+     "not a 100% copy — keep it retro but put the time into detailed building damage, creatures
+     and backgrounds, a cool HUD, PG-13 cynical and funny", a Damage Lab, the year 2026). Landed:
+     pure core + city (57-city road trip, the deal table, the army) with a 1.9 M-assertion sim;
+     the three.js city (facade shader: parallax rooms, curtains, holes with rims and rebar, neon
+     from a canvas atlas, awnings; collapse squash + debris + dust; the street with real parked
+     Meshy cars; far rows; day/night); Meshy rigged mascots + teen + soldier + five statics
+     (522 cr of his 550 cap, balance 3,146 → 2,624); 54 ElevenLabs sounds + the three voice sets
+     (the girl speaks as Lily); the shell (attract, picks with portraits, HUD, the plate, THE MAP
+     between days, configuration + presets, four ways out); THE DAMAGE LAB (admin Labs, 53 verbs,
+     STAGE IT, ranks/verdicts/notes → `tmp/carnage/notes.mjs watch`). Smoke-pumped through a day,
+     the map and a game over; check-worlds clean but the registry (draft). NOTHING SAVED between
+     visits. UNJUDGED — awaiting his flight; then the copy/feel thread, the campaign, ship.
+     Same night, first: the Jabberwocky bed's drip + chain chirps cut for good (his order).
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four

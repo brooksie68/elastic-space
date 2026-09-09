@@ -8,6 +8,11 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-08 — Claude — CARNAGE BUILT (was Rampage): named, his calls answered, then the whole world in one night
+- Morning: the name is CARNAGE (folder `src/worlds/carnage/`, slug, admin row, World Ideas #66 all moved); score kept across lives, nothing saved between visits; no Suno for now; Meshy spend approved with a hard cap of 550 credits.
+- Evening, his brief: variety on, company none / one / both, free mode first (a small campaign later, his), not a 100% copy — detailed building damage, creatures and backgrounds, a cool HUD, PG-13 cynical and funny, a Damage Lab, the year 2026. FIRST, on his order: the Jabberwocky bed's drip ping and chain clicks (the "small chirping noise" in the game and the lab) cut for good in `sound.js`.
+- Built: `city.js` + `game-core.js` (pure, 1,903,403-assertion sim), `render3d.js` (the facade shader city, collapse, street, far rows, day/night, rigged Meshy actors, post chain), `icons.js`, `sound.js` (54 ElevenLabs one-shots + three voice sets + beds), `index.html` + `game.js` (attract, picks with portraits, HUD, plate, the US map between days, configuration + presets, four exits), THE DAMAGE LAB (`lab.html` + `lab.js` + `verbs.js`, 53 verbs, the notes loop via `notes.json` + `tmp/carnage/notes.mjs`), tmp/carnage/ look-dev + smoke + Meshy/Blender/ElevenLabs pipeline (KEEP). Meshy 522 credits (balance 3,146 → 2,624). Admin: Damage Lab in Labs. Unjudged; draft, unwired.
+
 ## 2026-09-08 — Claude — Jabberwocky: the map mirror, THE WEAPON LAB + the notes loop, cursor aim
 - Corner map left/right were backwards (yesterday's flip was a mirror) — a 180° rotation now.
 - THE WEAPON LAB (`src/worlds/jabberwocky/lab.html`, admin panel → Labs): one bare lit hall, passive creatures that respawn two seconds after they die, every gag with plain facts, Q/E, creature picker, no music.
