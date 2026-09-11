@@ -8,6 +8,11 @@ consistent. `npm run check-worlds` audits every world against the contract.
 
 ## Todo
 
+- DOMAIN / HOSTING / ACCOUNTS — the whole plan lives in `Domain and Hosting.md` at the repo root
+  (2026-09-10: GitHub Pages is OUT, domain transfers to name.com after 2026-09-17, then a hosting
+  conversation; Supabase effort by piece is in there). Open it when James asks about the domain,
+  hosting, logins, or Supabase.
+
 - JABBERWOCKY (from the engaged draft "Battle Level w the Jabberwocky Rifle", id
   battle-level-w-the-jabberwocky-rifle) — **BUILT 2026-09-05 as a one-shot on James's go**
   (his three answers: a handful of short mazes; the boss has a Jabberwocky rifle too; scars stay
@@ -60,6 +65,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
   bullet (A LASER BLAST), chainsaw, rocket, pie, knives, baseballs, jello, gas, fist, sand, flamethrower, eagle.
   Read the world changelog 2026-09-08 entry (long) before touching any of it.** READ THE
   WORLD CLAUDE.md "START HERE" + changelog first; arm the watcher.
+  **2026-09-10/11 THE THIRD REVIEW NIGHT (~35 notes acted on, watcher armed, each verified by hand-driving the lab):
+  THE CLIP DECK — 15 Meshy library clips × 5 creatures (225 cr; deaths by weapon, runs per goon, run-and-jump on
+  notice, backflips on dud hits, three dances; catalog table in the world CLAUDE.md, the 678-clip library in
+  tmp/jabberwocky/anim-library.json); the hornet swarm (one swarm, stings, leaves), the cow on its side, the sneaker's
+  crush timed to the landing, THE LEGOS as a brick rain from the ceiling, THE GRAVY as a new `wave` core kind (a
+  lumpy fan out of the gun), the lab page trimmed (no facts card, no find/SOUND/FIRE). PASSED so far now also: hole,
+  tornado, vines, bees, gas, cow, cart, legos, anvil, glue, lightning. Read the world changelog 2026-09-11 entry first.**
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).
@@ -1248,8 +1260,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
    items 1/2/6/7 (moon not grid, weight by distance, Earth + glow + three ridges, the modern
    cockpit), item 8 dropped by him. HE DROVE IT 2026-09-08: "W and S are reversed" → view-relative
    driving; his three notes done (start never in the kill box, the crosshair IS the aim — no barrel
-   drawing, a faint grid then doubled to 100 ft); one-in-the-air → a 0.8 s reload. Tank sim 223 green.
-   AWAITING his next drive; then the rest of the nine (3 living structures, 4 turrets/dust/aim
+   drawing, a faint grid then doubled to 100 ft); one-in-the-air → a 0.8 s reload. **2026-09-09: the wheel
+   zooms 1–2×; then THE HONEST GUN on his green light** (the crosshair reads the shell's ARC and the hull
+   where it WILL be, the arc drawn, a landing mark, lead ghosts, hull-box hits, a visible tracer, SHORT / OVER / WIDE miss calls; sim 249 green; read the tank changelog). HE DROVE IT: the perspective
+   barrel "just floating in space" → off again (dial kept); "all the other stuff is cool." AWAITING his next drive; then the rest of the nine (3 living structures, 4 turrets/dust/aim
    line, 5 marks that stay, 9 death as signal loss) and the lander's mission content — `tank/CLAUDE.md`):
    Atari's 1979 vector cabinet, BUILT 2026-09-04 as a draft on
    James's go ("the same treatment as Surround" — modernize, bells and whistles,

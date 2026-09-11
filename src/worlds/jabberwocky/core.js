@@ -490,7 +490,7 @@
     p.cool = state.opts.fireCool;
     state.shotsFired++;
     state.gagsSeen[gag.id] = (state.gagsSeen[gag.id] || 0) + 1;
-    state.pending = { gag, t: state.opts.revealDelay };
+    state.pending = { gag, t: state.opts.revealDelay + (gag.hold || 0) };   // hold: a gag that waits longer before it goes (the handbag: its voice first, the swing 0.8 s after the pull — James 2026-09-10)
     state.events.push({ type: 'pull', gag });
     return gag;
   }
@@ -539,7 +539,7 @@
         return;
       case 'area': {
         const tgt = aimPoint(state, gag.mode === 'wander' ? ox : ox, oy, a, gag.mode === 'wander' ? 3 : 7, hostile);
-        spawnZone(state, gag, tgt.x, tgt.y, hostile, owner);
+        spawnZone(state, gag, tgt.x, tgt.y, hostile, owner, { x: ox, y: oy, a });
         return;
       }
       case 'drop': {
@@ -554,14 +554,13 @@
         return;
       }
       case 'train': {
-        // the dominant axis of the aim
-        const ax = Math.abs(Math.cos(a)) >= Math.abs(Math.sin(a)) ? Math.sign(Math.cos(a)) || 1 : 0;
-        const ay = ax ? 0 : Math.sign(Math.sin(a)) || 1;
+        // straight down the barrel — it used to snap to the nearest grid axis (James 2026-09-10: "not really aiming from the weapon")
+        const ax = Math.cos(a), ay = Math.sin(a);
         state.shots.push({ id: nextId++, gag, kind: 'train', sprite: gag.sprite, x: ox + ax * 1.1, y: oy + ay * 1.1, z: 0.5, a: Math.atan2(ay, ax), dx: ax, dy: ay, speed: gag.speed, breaks: gag.breaks, t: 0, life: 12, hostile, owner, hit: new Set(), dead: false, width: gag.width });
         return;
       }
       case 'summon': {
-        state.shots.push({ id: nextId++, gag, kind: 'summon', sprite: gag.sprite, x: mx, y: my, z: 0.35, a, speed: gag.speed, turn: gag.turn, life: gag.life, t: 0, hitR: gag.hitR, hostile, owner, hit: new Set(), dead: false, walker: true });
+        state.shots.push({ id: nextId++, gag, kind: 'summon', sprite: gag.sprite, x: mx, y: my, z: 0.35, a, speed: gag.speed, turn: gag.turn, life: gag.life, t: 0, hitR: gag.hitR, pierce: !!gag.pierce, hostile, owner, hit: new Set(), dead: false, walker: true });   // pierce: the bees sting one after another (2026-09-11)
         return;
       }
       case 'self': return selfHit(state, gag, a);
@@ -614,7 +613,7 @@
     state.events.push({ type: 'beam', gag, hits: victims.length });
   }
 
-  function spawnZone(state, gag, x, y, hostile, owner) {
+  function spawnZone(state, gag, x, y, hostile, owner, from) {
     const z = { id: nextId++, gag, mode: gag.mode, x, y, r: gag.r, t: 0, dur: gag.dur || 0.01, hostile, owner, sprite: gag.sprite, done: false, vx: 0, vy: 0, hurtT: 0, a: state.rand() * TAU };
     if (gag.mode === 'instant') {
       applySplash(state, gag, x, y, gag.r, hostile, owner);
@@ -627,6 +626,11 @@
     } else if (gag.mode === 'wander') {
       const a = state.rand() * TAU;
       z.vx = Math.cos(a) * gag.speed; z.vy = Math.sin(a) * gag.speed;
+    }
+    if (gag.mode === 'wander' && from) { z.vx = Math.cos(from.a) * gag.speed; z.vy = Math.sin(from.a) * gag.speed; }   // it sets off down the aim (the tornado)
+    if (gag.mode === 'wave' && from) { z.x = from.x; z.y = from.y; z.a = from.a; z.front = 0; z.laid = 0; }   // THE WAVE (the gravy, 2026-09-11): a fan from the muzzle down the aim; the front rolls out to gag.range over gag.dur
+    if (gag.mode === 'pull' && gag.travel && from) {   // the black hole flows forward as a dark sphere first (James 2026-09-10)
+      z.tx = x; z.ty = y; z.sx = from.x + Math.cos(from.a) * 0.6; z.sy = from.y + Math.sin(from.a) * 0.6; z.x = z.sx; z.y = z.sy; z.dur += gag.travel;
     }
     state.zones.push(z);
     state.events.push({ type: 'zone', gag, x, y });
@@ -671,6 +675,7 @@
   }
 
   // ---------------------------------------------------------------- hits
+  const TORNADO_BURST = 3.0, DROP_T = 0.6;   // the tornado: 1.3 s up the funnel, a ride at the top, apart at 3 s; a dropped creature falls for 0.6 s
   function hitGoon(state, g, gag, from) {
     if (g.state === 'dead' || g.state === 'dying') return false;
     if (g.isBoss) return hitBoss(state, g, gag, from);
@@ -686,7 +691,8 @@
       return true;
     }
     g.state = 'dying'; g.dieT = 0; g.dieDur = gag.longDeath || def.dur; g.hp = 0;
-    if (outcome === 'fling') {
+    if (outcome === 'fling' && gag.id === 'tornado') { g.vx = g.vy = 0; g.dieDur = TORNADO_BURST + 0.4; g.rideZone = from && from.zone != null ? from.zone : null; }   // the tornado keeps its catch: up the funnel, a ride, apart at the top (James 2026-09-10); it rides WITH the funnel and a tornado that ends first drops it back alive (2026-09-11)
+    else if (outcome === 'fling') {
       const ang = Math.atan2(g.y - from.y, g.x - from.x);
       g.vx = Math.cos(ang) * 7; g.vy = Math.sin(ang) * 7; g.dieDur = 3;
     }
@@ -853,12 +859,12 @@
       const ox = e.aIsPlayer ? p.x : e.ox, oy = e.aIsPlayer ? p.y : e.oy, a = e.aIsPlayer ? p.a + (p.aim || 0) : e.a;   // the stream follows the rifle's aim, not just the facing (James)
       while (e.acc >= 1) {
         e.acc -= 1;
-        const aa = a + (state.rand() - 0.5) * 0.24;
+        const aa = a + (state.rand() - 0.5) * (e.gag.jitter != null ? e.gag.jitter : 0.24);   // a hose (glue) barely wanders; the flame licks about (James 2026-09-10)
         const sp = e.gag.speed * (0.85 + state.rand() * 0.3);
         state.shots.push({
           id: nextId++, gag: e.gag, kind: 'bolt', sprite: e.gag.sprite, x: ox + Math.cos(aa) * 0.5, y: oy + Math.sin(aa) * 0.5, z: 0.3 + state.rand() * 0.25, a: aa,
           vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: e.gag.range / sp, t: 0, hitR: e.gag.hitR, pierce: false, bounce: false, hostile: e.hostile, owner: e.owner,
-          hit: new Set(), ox, oy, splash: 0, dead: false, drop: true, wallScar: state.rand() < 0.12,
+          hit: new Set(), ox, oy, splash: 0, dead: false, drop: !(e.gag.pools && state.rand() < e.gag.pools), wallScar: state.rand() < 0.12,   // pools: a few drops land as the scar (lava, 2026-09-10)
         });
       }
     }
@@ -919,11 +925,11 @@
           const d = angDiff(want, s.a);
           s.a += Math.max(-s.turn * dt, Math.min(s.turn * dt, d));
         }
-        const o = { x: s.x, y: s.y };
-        moveCircle(state, o, Math.cos(s.a) * s.speed * dt, Math.sin(s.a) * s.speed * dt, 0.2);
-        s.x = o.x; s.y = o.y;
+        if (s.hold > 0) s.hold -= dt;   // the swarm stays on its victim a while (gag.sting) before hunting the next (James 2026-09-11)
+        else { const o = { x: s.x, y: s.y }; moveCircle(state, o, Math.cos(s.a) * s.speed * dt, Math.sin(s.a) * s.speed * dt, 0.2); s.x = o.x; s.y = o.y; }
         boltHits(state, s);
-        if (s.t >= s.life) { s.dead = true; state.events.push({ type: 'gone', gag: s.gag, x: s.x, y: s.y }); }
+        const next = target ? Math.hypot(target.x - s.x, target.y - s.y) : Infinity;
+        if (s.t >= s.life || (s.pierce && !target && s.t > 0.5) || (s.pierce && s.hit.size > 0 && !(s.hold > 0) && next > (s.gag.stingReach || 3.5))) { s.dead = true; state.events.push({ type: 'gone', gag: s.gag, x: s.x, y: s.y }); }   // the first victim for sure; a second or third only if close by (James 2026-09-11); nobody left = leave
       } else if (s.kind === 'train') {
         const nx = s.x + s.dx * s.speed * dt, ny = s.y + s.dy * s.speed * dt;
         const lvl = state.level;
@@ -982,6 +988,7 @@
           s.dead = true; return;
         }
         const killed = hitGoon(state, g, s.gag, { x: s.ox != null ? s.ox : s.x, y: s.oy != null ? s.oy : s.y });
+        if (s.kind === 'summon' && s.gag.sting) { s.hold = s.gag.sting; s.x = g.x; s.y = g.y; }   // park on the victim
         if (s.gag.cloud) addScar(state, s.gag.cloud, g.x, g.y, s.gag);
         if (!s.pierce) {
           if (s.gag.scar && !s.drop && s.kind !== 'summon') addScar(state, s.gag.scar, g.x, g.y, s.gag);
@@ -1052,9 +1059,13 @@
       } else if (z.mode === 'flash') {
         if (z.t >= z.dur) z.dead = true;
       } else if (z.mode === 'pull') {
-        const k = Math.min(1, z.t / 0.4);
+        const tr = z.tx != null ? g.travel : 0;
+        if (z.t < tr) { const u = z.t / tr, e = u * u * (3 - 2 * u); z.x = z.sx + (z.tx - z.sx) * e; z.y = z.sy + (z.ty - z.sy) * e; }   // the flight out
+        else if (z.tx != null) { z.x = z.tx; z.y = z.ty; }
+        const k = z.t < tr ? 0 : Math.min(1, (z.t - tr) / 0.4);
         for (const t of state.goons) {
-          if (t.state === 'dead' || t.state === 'dying') continue;
+          if (t.state === 'dead') continue;
+          if (t.state === 'dying') { if (t.gagId === g.id && k > 0) { const f = Math.min(1, dt * 5); t.x += (z.x - t.x) * f; t.y += (z.y - t.y) * f; } continue; }   // the caught are sucked into the centre (James 2026-09-10)
           const d = Math.hypot(t.x - z.x, t.y - z.y);
           if (d < z.r) {
             const pull = (1 - d / z.r) * 6 * k;
@@ -1070,8 +1081,25 @@
         }
         if (z.hurtT > 0) z.hurtT -= dt;
         if (z.t >= z.dur) { z.dead = true; state.events.push({ type: 'pop', gag: g, x: z.x, y: z.y }); }
+      } else if (z.mode === 'wave') {
+        const k = Math.min(1, z.t / z.dur), e = 1 - (1 - k) * (1 - k) * (1 - k);   // fast out of the gun, slowing as it spreads
+        z.front = g.range * e;
+        const inFan = (t) => { const d = Math.hypot(t.x - z.x, t.y - z.y); if (d > z.front + t.r || d > g.range) return false; if (d < 0.3) return true; return Math.abs(angDiff(Math.atan2(t.y - z.y, t.x - z.x), z.a)) < g.spread + t.r / Math.max(0.3, d); };
+        if (z.hostile) { if (z.hurtT <= 0 && inFan(p)) { hurtPlayer(state, g, z.owner); z.hurtT = 9; } if (z.hurtT > 0) z.hurtT -= dt; }
+        else for (const t of state.goons) { if (t.state === 'dead' || t.state === 'dying' || t.isBoss && !inFan(t)) continue; if (inFan(t) && lineOfSight(state, z.x, z.y, t.x, t.y)) hitGoon(state, t, g, { x: z.x, y: z.y }); }
+        if (g.scar) while (z.laid < Math.floor(z.front / 1.1)) {   // the gravy lies where it flowed: a pool every cell or so, scattered across the fan
+          z.laid++; const d = z.laid * 1.1, aa = z.a + (state.rand() - 0.5) * 2 * g.spread * 0.8;
+          const sx = z.x + Math.cos(aa) * d, sy = z.y + Math.sin(aa) * d;
+          if (cellAt(state.level, sx, sy) === OPEN && lineOfSight(state, z.x, z.y, sx, sy)) addScar(state, g.scar, sx, sy, g);
+        }
+        if (z.t >= z.dur + 0.8) { z.dead = true; state.events.push({ type: 'gone', gag: g, x: z.x, y: z.y }); }
       } else if (z.mode === 'wander') {
-        if (state.rand() < dt * 1.5) { const a = state.rand() * TAU; z.vx = Math.cos(a) * g.speed; z.vy = Math.sin(a) * g.speed; }
+        if (state.rand() < dt * 1.5) {   // it heads for the nearest creature, else away from the gun, with a little waver (James 2026-09-10: 'travels away from the gun towards the bad guys pretty reliably')
+          const tgt = z.hostile ? p : nearestGoon(state, z.x, z.y);
+          let a = tgt ? Math.atan2(tgt.y - z.y, tgt.x - z.x) : Math.atan2(z.y - p.y, z.x - p.x);
+          if (state.rand() < 0.25) a = state.rand() * TAU; else a += (state.rand() - 0.5) * 0.8;
+          z.vx = Math.cos(a) * g.speed; z.vy = Math.sin(a) * g.speed;
+        }
         const o = { x: z.x, y: z.y };
         const hit = moveCircle(state, o, z.vx * dt, z.vy * dt, 0.4);
         if (hit.x) z.vx = -z.vx;
@@ -1079,7 +1107,7 @@
         z.x = o.x; z.y = o.y; z.a += dt * 9;
         for (const t of state.goons) {
           if (t.state === 'dead' || t.state === 'dying') continue;
-          if (Math.hypot(t.x - z.x, t.y - z.y) < z.r + t.r) hitGoon(state, t, g, { x: z.x, y: z.y });
+          if (Math.hypot(t.x - z.x, t.y - z.y) < z.r + t.r) hitGoon(state, t, g, { x: z.x, y: z.y, zone: z.id });
         }
         if (z.hurtT > 0) z.hurtT -= dt;
         if (Math.hypot(p.x - z.x, p.y - z.y) < z.r && z.hurtT <= 0) {
@@ -1119,6 +1147,16 @@
       if (g.state === 'dead') continue;
       if (g.state === 'dying') {
         g.dieT += dt;
+        if (g.gagId === 'tornado' && g.outcome === 'fling' && !g.isBoss) {   // the ride: the caught creature travels with its funnel; if the tornado runs out before the burst it falls back alive (James 2026-09-11)
+          const z = state.zones.find((z) => z.id === g.rideZone && !z.dead);
+          if (z) { g.x = z.x; g.y = z.y; }
+          else if (g.dieT < TORNADO_BURST) {
+            g.state = 'idle'; g.hp = 1; g.outcome = null; g.gagId = null; g.dropped = DROP_T; g.stagger = 0.9; g.wanderT = 1 + state.rand() * 2; g.path = null; g.rideZone = null;
+            state.kills = Math.max(0, state.kills - 1);
+            state.events.push({ type: 'dropped', goon: g, x: g.x, y: g.y });
+            continue;
+          }
+        }
         if (g.outcome === 'fling' && !g.isBoss) {
           const o = { x: g.x, y: g.y };
           const hit = moveCircle(state, o, g.vx * dt, g.vy * dt, 0.2);
@@ -1133,6 +1171,7 @@
         }
         continue;
       }
+      if (g.dropped > 0) g.dropped -= dt;
       if (g.state === 'pacified') { g.pacT += dt; continue; }
       const def = g.def;
       const dist = Math.hypot(p.x - g.x, p.y - g.y);

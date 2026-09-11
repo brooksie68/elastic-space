@@ -440,6 +440,805 @@
       "action": "update",
       "reply": "Already covered: the death scream rotates through scream-01 to 05 now, this one included. Reload the lab. Put it back in PASSED for you.",
       "doneAt": "2026-09-09T03:26:59.245Z"
+    },
+    {
+      "id": "nmtuwq8at59kg",
+      "gag": "glue",
+      "text": "this should look like a hose is shooting out of the gun",
+      "at": "2026-09-10T02:27:34.661Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: the glue is one continuous glossy rope from the barrel to where it splashes, sagging with distance; tighter spray, 1.6 s, 40 drops/s.",
+      "doneAt": "2026-09-10T02:29:45.952Z"
+    },
+    {
+      "id": "nmtuwsimdixxl",
+      "gag": "piranhas",
+      "text": "the pirhanhas look really cartoony and they're all flying sidewise and they're blue. see if you get get one from meshy and have a school all fly away from the gun and chomp better on the creatures",
+      "at": "2026-09-10T02:29:21.348Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: a realistic Meshy piranha (15 cr), silver with a red belly; the school swims away from the gun nose-first with a wriggle; on a kill seven fish swarm the body and lunge in and out while it is eaten. Reload the page to load it.",
+      "doneAt": "2026-09-10T02:41:20.362Z"
+    },
+    {
+      "id": "nmtuwv86l0k11",
+      "gag": "blackhole",
+      "text": "it would be cooler if this flow forward like a dark black sphere and then looked more like our current understanding of a black hole with the accretion disk ala Interstellar. and the monsters should get sucked into the center",
+      "at": "2026-09-10T02:31:27.789Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: it leaves the gun as a dark sphere, flows forward for 0.7 s, then opens with the accretion disk and the lensed halo over the top; anything caught is dragged to the centre and spaghettified into it. Reload the page to load it.",
+      "doneAt": "2026-09-10T02:41:20.521Z"
+    },
+    {
+      "id": "nmtuwx486h5et",
+      "gag": "train",
+      "text": "this is cool but it's going sideways. double it in size and turn it so it's driving away from the gun",
+      "at": "2026-09-10T02:32:55.974Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Built: doubled, and turned to drive away from the gun. The bus had the same sideways problem and got the same turn. Reload the page to load it.",
+      "doneAt": "2026-09-10T02:41:20.671Z"
+    },
+    {
+      "id": "nmtuwz9jcrhyv",
+      "gag": "lava",
+      "text": "this should look like a firehose of lava and it arcs and while it's pouring over there a lot of chunks fly out in all directions",
+      "at": "2026-09-10T02:34:36.168Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: LAVA is a hose now — a glowing rope from the barrel that arcs to the pour, pools where it lands, and throws chunks in every direction while it pours. Reload the page to load it.",
+      "doneAt": "2026-09-10T02:41:20.813Z"
+    },
+    {
+      "id": "nmtux0ysc9iie",
+      "gag": "glue",
+      "text": "still looks like a bunch of snowballs",
+      "at": "2026-09-10T02:35:55.547Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "The snowballs were the old page: the rope only loads on a reload (the toast says so now). Also the drops inside the rope are gone for good — only the tip shows one, small.",
+      "doneAt": "2026-09-10T02:41:20.949Z"
+    },
+    {
+      "id": "nmtux94wxsmxt",
+      "gag": "cart",
+      "text": "this has potential but again, its going sideways. all the models you got made are going sideways. make it going forwards",
+      "at": "2026-09-10T02:42:16.737Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Built: the cart rolls away from the gun now — its model sat at 45° in the file. I rendered every prop to check the rest: all the walkers, the fish, the eagle and the cow face the right way; only the train, the bus and the cart were off, and all three are fixed. Reload the page to load it.",
+      "doneAt": "2026-09-10T02:43:59.804Z"
+    },
+    {
+      "id": "nmtuygmuc2jaa",
+      "gag": "glue",
+      "text": "there's no rope. just more snowballs again.",
+      "at": "2026-09-10T03:16:06.180Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "The rope draws here through the lab's own FIRE button — what you are looking at is the page from before tonight's changes, which never reloads on its own. Press F5 once. From then on the lab reloads itself a couple of seconds after any UPDATED toast (your drafts and pick survive it).",
+      "doneAt": "2026-09-10T03:18:30.509Z"
+    },
+    {
+      "id": "nmtuykbj13f0q",
+      "gag": "glue",
+      "text": "i forgot to refresh. now i did. looks great",
+      "at": "2026-09-10T03:18:58.141Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Good. From here the lab reloads itself when a change lands.",
+      "doneAt": "2026-09-10T03:19:10.430Z"
+    },
+    {
+      "id": "nmtuylr7kj2vw",
+      "gag": "piranhas",
+      "text": "awesomely done",
+      "at": "2026-09-10T03:20:05.120Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Thanks.",
+      "doneAt": "2026-09-10T03:20:19.528Z"
+    },
+    {
+      "id": "nmtuymfdl53yw",
+      "gag": "blackhole",
+      "text": "great!",
+      "at": "2026-09-10T03:20:36.441Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Thanks.",
+      "doneAt": "2026-09-10T03:20:49.659Z"
+    },
+    {
+      "id": "nmtuyprs8zcu9",
+      "gag": "train",
+      "text": "its not coming out of the front of the gun. only from the middle of the screen",
+      "at": "2026-09-10T03:23:12.488Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: the train leaves from the front of the gun now and eases out over its first half second (the bus too).",
+      "doneAt": "2026-09-10T03:24:00.962Z"
+    },
+    {
+      "id": "nmtuyueodlf5y",
+      "gag": "lava",
+      "text": "seems like it requires a lot of processing?",
+      "at": "2026-09-10T03:26:48.781Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "It was: each lava pool carried its own light and the hose another, and every time the light count changed three.js rebuilt every shader. Now one pool is lit at a time, the hose has no light (the rope glows on its own), the tube is lighter and it leaves fewer pools. Should be smooth now.",
+      "doneAt": "2026-09-10T03:28:35.105Z"
+    },
+    {
+      "id": "nmtuyv6nd87wu",
+      "gag": "train",
+      "text": "still comes out of the middle of the screen and ignores the barrel completely",
+      "at": "2026-09-10T03:27:25.033Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Built: the train's rear now starts at the barrel (the first cut put its centre there, which left you inside it) and it rushes out from the gun over 0.7 s before it drives off down the row.",
+      "doneAt": "2026-09-10T03:28:53.251Z"
+    },
+    {
+      "id": "nmtuyzdnv2fgj",
+      "gag": "train",
+      "text": "it's not really aiming from the weapon still. is this a real model or something else? if its not a model lets get one",
+      "at": "2026-09-10T03:30:40.747Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "It is a real model (the Meshy locomotive). The miss was the game logic: a train drove along the nearest grid axis, not where the gun pointed, so off-axis aims looked wrong. It drives straight down the barrel now, the bus too.",
+      "doneAt": "2026-09-10T03:31:22.251Z"
+    },
+    {
+      "id": "nmtuzphifxykg",
+      "gag": "hole",
+      "text": "randomly use the following death screams for this:\nC:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\hole-death-01.mp3 through 04",
+      "at": "2026-09-10T03:50:58.791Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: a hole kill plays one of hole-death-01..04 at random (a per-weapon death sound; drop more numbered files beside them and they join the set).",
+      "doneAt": "2026-09-10T03:51:59.848Z"
+    },
+    {
+      "id": "nmtuzqjzjlk6a",
+      "gag": "gravel",
+      "text": "go to meshy and get 6 rough pebbles and use those instead of this",
+      "at": "2026-09-10T03:51:48.655Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: six rough Meshy pebbles (rock-1..6), a random one dealt per stone, 32 a second. A single 'six pebbles' generation came back as soup that would not split cleanly, so they are six single generations — 105 cr all in.",
+      "doneAt": "2026-09-10T04:07:07.363Z"
+    },
+    {
+      "id": "nmtuzswo9xxu3",
+      "gag": "handbag",
+      "text": "like the punching fist... go to meshy and get the arm and the handbag on a strap as two separate models. Bring them in here. Make them. Overly large. And then have it come swinging. From just to the right of the gun. And wap the monsters with. Real 3D looking purse.",
+      "at": "2026-09-10T03:53:38.409Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Built: a real quilted Meshy purse (15 cr) on its handle, overly large, swung in from the right of the gun on a roundhouse and whipping across to the whap. The arm is the giant Meshy fist with its forearm stump: Meshy's text-to-3D made a whole old lady TWICE when asked for a severed old lady's arm (30 cr, both benched in tmp/jabberwocky/models). If you want the lady's arm proper, the route is a drawn image → image-to-3D, ~21 cr, on your word.",
+      "doneAt": "2026-09-10T04:07:07.571Z"
+    },
+    {
+      "id": "nmtv038wo1a6k",
+      "gag": "hole",
+      "text": "Instead of randomly trigger the sounds in succession. That way at least it won't repeat the same sound twice.",
+      "at": "2026-09-10T04:01:40.824Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: the hole's screams play in succession (01, 02, 03, 04, round again), never the same one twice running. Every numbered set works that way now, the other screams included.",
+      "doneAt": "2026-09-10T04:02:01.738Z"
+    },
+    {
+      "id": "nmtv09apw3unj",
+      "gag": "tornado",
+      "text": "use this while it's on screen:\nC:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\tornado.mp3\n\nalso make it a classic vortex made of many stacked \"plates\" where it starts at the floor very small and increases in width with each plate as it goes up. and that continues all the way to the ceiling where it's pretty wide and it twists and roils around like a tornado",
+      "at": "2026-09-10T04:06:23.108Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Built: eighteen streaked plates stacked from a tiny one on the floor to a wide one at the ceiling, each spinning at its own rate (fast low, slower high) and roiling off the axis; your tornado.mp3 loops from the moment it appears until it is gone.",
+      "doneAt": "2026-09-10T04:10:17.751Z"
+    },
+    {
+      "id": "nmtv0bonp2ooc",
+      "gag": "gravel",
+      "text": "Actually these are too large and. A little bit too light in color. Can you darken them and reduce their size by? Like 50%. And then double. The number of them. By 50% more.",
+      "at": "2026-09-10T04:08:14.485Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: the pebbles are half the size and half as bright, and there are half again as many (48 a second).",
+      "doneAt": "2026-09-10T04:10:17.956Z"
+    },
+    {
+      "id": "nmtv0irhxylre",
+      "gag": "handbag",
+      "text": "i added purse.mp3 for this",
+      "at": "2026-09-10T04:13:44.757Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Wired: purse.mp3 plays on the swing (the synthesis stays as the fallback).",
+      "doneAt": "2026-09-10T04:14:06.074Z"
+    },
+    {
+      "id": "nmtv0kgnqmokp",
+      "gag": "vines",
+      "text": "This is one of the weakest ones I've.  Scene. It's just some green lime green squiggles on the ground. These need to come up out of the ground. They need to be a darker green color. They need to have. Leaves and berries. And thinner tips. And they need to coil up and around. The creatures then pull them down and crush them. And don't shirk on the coiling. Part you know, they gotta almost be like constrictor snakes. Like 6810 of them come up out of the ground. A good amount of leaves. And some color variations.",
+      "at": "2026-09-10T04:15:04.022Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Built: seven to ten real vines rise out of the floor at the aim point — dark greens with variation, thick at the root and thin at the tip, coiling like constrictors, leaves and berry clusters along them, holding a few seconds then sinking back. A caught creature gets three coils climbing it, tightening, then it is pulled down and crushed with a burst of blood.",
+      "doneAt": "2026-09-10T04:24:45.853Z"
+    },
+    {
+      "id": "nmtv0lc1whlui",
+      "gag": "anvil",
+      "text": "Good one, but make the anvil like. 5 times larger. And. When it hits them, let's have some. Some blood and guts.",
+      "at": "2026-09-10T04:15:44.708Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: five times larger, and a hit throws blood, a gib burst, wall splats and intestines.",
+      "doneAt": "2026-09-10T04:24:45.973Z"
+    },
+    {
+      "id": "nmtv0s4wl7big",
+      "gag": "piano",
+      "text": "i added piano-crash.mp3 for this\n\nmake the piano 3x larger",
+      "at": "2026-09-10T04:21:02.037Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: three times larger, piano-crash.mp3 plays when it lands (drops can carry their own landing sound now).",
+      "doneAt": "2026-09-10T04:24:46.126Z"
+    },
+    {
+      "id": "nmtv0uiwjxjkq",
+      "gag": "handbag",
+      "text": "dont double up on the lady's yell or add any echo. add a little reverb if you want like a medium room. that's it",
+      "at": "2026-09-10T04:22:53.491Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: the kill scream no longer plays on top of purse.mp3, and the purse gets a medium-room reverb, mixed low. No echo.",
+      "doneAt": "2026-09-10T04:24:46.262Z"
+    },
+    {
+      "id": "nmtv1317eh29m",
+      "gag": "sneeze",
+      "text": "I don't think we need to have any snot coming out or anything like that. Like right now nothing needs to really come out of the gun unless. You can make something that simulates a blast of wind. Can you do like a? Kind of like what you did with, like the fire effect, except like with. Like what kind of looks like very just light. Slightly opaque. Material like flying away from the gun in An expanding cone shape.",
+      "at": "2026-09-10T04:29:30.458Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Built: nothing solid leaves the gun now — a stream of pale, slightly see-through wisps flying out in a cone that widens as it goes, each swelling and thinning out. No snot on the floor either.",
+      "doneAt": "2026-09-10T04:35:49.100Z"
+    },
+    {
+      "id": "nmtv14saihs92",
+      "gag": "lightning",
+      "text": "This just looks like a straight bolt again, like laser blast and bullet. The lightning bolt you know it has. Bifurcations. And it's crooked and scraggly, squiggly looking. And it's like a bright white core. With like a bright golden yellow. Aura around it. And when it hits the. The creatures. They need to. Jump up in the air like 6 inches with their arms out to their sides and see. A flickering skeleton that appears. Through the opacity of their body. Yeah, have fun with that.",
+      "at": "2026-09-10T04:30:52.218Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Built: the bolt is crooked and scraggly with two to four forks off it, a bright white core inside a golden-yellow aura, flickering between three shapes; the chain jumps are bolts too. A creature hit hops six inches with its arms straight out and buzzing while a skull, rib cage and spine flicker through its half-transparent body, then it drops.",
+      "doneAt": "2026-09-10T04:35:48.874Z"
+    },
+    {
+      "id": "nmtv18xjz4fb8",
+      "gag": "hole",
+      "text": "love it. now \nmake the holes 25% larger and give them some type of edging that makes them a bit more visible",
+      "at": "2026-09-10T04:34:05.663Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: the holes are 25% larger and edged with a pale, broken stone rim.",
+      "doneAt": "2026-09-10T04:35:49.312Z"
+    },
+    {
+      "id": "nmtv1f9icl2dk",
+      "gag": "tornado",
+      "text": "this is what your tornado looks like: C:\\Users\\brook\\ai-projects\\elastic-space\\tmp\\jabberwocky\\review\\tornado.png\n\nThere's like. Three different directional stacks. Like there's some small ones at the bottom and there's an upside down stack where it gets really wide and goes up and gets smaller, which is opposite of what it should do. Then it has like two randomly placed swirly things that are in the kind of 2/3 of the way up. Those swirly things are pretty cool. Umm, but see, the whole thing is is that you need a stack of things. That's just one. Stack starting with the smallest and the next one is a little bigger and the next is bigger and the next is bigger. Layer like flat. Plates. And you know they move. Like they're all connected, but they kind of undulate. Like. Almost like a snake. A whole stack of these going from the littlest one, which is touching the ground all the way up into the ceiling. It has to reach the ceiling and look like it goes up into the ceiling. It's a magic gun.",
+      "at": "2026-09-10T04:39:01.092Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Fixed: the upside-down stack was the old 2D funnel picture still drawn over the plates — gone. It is one stack now, twenty-four plates from a small one touching the floor, each wider than the last, up past the ceiling of whatever room it is in, and the whole stack undulates as one snake with the plates leaning into the wave.",
+      "doneAt": "2026-09-10T04:40:46.023Z"
+    },
+    {
+      "id": "nmtv1gd0dia9p",
+      "gag": "gravel",
+      "text": "love it",
+      "at": "2026-09-10T04:39:52.285Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Good.",
+      "doneAt": "2026-09-10T04:40:31.184Z"
+    },
+    {
+      "id": "nmtv1i69cc6fs",
+      "gag": "handbag",
+      "text": "When the user pulls the trigger, start the voice sample right away, but hold off for about. Uh, 800 milliseconds before you start the actual animation.",
+      "at": "2026-09-10T04:41:16.848Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: purse.mp3 starts the instant the trigger is pulled and the swing comes 0.8 s after it.",
+      "doneAt": "2026-09-10T04:41:54.778Z"
+    },
+    {
+      "id": "nmtv1kl16694h",
+      "gag": "tornado",
+      "text": "Now you've totally got the shape, but unfortunately these things look a little bit like. Well, they're clearly just. Completely flat. They have no volume to them at all. Altogether they make a really cool shape and the Sound works really well with it. And the movement is excellent. I'm wondering if maybe you can double up with. A little. Uh, kind of. Pancake shaped volume of like Gray like you know, like kind of like a. Now like a pancake. Basically. With that has like a pretty significant blur effect on it. So it kind of looks like wind. And it moves along exactly with the other disks. Overlapping like these. This stuff would only be like. 10% opacity, 15 at most probably. We need more volume to the to the tornado. Is that really essentially the problem?",
+      "at": "2026-09-10T04:43:09.306Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: each plate now carries a pancake of soft grey volume — two nested squashed spheres, about 9% and 4% opacity, the bigger one the blurred edge — moving exactly with its disc. Stacked, they read as a solid grey funnel with the streaks still showing through.",
+      "doneAt": "2026-09-10T04:44:48.131Z"
+    },
+    {
+      "id": "nmtv1n4fai4qz",
+      "gag": "vines",
+      "text": "Improving. Try slowing it down a little . Try some variety in the shapes. Try doubling back here and there. Try forking off to the side with some branches. More leaves and bigger ones. Don't use only corkscrews. That's just being lazy.",
+      "at": "2026-09-10T04:45:07.750Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Done: the rise takes twice as long; four vine shapes now, dealt round the patch — the corkscrew, a snake that reverses its wander, an arch that climbs, leans over and doubles back down before going up again, and a random walk with kinks; one to three forks off the side of each, leafed; more leaves and half again as big.",
+      "doneAt": "2026-09-10T04:47:25.896Z"
+    },
+    {
+      "id": "nmtv1nxxguyn1",
+      "gag": "piano",
+      "text": "OK. That's huge. Maybe I should have asked for two times. Let's try two times the original size. And can we make the piano black?",
+      "at": "2026-09-10T04:45:45.988Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: twice the original, and black.",
+      "doneAt": "2026-09-10T04:47:26.027Z"
+    },
+    {
+      "id": "nmtv1qiuhu8lx",
+      "gag": "tornado",
+      "text": "Let's make sure that the tornado. Travels away from the gun towards the bad guys pretty reliably",
+      "at": "2026-09-10T04:47:46.409Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: it sets off down the barrel and keeps steering for the nearest creature, with only a little waver and the odd random turn; with nobody left it heads away from the gun.",
+      "doneAt": "2026-09-10T04:48:13.945Z"
+    },
+    {
+      "id": "nmtv1rjz9i7oc",
+      "gag": "handbag",
+      "text": "You can drop the. Handbag, sticker on the floor or any....ike that, we've got a handbag In the woman's hand now.",
+      "at": "2026-09-10T04:48:34.533Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: no purse sticker on the floor any more.",
+      "doneAt": "2026-09-10T04:49:09.991Z"
+    },
+    {
+      "id": "nmtv1t97f4rxe",
+      "gag": "tornado",
+      "text": "Once the monsters get up into the tornado, let's have them fly apart into. Limbs and body parts.",
+      "at": "2026-09-10T04:49:53.883Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: a creature the tornado catches spirals up the funnel spinning, and at the top it flies apart — every limb, a burst of blood and a handful from the gore drawer thrown outward.",
+      "doneAt": "2026-09-10T04:50:31.435Z"
+    },
+    {
+      "id": "nmtv1u0gmbk1c",
+      "gag": "vines",
+      "text": "Let's have the monsters struggle in the vines and and yell. In pain and fear. For a second or two.",
+      "at": "2026-09-10T04:50:29.206Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Done: a caught creature thrashes in the coils for a second and a half with a scream (your scream set, in turn), then the pull-down and crush. If the lab is a blank page right now, press F5 once — a broken line kept it from loading for a minute.",
+      "doneAt": "2026-09-10T04:52:51.487Z"
+    },
+    {
+      "id": "nmtv1vjb1mg8v",
+      "gag": "piano",
+      "text": "I know it's like an already made 3D model and but if you could. Make like two of the legs break. When it hits the ground. And so it tips over. On a diagonal. And do some other. I don't know cracking and. Maybe you can make the top fly off. Kind of seems like if it was flying from the ceiling down to the ground and it was a full piano, it wouldn't just land perfectly. Also whoever it lands on. Let's see some blood and guts.",
+      "at": "2026-09-10T04:51:40.285Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Built: the piano is cut into four pieces (body, front legs, back legs, lid). On landing the front legs snap off and fly, the lid flies off spinning, splinters scatter, and the body drops and tips on a diagonal onto the broken side, resting like that. Whoever is under it gets the anvil's blood and guts.",
+      "doneAt": "2026-09-10T04:56:18.166Z"
+    },
+    {
+      "id": "nmtv1yh9eq2ce",
+      "gag": "handbag",
+      "text": "a keeper",
+      "at": "2026-09-10T04:53:57.602Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Thanks.",
+      "doneAt": "2026-09-10T04:55:18.986Z"
+    },
+    {
+      "id": "nmtv1z7ux9cv3",
+      "gag": "glue",
+      "text": "It would be good if there is some way that some arms and like tops of the heads could come out of the glue while they struggled.",
+      "at": "2026-09-10T04:54:32.073Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Done: they sink to the shoulders fast, then struggle for a good second with both arms up out of the glue and the head bobbing at the surface, then go under.",
+      "doneAt": "2026-09-10T04:57:11.174Z"
+    },
+    {
+      "id": "nmtv2168b9zmd",
+      "gag": "anvil",
+      "text": "Let's try three times the size instead of 5. And can we make the anvil look black. Also, the Anvil model has something on the side of it that almost looks like an iPad or a cell phone. It's like a white. Glowing white rectangle with a black border. Let's remove that if we can make the anvils all black so they look like iron. And make them three times the size that they were before, not 5 times the size.",
+      "at": "2026-09-10T04:56:03.275Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: three times the size, all black iron — the texture with the glowing rectangle is dropped for one flat dark colour.",
+      "doneAt": "2026-09-10T04:57:11.369Z"
+    },
+    {
+      "id": "nmtv21y3aj8r9",
+      "gag": "piano",
+      "text": "AWESOME!!!",
+      "at": "2026-09-10T04:56:39.382Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Thanks.",
+      "doneAt": "2026-09-10T04:57:47.066Z"
+    },
+    {
+      "id": "nmtw9wp9djz6m",
+      "gag": "glue",
+      "text": "good enough",
+      "at": "2026-09-11T01:24:17.761Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "noted — glue stays passed",
+      "doneAt": "2026-09-11T01:24:24.790Z"
+    },
+    {
+      "id": "nmtw9z8jnvov5",
+      "gag": "hole",
+      "text": "have the characters put their arms up as they go down",
+      "at": "2026-09-11T01:26:16.067Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "arms go up as they drop, with a wave; reload to see it",
+      "doneAt": "2026-09-11T01:27:10.289Z"
+    },
+    {
+      "id": "nmtwa257sltcf",
+      "gag": "tornado",
+      "text": "wow, that's gory! lol i like it. One problem is that it seems like the timer on how long they. Characters spin up in the air and then fly apart. Is independent from the timer of. The tornado itself. So what you're getting is because the tornado lasts for a while. It could move away and come back. And when it comes back, they might fly up in the air, and then it disappears, and then they're zooming around and around and suddenly they blow up into a million pieces. So I'm not really sure how to solve for that, but. Try to fix that. I suppose. If it ran out, they could just fall back to the ground without exploding and still need another weapon to kill them. If that's possible, do that.",
+      "at": "2026-09-11T01:28:31.720Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "done: it rides with the funnel and bursts at 3 s in; if the tornado dies first it tumbles back to the ground alive, needing another weapon",
+      "doneAt": "2026-09-11T01:30:47.280Z"
+    },
+    {
+      "id": "nmtwa34gv9uga",
+      "gag": "vines",
+      "text": "What the vines should do is pop up quickly and then. Move around and get smaller and larger and smaller and larger and turn and like rile and royal, writhe and roil",
+      "at": "2026-09-11T01:29:17.407Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "vines pop up fast now and writhe the whole time: swelling, shrinking, turning, leaning; the coils on the creature roil too",
+      "doneAt": "2026-09-11T01:36:49.012Z"
+    },
+    {
+      "id": "nmtwa43njg82w",
+      "gag": "bees",
+      "text": "get a wasp or a hornet from meshy and replace this with that. something more scary and gnarly looking",
+      "at": "2026-09-11T01:30:03.007Z",
+      "status": "done",
+      "action": "update",
+      "reply": "a realistic Meshy hornet swarm — eleven of them, wings beating, each on its own orbit around the summon (15 cr)",
+      "doneAt": "2026-09-11T01:36:48.949Z"
+    },
+    {
+      "id": "nmtwa4nhlvney",
+      "gag": "lightning",
+      "text": "this is excellent",
+      "at": "2026-09-11T01:30:28.713Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "noted — lightning stays passed",
+      "doneAt": "2026-09-11T01:30:39.346Z"
+    },
+    {
+      "id": "nmtwa5xrmvsuh",
+      "gag": "cow",
+      "text": "This is good. The cow looks excellent. The cat. The cow needs to be bigger. Maybe. Not maybe twice as big, but like 60% larger. And then also it needs to land on its side. If it's possible for it to move its legs a couple times. Before flopping down. That would be ideal.",
+      "at": "2026-09-11T01:31:28.690Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "cow 60% bigger; it lands standing, kicks its legs (split off in Blender with hip pivots), then rolls onto its side with a thump",
+      "doneAt": "2026-09-11T01:36:48.886Z"
+    },
+    {
+      "id": "nmtwewlddoqlf",
+      "gag": "hole",
+      "text": "good stuff",
+      "at": "2026-09-11T03:44:10.801Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "noted — hole stays passed",
+      "doneAt": "2026-09-11T03:44:22.506Z"
+    },
+    {
+      "id": "nmtwf2kw3maao",
+      "gag": "tornado",
+      "text": "worked out great!",
+      "at": "2026-09-11T03:48:50.115Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "noted — tornado stays passed",
+      "doneAt": "2026-09-11T03:49:00.168Z"
+    },
+    {
+      "id": "nmtwfa9na53yh",
+      "gag": "hole",
+      "text": "the hole should eventually disappear",
+      "at": "2026-09-11T03:54:48.790Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "the hole now lasts twelve seconds, fading over the last two, then it is gone",
+      "doneAt": "2026-09-11T03:55:28.433Z"
+    },
+    {
+      "id": "nmtwfjodmzvjs",
+      "gag": "bees",
+      "text": "they look super cool but they disappear too fast. the old bees used to swarm around the monsters",
+      "at": "2026-09-11T04:02:07.786Z",
+      "status": "done",
+      "action": "update",
+      "reply": "the swarm no longer dies on its first sting: it keeps hunting for nine seconds, and a cloud of hornets stays on each body as it falls",
+      "doneAt": "2026-09-11T04:03:19.470Z"
+    },
+    {
+      "id": "nmtwfrq2a7hvd",
+      "gag": "bees",
+      "text": "After they kill a monster, can they fly away instead of disappearing just like up into the ceiling and then disappear?",
+      "at": "2026-09-11T04:08:23.218Z",
+      "status": "done",
+      "action": "update",
+      "reply": "yes: the cloud on a body climbs away into the ceiling as it dies, and the swarm itself flies up and off when its time is up",
+      "doneAt": "2026-09-11T04:08:56.058Z"
+    },
+    {
+      "id": "nmtwfsaa5y5ji",
+      "gag": "cow",
+      "text": "its not flipping over",
+      "at": "2026-09-11T04:08:49.421Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "fixed — the flop was wired to the falling-prop path and the cow lands as a lob; it now kicks and rolls over (verified in the pane)",
+      "doneAt": "2026-09-11T04:14:09.975Z"
+    },
+    {
+      "id": "nmtwfufwy7bq0",
+      "gag": "lightning",
+      "text": "They don't complete their dying animation before the characters reset. Which probably is no big deal in the world.",
+      "at": "2026-09-11T04:10:30.034Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "the lab holds the respawn until the death clip has played out (7 s cap); in the world the bodies stay anyway",
+      "doneAt": "2026-09-11T04:14:10.098Z"
+    },
+    {
+      "id": "nmtwfv642ylyc",
+      "gag": "bees",
+      "text": "Not quite. What's happening right now is that when I shoot the bees at one of the characters, it's like the the swarm immediately doubles in the in half, flies away, and then they stay there attacking, and then the other half flies away. I don't know why there's two swarms.",
+      "at": "2026-09-11T04:11:03.986Z",
+      "status": "done",
+      "action": "update",
+      "reply": "the second swarm was a body cloud I added on top of the surviving swarm — gone; the one swarm now parks on the victim two seconds, then moves on, then flies away",
+      "doneAt": "2026-09-11T04:14:10.228Z"
+    },
+    {
+      "id": "nmtwfww540jd0",
+      "gag": "gas",
+      "text": "there's a quick succession of 3 notes that plays . get rid of it",
+      "at": "2026-09-11T04:12:24.376Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "gone — the gas death was a wobbling voice that read as three notes; it is a wheeze now",
+      "doneAt": "2026-09-11T04:14:10.351Z"
+    },
+    {
+      "id": "nmtwg0dox070l",
+      "gag": "gas",
+      "text": "I don't like the arms out gesture for this one. I want them to fall face forward.",
+      "at": "2026-09-11T04:15:07.089Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "swapped to the fall-forward clip: face first, no arms out",
+      "doneAt": "2026-09-11T04:15:38.638Z"
+    },
+    {
+      "id": "nmtwg2strrulh",
+      "gag": "bees",
+      "text": "It's really goofy. When I first pulled the trigger, I hear the sound of the bees and then like nothing happens. And then when the bee animation would have run out, suddenly the bee sound starts up again, but this time bees do fly out. So it's like there's a phantom second set of bees that's supposed to come first that never does. We only want one set of bees to fly out every time you pull the trigger. It's simple, there shouldn't be two bees, or two animations or two sounds triggered. Ever. Why are you triggering? Also, when the bees hit the characters now, they just fly right up into the air. They need to hover around them stinging them for a good, you know. One and a half seconds or something.",
+      "at": "2026-09-11T04:17:00.015Z",
+      "status": "done",
+      "action": "update",
+      "reply": "found it: the field I used for the park time is also the rifle's launch-delay field, so the launch waited two seconds after the sound. Fixed and verified: one swarm out on the pull, two seconds stinging each victim, then off to the next, then up and away",
+      "doneAt": "2026-09-11T04:19:21.698Z"
+    },
+    {
+      "id": "nmtwg39n85wxj",
+      "gag": "cow",
+      "text": "It has to fall over first and then some leg motions.",
+      "at": "2026-09-11T04:17:21.812Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "reordered: a wobble, over it goes, then the legs run in the air and slow to a twitch",
+      "doneAt": "2026-09-11T04:19:21.875Z"
+    },
+    {
+      "id": "nmtwg42umpjjw",
+      "gag": "lightning",
+      "text": "Maybe stop with the arms out and just let the natural animation of the shocking electrocution play.",
+      "at": "2026-09-11T04:17:59.662Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "arms-out gone; the electrocuted-fall clip plays from the moment of the shock, with the skeleton flash over it",
+      "doneAt": "2026-09-11T04:19:22.023Z"
+    },
+    {
+      "id": "nmtwgd606agku",
+      "gag": "bees",
+      "text": "Let's have it sting the first victim definitely, but only sting the 2nd or 3rd if they're close enough. It doesn't have to sing all three every time.",
+      "at": "2026-09-11T04:25:03.654Z",
+      "status": "done",
+      "action": "update",
+      "reply": "done: first sting guaranteed, the next only if the nearest creature is within 3.5 cells, otherwise it flies off",
+      "doneAt": "2026-09-11T04:25:24.355Z"
+    },
+    {
+      "id": "nmtwgg0ahs1vo",
+      "gag": "cow",
+      "text": "I just forget the leg animation and let's have it come flying out in midair already, like sideways. So it just lands right on the person right on the monster sideways. And let's have. More blood and one or two. Lesser giblets.",
+      "at": "2026-09-11T04:27:16.217Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "done: sideways in the air, lands sideways on the monster, no leg business; the squash throws a lot more blood, a bigger pool and two small giblets",
+      "doneAt": "2026-09-11T04:27:41.808Z"
+    },
+    {
+      "id": "nmtwgh9xyhsls",
+      "gag": "cow",
+      "text": "love it!",
+      "at": "2026-09-11T04:28:15.382Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "noted",
+      "doneAt": "2026-09-11T04:28:22.546Z"
+    },
+    {
+      "id": "nmtwgx3aefsty",
+      "gag": "legos",
+      "text": "OK. Can you get some LEGO bricks for me? And we're going to want to make them a little smaller. And then we're going to have them fall out of the ceiling. Hey, there's gonna be about. I don't know. A hundred of them. 200 of them. Then you'd all pile up on the ground. Around the person, the monster. Like the blueberries do. And some of the other. Spherical things that can. Blob around and pile on. Having them all fall out of the ceiling. Makes no sense. But that's the magic of the Jabberwocky gun.",
+      "at": "2026-09-11T04:40:33.254Z",
+      "status": "done",
+      "action": "update",
+      "reply": "done: a Meshy brick recoloured eight ways, ~190 of them let go from the ceiling over the fall, bouncing and heaping up around the target like the berries; the lob is gone, it is a drop from above now (15 cr)",
+      "doneAt": "2026-09-11T04:46:48.165Z"
+    },
+    {
+      "id": "nmtwgzs4zmobi",
+      "gag": "sneaker",
+      "text": "That's a pretty good effect. Be nice if. The animation timed a little better. Right now they don't. The monster doesn't get squashed until the sneaker has been on the floor for like a few tenths of a second. It's like it doesn't crush the monster. You gotta get the timing right so that when the sneaker comes on top of the monster, the monster is getting crushed in that last like 1 or 2/10 of a second as the sneaker is crushing him. Also, let's make the sneaker. Like 20% larger.",
+      "at": "2026-09-11T04:42:38.771Z",
+      "status": "done",
+      "action": "update",
+      "reply": "sneaker 20% bigger; the squash is now instant and the sneaker touches down a beat after the kill, so the monster crushes under it as it lands (same fix for the anvil and the rest of the falling props)",
+      "doneAt": "2026-09-11T04:43:38.182Z"
+    },
+    {
+      "id": "nmtwh2sk88hh3",
+      "gag": "gravy",
+      "text": "We're over using this particular. Effect this kind of blob on the floor. This is like the 4th thing that uses it. It's not really cool. Now if we could use. I forget what it's called. It's the TH, the thing that makes like fire and smoke that we use in Lumina. ink. its called ink. Make it thick. And lumpy. And not that fast and low to the ground. Real thick. And the color of chicken gravy. And it should come away from the gun. In a fan shape. As spreading outward in all directions at about like thigh height and down. And even have some, uh. Some wisps of steam coming up off of it Some wisps of steam coming up off of it.",
+      "at": "2026-09-11T04:44:59.288Z",
+      "status": "done",
+      "action": "update",
+      "reply": "done: the gravy is a wave now — a fan out of the gun, thick lumps at thigh height and down, slow, chicken-gravy colour, steam wisps, pools where it flowed. The floor blob is gone for the gravy (verified in the pane)",
+      "doneAt": "2026-09-11T04:49:17.957Z"
+    },
+    {
+      "id": "nmtwh66avxcza",
+      "gag": "legos",
+      "text": "Have the Legos mound up in the middle quite a bit more.",
+      "at": "2026-09-11T04:47:37.063Z",
+      "status": "done",
+      "action": "update",
+      "reply": "done: most bricks land near the middle and the heap rises toward it",
+      "doneAt": "2026-09-11T04:49:18.177Z"
+    },
+    {
+      "id": "nmtwh6opdq0t0",
+      "gag": "sneaker",
+      "text": "Actually falls a little bit slow. Kind of seems less believable that way. It should speed up as it's falling.",
+      "at": "2026-09-11T04:48:00.913Z",
+      "status": "done",
+      "action": "update",
+      "reply": "done: it falls from the room's ceiling under real gravity, faster, speeding up on the way down (same for the anvil and the rest of the drops)",
+      "doneAt": "2026-09-11T04:49:18.394Z"
+    },
+    {
+      "id": "nmtwh8a0k7ej2",
+      "gag": "sneaker",
+      "text": "more blood",
+      "at": "2026-09-11T04:49:15.188Z",
+      "status": "done",
+      "action": "update",
+      "reply": "more blood: a big burst under the sole, a wide pool, splats on the walls, two giblets",
+      "doneAt": "2026-09-11T04:49:31.242Z"
+    },
+    {
+      "id": "nmtwh9a6pkeci",
+      "gag": "legos",
+      "text": "2",
+      "at": "2026-09-11T04:50:02.065Z",
+      "status": "done",
+      "action": "pass",
+      "reply": "noted — legos passed",
+      "doneAt": "2026-09-11T04:50:14.024Z"
+    },
+    {
+      "id": "nmtwhp9980fgn",
+      "gag": "sneaker",
+      "text": "splat",
+      "at": "2026-09-11T05:02:27.356Z",
+      "status": "new",
+      "rank": 2,
+      "action": "update"
     }
   ],
   "updates": {
@@ -452,20 +1251,20 @@
       "note": "Rebuilt as a Quake rocket: olive body, red nose, four fins, flies nose-first the way it goes, flame flickering out the back + a smoke trail (the Meshy kids'-book one stood nose-up)"
     },
     "baseballs": {
-      "at": "2026-09-09T01:57:45.517Z",
-      "note": "Timing: BATTER UP fires on the trigger pull, a tenth of a second before the balls leave; the hits' death sounds wait a quarter second so the yell stands alone"
+      "at": "2026-09-11T03:07:30.665Z",
+      "note": "the clip deck: new Meshy death clip on this weapon (electro / shot / gut / keel over / fall) — reload"
     },
     "pie": {
       "at": "2026-09-09T01:01:48.518Z",
       "note": "36 blueberries burst in every direction on the gib physics (they settle as litter) + purple puffs; the landing plays the wet splat instead of the explosion file"
     },
     "sand": {
-      "at": "2026-09-09T03:11:52.359Z",
-      "note": "The beam is born at the true end of the barrel: the muzzle-flash point sat 0.4 past the tip and swung wide with the aim — a separate tip point now, pane-checked aiming left"
+      "at": "2026-09-11T03:07:30.728Z",
+      "note": "the clip deck: new Meshy death clip on this weapon (electro / shot / gut / keel over / fall) — reload"
     },
     "bullet": {
-      "at": "2026-09-09T03:26:59.153Z",
-      "note": "Its kill plays the death scream, which now rotates through scream-01…05 at random (and any you add)"
+      "at": "2026-09-11T03:07:30.498Z",
+      "note": "the clip deck: new Meshy death clip on this weapon (electro / shot / gut / keel over / fall) — reload"
     },
     "jello": {
       "at": "2026-09-09T02:06:26.766Z",
@@ -480,26 +1279,126 @@
       "note": "The stream follows the rifle's aim while you hold it — the emitter read only the facing, not the cursor aim"
     },
     "gas": {
-      "at": "2026-09-09T02:23:10.349Z",
-      "note": "Tripled: 48 wisps (was 16), a wider and taller spread, a touch more opacity each"
+      "at": "2026-09-11T04:15:38.568Z",
+      "note": "they fall face forward now (the shot-and-fall-forward clip) — reload"
     },
     "eagle": {
       "at": "2026-09-09T03:15:00.536Z",
       "note": "Your eagle sound fires the instant you pull the trigger, as the eagle flies out; the hit itself is silent"
+    },
+    "glue": {
+      "at": "2026-09-10T04:57:11.108Z",
+      "note": "the glued sink to the shoulders, then struggle with their arms up and heads bobbing out of the glue before they go under"
+    },
+    "piranhas": {
+      "at": "2026-09-10T02:41:20.287Z",
+      "note": "a real Meshy piranha (silver, red belly, teeth), the school swims nose-first away from the gun with a tail-beat, and seven of them feed on the body in a frenzy, lunging in and out"
+    },
+    "blackhole": {
+      "at": "2026-09-10T02:41:20.444Z",
+      "note": "flies out as a dark sphere for 0.7 s, then opens: black sphere, photon ring, a tilted accretion disk and the lensed halo over the top (Interstellar); creatures are dragged into the centre, stretched, spun and shrunk in"
+    },
+    "train": {
+      "at": "2026-09-10T03:31:22.179Z",
+      "note": "drives straight down the barrel now — it used to snap to the nearest grid axis"
+    },
+    "lava": {
+      "at": "2026-09-10T03:28:35.031Z",
+      "note": "lighter: one lit pool at a time and no light on the hose (every change in the light count recompiled the shaders), a thinner tube, fewer pools"
+    },
+    "cart": {
+      "at": "2026-09-10T02:43:59.747Z",
+      "note": "turned to roll away from the gun (the model sat at 45 degrees in its file)"
+    },
+    "hole": {
+      "at": "2026-09-11T03:55:28.363Z",
+      "note": "the hole closes over after twelve seconds (fades out over its last two) — reload"
+    },
+    "gravel": {
+      "at": "2026-09-10T04:10:17.859Z",
+      "note": "half the size, darker, half again as many (48 a second)"
+    },
+    "handbag": {
+      "at": "2026-09-10T04:49:09.900Z",
+      "note": "the purse sticker on the floor is gone"
+    },
+    "tornado": {
+      "at": "2026-09-11T01:30:47.218Z",
+      "note": "the ride belongs to the funnel now: the creature travels with it, spins at the top, bursts at 3 s; if the tornado runs out first it falls back down alive — reload"
+    },
+    "vines": {
+      "at": "2026-09-11T01:36:48.812Z",
+      "note": "they pop up in a third of a second, then swell and shrink, turn and writhe the whole time they stand — reload"
+    },
+    "anvil": {
+      "at": "2026-09-10T04:57:11.305Z",
+      "note": "three times the size, black iron, the glowing rectangle gone"
+    },
+    "piano": {
+      "at": "2026-09-10T04:56:18.104Z",
+      "note": "the crash: the front legs snap off and fly, the lid flies off spinning, splinters scatter, the body drops and tips on a diagonal onto the broken side; blood and guts on whoever is under it"
+    },
+    "lightning": {
+      "at": "2026-09-11T04:19:21.948Z",
+      "note": "no arms-out: the electrocution clip plays straight through from the shock (skeleton flash and buzz kept) — reload"
+    },
+    "sneeze": {
+      "at": "2026-09-10T04:35:49.038Z",
+      "note": "a blast of wind: pale, slightly opaque wisps streaming from the gun in an expanding cone; no snot, nothing on the floor"
+    },
+    "cow": {
+      "at": "2026-09-11T04:27:41.741Z",
+      "note": "flies out already on its side and lands on its side on the monster; leg kick retired; more blood, a wider pool, two lesser giblets — reload"
+    },
+    "bees": {
+      "at": "2026-09-11T04:25:24.278Z",
+      "note": "the first victim always; a second or third only if it is within three and a half cells, else the swarm leaves — reload"
+    },
+    "sneaker": {
+      "at": "2026-09-11T04:49:31.134Z",
+      "note": "more blood: a big burst, a wide pool, wall splats, two giblets — reload"
+    },
+    "legos": {
+      "at": "2026-09-11T04:49:18.067Z",
+      "note": "the bricks mound up in the middle now — most land near the centre and the heap rises there — reload"
+    },
+    "gravy": {
+      "at": "2026-09-11T04:49:17.851Z",
+      "note": "rebuilt: a thick lumpy wave of chicken gravy fans out from the gun, low and slow, seventy glossy lumps standing to thigh height at the front, steam rising, pools left where it flowed; the floor blob is gone; the drowned creature browns and sinks under it — reload"
     }
   },
   "seen": {
     "knives": "2026-09-09T02:02:02.152Z",
     "rocket": "2026-09-09T01:02:55.533Z",
-    "baseballs": "2026-09-09T02:02:38.872Z",
+    "baseballs": "2026-09-11T04:11:08.818Z",
     "pie": "2026-09-09T01:50:39.412Z",
-    "sand": "2026-09-09T03:16:55.991Z",
+    "sand": "2026-09-11T04:11:22.664Z",
     "fist": "2026-09-09T02:32:10.662Z",
     "jello": "2026-09-09T02:12:47.882Z",
-    "gas": "2026-09-09T02:33:06.311Z",
+    "gas": "2026-09-11T04:18:03.588Z",
     "flamethrower": "2026-09-09T03:09:08.385Z",
     "eagle": "2026-09-09T03:15:30.123Z",
-    "bullet": "2026-09-09T03:16:57.621Z"
+    "bullet": "2026-09-11T04:12:31.641Z",
+    "glue": "2026-09-11T01:23:49.013Z",
+    "lava": "2026-09-10T03:30:43.057Z",
+    "piranhas": "2026-09-10T03:16:07.976Z",
+    "blackhole": "2026-09-10T03:20:12.563Z",
+    "train": "2026-09-10T04:01:45.460Z",
+    "hole": "2026-09-11T04:05:51.969Z",
+    "gravel": "2026-09-10T04:39:28.300Z",
+    "handbag": "2026-09-10T04:53:38.043Z",
+    "anvil": "2026-09-10T04:57:32.844Z",
+    "tornado": "2026-09-11T03:42:50.696Z",
+    "lightning": "2026-09-11T04:27:21.012Z",
+    "vines": "2026-09-11T03:49:47.931Z",
+    "piano": "2026-09-10T04:56:22.610Z",
+    "sneeze": "2026-09-10T04:45:55.184Z",
+    "bees": "2026-09-11T04:25:45.291Z",
+    "cow": "2026-09-11T04:27:53.347Z",
+    "cart": "2026-09-11T04:08:54.783Z",
+    "legos": "2026-09-11T04:49:48.002Z",
+    "sneaker": "2026-09-11T04:50:06.803Z",
+    "gravy": "2026-09-11T04:59:31.947Z"
   },
   "ranks": {
     "bullet": {
@@ -549,6 +1448,82 @@
     "eagle": {
       "rank": 2,
       "at": "2026-09-09T03:15:39.834Z"
+    },
+    "glue": {
+      "rank": 2,
+      "at": "2026-09-10T03:18:54.005Z"
+    },
+    "piranhas": {
+      "rank": 1,
+      "at": "2026-09-10T03:19:48.573Z"
+    },
+    "blackhole": {
+      "rank": 1,
+      "at": "2026-09-10T03:20:26.443Z"
+    },
+    "lava": {
+      "rank": 2,
+      "at": "2026-09-10T03:30:53.628Z"
+    },
+    "cart": {
+      "rank": 2,
+      "at": "2026-09-11T04:09:05.753Z"
+    },
+    "train": {
+      "rank": 2,
+      "at": "2026-09-10T04:02:08.662Z"
+    },
+    "hole": {
+      "rank": 2,
+      "at": "2026-09-11T03:43:59.701Z"
+    },
+    "gravel": {
+      "rank": 2,
+      "at": "2026-09-10T04:39:51.179Z"
+    },
+    "tornado": {
+      "rank": 1,
+      "at": "2026-09-11T03:48:46.449Z"
+    },
+    "vines": {
+      "rank": 2,
+      "at": "2026-09-11T04:07:51.780Z"
+    },
+    "anvil": {
+      "rank": 2,
+      "at": "2026-09-11T01:31:54.354Z"
+    },
+    "sneeze": {
+      "rank": 2,
+      "at": "2026-09-10T04:46:15.428Z"
+    },
+    "handbag": {
+      "rank": 2,
+      "at": "2026-09-10T04:53:54.953Z"
+    },
+    "piano": {
+      "rank": 1,
+      "at": "2026-09-10T04:56:35.438Z"
+    },
+    "lightning": {
+      "rank": 1,
+      "at": "2026-09-11T01:30:25.636Z"
+    },
+    "cow": {
+      "rank": 1,
+      "at": "2026-09-11T04:28:06.819Z"
+    },
+    "bees": {
+      "rank": 1,
+      "at": "2026-09-11T04:25:58.640Z"
+    },
+    "sink": {
+      "rank": 2,
+      "at": "2026-09-11T05:01:55.757Z"
+    },
+    "sneaker": {
+      "rank": 2,
+      "at": "2026-09-11T05:02:20.470Z"
     }
   },
   "verdicts": {
@@ -576,10 +1551,6 @@
       "status": "passed",
       "at": "2026-09-09T02:13:43.908Z"
     },
-    "gas": {
-      "status": "passed",
-      "at": "2026-09-09T02:33:25.492Z"
-    },
     "fist": {
       "status": "passed",
       "at": "2026-09-09T02:52:38.409Z"
@@ -599,6 +1570,106 @@
     "bullet": {
       "status": "passed",
       "at": "2026-09-09T03:26:59.300Z"
+    },
+    "mousetrap": {
+      "status": "trash",
+      "at": "2026-09-10T02:35:05.389Z"
+    },
+    "kick": {
+      "status": "trash",
+      "at": "2026-09-10T02:41:09.986Z"
+    },
+    "piranhas": {
+      "status": "passed",
+      "at": "2026-09-10T03:20:05.120Z"
+    },
+    "blackhole": {
+      "status": "passed",
+      "at": "2026-09-10T03:20:36.441Z"
+    },
+    "lava": {
+      "status": "passed",
+      "at": "2026-09-10T03:30:57.989Z"
+    },
+    "train": {
+      "status": "passed",
+      "at": "2026-09-10T04:02:32.103Z"
+    },
+    "gravel": {
+      "status": "passed",
+      "at": "2026-09-10T04:39:52.285Z"
+    },
+    "sneeze": {
+      "status": "passed",
+      "at": "2026-09-10T04:46:17.977Z"
+    },
+    "handbag": {
+      "status": "passed",
+      "at": "2026-09-10T04:53:57.602Z"
+    },
+    "piano": {
+      "status": "passed",
+      "at": "2026-09-10T04:56:39.382Z"
+    },
+    "glue": {
+      "status": "passed",
+      "at": "2026-09-11T01:24:17.761Z"
+    },
+    "anvil": {
+      "status": "passed",
+      "at": "2026-09-11T01:31:57.398Z"
+    },
+    "tornado": {
+      "status": "passed",
+      "at": "2026-09-11T03:48:50.115Z"
+    },
+    "hole": {
+      "status": "passed",
+      "at": "2026-09-11T04:05:58.504Z"
+    },
+    "vines": {
+      "status": "passed",
+      "at": "2026-09-11T04:07:54.430Z"
+    },
+    "cart": {
+      "status": "passed",
+      "at": "2026-09-11T04:09:10.731Z"
+    },
+    "bees": {
+      "status": "passed",
+      "at": "2026-09-11T04:26:02.984Z"
+    },
+    "lightning": {
+      "status": "passed",
+      "at": "2026-09-11T04:27:34.262Z"
+    },
+    "wetcat": {
+      "status": "trash",
+      "at": "2026-09-11T04:30:15.962Z"
+    },
+    "gas": {
+      "status": "passed",
+      "at": "2026-09-11T04:30:36.519Z"
+    },
+    "cow": {
+      "status": "passed",
+      "at": "2026-09-11T04:37:36.814Z"
+    },
+    "porcupine": {
+      "status": "trash",
+      "at": "2026-09-11T04:41:31.311Z"
+    },
+    "legos": {
+      "status": "passed",
+      "at": "2026-09-11T04:50:02.065Z"
+    },
+    "gravy": {
+      "status": "trash",
+      "at": "2026-09-11T05:00:05.730Z"
+    },
+    "sink": {
+      "status": "passed",
+      "at": "2026-09-11T05:01:58.754Z"
     }
   }
 }

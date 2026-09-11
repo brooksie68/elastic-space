@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=33';
+import { createRenderer, S } from './render3d.js?v=81';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -235,10 +235,11 @@ function handleEvents() {
   const ev = state.events; state.events = [];
   for (const e of ev) {
     switch (e.type) {
+      case 'zone': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a zone with a loop (the tornado) sounds while it lives (2026-09-10)
       case 'level': R.buildLevel(state); levelCard(e.n, e.name); Sfx.play('level'); seen = new Set(); seenLevel = state.level; syncHud(true); break;
-      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
-      case 'fire': R.fire(); Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
+      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.earlySound) Sfx.play(e.gag.sound, 0);   // the weapon's voice at the pull itself (the handbag) if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
+      case 'fire': R.fire(); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
+      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'hurt': fx.hurt = 1; R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); deathCard(); break;
@@ -252,11 +253,12 @@ function handleEvents() {
       case 'throw': Sfx.play('throw', pan(e.goon.x, e.goon.y)); break;
       case 'splat': Sfx.play('splat', pan(e.x, e.y)); break;
       case 'boom': Sfx.play(e.gag.splashSound || 'boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;   // a pie lands wet, not with an explosion
-      case 'impact': R.impact(e.x, e.y, e.r); Sfx.play('thud', pan(e.x, e.y)); break;
+      case 'impact': R.impact(e.x, e.y, e.r); Sfx.play(e.gag && e.gag.splashSound || 'thud', pan(e.x, e.y)); break;   // a drop with its own landing sound (the piano's crash, 2026-09-10)
       case 'wallbreak': Sfx.play('wallbreak', pan(e.x, e.y)); R.shake(0.5); R.buildLevel(state); break;
       case 'crash': Sfx.play('boom', pan(e.x, e.y)); break;
       case 'bounce': Sfx.play('bounce', pan(e.x, e.y)); break;
       case 'pop': Sfx.play('pop', pan(e.x, e.y)); break;
+      case 'gone': break;
       case 'fall': Sfx.play('fall'); break;
       case 'bosswind': Sfx.play('bosswind'); break;
       case 'bossfire': Sfx.play(e.gag.sound, 0); showPlate(state.plate); break;
@@ -342,6 +344,8 @@ function drawOverlays() {
 
 // ---- the loop --------------------------------------------------------------------------------------------------
 let last = performance.now();
+const loops = {};   // gag id → the loop handle (loopFile) while that gag's zone lives
+function stopDeadLoops() { for (const id of Object.keys(loops)) if (loops[id] && !state.zones.some((z) => z.gag.id === id && !z.dead)) { loops[id].stop(); delete loops[id]; } }
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -357,6 +361,7 @@ function frame(now) {
     const dy = lookBank.y * k; lookBank.y -= dy;
     view.pitch = Math.max(-1, Math.min(1, view.pitch - dy));   // pitch = rise of the look target over one unit forward, ~±45°
     C.step(state, input, dt);
+    stopDeadLoops();
     input.look = 0;
     handleEvents();
     const p = state.player;

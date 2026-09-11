@@ -80,7 +80,9 @@
     #verdict { display: inline-flex; gap: 0.25rem; }
     #verdict button.bad:hover { border-color: var(--red); color: var(--red); }
     #verdict button.go.bad { background: var(--red); border-color: var(--red); color: #120a12; }
-    #detail { flex: 0 0 auto; max-height: 52vh; overflow: auto; border-top: 1px solid var(--glass-edge); padding: 0.8rem 1rem 1rem; background: rgba(20, 10, 24, 0.7); }
+    #detail { flex: 0 0 auto; max-height: 35vh; /* was 52vh: the facts card (~17vh at 1080p) came out and the list got exactly that room (James 2026-09-11) */ overflow: auto; border-top: 1px solid var(--glass-edge); padding: 0.8rem 1rem 1rem; background: rgba(20, 10, 24, 0.7); }
+    /* the name / line / facts card is gone from the markup — the list already says which weapon is loaded; the list takes the room (James 2026-09-11) */
+    #detail .verdict-row { margin-top: 0; }
     #d-name { font-family: var(--carny); font-size: 1.25rem; letter-spacing: 0.04em; color: var(--gold); line-height: 1.05; }
     #d-name.dud { color: #c9c1cc; } #d-name.backfire { color: var(--red); } #d-name.weird { color: var(--pink); }
     #d-line { margin-top: 0.3rem; font-style: italic; color: var(--ink); font-size: 0.85rem; }
@@ -139,7 +141,6 @@
       <div class="sub"><b id="cnt-total">100</b> weapons · <b id="cnt-passed">0</b> passed · <b id="cnt-trash">0</b> trash · <b id="cnt-updates">0</b> updated · <b id="cnt-open">0</b> notes waiting · <span id="sync">—</span></div>
     </div>
     <div id="bar">
-      <input id="search" type="text" placeholder="find a weapon" autocomplete="off" />
       <select id="creatures" title="who stands on the pads">
         <option value="trio">ghoul · brute · cultist</option>
         <option value="five">all five, in a row</option>
@@ -148,15 +149,10 @@
         <option value="ratlings">three ratlings</option>
         <option value="stalkers">three stalkers</option>
       </select>
-      <button id="sound" type="button" title="the lab's sound (it starts on your first click in the room)">SOUND</button>
       <button id="reset" type="button" title="creatures back on the pads, floor cleaned">RESET</button>
-      <button id="fire" class="go" type="button">FIRE</button>
     </div>
     <div id="list"></div>
     <div id="detail">
-      <div id="d-name">—</div>
-      <div id="d-line"></div>
-      <dl id="d-facts"></dl>
       <div class="verdict-row"><span class="lbl">VERDICT</span><span id="verdict"><button data-v="review" type="button" title="still in the list, still being looked at">IN REVIEW</button><button data-v="passed" type="button" title="reviewed and good — moves to PASSED at the bottom of the list, notes and all">PASSED</button><button data-v="trash" class="bad" type="button" title="out of the game — the rifle never deals it from the next load; moves to TRASH, notes and all">TRASH</button></span></div>
       <div id="d-update"><b>UPDATED</b><span id="d-update-text"></span><small id="d-update-when"></small></div>
       <div class="notes-h">NOTES ON THIS WEAPON <span>Claude reads these</span></div>
@@ -177,13 +173,13 @@
   </aside>
 
   <!-- no dashboard icon, no shared speaker: the lab is not a world and they fought the panel (James 2026-09-08) -->
-  <script src="gags.js?v=14"></script>
-  <script src="core.js?v=11"></script>
-  <script src="draw.js?v=3"></script>
-  <script src="sound.js?v=15"></script>
+  <script src="gags.js?v=37"></script>
+  <script src="core.js?v=22"></script>
+  <script src="draw.js?v=7"></script>
+  <script src="sound.js?v=22"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="lab.js?v=44"></script>
+  <script type="module" src="lab.js?v=104"></script>
 </body>
 </html>

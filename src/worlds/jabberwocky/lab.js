@@ -10,7 +10,7 @@
 // with its notes (`verdicts` in notes.json); trash also has the server write cuts.js, and the game's roll skips
 // those ids from its next load. Then the ACTION dropdown by SUBMIT (update — the default — / pass / trash): the
 // note carries its verdict, applied by the server in the same save, so he never has to write it in the note.
-import { createRenderer } from './render3d.js?v=33';
+import { createRenderer } from './render3d.js?v=81';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -40,10 +40,8 @@ const SILENT = q.get('silent') === '1';
 Sfx.setMusic(false);
 // no shared speaker in the lab (James): sound starts on the first click or key in the room, the SOUND button in the bar mutes it
 let soundOn = prefs.sound !== false, soundStarted = false;
-function soundUi() { $('sound').classList.toggle('go', soundOn); $('sound').textContent = soundOn ? 'SOUND' : 'MUTED'; }
+// the SOUND / FIRE buttons and the find box left the bar (James 2026-09-11) — sound still starts on the first click or key; the lab is never muted from the bar now
 function startSound() { if (SILENT || !soundOn || soundStarted) return; soundStarted = true; try { Sfx.start(); } catch (e) {} }
-$('sound').addEventListener('click', () => { soundOn = !soundOn; prefs.sound = soundOn; savePrefs(); soundUi(); if (soundOn) { soundStarted = false; startSound(); } else { soundStarted = false; try { Sfx.stop(); } catch (e) {} } });
-soundUi();
 canvas.addEventListener('mousedown', startSound); addEventListener('keydown', (e) => { if (!typing(e)) startSound(); });
 const pan = (x, y) => { const p = state.player; return Math.sin(Math.atan2(y - p.y, x - p.x) - p.a) * 0.8; };
 
@@ -157,7 +155,6 @@ function readKeys() {
   input.turn = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
   input.run = !!(keys.ShiftLeft || keys.ShiftRight);
 }
-$('fire').addEventListener('click', () => { state.player.cool = 0; C.fire(state, current); });
 
 // ---- the plate + hints -------------------------------------------------------------------------------------------
 const plate = $('plate');
@@ -177,19 +174,21 @@ function handleEvents() {
   const ev = state.events; state.events = [];
   for (const e of ev) {
     switch (e.type) {
-      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
-      case 'fire': R.fire(); Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y)); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
+      case 'zone': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a zone with a loop (the tornado) sounds while it lives (2026-09-10)
+      case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.earlySound) Sfx.play(e.gag.sound, 0);   // the weapon's voice at the pull itself (the handbag) if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
+      case 'fire': R.fire(); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
+      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'hurt': R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); hint('THAT ONE KILLED YOU · NEVER MIND', 2600); state.phase = 'play'; state.player.hp = 100; break;
       case 'splat': Sfx.play('splat', pan(e.x, e.y)); break;
       case 'boom': Sfx.play(e.gag.splashSound || 'boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;   // a pie lands wet, not with an explosion
-      case 'impact': R.impact(e.x, e.y, e.r); Sfx.play('thud', pan(e.x, e.y)); break;
+      case 'impact': R.impact(e.x, e.y, e.r); Sfx.play(e.gag && e.gag.splashSound || 'thud', pan(e.x, e.y)); break;   // a drop with its own landing sound (the piano's crash, 2026-09-10)
       case 'wallbreak': Sfx.play('wallbreak', pan(e.x, e.y)); R.shake(0.5); R.buildLevel(state); break;
       case 'crash': Sfx.play('boom', pan(e.x, e.y)); break;
       case 'bounce': Sfx.play('bounce', pan(e.x, e.y)); break;
       case 'pop': Sfx.play('pop', pan(e.x, e.y)); break;
+      case 'gone': break;
       case 'fall': Sfx.play('fall'); break;
       case 'swing': Sfx.play('swing', pan(e.goon.x, e.goon.y)); break;
       case 'self': R.shake(0.6); break;
@@ -201,9 +200,12 @@ function handleEvents() {
 
 // one step of the lab: the core, its events, the healing, the pads (frame() and LAB.step both use it)
 let simT = 0;
+const loops = {};   // gag id → the loop handle (loopFile) while that gag's zone lives
+function stopDeadLoops() { for (const id of Object.keys(loops)) if (loops[id] && !state.zones.some((z) => z.gag.id === id && !z.dead)) { loops[id].stop(); delete loops[id]; } }
 function simTick(dt) {
   simT += dt;
   C.step(state, input, dt);
+  stopDeadLoops();
   handleEvents();
   const p = state.player;
   if (state.phase !== 'play') { state.phase = 'play'; p.hp = 100; }
@@ -213,7 +215,7 @@ function simTick(dt) {
     const out = g.state === 'dead' || g.state === 'pacified';
     if (!out) { gone.delete(g.id); continue; }
     if (!gone.has(g.id)) gone.set(g.id, simT);
-    else if (simT - gone.get(g.id) >= RESPAWN_S) { gone.delete(g.id); C.respawnLabGoon(state, g); }
+    else if (simT - gone.get(g.id) >= RESPAWN_S && (simT - gone.get(g.id) >= 7 || R.clipDone(g.id))) { gone.delete(g.id); C.respawnLabGoon(state, g); }   // and not before its death clip has played out (James 2026-09-11, the lightning)
   }
 }
 
@@ -272,7 +274,6 @@ function buildList() {
     }
   }
   listKey = JSON.stringify(notes.verdicts || {});
-  if ($('search').value) $('search').dispatchEvent(new Event('input'));   // keep a live filter applied
 }
 function unseen(id) { const u = notes.updates[id]; return !!(u && (!notes.seen[id] || u.at > notes.seen[id])); }
 function rankOf(id) { const r = (notes.ranks || {})[id]; return r && r.rank ? r.rank : 0; }
@@ -307,11 +308,6 @@ function pick(id) {
   if (unseen(id)) post({ op: 'seen', gag: id }).then((d) => { if (d) { notes = d; syncRows(); } });
   syncRows(); showDetail();
 }
-$('search').addEventListener('input', () => {
-  const s = $('search').value.trim().toLowerCase();
-  for (const [id, r] of rows) { const g = T.byId[id]; r.classList.toggle('hid', !!s && !(g.name.toLowerCase().includes(s) || g.kind.includes(s) || (g.outcome || '').includes(s) || id.includes(s))); }
-  list.querySelectorAll('h3').forEach((h) => { let n = h.nextElementSibling, any = false; while (n && n.tagName !== 'H3') { if (!n.classList.contains('hid')) any = true; n = n.nextElementSibling; } h.style.display = any ? '' : 'none'; });
-});
 
 function facts(g) {
   const f = [];
@@ -334,9 +330,7 @@ function facts(g) {
 }
 function showDetail() {
   const g = T.byId[current];
-  $('d-name').textContent = g.name; $('d-name').className = g.tier;
-  $('d-line').textContent = g.line || '';
-  $('d-facts').innerHTML = facts(g).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  // the name / line / facts card is gone (James 2026-09-11) — the list row is the label
   const v = verdictOf(current); $('verdict').querySelectorAll('button').forEach((b) => b.classList.toggle('go', b.dataset.v === v));
   const u = notes.updates[current];
   $('d-update').classList.toggle('show', !!u);
@@ -430,8 +424,9 @@ async function poll() {
 }
 function announce(ids) {
   const names = ids.map((id) => T.byId[id] ? T.byId[id].name : id);
-  const t = $('toast'); t.innerHTML = '<b>UPDATED</b> · ' + names.join(' · ') + '<br><small style="color:var(--ink-dim)">' + esc((notes.updates[ids[0]] || {}).note || '') + '</small>';
+  const t = $('toast'); t.innerHTML = '<b>UPDATED</b> · ' + names.join(' · ') + '<br><small style="color:var(--ink-dim)">' + esc((notes.updates[ids[0]] || {}).note || '') + '</small><br><small>reloading in a moment to load the change…</small>';
   t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 7000);
+  setTimeout(() => location.reload(), 2500);   // the code only changes on a reload and James never reloads mid-review (2026-09-10: 'there's no rope. just more snowballs again') — drafts, pick and camera prefs all persist
   try { Sfx.play('key'); } catch (e) {}
   if ('Notification' in window && Notification.permission === 'granted') { try { new Notification('Weapon lab: ' + names.join(', '), { body: (notes.updates[ids[0]] || {}).note || 'updated', silent: true }); } catch (e) {} }
 }

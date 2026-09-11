@@ -232,7 +232,7 @@
     squash: (p) => { thud({ pan: p }); tone({ f: 900, f2: 300, dur: 0.15, type: 'square', gain: 0.1, pan: p }); },
     freeze: (p) => { clicks(5, 0.06, { f: 4000, gain: 0.25, pan: p }); noise({ dur: 0.3, f: 3000, f2: 1000, gain: 0.3, delay: 1.3, pan: p }); },
     glue: (p) => { noise({ dur: 0.6, f: 800, f2: 200, gain: 0.3, pan: p }); scream({ f: 400, f2: 300, dur: 0.8, gain: 0.12, pan: p }); },
-    gas: (p) => { voice({ f: 300, f2: 150, dur: 0.6, formants: [700, 1900], vib: 15, vibRate: 7, gain: 0.15, pan: p }); },
+    gas: (p) => { noise({ dur: 0.8, f: 1200, f2: 300, type: 'bandpass', gain: 0.16, a: 0.15, pan: p }); },   // a wheeze; the old wobbling voice read as three quick notes (James 2026-09-11)
     fling: (p) => { scream({ f: 600, f2: 900, dur: 0.6, gain: 0.15, pan: p }); },
     drop: (p) => { scream({ f: 500, f2: 120, dur: 1.2, gain: 0.15, pan: p }); },
     burn: (p) => { scream({ f: 700, f2: 300, dur: 0.7, gain: 0.15, pan: p }); noise({ dur: 1, f: 1200, f2: 600, type: 'bandpass', gain: 0.2, pan: p }); },
@@ -299,6 +299,9 @@
   const scriptBase = (document.currentScript && document.currentScript.src) ? new URL('./', document.currentScript.src).href : './';
   const SFX_DIR = scriptBase + 'assets/audio/sfx/';
   const FILES = {
+    purse: 'purse',   // James's purse.mp3 on the swing (2026-09-10)
+    pianocrash: 'piano-crash',   // James's piano-crash.mp3 when the piano lands (2026-09-10)
+    tornado: 'tornado',   // the loop while the tornado lives (loopFile); the gag's own fire sound is 'none' (James 2026-09-10)
     gunshot: 'gunshot', rocket: 'explosion', boom: 'explosion', cannon: 'explosion', meteor: 'explosion', splat: 'splat', chomp: 'chomp',
     hurt: ['hurt1', 'hurt2'], death: 'death', swing: 'swing', throw: 'throw', chainsaw: 'chainsaw', train: 'train', moo: 'moo', honk: 'honk',
     yowl: 'yowl', sneeze: 'sneeze', thud: 'thud', clang: 'clang', zap: 'zap', hiss: 'hiss', key: 'key', door: 'door', wallbreak: 'wallbreak',
@@ -316,6 +319,7 @@
     for (const v of Object.values(FILES)) (Array.isArray(v) ? v : [v]).forEach((n) => names.add(n));
     for (const v of Object.values(NOTICE)) names.add(v);
     for (const v of Object.values(OUT_FILES)) names.add(v);
+    const T = globalThis.JABBERWOCKY_GAGS; if (T) for (const g of T.GAGS) if (g.deathSound) names.add(g.deathSound);   // per-gag death sounds (the hole, 2026-09-10)
     for (const n of names) {
       const a = new Audio(); a.preload = 'auto';
       a.addEventListener('canplaythrough', () => available.add(n), { once: true });
@@ -324,8 +328,8 @@
     }
   }
   // NUMBERED SETS (James 2026-09-08): drop <name>-01.mp3, <name>-02.mp3 … beside any one-shot and every play of <name>
-  // picks one of them at random. Found by counting up from 01 until a number is missing, so keep them contiguous.
-  const series = {};
+  // plays the next one in turn (01, 02, … then round again). Found by counting up from 01 until a number is missing, so keep them contiguous.
+  const series = {}, seriesAt = {};
   function probeSeries(name, i) {
     const id = name + '-' + String(i).padStart(2, '0');
     const a = new Audio(); a.preload = 'auto';
@@ -333,14 +337,28 @@
     a.addEventListener('error', () => {}, { once: true });
     a.src = SFX_DIR + id + '.mp3';
   }
-  const FILE_GAIN = { batterup: 2.6 };   // per-file level over the 0.9 house level (batterup: James, 'louder, the death yell is overpowering it')
+  const FILE_GAIN = { batterup: 2.6 };
+  // a medium room on a few files (James 2026-09-10, the purse: 'a little reverb… like a medium room'): a short noise-tail convolver, mixed low
+  const FILE_ROOM = { purse: 0.28 };
+  let _room = null;
+  function room() { if (_room) return _room; const len = Math.floor(ctx.sampleRate * 0.9), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) * 0.6; } _room = ctx.createConvolver(); _room.buffer = buf; _room.connect(sfxGain); return _room; }   // per-file level over the 0.9 house level (batterup: James, 'louder, the death yell is overpowering it')
   function playFile(name, pan) {
-    if (series[name] && series[name].length) name = series[name][Math.floor(Math.random() * series[name].length)];
+    const base = name;
+    if (series[name] && series[name].length) { const k = (seriesAt[name] = ((seriesAt[name] || 0) % series[name].length) + 1); name = series[name][k - 1]; }   // in succession, never the same twice running (James 2026-09-10, the hole)
     if (!available.has(name)) return false;
     const a = new Audio(SFX_DIR + name + '.mp3');
-    try { const src = ctx.createMediaElementSource(a); const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); } catch (e) { a.volume = volume; }
+    try { const src = ctx.createMediaElementSource(a); const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); if (FILE_ROOM[base]) { const send = ctx.createGain(); send.gain.value = FILE_ROOM[base]; g.connect(send); send.connect(room()); } } catch (e) { a.volume = volume; }
     a.play().catch(() => {});
     return true;
+  }
+  // a file on a loop with a handle to stop it (the tornado: James's tornado.mp3 while it is on screen, 2026-09-10)
+  function loopFile(name, pan) {
+    if (!running || !ctx || !available.has(name)) return null;
+    const a = new Audio(SFX_DIR + name + '.mp3'); a.loop = true;
+    let g = null;
+    try { const src = ctx.createMediaElementSource(a); g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); } catch (e) { a.volume = volume; }
+    a.play().catch(() => {});
+    return { stop() { try { if (g) { g.gain.setTargetAtTime(0, ctx.currentTime, 0.12); setTimeout(() => { a.pause(); a.src = ''; }, 500); } else { a.pause(); a.src = ''; } } catch (e) {} } };
   }
   function play(id, pan, variant) {
     if (!running || !ctx) return;
@@ -350,8 +368,10 @@
     const fn = R[id] || K[id];
     if (fn) { try { fn(pan); } catch (e) { /* a recipe with a bad note is not a crash */ } }
   }
-  function outcome(id, pan) {
+  function outcome(id, pan, gag) {
     if (!running || !ctx) return;
+    if (gag && gag.deathSound === 'none') return;   // the weapon's own sound already carries the kill (the purse: no doubled yell, James 2026-09-10)
+    if (gag && gag.deathSound && playFile(gag.deathSound, pan)) return;   // the weapon's own death sound (the hole's four screams)
     if (OUT_FILES[id] && playFile(OUT_FILES[id], pan)) return;
     const fn = O[id]; if (fn) { try { fn(pan); } catch (e) {} }
   }
@@ -371,5 +391,5 @@
   function reel(dur) { if (!running || !ctx) return; K.reel(dur); }
   function reveal(tier) { if (!running || !ctx) return; K.reveal(tier); }
 
-  globalThis.JabberwockySfx = { start, stop, setVolume, play, outcome, reel, reveal, setBedLevel, setMusicVolume, setMusic, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; } };
+  globalThis.JabberwockySfx = { start, stop, setVolume, play, loopFile, outcome, reel, reveal, setBedLevel, setMusicVolume, setMusic, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; } };
 })();

@@ -3,6 +3,217 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-11 — Claude (Fable 5.1) — the third review night: the clip deck, the cow's legs, the hornets
+
+James in the lab, the watcher armed, every note acted on without asking:
+
+- HOLE ("arms up as they go down"): arm bones written straight up and waving after the mixer during `drop`; then the fall3 clip
+  took the job once it landed (the arms code stands in when a creature has no clip).
+- TORNADO ("the timer on the spin is independent of the tornado… if it ran out they could fall back to the ground alive"):
+  core — a caught goon carries `rideZone` and travels WITH the funnel; 1.3 s up, a ride at the top, the burst at 3 s
+  (`TORNADO_BURST`); if the tornado's zone dies first the goon is put back to `idle`, hp 1, `dropped` 0.6 s, the kill count
+  taken back, a `dropped` event; renderer — the ride orbits the funnel top, a dropped goon falls from the top tumbling with
+  the hit clip and lands in a puff. sim TEST 6 grew the ride + drop + full-ride cases.
+- VINES ("pop up quickly and then move around… get smaller and larger… writhe and roil"): rise 2.0 s → 0.35 s, then every vine
+  swells and shrinks on its own beats (two sines each on width and height), turns ±0.9 rad and leans; the coils on the
+  caught creature writhe too.
+- BEES ("a wasp or a hornet from Meshy… scary and gnarly"): a realistic Meshy hornet (15 cr) → `props/bees.glb`, wings split
+  (split_wings.py 0.3), PROPS motion `swarm` (`count: 11`): the shot view is a Group of clones, each on its own orbit radius /
+  rate / height / bob, nose along its circle, wings beating at 70 rad/s, buzzing jitter; spreads out over 0.5 s from the muzzle.
+- COW ("60% larger… land on its side… move its legs a couple times before flopping"): size 1.8 → 2.9; `split_legs.py`
+  (new, headless Blender: the vertices below 42% of the height split into four by quadrant, hip pivots) → `props/cow.glb`
+  (the original in tmp/jabberwocky/models/cow-orig/); PROPS `legs: true`; on landing the zone view hands the prop to
+  extras with a `tick` (`legsTick`): 1.5 s on its feet kicking all four legs and rocking, then 0.42 s rolling onto its side
+  (random side), a dust puff on the thump. extras entries can carry `tick(e, dt)` now (return false = done, stays put).
+- THE CLIP DECK (his "get 'em, add 'em, catalog 'em, weave them into every gun response — some random and some obvious"):
+  fifteen Meshy library clips × five creatures = 75 animation tasks (225 cr; Meshy queues ten at a time — the first pass
+  dropped 40 with 429 NoMorePendingTasks, `animate-missing.mjs` resubmitted them with retries; `meshy.mjs anims` polled +
+  downloaded, `slim_models.py` stripped them to armature-only, 545 MB → 4.2 MB). The catalog table is in the world
+  CLAUDE.md. The weave in render3d.js: `DEATH_BY_GAG` (lightning → electro, bullet/boomerang → shotback, baseballs →
+  shotfront, sand/curse → gutdeath, gas → falldown at 45%, hole → fall3, slapfight/trombone → dieback, bees/legos/audit →
+  falldown) and every other expire dealt from `DEATH_POOL` by the goon's seed (`dealClip`); `RUN_POOL` per goon when
+  chasing (run ×2, run3, runfast5, runfast7, hellorun — at 0.85 speed); `runjump` once on notice for 40% of goons;
+  `backflip` off a dud hit for a third; pacified goons deal one of three dances. One-shots (`busyOnce`) finish before the
+  run/walk logic resumes. Also answered: Meshy's library is 678 clips (`anim-library.json`, the free list endpoint), and
+  his paid plan owns every generated asset outright, commercial use included.
+- THE REST OF THE NIGHT (each on a note, each verified by hand-driving the lab in the pane — `LAB.step` + `R.update` loops,
+  never timed waits, the pane's clock stalls when hidden): the HOLE closes over after 12 s (scar `life`); BEES — the
+  summon now carries `pierce`, parks on each victim (`sting: 2.0`; NOT `hold`, which is the rifle's pull-to-launch delay
+  and produced a phantom two-second wait before the swarm — the "two bees" bug), takes a second or third only within
+  `stingReach` 3.5 cells, and a spent swarm climbs away into the ceiling (`swarmAway` in extras; extras entries can carry
+  `gone: true` to be spliced when their tick ends); the body cloud that doubled the swarm is OFF; the LAB waits for a
+  one-shot death clip before a pad respawns (`R.clipDone`, 7 s cap); LIGHTNING plays electro straight from the shock, no
+  arm writes; GAS falls face forward (shotfront) and its death voice is a wheeze (the vibrato read as three notes); the
+  COW ended as: 60% bigger, flies out already on its side (`motion: 'side'`), lands on its side, more blood + two giblets —
+  the leg-kick (`split_legs.py`, `legsTick`, `legs: true`) is built and retired at his word; the SNEAKER 20% bigger,
+  the squash instant (`u * 10`) and every falling prop now drops from the cell's ceiling under gravity, touching down
+  0.15 s after the kill so the crush happens as it lands; more blood on the sneaker; THE LEGOS are a `drop` from the
+  ceiling now — one Meshy brick (15 cr, `props/brick.glb`) recoloured eight ways, ~190 let go across the fall
+  (`brickRain`, the `bricks` body list, dry bodies with a `rest` height so they heap in the middle); THE GRAVY is a
+  new core kind — `mode: 'wave'`: a fan from the muzzle down the aim, the front rolls to `range` over `dur`, everyone in
+  the fan with line of sight is smothered, pools laid along the way; the renderer's `makeGravyWave` / `syncGravyWave`
+  = seventy noise-bumped glossy lumps riding behind the front, thigh-high at the leading edge, steam wisps, sinking
+  away; the smother blob is gone for the gravy. sim TEST 6 grew the wave case; TEST 1 knows the mode. THE LAB PAGE: the
+  name / line / facts card removed, the card capped at 35vh (its own working controls, history below the fold), the
+  find box + SOUND + FIRE gone from the bar (creature picker + RESET remain). Tonight's verdicts: glue, lightning,
+  anvil, hole, tornado, vines, bees, gas, cow, cart, legos PASSED; wetcat, porcupine TRASH. Meshy total 270 cr.
+  Final tags: core 22, gags 37, render3d 81, lab.js 104, world.js 62, sound 22.
+- Also tonight (early): glue, lightning, anvil PASSED by his hand. Meshy tonight: 15 + 15 + 225 = 255 cr (balance 2,114 before the
+  clips). Sim 122,906 green, lab smoke ok, draw-check ok; pane: the lab loads clean and fires bullet / gas / hole with no errors.
+  Tags: core 18, render3d 70, lab.js 91, world.js 51.
+
+## 2026-09-10 (after midnight) — Claude (Fable 5.1) — the second review night, first five notes
+
+James in the weapon lab, the watcher armed, each note acted on without asking (all his notes carried `update`;
+mousetrap and the donkey kick went to TRASH by his hand — nothing to do, cuts.js has them):
+
+- GLUE ("this should look like a hose is shooting out of the gun"): THE HOSE — every live drop of a `hose: true`
+  stream is a control point on one tube (CatmullRom → TubeGeometry, radius 0.08, rebuilt each frame) from the
+  viewmodel's muzzle out, sagging with distance; per-gag `jitter` on the stream's angle (0.08 for a hose, the old
+  0.24 for the rest); rate 40, 1.6 s. His second note ("still looks like a bunch of snowballs") was the old page
+  — code only changes on a reload, so the UPDATED toast now says "reload the page to load the change" — and the
+  drops inside the rope are gone for good: only the head shows one, at 0.14.
+- PIRANHAS ("really cartoony… flying sidewise… blue. see if you get one from meshy… a school… chomp better"):
+  a realistic Meshy piranha (`props/piranha.glb`, 15 cr, slimmed to 313 KB — the manifest has the task), PROPS
+  motion `swim` (nose-first along the flight, a tail-beat yaw + roll, its own bob), jitter 0.4 so it fans as a
+  school, rate 22; THE FRENZY — on a piranha kill seven fish (clones) circle the body at their own heights and
+  lunge in to the bone and back (`syncSchool`), gone when the body is; torn down with the goon view. The 2D
+  sprite (the scar's fish) recoloured silver with a red belly.
+- BLACK HOLE ("flow forward like a dark black sphere… accretion disk ala Interstellar… monsters sucked into the
+  center"): `travel: 0.7` on the gag — spawnZone takes the origin, the zone starts 0.6 cells out of the muzzle
+  and eases to the aim point with no pull, then pulls for 2.2 s; the renderer builds it (`makeBlackHole`): a
+  black sphere, a photon ring, a tilted accretion disk and the lensed halo standing over the top (one canvas
+  gradient, banded, additive), small and dark in flight, opening at the target, collapsing at the end, warm
+  light; the caught creature keeps being pulled to the centre while dying (core) and the vapor case for
+  `gagId === 'blackhole'` lifts it to the hole, stretches it tall and thin, spins it and shrinks it in — no
+  white-out. Sim: the test gives it 4 s (the flight comes first).
+- TRAIN ("going sideways. double it in size and turn it so it's driving away"): size 3 → 6; per-prop `yaw` in
+  PROPS — the Meshy train and bus both lie along -X (render_models.py on both), the flying props face +Z in
+  three.js terms, so both get +π/2. (First cut used -π/2 and the train drove at the camera; the pane caught it.)
+- LAVA ("a firehose of lava and it arcs and… a lot of chunks fly out"): a hose stream (`hose`, `chunks`,
+  `pools: 0.06`): a glowing Lambert rope (emissive orange), a few drops land as the lava scar (core: `drop` is
+  false for those), `lavaBits` particles burst from the rope's head every frame + a point light at the pour.
+- The pane caught one more: the black hole view's teardown hit `PROPS[undefined].stays` (it is a prop-less view)
+  — guarded. Sim 122,902 green (one assertion fewer: the old lob-lava test count), lab smoke ok, draw-check ok.
+- CART ("again, its going sideways. all the models you got made are going sideways"): every prop rendered front + side
+  (tmp/jabberwocky/renders/facing-sheet.png): the walkers, the fish, the eagle, the cow and the porcupine all face +Z; the
+  cart alone sits at 45° in its file — yaw π/4. Tags: core 13, render3d 38, lab.js 49.
+- GLUE, third note ("there's no rope. just more snowballs again"): the rope draws in the pane through the lab's own FIRE
+  button and its real loop — his tab was the page from before tonight (never reloaded; he could not see the new toast either).
+  THE LAB RELOADS ITSELF 2.5 s after an UPDATED toast (drafts, pick and prefs are in localStorage). gags.js / draw.js tags
+  bumped too (both changed tonight without one; the server is no-store anyway). Tags: gags 15, draw 4, lab.js 50.
+- Glue PASSED (rank 2), piranhas PASSED (rank 1), black hole PASSED (rank 1). TRAIN ("not coming out of the front of the gun"):
+  train-kind props lerp from the muzzle over their first 0.5 s like the flame (the bus too). Tags: render3d 39, lab.js 51.
+- LAVA ("seems like it requires a lot of processing?"): each pool carried a PointLight and the hose another — every change
+  in the light count recompiles every shader. One lit pool at a time (`userData.lit`), no hose light, tube 36×5, pools 0.04.
+- TRAIN again ("still comes out of the middle of the screen"): the lerp target is the muzzle + halfW along the heading (the
+  rear at the barrel; the first cut put the centre there, camera inside the model), 0.7 s. Tags: render3d 41, lab.js 53, gags 16.
+- LAVA PASSED. TRAIN, third note ("not really aiming from the weapon… is this a real model?"): it is; the core snapped a train
+  to the dominant grid axis — now dx/dy = cos/sin of the aim, everything downstream already took a unit vector. Tags: core 14, lab.js 54.
+- HOLE ("randomly use the following death screams": hole-death-01..04): per-gag `deathSound` — sound.js `outcome(id, pan, gag)`
+  plays it first (numbered set probed at preflight from the gag table), both hosts pass the gag on kill. Tags: sound 16, gags 17, lab.js 55, world.js 44.
+- HOLE round two ("trigger the sounds in succession"): every numbered set now plays in turn (01, 02, … round again; `seriesAt`).
+  TRAIN PASSED, GRAVEL PASSED then back to review for round two.
+- GRAVEL ("get 6 rough pebbles from meshy"): PROPS `variants: N` loads `<name>-1..N.glb` into an array and propFor deals a
+  random one; a single "six pebbles" generation (15 cr) came back as polygon soup — 158 loose parts, a centroid-clustered
+  split (tmp/jabberwocky/split_pebbles.py, kept) gave shards and a three-pebble clump — so SIX SINGLE generations (90 cr),
+  slimmed to ~300 KB each. Round two on his eye: half the size (0.11), `dark: 0.5` (the loader multiplies the material
+  colour), 48 a second.
+- HANDBAG ("get the arm and the handbag on a strap as two separate models… overly large… swinging from just to the right of
+  the gun"): a real quilted Meshy purse with a handle (15 cr, faces +Z, slimmed); PROPS motion `swing` — the ARM rides the
+  fist's roundhouse from the right (hand at 1.25 m, an `arm` prop cloned once per swing and torn down with the shot), the
+  purse hangs from the hand, thrown outward along the swing's tangent by a lag and whipping ahead at the middle; reach 2.2,
+  swingLife 0.6, purse size 2.2. THE ARM: Meshy's text-to-3D made a WHOLE OLD LADY twice when asked for a severed old lady's
+  forearm (30 cr, both benched in tmp/jabberwocky/models/ladyarm-take1/2.glb, manifest entries renamed) — the arm is the
+  giant Meshy FIST with its forearm stump (armSize 3.0). A drawn image → image-to-3D (~21 cr) is the route if he wants the
+  lady's arm proper; offered in the reply, not spent.
+- TORNADO ("use tornado.mp3 while it's on screen… a classic vortex of many stacked plates… tiny at the floor, wide at the
+  ceiling, twists and roils"): sound.js `loopFile(name, pan)` (a looping Audio through the sfx gain with a stop that fades);
+  gag `loop: 'tornado'` + `sound: 'none'`; both hosts start the loop on the zone event and `stopDeadLoops()` after each step
+  ends it when no such zone lives. THE VORTEX: eighteen CircleGeometry plates (radius 0.12 → 0.8 × the hurt radius, y 0.04 →
+  H_LOW), a streaked canvas disc (`vortexTex`, spiral streaks cut out of a soft ring), each turning at 13 → 5 rad/s and
+  roiling off the axis, tilting a little; the old torus cone is gone. Tags: render3d 47, lab.js 62, gags 21, sound 18,
+  world.js 45, core 14. Meshy tonight: 15 + 15 + 90 + 15 + 15 + 15 = 165 cr.
+- HANDBAG: his purse.mp3 on the swing (FILES purse). Tags: sound 19, lab.js 63.
+- VINES ("one of the weakest… lime green squiggles on the ground… come up out of the ground… darker green… leaves and
+  berries… thinner tips… coil up and around… pull them down and crush them… like constrictor snakes… 6–10 of them… colour
+  variations"): THE VINE KIT — `makeVine` (a helix that tightens as it climbs, four tube runs of shrinking radius 0.11 → 0.014,
+  leaf cards on a canvas leaf, berry clusters red or purple, six dark greens), `spawnVinePatch` (7–10 vines within the hurt
+  radius rising out of the floor with a staggered delay, holding to 4.6 s, sinking by 5.5), `stepVinePatches` each frame,
+  `syncCoils` (three coils climb a caught creature, tighten, then it is pulled down and crushed — outcome 'smother', the
+  blob skipped for vines; a blood burst + pool at the crush). Coils go with the body (the first cut left them standing
+  around the corpse). The 2D fallback + scar recoloured dark green.
+- ANVIL ("5 times larger… blood and guts"): size 4.5; a squash by the anvil throws a gib burst, wall splats and intestines +
+  a gore pick. PIANO ("piano-crash.mp3… 3x larger"): size 6.6; gag `splashSound: 'pianocrash'` — the hosts' impact event
+  now plays `gag.splashSound || 'thud'` (any drop can carry its own landing sound).
+- HANDBAG ("don't double up on the lady's yell or add any echo. add a little reverb… like a medium room"): `deathSound:
+  'none'` = the kill plays nothing on top of the weapon's own file (sound.js outcome() honours it); `FILE_ROOM` — a
+  0.9 s noise-tail convolver send per file, the purse at 0.28.
+- THE GORE DRAWER (James, out of the lab: "a dozen more organs and bones eyeballs limbs different kinds of blood splatters
+  half brains whole brains… put all that stuff into rotation… and when I say increase the gore or more giblets pick a nice
+  selection from the menu"): twelve Meshy gibs — heart, liver, kidney, lungs, stomach, brain, halfbrain, eyeball, spine,
+  jaw, hand, foot (props.mjs with `PROPS_OUT=gibs`, realistic-wet prompts, 180 cr, slimmed to 512) in `GIBS`; `GORE` = the
+  menu by kind (organs / brains / bones / limbs) and `gorePick(n)` = a selection spread across the kinds; the burst deals a
+  brain fifth every time then the whole drawer, chew bites and the drops after a chew / the anvil draw from the menu.
+  FIVE SPLATTER KINDS (draw.js: blood, bloodspray, blooddrips, bloodsmear with a handprint, bloodchunks) — `bloodTex()`
+  picks one at every blood-decal site (pools, wall splats, drips, the fling splat).
+- SNEEZE ("no snot… a blast of wind… very light, slightly opaque material flying away from the gun in an expanding cone"):
+  gag `sprite: 'none', gust: true, scar: null`; THE GUST — soft sprites born 0.7 m ahead of the muzzle six a frame while
+  the swing lasts, flying down the aim in a 0.9 rad cone, swelling 0.12 → 1.7 m and fading (opacity 0.13 peak; the first cut
+  at 0.22 from the lens itself whited out the screen), `stepGusts` with the particles.
+- LIGHTNING ("just looks like a straight bolt… bifurcations… crooked and scraggly… a bright white core with a bright golden
+  yellow aura… jump up six inches with their arms out… a flickering skeleton through the opacity of their body"): THE BOLT —
+  `boltPath` (perpendicular jitter along the run), `boltVariant` (main + 2–4 forks), `makeBolt` (three jitters cycled every
+  45 ms; a white core cylinder inside a fat additive gold one per segment; a warm light at the strike); the chain links are
+  bolts too; zero-length / vertical runs guarded (a chain link onto the same spot made NaN geometry). THE SHOCK — outcome
+  'burn' → 'expire' with `view.shock`: the 'hit' clip, LeftArm / RightArm written straight out after the mixer, a
+  six-inch hop with a buzz, the body at 0.35–0.6 opacity while skull + ribs + spine (the gore drawer, emissive) flicker
+  inside it, random flashes; at u 0.3 the parts go and the 'die' clip runs.
+- HOLE ("25% larger… some type of edging"): SCARS hole r 0.55 → 0.69; the scar and the sprite get a pale stone rim with
+  broken tick marks round it. Gibs sheet: tmp/jabberwocky/renders/gibs-sheet.png. Tags: render3d 55, lab.js 73, gags 27,
+  draw 7. Meshy tonight so far: 165 + 180 = 345 cr.
+- TORNADO round two (his screenshot tmp/jabberwocky/review/tornado.png: "three different directional stacks… an upside down
+  stack"): the old 2D funnel SPRITE was still drawn at 6 m over the plates — opacity 0 now; 24 plates from 0.1 to the room's
+  ceiling + 0.35 (H_TALL in rooms via levelRef.tall), radius k^1.2, ONE travelling wave up the stack (offset and lean by k) so
+  it snakes as one. Gravel PASSED (rank 2). Tags: render3d 56, lab.js 74.
+- HANDBAG ("start the voice sample right away, but hold off for about 800 milliseconds before the animation"): gag `hold` (extra
+  seconds on the pending launch, core) + `earlySound` (the hosts play the gag sound on the pull event and skip it on fire);
+  the purse holds 0.52 so pull → swing is 0.8 s. Tags: core 15, gags 28, lab.js 75, world.js 47.
+- TORNADO round three ("completely flat… no volume… a pancake shaped volume of grey… 10–15% opacity… a pretty significant
+  blur"): each plate is a Group — the streaked disc + two squashed spheres (1.05× at 0.09, 1.3× at 0.04, the blur) — the
+  wave moves the group, the spin turns the disc. Tags: render3d 58, lab.js 77.
+- VINES round two ("slow it down… variety in the shapes… doubling back… forking off to the side… more leaves and bigger…
+  don't use only corkscrews"): `vinePath` by shape — coil / snake / arch (climbs, leans over, doubles back, up again) /
+  wander (a random walk with kinks) — dealt round the patch; `tubeAlong`; one to three leafed forks off the side; leaves
+  16–26 at 0.42–0.58; rise 2.0 s, hold to 6.0, gone by 7.4; the creature coils stay coils (forks 0). PIANO round two
+  ("that's huge… two times… black"): size 4.4, `dark: 0.35` (the single-prop loader honours dark now, emissive too).
+  SNEEZE PASSED. Tags: render3d 60, lab.js 79.
+- TORNADO round four ("travels away from the gun towards the bad guys pretty reliably"): a wander zone sets off down the aim
+  (spawnZone gets `from`) and each re-aim (1.5/s) points at the nearest live goon (the player when hostile), else away from
+  the player, ±0.4 rad waver, one in four a random turn. Tags: core 16, lab.js 80.
+- HANDBAG: the floor sticker (scar) dropped — the purse is in the hand. Tags: gags 29, lab.js 81.
+- TORNADO round five ("once the monsters get up into the tornado… fly apart into limbs and body parts"): the fling case for
+  gagId tornado — 1.3 s spiralling up to 3.4 m spinning, then hide + gibBurst + wall splats + all four limbs and a gorePick(5)
+  thrown outward from the top. Tags: render3d 61, lab.js 82.
+- TORNADO, the catch fixed in the core: a tornado fling gives no wall velocity (the pane showed them dead at the wall before
+  the burst) — they stay put, dieDur 1.7, and go apart at the top. VINES round three ("struggle… and yell in pain and fear for
+  a second or two"): `longDeath: 3.4`, `deathSound: 'scream'` (the numbered set), and while the pull has not begun the hit
+  clip repeats with a thrash (yaw + position jitter). Tags: core 17, gags 30, render3d 62, lab.js 83.
+- A BROKEN MINUTE: a line comment inserted mid-line in the vines edit swallowed the rest of the line — render3d.js failed to
+  parse and the lab went blank until the fix (render3d 63); James: "the lab stopped loading". Lesson: block comments inside
+  one-line cases, never //. HANDBAG PASSED (rank 2).
+- PIANO round three ("two of the legs break… tips over on a diagonal… the top fly off… blood and guts"): split_piano.py
+  (KEEP) cuts the Meshy piano into body / legs-front / legs-back / lid by height in a normalised frame; PROPS `pieces` loads
+  them raw scaled by size into models.pieces; on landing the whole is swapped for the body (+ back legs as a child), the
+  front legs and the lid go into the gib physics with a throw, seven black splinters scatter, a dust puff, and the body
+  drops and tips (rotation.x 0.55, z 0.18) over 0.45 s; restProp keeps a `keepPose` wreck as it lies; the squash by piano
+  gets the anvil's blood and guts. Tags: render3d 64, lab.js 85.
+- GLUE round three ("arms and tops of the heads could come out of the glue while they struggled"): the glue case sinks the
+  body to 0.62 of its height in the first fifth, then a struggle to 0.8 (the hit clip on repeat, a bob, LeftArm / RightArm
+  written up at ±2.5 with a wave) and under. ANVIL round two ("three times… black… a glowing white rectangle"): size 2.7,
+  PROPS `solid` = one flat colour with the maps and the emissive dropped (0x17171b, rough iron). PIANO PASSED (rank 1,
+  "AWESOME!!!"). Tags: render3d 66, lab.js 87.
+
 ## 2026-09-08 (evening) — Claude (the Carnage session) — THE CHIRP IS GONE
 
 - James, from the Carnage session, first order of business: "there's a small chirping noise or

@@ -25,33 +25,59 @@ const THEMES = [
   { fog: 0x0c0403, base: 0.48, torch: 0xff6020, walls: ['wall4', 'wall2', 'wall1', 'wall3'], glow: { wall1: 0.45, wall2: 0.3, floor: 0.4, ceil: 0.2 } },
 ];
 const MODEL_DIR = 'assets/models/';
+// THE CLIP DECK (James 2026-09-11, 'get 'em, add 'em, catalog 'em, weave them into every gun response — some random and
+// some obvious'): fifteen more Meshy library clips on every creature (tmp/jabberwocky/actions2.json holds the action ids).
+//   deaths  dieback (189 Dying Backwards) · gutdeath (188 Fall Dead from Abdominal Injury) · electro (181 Electrocuted Fall) ·
+//           shotback (183 Shot and Fall Backward) · shotfront (184 Shot and Fall Forward) · falldown (366 Falling Down) · die (8 Dead)
+//   the obvious ones: DEATH_BY_GAG below; every other 'expire' deals one from DEATH_POOL by the goon's seed
+//   fall3 (504 Fall 3) — the hole: they fall flailing · falldown — the gas: they keel over
+//   runs    run (the rig's own) · run3 (15) · runfast5 (533) · runfast7 (535) · hellorun (110) — each goon runs its own way (seed)
+//   runjump (463 Run and Jump) — some goons leap the moment they notice you · backflip (452) — some flip off a dud hit
+//   dances  dance (the original) · dance1 (22 Funny Dancing 1) · dance2 (23 Funny Dancing 2) — pacified goons deal one by seed
+const DECK = ['fall3', 'falldown', 'gutdeath', 'electro', 'shotback', 'shotfront', 'dieback', 'backflip', 'run3', 'runjump', 'runfast5', 'runfast7', 'hellorun', 'dance1', 'dance2'];
+const DEATH_BY_GAG = { lightning: 'electro', bullet: 'shotback', baseballs: 'shotfront', sand: 'gutdeath', bees: 'falldown', legos: 'falldown', slapfight: 'dieback', curse: 'gutdeath', boomerang: 'shotback', audit: 'falldown', trombone: 'dieback' };
+const DEATH_POOL = ['die', 'dieback', 'gutdeath', 'shotback', 'shotfront', 'falldown'];
+const RUN_POOL = ['run', 'run', 'run3', 'runfast5', 'runfast7', 'hellorun'];
+const DANCE_POOL = ['dance', 'dance1', 'dance2'];
 // each creature: the rigged base and the clips we asked Meshy for; yaw = which way the model faces at rest
 const CREATURES = {
-  ghoul:      { clips: ['walk', 'attack', 'die', 'dance', 'hit'], yaw: 0 },
-  brute:      { clips: ['walk', 'attack', 'die', 'dance', 'hit'], yaw: 0 },
-  ratling:    { clips: ['walk', 'attack', 'die', 'dance', 'hit'], yaw: 0 },
-  cultist:    { clips: ['walk', 'attack', 'die', 'dance', 'hit', 'throw'], yaw: 0 },
-  stalker:    { clips: ['walk', 'attack', 'die', 'dance', 'hit'], yaw: 0 },
+  ghoul:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
+  brute:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
+  ratling:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
+  cultist:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', 'throw', ...DECK], yaw: 0 },
+  stalker:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
   // the Jabberwock would not take a rig (Meshy's pose estimation wants a humanoid), so he is a posed
   // statue that moves procedurally: hovers, leans in to fire, rears back when hit
   jabberwock: { clips: [], yaw: 0, unscaled: true, procedural: true },
 };
-const GIBS = ['intestines', 'arm', 'leg', 'skull', 'ribs'];
+const GIBS = ['intestines', 'arm', 'leg', 'skull', 'ribs',
+  'heart', 'liver', 'kidney', 'lungs', 'stomach', 'brain', 'halfbrain', 'eyeball', 'spine', 'jaw', 'hand', 'foot'];   // 2026-09-10 James: the gore drawer, twelve more (Meshy, 180 cr)
+// the menu by kind — a lab note like "more giblets" or "increase the gore" picks a nice selection from here (gorePick)
+const GORE = {
+  organs: ['heart', 'liver', 'kidney', 'lungs', 'stomach', 'intestines'],
+  brains: ['brain', 'halfbrain', 'eyeball'],
+  bones: ['skull', 'ribs', 'spine', 'jaw'],
+  limbs: ['arm', 'leg', 'hand', 'foot'],
+};
+// n pieces spread across the kinds, no kind twice running — the 'nice selection'
+function gorePick(n) { const kinds = Object.keys(GORE), out = []; for (let i = 0; i < n; i++) { const k = GORE[kinds[(i + Math.floor(Math.random() * kinds.length)) % kinds.length]]; out.push(k[Math.floor(Math.random() * k.length)]); } return out; }
 // PROPS: real objects instead of billboard stickers. size = metres on the long side; motion = how it moves in
 // flight; stays = it rests where it lands and stands in for the floor decal. Files: assets/models/props/<name>.glb
 // (Meshy, 2026-09-06); prim = built from primitives at load, no file needed.
 const PROPS = {
-  anvil:     { size: 0.9,  motion: 'tumble', stays: true },
-  piano:     { size: 2.2,  motion: 'tumble', stays: true },
-  train:     { size: 3.0,  motion: 'drive',  stays: false },
-  bus:       { size: 3.2,  motion: 'drive',  stays: false },
-  cow:       { size: 1.8,  motion: 'tumble', stays: true },
+  anvil:     { size: 2.7,  motion: 'tumble', stays: true, solid: 0x17171b },   // 2026-09-10 James: three times larger (five was too much), black iron — solid: the texture (with its glowing white rectangle) is dropped for one flat colour; blood and guts when it lands on them
+  piano:     { size: 4.4,  motion: 'tumble', stays: true, dark: 0.35, pieces: ['piano-body', 'piano-legs-front', 'piano-legs-back', 'piano-lid'] },   // 2026-09-10 James: twice the original, black, piano-crash.mp3 on the landing; THE CRASH — two legs break, it tips on a diagonal, the lid flies off (pieces from split_piano.py)
+  train:     { size: 6.0,  motion: 'drive',  stays: false, yaw: Math.PI / 2 },   // 2026-09-10 James: twice the size, driving away from the gun (the model lies along -X; the flying props face +Z in three.js terms)
+  bus:       { size: 3.2,  motion: 'drive',  stays: false, yaw: Math.PI / 2 },
+  cow:       { size: 2.9,  motion: 'side', stays: true },
+  brick:     { size: 0.22, motion: 'tumble', stays: false },   // 2026-09-11 James: the legos — one Meshy brick, recoloured per piece by brickRain; never a shot   // 2026-09-11 James: flies out already on its side and lands on its side on the monster; the leg kick is retired (legs: true brings it back)   // 2026-09-11 James: 60% bigger; lands on its feet, kicks its legs, flops on its side (legs split off in split_legs.py as LegA-D, hip pivots)
+  bees:      { size: 0.55, motion: 'swarm', stays: false, count: 11 },   // 2026-09-11 James: a Meshy hornet (props/bees.glb) — a swarm of eleven, each on its own orbit, replaces the bee stickers
   vending:   { size: 1.7,  motion: 'tumble', stays: true },
   sink:      { size: 1.2,  motion: 'tumble', stays: true },
-  sneaker:   { size: 1.8,  motion: 'tumble', stays: true },
+  sneaker:   { size: 2.16, motion: 'tumble', stays: true },   // 2026-09-11 James: 20% larger
   chainsaw:  { size: 0.9,  motion: 'spin',   stays: true },
   rocket:    { size: 1.1,  motion: 'fly',    stays: false, prim: 'rocket' },   // 2026-09-08 James: the Meshy one stood nose-up like a kids'-book rocket; now a Quake rocket that flies nose-first with fire out the back
-  cart:      { size: 1.1,  motion: 'drive',  stays: true },
+  cart:      { size: 1.1,  motion: 'drive',  stays: true, yaw: Math.PI / 4 },   // the model sits at 45° in its file (2026-09-10)
   ham:       { size: 0.5,  motion: 'roll',   stays: true },
   jackbox:   { size: 0.8,  motion: 'tumble', stays: true },
   mousetrap: { size: 1.1,  motion: 'none',   stays: true },
@@ -73,6 +99,9 @@ const PROPS = {
   bowling:   { size: 0.4,  motion: 'roll',   stays: true, prim: 'ball', color: 0x101a5a, holes: true },
   baseball:  { size: 0.2,  motion: 'roll',   stays: true, prim: 'ball', color: 0xf4f0e8 },
   knife:     { size: 2.0, motion: 'endover', stays: false },
+  piranha:   { size: 0.5, motion: 'swim',   stays: false },
+  rock:      { size: 0.11, motion: 'tumble', stays: false, variants: 6, dark: 0.5 },   // 2026-09-10 James round two: half the size, darker, half again as many
+  purse:     { size: 2.2, motion: 'swing',  stays: false, arm: 'fist', armSize: 3.0, armYaw: 0, purseYaw: 0 },   // the arm is the Meshy fist (with its forearm stump): Meshy's text-to-3D made a whole old lady twice when asked for a severed arm (30 cr, benched in tmp/jabberwocky/models/)   // 2026-09-10 James: a real 3-D purse on a strap swung by an old lady's arm from the right of the gun, overly large
   fist:      { size: 3.2, motion: 'punch',   stays: false },   // James 2026-09-08: a Meshy fist, stupid big, knuckles first, lunges and comes back   // 2026-09-08 James, three notes: a Meshy knife (the code-built one read as a cigarette), twice the size, four of them, spinning fast; primProp 'knife' stands by if the file is missing
 };
 const BOOM_GAGS = new Set(['rocket', 'wrongway', 'meteor', 'piledriver']);   // the only splashes that are explosions
@@ -97,7 +126,7 @@ export function createRenderer(canvas) {
 
   // ---- assets -------------------------------------------------------------------------------------
   const textures = {};
-  const models = { creatures: {}, gibs: [], gibByName: {}, props: {}, rifle: null, gauntlets: null };
+  const models = { creatures: {}, gibs: [], gibByName: {}, props: {}, pieces: {}, rifle: null, gauntlets: null };
   let assetsReady = false, assetsFailed = 0;
   function tex(name) {
     if (textures[name]) return textures[name];
@@ -130,7 +159,9 @@ export function createRenderer(canvas) {
     for (const name of Object.keys(PROPS)) {
       const def = PROPS[name];
       if (def.prim) { models.props[name] = primProp(name, def); continue; }
-      jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'props/' + name + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); models.props[name] = fitProp(g.scene, def.size); resolve(); }, undefined, () => resolve())));   // a missing prop is not a failure: the sprite stands in
+      if (def.pieces) for (const pc of def.pieces) jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'props/' + pc + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); if (def.dark) g.scene.traverse((o) => { if (o.isMesh && o.material && o.material.color) { o.material.color.multiplyScalar(def.dark); if (o.material.emissive) o.material.emissive.multiplyScalar(def.dark); } }); const grp = new THREE.Group(); g.scene.scale.setScalar(def.size); grp.add(g.scene); (models.pieces[name] = models.pieces[name] || {})[pc.slice(name.length + 1)] = grp; resolve(); }, undefined, () => resolve())));
+      if (def.variants) { for (let i = 1; i <= def.variants; i++) jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'props/' + name + '-' + i + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); if (def.dark) g.scene.traverse((o) => { if (o.isMesh && o.material && o.material.color) o.material.color.multiplyScalar(def.dark); }); (models.props[name] = models.props[name] || []).push(fitProp(g.scene, def.size)); resolve(); }, undefined, () => resolve()))); continue; }
+      jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'props/' + name + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); if (def.solid) g.scene.traverse((o) => { if (o.isMesh && o.material) { o.material.map = null; o.material.emissiveMap = null; if (o.material.emissive) o.material.emissive.setHex(0); o.material.color.setHex(def.solid); if ('roughness' in o.material) { o.material.roughness = 0.75; o.material.metalness = 0.35; } o.material.needsUpdate = true; } }); if (def.dark) g.scene.traverse((o) => { if (o.isMesh && o.material && o.material.color) { o.material.color.multiplyScalar(def.dark); if (o.material.emissive) o.material.emissive.multiplyScalar(def.dark); } }); models.props[name] = fitProp(g.scene, def.size); resolve(); }, undefined, () => resolve())));   // a missing prop is not a failure: the sprite stands in
     }
     total += 2;
     jobs.push(loadGlb(MODEL_DIR + 'rifle.glb').then((g) => { if (g) { prepModel(g.scene); models.rifle = g.scene; } tick(); }));
@@ -188,7 +219,7 @@ export function createRenderer(canvas) {
     }
     return g;
   }
-  function propFor(sprite) { return PROPS[sprite] && models.props[sprite] ? models.props[sprite] : null; }
+  function propFor(sprite) { const m = PROPS[sprite] && models.props[sprite]; if (!m) return null; return Array.isArray(m) ? (m.length ? m[Math.floor(Math.random() * m.length)] : null) : m; }   // variants: a random one each time
   function prepModel(root) {
     root.traverse((o) => {
       if (o.isMesh) {
@@ -213,6 +244,8 @@ export function createRenderer(canvas) {
     return t;
   }
   function gagSprite(sprite, t) { const frame = Math.floor((t || 0) * 12) % 12; return canvasTex('proj|' + sprite + '|' + frame, D().projSprite(sprite, t)); }
+  const BLOODS = ['blood', 'blood', 'bloodspray', 'blooddrips', 'bloodsmear', 'bloodchunks'];   // 2026-09-10 James: different kinds of splatter, in rotation
+  const bloodTex = () => scarTex(BLOODS[Math.floor(Math.random() * BLOODS.length)], Math.random());
   function scarTex(type, seed) { const c = D().scarSprite(type, seed); return c ? canvasTex('scar|' + type + '|' + Math.round(seed * 8), c) : null; }
   function softDot() {
     return canvasTex('softdot', (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); return c; })());
@@ -400,7 +433,7 @@ export function createRenderer(canvas) {
   const goonViews = new Map(), shotViews = new Map(), zoneViews = new Map(), scarViews = new Map(), beamViews = new Map();
   let keyView = null;
   let healViews = [];
-  const gibs = [], shards = [], extras = [];
+  const gibs = [], shards = [], extras = [], bricks = [];
   const entGroup = new THREE.Group(); scene.add(entGroup);
   function clearEntities() {
     for (const v of goonViews.values()) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.block) entGroup.remove(v.block); }
@@ -410,9 +443,10 @@ export function createRenderer(canvas) {
     for (const v of beamViews.values()) entGroup.remove(v);
     for (const g of gibs) entGroup.remove(g.mesh);
     for (const s of shards) entGroup.remove(s.mesh);
+    for (const b of bricks) entGroup.remove(b.mesh);
     for (const e of extras) entGroup.remove(e.obj);
     goonViews.clear(); shotViews.clear(); zoneViews.clear(); scarViews.clear(); beamViews.clear();
-    gibs.length = 0; shards.length = 0; extras.length = 0;
+    gibs.length = 0; shards.length = 0; extras.length = 0; bricks.length = 0;
     blood.reset(); embers.reset();
   }
 
@@ -460,6 +494,11 @@ export function createRenderer(canvas) {
     view.current = a;
     return true;
   }
+  // deal a clip from a pool by the goon's seed (the same goon always gets the same one; a missing clip falls through to the next)
+  function dealClip(view, g, pool, salt) { const have = pool.filter((n) => view.actions[n]); if (!have.length) return null; const r = Math.abs(Math.sin((g.seed || 0) * 977.7 + salt * 131.3) * 43758.5453) % 1; return have[Math.floor(r * have.length) % have.length]; }
+  const chance = (g, salt, p) => (Math.abs(Math.sin((g.seed || 0) * 977.7 + salt * 131.3) * 43758.5453) % 1) < p;   // a per-goon coin, fixed for its life
+  function deathClip(view, g) { const o = DEATH_BY_GAG[g.gagId]; return (o && view.actions[o]) ? o : dealClip(view, g, DEATH_POOL, 1) || 'die'; }
+  const busyOnce = (view, name) => view.current && view.current === view.actions[name] && !view.current.paused;   // a one-shot still playing
   function setTint(view, color, emissive, k) {
     for (const m of view.mats) {
       if (!m.userData.base) { m.userData.base = m.color.clone(); m.userData.baseE = m.emissive ? m.emissive.clone() : null; m.userData.baseEI = m.emissiveIntensity; }
@@ -475,6 +514,10 @@ export function createRenderer(canvas) {
       root.position.set(g.x * S, 0, g.y * S);
       root.rotation.y = Math.PI / 2 - g.a;
       if (g.outcome !== 'shrink') root.scale.setScalar(1);
+      if (g.dropped > 0) {   // dropped alive by a tornado that ran out: fall from the top of the funnel, tumbling, and land (James 2026-09-11)
+        if (!view.dropping) { view.dropping = true; view.burst = false; view.started = null; view.flingTo = null; play(view, 'hit', { once: true, restart: true }); }
+        const k = g.dropped / 0.6; root.position.y = 3.4 * k * k; root.rotation.z = k * 4; root.rotation.x = Math.sin(k * 9) * 0.6;
+      } else { if (view.dropping) { view.dropping = false; puff(g.x * S, 0.2, g.y * S, 0x8a7a6a, 1.0); } root.rotation.x = 0; root.rotation.z = 0; }
     }
     if (view.mixer) view.mixer.update(dt);
     // blink on a dud hit / boss hit
@@ -492,15 +535,23 @@ export function createRenderer(canvas) {
       if (g.state === 'pacified') heartsFor(view, g, dt);
       return;
     }
-    if (g.state === 'pacified') { if (!play(view, 'dance')) play(view, 'walk', { speed: 0.4 }); heartsFor(view, g, dt); return; }
+    if (g.state === 'pacified') { if (!play(view, dealClip(view, g, DANCE_POOL, 2) || 'dance')) play(view, 'walk', { speed: 0.4 }); heartsFor(view, g, dt); return; }
     if (g.state === 'idle' || g.state === 'chase') {
+      if (g.blink > 0 && !view.flipT && view.actions.backflip && chance(g, 3, 0.34)) { view.flipT = g.t; play(view, 'backflip', { once: true, restart: true }); }   // a third of them flip off a dud hit (2026-09-11)
+      if (g.blink <= 0 && view.flipT && g.t - view.flipT > 3) view.flipT = 0;
+      if (busyOnce(view, 'backflip') || busyOnce(view, 'runjump')) { view.attacking = false; return; }   // let the stunt finish
+      if (g.state === 'chase' && !view.leapt) { view.leapt = true; if (view.actions.runjump && chance(g, 4, 0.4)) { play(view, 'runjump', { once: true, restart: true }); return; } }   // some leap the moment they notice you
+      if (g.state !== 'chase') view.leapt = false;
+      const runClip = g.state === 'chase' ? (view.runClip || (view.runClip = dealClip(view, g, RUN_POOL, 5) || 'walk')) : 'walk';   // each goon runs its own way
+      const runSpeed = g.state === 'chase' ? (runClip === 'walk' ? 1 : 0.85) * (g.def.speed / 1.5) : 0.45 * (g.def.speed / 1.5);
       if (g.windup > 0 || g.atkT > g.def.atk - 0.35) { if (!view.attacking) { view.attacking = true; play(view, g.def.ranged && g.state === 'chase' && Math.hypot(state.player.x - g.x, state.player.y - g.y) > 1.6 ? 'throw' : 'attack', { once: true, restart: true }); } }
-      else if (moving) { view.attacking = false; play(view, 'walk', { speed: (g.state === 'chase' ? 1 : 0.45) * (g.def.speed / 1.5) }); }
+      else if (moving) { view.attacking = false; play(view, runClip, { speed: runSpeed }); }
       else { view.attacking = false; if (!play(view, 'idle')) { play(view, 'walk', { speed: 0.22 }); if (view.current === view.actions.walk) view.current.timeScale = 0.22; } }   // no idle clip: a slow shuffle beats a T-pose
-      if (view.current && moving) { view.current.paused = false; if (view.current === view.actions.walk) view.current.timeScale = (g.state === 'chase' ? 1 : 0.45) * (g.def.speed / 1.5); }
+      if (view.current && moving) { view.current.paused = false; if (view.current === view.actions[runClip]) view.current.timeScale = runSpeed; }
       return;
     }
     if (g.state === 'dying' || g.state === 'dead') outcomeFx(g, view, dt, state);
+    if (view.coils && (g.state === 'dead' || g.state !== 'dying')) { for (const c of view.coils) entGroup.remove(c); view.coils = null; }   // the vines' coils go with the body
   }
   function heartsFor(view, g, dt) {
     if (!view.hearts) {
@@ -530,32 +581,53 @@ export function createRenderer(canvas) {
       view.started = o;
       root.position.set(g.x * S, 0, g.y * S);
       if (view.current) view.current.paused = true;
-      if (o === 'expire') { if (!play(view, g.gagId === 'audit' ? 'hit' : 'die', { once: true, restart: true })) view.fallOver = true; if (g.gagId === 'sand') holeOn(view, g, hgt); }
+      if (o === 'expire' && g.gagId === 'lightning') {   // the shock first (James 2026-09-10); the die clip comes at the end of it
+        play(view, view.actions.electro ? 'electro' : 'hit', { once: true, restart: true });   // the electrocution clip plays through from the shock; no arms-out (James 2026-09-11)
+        view.shock = { bones: [], parts: [] };
+        for (const [name, y, sc] of [['skull', 0.86, 0.5], ['ribs', 0.58, 0.62], ['spine', 0.3, 0.55]]) { const src = models.gibByName[name]; if (!src) continue; const p = src.clone(); p.scale.setScalar(sc * g.def.size * 0.34); p.position.set(0, hgt * y, 0); p.traverse((q) => { if (q.isMesh) { q.material = q.material.clone(); q.material.emissive = new THREE.Color(0xfff2c0); q.material.emissiveIntensity = 0.9; } }); root.add(p); view.shock.parts.push(p); }
+        setOpacity(view, 0.45);
+      }
+      else if (o === 'expire') { if (!play(view, g.gagId === 'audit' ? 'hit' : deathClip(view, g), { once: true, restart: true })) view.fallOver = true; if (g.gagId === 'sand') holeOn(view, g, hgt); }   // the death deal (2026-09-11)
       if (o === 'gib') { hide(view); gibBurst(g.x * S, hgt * 0.5, g.y * S, g.isBoss ? 30 : 20, g.isBoss ? 2 : 1); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 1.6); }
+      if (o === 'squash' && (g.gagId === 'anvil' || g.gagId === 'piano')) { gibBurst(g.x * S, hgt * 0.5, g.y * S, 16, 1); wallSplats(state, g.x, g.y, 3); dropGibs(g.x * S, g.y * S, ['intestines', ...gorePick(4)]); }   // the anvil: blood and guts (James 2026-09-10)
+      if (o === 'squash' && g.gagId === 'sneaker') { blood.burst(g.x * S, hgt * 0.35, g.y * S, 44, 3.0); pool(g.x * S, g.y * S, 3.2); wallSplats(state, g.x, g.y, 3); dropGibs(g.x * S, g.y * S, gorePick(2)); }   // the sneaker: more blood (James 2026-09-11)
+      if (o === 'squash' && g.gagId === 'cow') { blood.burst(g.x * S, hgt * 0.4, g.y * S, 40, 2.8); pool(g.x * S, g.y * S, 3.0); dropGibs(g.x * S, g.y * S, gorePick(2)); wallSplats(state, g.x, g.y, 2); }   // the cow: more blood, a couple of lesser giblets (James 2026-09-11)
       if (o === 'squash') { pool(g.x * S, g.y * S, 2.2); puff(g.x * S, 0.3, g.y * S, 0x8a7a6a, 1.6); blood.burst(g.x * S, 0.3, g.y * S, 24, 2.2); setTint(view, new THREE.Color(0xff6a7a), new THREE.Color(0x802030), 0.45); }
       if (o === 'freeze') { const block = new THREE.Mesh(new THREE.BoxGeometry(0.9 * g.def.size + 0.3, hgt + 0.15, 0.7 * g.def.size + 0.3), new THREE.MeshLambertMaterial({ color: 0xbfe8ff, emissive: 0x3a7ab0, emissiveIntensity: 0.35, transparent: true, opacity: 0.42, depthWrite: false })); block.position.set(g.x * S, (hgt + 0.15) / 2, g.y * S); block.scale.set(0.01, 0.01, 0.01); entGroup.add(block); view.block = block; }
       if (o === 'fling') { const from = state.player, ang = Math.atan2(g.y - from.y, g.x - from.x); const hit = CORE().castRay(state, g.x, g.y, ang, 5); const d = hit ? Math.max(0.3, hit.d - 0.35) : 5; view.flingTo = { x: (g.x + Math.cos(ang) * d) * S, z: (g.y + Math.sin(ang) * d) * S, d, ang, wall: !!hit && hit.d < 5, hx: hit ? hit.x : null, hy: hit ? hit.y : null }; view.flingFrom = { x: g.x * S, z: g.y * S }; }
-      if (o === 'vapor') { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = 1.4; ash(g.x * S, g.y * S, 1.2); }
-      if (o === 'chew') { view.bites = 0; }
+      if (o === 'vapor' && g.gagId !== 'blackhole') { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = 1.4; ash(g.x * S, g.y * S, 1.2); }
+      if (o === 'chew') { view.bites = 0; if (g.gagId === 'piranhas' && propFor('piranha') && !view.school) { view.school = []; for (let i = 0; i < 7; i++) { const f = propFor('piranha').clone(); f.userData.ph = Math.random() * Math.PI * 2; f.userData.sp = 4 + Math.random() * 3; f.userData.h = 0.25 + Math.random() * 0.6; entGroup.add(f); view.school.push(f); } } }   // the feeding frenzy (James 2026-09-10)
       if (o === 'chew') { blood.burst(g.x * S, hgt * 0.5, g.y * S, 12, 2); }
-      if (o === 'vapor') { flash(g.x * S, hgt * 0.5, g.y * S, 0xffffff, 1.6); }
+      /* OFF (James 2026-09-11: 'two swarms') — the summon itself holds on the body now (core s.hold) */ if (false && o === 'expire' && g.gagId === 'bees' && propFor('bees') && !view.school) { view.school = []; view.hornets = true; for (let i = 0; i < 8; i++) { const f = propFor('bees').clone(); f.scale.multiplyScalar(0.75 + Math.random() * 0.5); f.userData.ph = Math.random() * TAU; f.userData.sp = 5 + Math.random() * 4; f.userData.h = 0.3 + Math.random() * 0.6; f.userData.w = (2.5 + Math.random() * 3) * (Math.random() < 0.5 ? -1 : 1); entGroup.add(f); view.school.push(f); } }   // the swarm stays on the body while it goes down (James 2026-09-11)
+      if (o === 'vapor' && g.gagId !== 'blackhole') { flash(g.x * S, hgt * 0.5, g.y * S, 0xffffff, 1.6); }
       if (o === 'freeze') setTint(view, new THREE.Color(0x9fd8ff), new THREE.Color(0x2a6aa0), 0.0);
-      if (o === 'smother') { const c = SMOTHER_COLOR[g.gagId] || 0x3ddc5a; const blob = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.15 })); blob.position.set(g.x * S, 0.3, g.y * S); blob.scale.set(0.2, 0.15, 0.2); entGroup.add(blob); view.blob = blob; }
+      if (o === 'smother' && g.gagId !== 'vines' && g.gagId !== 'gravy') { const c = SMOTHER_COLOR[g.gagId] || 0x3ddc5a; const blob = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.15 })); blob.position.set(g.x * S, 0.3, g.y * S); blob.scale.set(0.2, 0.15, 0.2); entGroup.add(blob); view.blob = blob; }
       if (o === 'glue') { const blob = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshLambertMaterial({ color: 0xf0eee6 })); blob.position.set(g.x * S, 0.05, g.y * S); blob.scale.set(1.1, 0.25, 1.1); entGroup.add(blob); view.blob = blob; }
       if (o === 'burn') { const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); spr.scale.set(1.2 * g.def.size, 1.9 * g.def.size, 1); spr.position.y = hgt * 0.5; root.add(spr); view.fire = spr; }
-      if (o === 'drop') { /* sinks below */ }
+      if (o === 'drop') { view.dropClip = play(view, 'fall3', { once: true, restart: true }); }   // the fall clip if the creature has it (2026-09-11); the arms-up below stands in when it does not
     }
     switch (o) {
-      case 'squash': { const k = Math.min(1, u * 3), sy = Math.max(0.16, 1 - 0.84 * k); root.scale.set(1 + 1.3 * k, sy, 1 + 1.3 * k); root.position.y = -(view.minY || 0) * (1 - sy); break; }
+      case 'squash': { const k = Math.min(1, u * 10) /* the crush is the last tenth or two of a second as the thing arrives (James 2026-09-11); the falling prop lands 0.15 s after the kill to match */, sy = Math.max(0.16, 1 - 0.84 * k); root.scale.set(1 + 1.3 * k, sy, 1 + 1.3 * k); root.position.y = -(view.minY || 0) * (1 - sy); break; }
       case 'freeze': {
         setTint(view, new THREE.Color(0xdff4ff), new THREE.Color(0x3a7ab0), Math.min(1, u * 2));
         if (view.block) { const k = Math.min(1, u / 0.5); view.block.scale.set(k, k, k); }
         if (u > 0.55 && !view.hidden) { hide(view); if (view.block) { entGroup.remove(view.block); view.block = null; } iceShards(g.x * S, hgt * 0.5, g.y * S, 22, hgt); for (let i = 0; i < 6; i++) spawnGib(GIBS[i % GIBS.length], g.x * S, hgt * 0.5, g.y * S, 1, 0x9fd8ff, 1.5 + Math.random() * 2, 2 + Math.random() * 2); puff(g.x * S, hgt * 0.5, g.y * S, 0xbfe8ff, 1.2); }
         break;
       }
-      case 'glue': { root.position.y = -Math.min(1.4, u * 1.6) * (hgt * 0.5); if (view.blob) view.blob.scale.set(1.1 + u * 0.3, 0.25 + u * 0.2, 1.1 + u * 0.3); break; }
-      case 'gas': { setTint(view, new THREE.Color(0x60c840), new THREE.Color(0x2a6a10), Math.min(1, u * 1.5)); root.rotation.z = Math.sin(g.dieT * 9) * 0.18 * (1 - u); if (u > 0.7) root.rotation.x = -(u - 0.7) / 0.3 * Math.PI / 2; break; }
+      case 'glue': {   // in to the shoulders fast, then a struggle with the arms up and the head bobbing out of the glue, then under (James 2026-09-10)
+        const sink = u < 0.2 ? u / 0.2 * 0.62 : u < 0.8 ? 0.62 + Math.sin((u - 0.2) * 40) * 0.05 : 0.62 + (u - 0.8) / 0.2 * 0.9;
+        root.position.y = -sink * hgt;
+        if (u >= 0.2 && u < 0.8) { play(view, 'hit'); root.rotation.y += Math.sin(u * 60) * 0.05; if (!view.glueArms) { view.glueArms = []; for (const n of ['LeftArm', 'RightArm']) { const b = view.model && view.model.getObjectByName(n); if (b) view.glueArms.push([n, b]); } } for (const [n, b] of view.glueArms) { b.rotation.set(0, 0, (n === 'LeftArm' ? -1 : 1) * 2.5 + Math.sin(u * 50 + (n === 'LeftArm' ? 0 : 2)) * 0.3); } }
+        if (view.blob) view.blob.scale.set(1.1 + u * 0.3, 0.25 + u * 0.2, 1.1 + u * 0.3); break; }
+      case 'gas': { setTint(view, new THREE.Color(0x60c840), new THREE.Color(0x2a6a10), Math.min(1, u * 1.5)); if (u > 0.45 && !view.gasFell) { view.gasFell = true; view.gasTilt = !play(view, 'shotfront' /* face forward, not the arms-out Falling Down (James 2026-09-11) */, { once: true, restart: true }); } if (!view.gasFell) root.rotation.z = Math.sin(g.dieT * 9) * 0.18 * (1 - u); if (view.gasTilt && u > 0.7) root.rotation.x = -(u - 0.7) / 0.3 * Math.PI / 2; break; }   // keels over with the clip (2026-09-11)
       case 'fling': {
+        if (g.gagId === 'tornado') {   // up the funnel in a spiral, then apart into limbs and parts at the top (James 2026-09-10)
+          const k = Math.min(1, g.dieT / 1.3), cx = g.x * S, cz = g.y * S, top = 3.4;   // g.x/g.y ride with the funnel (core)
+          if (k < 1) { root.position.set(cx + Math.cos(k * 14) * 0.7 * k, k * top, cz + Math.sin(k * 14) * 0.7 * k); root.rotation.y += 0.35; root.rotation.z = k * 4; root.rotation.x = Math.sin(k * 9) * 0.6; }
+          else if (g.dieT < 3.0) { const a = g.dieT * 10.8; root.position.set(cx + Math.cos(a) * 0.7, top + Math.sin(g.dieT * 7) * 0.15, cz + Math.sin(a) * 0.7); root.rotation.y += 0.35; root.rotation.z = 4 + Math.sin(g.dieT * 5) * 0.4; root.rotation.x = Math.sin(g.dieT * 9) * 0.6; }   // the ride at the top until the burst (2026-09-11)
+          else if (!view.burst) { view.burst = true; hide(view); gibBurst(cx, top, cz, 12, 1.2); wallSplats(state, g.x, g.y, 3); for (const n of [...GORE.limbs, ...gorePick(5)]) spawnGib(n, cx, top + (Math.random() - 0.5) * 0.6, cz, 1.1, null, 5 + Math.random() * 6, 2 + Math.random() * 4); }
+          break;
+        }
         const F = view.flingTo, F0 = view.flingFrom;
         if (F && F0) {
           const k = Math.min(1, g.dieT / 0.55);                       // 0.55 s to the wall
@@ -572,18 +644,67 @@ export function createRenderer(canvas) {
         } else { root.position.set(g.x * S, Math.sin(Math.min(1, g.dieT / 1.2) * Math.PI) * 1.4, g.y * S); root.rotation.z = (g.spin || 0); }
         break;
       }
-      case 'drop': { root.position.y = -u * 3.2; break; }
+      case 'drop': {   // arms straight up and waving as they go down (James 2026-09-11)
+        root.position.y = -u * 3.2;
+        if (!view.dropArms) { view.dropArms = []; for (const n of ['LeftArm', 'RightArm']) { const b = view.model && view.model.getObjectByName(n); if (b) view.dropArms.push([n, b]); } }
+        const up = Math.min(1, u / 0.18);
+        if (!view.dropClip) for (const [n, b] of view.dropArms) b.rotation.set(0, 0, (n === 'LeftArm' ? -1 : 1) * (2.9 * up) + Math.sin(g.dieT * 22 + (n === 'LeftArm' ? 0 : 2)) * 0.25 * up);
+        break; }
       case 'burn': { setTint(view, new THREE.Color(0x0a0806), new THREE.Color(0x000000), Math.min(1, u * 1.6)); if (view.fire) { view.fire.material.map = flameTex(Math.floor(g.dieT * 10) % 4); view.fire.material.opacity = u < 0.8 ? 1 : (1 - u) * 5; } if (u > 0.85) { root.scale.set(1, 0.35, 1); } embers.emit(g.x * S, hgt * 0.4, g.y * S, 1); break; }
-      case 'chew': { if (!view.hidden && u > 0.85) { hide(view); dropGibs(g.x * S, g.y * S, ['skull', 'ribs']); } if (Math.floor(g.dieT * 8) !== view.lastBite) { view.lastBite = Math.floor(g.dieT * 8); blood.burst(g.x * S, hgt * 0.5, g.y * S, 6, 1.4); if (view.lastBite % 2 === 0 && !view.hidden) { view.bites = (view.bites || 0) + 1; spawnGib(['arm', 'leg', 'intestines', 'arm', 'leg'][view.bites % 5], g.x * S, hgt * 0.5, g.y * S, 0.8, null, 1 + Math.random() * 2, 1.5 + Math.random() * 2); root.scale.setScalar(Math.max(0.55, 1 - view.bites * 0.06)); } } break; }
+      case 'chew': { if (view.school) syncSchool(view, g, hgt, u); if (!view.hidden && u > 0.85) { hide(view); dropGibs(g.x * S, g.y * S, ['skull', 'ribs', ...gorePick(3)]); } if (Math.floor(g.dieT * 8) !== view.lastBite) { view.lastBite = Math.floor(g.dieT * 8); blood.burst(g.x * S, hgt * 0.5, g.y * S, 6, 1.4); if (view.lastBite % 2 === 0 && !view.hidden) { view.bites = (view.bites || 0) + 1; spawnGib(gorePick(1)[0], g.x * S, hgt * 0.5, g.y * S, 0.8, null, 1 + Math.random() * 2, 1.5 + Math.random() * 2); root.scale.setScalar(Math.max(0.55, 1 - view.bites * 0.06)); } } break; }
       case 'gib': break;
-      case 'vapor': { if (u > 0.15) { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = Math.max(0, 1.4 - (u - 0.15) * 4); setOpacity(view, Math.max(0, 1 - (u - 0.15) * 1.6)); root.scale.set(1, Math.max(0.05, 1 - (u - 0.15) * 1.3), 1); } break; }
-      case 'expire': { if (view.fallOver) root.rotation.x = -Math.min(1, Math.max(0, (u - 0.6) / 0.4)) * Math.PI / 2; if (g.gagId === 'audit' && u > 0.6 && !view.audited) { view.audited = true; play(view, 'die', { once: true, restart: true }); } break; }
+      case 'vapor': { if (g.gagId === 'blackhole') { const k = Math.min(1, u * 1.15); root.position.set(g.x * S, k * k * 1.2, g.y * S); root.rotation.y += 0.25 + k * 0.6; root.scale.set(Math.max(0.02, 1 - k * 1.05), (1 + k * 1.6) * Math.max(0.02, 1 - k * k), Math.max(0.02, 1 - k * 1.05)); if (k >= 1 && !view.hidden) hide(view); break; }   // spaghettified into the hole (James 2026-09-10)
+        if (u > 0.15) { setTint(view, new THREE.Color(0xffffff), new THREE.Color(0xffffff), 1); for (const m of view.mats) if (m.emissive) m.emissiveIntensity = Math.max(0, 1.4 - (u - 0.15) * 4); setOpacity(view, Math.max(0, 1 - (u - 0.15) * 1.6)); root.scale.set(1, Math.max(0.05, 1 - (u - 0.15) * 1.3), 1); } break; }
+      case 'expire': {
+        if (view.hornets && view.school) syncHornets(view, g, hgt);
+        if (view.shock) {
+          const k = Math.min(1, u / 0.3);
+          if (k < 1) {
+            root.position.y = 0.15 * Math.sin(k * Math.PI) + 0.02 * Math.sin(u * 200);   // the six-inch hop, buzzing
+            for (const [n, b] of view.shock.bones) { b.rotation.set(0, 0, (n === 'LeftArm' ? -1 : 1) * 1.35); b.rotation.x = Math.sin(u * 160 + (n === 'LeftArm' ? 0 : 1)) * 0.15; }   // arms straight out, jittering (after the mixer: absolute)
+            const on = Math.floor(u * 90) % 2 === 0; for (const p of view.shock.parts) p.visible = on;
+            setOpacity(view, on ? 0.35 : 0.6);
+            if (Math.random() < 0.35) flash(g.x * S, hgt * 0.5, g.y * S, 0xfff0b0, 0.6 + Math.random() * 0.6);
+          } else {
+            for (const p of view.shock.parts) root.remove(p); view.shock = null; root.position.y = 0; setOpacity(view, 1);
+            if (view.current !== view.actions.electro && !play(view, deathClip(view, g), { once: true, restart: true })) view.fallOver = true;   // electro is already playing from the shock
+          }
+          break;
+        }
+        if (view.fallOver) root.rotation.x = -Math.min(1, Math.max(0, (u - 0.6) / 0.4)) * Math.PI / 2; if (g.gagId === 'audit' && u > 0.6 && !view.audited) { view.audited = true; play(view, deathClip(view, g), { once: true, restart: true }); } break; }
       case 'shrink': { root.scale.setScalar(Math.max(0.02, g.scale)); break; }
-      case 'smother': { const k = Math.min(1, u * 1.5); if (view.blob) view.blob.scale.set(0.2 + k * 1.3, 0.15 + k * 1.0, 0.2 + k * 1.3); root.position.y = -k * 0.5; break; }
+      case 'smother': { if (g.gagId === 'vines') { syncCoils(view, g, hgt, u); const pull = Math.max(0, (u - 0.45) / 0.55); root.position.set(g.x * S, -pull * hgt * 0.55, g.y * S); root.scale.set(1 - pull * 0.3, 1 - pull * 0.45, 1 - pull * 0.3); root.rotation.z = Math.sin(u * 30) * 0.06 * (1 - pull); if (pull <= 0) { play(view, 'hit'); root.rotation.y += Math.sin(u * 70) * 0.09; root.position.x += Math.sin(u * 90) * 0.04; root.position.z += Math.cos(u * 75) * 0.04; }   /* the struggle: the hit clip on repeat, thrashing (James 2026-09-10) */ if (pull > 0.6 && !view.bled) { view.bled = true; blood.burst(g.x * S, hgt * 0.3, g.y * S, 14, 1.6); pool(g.x * S, g.y * S, 1.2); } break; }   // strangled: coils climb, then pulled down and crushed (James 2026-09-10)
+        const k = Math.min(1, u * 1.5); if (view.blob) view.blob.scale.set(0.2 + k * 1.3, 0.15 + k * 1.0, 0.2 + k * 1.3); root.position.y = -k * 0.5; if (g.gagId === 'gravy') { setTint(view, new THREE.Color(0x9a6a28), new THREE.Color(0x3a2408), Math.min(1, u * 2)); root.position.y = -k * 0.8; root.rotation.z = Math.sin(u * 20) * 0.08 * (1 - k); } break; }   // drowned in gravy: browned, sinking under the wave (2026-09-11)
       case 'inflate': { const s = g.scale != null ? g.scale : 1 + u; if (s < 0.05) { if (!view.hidden) { hide(view); gibBurst(g.x * S, hgt * 0.6, g.y * S, 22, 1.4); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 1.8); } } else root.scale.setScalar(s); break; }
       default: break;
     }
     if (g.isBoss && g.state === 'dying' && !view.bossBurst && u > 0.5) { view.bossBurst = true; gibBurst(g.x * S, 2.5, g.y * S, 28, 2); wallSplats(state, g.x, g.y, 4); pool(g.x * S, g.y * S, 3); }
+  }
+  // the hornets on a stung body: each circles at its own height and rate, dipping in and out, wings beating
+  function syncHornets(view, g, hgt) {
+    const t = g.dieT, cx = g.x * S, cz = g.y * S;
+    for (const f of view.school) {
+      const up = g.dieDur ? Math.max(0, (t / g.dieDur - 0.7) / 0.27) : 0;   // then away: up into the ceiling (James 2026-09-11)
+      const d = f.userData, ang = d.ph + t * d.w, r = (0.45 + Math.sin(t * d.sp + d.ph) * 0.25) * (1 - up * 0.5);
+      f.position.set(cx + Math.cos(ang) * r, hgt * d.h + Math.sin(t * 6 + d.ph) * 0.1 + up * up * 3.6, cz + Math.sin(ang) * r);
+      f.rotation.set(0, -ang - Math.sign(d.w) * Math.PI / 2 + Math.PI / 2, 0); f.rotateZ(Math.sin(t * 40 + d.ph) * 0.12);
+      if (!d.wings) d.wings = [f.getObjectByName('LWing'), f.getObjectByName('RWing')]; if (d.wings[0] && d.wings[1]) { const w = Math.sin(t * 70 + d.ph) * 0.5; d.wings[0].rotation.z = w; d.wings[1].rotation.z = -w; }
+    }
+    if (g.dieDur && t / g.dieDur >= 0.97) { for (const f of view.school) entGroup.remove(f); view.school = null; view.hornets = false; }   // off with the body
+  }
+  // the school at the body: each fish circles at its own height and lunges in to the bone and back out, nose at the meat
+  const _sc = new THREE.Vector3();
+  function syncSchool(view, g, hgt, u) {
+    const t = g.dieT, cx = g.x * S, cz = g.y * S;
+    for (const f of view.school) {
+      const ph = f.userData.ph + t * 1.6, lunge = Math.max(0, Math.sin(t * f.userData.sp + f.userData.ph));
+      const r = 0.55 - lunge * 0.4, y = hgt * f.userData.h + Math.sin(t * 5 + f.userData.ph) * 0.05;
+      f.position.set(cx + Math.cos(ph) * r, y, cz + Math.sin(ph) * r);
+      _sc.set(cx, y, cz); f.lookAt(_sc); f.rotateY(Math.PI + (PROPS.piranha.yaw || 0));   // lookAt points +Z at the body; the yaw squares the model's nose to it
+      f.rotateZ(Math.sin(t * 14 + f.userData.ph) * 0.3);
+      f.visible = u < 0.97;
+    }
+    if (u >= 0.97) { for (const f of view.school) entGroup.remove(f); view.school = null; }
   }
   function hide(view) { view.hidden = true; if (view.model) view.model.visible = false; if (view.fire) view.fire.visible = false; if (view.block) { entGroup.remove(view.block); view.block = null; } }
 
@@ -606,7 +727,7 @@ export function createRenderer(canvas) {
     mist(x, y, z, 1.4 * big);
     for (let i = 0; i < n; i++) {
       // the rib cage and the skull every time, then a few ropes of intestine, then the rest of the drawer
-      const name = i === 0 ? 'ribs' : i === 1 ? 'skull' : i < 5 ? 'intestines' : GIBS[Math.floor(Math.random() * GIBS.length)];
+      const name = i === 0 ? 'ribs' : i === 1 ? 'skull' : i < 4 ? 'intestines' : i === 4 ? 'brain' : GIBS[Math.floor(Math.random() * GIBS.length)];   // the drawer in rotation (2026-09-10)
       spawnGib(name, x, y + (Math.random() - 0.5) * 0.4, z, big * (name === 'ribs' || name === 'skull' ? 1.25 : 1), null, 2.5 + Math.random() * 5 * big, 4 + Math.random() * 5.5 * big);
     }
   }
@@ -626,7 +747,7 @@ export function createRenderer(canvas) {
   }
   // a pool of blood that spreads on the floor and stays
   function pool(x, z, size) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: bloodTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }));
     m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * TAU; m.position.set(x, 0.018, z); m.scale.setScalar(0.15); entGroup.add(m);
     extras.push({ obj: m, growTo: 1, growT: 0, growDur: 1.6 });
   }
@@ -638,7 +759,7 @@ export function createRenderer(canvas) {
   function splatAt(hx, hy, ang, y) {
     const dx = Math.abs(Math.cos(ang)) > Math.abs(Math.sin(ang)) ? Math.sign(Math.cos(ang)) : 0, dy = dx ? 0 : Math.sign(Math.sin(ang));
     const geo = new THREE.PlaneGeometry(1.8, 1.8);
-    const mat = new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    const mat = new THREE.MeshBasicMaterial({ map: bloodTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     const m = new THREE.Mesh(geo, mat);
     const px = hx * S - dx * 0.03, pz = hy * S - dy * 0.03;
     m.position.set(px, y, pz); m.lookAt(px - dx, y, pz - dy); m.rotateZ(Math.random() * TAU);
@@ -706,6 +827,26 @@ export function createRenderer(canvas) {
     }
     for (let i = 0; i < 3; i++) puff(x, y, z, opt.puff || opt.color, 1.1);
   }
+  // THE LEGOS (James 2026-09-11): a couple of hundred real bricks out of the ceiling, each its own colour, bouncing and
+  // piling up around the target. Falls from the ceiling height over the zone's fall time (brickRain is called per frame
+  // with how many to let go now); the bricks are dry bodies — no blood drips — and settle flat in a heap.
+  const BRICK_COLORS = [0xe02020, 0x2050e0, 0xffd23a, 0x20b050, 0xf0f0f0, 0xff7a20, 0x202020, 0x8a30c0];
+  let brickMats = null;
+  function brickRain(x, z, r, n, ceil) {
+    const src = propFor('brick'); if (!src) { berries(x, 0.4, z, Math.min(n, 12)); return; }
+    if (!brickMats) brickMats = BRICK_COLORS.map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.28, metalness: 0.05, emissive: c, emissiveIntensity: 0.12 }));
+    for (let i = 0; i < n; i++) {
+      const mesh = src.clone(); const mat = brickMats[Math.floor(Math.random() * brickMats.length)];
+      mesh.traverse((o) => { if (o.isMesh) o.material = mat; });
+      mesh.scale.multiplyScalar(0.8 + Math.random() * 0.5);
+      const a = Math.random() * TAU, d = Math.pow(Math.random(), 1.7) * r;   // most of them into the middle: a mound (James 2026-09-11)
+      mesh.position.set(x + Math.cos(a) * d, ceil - Math.random() * 0.4, z + Math.sin(a) * d);
+      mesh.rotation.set(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU);
+      entGroup.add(mesh);
+      bricks.push({ mesh, v: new THREE.Vector3((Math.random() - 0.5) * 1.2, -1 - Math.random() * 2, (Math.random() - 0.5) * 1.2), av: new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12), settled: false, bounces: 0, dry: true, rest: 0.05 + Math.random() * 0.15 + Math.pow(1 - d / r, 2) * (0.5 + Math.random() * 0.6) });   // the rest height rises toward the middle: the heap
+      if (bricks.length > 320) { const old = bricks.shift(); entGroup.remove(old.mesh); }
+    }
+  }
   function berries(x, y, z, n) { chunks(x, y, z, n, { color: 0x2a2e8a, emissive: 0x1a1c60, puff: 0x4a3a9a }); }
   // lime jello: darker, translucent, blobby shapes that don't make sense, a tight pile four times the berries
   function jelloPile(x, y, z) { chunks(x, y, z, 140, { color: 0x2f8a1e, emissive: 0x1a5a12, opacity: 0.78, roughness: 0.25, shapes: 'blobby', spread: 0.45, up: 0.9, size: 1.15, puff: 0x2f8a1e }); }
@@ -762,7 +903,7 @@ export function createRenderer(canvas) {
       if (levelRef) { const cx = b.mesh.position.x / S, cz = b.mesh.position.z / S; if (CORE().cellAt(levelRef, cx, cz) !== 0) { b.mesh.position.addScaledVector(b.v, -dt); b.v.x *= -0.4; b.v.z *= -0.4; } }
       if (b.mesh.position.y < 0.12) {
         b.mesh.position.y = 0.12; b.bounces++;
-        if (b.bounces > 2 || Math.abs(b.v.y) < 1.2) { b.settled = true; b.mesh.rotation.x = Math.round(b.mesh.rotation.x / (Math.PI / 2)) * (Math.PI / 2); blood.drip(b.mesh.position.x, b.mesh.position.z); }
+        if (b.bounces > 2 || Math.abs(b.v.y) < 1.2) { b.settled = true; b.mesh.rotation.x = Math.round(b.mesh.rotation.x / (Math.PI / 2)) * (Math.PI / 2); if (b.dry) { b.mesh.rotation.z = Math.round(b.mesh.rotation.z / (Math.PI / 2)) * (Math.PI / 2); b.mesh.position.y = b.rest != null ? b.rest : 0.12; } else blood.drip(b.mesh.position.x, b.mesh.position.z); }
         else { b.v.y = -b.v.y * 0.35; b.v.x *= 0.6; b.v.z *= 0.6; b.av.multiplyScalar(0.5); }
       }
     }
@@ -778,7 +919,7 @@ export function createRenderer(canvas) {
       const v = CORE().cellAt(level, x + dx, y + dy);
       if (v === C.OPEN) continue;
       const geo = new THREE.PlaneGeometry(1.6, 1.6);
-      const mat = new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      const mat = new THREE.MeshBasicMaterial({ map: bloodTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       const m = new THREE.Mesh(geo, mat);
       const px = (x + 0.5) * S + dx * (S / 2 - 0.03), pz = (y + 0.5) * S + dy * (S / 2 - 0.03);
       m.position.set(px, 1.0 + Math.random() * 0.8, pz);
@@ -806,7 +947,7 @@ export function createRenderer(canvas) {
     return {
       burst(x, y, z, n, sp) { for (let i = 0; i < n; i++) { const k = head++ % max; const a = Math.random() * TAU, e = Math.random() * Math.PI; pos[k * 3] = x; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z; vel[k * 3] = Math.cos(a) * Math.sin(e) * sp * (0.5 + Math.random()); vel[k * 3 + 1] = Math.abs(Math.cos(e)) * sp * (0.5 + Math.random()) + 1; vel[k * 3 + 2] = Math.sin(a) * Math.sin(e) * sp * (0.5 + Math.random()); life[k] = 1.2 + Math.random(); } },
       emit(x, y, z, n) { for (let i = 0; i < n; i++) { const k = head++ % max; pos[k * 3] = x + (Math.random() - 0.5) * 0.5; pos[k * 3 + 1] = y; pos[k * 3 + 2] = z + (Math.random() - 0.5) * 0.5; vel[k * 3] = (Math.random() - 0.5); vel[k * 3 + 1] = 1 + Math.random() * 1.5; vel[k * 3 + 2] = (Math.random() - 0.5); life[k] = 0.8 + Math.random() * 0.6; } },
-      drip(x, z) { if (drips.length > 90 || gravity <= 0) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), new THREE.MeshBasicMaterial({ map: scarTex('blood', Math.random()), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * TAU; m.position.set(x, 0.015, z); entGroup.add(m); drips.push(m); extras.push({ obj: m }); },
+      drip(x, z) { if (drips.length > 90 || gravity <= 0) return; const m = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.35), new THREE.MeshBasicMaterial({ map: bloodTex(), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.random() * TAU; m.position.set(x, 0.015, z); entGroup.add(m); drips.push(m); extras.push({ obj: m }); },
       step(dt) {
         for (let k = 0; k < max; k++) {
           if (life[k] <= 0) { pos[k * 3 + 1] = -100; continue; }
@@ -824,15 +965,80 @@ export function createRenderer(canvas) {
   const embers = makeParticles(0xff8a20, 0.1, -0.5, 300);
 
   // shots, zones, scars, beams
+  // THE HOSE (James 2026-09-10, glue: 'this should look like a hose is shooting out of the gun'): every live drop of a
+  // hose stream is a control point on one glossy white tube from the nozzle out, rebuilt each frame; the rope sags with
+  // distance and only the two oldest drops still draw as blobs, splashing where the rope breaks up.
+  const hoseViews = new Map();
+  const HOSE_MAT = { glue: new THREE.MeshPhongMaterial({ color: 0xf0eee6, specular: 0x9a9a9a, shininess: 70 }), lava: new THREE.MeshLambertMaterial({ color: 0xa02800, emissive: 0xff6a14, emissiveIntensity: 0.9 }) };
+  const lavaBits = makeParticles(0xff9a30, 0.26, 9, 400); lavaBits.drip = () => {};   // lava chunks: they land and go out, no blood drips
+  function syncHoses(state) {
+    const groups = new Map();
+    for (const s of state.shots) if (s.gag.hose && !s.dead) { const k = s.gag.id + ':' + (s.owner === 'player' ? 'player' : s.ox + ':' + s.oy); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); }
+    const seen = new Set();
+    for (const [k, list] of groups) {
+      list.sort((a, b) => a.t - b.t);
+      list.forEach((s, i) => { s.hoseRank = list.length - 1 - i; });   // 0 = the oldest drop, the head of the rope
+      seen.add(k);
+      const pts = [];
+      if (k.endsWith(':player')) pts.push(_muzzleWorld.clone()); else { const s0 = list[0]; pts.push(new THREE.Vector3(s0.ox * S, 1.1, s0.oy * S)); }
+      for (const s of list) {
+        const u = Math.min(1, s.t / (s.life || 0.7));
+        const y = (s.z != null ? s.z : 0.3) * S * (1 - u * 0.55) + 0.1;   // the sag
+        const p = new THREE.Vector3(s.x * S, y, s.y * S);
+        if (p.distanceTo(pts[pts.length - 1]) > 0.04) pts.push(p);
+      }
+      let m = hoseViews.get(k);
+      if (pts.length < 2) { if (m) { m.visible = false; } continue; }
+      const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
+      const geo = new THREE.TubeGeometry(curve, Math.min(36, pts.length * 2), 0.08, 5, false);
+      if (!m) { m = new THREE.Mesh(geo, HOSE_MAT[list[0].gag.id] || HOSE_MAT.glue); m.frustumCulled = false; entGroup.add(m); hoseViews.set(k, m); }
+      else { m.geometry.dispose(); m.geometry = geo; m.visible = true; }
+      if (list[0].gag.chunks) {   // the pour: chunks fly out in every direction from where the rope lands, and it glows
+        const h = pts[pts.length - 1];
+        lavaBits.burst(h.x, h.y, h.z, 2, 3.5);
+        lavaBits.burst(h.x, h.y, h.z, 1, 3.5);   // (no light of its own: the light count must not change mid-stream)
+      }
+    }
+    for (const [k, m] of hoseViews) if (!seen.has(k)) { entGroup.remove(m); m.geometry.dispose(); hoseViews.delete(k); }
+  }
+  // THE GUST (James 2026-09-10, the sneeze: "a blast of wind… very light, slightly opaque material flying away from the gun
+  // in an expanding cone"): soft sprites born at the muzzle, flying down the aim with a spread that widens with distance,
+  // swelling and fading as they go.
+  const gusts = [];
+  const _gustMat = () => new THREE.SpriteMaterial({ map: softDot(), color: 0xe4ebf2, transparent: true, opacity: 0.13, depthWrite: false });
+  function puffGust(s, state, n) {
+    const a = s.a != null ? s.a : state.player.a + (state.player.aim || 0);
+    for (let i = 0; i < n; i++) {
+      const spr = new THREE.Sprite(_gustMat());
+      const yaw = a + (Math.random() - 0.5) * 0.9, pitch = (Math.random() - 0.5) * 0.5, sp = 8 + Math.random() * 6;
+      spr.position.copy(_muzzleWorld).add(new THREE.Vector3(Math.cos(a) * 0.7, 0.05, Math.sin(a) * 0.7));   // born a little ahead of the lens, never over it
+      const v = new THREE.Vector3(Math.cos(yaw) * Math.cos(pitch) * sp, Math.sin(pitch) * sp, Math.sin(yaw) * Math.cos(pitch) * sp);
+      spr.scale.setScalar(0.12); entGroup.add(spr);
+      gusts.push({ spr, v, t: 0, life: 0.55 + Math.random() * 0.35, spin: (Math.random() - 0.5) * 3 });
+    }
+  }
+  function stepGusts(dt) {
+    for (const g of gusts) {
+      g.t += dt; const k = g.t / g.life;
+      g.spr.position.addScaledVector(g.v, dt); g.v.multiplyScalar(1 - dt * 1.6);   // slows as it spreads
+      const sz = 0.12 + k * 1.6; g.spr.scale.set(sz, sz, 1); g.spr.material.rotation += g.spin * dt;
+      g.spr.material.opacity = 0.13 * (k < 0.25 ? k / 0.25 : 1 - (k - 0.25) / 0.75);
+      if (k >= 1) { entGroup.remove(g.spr); g.dead = true; }
+    }
+    for (let i = gusts.length - 1; i >= 0; i--) if (gusts[i].dead) gusts.splice(i, 1);
+  }
   function syncShots(state, t) {
+    syncHoses(state);
     const seen = new Set();
     for (const s of state.shots) {
+      if (s.gag.gust && !s.hostile && s.t < s.life * 0.7) puffGust(s, state, 6);   // the sneeze: wisps while the blast lasts
       if (s.sprite === 'none') continue;
       seen.add(s.id);
       let spr = shotViews.get(s.id);
       if (!spr) {
         const src = propFor(s.sprite);
-        if (src) { spr = src.clone(); spr.userData.prop = s.sprite; spr.userData.halfH = src.userData.halfH; spr.userData.halfW = src.userData.halfW; }
+        if (src && PROPS[s.sprite].motion === 'swarm') { spr = new THREE.Group(); for (let i = 0; i < PROPS[s.sprite].count; i++) { const c = src.clone(); c.scale.multiplyScalar(0.75 + Math.random() * 0.5); c.userData.ph = Math.random() * TAU; c.userData.w = (2.2 + Math.random() * 2.5) * (Math.random() < 0.5 ? -1 : 1); c.userData.r = 0.25 + Math.random() * 0.55; c.userData.h = (Math.random() - 0.5) * 0.7; c.userData.f = 5 + Math.random() * 6; spr.add(c); } spr.userData.prop = s.sprite; spr.userData.halfH = src.userData.halfH; spr.userData.halfW = src.userData.halfW; }   // the swarm: many on their own orbits (the hornets, 2026-09-11)
+        else if (src) { spr = src.clone(); spr.userData.prop = s.sprite; spr.userData.halfH = src.userData.halfH; spr.userData.halfW = src.userData.halfW; }
         else if (s.sprite === 'flame') { spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); spr.userData.fire = true; }   // the flamethrower: the burning creatures' fire, as a stream (James 2026-09-08)
         else spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(s.sprite, 0), transparent: true, depthWrite: false }));
         entGroup.add(spr); shotViews.set(s.id, spr);
@@ -850,8 +1056,9 @@ export function createRenderer(canvas) {
         continue;
       }
       spr.material.map = gagSprite(s.sprite, s.t);
+      if (s.gag.hose && s.hoseRank !== 0) { spr.material.opacity = 0; continue; }   // inside the rope: the tube draws it (the hose, James 2026-09-10)
       let sz = 0.5;
-      if (s.kind === 'train') sz = 1.4; else if (s.kind === 'melee') sz = 0.55; else if (s.kind === 'summon') sz = 0.6; else if (s.gag.count) sz = 0.3; else if (s.gag.kind === 'stream') sz = 0.22;
+      if (s.kind === 'train') sz = 1.4; else if (s.kind === 'melee') sz = 0.55; else if (s.kind === 'summon') sz = 0.6; else if (s.gag.count) sz = 0.3; else if (s.gag.kind === 'stream') sz = s.gag.hose ? 0.14 : 0.22;
       if (['cow', 'yak', 'tent', 'bus'].includes(s.gag.id)) sz = 1.1;
       if (['sumo', 'grandma', 'doll'].includes(s.gag.id)) sz = 0.9;
       sz *= S * look.spriteScale;
@@ -867,12 +1074,29 @@ export function createRenderer(canvas) {
         spr.material.opacity = dp < 0.9 ? Math.max(0, (dp - 0.45) / 0.45) : 1;
       }
     }
-    for (const [id, spr] of shotViews) if (!seen.has(id)) { shotViews.delete(id); if (spr.userData.prop && PROPS[spr.userData.prop].stays) restProp(spr); else entGroup.remove(spr); }
+    for (const [id, spr] of shotViews) if (!seen.has(id)) { shotViews.delete(id); if (spr.userData.arm) entGroup.remove(spr.userData.arm); if (spr.userData.prop && PROPS[spr.userData.prop].motion === 'swarm') extras.push({ obj: spr, t: 0, gone: true, tick: swarmAway }); else if (spr.userData.prop && PROPS[spr.userData.prop].stays) restProp(spr); else entGroup.remove(spr); }   // a spent swarm flies off into the ceiling (James 2026-09-11)
   }
   // a prop in flight: faces its way, spins / rolls / tumbles / walks by its kind
+  const _tr = new THREE.Vector3();
   function syncPropShot(s, obj, state) {
     const def = PROPS[obj.userData.prop], hh = obj.userData.halfH;
     const a = s.a != null ? s.a : Math.atan2(s.vy || 0, s.vx || 1);
+    if (def.motion === 'swing') {   // the handbag: the arm swings in from the right of the gun, the purse hangs off the hand and whips outward (James 2026-09-10)
+      const k = Math.min(1, s.t / s.life), w = Math.sin(k * Math.PI);
+      const out = 0.5 + w * Math.max(0.5, (s.reach || 2) - 0.5);
+      const phi = (Math.PI / 2) * (1 - w);   // starts at the right, swings across to straight ahead at full reach, and back
+      const hx = s.x + Math.cos(a + phi) * out, hy = s.y + Math.sin(a + phi) * out;   // the hand
+      const heading = a + phi - Math.PI / 2;
+      let arm = obj.userData.arm;
+      if (!arm && propFor(def.arm)) { arm = propFor(def.arm).clone(); arm.scale.multiplyScalar(def.armSize / PROPS[def.arm].size); entGroup.add(arm); obj.userData.arm = arm; }
+      if (arm) { arm.position.set(hx * S, 1.25, hy * S); arm.rotation.set(0, -heading + Math.PI / 2 + (def.armYaw || 0), 0); arm.rotateZ(-0.4 + w * 0.5); arm.visible = s.t < s.life * 0.95; }
+      // the purse: hangs below the hand, thrown outward along the swing's tangent by the lag, whipping ahead at the middle
+      const lag = 0.3 + w * 0.35, drop = 0.75 - w * 0.5;
+      const px = hx + Math.cos(heading) * lag * 0.6, py = hy + Math.sin(heading) * lag * 0.6;
+      obj.position.set(px * S, 1.25 - drop, py * S);
+      obj.rotation.set(0, -heading + Math.PI / 2 + (def.purseYaw || 0), 0); obj.rotateX(0.5 - w * 0.9);
+      obj.visible = s.t < s.life * 0.95; return;
+    }
     if (def.motion === 'punch') {   // a melee prop: lunge from the muzzle to the reach and back at chest height, knuckles along the swing
       const k = Math.min(1, s.t / s.life), out = (0.35 + Math.sin(k * Math.PI) * Math.max(0.4, (s.reach || 2) - 0.35)) * 0.65;   // a smaller arc that starts and ends close to the player (James, rounds five + six)
       // a roundhouse: a quarter circle around the player from the right (facing a, the right is a + 90°) swinging to
@@ -884,6 +1108,12 @@ export function createRenderer(canvas) {
       obj.rotation.set(0, -heading + Math.PI / 2, 0); obj.rotateZ(w * 0.3);
       obj.visible = s.t < s.life * 0.92; return;
     }
+    if (def.motion === 'swarm') {   // the swarm rides the summon's point at head height; each hornet circles it on its own radius and rate, bobbing, nose along its circle, buzzing
+      obj.position.set(s.x * S, 1.35 + Math.sin(s.t * 3) * 0.1, s.y * S);
+      if (!s.hostile && s.t < 0.32) { const m = s.t / 0.32, e = 1 - (1 - m) * (1 - m); obj.position.lerp(_muzzleWorld, 1 - e); }
+      for (const c of obj.children) { const d = c.userData, ang = d.ph + s.t * d.w, spread = Math.min(1, s.t / 0.5); c.position.set(Math.cos(ang) * d.r * spread, d.h * spread + Math.sin(s.t * d.f + d.ph) * 0.12, Math.sin(ang) * d.r * spread); c.rotation.set(0, -ang - Math.sign(d.w) * Math.PI / 2 + Math.PI / 2 + (def.yaw || 0), 0); c.rotateZ(Math.sin(s.t * 40 + d.ph) * 0.12); c.rotateX(Math.sin(s.t * 31 + d.ph) * 0.1); if (!d.wings) d.wings = [c.getObjectByName('LWing'), c.getObjectByName('RWing')]; if (d.wings[0] && d.wings[1]) { const f = Math.sin(s.t * 70 + d.ph) * 0.5; d.wings[0].rotation.z = f; d.wings[1].rotation.z = -f; } }   // the wings split off (split_wings.py) beat fast
+      return;
+    }
     let y = (s.z != null ? s.z : 0.3) * S;
     if (def.motion === 'drive' || def.motion === 'walk' || def.motion === 'none') y = hh;
     if (def.motion === 'flyhigh') {
@@ -893,12 +1123,16 @@ export function createRenderer(canvas) {
       if (lw && rw) { const f = Math.sin(s.t * 11) * 0.55; lw.rotation.z = f; rw.rotation.z = -f; }
     }
     if (def.motion === 'walk') y = hh + Math.abs(Math.sin(s.t * 9)) * 0.08;
+    if (def.motion === 'swim') y = (s.z != null ? s.z : 0.3) * S + Math.sin(s.t * 7 + s.id) * 0.12;   // the school: each fish on its own bob
     obj.position.set(s.x * S, y, s.y * S);
-    obj.rotation.set(0, -a + Math.PI / 2, 0);     // Meshy props face -Z at rest; turn them to face along the flight
+    if (s.kind === 'train' && !s.hostile && s.t < 0.7) { const m = s.t / 0.7, e = 1 - (1 - m) * (1 - m); _tr.set(_muzzleWorld.x + Math.cos(a) * obj.userData.halfW, _muzzleWorld.y + obj.userData.halfH * 0.6, _muzzleWorld.z + Math.sin(a) * obj.userData.halfW); obj.position.lerp(_tr, 1 - e); }   // out of the barrel, not the middle of the screen (James 2026-09-10, the train)
+    obj.rotation.set(0, -a + Math.PI / 2 + (def.yaw || 0), 0);     // Meshy props face -Z at rest (yaw squares up the ones that don't); turn them to face along the flight
+    if (def.motion === 'swim') { obj.rotateY(Math.sin(s.t * 16 + s.id) * 0.28); obj.rotateZ(Math.sin(s.t * 9 + s.id * 2) * 0.35); }   // the tail-beat wriggle and a roll
     if (def.motion === 'spin') obj.rotateY(s.t * 14);
     if (def.motion === 'endover') obj.rotateX(s.t * 16);   // end over end along the flight, fast (the knives)
     if (def.motion === 'roll') obj.rotateX(s.t * 9);
     if (def.motion === 'tumble') { obj.rotateX(s.t * 4); obj.rotateZ(s.t * 2.5); }
+    if (def.motion === 'side') obj.rotateZ(Math.PI / 2 + Math.sin(s.t * 3) * 0.1);   // already on its side in the air (the cow)
     if (def.motion === 'walk') obj.rotateZ(Math.sin(s.t * 9) * 0.08);
     if (def.motion === 'fly' && !def.prim) obj.rotateX(-0.2);
     if (def.prim === 'rocket') {   // the exhaust: a flickering flame and a smoke trail out the back
@@ -918,11 +1152,38 @@ export function createRenderer(canvas) {
     obj.visible = dp > 0.5 && (s.kind !== 'melee' || s.t < s.life * 0.85);
   }
   // a prop that stays: settle it on the floor where it stopped and keep it for the level
+  // a landed four-legged prop (the cow): a moment on its feet with the legs kicking, two or three kicks, then it rolls
+  // over on its side with a thump and lies there (James 2026-09-11: 'land on its side… move its legs a couple times before flopping')
+  // a spent swarm: keeps circling as it climbs away into the ceiling, then it is gone
+  function swarmAway(e, dt) {
+    const o = e.obj; e.t += dt; o.position.y += (1.5 + e.t * 3) * dt;
+    for (const c of o.children) { const d = c.userData, ang = d.ph + (e.t + 9) * d.w; c.position.set(Math.cos(ang) * d.r, d.h + Math.sin(e.t * d.f + d.ph) * 0.12, Math.sin(ang) * d.r); c.rotation.set(0, -ang - Math.sign(d.w) * Math.PI / 2 + Math.PI / 2, 0); if (d.wings && d.wings[0] && d.wings[1]) { const w = Math.sin(e.t * 70 + d.ph) * 0.5; d.wings[0].rotation.z = w; d.wings[1].rotation.z = -w; } }
+    if (e.t > 1.6) { entGroup.remove(o); return false; }
+    return true;
+  }
+  function legsTick(e, dt) {
+    const o = e.obj; e.t += dt;
+    if (!e.legs) { e.legs = ['LegA', 'LegB', 'LegC', 'LegD'].map((n) => o.getObjectByName(n)).filter(Boolean); e.side = Math.random() < 0.5 ? -1 : 1; e.y0 = o.position.y; }
+    const WOBBLE = 0.35, FLOP = 0.42, KICK = 1.6;   // a wobble on its feet, over it goes, then the legs go (James 2026-09-11: 'fall over first and then some leg motions')
+    if (e.t < WOBBLE) { o.rotation.z = e.side * Math.sin(e.t * 18) * 0.06; return true; }
+    const u = Math.min(1, (e.t - WOBBLE) / FLOP), k = u * u;
+    o.rotation.z = e.side * (Math.PI / 2) * k; o.rotation.x = 0;
+    o.position.y = e.y0 * (1 - k) + e.y0 * 0.6 * k;
+    if (u >= 1 && !e.thumped) { e.thumped = true; puff(o.position.x, 0.3, o.position.z, 0x8a7a6a, 1.8); }
+    if (u < 1) return true;
+    const kt = e.t - WOBBLE - FLOP, fade = Math.max(0, 1 - kt / KICK);   // on its side: the legs run in the air, slowing to a twitch, then still
+    e.legs.forEach((l, i) => { l.rotation.x = (i % 2 ? 0.35 : -0.25) * (1 - fade) + Math.sin(kt * 13 + i * 1.7) * 0.7 * fade; });
+    o.rotation.x = Math.sin(kt * 13) * 0.02 * fade;
+    return kt < KICK;
+  }
   function restProp(obj) {
+    if (obj.userData.keepPose) { obj.visible = true; extras.push({ obj }); return; }   // a wreck keeps the pose it crashed into (the piano)
     obj.position.y = obj.userData.halfH * 0.9;
     obj.rotation.set(0, obj.rotation.y, (Math.random() - 0.5) * 0.3);
+    if (PROPS[obj.userData.prop] && PROPS[obj.userData.prop].motion === 'side') { obj.rotation.z = Math.PI / 2; obj.position.y = obj.userData.halfH * 0.55; }   // lands on its side (the cow)
     if (levelRef) { const cx = obj.position.x / S, cz = obj.position.z / S; if (CORE().cellAt(levelRef, cx, cz) !== 0) { obj.position.x = (Math.floor(cx) + 0.5) * S; obj.position.z = (Math.floor(cz) + 0.5) * S; } }
     obj.visible = true;
+    if (PROPS[obj.userData.prop] && PROPS[obj.userData.prop].legs) { obj.userData.animated = true; extras.push({ obj, t: 0, tick: legsTick }); return; }   // the cow lands as a LOB shot, not a drop zone: it kicks and flops from here (James 2026-09-11, 'its not flipping over')
     extras.push({ obj });
   }
   // POISON GAS (James: grow from small, the blobs drifting / rocking / pulsing in size and opacity on their own, soft-edged):
@@ -971,6 +1232,215 @@ export function createRenderer(canvas) {
       spr.material.opacity = (0.26 + Math.sin(w * 0.9 + 2) * 0.08) * fade * (0.2 + 0.8 * grow);
     }
   }
+  // THE BLACK HOLE (James 2026-09-10: a dark sphere flowing forward, then the Interstellar look — accretion disk, the lensed
+  // halo — and the monsters sucked into the centre). One canvas gradient feeds the disk and the halo.
+  let _diskTex = null;
+  function diskTex() {
+    if (_diskTex) return _diskTex;
+    const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+    const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0.00, 'rgba(0,0,0,0)'); g.addColorStop(0.36, 'rgba(0,0,0,0)'); g.addColorStop(0.40, 'rgba(255,250,235,1)'); g.addColorStop(0.50, 'rgba(255,190,90,0.95)');
+    g.addColorStop(0.68, 'rgba(230,110,30,0.55)'); g.addColorStop(0.86, 'rgba(120,30,10,0.22)'); g.addColorStop(1.00, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    x.globalCompositeOperation = 'multiply';   // streaks: the disk is banded, not a smooth wash
+    for (let i = 0; i < 60; i++) { x.strokeStyle = 'rgba(0,0,0,' + (0.25 + Math.random() * 0.35) + ')'; x.lineWidth = 1 + Math.random() * 2; x.beginPath(); x.arc(128, 128, 48 + Math.random() * 80, 0, TAU); x.stroke(); }
+    _diskTex = new THREE.CanvasTexture(c); return _diskTex;
+  }
+  function makeBlackHole() {
+    const g = new THREE.Group();
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.42, 28, 20), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+    const photon = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.02, 8, 48), new THREE.MeshBasicMaterial({ color: 0xffe8c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    const dm = new THREE.MeshBasicMaterial({ map: diskTex(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const disk = new THREE.Mesh(new THREE.RingGeometry(0.44, 1.7, 64, 1), dm);
+    disk.rotation.x = -Math.PI / 2 + 0.28;   // tilted, seen a little from above
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.44, 1.25, 64, 1), dm.clone()); halo.material.opacity = 0.75;   // the lensed disk, standing over the top
+    const light = new THREE.PointLight(0xffb060, 60, 14, 2);
+    g.add(core, photon, disk, halo, light);
+    g.userData = { core, photon, disk, halo, light };
+    return g;
+  }
+  function syncBlackHole(v, z, t) {
+    const g = z.gag, tr = z.tx != null ? g.travel : 0, obj = v.obj, U = obj.userData;
+    const flying = z.t < tr, open = flying ? 0 : Math.min(1, (z.t - tr) / 0.45), left = z.dur - z.t, closing = Math.max(0, Math.min(1, 1 - left / 0.35));
+    const sz = (0.85 + open * 0.55) * (1 - closing);   // small and dark out of the gun, opening at the target, collapsing at the end
+    obj.position.set(z.x * S, 1.2, z.y * S); obj.scale.setScalar(Math.max(0.01, sz));
+    U.disk.visible = U.halo.visible = open > 0; U.disk.material.opacity = open; U.halo.material.opacity = open * 0.75;
+    U.disk.rotation.z = t * 2.4;
+    U.halo.lookAt(camera.position); U.halo.rotateZ(-t * 1.6);   // the halo always faces the eye, as the lensed disk would
+    U.photon.lookAt(camera.position);
+    U.light.intensity = flying ? 4 : 60 * open * (1 - closing);
+    U.light.color.setHex(flying ? 0x6040a0 : 0xffb060);
+  }
+  // THE GRAVY WAVE (James 2026-09-11: 'thick and lumpy, not that fast, low to the ground, the colour of chicken gravy, a fan
+  // out from the gun at thigh height and down, wisps of steam'): seventy lumps — three noise-bumped balls, glossy gravy
+  // material — each with its own angle in the fan and its own share of the run, riding out behind the core's front,
+  // taller at the leading edge, wobbling, sinking away at the end; pale steam wisps rise off the front.
+  let lumpGeos = null;
+  function lumpGeo() {
+    if (lumpGeos) return lumpGeos[Math.floor(Math.random() * lumpGeos.length)];
+    lumpGeos = [];
+    for (let v = 0; v < 3; v++) {
+      const g = new THREE.IcosahedronGeometry(1, 2), pos = g.attributes.position, n = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) { n.set(pos.getX(i), pos.getY(i), pos.getZ(i)); const bump = 1 + 0.22 * Math.sin(n.x * 3.1 + v) * Math.cos(n.z * 2.7 + v * 2) + 0.14 * Math.sin(n.y * 4.3 + n.x * 2); n.multiplyScalar(bump); pos.setXYZ(i, n.x, n.y * 0.7, n.z); }
+      g.computeVertexNormals(); lumpGeos.push(g);
+    }
+    return lumpGeos[0];
+  }
+  const GRAVY_MAT = new THREE.MeshPhongMaterial({ color: 0x9a6a28, specular: 0x6a5030, shininess: 55, emissive: 0x2a1a06, emissiveIntensity: 0.35 });
+  function makeGravyWave(z) {
+    const grp = new THREE.Group();
+    for (let i = 0; i < 70; i++) {
+      const m = new THREE.Mesh(lumpGeo(), GRAVY_MAT);
+      const r = 0.18 + Math.random() * 0.3;
+      m.userData = { ang: (Math.random() - 0.5) * 2 * z.gag.spread * (0.75 + Math.random() * 0.25), share: 0.15 + Math.random() * 0.85, r, ph: Math.random() * TAU, lift: Math.random() };
+      m.scale.setScalar(0.01); grp.add(m);
+    }
+    return grp;
+  }
+  function syncGravyWave(v, z, t) {
+    const grp = v.obj, front = (z.front || 0) * S, ox = z.x * S, oz = z.y * S, k = Math.min(1, z.t / z.dur), fade = z.t > z.dur ? Math.max(0, 1 - (z.t - z.dur) / 0.8) : 1;
+    for (const m of grp.children) {
+      const d = m.userData, dist = Math.min(front, d.share * z.gag.range * S) * (0.85 + 0.15 * Math.sin(t * 2 + d.ph));
+      const lead = front > 0.3 ? Math.max(0, 1 - Math.abs(front - dist) / 1.2) : 0;   // how close to the leading edge
+      const h = d.r * 0.55 + lead * 0.45 * d.lift + Math.sin(t * 3.5 + d.ph) * 0.05;   // low; the front stands to thigh height
+      m.position.set(ox + Math.cos(z.a + d.ang) * dist, h * fade - (1 - fade) * d.r, oz + Math.sin(z.a + d.ang) * dist);
+      const s = d.r * Math.min(1, z.t * 5) * (1 + lead * 0.5);
+      m.scale.set(s * 1.3, s * (0.8 + lead * 0.4) * fade, s * 1.3);
+      m.rotation.y = d.ph + t * 0.3; m.rotation.x = Math.sin(t * 2 + d.ph) * 0.15;
+    }
+    if (fade > 0.2 && Math.random() < 0.5) { const m = grp.children[Math.floor(Math.random() * grp.children.length)]; steam(m.position.x, m.position.y + 0.15, m.position.z); }
+  }
+  function steam(x, y, z) {
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0xe8dcc4, transparent: true, depthWrite: false, opacity: 0.22 }));
+    spr.position.set(x, y, z); spr.scale.set(0.25, 0.25, 1); entGroup.add(spr);
+    extras.push({ obj: spr, life: 1.3 + Math.random() * 0.8, t: 0, fade: true, grow: 0.9 + Math.random() * 0.5, rise: 0.45, vx: (Math.random() - 0.5) * 0.3, vz: (Math.random() - 0.5) * 0.3 });
+  }
+  // the tornado plate: grey dust streaks spiralling round a clear eye, on a canvas once
+  let _vortexTex = null;
+  function vortexTex() {
+    if (_vortexTex) return _vortexTex;
+    const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+    const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.22, 'rgba(255,255,255,0.15)'); g.addColorStop(0.5, 'rgba(255,255,255,0.75)'); g.addColorStop(0.9, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    x.globalCompositeOperation = 'destination-out';   // spiral streaks cut out of the disc
+    for (let i = 0; i < 26; i++) { x.strokeStyle = 'rgba(0,0,0,' + (0.35 + Math.random() * 0.45) + ')'; x.lineWidth = 2 + Math.random() * 5; x.beginPath(); const a0 = Math.random() * TAU; for (let s = 0; s <= 1; s += 0.05) { const r = 30 + s * 100, a = a0 + s * 2.2; const px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r; if (s === 0) x.moveTo(px, py); else x.lineTo(px, py); } x.stroke(); }
+    _vortexTex = new THREE.CanvasTexture(c); return _vortexTex;
+  }
+  // THE VINES (James 2026-09-10: "come up out of the ground… darker green… leaves and berries… thinner tips… coil up and
+  // around… like constrictor snakes… 6–10 of them… colour variations"). A vine is a helix that tightens as it climbs, built
+  // as four tube runs of shrinking radius, with leaf cards and berry clusters along it; a patch is 6–10 of them rising out
+  // of the floor at the aim point, holding, then sinking back. The caught creature gets its own three coils (syncCoils).
+  const VINE_GREENS = [0x1f5a24, 0x24672a, 0x2d5a1e, 0x1a4d2e, 0x33702c, 0x275f36];
+  let _leafTex = null;
+  function leafTex() {
+    if (_leafTex) return _leafTex;
+    const c = document.createElement('canvas'); c.width = 64; c.height = 32; const x = c.getContext('2d');
+    x.fillStyle = '#3d8a3a'; x.beginPath(); x.moveTo(2, 16); x.quadraticCurveTo(24, -6, 62, 16); x.quadraticCurveTo(24, 38, 2, 16); x.fill();
+    x.strokeStyle = '#8fd07a'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(4, 16); x.lineTo(58, 16); x.stroke();
+    for (let i = 1; i < 6; i++) { x.beginPath(); x.moveTo(8 + i * 8, 16); x.lineTo(14 + i * 8, 16 - 6); x.moveTo(8 + i * 8, 16); x.lineTo(14 + i * 8, 16 + 6); x.stroke(); }
+    _leafTex = new THREE.CanvasTexture(c); return _leafTex;
+  }
+  const _leafMat = () => new THREE.MeshLambertMaterial({ map: leafTex(), transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, color: 0xffffff });
+  // a vine's path by shape (James 2026-09-10, round two: "variety… doubling back… forking… don't use only corkscrews"):
+  //   coil   — the helix that tightens as it climbs
+  //   snake  — rises with a sideways wander that reverses now and then
+  //   arch   — climbs, leans over and doubles back down a way, then up again
+  //   wander — a random walk in the plane while it climbs, kinks and all
+  function vinePath(o) {
+    const pts = [], N = 44, sh = o.shape || 'coil';
+    let x = 0, z = 0, dx = Math.cos(o.phase) * 0.5, dz = Math.sin(o.phase) * 0.5, h = 0, turnT = 0;
+    for (let i = 0; i <= N; i++) {
+      const k = i / N;
+      if (sh === 'coil') { const a = o.phase + k * o.turns * TAU, r = o.r0 + (o.r1 - o.r0) * k; pts.push(new THREE.Vector3(Math.cos(a) * r, k * o.height, Math.sin(a) * r)); continue; }
+      if (sh === 'snake') { const w = Math.sin(k * 5.2 + o.phase) * (o.r0 + 0.2) * (1 - k * 0.5); pts.push(new THREE.Vector3(Math.cos(o.phase) * w, k * o.height, Math.sin(o.phase) * w)); continue; }
+      if (sh === 'arch') { const y = k < 0.55 ? k / 0.55 * 0.8 : k < 0.75 ? 0.8 - (k - 0.55) / 0.2 * 0.3 : 0.5 + (k - 0.75) / 0.25 * 0.5; const out = Math.sin(k * Math.PI) * (o.r0 + 0.45); pts.push(new THREE.Vector3(Math.cos(o.phase) * out, y * o.height, Math.sin(o.phase) * out)); continue; }
+      // wander
+      turnT -= 1; if (turnT <= 0) { const a = Math.random() * TAU; dx = Math.cos(a) * 0.35; dz = Math.sin(a) * 0.35; turnT = 4 + Math.floor(Math.random() * 6); }
+      x += dx / N * 6; z += dz / N * 6; const lim = o.r0 + 0.35; const d = Math.hypot(x, z); if (d > lim) { x *= lim / d; z *= lim / d; }
+      pts.push(new THREE.Vector3(x, k * o.height, z));
+    }
+    return pts;
+  }
+  function tubeAlong(g, pts, mat, r0, runs) {
+    const N = pts.length - 1;
+    for (let s = 0; s < runs; s++) {
+      const sub = new THREE.CatmullRomCurve3(pts.slice(Math.floor(s * N / runs), Math.floor((s + 1) * N / runs) + 1));
+      const rad = r0 * (1 - s / runs) + 0.014;   // thick at the root, a thin tip
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(sub, 12, rad, 6, false), mat));
+    }
+  }
+  function makeVine(o) {
+    const g = new THREE.Group();
+    const pts = vinePath(o);
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const mat = new THREE.MeshLambertMaterial({ color: o.color });
+    tubeAlong(g, pts, mat, 0.11, 4);
+    const lm = _leafMat(); lm.color.setHex(o.color).lerp(new THREE.Color(0x9ad07a), 0.35);
+    const leafAlong = (cv, n, size) => { for (let i = 0; i < n; i++) {
+      const k = 0.12 + Math.random() * 0.85, p = cv.getPointAt(k), tan = cv.getTangentAt(k);
+      const leaf = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.5), lm);
+      leaf.position.copy(p); leaf.lookAt(p.clone().add(tan)); leaf.rotateY(Math.PI / 2 * (Math.random() < 0.5 ? 1 : -1)); leaf.rotateX((Math.random() - 0.5) * 1.2); leaf.translateX(size * 0.45);
+      g.add(leaf);
+    } };
+    leafAlong(curve, o.leaves, 0.42 + Math.random() * 0.16);
+    // the forks: one to three branches off the side, each a shorter kinked run going out and up, thinner, with its own leaves
+    const forks = o.forks != null ? o.forks : 1 + Math.floor(Math.random() * 3);
+    for (let f = 0; f < forks; f++) {
+      const k = 0.25 + Math.random() * 0.55, from = curve.getPointAt(k), a = Math.random() * TAU, len = 0.5 + Math.random() * 0.9;
+      const bp = []; for (let i = 0; i <= 8; i++) { const u = i / 8; bp.push(new THREE.Vector3(from.x + Math.cos(a) * len * u + Math.sin(u * 7) * 0.08, from.y + u * len * (0.5 + Math.random() * 0.4) - u * u * 0.15, from.z + Math.sin(a) * len * u + Math.cos(u * 6) * 0.08)); }
+      tubeAlong(g, bp, mat, 0.05, 2);
+      leafAlong(new THREE.CatmullRomCurve3(bp), 4 + Math.floor(Math.random() * 4), 0.34);
+    }
+    if (o.berries) {
+      const bm = new THREE.MeshLambertMaterial({ color: Math.random() < 0.5 ? 0xb01830 : 0x4a1a6a, emissive: 0x200008 });
+      for (let i = 0; i < o.berries; i++) {
+        const k = 0.2 + Math.random() * 0.75, p = curve.getPointAt(k);
+        for (let j = 0; j < 4; j++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.028, 7, 5), bm); b.position.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.09, (Math.random() - 0.5) * 0.09, (Math.random() - 0.5) * 0.09)); g.add(b); }
+      }
+    }
+    g.userData.curve = curve;
+    return g;
+  }
+  const vinePatches = [];
+  function spawnVinePatch(x, z, r) {
+    const n = 7 + Math.floor(Math.random() * 4), root = new THREE.Group(); root.position.set(x, 0, z);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU + Math.random() * 0.6, d = 0.2 + Math.random() * r * 0.75;
+      const v = makeVine({ shape: ['coil', 'snake', 'arch', 'wander'][i % 4], height: 2.2 + Math.random() * 1.1, turns: 2.4 + Math.random() * 2.4, r0: 0.34 + Math.random() * 0.24, r1: 0.05, color: VINE_GREENS[Math.floor(Math.random() * VINE_GREENS.length)], leaves: 16 + Math.floor(Math.random() * 10), berries: Math.random() < 0.6 ? 2 + Math.floor(Math.random() * 3) : 0, phase: Math.random() * TAU });
+      v.position.set(Math.cos(a) * d, 0, Math.sin(a) * d); v.scale.set(1, 0.01, 1); v.userData.delay = Math.random() * 0.6; v.userData.sway = Math.random() * TAU;
+      root.add(v);
+    }
+    entGroup.add(root); vinePatches.push({ root, t: 0 });
+  }
+  function stepVinePatches(dt) {
+    for (const p of vinePatches) {
+      p.t += dt;
+      for (const v of p.root.children) {
+        const u = Math.max(0, p.t - v.userData.delay), w = v.userData.sway;
+        let sy = u < 0.35 ? 1 - Math.pow(1 - u / 0.35, 3) : u < 6.0 ? 1 : Math.max(0.01, 1 - (u - 6.0) / 1.0);   // POP up fast, hold, sink (James 2026-09-11: 'pop up quickly and then move around')
+        // the writhe: each vine swells and shrinks on its own beat, tall then squat, turning back and forth and leaning — never still
+        const live = Math.min(1, u / 0.35) * (u < 6.0 ? 1 : Math.max(0, 1 - (u - 6.0)));
+        const swell = 1 + live * (Math.sin(u * 2.3 + w) * 0.22 + Math.sin(u * 5.1 + w * 1.7) * 0.1);
+        const tall = 1 + live * (Math.sin(u * 1.7 + w * 2.3) * 0.18 + Math.sin(u * 4.3 + w) * 0.07);
+        v.scale.set(Math.min(1.6, sy * 1.5) * swell, Math.max(0.01, sy * tall), Math.min(1.6, sy * 1.5) * swell);
+        v.rotation.y = Math.sin(u * 1.9 + w) * 0.9 + Math.sin(u * 4.7 + w * 3) * 0.25;
+        v.rotation.z = live * (Math.sin(u * 2.9 + w) * 0.16 + Math.sin(u * 6.1 + w * 2) * 0.05);
+        v.rotation.x = live * (Math.cos(u * 2.4 + w * 1.3) * 0.14);
+      }
+      if (p.t > 7.4) { entGroup.remove(p.root); p.dead = true; }
+    }
+    for (let i = vinePatches.length - 1; i >= 0; i--) if (vinePatches[i].dead) vinePatches.splice(i, 1);
+  }
+  // the caught creature: three coils climb it, tighten, then it is pulled down and crushed
+  function syncCoils(view, g, hgt, u) {
+    if (!view.coils) {
+      view.coils = [];
+      for (let i = 0; i < 3; i++) { const c = makeVine({ shape: 'coil', forks: 0, height: hgt * 0.95, turns: 2 + i * 0.7, r0: g.def.size * 0.5 + 0.12, r1: g.def.size * 0.5 + 0.05, color: VINE_GREENS[(i * 2) % VINE_GREENS.length], leaves: 8, berries: i === 1 ? 2 : 0, phase: i * 2.1 }); c.scale.set(1, 0.01, 1); entGroup.add(c); view.coils.push(c); }
+    }
+    const climb = Math.min(1, u * 2.4), pull = Math.max(0, (u - 0.45) / 0.55);
+    for (const [i, c] of view.coils.entries()) { const sw = 1 + Math.sin(g.dieT * 4.5 + i * 2.1) * 0.08; c.position.set(g.x * S, -pull * hgt * 0.55, g.y * S); c.scale.set((1 - pull * 0.35) * sw, Math.max(0.01, climb * (1 - pull * 0.55)), (1 - pull * 0.35) * sw); c.rotation.y = u * (1.5 + i * 0.4) + Math.sin(g.dieT * 3.1 + i) * 0.3; }   // the coils writhe too (2026-09-11)
+  }
   function syncZones(state, t) {
     const seen = new Set();
     for (const z of state.zones) {
@@ -980,32 +1450,60 @@ export function createRenderer(canvas) {
       if (!v) {
         const src = (z.mode === 'drop' || z.mode === 'flash') ? propFor(z.sprite) : null;
         let spr;
+        if (z.gag.id === 'vines' && z.mode === 'flash') spawnVinePatch(z.x * S, z.y * S, z.r * S);   // the real vines rise here; the flash sprite is invisible (it has a scar)
+        if (z.gag.id === 'blackhole') { spr = makeBlackHole(); v = { obj: spr, light: null, prop: true, hole: true }; entGroup.add(spr); zoneViews.set(z.id, v); syncBlackHole(v, z, t); continue; }
+        if (z.mode === 'wave') { spr = makeGravyWave(z); v = { obj: spr, light: null, prop: true, hole: true, wave: true }; entGroup.add(spr); zoneViews.set(z.id, v); syncGravyWave(v, z, t); continue; }   // the gravy (2026-09-11); hole: true = torn down whole, never rested as a prop
         if (src) { spr = src.clone(); spr.userData.prop = z.sprite; spr.userData.halfH = src.userData.halfH; spr.rotation.y = Math.random() * TAU; }
         else spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: gagSprite(z.sprite, 0), transparent: true, depthWrite: false }));
         v = { obj: spr, light: null, prop: !!src };
         if (z.mode === 'pull') { v.light = new THREE.PointLight(0xb070ff, 30, 12, 2); spr.add(v.light); }
         entGroup.add(spr); zoneViews.set(z.id, v);
       }
+      if (v.wave) { syncGravyWave(v, z, t); continue; }
+      if (v.hole) { syncBlackHole(v, z, t); continue; }
       const spr = v.obj;
       if (!v.prop) spr.material.map = gagSprite(z.sprite, z.t);
       if (z.mode === 'drop') {
         const u = z.done ? 1 : Math.min(1, z.t / z.dur); const sz = (z.gag.id === 'tent' ? 2.4 : 1.0) * S;
-        if (v.prop) { spr.position.set(z.x * S, (1 - u) * (1 - u) * 6 + spr.userData.halfH, z.y * S); if (!z.done) spr.rotation.x = (1 - u) * 1.2; else spr.rotation.x = 0; }
-        else { spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, (1 - u) * 6 + sz * 0.4, z.y * S); spr.material.opacity = z.done ? Math.max(0, 1 - (z.t - z.dur + 0.5) * 2) : 1; }
+        if (z.gag.id === 'legos') {   // the avalanche: ~190 bricks let go across the fall time, from the ceiling of that cell
+          const ceil = (levelRef && levelRef.tall && levelRef.tall[Math.floor(z.y) * levelRef.w + Math.floor(z.x)]) ? H_TALL : H_LOW;
+          const want = z.done ? 190 : Math.floor(Math.min(1, z.t / z.dur) * 190), had = v.poured || 0;
+          if (want > had) { brickRain(z.x * S, z.y * S, (z.r || 1.3) * S * 0.8, want - had, ceil - 0.2); v.poured = want; }
+          if (!v.prop) spr.material.opacity = 0;
+        }
+        if (v.prop) { const late = models.pieces[z.sprite] ? 0 : 0.15, uv = Math.min(1, z.t / ((z.gag.fallT || z.dur) + late)); const ceilH = (levelRef && levelRef.tall && levelRef.tall[Math.floor(z.y) * levelRef.w + Math.floor(z.x)]) ? H_TALL : H_LOW; spr.position.set(z.x * S, (1 - uv * uv) * (ceilH + spr.userData.halfH) + spr.userData.halfH, z.y * S); if (uv < 1) spr.rotation.x = (1 - uv) * 0.6; else spr.rotation.x = 0; }   // out of the ceiling, speeding up as it falls — gravity (James 2026-09-11, 'it should speed up as it's falling')   // the prop touches down 0.15 s after the kill: the creature is crushed under it as it lands (James 2026-09-11)
+        else if (z.gag.id !== 'legos') { spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, (1 - u) * 6 + sz * 0.4, z.y * S); spr.material.opacity = z.done ? Math.max(0, 1 - (z.t - z.dur + 0.5) * 2) : 1; }
         if (!v.shadow) { v.shadow = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); v.shadow.rotation.x = -Math.PI / 2; v.shadow.position.set(z.x * S, 0.02, z.y * S); entGroup.add(v.shadow); }
         const sr = (z.r || 0.8) * S * (0.2 + 0.8 * u); v.shadow.scale.set(sr, sr, 1); v.shadow.material.opacity = z.done ? 0 : 0.55;
-        if (z.done && !v.landed) { v.landed = true; impactFx(z.x * S, z.y * S, z.r || 0.8); }
+        if (z.done && !v.landed) { v.landed = true; impactFx(z.x * S, z.y * S, z.r || 0.8); const P = models.pieces[z.sprite];
+          if (v.prop && PROPS[z.sprite].legs) { spr.userData.animated = true; extras.push({ obj: spr, t: 0, tick: legsTick }); }   // the cow: on its feet, kicks, then flops on its side (James 2026-09-11)
+          if (v.prop && P && P.body) {   // THE CRASH (James 2026-09-10): the front legs snap off and fly, the lid flies off, the body drops and tips on a diagonal
+            const body = P.body.clone(); body.position.copy(spr.position); body.rotation.copy(spr.rotation); body.userData.halfH = spr.userData.halfH; body.userData.keepPose = true; body.userData.prop = z.sprite;
+            if (P['legs-back']) body.add(P['legs-back'].clone());
+            entGroup.add(body); spr.visible = false; entGroup.remove(spr); v.obj = body; v.crash = { t0: z.t, y0: body.position.y };
+            const fwd = new THREE.Vector3(0, 0, 1).applyEuler(body.rotation);
+            const fly = (piece, vel, av) => { if (!P[piece]) return; const m = P[piece].clone(); m.position.copy(body.position); m.rotation.copy(body.rotation); entGroup.add(m); gibs.push({ mesh: m, v: vel, av, settled: false, bounces: 0 }); };
+            fly('legs-front', fwd.clone().multiplyScalar(4).add(new THREE.Vector3(0, 3.5, 0)), new THREE.Vector3(4, 2, 5));
+            fly('lid', fwd.clone().multiplyScalar(-2).add(new THREE.Vector3((Math.random() - 0.5) * 3, 7, 0)), new THREE.Vector3(2, 5, 3));
+            for (let i = 0; i < 7; i++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.05, 0.12), new THREE.MeshLambertMaterial({ color: 0x0a0a0c })); sp.position.copy(body.position); entGroup.add(sp); const a = Math.random() * TAU; gibs.push({ mesh: sp, v: new THREE.Vector3(Math.cos(a) * (2 + Math.random() * 4), 3 + Math.random() * 4, Math.sin(a) * (2 + Math.random() * 4)), av: new THREE.Vector3(8, 8, 8), settled: false, bounces: 0 }); }   // splinters
+            puff(z.x * S, 0.4, z.y * S, 0x3a3238, 2.4);
+          }
+        }
+        if (v.crash) { const k = Math.min(1, (z.t - v.crash.t0) / 0.45), e = 1 - (1 - k) * (1 - k); v.obj.rotation.x = e * 0.55; v.obj.rotation.z = e * 0.18; v.obj.position.y = v.crash.y0 - e * v.obj.userData.halfH * 0.36; }   // tips toward the broken legs, drops onto them
       }
       else if (z.mode === 'pull') { const sz = 1.5 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, 1.2, z.y * S); }
       else if (z.mode === 'wander') {
-        const sz = 2.4 * S; spr.scale.set(sz * 0.8, sz, 1); spr.position.set(z.x * S, sz * 0.45, z.y * S); spr.material.opacity = 0.35;
-        if (!v.cone) { v.cone = new THREE.Group(); for (let i = 0; i < 7; i++) { const rr = 0.25 + i * 0.28; const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.05 + i * 0.02, 6, 24), new THREE.MeshBasicMaterial({ color: 0xb8b0a8, transparent: true, opacity: 0.5 - i * 0.04, depthWrite: false })); ring.rotation.x = Math.PI / 2; ring.position.y = 0.2 + i * 0.42; ring.userData.i = i; v.cone.add(ring); } entGroup.add(v.cone); }
-        v.cone.position.set(z.x * S, 0, z.y * S); v.cone.children.forEach((ring) => { ring.rotation.z = t * (9 - ring.userData.i * 0.6); ring.position.x = Math.sin(t * 3 + ring.userData.i) * 0.15 * ring.userData.i / 3; });
+        spr.material.opacity = 0;   // the 2D funnel is not drawn: the plates are the tornado (James 2026-09-10, round two)
+        // THE VORTEX (James 2026-09-10): a classic stack of plates — tiny at the floor, each one wider than the last, wide at the
+        // ceiling — every plate a streaked disc turning at its own rate (fast low, slower high) and roiling off the axis
+        if (!v.cone) { v.cone = new THREE.Group(); const N = 24, ceil = (levelRef && levelRef.tall && levelRef.tall[Math.floor(z.y) * levelRef.w + Math.floor(z.x)]) ? H_TALL : H_LOW, top = ceil + 0.35, R = z.r * S * 0.8; for (let i = 0; i < N; i++) { const k = i / (N - 1), rr = 0.1 + Math.pow(k, 1.2) * (R - 0.1); const plate = new THREE.Group(); const disc = new THREE.Mesh(new THREE.CircleGeometry(rr, 40), new THREE.MeshBasicMaterial({ map: vortexTex(), color: 0xc8c0b6, transparent: true, opacity: 0.62 - k * 0.22, depthWrite: false, side: THREE.DoubleSide })); disc.rotation.x = -Math.PI / 2; plate.add(disc); for (const [m, o] of [[1.05, 0.09], [1.3, 0.04]]) { const cake = new THREE.Mesh(new THREE.SphereGeometry(rr * m, 24, 12), new THREE.MeshBasicMaterial({ color: 0xb8b2aa, transparent: true, opacity: o, depthWrite: false })); cake.scale.y = 0.2 + 0.1 * (m - 1); plate.add(cake); }   /* the pancake volume: James 2026-09-10, 'they have no volume… 10–15% opacity… a pretty significant blur' */ plate.position.y = 0.04 + k * top; plate.userData.i = i; plate.userData.k = k; plate.userData.disc = disc; v.cone.add(plate); } entGroup.add(v.cone); }
+        v.cone.position.set(z.x * S, 0, z.y * S);
+        for (const plate of v.cone.children) { const i = plate.userData.i, k = plate.userData.k, A = 0.06 + 0.5 * k; plate.userData.disc.rotation.z = -t * (13 - k * 8) + i * 0.4; plate.position.x = Math.sin(t * 1.9 + k * 5.5) * A; plate.position.z = Math.cos(t * 1.6 + k * 5.5) * A; plate.rotation.z = Math.cos(t * 1.9 + k * 5.5) * 0.12 * k; plate.rotation.x = -Math.sin(t * 1.6 + k * 5.5) * 0.12 * k; }   // one snake: a wave travelling up the stack, the plates leaning into it
       }
       else if (z.mode === 'flash' && v.prop) { spr.position.set(z.x * S, spr.userData.halfH, z.y * S); }
       else if (z.mode === 'flash') { const sz = 1.3 * S; spr.scale.set(sz, sz, 1); spr.position.set(z.x * S, sz * 0.4, z.y * S); spr.material.opacity = z.gag.scar ? 0 : Math.max(0, 1 - z.t / z.dur); }
     }
-    for (const [id, v] of zoneViews) if (!seen.has(id)) { if (v.prop && PROPS[v.obj.userData.prop].stays) { v.obj.rotation.x = 0; extras.push({ obj: v.obj }); } else entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); if (v.cloud) entGroup.remove(v.cloud); zoneViews.delete(id); }
+    for (const [id, v] of zoneViews) if (!seen.has(id)) { if (v.obj.userData.animated) { /* already resting in extras with its own animation */ } else if (v.prop && !v.hole && PROPS[v.obj.userData.prop].stays) { v.obj.rotation.x = 0; extras.push({ obj: v.obj }); } else entGroup.remove(v.obj); if (v.shadow) entGroup.remove(v.shadow); if (v.cone) entGroup.remove(v.cone); if (v.cloud) entGroup.remove(v.cloud); zoneViews.delete(id); }
   }
   const BILLBOARD_SCARS = new Set(['gas', 'stink']);
   function syncScars(state, t) {
@@ -1029,7 +1527,7 @@ export function createRenderer(canvas) {
           m.rotation.x = -Math.PI / 2; m.rotation.z = s.a;
           m.position.set(s.x * S, 0.012 + (s.id % 7) * 0.002, s.y * S);
           // a light for the hot ones
-          if (s.type === 'lava') { const l = new THREE.PointLight(0xff5a1a, 25, 8, 2); l.position.y = 0.4; m.add(l); }
+          if (s.type === 'lava' && ![...scarViews.values()].some((v) => v.userData.lit)) { const l = new THREE.PointLight(0xff5a1a, 25, 8, 2); l.position.y = 0.4; m.add(l); m.userData.lit = true; }   // one lit pool at a time: a changing light count recompiles every shader (2026-09-10)
         }
         entGroup.add(m); scarViews.set(s.id, m);
       }
@@ -1038,6 +1536,40 @@ export function createRenderer(canvas) {
       if (BILLBOARD_SCARS.has(s.type)) { m.material.rotation = Math.sin(t * 0.7 + s.id) * 0.2; }
     }
     for (const [id, m] of scarViews) if (!seen.has(id)) { entGroup.remove(m); scarViews.delete(id); }
+  }
+  // THE BOLT (James 2026-09-10: "bifurcations… crooked and scraggly, squiggly… a bright white core with a bright golden
+  // yellow aura"): a jagged path from a to c with perpendicular jitter, two to four branches off it, every segment a thin
+  // white cylinder inside a fat additive gold one; three jitters built at once and cycled every 45 ms for the flicker.
+  const _bx = new THREE.Vector3(), _by = new THREE.Vector3(), _bz = new THREE.Vector3(), _bup = new THREE.Vector3(0, 1, 0);
+  function boltPath(a, c, jitter, n) {
+    const pts = [a.clone()]; _bz.subVectors(c, a); const len = _bz.length(); if (len < 0.02) return [a.clone(), c.clone()]; _bz.normalize(); _bx.crossVectors(_bz, _bup); if (_bx.lengthSq() < 1e-6) _bx.set(1, 0, 0); _bx.normalize(); _by.crossVectors(_bx, _bz).normalize();   // a zero or vertical run has no sideways: guard the NaN
+    for (let i = 1; i < n; i++) { const k = i / n, w = Math.sin(k * Math.PI) * jitter * len; pts.push(a.clone().addScaledVector(_bz, k * len).addScaledVector(_bx, (Math.random() - 0.5) * 2 * w).addScaledVector(_by, (Math.random() - 0.5) * 1.2 * w)); }
+    pts.push(c.clone()); return pts;
+  }
+  function boltSegments(group, pts, coreR, auraR, coreMat, auraMat) {
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1], l = p.distanceTo(q); if (l < 0.01) continue;
+      for (const [r, mat] of [[coreR, coreMat], [auraR, auraMat]]) { const g = new THREE.CylinderGeometry(r, r, l, 5, 1, true); g.rotateX(Math.PI / 2); const m = new THREE.Mesh(g, mat); m.position.copy(p).lerp(q, 0.5); m.lookAt(q); group.add(m); }
+    }
+  }
+  function boltVariant(a, c, coreMat, auraMat) {
+    const g = new THREE.Group(); const main = boltPath(a, c, 0.09, 14); boltSegments(g, main, 0.028, 0.13, coreMat, auraMat);
+    const nb = 2 + Math.floor(Math.random() * 3);
+    for (let b = 0; b < nb; b++) {   // the bifurcations: off a point along the bolt, a shorter scraggly fork, thinner
+      const i = 2 + Math.floor(Math.random() * (main.length - 5)), from = main[i], dir = main[i + 1].clone().sub(main[i - 1]).normalize();
+      const side = new THREE.Vector3().crossVectors(dir, _bup).normalize().multiplyScalar(Math.random() < 0.5 ? 1 : -1);
+      const end = from.clone().addScaledVector(dir, 0.6 + Math.random() * 1.6).addScaledVector(side, 0.5 + Math.random() * 1.1).add(new THREE.Vector3(0, (Math.random() - 0.5) * 0.8, 0));
+      boltSegments(g, boltPath(from, end, 0.14, 6), 0.016, 0.08, coreMat, auraMat);
+    }
+    return g;
+  }
+  function makeBolt(a, c) {
+    const core = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false });
+    const aura = new THREE.MeshBasicMaterial({ color: 0xffc22a, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
+    const g = new THREE.Group(); g.userData.variants = [];
+    for (let v = 0; v < 3; v++) { const gv = boltVariant(a, c, core, aura); gv.visible = v === 0; g.add(gv); g.userData.variants.push(gv); }
+    g.userData.core = core; g.userData.aura = aura; g.userData.isBolt = true;
+    return g;
   }
   function syncBeams(state, muzzleWorld) {
     const seen = new Set();
@@ -1051,6 +1583,12 @@ export function createRenderer(canvas) {
         const c = new THREE.Vector3(b.x1 * S, 1.1, b.y1 * S);
         const color = b.gag.id === 'lightning' ? 0x9fdcff : b.gag.id === 'sand' ? 0xffffff : b.gag.id === 'shrinkray' ? 0x7fff9a : b.gag.id === 'curse' ? 0x6b3a1a : 0xffe8a0;
         const len = a.distanceTo(c);
+        if (b.gag.id === 'lightning') {   // the bolt, and the chain links as bolts too
+          m = makeBolt(a, c); m.userData.t0 = performance.now();
+          if (b.chain) { let from = c; for (const q of b.chain) { const c2 = new THREE.Vector3(q.x * S, 1.1, q.y * S); if (c2.distanceTo(from) < 0.05) continue; const link = makeBolt(from, c2); m.add(link); m.userData.variants.push(...link.userData.variants.map((v, i) => { v.userData.slot = i; return v; })); from = c2; } }
+          const l = new THREE.PointLight(0xffd070, 60, 12, 2); l.position.copy(c); l.position.y += 0.3; m.add(l); m.userData.light = l;
+          entGroup.add(m); beamViews.set(id, m); continue;
+        }
         const geo = new THREE.CylinderGeometry(b.gag.id === 'curse' ? 0.08 : 0.025, b.gag.id === 'curse' ? 0.08 : 0.025, len, 6, 1, true);
         geo.rotateX(Math.PI / 2);
         const mat = new THREE.MeshBasicMaterial({ color, transparent: true, blending: b.gag.id === 'curse' ? THREE.NormalBlending : THREE.AdditiveBlending, depthWrite: false });
@@ -1059,6 +1597,12 @@ export function createRenderer(canvas) {
         if (b.gag.id === 'lightning' && b.chain) for (const q of b.chain) { const c2 = new THREE.Vector3(q.x * S, 1.1, q.y * S); const l2 = c.distanceTo(c2); const g2 = new THREE.CylinderGeometry(0.02, 0.02, l2, 5, 1, true); g2.rotateX(Math.PI / 2); const m2 = new THREE.Mesh(g2, mat); m2.position.copy(c).lerp(c2, 0.5); m2.lookAt(c2); m2.position.sub(m.position); m2.quaternion.premultiply(m.quaternion.clone().invert()); m.add(m2); }
         if (b.gag.id !== 'curse') { const l = new THREE.PointLight(color, 40, 10, 2); l.position.set(0, 0, len / 2 - 0.3); m.add(l); }
         entGroup.add(m); beamViews.set(id, m);
+      }
+      if (m.userData.isBolt) {   // flicker between the three jitters; fade the core and the aura together
+        const slot = Math.floor(performance.now() / 45) % 3, fade = Math.min(1, (1 - b.t / b.life) * 1.5);
+        m.traverse((o) => { if (o.userData && o.userData.variants) o.userData.variants.forEach((v, i) => { v.visible = (i % 3) === slot; }); });
+        m.userData.core.opacity = fade; m.userData.aura.opacity = 0.42 * fade; if (m.userData.light) m.userData.light.intensity = 60 * fade * (0.7 + 0.3 * Math.random());
+        continue;
       }
       m.material.opacity = Math.min(1, (1 - b.t / b.life) * 1.5);
     }
@@ -1167,7 +1711,7 @@ export function createRenderer(canvas) {
       if (!v) { v = makeGoonView(g); goonViews.set(g.id, v); }
       syncGoon(g, v, dt, state);
     }
-    for (const [id, v] of goonViews) if (!seen.has(id)) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.block) entGroup.remove(v.block); goonViews.delete(id); }
+    for (const [id, v] of goonViews) if (!seen.has(id)) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.school) for (const f of v.school) entGroup.remove(f); if (v.coils) for (const c of v.coils) entGroup.remove(c); if (v.block) entGroup.remove(v.block); goonViews.delete(id); }
     syncShots(state, view.t);
     syncZones(state, view.t);
     syncScars(state, view.t);
@@ -1184,10 +1728,11 @@ export function createRenderer(canvas) {
       _muzzleWorld.set(camera.position.x + Math.cos(th) * 0.9 - Math.sin(th) * 0.25, camera.position.y - 0.32 + vm.aimY * 0.6, camera.position.z + Math.sin(th) * 0.9 + Math.cos(th) * 0.25);
     }
     syncBeams(state, _muzzleWorld);
-    stepBodies(gibs, dt); stepBodies(shards, dt);
-    blood.step(dt); embers.step(dt);
+    stepBodies(gibs, dt); stepBodies(shards, dt); stepBodies(bricks, dt);
+    blood.step(dt); embers.step(dt); lavaBits.step(dt); stepVinePatches(dt); stepGusts(dt);
     for (let i = extras.length - 1; i >= 0; i--) {
       const e = extras[i];
+      if (e.tick) { if (e.tick(e, dt) === false) { if (e.gone) extras.splice(i, 1); else e.tick = null; } continue; }   // an animated resting prop (the cow's kick and flop)
       if (e.growTo != null) { e.growT += dt; const k = Math.min(1, e.growT / e.growDur); e.obj.scale.setScalar(0.15 + (e.growTo - 0.15) * (1 - (1 - k) * (1 - k))); if (k >= 1) e.growTo = null; }
       if (e.life == null) continue;
       e.t += dt; const u = Math.min(1, e.t / e.life);
@@ -1209,7 +1754,7 @@ export function createRenderer(canvas) {
   }
   let skipRender = false;
 
-  return { setSkipRender(v) { skipRender = !!v; }, get debugMuzzle() { return { muzzle: _muzzleWorld.clone(), camera, vmCamera, vmFlash, vmTip, vmRoot }; }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); if (gagId === 'pie') berries(x * S, 0.5, y * S, 36); if (gagId === 'jello') jelloPile(x * S, 0.5, y * S); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
+  return { setSkipRender(v) { skipRender = !!v; }, gorePick, GORE, get debugEnt() { return entGroup; }, get debugMuzzle() { return { muzzle: _muzzleWorld.clone(), camera, vmCamera, vmFlash, vmTip, vmRoot }; }, clipDone(id) { const v = goonViews.get(id); if (!v || !v.current) return true; const a = v.current; return a.loop !== THREE.LoopOnce || a.paused || !a.isRunning(); }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); if (gagId === 'pie') berries(x * S, 0.5, y * S, 36); if (gagId === 'jello') jelloPile(x * S, 0.5, y * S); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
     load, buildLevel, update, resize, setLook, shake, look, vm, scene, camera, renderer, vmRoot, models, goonViews,
     fire() { vm.recoil = 1; vm.muzzle = 1; vm.spin = 0; vm.mood = 'idle'; },
     get ready() { return assetsReady; }, get failed() { return assetsFailed; },

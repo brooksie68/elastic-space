@@ -92,7 +92,26 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
 - `assets/textures/` — 31 seamless tiles (nano-banana-2): five themes × three walls + a plain fourth
   wall for the deep and the arena + floor + ceiling, the locked door, the three odd doors.
 - `assets/models/<creature>/` — `base.glb` (rigged, 1K textures) + armature-only clips `walk run attack
-  die hit dance` (+ `throw` for the cultist, `monster` walk for the ghoul). Ghoul, brute, ratling,
+  die hit dance` (+ `throw` for the cultist, `monster` walk for the ghoul). **THE CLIP DECK (James 2026-09-11, 225 cr):**
+  fifteen more Meshy library clips on all five (`tmp/jabberwocky/actions2.json` = clip name → Meshy action id; the full
+  678-clip catalog is `tmp/jabberwocky/anim-library.json`, free to pull again; `render3d.js` DECK / DEATH_BY_GAG /
+  DEATH_POOL / RUN_POOL / DANCE_POOL is where they are dealt):
+  | clip | Meshy action | where it plays |
+  |---|---|---|
+  | dieback | 189 Dying Backwards | slapfight, trombone; in the random death pool |
+  | gutdeath | 188 Fall Dead from Abdominal Injury | sand, curse; pool |
+  | electro | 181 Electrocuted Fall | lightning (after the shock) |
+  | shotback | 183 Shot and Fall Backward | bullet, boomerang; pool |
+  | shotfront | 184 Shot and Fall Forward | baseballs; pool |
+  | falldown | 366 Falling Down | gas (keels over), bees, legos, audit; pool |
+  | fall3 | 504 Fall 3 | the hole — falls flailing |
+  | backflip | 452 Backflip | a third of the goons flip off a dud hit |
+  | runjump | 463 Run and Jump | 40% of goons leap the moment they notice you |
+  | run3 / runfast5 / runfast7 / hellorun | 15 / 533 / 535 / 110 | each goon runs its own way when chasing (with the rig's own `run`) |
+  | dance1 / dance2 | 22 / 23 Funny Dancing | pacified goons deal one of the three dances |
+  Every other `expire` kill deals from the death pool by the goon's seed (the same goon always dies the same way). A
+  missing clip falls through to `die` / the old hand-coded motion. Meshy queues ten tasks at a time (429
+  NoMorePendingTasks): `tmp/jabberwocky/animate-missing.mjs` resubmits whatever a batch dropped. Ghoul, brute, ratling,
   cultist, stalker. The Jabberwock is `jabberwock/base.glb` only: Meshy's rigger wants a humanoid and
   refused the dragon twice, so he is a posed statue (rifle in hand) moved procedurally.
 - `assets/models/gibs/` — intestines, arm, leg, skull, ribs. `rifle.glb`, `gauntlets.glb` (the viewmodel).
@@ -103,6 +122,20 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   slim_models.py on a mixed dir: anything not named base.glb outside gibs/props is stripped to a clip. To slim ONE
   prop, put the file at the ROOT of a scratch dir and pass that dir (a `props/` subfolder in scratch reads as a clip dir
   and strips it to 132 bytes — 2026-09-08, recovered from the Meshy task id in props-manifest.json).
+  A prop that does not face +Z in three.js terms gets a `yaw` in its PROPS row (the train and bus lie along -X: +π/2;
+  render_models.py on the GLB shows which way — 2026-09-10). Stream gags: `jitter` (angle scatter), `hose` (one tube through
+  every drop, per-gag material in HOSE_MAT), `chunks` (bits fly from the pour), `pools` (that fraction of drops lands as the scar).
+  PROPS `variants: N` = `<name>-1..N.glb`, a random one per shot; `dark` multiplies the material colour; motion `swing` = the
+  handbag (an `arm` prop on the roundhouse, the purse hanging off the hand). Gags: `deathSound` (its own kill sound, sets
+  welcome), `loop` (a file that loops while the zone lives — sound.js loopFile, the hosts' stopDeadLoops). Numbered sets play
+  IN TURN, not at random (2026-09-10). Meshy text-to-3D will not make a severed limb — it makes the whole person (twice).
+- **THE GORE DRAWER (James 2026-09-10):** seventeen Meshy gibs in `GIBS` (render3d.js) — the original five plus heart, liver,
+  kidney, lungs, stomach, brain, halfbrain, eyeball, spine, jaw, hand, foot — and `GORE` = the menu by kind (organs / brains /
+  bones / limbs) with `gorePick(n)`. FIVE SPLATTER KINDS via `bloodTex()`. **THE LAB RULE:** a note like "increase the gore",
+  "more giblets", "blood and guts" on a weapon = add a `gorePick(3–5)` dropGibs + gibBurst / wallSplats / pool to that weapon's
+  kill in outcomeFx (keyed by `g.gagId`, like the anvil) — pick a nice selection across the kinds, never the same three; no
+  bespoke particles (the gore kit is the vocabulary). New gib = a prompt in props.mjs run with `PROPS_OUT=gibs`, slim at 512,
+  a name in GIBS and in a GORE kind.
 - Concept images and raw downloads live in `tmp/jabberwocky/meshy/` and `models/` (gitignored).
 
 ## World-specific rules
