@@ -8,6 +8,15 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-10 — Domain, hosting and accounts: the plan recorded
+
+- `Domain and Hosting.md` at the repo root: GitHub Pages is OUT as the host (James's call —
+  the repo is near the 1 GB cap and will only grow); the domain transfers GoDaddy → name.com
+  after 2026-09-17, then a light hosting conversation; GitHub stays the repo and contributor
+  workflow with periodic big pushes to the live server; three tiers (admin = James alone at
+  /admin, creators, users with email + username + favorites only); Supabase effort by piece;
+  the four open calls. CLAUDE.md Todo points at it.
+
 ## 2026-09-10/11 — Claude — JABBERWOCKY: the third review night, the clip deck, the lab trimmed
 - ~35 of James's weapon-lab notes acted on with the watcher armed, each verified by hand-driving the lab in the pane. THE CLIP DECK: 15 Meshy library clips on all five creatures (225 cr) — deaths chosen per weapon, a run per goon, run-and-jump on notice, backflips on dud hits, three dances; the 678-clip library is cached in `tmp/jabberwocky/anim-library.json`.
 - Weapons: the hornet swarm (a Meshy hornet, one swarm per pull, two-second stings, leaves when nobody is close), the tornado ride tied to its funnel (a spent tornado drops its rider alive), the hole closes over, vines that writhe, the cow on its side, the sneaker's crush timed to the landing, the legos as a brick rain from the ceiling (Meshy brick, 15 cr), the gravy as a new `wave` core kind, gas and lightning deaths from the deck. Verdicts: hole, tornado, vines, bees, gas, cow, cart, legos, anvil, glue, lightning PASSED; wetcat, porcupine TRASH.
