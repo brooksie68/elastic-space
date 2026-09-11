@@ -3,6 +3,65 @@
 Newest entries first. Never rewrite or delete earlier entries. The lander
 half's changelog is one folder up.
 
+## 2026-09-09 (later) — Claude — the barrel off again
+
+James drove it: "the barrel isn't going to work out. It's just floating in space. It looks
+really weird. All the other stuff is cool, though. Leave everything else." `gunBright`
+default back to 0; the drawing stays behind the LOOK dial. Everything else in the entry
+below stands. Two barrels rejected now (rails-and-ring 09-07, the perspective gun 09-09).
+
+## 2026-09-09 — Claude — the gun is honest: the arc, the landing mark, the leads, the hull box, the barrel, the tracer
+
+James: the shell was hard to see, the reticle lit "well above the other tank" while the shots
+missed, and setting the height was guesswork; he wanted the turret back, "not a circle and two
+lines," and useful for aiming. Green light on all six.
+
+The cause: the crosshair lit when the gun's STRAIGHT line touched a hostile, but the shell
+flies an arc and takes 2–3 s to 1,400 ft; a moving hull is long gone, and the hit body was a
+sphere twice the hull's height. (A moon fact found on the way: at 520 ft/s under 5.3 ft/s² a
+shell aimed even slightly up outlives its 4.5 s in the air — ~2,300 ft — before it falls; over
+level ground only near-flat shots come down. The drop over 1,400 ft is ~20 ft, hull-height.)
+
+1. THE SOLUTION (core `shellSolution`): every frame the shell the gun would fire now is marched
+   under gravity until it meets the ground, a structure, a missile, or a hull WHERE IT WILL BE
+   (each enemy carried on at its speed and heading). `readouts().gunHit` / `gunRange` are its
+   answer, so the crosshair's amber, the TANK / TARGET word and the range under the crosshair
+   all mean "this shell lands there." `gunHit` 'none' = the shell dies in the air (HUD: MAX).
+2. THE ARC: dashes from the muzzle out along the predicted flight (`arcBright`); THE LANDING
+   MARK where it comes down — a diamond on the ground with a post, a box in the air on metal,
+   pulsing when it is a hit; the mark keeps a screen size to any range.
+3. THE LEADS: a ghost hull outline on the ground with a mast where each moving enemy will stand
+   when the shell arrives (`leadBright`); the solution counts a hit on the ghost.
+4. THE TRACER: a star head across the line of flight plus a three-step fading tail; a dust
+   burst and flash where it lands; THE MISS CALL — when a shell lands within 420 ft of a
+   hostile, a float says "N FT SHORT / OVER / WIDE" so the next round can be walked on.
+5. THE BARREL (`gunBright` back on, default 1): an eight-sided tube in perspective from a
+   collar at 6 ft to a slotted muzzle brake at 16 ft, range ticks on the top rail, recoil
+   slides it back; its axis runs `SHELL.muzzleDown` (2.2 ft) under the eye so it rises from
+   the bottom of the frame to a point under the crosshair, and the arc leaves its mouth (the
+   core's muzzle moved to match: `muzzleAhead` 16, `muzzle()` / `gunDir()`).
+6. THE HULL BOX: enemies are hit as their own hull box turned to their heading (`inHull` /
+   `rayHull`, pad `SHELL.bodyPad` 4 ft) for shells, the laser and the solution alike.
+
+Sim TEST 12 (249 green): the mark is where the shell ends (three elevations), the muzzle sits
+under the barrel, 14 ft over a hull is a miss, the box turns with the heading, at 1,400 ft the
+line says hit while the arc lands short and a higher lay puts it on the hull and the real shell
+strikes it, the lead ghost stands ahead of a moving hull at the flight time. Judged in the
+look-dev page (dev-snapshots tank-barrel-1/2) and the silent tank page (tank-game-2).
+Three LOOK dials added: the barrel, the shell arc + landing mark, lead ghosts.
+
+## 2026-09-09 — Claude — the wheel zooms
+
+James: "lets add a 2x mouse wheel in/out zoom." Wheel up zooms in, wheel
+down out, 1× to 2× in four clicks (`zoom` in tank.js, `ZOOM_MAX` /
+`ZOOM_STEPS`), eased in the renderer the same way as the scope (`zoomShown`,
+160 ms) and stacked under it (`cam.fov = tankFov × scope narrowing ÷ zoom`).
+The mouse slows by the zoom factor so the aim holds at 2×. The wheel over
+the configuration panel still scrolls the panel; a restart, pause or new
+game resets the zoom to 1×. The hint line and the start card say WHEEL
+ZOOM. The look-dev page has the same wheel (`LAB.setZoom`). Sim 223 green,
+unchanged (the zoom is view-only).
+
 ## 2026-09-08 — Claude — the reload replaces one-in-the-air
 
 James: "is it still doing that thing where it can only have one projectile

@@ -31,13 +31,25 @@ The 2026 tank scheme, the way every modern tank game works:
    the edge when it is off the tape) so you always know where W goes.
 5. **Z is the scope**: the field of view narrows 70%, eased, the mouse
    slows to 45%; an SVG ring + stadia overlay. Sensitivity is a PLAY dial
-   (`play.sens`, `SENS` 0.0021 rad/px).
-6. **The crosshair is the aim** (his first drive): no barrel drawing
-   (`gunBright` 0 — "a circle with two lines"), the gun tracks the
+   (`play.sens`, `SENS` 0.0021 rad/px). **The wheel zooms** (2026-09-09):
+   1× to 2× in four clicks, eased like the scope and stacked under it, the
+   mouse slowed by the same factor; reset on restart / pause.
+6. **The crosshair is the aim** (his first drive): the gun tracks the
    crosshair in a breath (TURRET 6.5 rad/s), and the crosshair's state is
    the whole story — dim while catching up, solid when laid, AMBER with a
    centre dot over a hostile (fire), dashed over a civilian. The tag follows
-   the gun. Never bring the barrel back as a thing to line up.
+   the gun. **2026-09-09: the amber means THE SHELL LANDS THERE** — core
+   `shellSolution` marches the shot under gravity every frame against the
+   ground, structures and each hull where it WILL be; the arc is drawn as
+   dashes, the landing mark pulses on a hit, lead ghosts stand where moving
+   hulls will be; hulls are hit as their own box (`inHull`). THE BARREL was
+   tried as a real perspective gun under the eye (`SHELL.muzzleDown`) and
+   REJECTED the same night ("just floating in space. It looks really
+   weird") — `gunBright` is 0 again, the drawing is behind the dial; do not
+   bring a barrel back a third time without a new idea. The muzzle stays
+   where it is (the arc starts there).
+   Shells: star head + fading tail; a miss near a hostile is called
+   SHORT / OVER / WIDE in feet. Sim TEST 12. Changelog 2026-09-09.
 7. **The start is never the kill box** (his first drive): `startSpot` picks
    the highest clear ground in the stretch's first 1,500 ft with no hostile
    structure within `START_CLEAR` 1,300 ft; waves spawn `SPAWN_MIN`–

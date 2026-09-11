@@ -52,7 +52,10 @@
     gain: 14.0,                       // proportional: slew = gain × the angle left, capped at yawRate
   };
   // ---- the shell ------------------------------------------------------------------
-  const SHELL = { speed: 520, life: 4.5, radius: 10, muzzleAhead: 14, reload: 0.8 };   // reload, not one-in-the-air (James, 2026-09-08): walk fire onto a target
+  // muzzleAhead / muzzleDown: where the shell leaves, under the barrel the renderer draws
+  // (2026-09-09); bodyPad: how close a shell must pass a hull to strike it (the hit body is
+  // the hull's own box now, not a sphere twice its height)
+  const SHELL = { speed: 520, life: 4.5, radius: 10, bodyPad: 4, muzzleAhead: 16, muzzleDown: 2.2, reload: 0.8 };   // reload, not one-in-the-air (James, 2026-09-08): walk fire onto a target
   // ---- the laser --------------------------------------------------------------------
   const LASER = { range: 1400, recharge: 6.0, radius: 6, beamLife: 0.22 };
   // ---- the enemies ---------------------------------------------------------------------
@@ -380,10 +383,8 @@
     if (t.reload > 0) t.reload -= DT;
     const g = forward(t.turret);   // the gun's line, not the view's
     if (input.fire && t.reload <= 0) {
-      const eye = t.y + TANK.eye;
-      const cp = Math.cos(t.gunPitch), sp = Math.sin(t.gunPitch);
-      state.shells.push({ x: t.x + g[0] * SHELL.muzzleAhead, y: eye - 1.5, z: t.z + g[1] * SHELL.muzzleAhead,
-        vx: g[0] * cp * SHELL.speed, vy: sp * SHELL.speed, vz: g[1] * cp * SHELL.speed, age: 0, mine: true });
+      const mz = muzzle(t), d = gunDir(t);
+      state.shells.push({ x: mz[0], y: mz[1], z: mz[2], vx: d[0] * SHELL.speed, vy: d[1] * SHELL.speed, vz: d[2] * SHELL.speed, age: 0, mine: true });
       t.recoil = 1; t.reload = SHELL.reload;
       events.push({ type: 'fire' });
     }
@@ -393,12 +394,9 @@
     if (L.beam) { L.beam.age += DT; if (L.beam.age > LASER.beamLife) L.beam = null; }
     if (input.laser && L.charge >= 1) {
       L.charge = 0;
-      const eye = t.y + TANK.eye;
-      const cp = Math.cos(t.gunPitch), sp = Math.sin(t.gunPitch);
-      const dir = [g[0] * cp, sp, g[1] * cp];
-      const hit = rayHit(state, [t.x, eye - 1.5, t.z], dir, LASER.range, LASER.radius);
-      L.beam = { x0: t.x + g[0] * SHELL.muzzleAhead, y0: eye - 1.5, z0: t.z + g[1] * SHELL.muzzleAhead,
-        x1: hit.x, y1: hit.y, z1: hit.z, age: 0 };
+      const mz = muzzle(t), dir = gunDir(t);
+      const hit = rayHit(state, mz, dir, LASER.range, LASER.radius);
+      L.beam = { x0: mz[0], y0: mz[1], z0: mz[2], x1: hit.x, y1: hit.y, z1: hit.z, age: 0 };
       events.push({ type: 'laser', hit: hit.what });
       if (hit.enemy) damageEnemy(state, hit.enemy, events, 'laser');
       else if (hit.structure) damageStructure(state, hit.structure, events, 'laser');
@@ -430,11 +428,10 @@
   // A ray against enemies, missiles and structure boxes; returns the nearest.
   function rayHit(state, o, d, range, radius) {
     let best = { t: range, what: 'none' };
-    // enemies as spheres of their half-length
+    // enemies as their hull boxes (2026-09-09; they were spheres twice the hull's height)
     for (const e of state.enemies) {
       if (!e.alive) continue;
-      const E = ENEMY[e.kind];
-      const tt = raySphere(o, d, [e.x, e.y + E.hullH / 2, e.z], E.length / 2 + radius);
+      const tt = rayHull(o, d, e, e.x, e.z, radius);
       if (tt !== null && tt < best.t) best = { t: tt, what: 'enemy', enemy: e };
     }
     for (const m of state.missiles) {
@@ -454,6 +451,93 @@
     }
     return { t: best.t, what: best.what, enemy: best.enemy, missile: best.missile, structure: best.structure,
       x: o[0] + d[0] * best.t, y: o[1] + d[1] * best.t, z: o[2] + d[2] * best.t };
+  }
+  // The gun's muzzle and line (the shell's start), under the drawn barrel.
+  function gunDir(t) {
+    const g = forward(t.turret), cp = Math.cos(t.gunPitch), sp = Math.sin(t.gunPitch);
+    return [g[0] * cp, sp, g[1] * cp];
+  }
+  function muzzle(t) {
+    const g = forward(t.turret), cp = Math.cos(t.gunPitch), sp = Math.sin(t.gunPitch);
+    const eye = t.y + TANK.eye - SHELL.muzzleDown;
+    return [t.x + g[0] * cp * SHELL.muzzleAhead, eye + sp * SHELL.muzzleAhead, t.z + g[1] * cp * SHELL.muzzleAhead];
+  }
+  // An enemy's hit body: its hull box, turned to its heading, standing on the ground at
+  // (cx, cz) — the caller passes where the hull IS or where it WILL BE (the lead).
+  function hullLocal(e, cx, cz, x, y, z) {
+    const sh = Math.sin(e.heading), ch = Math.cos(e.heading);
+    const dx = x - cx, dz = z - cz;
+    return [dx * ch + dz * sh, y - e.y, dx * sh - dz * ch];   // right, up, ahead
+  }
+  function inHull(e, cx, cz, x, y, z, pad) {
+    const E = ENEMY[e.kind], l = hullLocal(e, cx, cz, x, y, z);
+    return Math.abs(l[0]) < E.width / 2 + pad && l[1] > -pad && l[1] < E.hullH + pad && Math.abs(l[2]) < E.length / 2 + pad;
+  }
+  function rayHull(o, d, e, cx, cz, pad) {
+    const E = ENEMY[e.kind];
+    const lo = hullLocal(e, cx, cz, o[0], o[1], o[2]);
+    const ld = hullLocal(e, cx, cz, cx + d[0], e.y + d[1], cz + d[2]);
+    const mn = [-E.width / 2 - pad, -pad, -E.length / 2 - pad], mx = [E.width / 2 + pad, E.hullH + pad, E.length / 2 + pad];
+    let t0 = 0, t1 = 1e9;
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(ld[i]) < 1e-9) { if (lo[i] < mn[i] || lo[i] > mx[i]) return null; continue; }
+      let a = (mn[i] - lo[i]) / ld[i], b = (mx[i] - lo[i]) / ld[i];
+      if (a > b) { const q = a; a = b; b = q; }
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+      if (t0 > t1) return null;
+    }
+    return t0;
+  }
+  // THE SOLUTION (2026-09-09, James: the reticle lit above the tank while the shell fell
+  // short and behind): march the shell the gun would fire now, under gravity, until it
+  // meets something — the ground, a structure, a missile, or a hull WHERE IT WILL BE when
+  // the shell gets there (each enemy carried on at its speed and heading). Returns the arc
+  // (a point every SOL_ARC steps), the landing point and what it is, and one lead ghost per
+  // enemy: where its hull will stand when a shell fired now reaches its range.
+  const SOL_DT = 0.04, SOL_ARC = 3;
+  function shellSolution(state) {
+    const t = state.tank;
+    const o = muzzle(t), d = gunDir(t);
+    let x = o[0], y = o[1], z = o[2], vx = d[0] * SHELL.speed, vy = d[1] * SHELL.speed, vz = d[2] * SHELL.speed;
+    const near = structuresNear(state, t.x, t.z, 2600);
+    const arc = [[x, y, z]];
+    let impact = null, tau = 0;
+    for (let i = 1; i * SOL_DT <= SHELL.life; i++) {
+      vy -= GRAVITY * SOL_DT;
+      x += vx * SOL_DT; y += vy * SOL_DT; z += vz * SOL_DT;
+      tau = i * SOL_DT;
+      for (const e of state.enemies) {
+        if (!e.alive) continue;
+        const f = forward(e.heading);
+        if (inHull(e, e.x + f[0] * e.speed * tau, e.z + f[1] * e.speed * tau, x, y, z, SHELL.bodyPad)) { impact = { what: 'enemy', enemy: e }; break; }
+      }
+      if (impact) break;
+      for (const m of state.missiles) if (m.alive && Math.hypot(x - m.x, y - m.y, z - m.z) < SAM.radius + SHELL.radius) { impact = { what: 'missile', missile: m }; break; }
+      if (impact) break;
+      for (const s of near) if (s.alive && inBox(s, x, y, z, 1)) { impact = { what: s.cls === 'civ' ? 'civilian' : 'structure', structure: s }; break; }
+      if (impact) break;
+      const gy = groundAt(state, x, z);
+      if (y <= gy) { y = gy; impact = { what: 'ground' }; break; }
+      if (i % SOL_ARC === 0) arc.push([x, y, z]);
+    }
+    if (!impact) impact = { what: 'none' };
+    impact.x = x; impact.y = y; impact.z = z; impact.t = tau;
+    impact.range = Math.round(Math.hypot(x - t.x, z - t.z));
+    arc.push([x, y, z]);
+    // the leads: where each hull will be when a shell fired now arrives at its range
+    const leads = [];
+    const cp = Math.max(0.05, Math.cos(t.gunPitch));
+    for (const e of state.enemies) {
+      if (!e.alive) continue;
+      const range = Math.hypot(e.x - t.x, e.z - t.z);
+      if (range > RADAR_RANGE) continue;
+      const ft = Math.min(SHELL.life, range / (SHELL.speed * cp));
+      const f = forward(e.heading);
+      const lx = e.x + f[0] * e.speed * ft, lz = e.z + f[1] * e.speed * ft;
+      const E = ENEMY[e.kind];
+      leads.push({ id: e.id, x: lx, y: groundAt(state, lx, lz), z: lz, hullH: E.hullH, width: E.width, length: E.length, heading: e.heading, moving: Math.abs(e.speed) * ft > 6, flight: ft });
+    }
+    return { arc: arc, impact: impact, leads: leads };
   }
   function raySphere(o, d, c, r) {
     const ox = o[0] - c[0], oy = o[1] - c[1], oz = o[2] - c[2];
@@ -521,8 +605,7 @@
     if (sh.age > SHELL.life) return true;
     for (const e of state.enemies) {
       if (!e.alive) continue;
-      const E = ENEMY[e.kind];
-      if (Math.hypot(sh.x - e.x, sh.y - (e.y + E.hullH / 2), sh.z - e.z) < E.length / 2 + SHELL.radius) { damageEnemy(state, e, events, 'shell'); return true; }
+      if (inHull(e, e.x, e.z, sh.x, sh.y, sh.z, SHELL.bodyPad)) { damageEnemy(state, e, events, 'shell'); return true; }
     }
     for (const m of state.missiles) {
       if (!m.alive) continue;
@@ -743,8 +826,9 @@
     for (const m of state.missiles) if (m.alive) rel(m.x, m.z, m.y, 'missile', true, { id: m.id });
     let nearest = null;
     for (const c of contacts) if (c.kind !== 'missile' && (!nearest || c.range < nearest.range)) nearest = c;
-    const g = forward(t.turret), cp = Math.cos(t.gunPitch), sp = Math.sin(t.gunPitch);
-    const gr = rayHit(state, [t.x, eye - 1.5, t.z], [g[0] * cp, sp, g[1] * cp], 3000, 0);
+    // the projected range is the SHELL's landing (the arc), not the straight line (2026-09-09)
+    const sol = shellSolution(state);
+    const gr = sol.impact;
     const deg = (a) => Math.round(((a * 180 / Math.PI) % 360 + 360) % 360);
     return {
       score: state.score, mission: state.mission, missionName: state.missionDef ? state.missionDef.name : '',
@@ -754,7 +838,7 @@
       look: t.look, lookDeg: deg(t.look),
       hullBearing: wrapAngle(t.heading - t.look),
       gunBearing: wrapAngle(t.turret - t.look), gunTilt: t.gunPitch - t.pitch, gunOnView: Math.abs(wrapAngle(t.turret - t.look)) < 0.02 && Math.abs(t.gunPitch - t.pitch) < 0.02,
-      gunRange: gr.what === 'none' ? null : Math.round(gr.t), gunHit: gr.what,
+      gunRange: gr.range, gunHit: gr.what, solution: sol,
       speed: Math.round(t.speed), pitchDeg: Math.round(t.pitch * 180 / Math.PI),
       contacts: contacts, nearest: nearest, inRange: !!(nearest && nearest.range < 900),
       hostilesLeft: hostilesLeft(state), wave: state.wave, waves: state.missionDef ? state.missionDef.waves.length : 0,
@@ -763,7 +847,7 @@
   }
 
   globalThis.LunarTankCore = {
-    DT: DT, CHUNK_W: CHUNK_W, GRAVITY: GRAVITY,
+    DT: DT, CHUNK_W: CHUNK_W, GRAVITY: GRAVITY, shellSolution: shellSolution, muzzle: muzzle, gunDir: gunDir, inHull: inHull,
     TANK: TANK, TURRET: TURRET, SHELL: SHELL, LASER: LASER, ENEMY: ENEMY, SAM: SAM, MISSIONS: MISSIONS, DEFAULTS: DEFAULTS,
     RADAR_RANGE: RADAR_RANGE, SPAWN_MIN: SPAWN_MIN, SPAWN_MAX: SPAWN_MAX, FLAT_MARGIN: FLAT_MARGIN,
     createGame: createGame, startMission: startMission, startSpot: startSpot, respawn: respawn, nextMission: nextMission,

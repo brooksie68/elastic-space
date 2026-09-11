@@ -20,6 +20,9 @@ const LOOK_RANGES = {
   lineWeight:   { min: 1, max: 4, step: 0.1, label: 'line weight' },
   glow:         { min: 0, max: 2.5, step: 0.05, label: 'glow' },
   tankFov:      { min: 40, max: 80, step: 1, label: 'field of view' },
+  gunBright:    { min: 0, max: 2, step: 0.05, label: 'the barrel' },
+  arcBright:    { min: 0, max: 2, step: 0.05, label: 'the shell arc + landing mark' },
+  leadBright:   { min: 0, max: 1.5, step: 0.05, label: 'lead ghosts' },
   weightNear:   { min: 0.6, max: 2.5, step: 0.05, label: 'line weight up close' },
   weightFar:    { min: 0.2, max: 1.2, step: 0.02, label: 'line weight far off' },
   weightRange:  { min: 200, max: 3000, step: 50, label: 'weight falls over (ft)' },
@@ -73,13 +76,15 @@ const keys = {};
 let lookYaw = 0, lookPitch = 0;   // the view, radians: the mouse writes these (pointer lock), the core reads them
 let lookFor = null;               // the tank object the look was last synced to
 let scope = false;                // Z: the scope
+let zoom = 1;                     // the wheel: 1× to ZOOM_MAX, in ZOOM_STEPS clicks (2026-09-09)
+const ZOOM_MAX = 2, ZOOM_STEPS = 4;
 let fireEdge = false, laserEdge = false;
 let restartArmed = 0, resultTimer = 0, hintFadeDone = false;
 let hullFlash = 0, veilT = 0, contactsSeen = new Set(), inRangeWas = false;
 let shellWasReady = true;
 
 Object.defineProperty(globalThis, 'TANK_DEBUG', {
-  get() { return { scene, state, mode, look, play, input: currentInput(), tick: (dt) => frameStep(dt), setLook: (yaw, pitch) => { lookYaw = yaw; lookPitch = pitch; }, setScope: (v) => { scope = !!v; }, fire: () => { fireEdge = true; }, laser: () => { laserEdge = true; } }; },
+  get() { return { scene, state, mode, look, play, input: currentInput(), tick: (dt) => frameStep(dt), setLook: (yaw, pitch) => { lookYaw = yaw; lookPitch = pitch; }, setScope: (v) => { scope = !!v; }, setZoom: (v) => { zoom = clamp(+v || 1, 1, ZOOM_MAX); }, fire: () => { fireEdge = true; }, laser: () => { laserEdge = true; } }; },
 });
 
 // ---- renderer ------------------------------------------------------------------------
@@ -197,7 +202,7 @@ function makeGame() {
   contactsSeen = new Set(); inRangeWas = false;
   setCracks(0);
 }
-function resetInput() { fireEdge = false; laserEdge = false; scope = false; lookFor = null; for (const k of Object.keys(keys)) keys[k] = false; }
+function resetInput() { fireEdge = false; laserEdge = false; scope = false; zoom = 1; lookFor = null; for (const k of Object.keys(keys)) keys[k] = false; }
 // the view follows the core's tank when a new one appears (start, respawn, the next mission)
 function syncLook() { if (state && state.tank !== lookFor) { lookFor = state.tank; lookYaw = state.tank.look; lookPitch = state.tank.pitch; } }
 // pointer lock: the mouse aims while you play; Esc lets go and pauses
@@ -294,7 +299,7 @@ function handleEvents(events) {
       floatLabel(e.x, e.y + 24, e.z, name + ' ' + (e.enemy ? T.ENEMY[e.enemy.kind].mult : e.structure.mult) + 'X', 'word', 1);
     } else if (e.type === 'hit') { scene.spawnBurst(e.x, e.y, e.z, 0.8); Sfx.hit(); }
     else if (e.type === 'absorbed') { scene.spawnBurst(e.x, e.y, e.z, 0.4); Sfx.absorbed(); floatLabel(e.x, e.y + 10, e.z, e.door ? 'DOOR SHUT' : 'CIVILIAN', 'word'); }
-    else if (e.type === 'shellGround') scene.spawnDust(e.x, e.z, 0.7);
+    else if (e.type === 'shellGround') { scene.spawnDust(e.x, e.z, 0.9); scene.spawnBurst(e.x, e.y + 1, e.z, 0.35); callMiss(e); }
     else if (e.type === 'missileGround') { scene.spawnDust(e.x, e.z, 1.2); Sfx.hit(); }
     else if (e.type === 'missileDown') { scene.spawnBurst(e.x, e.y, e.z, 1.4); Sfx.missileDown(); floatLabel(e.x, e.y + 8, e.z, 'MISSILE DOWN', 'word'); }
     else if (e.type === 'enemyFire') Sfx.enemyFire(Math.hypot(e.x - t.x, e.z - t.z));
@@ -322,6 +327,20 @@ function floatLabel(x, y, z, text, cls, row) {
   el.textContent = text;
   labelLayer.appendChild(el);
   floats.push({ el, x, y, z, age: 0, life: 2.6, row: row || 0 });
+}
+// THE MISS CALL (2026-09-09): when a shell lands near a hostile, say how it missed so the
+// next round can be walked on — SHORT / OVER along the line to it, WIDE across it
+function callMiss(e) {
+  const t = state.tank;
+  let best = null, bestD = 420;
+  for (const en of state.enemies) { if (!en.alive) continue; const d = Math.hypot(en.x - e.x, en.z - e.z); if (d < bestD) { bestD = d; best = en; } }
+  if (!best) return;
+  const dx = best.x - t.x, dz = best.z - t.z, L = Math.hypot(dx, dz) || 1;
+  const ux = dx / L, uz = dz / L;
+  const ix = e.x - t.x, iz = e.z - t.z;
+  const along = ix * ux + iz * uz - L, across = ix * uz - iz * ux;
+  const text = Math.abs(across) > Math.abs(along) ? Math.round(Math.abs(across)) + ' FT WIDE' : Math.round(Math.abs(along)) + ' FT ' + (along < 0 ? 'SHORT' : 'OVER');
+  floatLabel(e.x, e.y + 6, e.z, text, 'word');
 }
 function floatCentre(text) {
   const t = state.tank;
@@ -401,6 +420,8 @@ function frameStep(dt) {
       flash: hullFlash * 0.22,
       hover: hoverId,
       scope: scope && mode === 'play',
+      zoom: mode === 'play' ? zoom : 1,
+      solution: mode === 'play' && lastReadouts ? lastReadouts.solution : null,
     };
     scene.render(view, dt);
     placeLabels(dt);
@@ -444,7 +465,7 @@ function renderInstruments() {
   // the projected range: what the gun's line meets, and how far
   const gr = $('gun-range');
   if (mode === 'play' && r.gunRange !== null) {
-    const what = r.gunHit === 'enemy' ? 'TANK' : r.gunHit === 'structure' ? 'TARGET' : r.gunHit === 'civilian' ? 'CIVILIAN' : r.gunHit === 'missile' ? 'MISSILE' : 'GROUND';
+    const what = r.gunHit === 'enemy' ? 'TANK' : r.gunHit === 'structure' ? 'TARGET' : r.gunHit === 'civilian' ? 'CIVILIAN' : r.gunHit === 'missile' ? 'MISSILE' : r.gunHit === 'none' ? 'MAX' : 'GROUND';
     gr.innerHTML = pad(r.gunRange, 4) + '<span class="unit">FT</span><span class="what' + (r.gunHit === 'enemy' || r.gunHit === 'structure' ? ' hot' : '') + '">' + what + '</span>';
     gr.classList.add('on');
   } else gr.classList.remove('on');
@@ -571,10 +592,18 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && mod
 // The first click after the lock is lost only takes the lock back — it never fires.
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas || mode !== 'play') return;
-  const k = SENS * (play.sens || 1) * (scope ? 0.45 : 1);
+  const k = SENS * (play.sens || 1) * (scope ? 0.45 : 1) / zoom;
   lookYaw = T.wrapAngle(lookYaw + e.movementX * k);
   lookPitch = clamp(lookPitch - e.movementY * k, T.TANK.pitchMin, T.TANK.pitchMax);
 });
+// THE WHEEL ZOOMS (2026-09-09, his ask): up = in, down = out, 1× to 2× in four clicks, eased in the
+// renderer like the scope and stacking with it; the mouse slows by the same factor so the aim holds.
+window.addEventListener('wheel', (e) => {
+  if (mode !== 'play' || (e.target && e.target.closest && e.target.closest('#tuner'))) return;
+  e.preventDefault();
+  const step = (ZOOM_MAX - 1) / ZOOM_STEPS;
+  zoom = clamp(Math.round((zoom - Math.sign(e.deltaY) * step) / step) * step, 1, ZOOM_MAX);
+}, { passive: false });
 canvas.addEventListener('pointerdown', (e) => {
   if (mode !== 'play') return;
   if (document.pointerLockElement !== canvas && !SILENT) { lockPointer(); return; }

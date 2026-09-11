@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-09 — Moon Battle 2075 (the tank): the wheel zoom + the honest gun
+- Mouse wheel zooms the view 1×–2× in four clicks, eased like the scope, mouse slowed to match.
+- The crosshair reads the SHELL'S ARC now (core `shellSolution`): landing point marched under gravity against ground, structures and each hull where it will be; amber / TANK / range all mean "this shell lands there".
+- The arc drawn as dashes, a landing mark (diamond on the ground, box on metal, pulses on a hit), lead ghosts for moving hulls, hull-box hits (the old sphere was twice the hull's height), a star-head tracer with a tail, SHORT / OVER / WIDE miss calls in feet.
+- The perspective barrel built, driven, rejected ("floating in space") — off again behind the dial. Tank sim TEST 12, 249 green.
+
 ## 2026-09-10 — Domain, hosting and accounts: the plan recorded
 
 - `Domain and Hosting.md` at the repo root: GitHub Pages is OUT as the host (James's call —

@@ -63,7 +63,9 @@ export const DEFAULT_PARAMS = {
   civBright: 0.62,    // civilian structures (the lander's flight-line value)
   hostBright: 0.85,   // hostile structures (the lander's flight-line value)
   enemyBright: 0.95,  // enemy tanks
-  gunBright: 0,       // your own gun in the foreground — OFF (James, 2026-09-07: "this little goofy-looking thing... a circle with two lines"); the crosshair is the aim
+  gunBright: 0,       // the barrel — OFF (2026-09-09, James, on the perspective gun: "just floating in space. It looks really weird"; the 2026-09-07 rails-and-ring before it: "a circle with two lines"). The drawing stays behind the dial; the arc + landing mark are the aim.
+  arcBright: 1,       // the shell's arc (dashes) and landing mark; 0 hides them
+  leadBright: 0.7,    // the lead ghosts (where a moving hull will be when the shell arrives)
   slopePitch: 0.6,    // how much of the ground's pitch the view takes (eased)
 };
 
@@ -480,6 +482,7 @@ export class TankScene {
     this.groundCentre = null;
     this.ringsLaid = false; this.anchor = [0, 0];
     this.scopeShown = 0;
+    this.zoomShown = 1;
     this.boxKey = '';
     this.effects = [];
     this.particles = [];
@@ -997,7 +1000,7 @@ export class TankScene {
 
   // ---- the frame ---------------------------------------------------------------------------------
   // view: { tank: {x,y,z,heading,look,pitch,turret,gunPitch,recoil,alive}, enemies, missiles, eshells, shells, beam,
-  //         structures: [placed structures near the tank], dead: bool, flash, scope: bool,
+  //         structures: [placed structures near the tank], dead: bool, flash, scope: bool, zoom: 1..2,
   //         hover: the sid (structure) or id (enemy) under the crosshair, drawn at 1.25 }
   render(view, dt) {
     dt = Math.min(0.1, Math.max(0, dt || 0));
@@ -1033,7 +1036,10 @@ export class TankScene {
       if (view.dead) { this.deathT += dt; dead = 1 - Math.exp(-this.deathT / 1.1); } else this.deathT = 0;
       cam.position.set(t.x, eye - dead * 4, t.z);
       cam.rotation.set(t.pitch + this.pitchShown - dead * 0.32, -look, this.rollShown + dead * 0.06, 'YXZ');
-      cam.fov = P.tankFov * (1 - this.scopeShown * 0.7);
+      // the wheel zoom (2026-09-09): eased the same way, stacked under the scope
+      const zoomWant = Math.max(1, view.zoom || 1);
+      this.zoomShown += (zoomWant - this.zoomShown) * (1 - Math.exp(-dt / 0.16));
+      cam.fov = P.tankFov * (1 - this.scopeShown * 0.7) / this.zoomShown;
       cam.near = 1.5; cam.far = 40000;
       cam.updateProjectionMatrix();
       cam.updateMatrixWorld();
@@ -1091,10 +1097,67 @@ export class TankScene {
       const fl = 3 + this._rand() * 5;
       D.seg(m.x - f[0] * cp * 3, m.y - sp * 3, m.z - f[1] * cp * 3, m.x - f[0] * cp * (3 + fl), m.y - sp * (3 + fl), m.z - f[1] * cp * (3 + fl), 1.2 + this._rand() * 0.8);
     }
-    const tracer = (sh, b, len) => D.seg(sh.x, sh.y, sh.z, sh.x - sh.vx * len, sh.y - sh.vy * len, sh.z - sh.vz * len, b);
-    for (const sh of (view && view.shells) || []) tracer(sh, 2.2, 0.035);
-    if (view && view.shell) tracer(view.shell, 2.2, 0.035);   // (the old single-shell view still draws)
-    for (const sh of (view && view.eshells) || []) tracer(sh, 1.7, 0.03);
+    // the tracer (2026-09-09, James: "a bit easier to see"): a bright head — a small star
+    // across the line of flight — and a tail in three fading steps, 0.12 s long
+    const tracer = (sh, b) => {
+      const vl = Math.hypot(sh.vx, sh.vy, sh.vz) || 1;
+      const ux = sh.vx / vl, uy = sh.vy / vl, uz = sh.vz / vl;
+      // two directions across the flight line
+      let ax = -uz, ay = 0, az = ux; const al = Math.hypot(ax, az) || 1; ax /= al; az /= al;
+      const bx = uy * az - uz * ay, by = uz * ax - ux * az, bz = ux * ay - uy * ax;
+      const r = 2.6;
+      D.seg(sh.x - ax * r, sh.y - ay * r, sh.z - az * r, sh.x + ax * r, sh.y + ay * r, sh.z + az * r, b * 1.5);
+      D.seg(sh.x - bx * r, sh.y - by * r, sh.z - bz * r, sh.x + bx * r, sh.y + by * r, sh.z + bz * r, b * 1.5);
+      D.seg(sh.x, sh.y, sh.z, sh.x - sh.vx * 0.03, sh.y - sh.vy * 0.03, sh.z - sh.vz * 0.03, b * 1.3);
+      D.seg(sh.x - sh.vx * 0.03, sh.y - sh.vy * 0.03, sh.z - sh.vz * 0.03, sh.x - sh.vx * 0.07, sh.y - sh.vy * 0.07, sh.z - sh.vz * 0.07, b * 0.7);
+      D.seg(sh.x - sh.vx * 0.07, sh.y - sh.vy * 0.07, sh.z - sh.vz * 0.07, sh.x - sh.vx * 0.12, sh.y - sh.vy * 0.12, sh.z - sh.vz * 0.12, b * 0.3);
+    };
+    for (const sh of (view && view.shells) || []) tracer(sh, 2.4);
+    if (view && view.shell) tracer(view.shell, 2.4);   // (the old single-shell view still draws)
+    for (const sh of (view && view.eshells) || []) tracer(sh, 1.7);
+    // THE SOLUTION (2026-09-09): the arc the shell would fly, as dashes from the muzzle out,
+    // the landing mark where it comes down (a diamond flat on the ground, a post through it,
+    // a box in the air when it meets metal), and a ghost outline where each moving hull
+    // will stand when the shell gets there — the amber on the crosshair is the same answer
+    const sol = view && view.solution;
+    if (sol && P.arcBright > 0 && !view.dead) {
+      const A = sol.arc, n = A.length;
+      for (let i = 1; i < n - 1; i++) {
+        const a = A[i], c = A[i + 1];
+        const f = 1 - i / n;
+        D.seg(a[0], a[1], a[2], a[0] + (c[0] - a[0]) * 0.55, a[1] + (c[1] - a[1]) * 0.55, a[2] + (c[2] - a[2]) * 0.55, P.arcBright * (0.7 + 0.9 * f));
+      }
+      const im = sol.impact;
+      if (im && im.what !== 'none') {
+        const hot = im.what === 'enemy' || im.what === 'structure' || im.what === 'missile';
+        const pulse = hot ? 1.6 + 0.5 * Math.sin(this.time * 9) : 1.1;
+        const b = P.arcBright * pulse;
+        const rr = Math.max(7, im.range * 0.012);   // the mark keeps a size on screen out to any range
+        if (im.what === 'ground') {
+          const gy = im.y + 0.6, r = rr;
+          D.seg(im.x - r, gy, im.z, im.x, gy, im.z - r, b); D.seg(im.x, gy, im.z - r, im.x + r, gy, im.z, b);
+          D.seg(im.x + r, gy, im.z, im.x, gy, im.z + r, b); D.seg(im.x, gy, im.z + r, im.x - r, gy, im.z, b);
+          D.seg(im.x, gy, im.z, im.x, gy + rr * 0.8, im.z, b * 0.8);
+        } else {
+          const r = Math.max(4, rr * 0.6);
+          for (const [dx, dz] of [[-r, -r], [r, -r], [r, r], [-r, r]]) D.seg(im.x + dx, im.y - r, im.z + dz, im.x + dx, im.y + r, im.z + dz, b);
+          for (const y of [im.y - r, im.y + r]) { D.seg(im.x - r, y, im.z - r, im.x + r, y, im.z - r, b); D.seg(im.x + r, y, im.z - r, im.x + r, y, im.z + r, b); D.seg(im.x + r, y, im.z + r, im.x - r, y, im.z + r, b); D.seg(im.x - r, y, im.z + r, im.x - r, y, im.z - r, b); }
+        }
+      } else if (im) {
+        // the shell dies in the air out here: a faint bar at the end of the arc
+        D.seg(im.x - 6, im.y, im.z, im.x + 6, im.y, im.z, P.arcBright * 0.4);
+      }
+      if (P.leadBright > 0) for (const ld of sol.leads || []) {
+        if (!ld.moving) continue;
+        const ch = Math.cos(ld.heading), sh = Math.sin(ld.heading);
+        const hw = ld.width / 2, hl = ld.length / 2, gy = ld.y + 0.5;
+        const c = [[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]].map(([x, z]) => [ld.x + x * ch + z * sh, ld.z + x * sh - z * ch]);
+        const b = P.leadBright;
+        for (let i = 0; i < 4; i++) { const a = c[i], d = c[(i + 1) % 4]; D.seg(a[0], gy, a[1], d[0], gy, d[1], b); }
+        D.seg(ld.x, gy, ld.z, ld.x, gy + ld.hullH, ld.z, b * 0.8);
+        D.seg(ld.x - 3, gy + ld.hullH, ld.z, ld.x + 3, gy + ld.hullH, ld.z, b * 0.8);
+      }
+    }
     // effects
     for (const e of this.effects) {
       const fade = 1 - e.age / e.life;
@@ -1140,16 +1203,30 @@ export class TankScene {
       const cs = (x, y, z) => { const v = this._v.set(x, y, z).applyMatrix4(m); return [v.x, v.y, v.z]; };
       const rc = (t.recoil || 0) * 1.2;
       const gb = P.gunBright * (1 - this.scopeShown / 0.6);
-      // only the last stretch of the barrel shows out of the slit: two rails
-      // from 9 ft out to a small muzzle ring at 15, low under the crosshair.
-      // (A full barrel from the eye read as a giant V — the eye is too close.)
-      const L = 15 - rc, y0 = -1.72, y1 = -1.55;
-      const p = [cs(-0.3, y0, -9 + rc), cs(-0.26, y1, -L), cs(0.3, y0, -9 + rc), cs(0.26, y1, -L)];
-      G.seg(p[0][0], p[0][1], p[0][2], p[1][0], p[1][1], p[1][2], gb);
-      G.seg(p[2][0], p[2][1], p[2][2], p[3][0], p[3][1], p[3][2], gb);
-      const ring = [];
-      for (let i = 0; i < 10; i++) { const a = Math.PI * 2 * i / 10; ring.push(cs(Math.cos(a) * 0.3, y1 + Math.sin(a) * 0.3, -L)); }
-      for (let i = 0; i < 10; i++) { const a = ring[i], b = ring[(i + 1) % 10]; G.seg(a[0], a[1], a[2], b[0], b[1], b[2], gb * 1.15); }
+      // THE BARREL (2026-09-09): a real gun in perspective — the barrel axis runs
+      // muzzleDown under the eye and parallel to the gun line, from a mantlet block at
+      // 4 ft (just below the frame) to the muzzle brake at muzzleAhead, so it rises from
+      // the bottom of the screen to a point under the crosshair and the arc leaves its
+      // mouth. Eight-sided tube, tapering; rings at the joints; range ticks on the top
+      // rail; slotted brake. Recoil slides the whole gun back.
+      const T2 = this._core();
+      const yA = -T2.SHELL.muzzleDown, ZM = T2.SHELL.muzzleAhead;
+      const ringAt = (z, r) => { const out = []; for (let i = 0; i < 8; i++) { const a = Math.PI * 2 * i / 8 + Math.PI / 8; out.push(cs(Math.cos(a) * r, yA + Math.sin(a) * r, -(z - rc))); } return out; };
+      const drawRing = (R, b) => { for (let i = 0; i < 8; i++) { const a = R[i], c = R[(i + 1) % 8]; G.seg(a[0], a[1], a[2], c[0], c[1], c[2], b); } };
+      const joinRings = (R0, R1, b, every) => { for (let i = 0; i < 8; i += every || 1) { const a = R0[i], c = R1[i]; G.seg(a[0], a[1], a[2], c[0], c[1], c[2], b); } };
+      // the collar: a double ring where the tube leaves the turret, low in the frame
+      const C0 = ringAt(6.2, 0.34), C1 = ringAt(6.7, 0.34);
+      drawRing(C0, gb * 0.9); drawRing(C1, gb * 1.0); joinRings(C0, C1, gb * 0.8);
+      // the tube: sections 6.7 → 9.5 → 12.5 → 14.9, thinning
+      const R0 = ringAt(6.7, 0.3), R1 = ringAt(9.5, 0.29), R2 = ringAt(12.5, 0.28), R3 = ringAt(14.9, 0.27);
+      drawRing(R0, gb * 1.0); drawRing(R1, gb * 0.9); drawRing(R2, gb * 0.9); drawRing(R3, gb * 1.0);
+      joinRings(C1, R0, gb * 0.7, 2); joinRings(R0, R1, gb * 0.85); joinRings(R1, R2, gb * 0.8); joinRings(R2, R3, gb * 0.8);
+      // the brake: a fatter sleeve at the mouth with a slot either side
+      const B0 = ringAt(14.9, 0.34), B1 = ringAt(ZM, 0.34), B2 = ringAt(ZM, 0.24);
+      drawRing(B0, gb * 1.2); drawRing(B1, gb * 1.3); drawRing(B2, gb * 1.3); joinRings(B0, B1, gb * 1.0, 2);
+      for (const sx of [-1, 1]) for (const z of [15.25, 15.65]) { const a = cs(sx * 0.34, yA + 0.12, -(z - rc)), c = cs(sx * 0.34, yA - 0.12, -(z - rc)); G.seg(a[0], a[1], a[2], c[0], c[1], c[2], gb * 1.2); }
+      // range ticks along the top rail
+      for (const z of [8, 9.5, 11, 12.5, 14]) { const r = z <= 9.5 ? 0.3 : z <= 12.5 ? 0.29 : 0.28; const a = cs(0, yA + r, -(z - rc)), c = cs(0, yA + r + (z === 11 ? 0.3 : 0.16), -(z - rc)); G.seg(a[0], a[1], a[2], c[0], c[1], c[2], gb * 1.1); }
     }
     if (view && view.beam) {
       const b = view.beam;
