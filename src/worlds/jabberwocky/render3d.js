@@ -9,21 +9,54 @@ import { clone as skeletonClone } from '../../lib/three/utils/SkeletonUtils.js';
 
 export const S = 2.6;          // metres per maze cell
 export const EYE = 1.65;       // camera height
-const H_LOW = 3.2, H_TALL = 5.4;
+const H_LOW = 4.4, H_TALL = 8.0, HEIGHTS = [4.4, 8.0, 11.0];   // corridor · room · great hall, by level.tall (2026-09-11: up from 3.2 / 5.4 — James: 'bigger rooms, higher ceilings')
 const TAU = Math.PI * 2;
 const D = () => globalThis.JabberwockyDraw;
 const CORE = () => globalThis.JabberwockyCore;
 
-// themes: tile names live in assets/textures/t<theme>-<slot>.jpg
-// walls: which tile each of the core's four wall variants wears (A is ~62% of walls, D ~5%);
-// glow: tiles that light themselves (lava, crystal, runes) with the emissive strength
+// themes: tile names live in assets/textures/t<theme>-<slot>.jpg — a bare slot name means this theme's tile, a full name
+// (t1-floor) borrows another theme's. DISTRICTS (James 2026-09-11, 'different wall textures, colors, lighting'): the core
+// gives every room a district and the corridors join the nearest room's (level.district); a wing wears one of these in
+// turn — its own four walls (A is ~62% of walls, D ~5%), floor, ceiling and light colour (the torches and the baked light
+// take it) — so "the moss wing" and "the rust wing" read as different places. landmarks: the Meshy pieces
+// (assets/models/landmarks/) dealt to the room slots, the hero first (the hall's middle); hang: a piece hung from the
+// ceiling over every room's slot. GLOW: tiles that light themselves (lava, crystal, runes) with the emissive strength.
 const THEMES = [
-  { fog: 0x0a0608, base: 0.55, torch: 0xffa040, walls: ['wall1', 'wall2', 'wall3', 'wall2'], glow: {} },
-  { fog: 0x0b0806, base: 0.52, torch: 0xffb050, walls: ['wall2', 'wall1', 'wall3', 'wall1'], glow: {} },
-  { fog: 0x06090a, base: 0.60, torch: 0xd0e8ff, walls: ['wall1', 'wall2', 'wall3', 'wall3'], glow: {} },
-  { fog: 0x06040c, base: 0.42, torch: 0xb070ff, walls: ['wall4', 'wall1', 'wall2', 'wall3'], glow: { wall1: 0.5, wall2: 0.5, floor: 0.3, ceil: 0.35 } },
-  { fog: 0x0c0403, base: 0.48, torch: 0xff6020, walls: ['wall4', 'wall2', 'wall1', 'wall3'], glow: { wall1: 0.45, wall2: 0.3, floor: 0.4, ceil: 0.2 } },
+  { fog: 0x0a0608, base: 0.55, torch: 0xffa040, sign: { bg: '#2a1a0c', ink: '#f0c060', font: 'bold 60px Georgia, serif', word: 'GATE' },
+    districts: [
+      { walls: ['wall1', 'wall2', 'wall3', 'wall2'], floor: 'floor', ceil: 'ceil', light: 0xffa040 },       // the gatehouse: stone and iron under torch amber
+      { walls: ['wall2', 'wall2', 'wall1', 'wall3'], floor: 't1-floor', ceil: 'ceil', light: 0x7cff6a },    // the moss wing: green light on the moss walls
+      { walls: ['wall3', 'wall1', 'wall2', 'wall1'], floor: 'floor', ceil: 't1-ceil', light: 0xffd890 },    // the iron wing: pale lamps
+    ],
+    landmarks: ['statue', 'well', 'brazier', 'banner'], hang: null },
+  { fog: 0x0b0806, base: 0.52, torch: 0xffb050, sign: { bg: '#141018', ink: '#e8e0d0', font: 'bold 58px Trebuchet MS, sans-serif', word: 'WAY OUT', chalk: true },
+    districts: [
+      { walls: ['wall2', 'wall1', 'wall3', 'wall1'], floor: 'floor', ceil: 'ceil', light: 0xffb050 },       // the ossuary: candle amber on brick and bone
+      { walls: ['wall3', 'wall3', 'wall1', 'wall2'], floor: 'floor', ceil: 'ceil', light: 0x6a8cff },       // the blue crypt
+      { walls: ['wall1', 'wall1', 'wall2', 'wall3'], floor: 't0-floor', ceil: 'ceil', light: 0xfff0c8 },    // the bone hall: bone white
+    ],
+    landmarks: ['ossuary', 'sarcophagus', 'bonepillar', 'chandelier'], hang: 'chandelier' },
+  { fog: 0x06090a, base: 0.60, torch: 0xd0e8ff, sign: { bg: '#0a3a14', ink: '#e0ffe8', font: 'bold 64px Arial Black, Arial, sans-serif', word: 'EXIT', box: true },
+    districts: [
+      { walls: ['wall1', 'wall2', 'wall3', 'wall3'], floor: 'floor', ceil: 'ceil', light: 0xd0e8ff },       // the killing floor: cold fluorescent
+      { walls: ['wall2', 'wall2', 'wall2', 'wall1'], floor: 'floor', ceil: 'ceil', light: 0xff3838 },       // the boiler wing: red emergency lamps
+      { walls: ['wall3', 'wall3', 'wall1', 'wall2'], floor: 'floor', ceil: 't3-ceil', light: 0xa8f4ff },    // the freezer: frost white
+    ],
+    landmarks: ['grinder', 'boiler', 'barrels', 'carcass'], hang: 'carcass' },
+  { fog: 0x06040c, base: 0.42, torch: 0xb070ff, sign: { bg: '#0c0618', ink: '#d0a0ff', font: 'bold 60px Georgia, serif', word: 'ONWARD', glow: true },
+    districts: [
+      { walls: ['wall4', 'wall1', 'wall2', 'wall3'], floor: 'floor', ceil: 'ceil', light: 0xb070ff },       // the rune caverns: violet
+      { walls: ['wall2', 'wall2', 'wall4', 'wall1'], floor: 'floor', ceil: 'ceil', light: 0x40e0ff },       // the crystal caves: cyan
+      { walls: ['wall3', 'wall3', 'wall1', 'wall4'], floor: 't4-floor', ceil: 'ceil', light: 0xff7030 },    // the lava vents: orange
+    ],
+    landmarks: ['monolith', 'crystal', 'altar', 'stalagmite'], hang: null },
+  { fog: 0x0c0403, base: 0.48, torch: 0xff6020, sign: { bg: '#1a0804', ink: '#ffb060', font: 'bold 60px Georgia, serif', word: 'ONWARD' },
+    districts: [{ walls: ['wall4', 'wall2', 'wall1', 'wall3'], floor: 'floor', ceil: 'ceil', light: 0xff6020 }],
+    landmarks: ['brazier'], hang: null },
 ];
+const GLOW = { 't3-wall1': 0.5, 't3-wall2': 0.5, 't3-floor': 0.3, 't3-ceil': 0.35, 't4-wall1': 0.45, 't4-wall2': 0.3, 't4-floor': 0.4, 't4-ceil': 0.2 };
+// the landmarks' sizes in metres (fitProp sizes by the longest side); chandelier / carcass hang from the ceiling
+const LANDMARK_SIZE = { statue: 3.4, well: 2.4, brazier: 1.9, banner: 4.6, ossuary: 2.6, sarcophagus: 2.4, bonepillar: 4.4, chandelier: 3.0, grinder: 3.0, boiler: 3.2, barrels: 2.4, carcass: 2.6, monolith: 5.0, crystal: 3.0, altar: 2.6, stalagmite: 3.6 };
 const MODEL_DIR = 'assets/models/';
 // THE CLIP DECK (James 2026-09-11, 'get 'em, add 'em, catalog 'em, weave them into every gun response — some random and
 // some obvious'): fifteen more Meshy library clips on every creature (tmp/jabberwocky/actions2.json holds the action ids).
@@ -34,18 +67,33 @@ const MODEL_DIR = 'assets/models/';
 //   runs    run (the rig's own) · run3 (15) · runfast5 (533) · runfast7 (535) · hellorun (110) — each goon runs its own way (seed)
 //   runjump (463 Run and Jump) — some goons leap the moment they notice you · backflip (452) — some flip off a dud hit
 //   dances  dance (the original) · dance1 (22 Funny Dancing 1) · dance2 (23 Funny Dancing 2) — pacified goons deal one by seed
+// THE MOVES (James 2026-09-11, his eighteen names from the library; tmp/jabberwocky/actions3.json): four more deaths for
+// everyone — blownback (182 Shot and Blown Back) · slowfall (185 Shot and Slow Fall Backward) · knockdown (187 Knock Down) ·
+// strangled (186 Strangled and Fall Forward) — and an attack subset per creature, flavoured by what it holds (ATTACKS):
+// every swing deals one at random from the creature's own list, so two of a kind fight differently.
 const DECK = ['fall3', 'falldown', 'gutdeath', 'electro', 'shotback', 'shotfront', 'dieback', 'backflip', 'run3', 'runjump', 'runfast5', 'runfast7', 'hellorun', 'dance1', 'dance2'];
-const DEATH_BY_GAG = { lightning: 'electro', bullet: 'shotback', baseballs: 'shotfront', sand: 'gutdeath', bees: 'falldown', legos: 'falldown', slapfight: 'dieback', curse: 'gutdeath', boomerang: 'shotback', audit: 'falldown', trombone: 'dieback' };
-const DEATH_POOL = ['die', 'dieback', 'gutdeath', 'shotback', 'shotfront', 'falldown'];
+const DEATHS4 = ['blownback', 'slowfall', 'knockdown', 'strangled'];
+const ATTACKS = {
+  lizardman: ['reaping', 'thrust', 'rhslash', 'charged', 'axespin', 'kick'],   // 99 Reaping Swing · 240 Thrust Slash · 219 Right-hand Sword Slash · 242 Charged Slash · 238 Axe Spin Attack · 103 Simple Kick
+  brute:     ['judgment', 'charged', 'wcombo2', 'reaping', 'elbow'],           // 102 Sword Judgment (the overhead smash) · 242 · 241 Weapon Combo 2 · 99 · 212 Elbow Strike
+  ratling:   ['leftslash', 'thrust', 'flykick', 'kick'],                       // 97 Left Slash · 240 · 94 Flying Fist Kick · 103
+  cultist:   ['pcombo1', 'elbow', 'highkick', 'leftslash'],                    // 200 Punch Combo 1 · 212 · 215 High Kick · 97 (a skull in hand)
+  stalker:   ['lunge', 'highkick', 'flykick', 'reaping', 'elbow'],             // 208 Lunge Roundhouse Kick · 215 · 94 · 99 (a claw sweep) · 212
+};
+const DEATH_BY_GAG = { lightning: 'electro', bullet: 'shotback', baseballs: 'shotfront', sand: 'gutdeath', bees: 'falldown', legos: 'falldown', slapfight: 'dieback', curse: 'gutdeath', boomerang: 'shotback', audit: 'falldown', trombone: 'dieback',
+  vines: 'strangled', rocket: 'blownback', sneeze: 'blownback', cart: 'knockdown', train: 'knockdown', handbag: 'knockdown', gravel: 'slowfall' };   // the obvious pairings for the four new deaths (2026-09-11)
+const DEATH_POOL = ['die', 'dieback', 'gutdeath', 'shotback', 'shotfront', 'falldown', ...DEATHS4];
 const RUN_POOL = ['run', 'run', 'run3', 'runfast5', 'runfast7', 'hellorun'];
 const DANCE_POOL = ['dance', 'dance1', 'dance2'];
-// each creature: the rigged base and the clips we asked Meshy for; yaw = which way the model faces at rest
+// each creature: the rigged base and the clips we asked Meshy for; yaw = which way the model faces at rest.
+// The ghoul is out (James 2026-09-11) — its files stay on disk until ship; the LIZARDMAN (concept take two, tailless, rigged
+// first try) took its place in every mix.
 const CREATURES = {
-  ghoul:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
-  brute:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
-  ratling:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
-  cultist:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', 'throw', ...DECK], yaw: 0 },
-  stalker:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK], yaw: 0 },
+  lizardman:  { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.lizardman], yaw: 0 },
+  brute:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.brute], yaw: 0 },
+  ratling:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.ratling], yaw: 0 },
+  cultist:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', 'throw', ...DECK, ...DEATHS4, ...ATTACKS.cultist], yaw: 0 },
+  stalker:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.stalker], yaw: 0 },
   // the Jabberwock would not take a rig (Meshy's pose estimation wants a humanoid), so he is a posed
   // statue that moves procedurally: hovers, leans in to fire, rears back when hit
   jabberwock: { clips: [], yaw: 0, unscaled: true, procedural: true },
@@ -103,6 +151,14 @@ const PROPS = {
   rock:      { size: 0.11, motion: 'tumble', stays: false, variants: 6, dark: 0.5 },   // 2026-09-10 James round two: half the size, darker, half again as many
   purse:     { size: 2.2, motion: 'swing',  stays: false, arm: 'fist', armSize: 3.0, armYaw: 0, purseYaw: 0 },   // the arm is the Meshy fist (with its forearm stump): Meshy's text-to-3D made a whole old lady twice when asked for a severed arm (30 cr, benched in tmp/jabberwocky/models/)   // 2026-09-10 James: a real 3-D purse on a strap swung by an old lady's arm from the right of the gun, overly large
   fist:      { size: 3.2, motion: 'punch',   stays: false },   // James 2026-09-08: a Meshy fist, stupid big, knuckles first, lunges and comes back   // 2026-09-08 James, three notes: a Meshy knife (the code-built one read as a cigarette), twice the size, four of them, spinning fast; primProp 'knife' stands by if the file is missing
+  // 2026-09-11 THE STRUCTURE: the bad guys' weapons (armGoon puts one in the right hand, dropWeapon lets it fall at the death)
+  sword:     { size: 1.25, motion: 'tumble', stays: false, variants: 2 },
+  axe:       { size: 1.35, motion: 'tumble', stays: false, variants: 2 },
+  hammer:    { size: 1.5,  motion: 'tumble', stays: false, variants: 2 },
+  shiv:      { size: 0.55, motion: 'tumble', stays: false },
+  // the armor pickups: Meshy sent a whole suit for the breastplate — it stands where it lies as THE SUIT; the helm turns
+  plate:     { size: 1.75, motion: 'rest',   stays: false },
+  helm:      { size: 0.5,  motion: 'rest',   stays: false },
 };
 const BOOM_GAGS = new Set(['rocket', 'wrongway', 'meteor', 'piledriver']);   // the only splashes that are explosions
 const SPLASH_COLOR = { pie: 0x6a3aa0, jello: 0x2f8a1e, gravy: 0x6b3a1a, lava: 0xff6a20, chowder: 0xf0e0c0, burrito: 0xd0a060, legos: 0xe03030, lovepotion: 0xff6ab0, monkeypaw: 0x3a2a2a, catbag: 0x8a7a6a, jack: 0xffd23a, porcupine: 0x8a6a4a, cow: 0xf0f0f0, yak: 0x6a4a2a, frogs: 0x3a9a2a, tent: 0xc8202a, sneaker: 0xf0f0f0, anvil: 0x505058, piano: 0x202020, vending: 0xd02020, sink: 0xf0f0f0 };
@@ -114,10 +170,10 @@ export function createRenderer(canvas) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.autoClear = false;
-  const look = { fov: 76, fog: 34, res: 1, bob: 0, spriteScale: 1, decalScale: 1, brightness: 1, shake: 0.25, torchLight: 1, vmX: 0.26, vmY: -0.30, vmZ: -0.78, vmScale: 1 };
+  const look = { fov: 76, fog: 70, guide: 1, res: 1, bob: 0, spriteScale: 1, decalScale: 1, brightness: 1, shake: 0.25, torchLight: 1, vmX: 0.26, vmY: -0.30, vmZ: -0.78, vmScale: 1 };
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(look.fov, 1, 0.05, 90);
+  const camera = new THREE.PerspectiveCamera(look.fov, 1, 0.05, 220);
   const vmScene = new THREE.Scene();
   const vmCamera = new THREE.PerspectiveCamera(52, 1, 0.01, 10);
   const loader = new GLTFLoader();
@@ -126,7 +182,7 @@ export function createRenderer(canvas) {
 
   // ---- assets -------------------------------------------------------------------------------------
   const textures = {};
-  const models = { creatures: {}, gibs: [], gibByName: {}, props: {}, pieces: {}, rifle: null, gauntlets: null };
+  const models = { creatures: {}, gibs: [], gibByName: {}, props: {}, pieces: {}, landmarks: {}, rifle: null, gauntlets: null };
   let assetsReady = false, assetsFailed = 0;
   function tex(name) {
     if (textures[name]) return textures[name];
@@ -156,6 +212,7 @@ export function createRenderer(canvas) {
       }));
     }
     for (const gname of GIBS) { total++; jobs.push(loadGlb(MODEL_DIR + 'gibs/' + gname + '.glb').then((g) => { if (g) { prepModel(g.scene); models.gibs.push(g.scene); models.gibByName[gname] = g.scene; } tick(); })); }
+    for (const name of Object.keys(LANDMARK_SIZE)) jobs.push(new Promise((resolve) => loader.load(base + MODEL_DIR + 'landmarks/' + name + '.glb', (g) => { prepModel(g.scene); litProp(g.scene); models.landmarks[name] = fitProp(g.scene, LANDMARK_SIZE[name]); resolve(); }, undefined, () => resolve())));   // a missing landmark is not a failure: a plinth stands in
     for (const name of Object.keys(PROPS)) {
       const def = PROPS[name];
       if (def.prim) { models.props[name] = primProp(name, def); continue; }
@@ -289,17 +346,33 @@ export function createRenderer(canvas) {
     const C = CORE().CELL;
     const { w, h, map, tall } = level;
     const at = (x, y) => y * w + x;
-    const isOpen = (x, y) => x >= 0 && y >= 0 && x < w && y < h && map[at(x, y)] === C.OPEN;
-    const hgt = (x, y) => (tall && tall[at(x, y)]) ? H_TALL : H_LOW;
-    // torches: rooms get one per wall, corridors every so often; baked into vertex light
+    const inside = (x, y) => x >= 0 && y >= 0 && x < w && y < h;
+    const isOpen = (x, y) => inside(x, y) && map[at(x, y)] === C.OPEN;
+    const isProp = (x, y) => inside(x, y) && map[at(x, y)] === C.PROP;   // a landmark's cell: floor and ceiling, no walls, the piece stands on it
+    const hgt = (x, y) => HEIGHTS[Math.min(HEIGHTS.length - 1, tall ? tall[at(x, y)] : 0)];
+    // the district a cell belongs to (a landmark cell borrows its room's); tileOf turns a slot name into a texture name
+    const distOf = (x, y) => {
+      let d = level.district && inside(x, y) ? level.district[at(x, y)] : 0;
+      if (d < 0) { const lm = (level.landmarks || []).find((l) => l.x === x && l.y === y); d = lm && lm.room >= 0 ? lm.room : 0; }
+      return th.districts[((d % th.districts.length) + th.districts.length) % th.districts.length];
+    };
+    const tileOf = (name) => name.includes('-') ? name : 't' + level.theme + '-' + name;
+    // torches: rooms get one per wall, corridors every so often; baked into vertex light, in the district's colour
     torches = placeTorches(level, isOpen);
+    for (const t of torches) t.color = new THREE.Color(distOf(Math.floor(t.x / S), Math.floor(t.z / S)).light);
+    // the guide's lamps bake a little light along the route too (the right way is a little brighter)
+    const lamps = (level.markers || []).filter((m) => m.kind === 'lamp').map((m) => ({ x: m.x * S, z: m.y * S, color: new THREE.Color(distOf(Math.floor(m.x), Math.floor(m.y)).light) }));
     const lightAt = (x, z) => {
       let r = th.base, g = th.base, b = th.base * 1.15;
-      const tc = new THREE.Color(th.torch);
       for (const t of torches) {
         const d2 = (t.x - x) * (t.x - x) + (t.z - z) * (t.z - z);
         const k = 1.5 * look.torchLight / (1 + d2 / 9);
-        r += tc.r * k; g += tc.g * k; b += tc.b * k;
+        r += t.color.r * k; g += t.color.g * k; b += t.color.b * k;
+      }
+      for (const l of lamps) {
+        const d2 = (l.x - x) * (l.x - x) + (l.z - z) * (l.z - z);
+        const k = 0.45 * look.torchLight / (1 + d2 / 3);
+        r += l.color.r * k; g += l.color.g * k; b += l.color.b * k;
       }
       return [Math.min(1.8, r), Math.min(1.8, g), Math.min(1.8, b)];
     };
@@ -317,14 +390,15 @@ export function createRenderer(canvas) {
         B.col.push(c[0] * hk, c[1] * hk, c[2] * hk);
       }
     };
-    const wallKey = (v) => th.walls[Math.max(0, Math.min(3, v - 1))] || 'wall1';
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      if (!isOpen(x, y)) continue;
-      const hc = hgt(x, y);
+      if (!isOpen(x, y) && !isProp(x, y)) continue;
+      const D = distOf(x, y);
+      const hc = isProp(x, y) ? Math.max(...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => isOpen(x + dx, y + dy) ? hgt(x + dx, y + dy) : 0), HEIGHTS[0]) : hgt(x, y);
       const X0 = x * S, X1 = (x + 1) * S, Z0 = y * S, Z1 = (y + 1) * S;
       // floor (normal up) and ceiling (normal down)
-      quad('floor', [X0, 0, Z1], [X1, 0, Z1], [X1, 0, Z0], [X0, 0, Z0], [0, 1, 0], [[x, y + 1], [x + 1, y + 1], [x + 1, y], [x, y]]);
-      quad('ceil', [X0, hc, Z0], [X1, hc, Z0], [X1, hc, Z1], [X0, hc, Z1], [0, -1, 0], [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]);
+      quad(tileOf(D.floor), [X0, 0, Z1], [X1, 0, Z1], [X1, 0, Z0], [X0, 0, Z0], [0, 1, 0], [[x, y + 1], [x + 1, y + 1], [x + 1, y], [x, y]]);
+      quad(tileOf(D.ceil), [X0, hc, Z0], [X1, hc, Z0], [X1, hc, Z1], [X0, hc, Z1], [0, -1, 0], [[x, y], [x + 1, y], [x + 1, y + 1], [x, y + 1]]);
+      if (isProp(x, y)) continue;
       // the four edges
       const edges = [
         { nx: x, ny: y - 1, a: [X1, Z0], b: [X0, Z0], n: [0, 0, 1] },    // north edge, faces south into the cell
@@ -333,15 +407,18 @@ export function createRenderer(canvas) {
         { nx: x + 1, ny: y, a: [X1, Z1], b: [X1, Z0], n: [-1, 0, 0] },
       ];
       for (const e of edges) {
-        const v = (e.nx < 0 || e.ny < 0 || e.nx >= w || e.ny >= h) ? C.WALL_A : map[at(e.nx, e.ny)];
+        const v = inside(e.nx, e.ny) ? map[at(e.nx, e.ny)] : C.WALL_A;
         let y0 = 0, y1 = hc, key = null;
-        if (v === C.OPEN || (v === C.DOOR && false)) {
+        if (v === C.OPEN) {
           const hn = hgt(e.nx, e.ny);
           if (hn >= hc) continue;
-          y0 = hn; key = 'wall1';                                    // the step where a tall room meets a corridor
+          y0 = hn; key = tileOf(D.walls[0]);                                // the step where a tall room meets a corridor
+        } else if (v === C.PROP) {
+          continue;                                                         // a landmark's cell is open air
         } else if (v === C.DOOR || v === C.DRIFT) {
-          continue;                                                  // doors are their own meshes
-        } else key = wallKey(v);
+          if (hc <= H_LOW + 0.01) continue;                                 // doors are their own meshes …
+          y0 = H_LOW; key = tileOf(D.walls[0]);                             // … with wall above them in a tall room
+        } else key = tileOf(D.walls[Math.max(0, Math.min(3, v - 1))] || D.walls[0]);
         const u0 = 0, u1 = 1, vv0 = y0 / S, vv1 = y1 / S;
         quad(key, [e.a[0], y0, e.a[1]], [e.b[0], y0, e.b[1]], [e.b[0], y1, e.b[1]], [e.a[0], y1, e.a[1]], e.n, [[u0, vv0], [u1, vv0], [u1, vv1], [u0, vv1]]);
       }
@@ -353,9 +430,8 @@ export function createRenderer(canvas) {
       g.setAttribute('normal', new THREE.Float32BufferAttribute(B.nor, 3));
       g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2));
       g.setAttribute('color', new THREE.Float32BufferAttribute(B.col, 3));
-      const tname = 't' + level.theme + '-' + key;
-      const m = new THREE.MeshLambertMaterial({ map: tex(tname), vertexColors: true, side: THREE.DoubleSide });
-      if (th.glow[key]) { m.emissiveMap = tex(tname); m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = th.glow[key]; }
+      const m = new THREE.MeshLambertMaterial({ map: tex(key), vertexColors: true, side: THREE.DoubleSide });
+      if (GLOW[key]) { m.emissiveMap = tex(key); m.emissive = new THREE.Color(0xffffff); m.emissiveIntensity = GLOW[key]; }
       const mesh = new THREE.Mesh(g, m);
       mesh.frustumCulled = false;
       levelGroup.add(mesh);
@@ -408,6 +484,68 @@ export function createRenderer(canvas) {
       spr.scale.set(0.7, 0.7, 1); spr.position.set(h.x * S, 0.55, h.y * S);
       levelGroup.add(spr); healViews.push({ spr, h });
     }
+    // THE GUIDE (James 2026-09-11): the core's markers along the route — floor deltas, hanging signs, lamps — drawn per theme.
+    // The key leg burns first; when the key is picked up the door leg wakes and the key leg fades (syncGuide). look.guide
+    // is the loudness dial (0 hides them); a subtle marker sits at 45% of a loud one.
+    guideViews = [];
+    for (const m of level.markers || []) {
+      const D = distOf(Math.floor(m.x), Math.floor(m.y));
+      let obj = null;
+      if (m.kind === 'delta') {
+        obj = new THREE.Mesh(new THREE.PlaneGeometry(S * 0.82, S * 0.44), new THREE.MeshBasicMaterial({ map: guideTex(level.theme, 'delta', m.leg, m.loud), transparent: true, depthWrite: false, opacity: 0 }));
+        obj.rotation.set(-Math.PI / 2, 0, -m.a); obj.position.set(m.x * S, 0.035, m.y * S);
+      } else if (m.kind === 'sign') {
+        obj = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.62), new THREE.MeshBasicMaterial({ map: guideTex(level.theme, 'sign', m.leg, true), transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: 0 }));
+        obj.position.set(m.x * S, 2.45, m.y * S);
+        obj.lookAt(m.x * S - Math.cos(m.a), 2.45, m.y * S - Math.sin(m.a));   // faces whoever walks the route toward it
+        // a chain to hang it from
+        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.0, 5), new THREE.MeshLambertMaterial({ color: 0x2a2620 }));
+        chain.position.set(0, 0.8, 0); obj.add(chain);
+      } else if (m.kind === 'lamp') {
+        // on the wall side of the route if there is one
+        const side = [m.a + Math.PI / 2, m.a - Math.PI / 2].find((sa) => !isOpen(Math.floor(m.x + Math.cos(sa)), Math.floor(m.y + Math.sin(sa))));
+        const ox = side != null ? Math.cos(side) * (S / 2 - 0.22) : 0, oz = side != null ? Math.sin(side) * (S / 2 - 0.22) : 0;
+        obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: guideTex(level.theme, 'lamp', m.leg, false, D.light), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+        obj.scale.set(0.55, 0.8, 1); obj.position.set(m.x * S + ox, 1.05, m.y * S + oz);
+      }
+      if (!obj) continue;
+      levelGroup.add(obj);
+      guideViews.push({ obj, m, k: 0 });
+    }
+    // LANDMARKS: a Meshy piece on every room's slot (the theme's hero in the hall's middle), a hung piece over each room too
+    for (const lm of level.landmarks || []) {
+      const names = th.landmarks || [];
+      if (!names.length) continue;
+      const name = (lm.hall && lm.slot === 0) || names.length === 1 ? names[0] : names[1 + (((lm.room * 3 + lm.slot) % (names.length - 1)) + (names.length - 1)) % (names.length - 1)];
+      const cx = (lm.x + 0.5) * S, cz = (lm.y + 0.5) * S;
+      const hc = Math.max(...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => isOpen(lm.x + dx, lm.y + dy) ? hgt(lm.x + dx, lm.y + dy) : 0), HEIGHTS[0]);
+      const stand = (nm, y, yaw) => {
+        const src = models.landmarks[nm];
+        let obj;
+        if (src) { obj = src.clone(); obj.position.set(cx, y != null ? y : src.userData.halfH, cz); }
+        else {   // no model (file:// or a failed load): a lit plinth, never nothing
+          obj = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, 1.2), new THREE.MeshLambertMaterial({ map: tex(tileOf(distOf(lm.x, lm.y).walls[0])) }));
+          obj.position.set(cx, 0.8, cz);
+        }
+        obj.rotation.y = yaw;
+        const l = lightAt(cx, cz); obj.traverse((o) => { if (o.isMesh && o.material && o.material.color && !o.userData.lit) { o.userData.lit = true; o.material = o.material.clone(); o.material.color.multiplyScalar(Math.min(1.3, 0.55 + (l[0] + l[1] + l[2]) / 3)); } });
+        levelGroup.add(obj);
+        return obj;
+      };
+      if (name !== th.hang) stand(name, null, ((lm.x * 7 + lm.y * 13) % 4) * Math.PI / 2 + (lm.hall ? 0 : 0.3));
+      if (th.hang && models.landmarks[th.hang]) { const src = models.landmarks[th.hang]; stand(th.hang, hc - src.userData.halfH - 0.25, (lm.x * 5 + lm.y * 3) % 6 * 0.9); }
+      else if (name === th.hang) stand(names[0], null, 0);
+    }
+    // ARMOR (2026-09-11): the suit and the helms, real props where they lie (a helm turns slowly, the suit stands)
+    armorViews = [];
+    for (const a of state.armors || []) {
+      const src = propFor(a.kind);
+      let obj;
+      if (src) { obj = src.clone(); obj.position.set(a.x * S, a.kind === 'plate' ? src.userData.halfH : 0.75, a.y * S); }
+      else { obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex('armor|' + a.kind, D().armorSprite ? D().armorSprite(a.kind) : D().healSprite(0)), transparent: true, depthWrite: false })); obj.scale.set(a.kind === 'plate' ? 1.3 : 0.7, a.kind === 'plate' ? 1.3 : 0.7, 1); obj.position.set(a.x * S, a.kind === 'plate' ? 0.9 : 0.6, a.y * S); }
+      levelGroup.add(obj);
+      armorViews.push({ obj, a });
+    }
   }
   function placeTorches(level, isOpen) {
     const out = [];
@@ -423,7 +561,7 @@ export function createRenderer(canvas) {
       if (!dirs.length) continue;
       const [dx, dy] = dirs[(x + y) % dirs.length];
       put(x, y, dx, dy);
-      if (out.length > 60) return out;
+      if (out.length > 140) return out;
     }
     return out;
   }
@@ -450,6 +588,127 @@ export function createRenderer(canvas) {
     blood.reset(); embers.reset();
   }
 
+  // ---- the guide's drawings (2026-09-11) ------------------------------------------------------------------
+  // delta: a row of three chevrons pointing along +X (the plane is turned to the route); sign: the destination word with
+  // an up-arrow (straight on), in the theme's hand; lamp: a soft flame in the district's colour. Cached by key.
+  const guideCache = {};
+  function guideTex(theme, kind, leg, loud, color) {
+    const key = [theme, kind, leg, loud ? 1 : 0, color || 0].join('|');
+    if (guideCache[key]) return guideCache[key];
+    const th = THEMES[theme] || THEMES[0], sg = th.sign || THEMES[0].sign;
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    if (kind === 'delta') {
+      c.width = 256; c.height = 128;
+      const ink = leg === 'key' ? '#ffd23a' : (sg.box ? '#7cff9a' : sg.ink);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (let i = 0; i < 3; i++) {
+        const x = 52 + i * 66, wob = theme === 1 ? 3 : 0;
+        ctx.beginPath(); ctx.moveTo(x - 26, 22 + wob); ctx.lineTo(x + 18, 64); ctx.lineTo(x - 26, 106 - wob);
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = loud ? 26 : 20; ctx.stroke();
+        ctx.strokeStyle = ink; ctx.lineWidth = loud ? 15 : 10; ctx.globalAlpha = theme === 1 ? 0.85 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      if (theme === 2) { ctx.fillStyle = ink; ctx.fillRect(0, 118, 256, 6); ctx.fillRect(0, 4, 256, 6); }   // painted lane lines
+    } else if (kind === 'sign') {
+      c.width = 384; c.height = 208;
+      const word = leg === 'key' ? 'KEY' : sg.word;
+      ctx.fillStyle = sg.bg; ctx.fillRect(0, 0, 384, 208);
+      ctx.strokeStyle = sg.ink; ctx.lineWidth = sg.box ? 10 : 5; ctx.strokeRect(8, 8, 368, 192);
+      if (sg.glow) { ctx.shadowColor = sg.ink; ctx.shadowBlur = 24; }
+      ctx.fillStyle = sg.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = sg.font;
+      let size = 60; while (ctx.measureText(word).width > 250 && size > 30) { size -= 4; ctx.font = sg.font.replace(/\d+px/, size + 'px'); }
+      ctx.fillText(word, 150, 108);
+      // the arrow: straight on
+      ctx.beginPath(); ctx.moveTo(318, 44); ctx.lineTo(358, 96); ctx.lineTo(334, 96); ctx.lineTo(334, 166); ctx.lineTo(302, 166); ctx.lineTo(302, 96); ctx.lineTo(278, 96); ctx.closePath(); ctx.fill();
+      if (sg.chalk) { ctx.globalAlpha = 0.25; for (let i = 0; i < 60; i++) { ctx.fillStyle = '#000'; ctx.fillRect(Math.random() * 384, Math.random() * 208, 6, 2); } ctx.globalAlpha = 1; }
+    } else {
+      c.width = 64; c.height = 96;
+      const col = new THREE.Color(color || 0xffc060);
+      const rgb = `${Math.round(col.r * 255)},${Math.round(col.g * 255)},${Math.round(col.b * 255)}`;
+      const rg = ctx.createRadialGradient(32, 52, 0, 32, 52, 30);
+      rg.addColorStop(0, 'rgba(255,255,255,0.95)'); rg.addColorStop(0.25, `rgba(${rgb},0.85)`); rg.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.ellipse(32, 52, 30, 44, 0, 0, TAU); ctx.fill();
+    }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    guideCache[key] = t;
+    return t;
+  }
+  let guideViews = [], armorViews = [];
+  function syncGuide(state, dt) {
+    const held = !!(state.key && state.key.held);
+    for (const gv of guideViews) {
+      const base = gv.m.loud ? 1 : 0.45;
+      const legK = gv.m.leg === 'key' ? (held ? 0.18 : 1) : (held ? 1 : 0.26);
+      const want = Math.min(1, base * legK * (look.guide == null ? 1 : look.guide));
+      gv.k += (want - gv.k) * Math.min(1, dt * 3);
+      gv.obj.material.opacity = gv.k;
+      gv.obj.visible = gv.k > 0.01;
+    }
+  }
+  function syncArmor(state, t) {
+    for (const v of armorViews) {
+      v.obj.visible = !v.a.taken;
+      if (v.a.kind === 'helm') { v.obj.rotation.y = t * 1.3; v.obj.position.y = 0.75 + Math.sin(t * 2.2 + v.a.x) * 0.08; }
+    }
+  }
+  // ---- the bad guys' weapons (2026-09-11) ------------------------------------------------------------------
+  // a Meshy prop in the RightHand bone: the prop's long axis runs up the hand's Y (along the fingers); swords and shivs
+  // are held at their fat end (the guard), hammers and axes at their thin end (the haft). The rig lives in centimetres,
+  // so the holder undoes the bone's world scale. Dropped at the death as a body that falls and settles (dropWeapon).
+  const GRIP_AT_FAT = { sword: true, shiv: true, axe: false, hammer: false };
+  function armGoon(view, g) {
+    if (!g.weapon || !view.model) return;
+    const hand = view.model.getObjectByName('RightHand');
+    const src = propFor(g.weapon);
+    if (!hand || !src) return;
+    const w = src.clone();
+    // the long axis by the vertices (a Meshy sword can lie on a diagonal), then which end is fat
+    const pts = []; const tmp = new THREE.Vector3();
+    w.updateMatrixWorld(true);
+    w.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.attributes.position) { const p = o.geometry.attributes.position; const step = Math.max(1, Math.floor(p.count / 400)); for (let i = 0; i < p.count; i += step) pts.push(tmp.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone()); } });
+    const axis = new THREE.Vector3(0, 1, 0);
+    if (pts.length > 8) {
+      const mean = pts.reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+      let xx = 0, xy = 0, xz = 0, yy = 0, yz = 0, zz = 0;
+      for (const p of pts) { const dx = p.x - mean.x, dy = p.y - mean.y, dz = p.z - mean.z; xx += dx * dx; xy += dx * dy; xz += dx * dz; yy += dy * dy; yz += dy * dz; zz += dz * dz; }
+      axis.set(1, 0.7, 0.3);
+      for (let i = 0; i < 24; i++) { axis.set(xx * axis.x + xy * axis.y + xz * axis.z, xy * axis.x + yy * axis.y + yz * axis.z, xz * axis.x + yz * axis.y + zz * axis.z).normalize(); }
+      // the fat end: the mean distance from the axis over the top quarter against the bottom quarter
+      const ts = pts.map((p) => p.clone().sub(mean).dot(axis)); const lo = Math.min(...ts), hi = Math.max(...ts);
+      let fatTop = 0, nTop = 0, fatBot = 0, nBot = 0;
+      pts.forEach((p, i) => { const d = p.clone().sub(mean); const r = d.sub(axis.clone().multiplyScalar(ts[i])).length(); if (ts[i] > lo + (hi - lo) * 0.7) { fatTop += r; nTop++; } else if (ts[i] < lo + (hi - lo) * 0.3) { fatBot += r; nBot++; } });
+      const topIsFat = (fatTop / Math.max(1, nTop)) > (fatBot / Math.max(1, nBot));
+      const gripTop = GRIP_AT_FAT[g.weapon] ? topIsFat : !topIsFat;
+      if (gripTop) axis.negate();   // the grip end goes to -Y (into the hand)
+      const q = new THREE.Quaternion().setFromUnitVectors(axis, new THREE.Vector3(0, 1, 0));
+      w.quaternion.premultiply(q);
+      w.position.y = (hi - lo) * 0.28;   // the hand a third of the way up from the grip end
+    }
+    const holder = new THREE.Group();
+    holder.add(w);
+    hand.updateWorldMatrix(true, false);
+    const ws = new THREE.Vector3(); hand.getWorldScale(ws);
+    holder.scale.setScalar(1 / (ws.x || 1));
+    hand.add(holder);
+    view.weapon = holder; view.weaponSrc = w;
+  }
+  function dropWeapon(view, g) {
+    const holder = view.weapon; if (!holder) return;
+    view.weapon = null;
+    holder.updateWorldMatrix(true, true);
+    const w = view.weaponSrc;
+    const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+    w.matrixWorld.decompose(pos, quat, scl);
+    if (holder.parent) holder.parent.remove(holder);
+    holder.remove(w);
+    w.position.copy(pos); w.quaternion.copy(quat); w.scale.copy(scl);
+    entGroup.add(w);
+    const a = Math.random() * TAU;
+    gibs.push({ mesh: w, v: new THREE.Vector3(Math.cos(a) * 1.5, 2.5, Math.sin(a) * 1.5), av: new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8), settled: false, bounces: 0 });
+  }
+  function attackClip(view, g) { const pool = ['attack', ...(ATTACKS[g.type] || [])].filter((n) => view.actions[n]); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : 'attack'; }   // every swing deals a move (2026-09-11)
+
   // creatures
   function makeGoonView(g) {
     const root = new THREE.Group();
@@ -472,6 +731,7 @@ export function createRenderer(canvas) {
       view.mixer = new THREE.AnimationMixer(model);
       for (const k in asset.clips) view.actions[k] = view.mixer.clipAction(asset.clips[k]);
       if (!view.actions.idle && view.actions.walk) { /* no idle clip: hold the first frame of walk */ }
+      armGoon(view, g);
     } else {
       // no model (file:// or a failed load): a shape with eyes, never nothing
       const hgt = g.def.h || 1.8;
@@ -544,7 +804,7 @@ export function createRenderer(canvas) {
       if (g.state !== 'chase') view.leapt = false;
       const runClip = g.state === 'chase' ? (view.runClip || (view.runClip = dealClip(view, g, RUN_POOL, 5) || 'walk')) : 'walk';   // each goon runs its own way
       const runSpeed = g.state === 'chase' ? (runClip === 'walk' ? 1 : 0.85) * (g.def.speed / 1.5) : 0.45 * (g.def.speed / 1.5);
-      if (g.windup > 0 || g.atkT > g.def.atk - 0.35) { if (!view.attacking) { view.attacking = true; play(view, g.def.ranged && g.state === 'chase' && Math.hypot(state.player.x - g.x, state.player.y - g.y) > 1.6 ? 'throw' : 'attack', { once: true, restart: true }); } }
+      if (g.windup > 0 || g.atkT > g.def.atk - 0.35) { if (!view.attacking) { view.attacking = true; play(view, g.def.ranged && g.state === 'chase' && Math.hypot(state.player.x - g.x, state.player.y - g.y) > 1.6 ? 'throw' : attackClip(view, g), { once: true, restart: true }); } }
       else if (moving) { view.attacking = false; play(view, runClip, { speed: runSpeed }); }
       else { view.attacking = false; if (!play(view, 'idle')) { play(view, 'walk', { speed: 0.22 }); if (view.current === view.actions.walk) view.current.timeScale = 0.22; } }   // no idle clip: a slow shuffle beats a T-pose
       if (view.current && moving) { view.current.paused = false; if (view.current === view.actions[runClip]) view.current.timeScale = runSpeed; }
@@ -580,6 +840,7 @@ export function createRenderer(canvas) {
     if (view.started !== o) {
       view.started = o;
       root.position.set(g.x * S, 0, g.y * S);
+      if (view.weapon) dropWeapon(view, g);   // the weapon leaves the hand (2026-09-11)
       if (view.current) view.current.paused = true;
       if (o === 'expire' && g.gagId === 'lightning') {   // the shock first (James 2026-09-10); the die clip comes at the end of it
         play(view, view.actions.electro ? 'electro' : 'hit', { once: true, restart: true });   // the electrocution clip plays through from the shock; no arms-out (James 2026-09-11)
@@ -1695,13 +1956,14 @@ export function createRenderer(canvas) {
     // torches: the nearest four get live flicker
     if (torches.length) {
       const near = torches.map((t) => ({ t, d: (t.x - camera.position.x) ** 2 + (t.z - camera.position.z) ** 2 })).sort((a, b) => a.d - b.d).slice(0, 4);
-      torchLights.forEach((l, i) => { const n = near[i]; if (!n) { l.intensity = 0; return; } l.position.set(n.t.x, n.t.y + 0.3, n.t.z); l.intensity = (14 + Math.sin(shakeT * 11 + i * 2) * 3 + Math.sin(shakeT * 23 + i) * 2) * look.torchLight; l.color.setHex(THEMES[levelRef ? levelRef.theme : 0].torch); });
+      torchLights.forEach((l, i) => { const n = near[i]; if (!n) { l.intensity = 0; return; } l.position.set(n.t.x, n.t.y + 0.3, n.t.z); l.intensity = (14 + Math.sin(shakeT * 11 + i * 2) * 3 + Math.sin(shakeT * 23 + i) * 2) * look.torchLight; if (n.t.color) l.color.copy(n.t.color); else l.color.setHex(THEMES[levelRef ? levelRef.theme : 0].torch); });
       const f = Math.floor(shakeT * 9);
       for (let i = 0; i < torches.length; i++) { const t = torches[i]; if (t.sprite) { t.sprite.material.map = flameTex((f + i) % 4); t.sprite.scale.set(0.5 + Math.sin(shakeT * 13 + i) * 0.05, 0.75 + Math.sin(shakeT * 17 + i * 3) * 0.08, 1); } }
     }
     // the door
     if (doorMesh) { const want = state.doorOpen ? 1 : 0; doorOpenAnim += (want - doorOpenAnim) * Math.min(1, dt * 2.5); doorMesh.position.y = doorMesh.userData.baseY + doorOpenAnim * H_LOW * 0.95; }
     if (healViews.length) { const m = canvasTex('heal|' + (Math.floor(view.t * 8) % 16), D().healSprite(view.t)); for (const v of healViews) { v.spr.visible = !v.h.taken; v.spr.material.map = m; v.spr.position.y = 0.55 + Math.sin(view.t * 2.5 + v.h.x) * 0.06; } }
+    syncGuide(state, dt); syncArmor(state, view.t);
     if (keyView) { keyView.material.map = canvasTex('key|' + (Math.floor(view.t * 8) % 16), D().keySprite(view.t)); keyView.position.y = 1.1 + Math.sin(view.t * 3) * 0.12; keyLight.position.copy(keyView.position); keyLight.intensity = state.key && state.key.held ? 0 : 6 + Math.sin(view.t * 5) * 2; if (state.key && state.key.held) keyView.visible = false; }
     // creatures
     const seen = new Set();

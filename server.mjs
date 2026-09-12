@@ -1568,6 +1568,13 @@ async function handleApi(request, response, pathname) {
     await writeFile(notesPath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
     if (writeCuts) {
       const cutIds = Object.keys(data.verdicts || {}).filter((g) => data.verdicts[g].status === "trash").sort();
+      // passed.js (2026-09-11): the PASSED ids — when it has any, the game's roll deals only from them (core liveGags)
+      const passedIds = Object.keys(data.verdicts || {}).filter((g) => data.verdicts[g].status === "passed").sort();
+      const passedGlobal = `${notesSlug.toUpperCase().replace(/-/g, "_")}_PASSED`;
+      await writeFile(
+        join(worldsDir, notesSlug, "passed.js"),
+        `// Written by the dev server from the weapon lab's PASSED verdicts (notes.json). When this list has anything in it, the\n// game's roll deals only these ids (the lab still fires everything). James 2026-09-11.\nglobalThis.${passedGlobal} = ${JSON.stringify(passedIds)};\n`,
+      );
       const cutsGlobal = `${notesSlug.toUpperCase().replace(/-/g, "_")}_CUTS`;
       await writeFile(
         join(worldsDir, notesSlug, "cuts.js"),

@@ -22,32 +22,50 @@
     healMul: 1,          // how many pies a maze gets (× the level's deal)
     healHp: 35,          // what a pie is worth
     startLevel: 1,
+    lives: 3,            // THE STRUCTURE (James 2026-09-11): a run has three lives; a death costs one and restarts the maze
+    armorMul: 1,         // how many armor pickups a maze gets (× the level's deal)
   };
 
   // speeds in cells/s (a cell renders at 2.6 m); h = height in metres for the rig
+  // notice = how far away a goon sees you (cells); doubled 2026-09-11 with the open dungeons so they come at you across a
+  // room, not round a corner. weapons = what a goon of this type may carry (dealt at spawn, WEAPONS below).
+  // The ghoul is OUT (James 2026-09-11, 'remove the green ghost bad guy') — the lizardman took its place in every mix.
   const GOON_TYPES = {
-    ghoul:      { name: 'GHOUL',    speed: 1.55, reach: 0.95, dmg: 8,  atk: 1.1, notice: 7, size: 1.0,  r: 0.3,  h: 1.8 },
-    brute:      { name: 'BRUTE',    speed: 1.05, reach: 1.15, dmg: 14, atk: 1.6, notice: 6, size: 1.3,  r: 0.4,  h: 2.6 },
-    ratling:    { name: 'RATLING',  speed: 2.4,  reach: 0.7,  dmg: 4,  atk: 0.7, notice: 8, size: 0.7,  r: 0.22, h: 1.1 },
-    cultist:    { name: 'CULTIST',  speed: 1.3,  reach: 0.9,  dmg: 9,  atk: 2.2, notice: 9, size: 1.0,  r: 0.3,  h: 1.8, ranged: 6.5 },
-    stalker:    { name: 'STALKER',  speed: 1.2,  reach: 1.8,  dmg: 12, atk: 1.5, notice: 8, size: 1.55, r: 0.3,  h: 3.0 },
+    lizardman:  { name: 'LIZARDMAN', speed: 1.5, reach: 1.1, dmg: 10, atk: 1.2, notice: 13, size: 1.25, r: 0.34, h: 2.2, weapons: ['sword', 'axe'] },
+    brute:      { name: 'BRUTE',    speed: 1.05, reach: 1.15, dmg: 14, atk: 1.6, notice: 11, size: 1.3,  r: 0.4,  h: 2.6, weapons: ['hammer'] },
+    ratling:    { name: 'RATLING',  speed: 2.4,  reach: 0.7,  dmg: 4,  atk: 0.7, notice: 14, size: 0.7,  r: 0.22, h: 1.1, weapons: ['shiv'] },
+    cultist:    { name: 'CULTIST',  speed: 1.3,  reach: 0.9,  dmg: 9,  atk: 2.2, notice: 16, size: 1.0,  r: 0.3,  h: 1.8, ranged: 6.5 },
+    stalker:    { name: 'STALKER',  speed: 1.2,  reach: 1.8,  dmg: 12, atk: 1.5, notice: 14, size: 1.55, r: 0.3,  h: 3.0 },
     jabberwock: { name: 'THE JABBERWOCK', speed: 1.4, reach: 1.4, dmg: 12, atk: 1.6, notice: 99, size: 2.2, r: 0.55, h: 4.5 },
   };
+  // the bad guys' weapons (James 2026-09-11): Meshy props in the right hand; a weapon sets the hit, the swing rate, the
+  // reach and the windup (a hammer is slow and heavy). The verb is the death card's.
+  const WEAPONS = {
+    sword:  { name: 'SWORD',  verb: 'RUN THROUGH', dmgMul: 1.25, atkMul: 1.0,  reach: 0.3,  windup: 0.35 },
+    axe:    { name: 'AXE',    verb: 'CHOPPED',     dmgMul: 1.5,  atkMul: 1.25, reach: 0.25, windup: 0.4 },
+    hammer: { name: 'HAMMER', verb: 'FLATTENED',   dmgMul: 1.9,  atkMul: 1.5,  reach: 0.35, windup: 0.55 },
+    shiv:   { name: 'SHIV',   verb: 'SHIVVED',     dmgMul: 0.8,  atkMul: 0.75, reach: 0,    windup: 0.2 },
+  };
 
+  // THE STRUCTURE (James 2026-09-11): four mazes on the coarse lattice (nx × ny nodes, w = 3·nx + 1 cells; two-cell
+  // corridors), rooms + one great hall each (hall = its size in nodes), then THE MIDDLE (the boss; its door opens when he dies) and THE THREE DOORS
+  // (a round chamber with the three odd doors — the way out to the rest of Elastic Space). cave = eroded walls (THE DEEP).
   const LEVELS = [
-    { n: 1, name: 'THE GATE',        w: 15, h: 15, goons: 6,  loops: 4,  rooms: 2, theme: 0, mix: { ghoul: 6, ratling: 2 } },
-    { n: 2, name: 'THE CATACOMBS',   w: 19, h: 19, goons: 10, loops: 6,  rooms: 3, theme: 1, mix: { ghoul: 5, ratling: 3, cultist: 2 } },
-    { n: 3, name: 'THE MEAT LOCKER', w: 23, h: 23, goons: 14, loops: 8,  rooms: 4, theme: 2, mix: { ghoul: 4, ratling: 3, cultist: 2, brute: 3 } },
-    { n: 4, name: 'THE DEEP',        w: 27, h: 27, goons: 18, loops: 10, rooms: 5, theme: 3, mix: { ghoul: 3, ratling: 3, cultist: 3, brute: 3, stalker: 3 } },
-    { n: 5, name: 'THE MIDDLE',      w: 21, h: 21, goons: 6,  loops: 0,  rooms: 0, theme: 4, arena: true, mix: { ghoul: 2, ratling: 2, cultist: 1, brute: 1 } },
+    { n: 1, name: 'THE GATE',        nx: 6, ny: 6, goons: 8,  loops: 6,  rooms: 5, hall: [3, 3], theme: 0, mix: { lizardman: 6, ratling: 2 } },
+    { n: 2, name: 'THE CATACOMBS',   nx: 7, ny: 7, goons: 12, loops: 9,  rooms: 6, hall: [3, 4], theme: 1, mix: { lizardman: 5, ratling: 3, cultist: 2 } },
+    { n: 3, name: 'THE MEAT LOCKER', nx: 8, ny: 8, goons: 16, loops: 12, rooms: 7, hall: [3, 4], theme: 2, mix: { lizardman: 4, ratling: 3, cultist: 2, brute: 3 } },
+    { n: 4, name: 'THE DEEP',        nx: 9, ny: 9, goons: 20, loops: 15, rooms: 8, hall: [4, 4], cave: true, theme: 3, mix: { lizardman: 3, ratling: 3, cultist: 3, brute: 3, stalker: 3 } },
+    { n: 5, name: 'THE MIDDLE',      w: 25, h: 25, goons: 6,  loops: 0,  rooms: 0, theme: 4, arena: true, mix: { lizardman: 2, ratling: 2, cultist: 1, brute: 1 } },
+    { n: 6, name: 'THE THREE DOORS', w: 13, h: 13, goons: 0,  loops: 0,  rooms: 0, theme: 4, exit: true, mix: {} },
   ];
+  const MAZES = 4;   // how many of them are mazes (the cards say MAZE n OF 4)
   // THE WEAPON LAB (2026-09-07): one big bare hall, no key, no door, no boss; the creatures on the pads are
   // passive (notice 0 — they wander and never chase) and the lab host respawns them. startLevel(state, 'lab').
   const LAB_LEVEL = { n: 'lab', name: 'THE WEAPON LAB', w: 17, h: 17, goons: 0, loops: 0, rooms: 0, theme: 2, arena: true, lab: true, mix: {} };
-  const LAB_PADS = [{ type: 'ghoul', dx: 4.5, dy: -1.6 }, { type: 'brute', dx: 5.5, dy: 0.2 }, { type: 'cultist', dx: 4.5, dy: 2.0 }];
+  const LAB_PADS = [{ type: 'lizardman', dx: 4.5, dy: -1.6 }, { type: 'brute', dx: 5.5, dy: 0.2 }, { type: 'cultist', dx: 4.5, dy: 2.0 }];
 
   // cell values
-  const OPEN = 0, WALL_A = 1, WALL_B = 2, WALL_C = 3, WALL_D = 4, DOOR = 5, DRIFT = 6;
+  const OPEN = 0, WALL_A = 1, WALL_B = 2, WALL_C = 3, WALL_D = 4, DOOR = 5, DRIFT = 6, PROP = 7;   // PROP: a landmark stands here — solid like a wall, drawn as floor + the piece (2026-09-11)
 
   // ---------------------------------------------------------------- rng
   function hashStr(s) {
@@ -68,33 +86,41 @@
   const pick = (rand, arr) => arr[Math.floor(rand() * arr.length)];
 
   // ---------------------------------------------------------------- maze
-  // Recursive backtracker on odd cells, then a few walls knocked out for loops.
-  function makeMaze(w, h, rand, loops) {
+  // THE STRUCTURE (James 2026-09-11, 'more open, bigger rooms, higher ceilings'): the maze runs on a coarse lattice —
+  // every node is a 2×2 block of cells and every passage is two cells wide (5.2 m), so nothing is a one-cell tunnel;
+  // rooms are carved over whole nodes (5×5 to 8×8 cells), the great hall over a 3×4 run of them (8×11); loops knock
+  // walls out between nodes so dead ends are rare. Pitch 3: node (i, j) owns cells 1+3i..2+3i × 1+3j..2+3j and the
+  // wall strip at 3(i+1) between two nodes opens for a passage. w = 3·nx + 1. Heights ride in level.tall: 0 corridor,
+  // 1 room, 2 hall (the renderer's HEIGHTS).
+  const PITCH = 3;
+  const nodeX = (i) => 1 + PITCH * i, nodeY = (j) => 1 + PITCH * j;
+  // open the two-cell strip between node (i, j) and its neighbour (i+di, j+dj)
+  function passage(map, w, i, j, di, dj) {
+    if (di) { const x = nodeX(Math.max(i, i + di)) - 1; for (let y = 0; y < 2; y++) map[(nodeY(j) + y) * w + x] = 0; }
+    else { const y = nodeY(Math.max(j, j + dj)) - 1; for (let x = 0; x < 2; x++) map[y * w + nodeX(i) + x] = 0; }
+  }
+  const passageOpen = (map, w, i, j, di, dj) => di ? map[nodeY(j) * w + nodeX(Math.max(i, i + di)) - 1] === 0 : map[(nodeY(Math.max(j, j + dj)) - 1) * w + nodeX(i)] === 0;
+  function makeMaze(nx, ny, rand, loops) {
+    const w = PITCH * nx + 1, h = PITCH * ny + 1;
     const g = new Uint8Array(w * h).fill(1);
-    const at = (x, y) => y * w + x;
-    const stack = [[1, 1]];
-    g[at(1, 1)] = 0;
-    const dirs = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+    const seen = new Uint8Array(nx * ny);
+    const openNode = (i, j) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) g[(nodeY(j) + y) * w + nodeX(i) + x] = 0; };
+    const stack = [[0, 0]]; seen[0] = 1; openNode(0, 0);
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     while (stack.length) {
-      const [x, y] = stack[stack.length - 1];
-      const opts = [];
-      for (const [dx, dy] of dirs) {
-        const nx = x + dx, ny = y + dy;
-        if (nx > 0 && ny > 0 && nx < w - 1 && ny < h - 1 && g[at(nx, ny)] === 1) opts.push([dx, dy]);
-      }
+      const [i, j] = stack[stack.length - 1];
+      const opts = dirs.filter(([di, dj]) => i + di >= 0 && j + dj >= 0 && i + di < nx && j + dj < ny && !seen[(j + dj) * nx + i + di]);
       if (!opts.length) { stack.pop(); continue; }
-      const [dx, dy] = pick(rand, opts);
-      g[at(x + dx / 2, y + dy / 2)] = 0;
-      g[at(x + dx, y + dy)] = 0;
-      stack.push([x + dx, y + dy]);
+      const [di, dj] = pick(rand, opts);
+      seen[(j + dj) * nx + i + di] = 1; openNode(i + di, j + dj); passage(g, w, i, j, di, dj);
+      stack.push([i + di, j + dj]);
     }
-    let tries = 0;
-    for (let k = 0; k < loops && tries < 500; tries++) {
-      const x = 1 + Math.floor(rand() * (w - 2)), y = 1 + Math.floor(rand() * (h - 2));
-      if (g[at(x, y)] !== 1) continue;
-      const hz = g[at(x - 1, y)] === 0 && g[at(x + 1, y)] === 0;
-      const vt = g[at(x, y - 1)] === 0 && g[at(x, y + 1)] === 0;
-      if (hz !== vt) { g[at(x, y)] = 0; k++; }
+    // loops: extra passages between neighbours the tree left walled
+    for (let k = 0, tries = 0; k < loops && tries < 400; tries++) {
+      const i = Math.floor(rand() * nx), j = Math.floor(rand() * ny);
+      const [di, dj] = pick(rand, [[1, 0], [0, 1]]);
+      if (i + di >= nx || j + dj >= ny || passageOpen(g, w, i, j, di, dj)) continue;
+      passage(g, w, i, j, di, dj); k++;
     }
     return g;
   }
@@ -111,6 +137,13 @@
       if (Math.abs(x - cx) < 2 && Math.abs(y - cy) < 2) continue;
       if (rand() < 0.75) g[at(x, y)] = 1;
     }
+    return g;
+  }
+  // THE THREE DOORS (2026-09-11): a round chamber — everything outside the circle is rock
+  function makeRound(w, h) {
+    const g = makeArena(w, h, null, true);
+    const cx = w / 2, cy = h / 2, r = w / 2 - 1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > r) g[y * w + x] = 1;
     return g;
   }
 
@@ -182,22 +215,40 @@
       level.heals.push({ x: c[0] + 0.5, y: c[1] + 0.5 });
     }
   }
+  // spread n picks from cells into list, each as far from the others as it can be
+  function placeSpread(list, cells, n, rand) {
+    const pool = cells.slice();
+    for (let i = 0; i < n && pool.length; i++) {
+      let ci = Math.floor(rand() * pool.length);
+      if (list.length) {
+        let bestSep = -1;
+        pool.forEach((c, j) => { const sep = Math.min(...list.map((h) => Math.hypot(c[0] + 0.5 - h.x, c[1] + 0.5 - h.y))); if (sep > bestSep) { bestSep = sep; ci = j; } });
+      }
+      const c = pool.splice(ci, 1)[0];
+      list.push({ x: c[0] + 0.5, y: c[1] + 0.5 });
+    }
+    return list;
+  }
   function buildLevel(n, seedStr, opts) {
     const def = n === 'lab' ? LAB_LEVEL : LEVELS[n - 1];
     const rand = mulberry(hashStr(seedStr + ':' + n));
-    const w = def.w, h = def.h;
-    const map = def.arena ? makeArena(w, h, rand, def.lab) : makeMaze(w, h, rand, def.loops);
-    const level = { n, name: def.name, w, h, map, theme: def.theme, arena: !!def.arena, lab: !!def.lab, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [] };
+    const w = def.nx ? PITCH * def.nx + 1 : def.w, h = def.ny ? PITCH * def.ny + 1 : def.h;
+    const map = def.exit ? makeRound(w, h) : def.arena ? makeArena(w, h, rand, def.lab) : makeMaze(def.nx, def.ny, rand, def.loops);
+    const level = { n, name: def.name, w, h, nx: def.nx || 0, ny: def.ny || 0, map, theme: def.theme, arena: !!def.arena, exit: !!def.exit, lab: !!def.lab, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], armors: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [], markers: [], guide: null, landmarks: [] };
     const at = (x, y) => y * w + x;
-    // rooms: open chambers carved into the maze with a tall ceiling; the arena is one big hall
-    if (def.arena) level.tall.fill(1); else carveRooms(level, def.rooms || 0, rand);
-    // wall variants: mostly A, some B/C, rare D
+    // rooms: open chambers carved over whole nodes with a tall ceiling, the great hall taller still; the arena is one hall
+    if (def.arena) level.tall.fill(def.lab ? 1 : 2);
+    else if (def.exit) level.tall.fill(1);
+    else { carveRooms(level, def.rooms || 0, def.hall || null, rand); if (def.cave) erodeCave(level, rand); placeLandmarks(level); }
+    if (def.exit) { const mid = Math.floor(w / 2); map[mid * w + mid] = PROP; level.landmarks = [{ x: mid, y: mid, room: -1, slot: 0, hall: false }]; }
+    // wall variants: mostly A, some B/C, rare D (the train's breakable walls; the look comes from the district now)
     for (let i = 0; i < map.length; i++) if (map[i] === 1) {
       const r = rand();
       map[i] = r < 0.62 ? WALL_A : r < 0.82 ? WALL_B : r < 0.95 ? WALL_C : WALL_D;
     }
     const open = [];
     for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (map[at(x, y)] === OPEN) open.push([x, y]);
+    assignDistricts(level);
 
     if (def.lab) {
       // the lab: you stand near the west wall facing east; the pads are a few cells ahead
@@ -206,30 +257,41 @@
       for (const pad of level.pads) level.goonSpawns.push({ x: pad.x, y: pad.y, type: pad.type, pad: pad.i });
       return level;
     }
+    if (def.exit) {
+      // THE THREE DOORS: in from the south, the three odd doors north, east and west; nothing else lives here
+      const mid = Math.floor(w / 2);
+      level.spawn = { x: mid + 0.5, y: h - 2.5, a: -Math.PI / 2 };
+      for (const [x, y, side, cx, cy] of [[mid, 0, 'n', mid, 1], [w - 1, mid, 'e', w - 2, mid], [0, mid, 'w', 1, mid]]) { map[at(x, y)] = DRIFT; level.driftDoors.push({ x, y, side, cx, cy }); }
+      return level;
+    }
     if (def.arena) {
       level.spawn = { x: 1.5, y: h - 1.5, a: -Math.PI / 4 };
       level.bossSpawn = { x: w / 2, y: h / 2 };
-      // drift doors: three on the walls, away from the spawn corner
-      const walls = [[Math.floor(w / 2), 0, 'n'], [w - 1, Math.floor(h / 2), 'e'], [Math.floor(w / 3), h - 1, 's']];
-      for (const [x, y, side] of walls) { map[at(x, y)] = DRIFT; level.driftDoors.push({ x, y, side }); }
-      const far = open.filter(([x, y]) => Math.hypot(x - 1, y - (h - 2)) > 6 && Math.hypot(x - w / 2, y - h / 2) > 3);
+      // the way on: a door in the north wall that opens when he dies (the odd doors moved to THE THREE DOORS, 2026-09-11)
+      const mid = Math.floor(w / 2);
+      map[at(mid, 0)] = DOOR;
+      level.door = { x: mid, y: 0, side: 'n', cx: mid, cy: 1 };
+      const far = open.filter(([x, y]) => Math.hypot(x - 1, y - (h - 2)) > 9 && Math.hypot(x - w / 2, y - h / 2) > 3);
       for (let i = 0; i < def.goons && far.length; i++) {
         const c = far.splice(Math.floor(rand() * far.length), 1)[0];
         level.goonSpawns.push({ x: c[0] + 0.5, y: c[1] + 0.5, type: weightedType(rand, def.mix) });
       }
-      placeHeals(level, far, Math.round(2 * (opts.healMul == null ? 1 : opts.healMul)), rand);
+      placeSpread(level.heals, far, Math.round(2 * (opts.healMul == null ? 1 : opts.healMul)), rand);
+      const am = opts.armorMul == null ? 1 : opts.armorMul;
+      if (am > 0) { const plate = placeSpread([], far, 1, rand)[0]; if (plate) level.armors.push({ x: plate.x, y: plate.y, kind: 'plate' }); for (const hm of placeSpread([], far, Math.round(am), rand)) level.armors.push({ x: hm.x, y: hm.y, kind: 'helm' }); }
       return level;
     }
 
     // spawn at (1,1); face the open neighbour
     level.spawn = { x: 1.5, y: 1.5, a: map[at(2, 1)] === OPEN ? 0 : Math.PI / 2 };
     const dS = bfs(level, 1, 1);
-    // key: the farthest dead end from the spawn
+    const roomOf = (x, y) => level.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) || null;
+    // key: the farthest cell from the spawn, a room preferred (the key room)
     let best = null, bestD = -1;
     for (const [x, y] of open) {
       const d = dS[at(x, y)];
-      const dead = degree(level, x, y) === 1;
-      const score = d + (dead ? 6 : 0);
+      const rm = roomOf(x, y);
+      const score = d + (rm && !rm.hall ? 5 : 0);
       if (d >= 0 && score > bestD) { bestD = score; best = [x, y]; }
     }
     level.key = { x: best[0] + 0.5, y: best[1] + 0.5 };
@@ -244,30 +306,32 @@
     }
     map[at(door.x, door.y)] = DOOR;
     level.door = door;
-    // the critical path: spawn→key→door
+    // the critical path: spawn→key→door — THE GUIDE rides on it (arrows, signs, lamps: layGuide)
     const crit = new Set();
     const p1 = pathFrom(level, dS, best[0], best[1]) || [];
     const p2 = pathFrom(level, dK, door.cx, door.cy) || [];
     for (const c of p1) crit.add(c);
     for (const c of p2) crit.add(c);
     crit.add(at(1, 1));
-    // drift doors: three boundary walls next to dead ends off the critical path
-    // strict first (dead ends, off the critical path, clear of key/door/spawn), then relaxed
+    level.guide = { toKey: [at(1, 1), ...p1], toDoor: [at(best[0], best[1]), ...p2] };
+    layGuide(level);
+    // you wake facing down the route (the third cell of it, so you look along the hall, not at the next tile)
+    if (p1.length) { const c = p1[Math.min(2, p1.length - 1)]; level.spawn.a = Math.atan2((Math.floor(c / w) + 0.5) - 1.5, (c % w) + 0.5 - 1.5); }
+    // drift doors: three boundary walls next to cells off the critical path, spread apart (strict first, then relaxed)
     let cands = [];
     for (let relax = 0; relax < 4 && cands.length < 3; relax++) {
       cands = [];
       for (const [x, y] of open) {
         if (relax < 2 && crit.has(at(x, y))) continue;
-        if (relax < 1 && degree(level, x, y) !== 1) continue;
+        if (relax < 1 && roomOf(x, y)) continue;
         const edge = x === 1 ? [0, y, 'w'] : x === w - 2 ? [w - 1, y, 'e'] : y === 1 ? [x, 0, 'n'] : y === h - 2 ? [x, h - 1, 's'] : null;
         if (!edge) continue;
         if (edge[0] === door.x && edge[1] === door.y) continue;
-        const clear = relax < 3 ? 3 : 1.5;
+        const clear = relax < 3 ? 4 : 2;
         if (Math.hypot(x - best[0], y - best[1]) < clear || Math.hypot(x - door.cx, y - door.cy) < clear || Math.hypot(x - 1, y - 1) < clear) continue;
         cands.push({ x: edge[0], y: edge[1], side: edge[2], cx: x, cy: y });
       }
     }
-    // spread them: greedy farthest-apart
     while (level.driftDoors.length < 3 && cands.length) {
       let ci = 0;
       if (level.driftDoors.length) {
@@ -281,35 +345,159 @@
       map[at(c.x, c.y)] = DRIFT;
       level.driftDoors.push(c);
     }
-    // goons: open cells at least 4 steps from the spawn, weighted by depth so the far maze is busier
+    // goons: far back (James 2026-09-11) — at least eight steps from the spawn, never on the first stretch of the route,
+    // and in a room the guide enters only on the far side of it from where you come in; two in three prefer a room
     const count = Math.max(1, Math.round(def.goons * (opts.goonMul || 1)));
-    const pool = open.filter(([x, y]) => dS[at(x, y)] >= 4 && !(x === best[0] && y === best[1]));
-    for (let i = 0; i < count && pool.length; i++) {
+    const head = new Set(level.guide.toKey.slice(0, 10));
+    const entrance = {};
+    for (const c of [...level.guide.toKey, ...level.guide.toDoor]) { const x = c % w, y = (c - x) / w; const rm = roomOf(x, y); if (rm && entrance[rm.id] == null) entrance[rm.id] = { x, y }; }
+    const roomFar = {};
+    for (const r of level.rooms) { const e = entrance[r.id]; if (!e) continue; let mx = 0; for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (map[at(x, y)] === OPEN) mx = Math.max(mx, Math.abs(x - e.x) + Math.abs(y - e.y)); roomFar[r.id] = mx; }
+    const ok = ([x, y]) => {
+      if (dS[at(x, y)] < 8 || head.has(at(x, y)) || (x === best[0] && y === best[1])) return false;
+      const rm = roomOf(x, y); const e = rm && entrance[rm.id];
+      return !e || Math.abs(x - e.x) + Math.abs(y - e.y) >= roomFar[rm.id] * 0.55;
+    };
+    const roomPool = open.filter((c) => ok(c) && roomOf(c[0], c[1])), hallPool = open.filter((c) => ok(c) && !roomOf(c[0], c[1]));
+    for (let i = 0; i < count; i++) {
+      const pool = (rand() < 0.65 && roomPool.length) ? roomPool : hallPool.length ? hallPool : roomPool;
+      if (!pool.length) break;
       const c = pool.splice(Math.floor(rand() * pool.length), 1)[0];
       level.goonSpawns.push({ x: c[0] + 0.5, y: c[1] + 0.5, type: weightedType(rand, def.mix) });
     }
     // pies: one per four goons on the deal, at least six steps out, never on the key
     const pieCells = open.filter(([x, y]) => dS[at(x, y)] >= 6 && !(x === best[0] && y === best[1]));
-    placeHeals(level, pieCells, Math.max(1, Math.round(def.goons / 4 * (opts.healMul == null ? 1 : opts.healMul))), rand);
+    placeSpread(level.heals, pieCells, Math.max(1, Math.round(def.goons / 4 * (opts.healMul == null ? 1 : opts.healMul))), rand);
+    // armor (2026-09-11): a breastplate in a side room the guide never enters (else somewhere far off the route), helms like pies
+    const am = opts.armorMul == null ? 1 : opts.armorMul;
+    if (am > 0) {
+      const side = level.rooms.filter((r) => !entrance[r.id] && !r.hall);
+      let plateCells = side.length ? open.filter(([x, y]) => { const rm = roomOf(x, y); return rm && side.includes(rm); }) : open.filter(([x, y]) => dS[at(x, y)] >= 8 && !crit.has(at(x, y)));
+      if (!plateCells.length) plateCells = pieCells;
+      const plate = placeSpread([], plateCells, 1, rand)[0];
+      if (plate) level.armors.push({ x: plate.x, y: plate.y, kind: 'plate' });
+      const helmCells = pieCells.filter(([x, y]) => !level.heals.some((hh) => Math.hypot(hh.x - x - 0.5, hh.y - y - 0.5) < 2));
+      for (const hm of placeSpread([], helmCells, Math.max(1, Math.round(def.goons / 5 * am)), rand)) level.armors.push({ x: hm.x, y: hm.y, kind: 'helm' });
+    }
     return level;
   }
-  // carve k rooms (3x3 / 5x3 / 5x5 cells) at odd-aligned spots, never over the spawn corner, never touching
-  function carveRooms(level, k, rand) {
+  // rooms over whole nodes: 2×2 nodes = 5×5 cells, 2×3 = 5×8, 3×3 = 8×8; the great hall 3×4 or 4×3 (8×11 cells).
+  // Never on the spawn node, never over another room (a wall's width apart is fine). A room inherits every passage that
+  // crossed its edge and gets one or two doorways more, so it is never a dead end. The big ones get a few one-cell
+  // columns at their inner lattice crossings (a column is a cell; the room stays open around it).
+  function carveRooms(level, k, hall, rand) {
+    const { w, map, tall, nx, ny } = level;
+    const at = (x, y) => y * w + x;
+    const rooms = level.rooms;
+    const tryPlace = (rw, rh, isHall) => {
+      for (let tries = 0; tries < 80; tries++) {
+        const i0 = Math.floor(rand() * (nx - rw + 1)), j0 = Math.floor(rand() * (ny - rh + 1));
+        if (i0 === 0 && j0 === 0) continue;
+        let clash = false;
+        for (const r of rooms) if (i0 < r.i + r.nw && i0 + rw > r.i && j0 < r.j + r.nh && j0 + rh > r.j) clash = true;   // a wall's width apart is fine
+        if (clash) continue;
+        const x0 = nodeX(i0), y0 = nodeY(j0), cw = PITCH * rw - 1, ch = PITCH * rh - 1;
+        const room = { id: rooms.length, i: i0, j: j0, nw: rw, nh: rh, x: x0, y: y0, w: cw, h: ch, hall: isHall };
+        for (let y = y0; y < y0 + ch; y++) for (let x = x0; x < x0 + cw; x++) { map[at(x, y)] = 0; tall[at(x, y)] = isHall ? 2 : 1; }
+        if (rw >= 3 && rh >= 3) for (let j = j0 + 1; j < j0 + rh; j++) for (let i = i0 + 1; i < i0 + rw; i++) if (rand() < (isHall ? 0.85 : 0.5)) map[at(PITCH * i, PITCH * j)] = 1;
+        // doorways
+        const edges = [];
+        for (let i = i0; i < i0 + rw; i++) { if (j0 > 0) edges.push([i, j0, 0, -1]); if (j0 + rh < ny) edges.push([i, j0 + rh - 1, 0, 1]); }
+        for (let j = j0; j < j0 + rh; j++) { if (i0 > 0) edges.push([i0, j, -1, 0]); if (i0 + rw < nx) edges.push([i0 + rw - 1, j, 1, 0]); }
+        const shut = edges.filter(([i, j, di, dj]) => !passageOpen(map, w, i, j, di, dj));
+        for (let d = 0, want = 1 + Math.floor(rand() * 2); d < want && shut.length; d++) { const [i, j, di, dj] = shut.splice(Math.floor(rand() * shut.length), 1)[0]; passage(map, w, i, j, di, dj); }
+        rooms.push(room);
+        return room;
+      }
+      return null;
+    };
+    if (hall) { const flip = rand() < 0.5; tryPlace(flip ? hall[1] : hall[0], flip ? hall[0] : hall[1], true); }
+    for (let n = 0; n < k; n++) tryPlace(pick(rand, [2, 2, 3]), pick(rand, [2, 2, 3]), false);
+  }
+  // LANDMARKS (2026-09-11, 'landmarks or unusual formations that you can differentiate'): every room gets a slot at its
+  // middle, the great hall three along its long axis — a PROP cell, solid like a wall, that the renderer stands a Meshy
+  // piece on (the theme decides which). A slot needs open cells on all four sides so nothing is ever boxed in.
+  function placeLandmarks(level) {
+    const { w, map } = level;
+    const at = (x, y) => y * w + x;
+    const clear = (x, y) => map[at(x, y)] === 0 && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(([dx, dy]) => map[at(x + dx, y + dy)] === 0);
+    for (const r of level.rooms) {
+      const cx = r.x + Math.floor(r.w / 2), cy = r.y + Math.floor(r.h / 2);
+      const slots = [[cx, cy]];
+      if (r.hall) { if (r.w >= r.h) slots.push([r.x + 1, cy], [r.x + r.w - 2, cy]); else slots.push([cx, r.y + 1], [cx, r.y + r.h - 2]); }
+      slots.forEach(([x, y], i) => {
+        const cell = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1]].map(([ox, oy]) => [x + ox, y + oy]).find(([X, Y]) => clear(X, Y));
+        if (!cell) return;
+        map[at(cell[0], cell[1])] = PROP;
+        level.landmarks.push({ x: cell[0], y: cell[1], room: r.id, slot: i, hall: !!r.hall });
+      });
+    }
+  }
+  // THE DEEP is a cavern: walls with open cells against them crumble here and there, so nothing reads as a grid
+  function erodeCave(level, rand) {
     const { w, h, map, tall } = level;
     const at = (x, y) => y * w + x;
-    let placed = 0;
-    for (let tries = 0; tries < 80 && placed < k; tries++) {
-      const rw = pick(rand, [3, 5, 5]), rh = pick(rand, [3, 3, 5]);
-      const x0 = 1 + 2 * Math.floor(rand() * ((w - 1 - rw) / 2)), y0 = 1 + 2 * Math.floor(rand() * ((h - 1 - rh) / 2));
-      if (x0 + rw > w - 1 || y0 + rh > h - 1) continue;
-      if (x0 <= 3 && y0 <= 3) continue;                       // not on the spawn
-      let clash = false;
-      for (const r of level.rooms) if (x0 < r.x + r.w + 2 && x0 + rw + 2 > r.x && y0 < r.y + r.h + 2 && y0 + rh + 2 > r.y) clash = true;
-      if (clash) continue;
-      for (let y = y0; y < y0 + rh; y++) for (let x = x0; x < x0 + rw; x++) { map[at(x, y)] = 0; tall[at(x, y)] = 1; }
-      level.rooms.push({ x: x0, y: y0, w: rw, h: rh });
-      placed++;
+    const was = map.slice();
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      if (was[at(x, y)] !== 1) continue;
+      const nb = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(([a, b]) => was[at(a, b)] === 0);
+      if (!nb.length || rand() > 0.28) continue;
+      map[at(x, y)] = 0;
+      tall[at(x, y)] = Math.max(...nb.map(([a, b]) => tall[at(a, b)]));
     }
+  }
+  // DISTRICTS (2026-09-11, 'landmarks… different wall textures, colors, lighting'): every room seeds a district and the
+  // corridors join the nearest room's, so a wing reads as one place — the renderer wears a tile set and a light colour
+  // per district. level.district[cell] = room id (−1 in a wall); districtCount = the number of rooms (1 with none).
+  function assignDistricts(level) {
+    const { w, h, map, rooms } = level;
+    const district = new Int16Array(w * h).fill(-1);
+    const q = [];
+    for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) { const c = y * w + x; if (map[c] === OPEN) { district[c] = r.id; q.push(c); } }
+    if (!q.length) { for (let c = 0; c < map.length; c++) if (map[c] === OPEN) district[c] = 0; level.district = district; level.districtCount = 1; return; }
+    for (let i = 0; i < q.length; i++) {
+      const c = q[i], x = c % w;
+      for (const n of [c + 1, c - 1, c + w, c - w]) {
+        if (n < 0 || n >= w * h || Math.abs((n % w) - x) > 1) continue;
+        if (map[n] === OPEN && district[n] < 0) { district[n] = district[c]; q.push(n); }
+      }
+    }
+    level.district = district; level.districtCount = rooms.length;
+  }
+  // THE GUIDE (James 2026-09-11, 'arrows and rows of deltas and door signs and floor markings that continuously guide the
+  // player towards the exit… occasionally obvious, frequently somewhat subtle, but always there'): markers laid along
+  // the two legs of the route — toKey lit first, toDoor wakes when the key is picked up (the renderer's job).
+  //   delta  a row of chevrons on the floor every third cell, pointing on; every fourth one is loud
+  //   sign   over the way out of any place you could leave two other ways (a region = a room or a lattice node), and one at
+  //          the spawn so you see the idea at once; always loud
+  //   lamp   a light on the route every fifth cell, so the right way is a little brighter
+  function layGuide(level) {
+    const { w, h, map, nx } = level;
+    const region = new Int32Array(w * h).fill(-1);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      if (map[y * w + x] !== OPEN) continue;
+      const rm = level.rooms.find((r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h);
+      region[y * w + x] = rm ? 100000 + rm.id : Math.floor((y - 1) / PITCH) * nx + Math.floor((x - 1) / PITCH);
+    }
+    const links = {};
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const c = y * w + x; if (region[c] < 0) continue;
+      for (const n of [c + 1, c + w]) { if (region[n] < 0 || region[n] === region[c]) continue; (links[region[c]] = links[region[c]] || new Set()).add(region[n]); (links[region[n]] = links[region[n]] || new Set()).add(region[c]); }
+    }
+    const deg = (r) => (links[r] ? links[r].size : 0);
+    const markers = [];
+    for (const [leg, path] of [['key', level.guide.toKey], ['door', level.guide.toDoor]]) {
+      for (let i = 0; i + 1 < path.length; i++) {
+        const c = path[i], nxt = path[i + 1];
+        const x = c % w, y = (c - x) / w, tx = nxt % w, ty = (nxt - tx) / w;
+        const a = Math.atan2(ty - y, tx - x);
+        if (i === 0 && leg === 'key') markers.push({ kind: 'sign', x: tx + 0.5, y: ty + 0.5, a, leg, loud: true });   // one cell ahead of the spawn, where you are looking
+        if (i % 3 === 1) markers.push({ kind: 'delta', x: x + 0.5, y: y + 0.5, a, leg, loud: i % 12 === 1 });
+        if (region[c] !== region[nxt] && deg(region[c]) >= 3) markers.push({ kind: 'sign', x: (x + tx) / 2 + 0.5, y: (y + ty) / 2 + 0.5, a, leg, loud: true });
+        if (i % 5 === 3) markers.push({ kind: 'lamp', x: x + 0.5, y: y + 0.5, a, leg, loud: false });
+      }
+    }
+    level.markers = markers;
   }
   function weightedType(rand, mix) {
     let total = 0;
@@ -384,7 +572,7 @@
       n: 0, level: null, phase: 'play', t: 0,
       player: null, goons: [], shots: [], zones: [], scars: [], beams: [], emitters: [],
       key: null, doorOpen: false, kills: 0, shotsFired: 0, recent: [], events: [], plate: null, pending: null,
-      deaths: 0, deathBy: null, gagsSeen: {}, fuel: 10,   // fuel: the flamethrower's seconds for the whole game — it never refills (James 2026-09-08)
+      deaths: 0, deathBy: null, gagsSeen: {}, fuel: 10, lives: opts.lives == null ? 3 : opts.lives, armors: [],   // fuel: the flamethrower's seconds for the whole game — it never refills (James 2026-09-08)
     };
     startLevel(state, opts.startLevel === 'lab' ? 'lab' : Math.max(1, Math.min(LEVELS.length, opts.startLevel || 1)));
     return state;
@@ -394,7 +582,7 @@
     const level = buildLevel(n, state.seed, state.opts);
     state.n = n; state.level = level; state.phase = 'play';
     state.player = {
-      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100,
+      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100, armor: state.player ? state.player.armor : 0, maxArmor: 100,
       cool: 0, slow: 1, vx: 0, vy: 0, fx: { snot: 0, bees: 0, lump: 0, spin: 0, dead: 0, fall: 0, flash: 0, hurt: 0 },
       safe: { x: level.spawn.x, y: level.spawn.y }, driftPush: { i: -1, t: 0 }, spinDir: 1, ringing: 0,
     };
@@ -407,7 +595,8 @@
     state.shots = []; state.zones = []; state.scars = []; state.beams = []; state.emitters = [];
     state.key = level.key ? { x: level.key.x, y: level.key.y, held: false } : { held: true };
     state.heals = level.heals.map((h) => ({ x: h.x, y: h.y, taken: false }));
-    state.doorOpen = !level.key;
+    state.armors = (level.armors || []).map((a) => ({ x: a.x, y: a.y, kind: a.kind, taken: false }));
+    state.doorOpen = level.bossSpawn ? false : !level.key;   // the arena's door opens when the boss dies
     state.pending = null;
     state.plate = null;
     state.events.push({ type: 'level', n, name: level.name });
@@ -417,6 +606,7 @@
     return {
       id: nextId++, type, def, x, y, a: rand() * TAU, r: def.r, hp: 1, state: 'idle', t: 0, dieT: 0, dieDur: 0, outcome: null, gagId: null,
       path: null, pathT: rand() * 0.4, wanderT: rand() * 2, atkT: 0, windup: 0, vx: 0, vy: 0, scale: 1, seed: rand(), pacT: 0, isBoss: false, blink: 0,
+      weapon: def.weapons ? pick(rand, def.weapons) : null,   // dealt for life (2026-09-11)
     };
   }
 
@@ -442,20 +632,31 @@
   // cuts.js (written by the dev server from the weapon lab's TRASH verdicts, loaded after gags.js) lists ids the
   // roll never deals; a forced gag (the lab, the configuration panel) still fires. Never empty: with everything
   // cut, the whole table stands. (2026-09-08)
+  // passed.js (the same server, from the lab's PASSED verdicts) lists the approved shots: when it has any, the roll deals
+  // ONLY from them (James 2026-09-11, 'only shoot the approved shots from the list. we'll keep adding to it'); the cuts
+  // still apply on top. With nothing passed the old rule stands (everything not cut).
   function liveGags() {
-    const c = globalThis.JABBERWOCKY_CUTS;
+    const c = globalThis.JABBERWOCKY_CUTS, p = globalThis.JABBERWOCKY_PASSED;
+    const cut = (g) => Array.isArray(c) && c.includes(g.id);
+    if (Array.isArray(p) && p.length) { const live = GAGS.filter((g) => p.includes(g.id) && !cut(g)); if (live.length) return live; }
     if (!Array.isArray(c) || !c.length) return GAGS;
-    const live = GAGS.filter((g) => !c.includes(g.id));
+    const live = GAGS.filter((g) => !cut(g));
     return live.length ? live : GAGS;
+  }
+  // a tier from the odds, over the tiers that have anything live (an empty tier folds its odds into the rest)
+  function rollTier(state, live) {
+    const o = state.opts.odds;
+    const tiers = T.TIERS.filter((t) => live.some((g) => g.tier === t));
+    const total = tiers.reduce((sum, t) => sum + o[t], 0);
+    if (total <= 0) return tiers[0] || 'dispatch';
+    let r = state.rand() * total;
+    for (const t of tiers) { r -= o[t]; if (r <= 0) return t; }
+    return tiers[tiers.length - 1];
   }
   function rollGag(state, forcedId) {
     if (forcedId && T.byId[forcedId]) return T.byId[forcedId];
-    const o = state.opts.odds;
-    const total = o.dispatch + o.weird + o.dud + o.backfire;
-    let r = state.rand() * total;
-    let tier = 'dispatch';
-    for (const t of T.TIERS) { r -= o[t]; if (r <= 0) { tier = t; break; } }
     const live = liveGags();   // a dry flamethrower still comes up — it just clicks (James: 'it's just random, right?')
+    const tier = rollTier(state, live);
     const pool = live.filter((g) => g.tier === tier && !state.recent.includes(g.id));
     const src = pool.length ? pool : (live.some((g) => g.tier === tier) ? live.filter((g) => g.tier === tier) : live);
     const g = src[Math.floor(state.rand() * src.length)];
@@ -722,15 +923,19 @@
     if (state.phase !== 'play') return;
     const dmg = (gag.dmg != null ? gag.dmg : TIER_PLAYER_DMG[gag.tier] || 0) * (state.opts.damageMul || 1);
     if (dmg <= 0) { state.events.push({ type: 'graze', gag, source }); return; }
-    p.hp -= dmg;
+    // armor takes two thirds of any hit while it lasts (2026-09-11)
+    let absorbed = 0;
+    if (p.armor > 0) { absorbed = Math.min(p.armor, dmg * 2 / 3); p.armor -= absorbed; }
+    p.hp -= dmg - absorbed;
     p.fx.hurt = 0.5;
-    state.events.push({ type: 'hurt', dmg, gag, source });
+    state.events.push({ type: 'hurt', dmg: dmg - absorbed, absorbed, gag, source });
     if (p.hp <= 0) {
-      p.hp = 0;
+      p.hp = 0; p.armor = 0;
       state.phase = 'dead';
       state.deaths++;
+      state.lives = Math.max(0, state.lives - 1);
       state.deathBy = { verb: gag.verb || (gag.outcome && OUTCOMES[gag.outcome] ? OUTCOMES[gag.outcome].verb : 'DONE IN'), name: gag.name || 'SOMETHING', source };
-      state.events.push({ type: 'death', by: state.deathBy });
+      state.events.push({ type: 'death', by: state.deathBy, lives: state.lives });
     }
   }
   function addScar(state, type, x, y, gag) {
@@ -811,6 +1016,14 @@
       const was = p.hp;
       p.hp = Math.min(p.maxHp, p.hp + (state.opts.healHp == null ? 35 : state.opts.healHp));
       state.events.push({ type: 'heal', x: h.x, y: h.y, hp: p.hp, gained: p.hp - was });
+    }
+    // armor: a breastplate is +50, a helm +15, to 100; a full suit walks past
+    if (p.armor < p.maxArmor) for (const a of state.armors) {
+      if (a.taken || Math.hypot(a.x - p.x, a.y - p.y) > 0.6) continue;
+      a.taken = true;
+      const was = p.armor;
+      p.armor = Math.min(p.maxArmor, p.armor + (a.kind === 'plate' ? 50 : 15));
+      state.events.push({ type: 'armor', x: a.x, y: a.y, kind: a.kind, armor: p.armor, gained: p.armor - was });
     }
     // key + door
     if (state.key && !state.key.held && Math.hypot(state.key.x - p.x, state.key.y - p.y) < 0.6) {
@@ -1167,7 +1380,7 @@
         if (g.outcome === 'inflate') g.scale = g.dieT < g.dieDur - 0.3 ? 1 + (g.dieT / g.dieDur) * 1.4 : 0.01;
         if (g.dieT >= g.dieDur) {
           g.state = 'dead';
-          if (g.isBoss) { state.phase = 'won'; state.events.push({ type: 'won' }); }
+          if (g.isBoss) { state.phase = 'won'; state.doorOpen = true; state.events.push({ type: 'won' }); }   // his door opens (2026-09-11)
         }
         continue;
       }
@@ -1212,10 +1425,11 @@
           }
           continue;
         }
-        if (dist < def.reach + p.r) {
+        const wp = g.weapon ? WEAPONS[g.weapon] : null;
+        if (dist < def.reach + (wp ? wp.reach : 0) + p.r) {
           g.a = Math.atan2(p.y - g.y, p.x - g.x);
           g.atkT -= dt;
-          if (g.atkT <= 0) { g.atkT = def.atk; g.windup = 0.3; state.events.push({ type: 'swing', goon: g }); }
+          if (g.atkT <= 0) { g.atkT = def.atk * (wp ? wp.atkMul : 1); g.windup = wp ? wp.windup : 0.3; state.events.push({ type: 'swing', goon: g, weapon: g.weapon }); }
         } else {
           const next = g.path && g.path.length ? g.path[0] : null;
           let tx = p.x, ty = p.y;
@@ -1230,7 +1444,7 @@
         }
         if (g.windup > 0) {
           g.windup -= dt;
-          if (g.windup <= 0 && dist < def.reach + p.r + 0.2) hurtPlayer(state, { name: 'A ' + def.name, verb: 'BEATEN', tier: 'x', dmg: def.dmg }, 'goon');
+          if (g.windup <= 0 && dist < def.reach + (wp ? wp.reach : 0) + p.r + 0.2) hurtPlayer(state, { name: 'A ' + def.name + (wp ? ' WITH A ' + wp.name : ''), verb: wp ? wp.verb : 'BEATEN', tier: 'x', dmg: def.dmg * (wp ? wp.dmgMul : 1) }, 'goon');
         }
       }
       // goons don't stack
@@ -1296,11 +1510,8 @@
     }
   }
   function bossRoll(state, b) {
-    const o = state.opts.odds;
-    const total = o.dispatch + o.weird + o.dud + o.backfire;
-    let r = state.rand() * total, tier = 'dispatch';
-    for (const t of T.TIERS) { r -= o[t]; if (r <= 0) { tier = t; break; } }
     const live = liveGags().filter((g) => g.kind !== 'train');
+    const tier = rollTier(state, live);
     let pool = live.filter((g) => g.tier === tier && !b.recent.includes(g.id));
     if (!pool.length) pool = live.filter((g) => g.tier === tier);
     if (!pool.length) pool = live.length ? live : GAGS;
@@ -1315,17 +1526,19 @@
     startLevel(state, state.n + 1);
     return true;
   }
+  // AGAIN costs nothing more than the life already spent; with no lives left there is no again (the host shows GAME OVER)
   function retryLevel(state) {
-    const hp = 100;
+    if (state.lives <= 0) return false;
     startLevel(state, state.n);
-    state.player.hp = hp;
+    state.player.hp = 100; state.player.armor = 0;
+    return true;
   }
   function goonsLeft(state) { return state.goons.filter((g) => g.state !== 'dead' && g.state !== 'dying' && g.state !== 'pacified').length; }
 
   globalThis.JabberwockyCore = {
-    VERSION: 1, DEFAULTS, GOON_TYPES, LEVELS, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT },
+    VERSION: 2, DEFAULTS, GOON_TYPES, WEAPONS, LEVELS, MAZES, PITCH, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT, PROP },
     hashStr, mulberry, makeMaze, buildLevel, bfs, bfsPath, cellAt, solidAt, castRay, lineOfSight, aimPoint,
     newGame, startLevel, nextLevel, retryLevel, step, fire, rollGag, bossRoll, launch, hitGoon, hurtPlayer, addScar, goonsLeft, angDiff,
-    makeLabGoon, respawnLabGoon,
+    makeLabGoon, respawnLabGoon, liveGags, rollTier,
   };
 })();

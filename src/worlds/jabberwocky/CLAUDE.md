@@ -6,6 +6,37 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
+## THE STRUCTURE — START HERE (2026-09-11, James's brief, built on his "let it rip"; read the changelog entry first)
+
+- Six levels: four mazes (`LEVELS[].nx × ny` lattice nodes, `PITCH` 3 — every corridor two cells wide; rooms over whole
+  nodes with `tall` 1 = 8 m, the great hall `tall` 2 = 11 m; THE DEEP `cave: true` erodes its walls), THE MIDDLE (the boss;
+  its north door opens when he dies), THE THREE DOORS (`exit: true`, round, the three odd drift doors — the way out).
+  `C.MAZES` = 4. Sizes are in cells; the renderer's `HEIGHTS` [4.4, 8.0, 11.0] follow `level.tall`.
+- DISTRICTS: `level.district[cell]` (a room id; −1 in a wall) → `THEMES[t].districts[k]` in render3d.js: walls / floor / ceil /
+  light. Add a district to a theme there; a tile name with a dash borrows another theme's tile. Torches and the bake take the
+  district's light colour.
+- LANDMARKS: `CELL.PROP` (7) cells from `placeLandmarks` (one per room, three in the hall) → `level.landmarks[]`; the theme's
+  `landmarks` list (hero first) and `hang`; `LANDMARK_SIZE` sizes them; files in `assets/models/landmarks/`. A PROP cell is
+  solid, draws floor + ceiling and no faces. New landmark = a props.mjs row, `PROPS_OUT=landmarks node props.mjs <name>`, slim
+  on the landmarks dir, a name in a theme list + LANDMARK_SIZE.
+- THE GUIDE: `level.guide` (toKey / toDoor cell lists) and `level.markers[]` {kind delta | sign | lamp, x, y, a, leg, loud}
+  from `layGuide`; the renderer draws them (`guideTex`, per-theme `sign` style) and `syncGuide` fades the legs with the key
+  (`look.guide` = configuration → LOOK → Route markings). Never remove the guide; James hates getting lost.
+- Goons spawn ≥ 8 steps out and on the far side of any room the route enters; notice ranges doubled. Keep fights far back.
+- LIVES (`opts.lives` 3, `state.lives`; `retryLevel` false at zero) and ARMOR (`player.armor` 0–100 takes two thirds of a hit;
+  `state.armors` pickups plate +50 / helm +15; `armorMul`). HUD: ARMOR bar + three skulls. Dials: PLAY → Lives per run, Armor
+  pickups ×.
+- THE ROLL deals only `passed.js` (`JABBERWOCKY_PASSED`, written by the server with cuts.js) when it has anything; the lab
+  fires everything. Passing a weapon in the lab puts it in the game on the next load. All 31 passed so far are dispatch.
+- THE BAD GUYS' WEAPONS: core `WEAPONS` + `GOON_TYPES[].weapons` → `goon.weapon`; renderer `armGoon` (RightHand bone, PCA long
+  axis, grip rule `GRIP_AT_FAT`) and `dropWeapon`. THE MOVES: `ATTACKS[type]` + `DEATHS4` in render3d.js, ids in
+  tmp/jabberwocky/actions3.json, `moves.mjs` submits / downloads per creature (retries the ten-task cap).
+- THE LIZARDMAN is the common goon (the ghoul is out of the mixes and the lab; its files go at ship). Its pipeline:
+  `tmp/jabberwocky/lizardman.mjs concept | model | clips` then `moves.mjs lizardman`; take one (tail, turned head) was refused
+  by the rigger — keep creature concepts A-pose, front-on, tailless.
+- `slim_models.py` wants the MODELS ROOT (or a scratch root with `<creature>/` dirs inside): a creature dir passed directly is
+  treated as props and its clips stay skinned. It re-exports everything it touches.
+
 ## THE WEAPON LAB — START HERE (2026-09-07)
 
 `lab.html` + `lab.js` (admin panel → Labs → Weapon Lab; `?silent=1&nolock=1` for the pane). One bare lit hall
@@ -92,7 +123,7 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
 - `assets/textures/` — 31 seamless tiles (nano-banana-2): five themes × three walls + a plain fourth
   wall for the deep and the arena + floor + ceiling, the locked door, the three odd doors.
 - `assets/models/<creature>/` — `base.glb` (rigged, 1K textures) + armature-only clips `walk run attack
-  die hit dance` (+ `throw` for the cultist, `monster` walk for the ghoul). **THE CLIP DECK (James 2026-09-11, 225 cr):**
+  die hit dance` (+ `throw` for the cultist; the ghoul's `monster` walk is history — the ghoul is out, the lizardman in, 2026-09-11; each creature also carries the four new deaths + its attack subset, see THE STRUCTURE above). **THE CLIP DECK (James 2026-09-11, 225 cr):**
   fifteen more Meshy library clips on all five (`tmp/jabberwocky/actions2.json` = clip name → Meshy action id; the full
   678-clip catalog is `tmp/jabberwocky/anim-library.json`, free to pull again; `render3d.js` DECK / DEATH_BY_GAG /
   DEATH_POOL / RUN_POOL / DANCE_POOL is where they are dealt):
@@ -151,11 +182,11 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   vocabulary — reuse it, don't add bespoke particles. Explosions only for `BOOM_GAGS`.
 - **Motion:** head bob defaults to 0, shake to 0.25, no CRT anything, native resolution. The 2D
   raycaster made James sick and is gone for good; never bring back per-column rendering.
-- **Space:** cells are 2.6 m wide, corridors 3.2 m tall, rooms 5.4 m. Tightness was part of the nausea.
+- **Space:** cells are 2.6 m wide, corridors two cells wide and 4.4 m tall, rooms 8 m, the great hall 11 m (2026-09-11; was 3.2 / 5.4 one-cell tunnels). Tightness was part of the nausea — never narrow it again.
 - **No clowns.** The enemies are dungeon creatures; the humour lives in the gags and the plate.
 - **Scars persist per level and clear at the door.** The train breaks up to six walls; the bus does not.
 - **The boss uses the same table** including duds and backfires (his backfires hurt him).
-- **Drift doors** are the three odd doors on the boundary; keep walking into one for 0.7 s.
+- **Drift doors** are the three odd doors on the boundary of each maze and the three in THE THREE DOORS past the arena; keep walking into one for 0.7 s.
 - **Sound is the shared control only.** New one-shots: add the prompt to `sfx-batch.mjs`, run it, map
   the id in `sound.js` `FILES`; keep a recipe fallback. James drops his own files into `assets/audio/sfx/` too;
   NUMBERED SETS: `<name>-01.mp3`, `-02` … beside any one-shot name are found at preflight (contiguous from 01) and

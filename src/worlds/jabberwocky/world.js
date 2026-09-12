@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=81';
+import { createRenderer, S } from './render3d.js?v=82';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -10,11 +10,12 @@ const served = location.protocol !== 'file:';
 const TAU = Math.PI * 2;
 
 // ---- settings ------------------------------------------------------------------------------------
-const PLAY_KEY = 'jabberwocky-play-v2', LOOK_KEY = 'jabberwocky-look-v2', UI_KEY = 'jabberwocky-ui-v1';
-const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '' };
+const PLAY_KEY = 'jabberwocky-play-v3', LOOK_KEY = 'jabberwocky-look-v2', UI_KEY = 'jabberwocky-ui-v1';
+const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '', lives: 3, armorMul: 1 };   // lives + armor pickups (2026-09-11)
 const LOOK_RANGES = {
   fov:         { label: 'Field of view', min: 60, max: 100, step: 1, def: 76, sum: 'Wider sees more of the corridor at once.' },
-  fog:         { label: 'Fog distance', min: 10, max: 60, step: 1, def: 34, sum: 'How far down a hall you can see before it goes dark. In metres.' },
+  fog:         { label: 'Fog distance', min: 10, max: 120, step: 1, def: 70, sum: 'How far down a hall you can see before it goes dark. In metres.' },
+  guide:       { label: 'Route markings', min: 0, max: 1.5, step: 0.05, def: 1, sum: 'How loud the arrows, signs and lamps along the way to the key and the door are. Zero hides them.' },
   res:         { label: 'Render scale', min: 0.5, max: 1, step: 0.05, def: 1, sum: 'One is native resolution. Lower if the frame rate drops.' },
   brightness:  { label: 'Brightness', min: 0.5, max: 2, step: 0.05, def: 1, sum: 'The overall light level.' },
   torchLight:  { label: 'Torch light', min: 0, max: 2, step: 0.05, def: 1, sum: 'How much the torches carry.' },
@@ -65,7 +66,7 @@ let noticeT = 0, cardTimer = null, lastHud = 0;
 const BIG = new Set(['train', 'blackhole', 'meteor', 'sand', 'tent', 'tornado', 'piano', 'bus']);
 
 function opts() {
-  return { odds: Object.assign({}, play.odds), goonMul: play.goonMul, goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, seed: play.seed, forceGag: play.forceGag, startLevel: play.startLevel };
+  return { odds: Object.assign({}, play.odds), goonMul: play.goonMul, goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, seed: play.seed, forceGag: play.forceGag, startLevel: play.startLevel, lives: play.lives, armorMul: play.armorMul };
 }
 function liveOpts() { if (!state) return; Object.assign(state.opts, { goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, forceGag: play.forceGag }); state.opts.odds = Object.assign({}, play.odds); }
 
@@ -158,17 +159,18 @@ const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>s
 const KEYS_LINE_CURSOR = '<b>WASD</b> walk · <b>the rifle points at the cursor</b> · <b>click</b> or <b>space</b> fires · <b>arrows</b> or <b>the screen edge</b> turn · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration';
 const keysLine = () => cursorMode() ? KEYS_LINE_CURSOR : KEYS_LINE;
 const BLURBS = {
-  1: 'The gate. Ghouls, mostly. Find the key. It opens the door. The door is not where the key is.',
+  1: 'The gate. Lizardmen, mostly, with swords. Find the key. It opens the door. The arrows know the way.',
   2: 'Catacombs. Cultists throw flaming skulls, ratlings are faster than you would like. The key is further.',
   3: 'The meat locker. Something is dripping. The brutes are slow. The brutes hit very hard.',
   4: 'The deep. Stalkers reach you from a corridor away. The door is a long way from the key.',
-  5: 'No key. No door. Just him, in the middle, with a rifle exactly like yours.',
+  5: 'No key. Just him, in the middle, with a rifle exactly like yours. His door opens when he is done.',
+  6: 'Three doors. Each one leaves. Keep walking into the one you like.',
 };
 function attract() {
   mode = 'attract';
   showCard({
     kicker: 'A MAZE · A RIFLE · NO IDEA WHAT IT SHOOTS', title: 'JABBERWOCKY',
-    sub: 'Find the key. Find the door. Four mazes down, the Jabberwock waits in the middle with a rifle exactly like yours. Every pull of the trigger is a different thing. Some of them are your problem.',
+    sub: 'Find the key. Find the door. Four mazes down, the Jabberwock waits in the middle with a rifle exactly like yours. Every pull of the trigger is a different thing. Three lives. Pick up the armor.',
     btn: R.ready ? 'BEGIN' : 'LOADING THE DUNGEON', disabled: !R.ready, keys: keysLine(), action: begin,
   });
 }
@@ -189,7 +191,7 @@ function pause() {
 function resume() { if (mode !== 'paused') return; hideCard(); mode = 'play'; lock(); }
 function levelCard(n, name) {
   mode = 'card';
-  showCard({ kicker: n === 5 ? 'THE LAST ONE' : 'MAZE ' + n + ' OF 4', title: name, sub: BLURBS[n] || '', auto: 2600, keys: 'click or space to go', action: () => { hideCard(); mode = 'play'; lock(); } });
+  showCard({ kicker: n === 6 ? 'THE WAY OUT' : n === 5 ? 'THE LAST ONE' : 'MAZE ' + n + ' OF ' + C.MAZES, title: name, sub: BLURBS[n] || '', auto: 2600, keys: 'click or space to go', action: () => { hideCard(); mode = 'play'; lock(); } });
 }
 function deathCard() {
   mode = 'dead';
@@ -197,10 +199,17 @@ function deathCard() {
   const by = state.deathBy || { verb: 'DONE IN', name: 'SOMETHING' };
   const src = by.source;
   const sub = src === 'self' ? 'That one was the rifle. The rifle is not sorry.' : src === 'boss' ? 'His table. His pull. Your problem.' : src === 'scar' ? 'You walked into something you fired. Everyone does it once.' : src === 'hole' ? 'It went down. Nobody knows how far. You found out.' : 'Something got close. They do that.';
-  setTimeout(() => showCard({
+  const tally = `${state.shotsFired} pulls · ${state.kills} kills · ${Object.keys(state.gagsSeen).length} of ${T.GAGS.length} gags seen · ${state.deaths} deaths`;
+  // three lives a run (2026-09-11): AGAIN while they last, GAME OVER when they are gone
+  if (state.lives > 0) setTimeout(() => showCard({
     kicker: 'YOU WERE', title: by.verb + ' BY ' + by.name, red: true, sub,
-    lines: [`${state.shotsFired} pulls · ${state.kills} kills · ${Object.keys(state.gagsSeen).length} of ${T.GAGS.length} gags seen · ${state.deaths} deaths`],
+    lines: [tally, state.lives === 1 ? 'ONE LIFE LEFT' : state.lives + ' LIVES LEFT'],
     btn: 'AGAIN', keys: 'same maze, same table', action: () => { hideCard(); C.retryLevel(state); view.pitch = 0; mode = 'play'; lock(); handleEvents(); syncHud(true); },
+  }), 900);
+  else setTimeout(() => showCard({
+    kicker: by.verb + ' BY ' + by.name + ' · NO LIVES LEFT', title: 'GAME OVER', red: true, sub: 'The dungeon keeps the rifle. It always does. It will hand it back at the gate.',
+    lines: [tally, `got as far as ${state.level.name}`],
+    btn: 'NEW RUN', keys: 'a new maze, the same table', action: () => { hideCard(); attract(); },
   }), 900);
 }
 function winCard() {
@@ -210,9 +219,9 @@ function winCard() {
   const verb = b && b.gagId && T.byId[b.gagId] && T.byId[b.gagId].verb ? T.byId[b.gagId].verb : (b && b.outcome && T.OUTCOMES[b.outcome] ? T.OUTCOMES[b.outcome].verb : 'DONE IN');
   setTimeout(() => showCard({
     kicker: 'THE MIDDLE OF THE MAZE', title: 'THE JABBERWOCK IS ' + verb,
-    sub: 'The rifle is yours now. It was always yours. The three odd doors in the walls have started to hum.',
+    sub: 'The rifle is yours now. It was always yours. His door has swung open behind him. Three odd doors hum on the other side.',
     lines: [`${state.shotsFired} pulls · ${state.kills} kills · ${Object.keys(state.gagsSeen).length} of ${T.GAGS.length} gags seen · ${state.deaths} deaths`],
-    btn: 'WALK', keys: 'find one of the three doors and keep walking into it · or <b>enter</b> for a new run', action: () => { hideCard(); state.phase = 'play'; state.finished = true; mode = 'play'; lock(); },
+    btn: 'WALK', keys: 'through his door, then keep walking into one of the three · or <b>enter</b> for a new run', action: () => { hideCard(); state.phase = 'play'; state.finished = true; mode = 'play'; lock(); },
   }), 1200);
 }
 
@@ -244,8 +253,9 @@ function handleEvents() {
       case 'hurt': fx.hurt = 1; R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); deathCard(); break;
       case 'heal': Sfx.play('heal'); hint('A MEAT PIE OF DUBIOUS ORIGIN · +' + e.gained + ' · DO NOT ASK WHAT KIND', 2600); break;
+      case 'armor': Sfx.play('armor'); hint(e.kind === 'plate' ? 'A DENTED SUIT OF ARMOR · +' + e.gained + ' · SOMEBODY DIED IN THIS' : 'A HELM · +' + e.gained + ' · IT SMELLS OF SOMEONE ELSE', 2600); break;
       case 'key': Sfx.play('key'); setTimeout(() => Sfx.play('door'), 400); hint('THE DOOR IS OPEN — IT IS NOT HERE', 3500); break;
-      case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: 'MAZE ' + e.n + ' CLEARED', title: 'THROUGH THE DOOR', sub: 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); view.pitch = 0; mode = 'play'; handleEvents(); } }); break;
+      case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: e.n === 5 ? 'THE MIDDLE, BEHIND YOU' : 'MAZE ' + e.n + ' CLEARED', title: e.n === 5 ? 'THROUGH HIS DOOR' : 'THROUGH THE DOOR', sub: e.n === 5 ? 'Three doors hum on the other side. Each one leaves.' : 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); view.pitch = 0; mode = 'play'; handleEvents(); } }); break;
       case 'won': Sfx.play('win'); winCard(); break;
       case 'drift': mode = 'drifting'; Sfx.play('drift'); unlock(); $('fade').classList.add('on'); setTimeout(() => { const a = $('exit-' + e.i); if (a) a.click(); }, 700); break;
       case 'notice': if (view.t > noticeT) { noticeT = view.t + 0.6; Sfx.play('notice', pan(e.goon.x, e.goon.y), e.goon.type); } break;
@@ -280,6 +290,11 @@ function syncHud(force) {
   const hp = Math.max(0, Math.round(p.hp));
   $('hp-num').textContent = hp;
   const fill = $('hp-fill'); fill.style.width = hp + '%'; fill.classList.toggle('low', hp < 30);
+  const ar = Math.max(0, Math.round(p.armor || 0));
+  $('ar-num').textContent = ar; $('ar-fill').style.width = ar + '%';
+  const lives = $('lives'); const want = Math.max(state.lives, 3);
+  if (lives.childElementCount !== want) lives.innerHTML = Array.from({ length: want }, () => '<span>☠</span>').join('');
+  Array.from(lives.children).forEach((el, i) => el.classList.toggle('gone', i >= state.lives));
   if (force) $('level-name').textContent = state.level.name;
   $('key-icon').classList.toggle('held', !!(state.key && state.key.held));
   const left = C.goonsLeft(state);
@@ -411,6 +426,8 @@ const syncs = [
   slider('t-boss', () => play.bossFire, (v) => play.bossFire = v, (v) => v.toFixed(1) + 's'),
   slider('t-move', () => play.moveSpeed, (v) => play.moveSpeed = v, (v) => (v * S).toFixed(1) + ' m/s'),
   slider('t-sens', () => play.sens, (v) => play.sens = v, (v) => v.toFixed(2) + '×'),
+  slider('t-lives', () => play.lives, (v) => play.lives = v, (v) => v),
+  slider('t-armor', () => play.armorMul, (v) => play.armorMul = v, (v) => v.toFixed(2) + '×'),
 ];
 const force = $('t-force');
 for (const tier of T.TIERS) { const og = document.createElement('optgroup'); og.label = tier.toUpperCase(); for (const g of T.GAGS) if (g.tier === tier) { const o = document.createElement('option'); o.value = g.id; o.textContent = g.name; og.appendChild(o); } force.appendChild(og); }

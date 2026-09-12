@@ -72,6 +72,15 @@ consistent. `npm run check-worlds` audits every world against the contract.
   crush timed to the landing, THE LEGOS as a brick rain from the ceiling, THE GRAVY as a new `wave` core kind (a
   lumpy fan out of the gun), the lab page trimmed (no facts card, no find/SOUND/FIRE). PASSED so far now also: hole,
   tornado, vines, bees, gas, cow, cart, legos, anvil, glue, lightning. Read the world changelog 2026-09-11 entry first.**
+  **2026-09-11/12 THE STRUCTURE BUILT on his "let it rip" (plan posted + his moves folded in first):** the lattice maze (two-cell
+  corridors, rooms + a great hall per level, 8 / 11 m ceilings, THE DEEP eroded), DISTRICTS (wall set + floor + light colour per
+  wing), 16 Meshy LANDMARKS on PROP cells, THE GUIDE (floor deltas, hanging KEY / EXIT signs, lamps; the key leg then the door
+  leg; LOOK → Route markings), goons far back + notice doubled, THREE LIVES + GAME OVER, ARMOR (suit +50 / helm +15, two thirds
+  of a hit, HUD bar + skulls), THE MIDDLE's door → THE THREE DOORS (level 6, the drift doors), the passed-only roll (`passed.js`,
+  server-written — SERVER RESTART NEEDED for new verdicts to rewrite it), the LIZARDMAN for the ghoul (take two rigged),
+  seven Meshy weapons in the goons' hands (dropped at death), his eighteen moves (4 deaths everyone, attack subsets per
+  creature). 647 cr (balance 1,332). Sim 545,042 green. Read the world CLAUDE.md THE STRUCTURE section + changelog first.
+  AWAITING HIS FLIGHT; ~100 already-slim clips show as modified in git (byte re-export, same content, unstaged — his call).
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).

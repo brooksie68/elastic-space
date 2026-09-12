@@ -3,6 +3,90 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-11 (late) — Claude (Fable 5.1) — THE STRUCTURE: open mazes, districts, the guide, lives, armor, the lizardman, weapons, the moves
+
+James's brief ("time to work on the structure"): four levels, a boss, then a room with three doors out; three lives; he hates
+getting lost in dungeon games — make the levels unique between AND within themselves (landmarks, formations, textures, colours,
+lighting, architecture) and lay arrows / rows of deltas / door signs / floor markings that always lead to the exit,
+"occasionally obvious, frequently somewhat subtle"; bigger rooms, higher ceilings, more open, so the weapons have room to
+look cool; the bad guys far back; a couple of swords, axes and hammers from Meshy plus his eighteen library moves (fourteen
+attacks, four deaths — everyone gets every death, each creature its own attack subset); the green ghost (the ghoul) out for a
+lizardman / ogre / marauder of Claude's choice, gnarly; armor + pickups + a meter by health; the rifle deals only the PASSED
+list. Plan posted, "great plan", moves folded in, "let it rip". Built in one session:
+
+- THE LATTICE MAZE (core `makeMaze`): the backtracker runs on nodes of 2×2 cells (`PITCH` 3), so every corridor is two cells
+  wide (5.2 m) and `loops` knock walls out between nodes. `LEVELS` rows are `nx × ny` nodes now (19 / 22 / 25 / 28 cells
+  across); `w` is even — the sim's odd-maze assertion went. Heights ride in `level.tall` as 0 / 1 / 2 → the renderer's
+  `HEIGHTS` [4.4, 8.0, 11.0] (was 3.2 / 5.4). ROOMS over whole nodes (`carveRooms`: 2×2 = 5×5 cells … 3×3 = 8×8), a wall's
+  width apart, never on the spawn node; each inherits the passages that crossed its edge and gets one or two doorways more;
+  the big ones get one-cell columns at their inner lattice crossings; ONE GREAT HALL per level (`hall: [3, 3]` … `[4, 4]`
+  nodes, 11 m ceiling). THE DEEP is `cave: true` — `erodeCave` crumbles a quarter of the walls that touch open cells.
+  Rooms per level now 3–9 (min 3 at level 1; avg 4.3 / 5.4 / 6.9 / 8.1).
+- DISTRICTS (`assignDistricts`): every room seeds one, corridors flood to the nearest; `level.district[cell]`. The renderer's
+  `THEMES[t].districts[]` cycles a wall set (the four variants) + floor + ceiling (a full tile name borrows another theme's) +
+  a light colour; torches take the colour of their district and bake it (`t.color`); the live torches too. GLOW is keyed by
+  tile name now. So THE GATE has an amber gatehouse, a green moss wing and a pale iron wing; THE CATACOMBS candle amber, a
+  blue crypt, a bone-white hall; THE MEAT LOCKER cold fluorescent, red emergency, frost; THE DEEP violet, cyan, lava orange.
+- LANDMARKS: sixteen Meshy statics (props.mjs, PROPS_OUT=landmarks, 240 cr; `assets/models/landmarks/`; `LANDMARK_SIZE` in
+  render3d.js): statue / well / brazier / banner · ossuary / sarcophagus / bonepillar / chandelier · grinder / boiler / barrels /
+  carcass · monolith / crystal / altar / stalagmite (+ the brazier in THE THREE DOORS). The core marks a slot per room (three
+  along the hall's long axis) as a `PROP` cell (`CELL.PROP` 7, solid like a wall, needs open cells on all four sides —
+  `placeLandmarks`); the renderer draws floor + ceiling there, no faces, and stands the piece on it — the theme's hero in the
+  hall's middle, the rest dealt by room; the chandelier / carcass hang over every room's slot. Facing sheet
+  tmp/jabberwocky/renders/structure-landmarks-sheet.png.
+- THE GUIDE (`layGuide` → `level.markers`; renderer `guideTex` / `guideViews` / `syncGuide`): along the two legs of the route
+  (spawn → key, key → door; `level.guide`): a row of three chevrons on the floor every third cell (every fourth loud), a
+  hanging SIGN (the word + ▲ in the theme's hand: KEY / GATE · WAY OUT · EXIT · ONWARD) over the way out of any region you
+  could leave two other ways (a region = a room or a lattice node) and one a cell ahead of the spawn, a soft LAMP every fifth
+  cell (also baked into the light, so the right way is a little brighter). The key leg burns first; picking up the key wakes
+  the door leg and dims the key leg. Subtle markers sit at 45% of loud ones; configuration → LOOK → "Route markings" (0–1.5,
+  0 hides them). You wake facing down the route. Sim: never seven cells of the route without a marker.
+- FAR BACK: goons spawn at least eight steps from you, never on the first ten cells of the route, and in a room the guide
+  enters only on the far 45% from its entrance; two in three prefer a room; notice ranges roughly doubled (13 / 11 / 14 / 16 /
+  14). Fog default 34 → 70 m (range to 120), camera far 220, the torch cap 60 → 140.
+- THE MIDDLE (25×25) lost its drift doors and gained a DOOR in the north wall that opens when the Jabberwock dies
+  (`state.doorOpen` on `won`); through it → THE THREE DOORS, level 6 (`exit: true`, `makeRound` 13×13, three odd doors n / e /
+  w, a brazier in the middle, no goons). Cards: MAZE n OF 4 / THE LAST ONE / THE WAY OUT; "THROUGH HIS DOOR".
+- THREE LIVES (`opts.lives`, `state.lives`): a death costs one, AGAIN restarts the maze (health 100, armor 0) while they last,
+  GAME OVER → NEW RUN at zero (`retryLevel` returns false). HUD: three skulls under the bars. Dial: PLAY → "Lives per run".
+- ARMOR: `player.armor` 0–100, two thirds of any hit goes to armor while it lasts (backfires too), carries across levels, dies
+  with you; the hurt event says what it absorbed. Pickups (`level.armors`, `state.armors`): THE SUIT (+50 — Meshy sent a whole
+  standing suit for "breastplate"; it stands where it lies) in a side room the guide never enters, HELMS (+15, one per five
+  goons) like the pies; the arena deals one of each. HUD ARMOR bar in steel blue; `armor` sound (a plate clank with a ring);
+  dial PLAY → "Armor pickups ×". Props `plate` / `helm` (30 cr).
+- THE LIZARDMAN replaces the ghoul in every mix and on the lab's first pad (`GOON_TYPES.lizardman`: speed 1.5, dmg 10, 2.2 m,
+  sword or axe). tmp/jabberwocky/lizardman.mjs: concept (nano-banana-pro) → image-to-3D (meshy-7, 30k, textured) → rig →
+  clips. TAKE ONE (a long tail, head turned) was gorgeous and REFUSED by the rigger twice ("pose estimation failed", 39 cr
+  gone — benched as `take1` in lizardman.json); TAKE TWO (A-pose, front-on, no tail) rigged first try. 32 files: base, walk,
+  run, the four base clips, the fifteen-clip deck, the four new deaths, its six attacks. The ghoul's files stay on disk until
+  ship; `ghoul` is out of GOON_TYPES and CREATURES.
+- WEAPONS: seven Meshy props (105 cr): sword-1/2, axe-1/2, hammer-1/2, shiv (`PROPS` rows with `variants`). Core `WEAPONS`
+  (dmgMul / atkMul / reach / windup / verb) and `GOON_TYPES[].weapons` — a goon deals one for life at `makeGoon` (lizardman
+  sword or axe, brute hammer, ratling shiv, cultist and stalker unarmed); the melee uses it; the death card says "FLATTENED BY
+  A BRUTE WITH A HAMMER". Renderer `armGoon`: the prop in the `RightHand` bone, its long axis found by a vertex PCA (a Meshy
+  sword lies on a diagonal), the grip at the fat end for swords and shivs and the thin end for axes and hammers, the holder
+  undoing the rig's centimetre scale; `dropWeapon` lets it fall as a body at the death. At rest a hanging hand points the
+  blade at the floor (right, as a sword hangs); NOT yet judged mid-swing by eye.
+- THE MOVES (tmp/jabberwocky/actions3.json, moves.mjs; 132 cr + the lizardman's 30): the four deaths join `DEATH_POOL` and the
+  obvious pairings (`DEATH_BY_GAG`: vines → strangled, rocket / sneeze → blownback, cart / train / handbag → knockdown, gravel →
+  slowfall); `ATTACKS[type]` per creature (in render3d.js, with the action ids), `attackClip` deals one at random per swing.
+- THE PASSED-ONLY ROLL: the server now writes `passed.js` (`JABBERWOCKY_PASSED`) beside cuts.js on every verdict; index.html
+  loads it; core `liveGags()` deals only passed, uncut gags when the list has any (`rollTier` folds an empty tier's odds into
+  the rest; the boss the same; a forced gag still fires). All 31 passed today are dispatch — the game is all-kill until
+  weird / dud / backfire gags pass in the lab. THE SERVER NEEDS A RESTART for the passed.js write (the file exists already).
+- Sim TEST 3 rewritten for six levels (lattice, rooms, districts, guide coverage, landmarks, armor, far spawns, the arena
+  door), TEST 7 lizardman, TEST 8 the door opens, TEST 14 the structure (lives, armor math, passed-only roll, weapons, the way
+  on): 545,042 green. lab-smoke, smoke, draw-check ok. Pane (silent, nolock): level 1's hall with the statue, the KEY sign
+  over the passage with the chevrons and the well down the hall, the suit, the HUD; the death card "SHIVVED BY A RATLING WITH
+  A SHIV · 2 LIVES LEFT"; THE THREE DOORS; the boss killed me with passed knives; the lab's lizardman.
+- GOTCHA: `slim_models.py` keys on the MODELS ROOT — a creature dir passed directly is treated as textured props and its clips
+  come back skinned (the lizardman sat at 82 MB). Run it on a scratch root with `<creature>/` inside (it also re-exports every
+  file it touches: the first, wrong pass re-wrote ~100 already-slim clips of brute / cultist / ratling / stalker byte-different
+  but content-identical; they show as modified in git and are NOT staged — `git checkout` them or commit them, James's call).
+- Meshy: 1,979 → 1,332 (647 cr: concepts 18, take-one model 30, take two 35, lizardman clips 87, moves 102, weapons 105,
+  armor 30, landmarks 240). Tags: core 23, sound 23, world 63, lab.js 105, render3d 82; PLAY storage key v3.
+- NOT DONE / HIS EYES: the weapon in the hand mid-swing; the sign text sizes; the arena's tier; his read of the whole thing.
+
 ## 2026-09-11 — Claude (Fable 5.1) — the third review night: the clip deck, the cow's legs, the hornets
 
 James in the lab, the watcher armed, every note acted on without asking:
