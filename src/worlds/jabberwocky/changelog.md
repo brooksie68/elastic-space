@@ -3,6 +3,25 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-12 — Claude (Fable 5.1) — THE CORNER MAP, rebuilt
+
+James flew the structure ("Very fun. What a great improvement… I love the wider world. It feels so much nicer to move
+around in") and named what was missing: a clearly marked exit on the map — "I can see some colored dots, but I have no idea
+what this is… rethink the map completely. Modernize the map. Make the map look like what the world really looks like in
+miniature… don't make it so 8-bit… a few little text labels… bad guys as little moving red dots or different shades of red."
+- `drawMap` in world.js rewritten: a round dark dish (270 px, canvas 540) with you at the centre and the map turning so ahead is
+  up; the floor you have seen painted in each wing's district colour (`R.themes`, rooms a touch brighter), the walls as
+  lines round the space you know, the landmarks as little squares, the route you are on (key leg, then door leg) as dots
+  through what you have seen; KEY and EXIT (EXIT · LOCKED red until the key, green after; EXIT · HIS in the arena) labelled
+  and ALWAYS on the map, pinned to the rim with an arrow when off it; ODD DOOR / A WAY OUT and THE HALL labelled when seen;
+  pies tan, armor blue; the bad guys red dots within twelve cells on known floor, a shade per kind (`GOON_INK`: lizardman
+  red, brute dark red, ratling coral, cultist crimson-pink, stalker maroon), the Jabberwock ringed; a white arrow with a soft
+  view cone for you; a legend under the map (you · key · exit · bad guys · pie · armor). Labels never sit on one another
+  and stay inside the canvas. Reveal radius 7 → 9.
+- Also: drift doors now pick from at least eight candidates before spreading (a seed had all three two cells apart; min
+  separation over 240 mazes is 3 now); the "Damage to you ×" dial at 0 is really none (`|| 1` had made it full).
+- Tags: world 64, render3d 83, core 24. Sim 545,042 green. Pane: the hall from the inside with the map at both sizes.
+
 ## 2026-09-11 (late) — Claude (Fable 5.1) — THE STRUCTURE: open mazes, districts, the guide, lives, armor, the lizardman, weapons, the moves
 
 James's brief ("time to work on the structure"): four levels, a boss, then a room with three doors out; three lives; he hates

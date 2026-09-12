@@ -80,7 +80,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
   server-written — SERVER RESTART NEEDED for new verdicts to rewrite it), the LIZARDMAN for the ghoul (take two rigged),
   seven Meshy weapons in the goons' hands (dropped at death), his eighteen moves (4 deaths everyone, attack subsets per
   creature). 647 cr (balance 1,332). Sim 545,042 green. Read the world CLAUDE.md THE STRUCTURE section + changelog first.
-  AWAITING HIS FLIGHT; ~100 already-slim clips show as modified in git (byte re-export, same content, unstaged — his call).
+  HE FLEW IT ("Very fun. What a great improvement… I love the wider world") → THE CORNER MAP REBUILT 2026-09-12 on his brief
+  (a miniature: wings in colour, wall lines, KEY / EXIT always labelled, red bad guys by kind, a legend). AWAITING HIS READ of the map;
+  ~100 already-slim clips show as modified in git (byte re-export, same content, unstaged — his call).
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
   (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
   note off, World Ideas #64 → live, draft status → built).

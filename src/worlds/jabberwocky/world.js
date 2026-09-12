@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=82';
+import { createRenderer, S } from './render3d.js?v=83';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -304,43 +304,124 @@ function syncHud(force) {
 
 // ---- the corner map ----------------------------------------------------------------------------------------
 const mm = $('minimap'), mctx = mm.getContext('2d');
+// THE CORNER MAP, rebuilt 2026-09-12 (James: "rethink the map completely… modernize… look like what the world really looks like
+// in miniature… don't make it so 8-bit… a few little text labels… bad guys as little moving red dots"). The world in
+// miniature: you sit at the centre and the map turns so ahead is up; the floor you have seen is painted in each wing's own
+// light colour (rooms a touch brighter), the walls are drawn as lines round the space you know, the landmarks are little
+// squares, the route you are on is a dotted line through what you have seen. KEY and EXIT are always on the map, labelled,
+// pinned to the rim with a little arrow when they are off it. The bad guys are red dots in five shades (see GOON_INK), the
+// Jabberwock a ringed one. Pies tan, armor blue, the odd doors cyan. A legend sits under the map.
+const GOON_INK = { lizardman: '#ff3a3a', brute: '#c8141c', ratling: '#ff8c6a', cultist: '#e8308c', stalker: '#8c0a34', jabberwock: '#ff2040' };
+const MAP_CS = 19;   // device pixels per cell (the canvas is 2× its CSS size)
 function drawMap() {
-  if (!play.map) { mm.classList.add('off'); return; }
-  mm.classList.remove('off');
+  if (!play.map) { mm.classList.add('off'); $('map-legend').classList.add('off'); return; }
+  mm.classList.remove('off'); $('map-legend').classList.remove('off');
   const L = state.level, p = state.player;
   if (seenLevel !== L) { seen = new Set(); seenLevel = L; }
-  // reveal: every open cell within seven of you that you can actually see, plus the walls around it
-  const px = Math.floor(p.x), py = Math.floor(p.y), RV = 7;
+  // reveal: every open cell within nine of you that you can actually see, plus the walls around it
+  const px = Math.floor(p.x), py = Math.floor(p.y), RV = 9;
   const mark = (x, y) => { if (x >= 0 && y >= 0 && x < L.w && y < L.h) seen.add(y * L.w + x); };
   for (let dy = -RV; dy <= RV; dy++) for (let dx = -RV; dx <= RV; dx++) {
     const x = px + dx, y = py + dy;
     if (x < 0 || y < 0 || x >= L.w || y >= L.h) continue;
     const i = y * L.w + x;
-    if (L.map[i] !== C.CELL.OPEN && !(dx === 0 && dy === 0)) continue;
+    if (L.map[i] !== C.CELL.OPEN && L.map[i] !== C.CELL.PROP && !(dx === 0 && dy === 0)) continue;
     if ((dx || dy) && !C.lineOfSight(state, p.x, p.y, x + 0.5, y + 0.5)) continue;
     for (let ny = -1; ny <= 1; ny++) for (let nx = -1; nx <= 1; nx++) mark(x + nx, y + ny);
   }
-  const size = mm.width, cs = Math.floor(size / Math.max(L.w, L.h));
-  const ox = (size - cs * L.w) / 2, oy = (size - cs * L.h) / 2;
-  mctx.setTransform(1, 0, 0, 1, 0, 0);
-  mctx.clearRect(0, 0, size, size);
-  mctx.fillStyle = 'rgba(8,5,10,0.8)'; mctx.fillRect(0, 0, size, size);
-  mctx.setTransform(-1, 0, 0, -1, size, size);   // rotate the map 180°: forward is up AND left stays left (a Y-only flip mirrored it)
-  for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) {
+  const size = mm.width, cs = MAP_CS, cx = size / 2, cy = size * 0.56, RAD = size / 2 - 14;
+  const themes = R.themes || [], th = themes[L.theme] || themes[0] || { districts: [{ light: 0xffa040 }] };
+  const tint = (i) => { const d = L.district ? L.district[i] : 0; const D = th.districts[((d % th.districts.length) + th.districts.length) % th.districts.length] || th.districts[0]; return D.light; };
+  const hex = (n, a) => `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  const ctx = mctx;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  // the dish: a dark round glass
+  ctx.beginPath(); ctx.arc(cx, cy, RAD + 8, 0, TAU); ctx.fillStyle = 'rgba(10,6,12,0.78)'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.stroke();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, RAD, 0, TAU); ctx.clip();
+  const rot = -(p.a + Math.PI / 2);   // ahead is up
+  const toMap = (wx, wy) => { const dx = (wx - p.x) * cs, dy = (wy - p.y) * cs; const c = Math.cos(rot), s = Math.sin(rot); return [cx + dx * c - dy * s, cy + dx * s + dy * c]; };
+  ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-p.x * cs, -p.y * cs);
+  const isOpen = (x, y) => x >= 0 && y >= 0 && x < L.w && y < L.h && (L.map[y * L.w + x] === C.CELL.OPEN || L.map[y * L.w + x] === C.CELL.PROP);
+  // the floor you have seen, in the wing's colour; rooms a touch brighter
+  const x0 = Math.max(0, px - 16), x1 = Math.min(L.w - 1, px + 16), y0 = Math.max(0, py - 16), y1 = Math.min(L.h - 1, py + 16);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const i = y * L.w + x;
-    if (!seen.has(i)) continue;
-    const v = L.map[i];
-    if (v === C.CELL.OPEN) mctx.fillStyle = 'rgba(244,236,242,0.18)';
-    else if (v === C.CELL.DOOR) mctx.fillStyle = state.doorOpen ? '#58ff7a' : '#ff2040';
-    else if (v === C.CELL.DRIFT) mctx.fillStyle = '#7fd7ff';
-    else mctx.fillStyle = 'rgba(255,47,184,0.55)';
-    mctx.fillRect(ox + x * cs, oy + y * cs, cs, cs);
+    if (!seen.has(i) || !isOpen(x, y)) continue;
+    const room = L.tall && L.tall[i];
+    ctx.fillStyle = hex(tint(i), room ? 0.34 : 0.22);
+    ctx.fillRect(x * cs, y * cs, cs + 0.5, cs + 0.5);
+    if (L.map[i] === C.CELL.PROP) { ctx.fillStyle = 'rgba(244,236,242,0.55)'; ctx.fillRect(x * cs + cs * 0.3, y * cs + cs * 0.3, cs * 0.4, cs * 0.4); }
   }
-  if (state.key && !state.key.held && seen.has(Math.floor(state.key.y) * L.w + Math.floor(state.key.x))) { mctx.fillStyle = '#ffd23a'; mctx.beginPath(); mctx.arc(ox + state.key.x * cs, oy + state.key.y * cs, cs * 0.35, 0, TAU); mctx.fill(); }
-  for (const h of state.heals || []) { if (h.taken || !seen.has(Math.floor(h.y) * L.w + Math.floor(h.x))) continue; mctx.fillStyle = '#ff5a3a'; mctx.beginPath(); mctx.arc(ox + h.x * cs, oy + h.y * cs, cs * 0.3, 0, TAU); mctx.fill(); }
-  for (const g of state.goons) { if (g.state === 'dead' || !seen.has(Math.floor(g.y) * L.w + Math.floor(g.x))) continue; if (Math.hypot(g.x - p.x, g.y - p.y) > 3) continue; mctx.fillStyle = g.isBoss ? '#ff2040' : '#f4ecf2'; mctx.beginPath(); mctx.arc(ox + g.x * cs, oy + g.y * cs, cs * 0.3, 0, TAU); mctx.fill(); }
-  mctx.save(); mctx.translate(ox + p.x * cs, oy + p.y * cs); mctx.rotate(p.a);
-  mctx.fillStyle = '#ffd23a'; mctx.beginPath(); mctx.moveTo(cs * 0.7, 0); mctx.lineTo(-cs * 0.4, -cs * 0.4); mctx.lineTo(-cs * 0.4, cs * 0.4); mctx.closePath(); mctx.fill(); mctx.restore();
+  // the walls: lines round the space you know
+  ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(244,236,242,0.55)';
+  ctx.beginPath();
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const i = y * L.w + x;
+    if (!seen.has(i) || !isOpen(x, y)) continue;
+    const X = x * cs, Y = y * cs;
+    const solid = (nx, ny) => { const v = nx < 0 || ny < 0 || nx >= L.w || ny >= L.h ? C.CELL.WALL_A : L.map[ny * L.w + nx]; return v !== C.CELL.OPEN && v !== C.CELL.PROP && v !== C.CELL.DOOR && v !== C.CELL.DRIFT; };
+    if (solid(x, y - 1)) { ctx.moveTo(X, Y); ctx.lineTo(X + cs, Y); }
+    if (solid(x, y + 1)) { ctx.moveTo(X, Y + cs); ctx.lineTo(X + cs, Y + cs); }
+    if (solid(x - 1, y)) { ctx.moveTo(X, Y); ctx.lineTo(X, Y + cs); }
+    if (solid(x + 1, y)) { ctx.moveTo(X + cs, Y); ctx.lineTo(X + cs, Y + cs); }
+  }
+  ctx.stroke();
+  // the route you are on, through what you have seen: dots along the active leg
+  if (L.guide) {
+    const leg = state.key && !state.key.held ? L.guide.toKey : L.guide.toDoor;
+    ctx.fillStyle = state.key && !state.key.held ? 'rgba(255,210,58,0.7)' : 'rgba(88,255,122,0.7)';
+    for (let k = 0; k < leg.length; k += 2) { const c = leg[k]; if (!seen.has(c)) continue; const x = c % L.w, y = (c - x) / L.w; ctx.beginPath(); ctx.arc(x * cs + cs / 2, y * cs + cs / 2, 2.2, 0, TAU); ctx.fill(); }
+  }
+  // doors you have seen: the exit (red shut, green open), the odd doors cyan
+  const doorRect = (d, col) => { ctx.fillStyle = col; const dx = d.cx != null ? d.cx - d.x : 0, dy = d.cy != null ? d.cy - d.y : 0; ctx.fillRect(d.x * cs + (dx > 0 ? cs * 0.55 : dx < 0 ? 0 : cs * 0.1), d.y * cs + (dy > 0 ? cs * 0.55 : dy < 0 ? 0 : cs * 0.1), dx ? cs * 0.45 : cs * 0.8, dy ? cs * 0.45 : cs * 0.8); };
+  for (const d of L.driftDoors) if (seen.has(d.y * L.w + d.x)) doorRect(d, '#7fd7ff');
+  if (L.door) doorRect(L.door, state.doorOpen ? '#58ff7a' : '#ff2040');
+  // pies and armor you have seen
+  for (const h of state.heals || []) { if (h.taken || !seen.has(Math.floor(h.y) * L.w + Math.floor(h.x))) continue; ctx.fillStyle = '#e0a060'; ctx.beginPath(); ctx.arc(h.x * cs, h.y * cs, 4.2, 0, TAU); ctx.fill(); }
+  for (const a of state.armors || []) { if (a.taken || !seen.has(Math.floor(a.y) * L.w + Math.floor(a.x))) continue; ctx.fillStyle = '#8fb8ff'; ctx.beginPath(); ctx.arc(a.x * cs, a.y * cs, a.kind === 'plate' ? 5.4 : 4, 0, TAU); ctx.fill(); }
+  // the bad guys: red dots, a shade per kind, within twelve cells on floor you know; the Jabberwock ringed
+  for (const g of state.goons) {
+    if (g.state === 'dead' || g.state === 'dying') continue;
+    if (Math.hypot(g.x - p.x, g.y - p.y) > 12 || !seen.has(Math.floor(g.y) * L.w + Math.floor(g.x))) continue;
+    ctx.fillStyle = GOON_INK[g.type] || '#ff3a3a';
+    ctx.beginPath(); ctx.arc(g.x * cs, g.y * cs, g.isBoss ? 7 : 5, 0, TAU); ctx.fill();
+    if (g.isBoss) { ctx.strokeStyle = '#ff2040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x * cs, g.y * cs, 10, 0, TAU); ctx.stroke(); }
+  }
+  ctx.restore();
+  // you: an arrow at the centre, always pointing up, with a soft view cone
+  ctx.save(); ctx.translate(cx, cy);
+  const cone = ctx.createRadialGradient(0, 0, 4, 0, 0, 70); cone.addColorStop(0, 'rgba(255,255,255,0.16)'); cone.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = cone; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 70, -Math.PI / 2 - 0.55, -Math.PI / 2 + 0.55); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(8, 8); ctx.lineTo(0, 4); ctx.lineTo(-8, 8); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // the labels, upright: KEY and EXIT always (pinned to the rim with an arrow when off the map), the odd doors when seen
+  const placed = [];   // labels never sit on one another: a later one that would lands nowhere (the always-on ones win)
+  const label = (wx, wy, text, col, always) => {
+    let [mx, my] = toMap(wx, wy);
+    const dx = mx - cx, dy = my - cy, d = Math.hypot(dx, dy);
+    let pinned = false;
+    if (d > RAD - 12) { if (!always) return; mx = cx + dx / d * (RAD - 12); my = cy + dy / d * (RAD - 12); pinned = true; }
+    if (!always && placed.some(([qx, qy]) => Math.abs(qx - mx) < 70 && Math.abs(qy - my) < 26)) return;
+    placed.push([mx, my]);
+    ctx.save(); ctx.translate(mx, my);
+    if (pinned) { ctx.save(); ctx.rotate(Math.atan2(dy, dx)); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(2, -5); ctx.lineTo(2, 5); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    else { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(0, 0, 5, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+    ctx.font = '800 21px ' + getComputedStyle(document.body).fontFamily;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    const ty = pinned ? (dy < 0 ? 9 : -27) : 8;
+    const tw = ctx.measureText(text).width, tx = Math.max(12 + tw / 2, Math.min(size - 12 - tw / 2, mx)) - mx;   // the words stay inside the canvas
+    ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText(text, tx, ty);
+    ctx.fillStyle = col; ctx.fillText(text, tx, ty);
+    ctx.restore();
+  };
+  if (state.key && !state.key.held && L.key) label(L.key.x, L.key.y, 'KEY', '#ffd23a', true);
+  if (L.door) label(L.door.x + 0.5, L.door.y + 0.5, state.doorOpen ? 'EXIT' : (L.n === 5 ? 'EXIT · HIS' : 'EXIT · LOCKED'), state.doorOpen ? '#58ff7a' : '#ff6a7a', true);
+  L.driftDoors.forEach((d) => { if (seen.has(d.y * L.w + d.x)) label(d.x + 0.5, d.y + 0.5, L.exit ? 'A WAY OUT' : 'ODD DOOR', '#7fd7ff', false); });
+  for (const r of L.rooms || []) if (r.hall) { const i = (r.y + Math.floor(r.h / 2)) * L.w + r.x + Math.floor(r.w / 2); if (seen.has(i)) label(r.x + r.w / 2, r.y + r.h / 2, 'THE HALL', 'rgba(244,236,242,0.75)', false); }
 }
 
 // ---- overlays (a 2D canvas over the WebGL frame) ------------------------------------------------------------

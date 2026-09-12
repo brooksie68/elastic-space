@@ -319,7 +319,7 @@
     if (p1.length) { const c = p1[Math.min(2, p1.length - 1)]; level.spawn.a = Math.atan2((Math.floor(c / w) + 0.5) - 1.5, (c % w) + 0.5 - 1.5); }
     // drift doors: three boundary walls next to cells off the critical path, spread apart (strict first, then relaxed)
     let cands = [];
-    for (let relax = 0; relax < 4 && cands.length < 3; relax++) {
+    for (let relax = 0; relax < 4 && cands.length < 8; relax++) {   // keep relaxing until there is real choice, so the three spread out (2026-09-12: a seed put all three two cells apart)
       cands = [];
       for (const [x, y] of open) {
         if (relax < 2 && crit.has(at(x, y))) continue;
@@ -921,7 +921,7 @@
   function hurtPlayer(state, gag, source) {
     const p = state.player;
     if (state.phase !== 'play') return;
-    const dmg = (gag.dmg != null ? gag.dmg : TIER_PLAYER_DMG[gag.tier] || 0) * (state.opts.damageMul || 1);
+    const dmg = (gag.dmg != null ? gag.dmg : TIER_PLAYER_DMG[gag.tier] || 0) * (state.opts.damageMul == null ? 1 : state.opts.damageMul);   // 0 means none (the dial goes to 0; `|| 1` made it full)
     if (dmg <= 0) { state.events.push({ type: 'graze', gag, source }); return; }
     // armor takes two thirds of any hit while it lasts (2026-09-11)
     let absorbed = 0;

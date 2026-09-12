@@ -34,6 +34,9 @@ Meshy creatures, PG-13 cartoon gore.
 - THE LIZARDMAN is the common goon (the ghoul is out of the mixes and the lab; its files go at ship). Its pipeline:
   `tmp/jabberwocky/lizardman.mjs concept | model | clips` then `moves.mjs lizardman`; take one (tail, turned head) was refused
   by the rigger — keep creature concepts A-pose, front-on, tailless.
+- THE CORNER MAP (2026-09-12, his "modernize the map"): `drawMap` in world.js — the world in miniature, you at the centre,
+  ahead up, wings in their district colours, walls as lines, KEY / EXIT always labelled (pinned to the rim when off the map),
+  bad guys red by kind (`GOON_INK`), a legend under it. Never back to blocks; keep the exit marked at all times.
 - `slim_models.py` wants the MODELS ROOT (or a scratch root with `<creature>/` dirs inside): a creature dir passed directly is
   treated as props and its clips stay skinned. It re-exports everything it touches.
 
