@@ -57,6 +57,11 @@ SHOT DOWN; floats for the launch / decoy / shield down / hull cracked; the pink 
 threat icon (`#sam-tag`); the warning sound. The tank half's own entry is in
 `tank/changelog.md` (the route, the map, the new enemies, the base, the pickups).
 
+Later the same night, his first note ("dope"): "put the option to take off or use the
+accelerator to every launch pad" — the level-3 gate on lift-off is gone: every landing's card
+offers LAUNCH or LIFT OFF, in every level and in free flight (core `newAttempt` takes the ask
+anywhere; sim TEST 16 proves it on level 1 and in free mode; 307,482 green).
+
 AWAITING JAMES'S FLIGHT of all of it: the levels' pacing, the SAMs' feel (speed, corrections,
 chaff), the base fight, lift-off on level 3, the 0.75× view; then the tank's road.
 

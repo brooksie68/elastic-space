@@ -86,7 +86,7 @@ const MESSAGES = {
 const LEVEL_BRIEF = {
   1: 'LEVEL 1 — DESTROY THE THREE HOSTILES IN THE STRETCH, THEN LAND ON THE RELAY',
   2: 'LEVEL 2 — FOUR HOSTILES, TWO OF THEM SAM SITES. THE RELAY ENDS IT',
-  3: 'LEVEL 3 — FIVE HOSTILES, THEN THE BASE AT THE FAR END: TWO LASER SHOTS FOR ITS SHIELD, TWO MISSILES FOR ITS HULL. PADS EVERYWHERE — LIFT OFF FROM ANY OF THEM',
+  3: 'LEVEL 3 — FIVE HOSTILES, THEN THE BASE AT THE FAR END: TWO LASER SHOTS FOR ITS SHIELD, TWO MISSILES FOR ITS HULL. PADS EVERYWHERE',
 };
 
 // ---- helpers -------------------------------------------------------------------
@@ -309,7 +309,7 @@ try {
   if (m.mode === 'free') gameMode = 'free';
   if (m.kind === 'tanks') freeKind = 'tanks';
 } catch (e) {}
-const KEYS_LINE = '<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · C CHAFF · X ABORTS';
+const KEYS_LINE = '<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · C CHAFF · X ABORTS · AFTER A LANDING: LAUNCH OR LIFT OFF';
 const BRIEF = {
   lander: 'FREE FLIGHT — THE ENDLESS MOON, NO GOAL BUT THE SCORE' + KEYS_LINE,
   tanks: 'FREE ROLL — CLIMB INTO THE LUNAR TANK<br />W S DRIVE · A D TURN · MOUSE LOOKS · CLICK FIRES · RIGHT CLICK IS THE LASER · M IS THE MAP',
@@ -567,10 +567,9 @@ function showResult(result) {
   else if (result.campaignDone) { rt.textContent = 'CLIMB OUT AND INTO THE TANK. THE SCORE COMES WITH YOU.'; rt.className = 'line tech earned'; }
   else { rt.textContent = ''; rt.className = 'line tech'; }
   $('btn-next').textContent = state.phase === 'over' ? 'GAME OVER' : result.campaignDone ? 'CLIMB OUT' : result.levelDone ? 'NEXT LEVEL' : (!isCrash && result.pad) ? 'LAUNCH' : 'NEXT FLIGHT';
-  // level 3: lift straight off the pad on your own fuel, or ride the accelerator
-  const L = Core.levelDef(state);
+  // every pad (James, 2026-09-11): lift straight off on your own fuel, or ride the accelerator
   const lift = $('btn-lift');
-  lift.style.display = (!isCrash && result.pad && !result.levelDone && L && L.liftoff && !state.free && state.phase !== 'over') ? '' : 'none';
+  lift.style.display = (!isCrash && result.pad && !result.levelDone && state.phase !== 'over') ? '' : 'none';
   // the ways out this card can offer
   exitPending = null;
   const ex = $('btn-exit'), exNote = $('r-exit');

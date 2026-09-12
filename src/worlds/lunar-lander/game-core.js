@@ -119,13 +119,12 @@
   // SAM sites reload faster each level, and the last chunk of every stretch
   // carries the GATE pad (a relay tower) that ends the level once the stretch
   // is clear. Level 3 is the big one: every chunk deals rich, every pad
-  // carries a supply, lift-off from a pad is allowed (the only place), the
-  // wide view sits at 0.75×, and THE BASE stands at the far right with the
+  // carries a supply, the wide view sits at 0.75×, and THE BASE stands at the far right with the
   // gate pad beside it. Chunks past the last level roll the endless way.
   const LEVELS = [null,
     { name: 'LEVEL 1', chunks: [1, 4],   targets: 3, sams: 1, hard: 0, samReload: 9, wide: 1 },
     { name: 'LEVEL 2', chunks: [5, 9],   targets: 4, sams: 2, hard: 1, samReload: 7, wide: 1 },
-    { name: 'LEVEL 3', chunks: [10, 17], targets: 5, sams: 3, hard: 1, samReload: 5, wide: 0.75, big: true, liftoff: true, base: true },
+    { name: 'LEVEL 3', chunks: [10, 17], targets: 5, sams: 3, hard: 1, samReload: 5, wide: 0.75, big: true, base: true },
   ];
   const LEVEL_CHUNKS = LEVELS[1].chunks[1];   // kept for older callers: level 1's last chunk
   const SUPPLY_CYCLE = ['missiles', 'laser', 'missiles', 'chaff', 'laser'];   // level 3: every pad carries one, in this order (missiles favoured, the base needs two and two)
@@ -1018,8 +1017,9 @@
   // it and the phase is 'launch' — the shell plays the accelerator sequence
   // and calls launchFire(). After a crash (or the secret flat) the ship drops
   // in from above where it ended. The very first flight is the classic spawn.
-  // opts.liftoff (level 3 only): the ship stays on the pad under its own
-  // power and the pilot burns off it — no accelerator, fuel spent.
+  // opts.liftoff (James, 2026-09-11: "every launch pad"): the ship stays on the pad
+  // under its own power and the pilot burns off it — no accelerator, fuel spent.
+  // Offered after every landing, in every level and in free flight.
   function newAttempt(state, opts) {
     if (state.phase === 'over') return false;
     const last = state.result;
@@ -1034,8 +1034,7 @@
     if (last && last.kind !== 'crash' && last.pad) {
       const pad = findPad(state, last.pad.id);
       ship.x = last.x; ship.y = pad.y - SHIP.footL[1]; ship.vx = 0; ship.vy = 0;
-      const L = levelDef(state);
-      if (opts && opts.liftoff && L && L.liftoff && !state.free) {
+      if (opts && opts.liftoff) {
         ship.grounded = { padId: pad.id, y: pad.y };
         state.phase = 'flying';
       } else {

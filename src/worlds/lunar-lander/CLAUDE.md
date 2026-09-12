@@ -127,8 +127,7 @@ AWAITING JAMES'S FLIGHT.** Read `changelog.md` 2026-09-11 and
    7 / 5 s. The GATE pad (`pad.gate`, the rightmost pad of the last chunk, a
    relay tower) ends the level once the stretch is clear; `advanceLevel`
    moves the goal east. Level 3 is BIG: rich deals, a supply on every pad
-   (`SUPPLY_CYCLE`), LIFT OFF from any pad (`ship.grounded`, the only place),
-   the wide view at 0.75×, and THE BASE at the far right of chunk 17 (kind
+   (`SUPPLY_CYCLE`), the wide view at 0.75×, and THE BASE at the far right of chunk 17 (kind
    `base`: two laser shots for the shield, then two missiles for the hull,
    2,000 points, two SAM rails). Chunks past 17 roll the endless way.
 2. **Hostile fire is live** (`stepSams` / `stepThreats`, `state.threats`):
@@ -143,7 +142,11 @@ AWAITING JAMES'S FLIGHT.** Read `changelog.md` 2026-09-11 and
    START OVER while one stands.
 4. Sim: `node tmp/lunar-lander/sim.mjs` — 307,479 green (TEST 16 is the
    levels, the base, lift-off, hostile fire). The smoke page is regenerated.
-5. The tank half: `tank/CLAUDE.md` START HERE.
+5. **LIFT OFF is on every pad** (James, later the same night: "put the option to take
+   off or use the accelerator to every launch pad") — every landing's card offers
+   LAUNCH (the accelerator, free) or LIFT OFF (`newAttempt(state, { liftoff: true })`,
+   `ship.grounded`, your own fuel), in every level and in free flight.
+6. The tank half: `tank/CLAUDE.md` START HERE.
 
 His flight decides everything from here: the levels' pacing, the SAMs' feel,
 the base fight, lift-off, the 0.75× view, then the tank's road. The rest of
