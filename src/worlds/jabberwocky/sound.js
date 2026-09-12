@@ -70,8 +70,8 @@
     osc.start(t0); osc.stop(t0 + o.dur + 0.05);
   }
   function out(g, pan) {
-    if (pan != null && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(sfxGain); }
-    else g.connect(sfxGain);
+    if (pan != null && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(sfxGain); return p; }
+    g.connect(sfxGain); return null;
   }
   // a voice: saw through two formant bandpasses. o: { f, f2, dur, formants [f1,f2], gain, vib }
   function voice(o) {
@@ -311,10 +311,22 @@
     crunch: 'crunch', boing: 'boing', wallsplat: 'wallsplat', batterup: 'batterup', punch: 'punch', gasss: 'gasss', sand: 'grainofsand', eagleattack: 'eagleattack',   /* grainofsand + eagleattack: James's own files (2026-09-08) */   // batterup = ElevenLabs TTS (Harry); punch = James's own file (the fist), 2026-09-08
     flame: 'burn', lava: 'burn', nitrogen: 'freeze', hose: 'glue', jello: 'glue', gravy: 'glue', crash: 'explosion', catbag: 'yowl',
   };
-  const NOTICE = { ghoul: 'ghoul', brute: 'brute', ratling: 'ratling', cultist: 'cultist', stalker: 'stalker', jabberwock: 'bossroar' };
+  const NOTICE = { ghoul: 'ghoul', brute: 'brute', ratling: 'ratling', flayed: 'flayed', cultist: 'cultist', stalker: 'stalker', jabberwock: 'bossroar' };   // flayed: a wet skinless shriek (2026-09-12)
   const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'icecrack', glue: 'glue', burn: 'burnttoast',   /* burnttoast: James's own file for a creature dying by fire, 2026-09-08 */ fling: 'boing', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue', vapor: 'vapor' };
   const available = new Set();
   let preflighted = false;
+  // THE SOUND LEAK (James 2026-09-12: 'as the game progresses it gets choppier and choppier until… it cut out fully on level 3
+  // and never returned'): every one-shot used to make a NEW media element with a permanent graph node, and the preflight
+  // opened a media player per file just to probe it; the browser caps live media players (~75), so the mix choked and then
+  // refused. Now every file is fetched and DECODED ONCE into an AudioBuffer (buffers) and each play is a buffer source that
+  // frees itself when it ends. fetch is blocked under file://, so that path keeps media elements — but POOLED (a few per
+  // name, reused, one graph node each) instead of one per play.
+  const buffers = {};
+  let useElements = false;
+  function decodeFile(name) {
+    return fetch(SFX_DIR + name + '.mp3').then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.arrayBuffer(); })
+      .then((ab) => ctx.decodeAudioData(ab)).then((buf) => { buffers[name] = buf; available.add(name); return true; });
+  }
   function preflight() {
     if (preflighted) return; preflighted = true;
     const names = new Set();
@@ -322,22 +334,47 @@
     for (const v of Object.values(NOTICE)) names.add(v);
     for (const v of Object.values(OUT_FILES)) names.add(v);
     const T = globalThis.JABBERWOCKY_GAGS; if (T) for (const g of T.GAGS) if (g.deathSound) names.add(g.deathSound);   // per-gag death sounds (the hole, 2026-09-10)
-    for (const n of names) {
-      const a = new Audio(); a.preload = 'auto';
-      a.addEventListener('canplaythrough', () => available.add(n), { once: true });
-      a.src = SFX_DIR + n + '.mp3';
-      probeSeries(n, 1);
-    }
+    if (useElements || typeof fetch !== 'function' || /^file:/.test(SFX_DIR)) { useElements = true; for (const n of names) { probeElement(n); probeSeries(n, 1); } return; }
+    for (const n of names) decodeFile(n).then(() => probeSeries(n, 1)).catch(() => {});
+  }
+  // the file:// fallback: one probing element per name (its player is released once the check is done)
+  function probeElement(n) {
+    const a = new Audio(); a.preload = 'auto';
+    a.addEventListener('canplaythrough', () => { available.add(n); a.src = ''; }, { once: true });
+    a.addEventListener('error', () => {}, { once: true });
+    a.src = SFX_DIR + n + '.mp3';
   }
   // NUMBERED SETS (James 2026-09-08): drop <name>-01.mp3, <name>-02.mp3 … beside any one-shot and every play of <name>
   // plays the next one in turn (01, 02, … then round again). Found by counting up from 01 until a number is missing, so keep them contiguous.
   const series = {}, seriesAt = {};
   function probeSeries(name, i) {
     const id = name + '-' + String(i).padStart(2, '0');
+    const found = () => { (series[name] = series[name] || []).push(id); available.add(id); probeSeries(name, i + 1); };
+    if (!useElements) { decodeFile(id).then(found).catch(() => {}); return; }
     const a = new Audio(); a.preload = 'auto';
-    a.addEventListener('canplaythrough', () => { (series[name] = series[name] || []).push(id); available.add(id); probeSeries(name, i + 1); }, { once: true });
+    a.addEventListener('canplaythrough', () => { a.src = ''; found(); }, { once: true });
     a.addEventListener('error', () => {}, { once: true });
     a.src = SFX_DIR + id + '.mp3';
+  }
+  // the element pool (file:// only): up to three per name, each with ONE source node; a play re-uses a quiet one
+  const pool = {};
+  // the voice count is by TIME (a source is live until its buffer has played out), never by a callback — a callback that
+  // never came would have muted the game for good
+  let voices = [];
+  const MAX_VOICES = 40;   // more one-shots than this at once is noise anyway; the rest are dropped, never piled up
+  function liveVoiceCount() { const t = ctx ? ctx.currentTime : 0; if (voices.length) voices = voices.filter((v) => v > t); return voices.length; }
+  function pooledElement(name, loop) {
+    const key = (loop ? 'loop:' : '') + name;
+    const list = pool[key] || (pool[key] = []);
+    let e = list.find((x) => x.a.paused || x.a.ended);
+    if (!e && list.length < 3) {
+      const a = new Audio(SFX_DIR + name + '.mp3'); a.loop = !!loop;
+      e = { a, g: null, p: null };
+      try { const src = ctx.createMediaElementSource(a); e.g = ctx.createGain(); src.connect(e.g); if (ctx.createStereoPanner) { e.p = ctx.createStereoPanner(); e.g.connect(e.p); e.p.connect(sfxGain); } else e.g.connect(sfxGain); } catch (err) { a.volume = volume; }
+      list.push(e);
+    }
+    if (!e) { e = list[0]; }   // all three busy: the oldest starts over
+    return e;
   }
   const FILE_GAIN = { batterup: 2.6 };
   // a medium room on a few files (James 2026-09-10, the purse: 'a little reverb… like a medium room'): a short noise-tail convolver, mixed low
@@ -348,19 +385,42 @@
     const base = name;
     if (series[name] && series[name].length) { const k = (seriesAt[name] = ((seriesAt[name] || 0) % series[name].length) + 1); name = series[name][k - 1]; }   // in succession, never the same twice running (James 2026-09-10, the hole)
     if (!available.has(name)) return false;
-    const a = new Audio(SFX_DIR + name + '.mp3');
-    try { const src = ctx.createMediaElementSource(a); const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); if (FILE_ROOM[base]) { const send = ctx.createGain(); send.gain.value = FILE_ROOM[base]; g.connect(send); send.connect(room()); } } catch (e) { a.volume = volume; }
-    a.play().catch(() => {});
+    if (liveVoiceCount() >= MAX_VOICES) return true;   // dropped, not doubled by the recipe
+    const buf = buffers[name];
+    if (buf) {
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g);
+      const p = out(g, pan);
+      let send = null;
+      if (FILE_ROOM[base]) { send = ctx.createGain(); send.gain.value = FILE_ROOM[base]; g.connect(send); send.connect(room()); }
+      voices.push(ctx.currentTime + (buf.duration || 1) + 0.1);
+      src.onended = () => { try { src.disconnect(); g.disconnect(); if (p) p.disconnect(); if (send) send.disconnect(); } catch (e) {} };
+      src.start();
+      return true;
+    }
+    const e = pooledElement(name, false);
+    if (e.g) { e.g.gain.value = FILE_GAIN[name] || 0.9; if (e.p) e.p.pan.value = Math.max(-1, Math.min(1, pan || 0)); }
+    try { e.a.currentTime = 0; } catch (err) {}
+    e.a.play().catch(() => {});
     return true;
   }
   // a file on a loop with a handle to stop it (the tornado: James's tornado.mp3 while it is on screen, 2026-09-10)
   function loopFile(name, pan) {
     if (!running || !ctx || !available.has(name)) return null;
-    const a = new Audio(SFX_DIR + name + '.mp3'); a.loop = true;
-    let g = null;
-    try { const src = ctx.createMediaElementSource(a); g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g); out(g, pan); } catch (e) { a.volume = volume; }
-    a.play().catch(() => {});
-    return { stop() { try { if (g) { g.gain.setTargetAtTime(0, ctx.currentTime, 0.12); setTimeout(() => { a.pause(); a.src = ''; }, 500); } else { a.pause(); a.src = ''; } } catch (e) {} } };
+    const buf = buffers[name];
+    if (buf) {
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const g = ctx.createGain(); g.gain.value = FILE_GAIN[name] || 0.9; src.connect(g);
+      const p = out(g, pan);
+      src.start();
+      let stopped = false;
+      return { stop() { if (stopped) return; stopped = true; try { g.gain.setTargetAtTime(0, ctx.currentTime, 0.12); src.stop(ctx.currentTime + 0.6); src.onended = () => { try { src.disconnect(); g.disconnect(); if (p) p.disconnect(); } catch (e) {} }; } catch (e) {} } };
+    }
+    const e = pooledElement(name, true);
+    if (e.g) { e.g.gain.value = FILE_GAIN[name] || 0.9; if (e.p) e.p.pan.value = Math.max(-1, Math.min(1, pan || 0)); }
+    try { e.a.currentTime = 0; } catch (err) {}
+    e.a.play().catch(() => {});
+    return { stop() { try { if (e.g) { e.g.gain.setTargetAtTime(0, ctx.currentTime, 0.12); setTimeout(() => { try { e.a.pause(); } catch (err) {} }, 500); } else e.a.pause(); } catch (err) {} } };
   }
   function play(id, pan, variant) {
     if (!running || !ctx) return;
@@ -377,21 +437,37 @@
     if (OUT_FILES[id] && playFile(OUT_FILES[id], pan)) return;
     const fn = O[id]; if (fn) { try { fn(pan); } catch (e) {} }
   }
-  // ---- music: a track James drops in as assets/audio/theme.mp3 (Suno), looped under everything ------------
+  // ---- music: a track per level, looped under everything (Suno, James's) --------------------------------------
+  // level 1 plays assets/audio/theme.mp3 (his track); level n plays assets/audio/theme-n.mp3 and is SILENT until he drops
+  // one in (James 2026-09-12: 'only play the music we have on level 1'). The host calls setLevel(n) on every level; a
+  // change fades the old track out over a second and starts the new one. A missing file just means no music there.
   let musicEl = null, musicGain = null, musicLevel = 0.22;   // low out of the box (James); the music slider on the speaker raises it
   let musicOn = true;   // the weapon lab turns it off entirely (setMusic(false)) — no element, no gain, nothing
+  let musicTrack = 'theme';
   function setMusic(on) { musicOn = !!on; if (!on) stopMusic(); }
+  function setLevel(n) {
+    const t = n === 1 || n === 'lab' ? 'theme' : 'theme-' + n;
+    if (t === musicTrack) return;
+    musicTrack = t;
+    if (musicEl) {
+      const old = musicEl, g = musicGain; musicEl = null; musicGain = null;
+      if (g && ctx) { g.gain.setTargetAtTime(0, ctx.currentTime, 0.3); setTimeout(() => { try { old.pause(); old.src = ''; g.disconnect(); } catch (e) {} }, 1200); }
+      else { try { old.pause(); old.src = ''; } catch (e) {} }
+    }
+    if (running) startMusic();
+  }
   function startMusic() {
     if (!musicOn || musicEl || !ctx) return;
-    musicEl = new Audio(scriptBase + 'assets/audio/theme.mp3'); musicEl.loop = true; musicEl.preload = 'auto';
-    musicEl.addEventListener('error', () => { musicEl = null; }, { once: true });
-    try { const src = ctx.createMediaElementSource(musicEl); musicGain = ctx.createGain(); musicGain.gain.value = musicLevel; src.connect(musicGain); musicGain.connect(comp); } catch (e) { musicEl.volume = musicLevel; }
-    musicEl.play().catch(() => {});
+    const el = new Audio(scriptBase + 'assets/audio/' + musicTrack + '.mp3'); el.loop = true; el.preload = 'auto';
+    musicEl = el;
+    el.addEventListener('error', () => { if (musicEl === el) { musicEl = null; musicGain = null; } }, { once: true });
+    try { const src = ctx.createMediaElementSource(el); musicGain = ctx.createGain(); musicGain.gain.value = musicLevel; src.connect(musicGain); musicGain.connect(comp); } catch (e) { el.volume = musicLevel; }
+    el.play().catch(() => {});
   }
   function stopMusic() { if (musicEl) { try { musicEl.pause(); } catch (e) {} } }
   function setMusicVolume(v) { musicLevel = v; if (musicGain && ctx) musicGain.gain.setTargetAtTime(v, ctx.currentTime, 0.05); else if (musicEl) musicEl.volume = v; }
   function reel(dur) { if (!running || !ctx) return; K.reel(dur); }
   function reveal(tier) { if (!running || !ctx) return; K.reveal(tier); }
 
-  globalThis.JabberwockySfx = { start, stop, setVolume, play, loopFile, outcome, reel, reveal, setBedLevel, setMusicVolume, setMusic, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; } };
+  globalThis.JabberwockySfx = { start, stop, setVolume, play, loopFile, outcome, reel, reveal, setBedLevel, setMusicVolume, setMusic, setLevel, get musicLevel() { return musicLevel; }, recipes: R, game: K, outcomes: O, files: FILES, get available() { return available; }, get running() { return running; }, get buffers() { return buffers; }, get liveVoices() { return liveVoiceCount(); }, get pool() { return pool; } };
 })();

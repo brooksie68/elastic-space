@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=84';
+import { createRenderer, S } from './render3d.js?v=90';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -10,10 +10,11 @@ const served = location.protocol !== 'file:';
 const TAU = Math.PI * 2;
 
 // ---- settings ------------------------------------------------------------------------------------
-const PLAY_KEY = 'jabberwocky-play-v3', LOOK_KEY = 'jabberwocky-look-v2', UI_KEY = 'jabberwocky-ui-v1';
-const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '', lives: 3, armorMul: 1 };   // lives + armor pickups (2026-09-11)
+const PLAY_KEY = 'jabberwocky-play-v4', LOOK_KEY = 'jabberwocky-look-v3', UI_KEY = 'jabberwocky-ui-v1';   // look v3 (2026-09-12): field of view 88 + the look settle dial; v2 carries over with the new defaults where the old ones stood
+const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '', lives: 3, armorMul: 1, waveFrac: 0.34, waveDelay: 6, mapUp: 'north' };   // mapUp north | ahead (2026-09-12: a turning dish in the corner of the eye is a motion-sickness source)   // lives + armor pickups (2026-09-11); reinforcements (2026-09-12)
 const LOOK_RANGES = {
-  fov:         { label: 'Field of view', min: 60, max: 100, step: 1, def: 76, sum: 'Wider sees more of the corridor at once.' },
+  fov:         { label: 'Field of view', min: 60, max: 110, step: 1, def: 88, sum: 'Wider sees more of the corridor at once and sits easier on the stomach. It was 76.' },
+  lookEase:    { label: 'Look settle', min: 0, max: 100, step: 5, def: 25, sum: 'Milliseconds the view takes to catch up with the mouse. Zero is instant. It was 70; lower if turning makes you queasy.' },
   fog:         { label: 'Fog distance', min: 10, max: 120, step: 1, def: 70, sum: 'How far down a hall you can see before it goes dark. In metres.' },
   guide:       { label: 'Route markings', min: 0, max: 1.5, step: 0.05, def: 1, sum: 'How loud the arrows, signs and lamps along the way to the key and the door are. Zero hides them.' },
   res:         { label: 'Render scale', min: 0.5, max: 1, step: 0.05, def: 1, sum: 'One is native resolution. Lower if the frame rate drops.' },
@@ -34,6 +35,10 @@ function deepMerge(a, b) { const o = Array.isArray(a) ? [] : {}; for (const k in
 function load(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || 'null'); return deepMerge(def, s || {}); } catch (e) { return deepMerge(def, {}); } }
 function save(key, obj) { try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {} }
 let play = load(PLAY_KEY, PLAY_DEFAULTS), look = load(LOOK_KEY, DEFAULT_LOOK), ui = load(UI_KEY, { scale: 1 });
+// MOTION SICKNESS (James 2026-09-12, "slight motion sickness" — his picks 1, 3, 4 of the four): the look settle 70 → 25 ms,
+// the corner map north-up (the arrow turns, the dish does not), the field of view 76 → 88. His old look settings carry
+// over from v2 with only the two new defaults applied where the old defaults stood.
+try { if (!localStorage.getItem(LOOK_KEY) && localStorage.getItem('jabberwocky-look-v2')) { const old = JSON.parse(localStorage.getItem('jabberwocky-look-v2')) || {}; if (old.fov === 76) delete old.fov; delete old.lookEase; look = deepMerge(DEFAULT_LOOK, old); save(LOOK_KEY, look); } } catch (e) {}
 
 // ---- renderer + overlay ----------------------------------------------------------------------------
 const canvas = $('view');
@@ -59,14 +64,14 @@ const anim = { bob: 0 };
 const fx = { hurt: 0 };
 const input = { fwd: 0, strafe: 0, turn: 0, look: 0, fire: false, run: false };
 const lookBank = { x: 0, y: 0 };   // mouse motion waiting to be spent
-const LOOK_EASE = 14;              // per second: ~70 ms to settle; higher = snappier
+const lookEase = () => (look.lookEase > 0 ? 1000 / look.lookEase : 0);   // per second from the LOOK dial's milliseconds (0 = instant); was a fixed 14 (~70 ms) — 2026-09-12
 const keys = {};
 let seen = new Set(), seenLevel = null;
 let noticeT = 0, cardTimer = null, lastHud = 0;
 const BIG = new Set(['train', 'blackhole', 'meteor', 'sand', 'tent', 'tornado', 'piano', 'bus']);
 
 function opts() {
-  return { odds: Object.assign({}, play.odds), goonMul: play.goonMul, goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, seed: play.seed, forceGag: play.forceGag, startLevel: play.startLevel, lives: play.lives, armorMul: play.armorMul };
+  return { odds: Object.assign({}, play.odds), goonMul: play.goonMul, goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, seed: play.seed, forceGag: play.forceGag, startLevel: play.startLevel, lives: play.lives, armorMul: play.armorMul, waveFrac: play.waveFrac, waveDelay: play.waveDelay };
 }
 function liveOpts() { if (!state) return; Object.assign(state.opts, { goonSpeed: play.goonSpeed, damageMul: play.damageMul, fireCool: play.fireCool, revealDelay: play.revealDelay, bossFire: play.bossFire, moveSpeed: play.moveSpeed, forceGag: play.forceGag }); state.opts.odds = Object.assign({}, play.odds); }
 
@@ -160,7 +165,7 @@ const KEYS_LINE_CURSOR = '<b>WASD</b> walk · <b>the rifle points at the cursor<
 const keysLine = () => cursorMode() ? KEYS_LINE_CURSOR : KEYS_LINE;
 const BLURBS = {
   1: 'The gate. Lizardmen, mostly, with swords. Find the key. It opens the door. The arrows know the way.',
-  2: 'Catacombs. Cultists throw flaming skulls, ratlings are faster than you would like. The key is further.',
+  2: 'Catacombs. Cultists throw flaming skulls, the flayed ones are faster than you would like. The key is further.',
   3: 'The meat locker. Something is dripping. The brutes are slow. The brutes hit very hard.',
   4: 'The deep. Stalkers reach you from a corridor away. The door is a long way from the key.',
   5: 'No key. Just him, in the middle, with a rifle exactly like yours. His door opens when he is done.',
@@ -245,10 +250,10 @@ function handleEvents() {
   for (const e of ev) {
     switch (e.type) {
       case 'zone': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a zone with a loop (the tornado) sounds while it lives (2026-09-10)
-      case 'level': R.buildLevel(state); levelCard(e.n, e.name); Sfx.play('level'); seen = new Set(); seenLevel = state.level; syncHud(true); break;
+      case 'level': R.buildLevel(state); levelCard(e.n, e.name); Sfx.setLevel(e.n); Sfx.play('level'); seen = new Set(); seenLevel = state.level; syncHud(true); break;
       case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.earlySound) Sfx.play(e.gag.sound, 0);   // the weapon's voice at the pull itself (the handbag) if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
       case 'fire': R.fire(); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
+      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); if (e.gag && e.gag.id === 'sneaker') setTimeout(() => Sfx.play('splat', pan(e.x, e.y)), 140);   // the sneaker lands with a splat (James's lab note) if (e.boss) { Sfx.play('bossdead'); R.shake(1); } break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'hurt': fx.hurt = 1; R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); deathCard(); break;
@@ -315,7 +320,7 @@ const mm = $('minimap'), mctx = mm.getContext('2d');
 // squares, the route you are on is a dotted line through what you have seen. KEY and EXIT are always on the map, labelled,
 // pinned to the rim with a little arrow when they are off it. The bad guys are red dots in five shades (see GOON_INK), the
 // Jabberwock a ringed one. Pies tan, armor blue, the odd doors cyan. A legend sits under the map.
-const GOON_INK = { lizardman: '#ff3a3a', brute: '#c8141c', ratling: '#ff8c6a', cultist: '#e8308c', stalker: '#8c0a34', jabberwock: '#ff2040' };
+const GOON_INK = { lizardman: '#ff3a3a', brute: '#c8141c', flayed: '#ff7a5a', ratling: '#ff8c6a', cultist: '#e8308c', stalker: '#8c0a34', jabberwock: '#ff2040' };
 const MAP_CS = 19;   // device pixels per cell (the canvas is 2× its CSS size)
 function drawMap() {
   if (!play.map) { mm.classList.add('off'); $('map-legend').classList.add('off'); return; }
@@ -345,7 +350,7 @@ function drawMap() {
   ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.stroke();
   ctx.save();
   ctx.beginPath(); ctx.arc(cx, cy, RAD, 0, TAU); ctx.clip();
-  const rot = -(p.a + Math.PI / 2);   // ahead is up
+  const rot = play.mapUp === 'ahead' ? -(p.a + Math.PI / 2) : 0;   // ahead up turns the whole dish; NORTH UP (the default since 2026-09-12) keeps the dish still and turns the arrow
   const toMap = (wx, wy) => { const dx = (wx - p.x) * cs, dy = (wy - p.y) * cs; const c = Math.cos(rot), s = Math.sin(rot); return [cx + dx * c - dy * s, cy + dx * s + dy * c]; };
   ctx.translate(cx, cy); ctx.rotate(rot); ctx.translate(-p.x * cs, -p.y * cs);
   const isOpen = (x, y) => x >= 0 && y >= 0 && x < L.w && y < L.h && (L.map[y * L.w + x] === C.CELL.OPEN || L.map[y * L.w + x] === C.CELL.PROP);
@@ -395,8 +400,8 @@ function drawMap() {
     if (g.isBoss) { ctx.strokeStyle = '#ff2040'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x * cs, g.y * cs, 10, 0, TAU); ctx.stroke(); }
   }
   ctx.restore();
-  // you: an arrow at the centre, always pointing up, with a soft view cone
-  ctx.save(); ctx.translate(cx, cy);
+  // you: an arrow at the centre pointing where you look (straight up in ahead-up), with a soft view cone
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(p.a + rot + Math.PI / 2);
   const cone = ctx.createRadialGradient(0, 0, 4, 0, 0, 70); cone.addColorStop(0, 'rgba(255,255,255,0.16)'); cone.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = cone; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 70, -Math.PI / 2 - 0.55, -Math.PI / 2 + 0.55); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#ffffff'; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 2;
@@ -456,7 +461,7 @@ function frame(now) {
     aimFromCursor(dt);
     if (cursor.push) input.turn += cursor.push * 0.8;
     if (cursor.pitchPush) view.pitch = Math.max(-1, Math.min(1, view.pitch - cursor.pitchPush * dt * 1.2));
-    const k = 1 - Math.exp(-dt * LOOK_EASE);
+    const E = lookEase(); const k = E ? 1 - Math.exp(-dt * E) : 1;
     input.look = lookBank.x * k; lookBank.x -= input.look;
     const dy = lookBank.y * k; lookBank.y -= dy;
     view.pitch = Math.max(-1, Math.min(1, view.pitch - dy));   // pitch = rise of the look target over one unit forward, ~±45°
@@ -513,12 +518,15 @@ const syncs = [
   slider('t-sens', () => play.sens, (v) => play.sens = v, (v) => v.toFixed(2) + '×'),
   slider('t-lives', () => play.lives, (v) => play.lives = v, (v) => v),
   slider('t-armor', () => play.armorMul, (v) => play.armorMul = v, (v) => v.toFixed(2) + '×'),
+  slider('t-wave', () => play.waveFrac, (v) => play.waveFrac = v, (v) => v <= 0 ? 'none' : Math.round(v * 100) + '% of the first set'),
+  slider('t-wavedelay', () => play.waveDelay, (v) => play.waveDelay = v, (v) => v + 's'),
 ];
 const force = $('t-force');
 for (const tier of T.TIERS) { const og = document.createElement('optgroup'); og.label = tier.toUpperCase(); for (const g of T.GAGS) if (g.tier === tier) { const o = document.createElement('option'); o.value = g.id; o.textContent = g.name; og.appendChild(o); } force.appendChild(og); }
 force.addEventListener('change', () => { play.forceGag = force.value; save(PLAY_KEY, play); liveOpts(); });
 function seg(id, key, parse) { $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { play[key] = parse ? parse(b.dataset.v) : b.dataset.v; save(PLAY_KEY, play); syncPlayUI(); })); }
 seg('t-map', 'map', (v) => parseInt(v, 10));
+seg('t-mapup', 'mapUp');
 seg('t-mouse', 'mouse');
 $('t-mouse').addEventListener('click', () => { if (cursorMode()) unlock(); else if (state) state.player.aim = 0; });
 seg('t-level', 'startLevel', (v) => parseInt(v, 10));
@@ -568,7 +576,7 @@ $('preset-del').addEventListener('click', async () => { const n = presetSelect.v
 
 // ---- go ------------------------------------------------------------------------------------------------------
 resize(); syncPlayUI(); syncLookUI(); applyLook(false); loadPresets();
-state = C.newGame(opts()); state.events = []; mode = 'attract';
+state = C.newGame(opts()); state.events = []; mode = 'attract'; Sfx.setLevel(state.n);
 R.buildLevel(state);
 attract();
 R.load((k) => { if (mode === 'attract') $('card-btn').textContent = 'LOADING THE DUNGEON ' + Math.round(k * 100) + '%'; }).then(() => { if (mode === 'attract') { $('card-btn').textContent = 'BEGIN'; $('card-btn').disabled = false; } });

@@ -10,7 +10,7 @@
 // with its notes (`verdicts` in notes.json); trash also has the server write cuts.js, and the game's roll skips
 // those ids from its next load. Then the ACTION dropdown by SUBMIT (update — the default — / pass / trash): the
 // note carries its verdict, applied by the server in the same save, so he never has to write it in the note.
-import { createRenderer } from './render3d.js?v=84';
+import { createRenderer } from './render3d.js?v=89';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -59,8 +59,8 @@ const gone = new Map();   // goon id → view.t when it died or was pacified
 
 const CREW = {
   trio: ['lizardman', 'brute', 'cultist'],
-  five: ['lizardman', 'brute', 'ratling', 'cultist', 'stalker'],
-  lizardmen: ['lizardman', 'lizardman', 'lizardman'], brutes: ['brute', 'brute', 'brute'], ratlings: ['ratling', 'ratling', 'ratling'], stalkers: ['stalker', 'stalker', 'stalker'],
+  five: ['lizardman', 'brute', 'flayed', 'cultist', 'stalker'],
+  lizardmen: ['lizardman', 'lizardman', 'lizardman'], brutes: ['brute', 'brute', 'brute'], flayed: ['flayed', 'flayed', 'flayed'], stalkers: ['stalker', 'stalker', 'stalker'],
 };
 function placeCrew(types) {
   const L = state.level, sp = L.spawn;

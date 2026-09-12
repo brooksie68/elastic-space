@@ -3,7 +3,132 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
-## 2026-09-12 — Claude (Fable 5.1) — THE EXIT SIGN over the real door
+## 2026-09-12 (night) — Claude (Fable 5.1) — MOTION SICKNESS: the look settle, the map north-up, the field of view
+
+James: "i think the game might be giving me slight motion sickness." Four causes named (the smoothed mouse look, the run
+burst's rush, the corner map turning with you, the 76° field of view); his picks 1, 3, 4 ("i like the run burst"):
+- THE LOOK SETTLE: the camera trailed the hand by ~70 ms (a fixed `LOOK_EASE` 14 since 2026-09-06). Now a LOOK dial,
+  "Look settle", in milliseconds, default 25 (0 = instant, 70 = the old feel); `lookEase()` turns it into the per-second
+  constant for the same exponential.
+- THE MAP: north-up by default — the dish holds still and YOUR ARROW turns (`play.mapUp` 'north' | 'ahead'; PLAY → "Map
+  turns" NORTH UP / AHEAD UP; the labels were already upright, the rim pins already screen-space, so only `rot` and the
+  arrow's rotation changed in `drawMap`).
+- THE FIELD OF VIEW: 76 → 88 (range to 110; the renderer's fallback too).
+- LOOK storage is v3: a v2 store carries over whole, except a fov still at the old default 76 (→ 88) and the new dial.
+  Tags: world 67, render3d +1.
+
+## 2026-09-12 (night) — Claude (Fable 5.1) — THE SOUND LEAK
+
+James: "check on the sound. as the game progresses it gets choppier and choppier until in the last game it cut out fully on
+level 3 and never returned." Found in sound.js: EVERY one-shot made a brand-new media element with its own permanent
+MediaElementSource + gain + panner, never released — hundreds of media players and graph nodes after a few minutes — and
+the preflight opened a media player per file (~100) just to probe it. The browser caps live media players at about 75:
+the mix chokes as it fills, then new elements refuse to play at all (the music at level 3 was silent by design — no
+theme-3.mp3 yet — so it read as everything dead).
+- Every file is now fetched and DECODED ONCE into an AudioBuffer at preflight (`buffers`, `decodeFile`); the numbered
+  sets are found the same way (`probeSeries` by fetch). A play is a buffer source (`createBufferSource`) with its own gain
+  / panner / room send that DISCONNECT when it ends. A loop (`loopFile`) is a looping buffer source with a fade-out stop.
+  No media players at all on the served game — the music track is the one element.
+- file:// (fetch blocked): media elements stay, POOLED — at most three per name, each with ONE source node, re-used
+  (`pooledElement`); the probes release their player once the check is done.
+- A 40-voice cap on file one-shots (`MAX_VOICES`), counted by TIME (a voice is live until its buffer has played out) so a
+  missing 'ended' callback can never mute the game; past the cap a play is dropped, not doubled by the recipe.
+- The music: a track that fades out on a level change now also comes off the graph.
+- `tmp/jabberwocky/sound-smoke.mjs` (KEEP): sound.js under a stub AudioContext / Audio / fetch, served and file://: 3,000
+  one-shots + 200 loops — files decoded once, no elements made by plays, the graph does not grow, every voice freed, the
+  pools never over three. Tag: sound 26.
+
+## 2026-09-12 (later still) — Claude (Fable 5.1) — full at every level
+
+James: "lets have the health and armor be full at the beginning of each level." Core `startLevel`: the player starts every
+level at 100 health and 100 armor (was: health carried over with a floor of 60, armor carried over); `retryLevel` gives 100
+armor too (was 0). The pickups still matter within a level. Sim TEST 14 asserts both, and the retry. Tag: core 27.
+
+## 2026-09-12 (later) — Claude (Fable 5.1) — the armor glow, THE OPTIMIZATION PASS
+
+James ("it's getting better and better with every update"): "give the armor drops a glow and an icon above them that slowly
+spins and pulses" and "do a round of optimizing… it's getting a little laggy at times… without killing the graphics or
+game play".
+- THE ARMOR GLOW: every armor pickup has a soft steel-blue additive glow on the floor that breathes, and a shield icon
+  (`armorIconTex`: a chevron for the suit, a crest for a helm) on a two-sided card above it that turns slowly, bobs, swells
+  with the glow and carries its own halo. `syncArmor` drives it; all of it goes with the pickup.
+- THE PASS, measured in the pane at level 1's spawn (`R.profile = true` → `R.perf` = smoothed ms per section: cam / torch /
+  head / decor / goons / shots / bodies / render, plus mvClone / mvBox / mvArm / mvTotal for the last creature view built):
+  | | before | after |
+  |---|---|---|
+  | renderer CPU before drawing ("head") | 4.08 ms | 0.01 ms |
+  | triangles drawn per frame | 575,016 | 128,034 |
+  | draw calls per frame | 258 | 173 |
+  | render (the pane's GPU, relative only) | 60 ms | 8.7 ms |
+  | a wave of four spawning (the views) | 93 ms | 2.9 ms |
+  What was wrong and what changed:
+  1. `flameTex` drew a fresh 64×96 flame canvas for EVERY torch EVERY frame — the drawer was an argument, evaluated before
+     the cache lookup. `canvasTex` now takes a drawer FUNCTION and only calls it on a miss (flame, softdot, rune, the armor
+     icon). That alone was the 4 ms.
+  2. The creatures are 31k triangles each (Meshy at 30k), drawn wherever they stood — behind walls, past the fog. Now a
+     creature past the fog (`cullR2` = (look.fog + 6)²) is not drawn, and past ten cells it is not drawn when three rays from
+     you to it (centre + two shoulders, `goonInSight`) all hit a wall — re-tested every fourth frame, staggered by id. The
+     boss is never culled. A corpse whose death clip has finished stops its mixer.
+  3. Torch brackets were a mesh (a draw call) each: one `InstancedMesh` now. The flames past the fog are off. The nearest
+     four torches are found without allocating (a map + sort ran every frame).
+  4. Landmarks (every fourth frame), guide markers, pies and armor switch off past the fog (`near2`).
+  5. The sprite-texture cache flushed EVERYTHING at 400 entries — every live texture re-drawn and re-uploaded in one frame,
+     mid-fight; a periodic hitch. Now 800 with least-recently-used eviction (`userData.used` = frame), never anything used
+     in the last three seconds.
+  6. A fresh creature bound all ~35 clips to its mixer at once (`clipAction` × 35); actions are made on first use now
+     (getters on `view.actions`; `view.clipNames` says what exists). That was 93 → 50 ms for a wave of four. The rest was
+     ONE LINE: `new THREE.Box3().setFromObject(model)` to find the feet skins every vertex on the CPU for a SkinnedMesh
+     (11.8 of the 12 ms per creature) — now measured once per creature type (`asset.minY`). 50 → 2.9 ms.
+- The core's frame is 0.03 ms; the mixers 0.07 ms for twelve. Nothing visual changed: the fog was already opaque where things
+  now switch off, and a creature round a corner at ten-plus cells appears the frame its shoulder clears the wall.
+- NOT DONE: the level geometry is still one mesh per material drawn whole (37k triangles, fine); the train's wall breaks
+  rebuild the whole level (six hitches at most); the creature meshes could be decimated to ~12k for a further GPU halving if
+  his rig still dips — his call, it touches the close-up look.
+- Tags: render3d 89.
+
+## 2026-09-12 — Claude (Fable 5.1) — THE WARREN, REINFORCEMENTS, THE FLAYED ONE, music per level
+
+James ("i love the stuff you did last night. its killer"): the levels felt "too focused on a large space with pillars"
+— keep that, but "start in a smaller area with rooms and hallways and then reach the larger spaces… each level like 2 to
+3x the current size"; endless bad guys — "once you kill the first whole set in a given space, then fewer spawn… 12 in an
+area and you kill them all, a clock starts and after 6 seconds 4 more come out"; the ratling out for "something full
+sized… different than what exists and very gnarly", Claude's choice, no cost talk; music only on level 1 and a todo for
+him to add a track per level tonight.
+- THE WARREN (core `LEVELS[].warren` in nodes, `warrenRooms`, `halls`): every maze is ~2.5× the nodes (10×9 / 12×10 /
+  13×12 / 15×13; 31×28 … 46×40 cells). The corner you wake in is the warren: only 2×2-node rooms (5×5 cells, no columns)
+  and hallways, and its loops mostly refused so it keeps its turns and dead ends. Everything else lies wholly outside it —
+  the big rooms (now up to 3×3 nodes, columns), the great halls (two on levels 3–4) and THE DOOR (door candidates skip the
+  warren), so the key and the way out are always through the open spaces. `room.warren` marks them; the map paints them
+  like any wing. Goons 12 / 18 / 24 / 28 (was 8 / 12 / 16 / 20).
+- REINFORCEMENTS (core `initWaves / stepWaves / spawnWave`, `DEFAULTS.waveFrac` 0.34 + `waveDelay` 6): a space is a
+  district; every goon remembers the district it was dealt to; when that district's whole set is down (dead, dying or
+  pacified) its clock runs and round(first × 0.34) of them come back — open cells of that district at least six away from
+  you, OUT OF YOUR LINE OF SIGHT, never on the key or on somebody, dealt from the far third — and again each time those
+  fall, for as long as you stay (event `wave`). Mazes only (not the arena, not the lab). Corpses are capped at twenty on
+  a level, oldest first (`g.deadAt`), so a long stay never piles bodies. Dials: PLAY → "Reinforcements" (0 = none, the old
+  one-set level) and "Reinforcement clock" (2–20 s). PLAY storage key v4.
+- THE FLAYED ONE replaces the ratling (`GOON_TYPES.flayed`: speed 2.1, dmg 6, atk 0.8, notice 15, 1.9 m, r 0.3; weapon
+  `hook` — HOOKED, dmgMul 1.1, windup 0.22): a skinless sprinter, all wet muscle and grin, a man's height so it can be seen
+  and hit. Pipeline `tmp/jabberwocky/creature.mjs flayed concept | model | clips` (the lizardman script made general; a
+  CREATURES table with the prompt + rig height; manifest `flayed.json`) then `moves.mjs flayed` (moves.mjs now reads any
+  `<name>.json` rig for a creature in actions3.json). Concept nano-banana-pro, A-pose front-on tailless — rigged FIRST
+  TRY. 30 files: base + walk + run + the four base clips + the fifteen-clip deck + the four deaths + its attacks
+  (`ATTACKS.flayed`: lunge 208 · thrust 240 · flykick 94 · rhslash 219). Its notice: `sfx/flayed.mp3` (ElevenLabs, a wet
+  skinless shriek). The hook: a Meshy prop (`PROPS.hook`, held by the handle — `GRIP_AT_FAT.hook` false). In every level
+  mix where the ratling was, the lab's five and its own trio, the map's ink (`GOON_INK.flayed`), the catacombs blurb. The
+  ratling's files stay on disk until ship (like the ghoul's); `ratling` is out of GOON_TYPES / CREATURES.
+- MUSIC PER LEVEL (sound.js `setLevel(n)`, the host calls it on every `level` event and at attract): level 1 plays
+  `assets/audio/theme.mp3` (his track); level n plays `assets/audio/theme-n.mp3` and is SILENT until the file exists. A
+  level change fades the old track out over a second. JAMES'S TODO: drop theme-2.mp3 … theme-6.mp3 in (2 catacombs, 3
+  meat locker, 4 the deep, 5 the middle, 6 the three doors); they play on the next load, nothing to wire.
+- Also: his lab note on the sneaker ("splat", rank 2) — the landing kill plays a wet splat now; `update` + done.
+- Sim TEST 3 grew the warren asserts (small rooms inside, big rooms / halls / door / key outside, no ratlings), TEST 14
+  the hook, TEST 16 the reinforcements (the clock, the third, out of sight, endless, the corpse cap, off, not the arena);
+  the pie test stands alone (a goon by the pie hit the player mid-test on the bigger mazes). 1,156,921 green; lab-smoke
+  208, draw-check ok. Meshy: 140 cr (concept 9, model 30, rig 5, clips 57, moves 24, hook 15). Tags: core 26, sound 25,
+  world 66, lab.js 106.
+
+
 
 James: "Put an Exit sign above the actual door, not just on the map." render3d.js `exitSignTex` + `doorSign`: a lit box on
 the wall over the door frame (in a low corridor it sits on the top of the frame), red "EXIT · LOCKED · FIND THE KEY" until

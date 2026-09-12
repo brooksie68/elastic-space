@@ -76,7 +76,7 @@ const DEATHS4 = ['blownback', 'slowfall', 'knockdown', 'strangled'];
 const ATTACKS = {
   lizardman: ['reaping', 'thrust', 'rhslash', 'charged', 'axespin', 'kick'],   // 99 Reaping Swing · 240 Thrust Slash · 219 Right-hand Sword Slash · 242 Charged Slash · 238 Axe Spin Attack · 103 Simple Kick
   brute:     ['judgment', 'charged', 'wcombo2', 'reaping', 'elbow'],           // 102 Sword Judgment (the overhead smash) · 242 · 241 Weapon Combo 2 · 99 · 212 Elbow Strike
-  ratling:   ['leftslash', 'thrust', 'flykick', 'kick'],                       // 97 Left Slash · 240 · 94 Flying Fist Kick · 103
+  flayed:    ['lunge', 'thrust', 'flykick', 'rhslash'],                        // 208 Lunge Roundhouse Kick · 240 · 94 · 219 (a hook in hand) — the flayed one, 2026-09-12
   cultist:   ['pcombo1', 'elbow', 'highkick', 'leftslash'],                    // 200 Punch Combo 1 · 212 · 215 High Kick · 97 (a skull in hand)
   stalker:   ['lunge', 'highkick', 'flykick', 'reaping', 'elbow'],             // 208 Lunge Roundhouse Kick · 215 · 94 · 99 (a claw sweep) · 212
 };
@@ -91,7 +91,7 @@ const DANCE_POOL = ['dance', 'dance1', 'dance2'];
 const CREATURES = {
   lizardman:  { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.lizardman], yaw: 0 },
   brute:      { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.brute], yaw: 0 },
-  ratling:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.ratling], yaw: 0 },
+  flayed:     { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.flayed], yaw: 0 },   // the ratling is out (James 2026-09-12: 'you cannot see it'); its files stay on disk until ship
   cultist:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', 'throw', ...DECK, ...DEATHS4, ...ATTACKS.cultist], yaw: 0 },
   stalker:    { clips: ['walk', 'run', 'attack', 'die', 'dance', 'hit', ...DECK, ...DEATHS4, ...ATTACKS.stalker], yaw: 0 },
   // the Jabberwock would not take a rig (Meshy's pose estimation wants a humanoid), so he is a posed
@@ -156,6 +156,7 @@ const PROPS = {
   axe:       { size: 1.35, motion: 'tumble', stays: false, variants: 2 },
   hammer:    { size: 1.5,  motion: 'tumble', stays: false, variants: 2 },
   shiv:      { size: 0.55, motion: 'tumble', stays: false },
+  hook:      { size: 0.9,  motion: 'tumble', stays: false },   // the flayed one's meat hook (2026-09-12)
   // the armor pickups: Meshy sent a whole suit for the breastplate — it stands where it lies as THE SUIT; the helm turns
   plate:     { size: 1.75, motion: 'rest',   stays: false },
   helm:      { size: 0.5,  motion: 'rest',   stays: false },
@@ -170,7 +171,7 @@ export function createRenderer(canvas) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
   renderer.autoClear = false;
-  const look = { fov: 76, fog: 70, guide: 1, res: 1, bob: 0, spriteScale: 1, decalScale: 1, brightness: 1, shake: 0.25, torchLight: 1, vmX: 0.26, vmY: -0.30, vmZ: -0.78, vmScale: 1 };
+  const look = { fov: 88, fog: 70, guide: 1, res: 1, bob: 0, spriteScale: 1, decalScale: 1, brightness: 1, shake: 0.25, torchLight: 1, vmX: 0.26, vmY: -0.30, vmZ: -0.78, vmScale: 1 };
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(look.fov, 1, 0.05, 220);
@@ -292,11 +293,19 @@ export function createRenderer(canvas) {
 
   // ---- sprite textures from draw.js -------------------------------------------------------------
   const spriteTex = new Map();
+  // THE OPTIMIZATION PASS (James 2026-09-12, 'a little laggy at times'): a drawer may be handed as a FUNCTION so a cache hit
+  // never draws — the flame drawer used to run for every torch every frame (4 ms a frame) because it was an argument.
+  // Eviction is least-recently-used, never a flush: the old full flush re-drew and re-uploaded every live texture at once.
+  let frameNo = 0;
   function canvasTex(key, canvas) {
     let t = spriteTex.get(key);
-    if (t) return t;
-    t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter;
-    if (spriteTex.size > 400) { for (const v of spriteTex.values()) v.dispose(); spriteTex.clear(); }
+    if (t) { t.userData.used = frameNo; return t; }
+    if (typeof canvas === 'function') canvas = canvas();
+    t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.userData.used = frameNo;
+    if (spriteTex.size > 800) {
+      const old = [...spriteTex.entries()].sort((a, b) => (a[1].userData.used || 0) - (b[1].userData.used || 0)).slice(0, 200);
+      for (const [k, v] of old) { if (frameNo - (v.userData.used || 0) < 180) break; v.dispose(); spriteTex.delete(k); }
+    }
     spriteTex.set(key, t);
     return t;
   }
@@ -305,11 +314,11 @@ export function createRenderer(canvas) {
   const bloodTex = () => scarTex(BLOODS[Math.floor(Math.random() * BLOODS.length)], Math.random());
   function scarTex(type, seed) { const c = D().scarSprite(type, seed); return c ? canvasTex('scar|' + type + '|' + Math.round(seed * 8), c) : null; }
   function softDot() {
-    return canvasTex('softdot', (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); return c; })());
+    return canvasTex('softdot', () => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); return c; });
   }
   function flameTex(frame) {
     // a soft additive flame: stacked radial glows leaning with the frame, a hot white core
-    return canvasTex('flame|' + frame, (() => {
+    return canvasTex('flame|' + frame, () => {
       const c = document.createElement('canvas'); c.width = 64; c.height = 96; const g = c.getContext('2d');
       const lean = Math.sin(frame * 1.7) * 6;
       const tongues = [[32, 70, 22, 0.9, '#ff6a10'], [32 + lean, 46, 15, 0.85, '#ff9a20'], [32 - lean * 0.6, 28, 9, 0.7, '#ffd23a'], [32 + lean * 0.3, 60, 8, 1, '#fff2c0']];
@@ -320,7 +329,7 @@ export function createRenderer(canvas) {
       }
       g.globalAlpha = 1;
       return c;
-    })());
+    });
   }
 
   // ---- the level ----------------------------------------------------------------------------------
@@ -476,13 +485,19 @@ export function createRenderer(canvas) {
       const m = doorPlane(cell, 'drift' + (i % 3), true);
       driftMeshes.push(m);
     });
-    // torch sprites + brackets
+    // torch sprites + brackets (the brackets are ONE instanced mesh — they were a draw call each, 2026-09-12)
+    decor = [];
+    if (torches.length) {
+      const brackets = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x2a221c }), torches.length);
+      const _m = new THREE.Matrix4();
+      torches.forEach((t, i) => { _m.makeTranslation(t.x, t.y - 0.1, t.z); brackets.setMatrixAt(i, _m); });
+      brackets.instanceMatrix.needsUpdate = true; brackets.frustumCulled = false;
+      levelGroup.add(brackets);
+    }
     for (const t of torches) {
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       spr.position.set(t.x, t.y + 0.35, t.z); spr.scale.set(0.5, 0.75, 1);
       levelGroup.add(spr); t.sprite = spr;
-      const br = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), new THREE.MeshLambertMaterial({ color: 0x2a221c }));
-      br.position.set(t.x, t.y - 0.1, t.z); levelGroup.add(br);
     }
     // the key: a spinning glow
     keyView = null;
@@ -543,7 +558,7 @@ export function createRenderer(canvas) {
         }
         obj.rotation.y = yaw;
         const l = lightAt(cx, cz); obj.traverse((o) => { if (o.isMesh && o.material && o.material.color && !o.userData.lit) { o.userData.lit = true; o.material = o.material.clone(); o.material.color.multiplyScalar(Math.min(1.3, 0.55 + (l[0] + l[1] + l[2]) / 3)); } });
-        levelGroup.add(obj);
+        levelGroup.add(obj); decor.push(obj);
         return obj;
       };
       if (name !== th.hang) stand(name, null, ((lm.x * 7 + lm.y * 13) % 4) * Math.PI / 2 + (lm.hall ? 0 : 0.3));
@@ -558,8 +573,30 @@ export function createRenderer(canvas) {
       if (src) { obj = src.clone(); obj.position.set(a.x * S, a.kind === 'plate' ? src.userData.halfH : 0.75, a.y * S); }
       else { obj = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex('armor|' + a.kind, D().armorSprite ? D().armorSprite(a.kind) : D().healSprite(0)), transparent: true, depthWrite: false })); obj.scale.set(a.kind === 'plate' ? 1.3 : 0.7, a.kind === 'plate' ? 1.3 : 0.7, 1); obj.position.set(a.x * S, a.kind === 'plate' ? 0.9 : 0.6, a.y * S); }
       levelGroup.add(obj);
-      armorViews.push({ obj, a });
+      // THE GLOW + THE ICON (James 2026-09-12: 'give the armor drops a glow and an icon above them that slowly spins and pulses'):
+      // a soft steel-blue glow on the floor round it and a shield icon on a two-sided card that turns slowly and breathes
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: a.kind === 'plate' ? 0x6aa8ff : 0x8ac0ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5 }));
+      glow.position.set(a.x * S, 0.35, a.y * S); glow.scale.set(2.6, 1.6, 1); levelGroup.add(glow);
+      const icon = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.72), new THREE.MeshBasicMaterial({ map: armorIconTex(a.kind), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+      const top = src ? (a.kind === 'plate' ? src.userData.halfH * 2 + 0.55 : 1.45) : (a.kind === 'plate' ? 1.9 : 1.3);
+      icon.position.set(a.x * S, top, a.y * S); levelGroup.add(icon);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0x9ad0ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.35 }));
+      halo.scale.set(1.4, 1.4, 1); icon.add(halo);
+      armorViews.push({ obj, a, glow, icon, top });
     }
+  }
+  // the shield icon over an armor pickup: a steel-blue shield with a pale rim and a chevron (a helm gets a crest)
+  function armorIconTex(kind) {
+    return canvasTex('armoricon|' + kind, () => {
+      const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+      const shield = () => { g.beginPath(); g.moveTo(64, 14); g.lineTo(108, 30); g.lineTo(104, 74); g.quadraticCurveTo(96, 104, 64, 118); g.quadraticCurveTo(32, 104, 24, 74); g.lineTo(20, 30); g.closePath(); };
+      shield(); g.fillStyle = 'rgba(40,80,150,0.92)'; g.fill();
+      shield(); g.lineWidth = 7; g.strokeStyle = '#dceaff'; g.stroke();
+      g.lineWidth = 8; g.strokeStyle = '#ffffff'; g.lineCap = 'round'; g.beginPath();
+      if (kind === 'plate') { g.moveTo(40, 52); g.lineTo(64, 78); g.lineTo(88, 52); } else { g.moveTo(64, 34); g.lineTo(64, 90); g.moveTo(44, 62); g.lineTo(84, 62); }
+      g.stroke();
+      return c;
+    });
   }
   function placeTorches(level, isOpen) {
     const out = [];
@@ -676,20 +713,30 @@ export function createRenderer(canvas) {
       const want = Math.min(1, base * legK * (look.guide == null ? 1 : look.guide));
       gv.k += (want - gv.k) * Math.min(1, dt * 3);
       gv.obj.material.opacity = gv.k;
-      gv.obj.visible = gv.k > 0.01;
+      gv.obj.visible = gv.k > 0.01 && near2(gv.obj.position.x, gv.obj.position.z);
     }
   }
   function syncArmor(state, t) {
     for (const v of armorViews) {
-      v.obj.visible = !v.a.taken;
+      const on = !v.a.taken && near2(v.obj.position.x, v.obj.position.z);
+      v.obj.visible = on;
       if (v.a.kind === 'helm') { v.obj.rotation.y = t * 1.3; v.obj.position.y = 0.75 + Math.sin(t * 2.2 + v.a.x) * 0.08; }
+      if (v.glow) {   // the glow breathes, the icon turns slowly and swells with it
+        v.glow.visible = on; v.icon.visible = on;
+        if (!on) continue;
+        const pulse = 0.5 + 0.5 * Math.sin(t * 2.4 + v.a.x * 0.7);
+        v.glow.material.opacity = 0.42 + pulse * 0.38; v.glow.scale.set(2.6 + pulse * 0.7, 1.6 + pulse * 0.45, 1);
+        v.icon.rotation.y = t * 0.9; v.icon.position.y = v.top + Math.sin(t * 1.8 + v.a.y) * 0.06;
+        const k = 0.92 + pulse * 0.16; v.icon.scale.set(k, k, 1);
+        v.icon.children[0].material.opacity = 0.2 + pulse * 0.3;
+      }
     }
   }
   // ---- the bad guys' weapons (2026-09-11) ------------------------------------------------------------------
   // a Meshy prop in the RightHand bone: the prop's long axis runs up the hand's Y (along the fingers); swords and shivs
   // are held at their fat end (the guard), hammers and axes at their thin end (the haft). The rig lives in centimetres,
   // so the holder undoes the bone's world scale. Dropped at the death as a body that falls and settles (dropWeapon).
-  const GRIP_AT_FAT = { sword: true, shiv: true, axe: false, hammer: false };
+  const GRIP_AT_FAT = { sword: true, shiv: true, axe: false, hammer: false, hook: false };   // a hook is held by its handle, the thin end
   function armGoon(view, g) {
     if (!g.weapon || !view.model) return;
     const hand = view.model.getObjectByName('RightHand');
@@ -747,8 +794,10 @@ export function createRenderer(canvas) {
     const root = new THREE.Group();
     const asset = models.creatures[g.type];
     const view = { root, model: null, mixer: null, actions: {}, current: null, started: null, mats: [], tint: null, fx: null, blob: null, fire: null, hidden: false, opacity: 1, t: 0, lastBlink: false };
+    const t0 = profile ? performance.now() : 0;
     if (asset) {
       const model = skeletonClone(asset.scene);
+      if (profile) perf.mvClone = performance.now() - t0;
       model.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); view.mats.push(o.material); } });
       model.rotation.y = CREATURES[g.type].yaw;
       if (CREATURES[g.type].unscaled) {
@@ -760,11 +809,19 @@ export function createRenderer(canvas) {
       }
       view.procedural = !!CREATURES[g.type].procedural;
       root.add(model); view.model = model;
-      view.minY = new THREE.Box3().setFromObject(model).min.y;   // where the feet are in root space (Meshy rigs sit on their hips)
+      // where the feet are in root space (Meshy rigs sit on their hips) — measured ONCE per creature type: a Box3 over a skinned
+      // mesh skins every vertex on the CPU (12 ms for 34k — the whole of the wave-spawn hitch, 2026-09-12)
+      if (asset.minY == null) asset.minY = new THREE.Box3().setFromObject(model).min.y;
+      view.minY = asset.minY;
+      if (profile) perf.mvBox = performance.now() - t0;
       view.mixer = new THREE.AnimationMixer(model);
-      for (const k in asset.clips) view.actions[k] = view.mixer.clipAction(asset.clips[k]);
+      view.clipNames = new Set(Object.keys(asset.clips));
+      const made = {};
+      for (const k in asset.clips) Object.defineProperty(view.actions, k, { enumerable: true, get() { return made[k] || (made[k] = view.mixer.clipAction(asset.clips[k])); } });   // bound on first use (2026-09-12)
       if (!view.actions.idle && view.actions.walk) { /* no idle clip: hold the first frame of walk */ }
+      const t1 = profile ? performance.now() : 0;
       armGoon(view, g);
+      if (profile) { perf.mvArm = performance.now() - t1; perf.mvTotal = performance.now() - t0; }
     } else {
       // no model (file:// or a failed load): a shape with eyes, never nothing
       const hgt = g.def.h || 1.8;
@@ -788,9 +845,9 @@ export function createRenderer(canvas) {
     return true;
   }
   // deal a clip from a pool by the goon's seed (the same goon always gets the same one; a missing clip falls through to the next)
-  function dealClip(view, g, pool, salt) { const have = pool.filter((n) => view.actions[n]); if (!have.length) return null; const r = Math.abs(Math.sin((g.seed || 0) * 977.7 + salt * 131.3) * 43758.5453) % 1; return have[Math.floor(r * have.length) % have.length]; }
+  function dealClip(view, g, pool, salt) { const have = pool.filter((n) => view.clipNames ? view.clipNames.has(n) : view.actions[n]); if (!have.length) return null; const r = Math.abs(Math.sin((g.seed || 0) * 977.7 + salt * 131.3) * 43758.5453) % 1; return have[Math.floor(r * have.length) % have.length]; }
   const chance = (g, salt, p) => (Math.abs(Math.sin((g.seed || 0) * 977.7 + salt * 131.3) * 43758.5453) % 1) < p;   // a per-goon coin, fixed for its life
-  function deathClip(view, g) { const o = DEATH_BY_GAG[g.gagId]; return (o && view.actions[o]) ? o : dealClip(view, g, DEATH_POOL, 1) || 'die'; }
+  function deathClip(view, g) { const o = DEATH_BY_GAG[g.gagId]; return (o && (view.clipNames ? view.clipNames.has(o) : view.actions[o])) ? o : dealClip(view, g, DEATH_POOL, 1) || 'die'; }
   const busyOnce = (view, name) => view.current && view.current === view.actions[name] && !view.current.paused;   // a one-shot still playing
   function setTint(view, color, emissive, k) {
     for (const m of view.mats) {
@@ -800,6 +857,13 @@ export function createRenderer(canvas) {
     }
   }
   function setOpacity(view, o) { for (const m of view.mats) { m.transparent = o < 1; m.opacity = o; m.depthWrite = o >= 0.5; } }
+  const FAR_LOS2 = (10 * S) * (10 * S);
+  function goonInSight(state, g) {
+    const C = CORE(), p = state.player;
+    if (C.lineOfSight(state, p.x, p.y, g.x, g.y)) return true;
+    const a = Math.atan2(g.y - p.y, g.x - p.x), sx = -Math.sin(a) * 0.45, sy = Math.cos(a) * 0.45;
+    return C.lineOfSight(state, p.x, p.y, g.x + sx, g.y + sy) || C.lineOfSight(state, p.x, p.y, g.x - sx, g.y - sy);
+  }
   function syncGoon(g, view, dt, state) {
     const root = view.root;
     const moving = g.state === 'chase' || (g.state === 'idle' && g.target);
@@ -812,7 +876,7 @@ export function createRenderer(canvas) {
         const k = g.dropped / 0.6; root.position.y = 3.4 * k * k; root.rotation.z = k * 4; root.rotation.x = Math.sin(k * 9) * 0.6;
       } else { if (view.dropping) { view.dropping = false; puff(g.x * S, 0.2, g.y * S, 0x8a7a6a, 1.0); } root.rotation.x = 0; root.rotation.z = 0; }
     }
-    if (view.mixer) view.mixer.update(dt);
+    if (view.mixer && !(g.state === 'dead' && view.current && view.current.paused)) view.mixer.update(dt);   // a corpse whose clip has finished stops mixing
     // blink on a dud hit / boss hit
     const blink = g.blink > 0;
     if (blink !== view.lastBlink) { view.lastBlink = blink; for (const m of view.mats) { if (m.emissive) { if (blink) { m.userData.blinkE = m.emissive.clone(); m.emissive.setHex(0xffffff); m.emissiveIntensity = 0.9; } else if (m.userData.blinkE) { m.emissive.copy(m.userData.blinkE); m.emissiveIntensity = m.userData.baseEI != null ? m.userData.baseEI : 0.12; } } } }
@@ -1940,7 +2004,7 @@ export function createRenderer(canvas) {
     obj.position.sub(c);
   }
   function runeTex(frame) {
-    return canvasTex('rune|' + frame, (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#12060f'; g.beginPath(); g.roundRect(0, 0, 128, 80, 14); g.fill(); g.font = '900 34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = frame < 0 ? '#ff2fb8' : '#ffd23a'; const i = Math.abs(frame); g.fillText(RUNES[i % RUNES.length] + ' ' + RUNES[(i * 7 + 3) % RUNES.length] + ' ' + RUNES[(i * 3 + 11) % RUNES.length], 64, 40 + (frame < 0 ? (i % 3) * 6 - 6 : 0)); return c; })());
+    return canvasTex('rune|' + frame, () => { const c = document.createElement('canvas'); c.width = 128; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#12060f'; g.beginPath(); g.roundRect(0, 0, 128, 80, 14); g.fill(); g.font = '900 34px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = frame < 0 ? '#ff2fb8' : '#ffd23a'; const i = Math.abs(frame); g.fillText(RUNES[i % RUNES.length] + ' ' + RUNES[(i * 7 + 3) % RUNES.length] + ' ' + RUNES[(i * 3 + 11) % RUNES.length], 64, 40 + (frame < 0 ? (i % 3) * 6 - 6 : 0)); return c; });
   }
   const _muzzleWorld = new THREE.Vector3(), _mzTmp = new THREE.Vector3();
   function updateViewmodel(dt, p) {
@@ -1975,7 +2039,13 @@ export function createRenderer(canvas) {
     ambient.intensity = 0.6 * look.brightness; hemi.intensity = 0.7 * look.brightness;
   }
   const _fwd = new THREE.Vector3(), _tgt = new THREE.Vector3();
+  const perf = {}; let profile = false;
+  const _near = [{ t: null, d: Infinity }, { t: null, d: Infinity }, { t: null, d: Infinity }, { t: null, d: Infinity }];
+  let cullR2 = 1e9, camX = 0, camZ = 0, decor = [];
+  const near2 = (x, z) => (x - camX) * (x - camX) + (z - camZ) * (z - camZ) < cullR2;
+  const _pm = (k, t0) => { const t = performance.now(); perf[k] = (perf[k] || 0) * 0.9 + (t - t0) * 0.1; return t; };
   function update(state, view, dt) {
+    let pt = profile ? performance.now() : 0;
     const p = state.player;
     shakeT += dt; shakeAmt = Math.max(0, shakeAmt - dt * 2.4);
     const sx = Math.sin(shakeT * 37) * shakeAmt * 0.02, sy = Math.cos(shakeT * 29) * shakeAmt * 0.015;
@@ -1986,32 +2056,54 @@ export function createRenderer(canvas) {
     camera.lookAt(_tgt);
     runeLight.position.copy(camera.position).addScaledVector(_fwd, 0.6); runeLight.position.y -= 0.3;
     muzzleLight.position.copy(camera.position).addScaledVector(_fwd, 1.2); muzzleLight.position.y -= 0.2;
-    // torches: the nearest four get live flicker
+    frameNo++;
+    // THE CULL RADIUS: the fog is opaque at look.fog, so nothing past it is drawn — torches, markers, landmarks, pies, armor,
+    // creatures all switch off out there (2026-09-12). cullR2 in metres squared; near2 tests a point.
+    cullR2 = (look.fog + 6) * (look.fog + 6); camX = camera.position.x; camZ = camera.position.z;
+    if (profile) pt = _pm('cam', pt);
+    // torches: the nearest four get live flicker (found without allocating — a map + sort ran every frame); the flames past the fog are off
     if (torches.length) {
-      const near = torches.map((t) => ({ t, d: (t.x - camera.position.x) ** 2 + (t.z - camera.position.z) ** 2 })).sort((a, b) => a.d - b.d).slice(0, 4);
-      torchLights.forEach((l, i) => { const n = near[i]; if (!n) { l.intensity = 0; return; } l.position.set(n.t.x, n.t.y + 0.3, n.t.z); l.intensity = (14 + Math.sin(shakeT * 11 + i * 2) * 3 + Math.sin(shakeT * 23 + i) * 2) * look.torchLight; if (n.t.color) l.color.copy(n.t.color); else l.color.setHex(THEMES[levelRef ? levelRef.theme : 0].torch); });
+      for (let i = 0; i < 4; i++) { _near[i].t = null; _near[i].d = Infinity; }
       const f = Math.floor(shakeT * 9);
-      for (let i = 0; i < torches.length; i++) { const t = torches[i]; if (t.sprite) { t.sprite.material.map = flameTex((f + i) % 4); t.sprite.scale.set(0.5 + Math.sin(shakeT * 13 + i) * 0.05, 0.75 + Math.sin(shakeT * 17 + i * 3) * 0.08, 1); } }
+      for (let i = 0; i < torches.length; i++) {
+        const t = torches[i];
+        const d = (t.x - camX) * (t.x - camX) + (t.z - camZ) * (t.z - camZ);
+        if (t.sprite) { const vis = d < cullR2; t.sprite.visible = vis; if (vis) { t.sprite.material.map = flameTex((f + i) % 4); t.sprite.scale.set(0.5 + Math.sin(shakeT * 13 + i) * 0.05, 0.75 + Math.sin(shakeT * 17 + i * 3) * 0.08, 1); } }
+        if (d < _near[3].d) { let j = 3; while (j > 0 && _near[j - 1].d > d) { _near[j].t = _near[j - 1].t; _near[j].d = _near[j - 1].d; j--; } _near[j].t = t; _near[j].d = d; }
+      }
+      torchLights.forEach((l, i) => { const n = _near[i].t; if (!n) { l.intensity = 0; return; } l.position.set(n.x, n.y + 0.3, n.z); l.intensity = (14 + Math.sin(shakeT * 11 + i * 2) * 3 + Math.sin(shakeT * 23 + i) * 2) * look.torchLight; if (n.color) l.color.copy(n.color); else l.color.setHex(THEMES[levelRef ? levelRef.theme : 0].torch); });
     }
+    if (profile) pt = _pm('torch', pt);
     // the door
     if (doorMesh) { const want = state.doorOpen ? 1 : 0; doorOpenAnim += (want - doorOpenAnim) * Math.min(1, dt * 2.5); doorMesh.position.y = doorMesh.userData.baseY + doorOpenAnim * H_LOW * 0.95; }
     if (doorSign && doorSign.userData.open !== !!state.doorOpen) { doorSign.userData.open = !!state.doorOpen; doorSign.material.map = exitSignTex(!!state.doorOpen); doorSign.userData.glow.material.map = guideTex(levelRef.theme, 'lamp', 'door', false, state.doorOpen ? 0x58ff7a : 0xff3050); }
     if (doorSign) doorSign.userData.glow.material.opacity = 0.45 + Math.sin(view.t * (state.doorOpen ? 2 : 5)) * 0.12;
-    if (healViews.length) { const m = canvasTex('heal|' + (Math.floor(view.t * 8) % 16), D().healSprite(view.t)); for (const v of healViews) { v.spr.visible = !v.h.taken; v.spr.material.map = m; v.spr.position.y = 0.55 + Math.sin(view.t * 2.5 + v.h.x) * 0.06; } }
+    if (healViews.length) { const m = canvasTex('heal|' + (Math.floor(view.t * 8) % 16), D().healSprite(view.t)); for (const v of healViews) { v.spr.visible = !v.h.taken && near2(v.spr.position.x, v.spr.position.z); v.spr.material.map = m; v.spr.position.y = 0.55 + Math.sin(view.t * 2.5 + v.h.x) * 0.06; } }
+    if ((frameNo & 3) === 0) for (const o of decor) o.visible = near2(o.position.x, o.position.z);   // the landmarks, every fourth frame
+    if (profile) pt = _pm('head', pt);
     syncGuide(state, dt); syncArmor(state, view.t);
     if (keyView) { keyView.material.map = canvasTex('key|' + (Math.floor(view.t * 8) % 16), D().keySprite(view.t)); keyView.position.y = 1.1 + Math.sin(view.t * 3) * 0.12; keyLight.position.copy(keyView.position); keyLight.intensity = state.key && state.key.held ? 0 : 6 + Math.sin(view.t * 5) * 2; if (state.key && state.key.held) keyView.visible = false; }
+    if (profile) pt = _pm('decor', pt);
     // creatures
     const seen = new Set();
     for (const g of state.goons) {
       seen.add(g.id);
       let v = goonViews.get(g.id);
       if (!v) { v = makeGoonView(g); goonViews.set(g.id, v); }
+      // not drawn past the fog; past ten cells, not drawn when three rays from you to it all hit a wall (re-tested every
+      // fourth frame, staggered) — a 31k-triangle creature behind a wall was still skinned and drawn (2026-09-12)
+      const gx = g.x * S, gz = g.y * S, d2 = (gx - camX) * (gx - camX) + (gz - camZ) * (gz - camZ);
+      let vis = d2 < cullR2;
+      if (vis && !g.isBoss && d2 > FAR_LOS2) { if (v.los == null || ((frameNo + g.id) & 3) === 0) v.los = goonInSight(state, g); vis = v.los; } else v.los = null;
+      v.root.visible = vis;
       syncGoon(g, v, dt, state);
     }
     for (const [id, v] of goonViews) if (!seen.has(id)) { entGroup.remove(v.root); if (v.blob) entGroup.remove(v.blob); if (v.school) for (const f of v.school) entGroup.remove(f); if (v.coils) for (const c of v.coils) entGroup.remove(c); if (v.block) entGroup.remove(v.block); goonViews.delete(id); }
+    if (profile) pt = _pm('goons', pt);
     syncShots(state, view.t);
     syncZones(state, view.t);
     syncScars(state, view.t);
+    if (profile) pt = _pm('shots', pt);
     // muzzle in world space for beams
     // the barrel tip, exactly where it is on screen: the viewmodel's muzzle flash projected through the viewmodel camera,
     // then unprojected through the world camera 0.9 m out (James: the beam and the flames come from the tip of the gun)
@@ -2040,6 +2132,7 @@ export function createRenderer(canvas) {
       if (e.fade && e.obj.material) e.obj.material.opacity = (e.obj.material.userData.o0 != null ? e.obj.material.userData.o0 : (e.obj.material.userData.o0 = e.obj.material.opacity)) * (1 - u);
       if (e.t >= e.life) { entGroup.remove(e.obj); extras.splice(i, 1); }
     }
+    if (profile) pt = _pm('bodies', pt);
     // the player's rune light dims when the rifle plays dead
     runeLight.intensity = p.fx && p.fx.dead > 0 ? 1 : 6;
     updateViewmodel(dt, p);
@@ -2048,10 +2141,11 @@ export function createRenderer(canvas) {
     renderer.render(scene, camera);
     renderer.clearDepth();
     renderer.render(vmScene, vmCamera);
+    if (profile) _pm('render', pt);
   }
   let skipRender = false;
 
-  return { setSkipRender(v) { skipRender = !!v; }, gorePick, GORE, get debugEnt() { return entGroup; }, get debugMuzzle() { return { muzzle: _muzzleWorld.clone(), camera, vmCamera, vmFlash, vmTip, vmRoot }; }, clipDone(id) { const v = goonViews.get(id); if (!v || !v.current) return true; const a = v.current; return a.loop !== THREE.LoopOnce || a.paused || !a.isRunning(); }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); if (gagId === 'pie') berries(x * S, 0.5, y * S, 36); if (gagId === 'jello') jelloPile(x * S, 0.5, y * S); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
+  return { setSkipRender(v) { skipRender = !!v; }, gorePick, GORE, perf, get profile() { return profile; }, set profile(v) { profile = !!v; }, get debugEnt() { return entGroup; }, get debugMuzzle() { return { muzzle: _muzzleWorld.clone(), camera, vmCamera, vmFlash, vmTip, vmRoot }; }, clipDone(id) { const v = goonViews.get(id); if (!v || !v.current) return true; const a = v.current; return a.loop !== THREE.LoopOnce || a.paused || !a.isRunning(); }, debugGoon(id) { const v = goonViews.get(id); if (!v) return null; const r = v.root; let meshes = 0, vis = 0; r.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { meshes++; if (o.visible) vis++; } }); return { pos: r.position.toArray(), scale: r.scale.toArray(), visible: r.visible, modelVisible: v.model && v.model.visible, hidden: v.hidden, meshes, vis, inScene: !!r.parent, started: v.started }; }, boom(x, y, r, gagId) { if (BOOM_GAGS.has(gagId)) boomFx(x * S, 0.5, y * S, r || 1); else { impactFx(x * S, y * S, (r || 1) * 0.7); puff(x * S, 0.5, y * S, SPLASH_COLOR[gagId] || 0x9a8a7a, (r || 1) * 1.6); if (gagId === 'pie') berries(x * S, 0.5, y * S, 36); if (gagId === 'jello') jelloPile(x * S, 0.5, y * S); } }, strike(x, y) { blood.burst(x * S, 0.9, y * S, 12, 1.6); mist(x * S, 0.9, y * S, 0.7); }, impact(x, y, r) { impactFx(x * S, y * S, r || 0.8); },
     load, buildLevel, update, resize, setLook, shake, look, vm, scene, camera, renderer, vmRoot, models, goonViews,
     themes: THEMES,   // the corner map paints each wing in its district's light colour (2026-09-12)
     fire() { vm.recoil = 1; vm.muzzle = 1; vm.spin = 0; vm.mood = 'idle'; },

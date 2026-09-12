@@ -26,6 +26,8 @@
     burstMul: 1.9,       // THE RUN BURST (James 2026-09-12): shift = a two-second burst at this × walk speed, then a two-second cooldown
     burstDur: 2, burstCool: 2,
     armorMul: 1,         // how many armor pickups a maze gets (× the level's deal)
+    waveFrac: 0.34,      // REINFORCEMENTS (James 2026-09-12): when a space's whole first set is down, this share of it comes back; 0 = one set, the old level
+    waveDelay: 6,        // the clock, in seconds, between the last one down and the next few out
   };
 
   // speeds in cells/s (a cell renders at 2.6 m); h = height in metres for the rig
@@ -35,7 +37,9 @@
   const GOON_TYPES = {
     lizardman:  { name: 'LIZARDMAN', speed: 1.5, reach: 1.1, dmg: 10, atk: 1.2, notice: 13, size: 1.25, r: 0.34, h: 2.2, weapons: ['sword', 'axe'] },
     brute:      { name: 'BRUTE',    speed: 1.05, reach: 1.15, dmg: 14, atk: 1.6, notice: 11, size: 1.3,  r: 0.4,  h: 2.6, weapons: ['hammer'] },
-    ratling:    { name: 'RATLING',  speed: 2.4,  reach: 0.7,  dmg: 4,  atk: 0.7, notice: 14, size: 0.7,  r: 0.22, h: 1.1, weapons: ['shiv'] },
+    // THE FLAYED ONE (2026-09-12) took the ratling's place — James: 'you cannot see it and it's hard to hit'; a skinless sprinter,
+    // a man's height, fast and weak like the rat, with a meat hook
+    flayed:     { name: 'FLAYED ONE', speed: 2.1, reach: 0.9, dmg: 6,  atk: 0.8, notice: 15, size: 1.0,  r: 0.3,  h: 1.9, weapons: ['hook'] },
     cultist:    { name: 'CULTIST',  speed: 1.3,  reach: 0.9,  dmg: 9,  atk: 2.2, notice: 16, size: 1.0,  r: 0.3,  h: 1.8, ranged: 6.5 },
     stalker:    { name: 'STALKER',  speed: 1.2,  reach: 1.8,  dmg: 12, atk: 1.5, notice: 14, size: 1.55, r: 0.3,  h: 3.0 },
     jabberwock: { name: 'THE JABBERWOCK', speed: 1.4, reach: 1.4, dmg: 12, atk: 1.6, notice: 99, size: 2.2, r: 0.55, h: 4.5 },
@@ -47,17 +51,22 @@
     axe:    { name: 'AXE',    verb: 'CHOPPED',     dmgMul: 1.5,  atkMul: 1.25, reach: 0.25, windup: 0.4 },
     hammer: { name: 'HAMMER', verb: 'FLATTENED',   dmgMul: 1.9,  atkMul: 1.5,  reach: 0.35, windup: 0.55 },
     shiv:   { name: 'SHIV',   verb: 'SHIVVED',     dmgMul: 0.8,  atkMul: 0.75, reach: 0,    windup: 0.2 },
+    hook:   { name: 'HOOK',   verb: 'HOOKED',      dmgMul: 1.1,  atkMul: 0.9,  reach: 0.25, windup: 0.22 },   // the flayed one's meat hook
   };
 
   // THE STRUCTURE (James 2026-09-11): four mazes on the coarse lattice (nx × ny nodes, w = 3·nx + 1 cells; two-cell
   // corridors), rooms + one great hall each (hall = its size in nodes), then THE MIDDLE (the boss; its door opens when he dies) and THE THREE DOORS
   // (a round chamber with the three odd doors — the way out to the rest of Elastic Space). cave = eroded walls (THE DEEP).
+  // THE WARREN (James 2026-09-12, 'start in a smaller area with rooms and hallways and then reach the larger spaces… each level
+  // 2 to 3x the current size'): every maze is 2.5× the nodes it was; the corner you wake in (warren = its size in nodes) holds
+  // only small rooms (warrenRooms of them, 2×2 nodes, no columns) and hallways; the big rooms (up to 3×3, columns), the great
+  // hall(s) (halls of them) and the door all lie outside it, so a level opens up as you go.
   const LEVELS = [
-    { n: 1, name: 'THE GATE',        nx: 6, ny: 6, goons: 8,  loops: 6,  rooms: 5, hall: [3, 3], theme: 0, mix: { lizardman: 6, ratling: 2 } },
-    { n: 2, name: 'THE CATACOMBS',   nx: 7, ny: 7, goons: 12, loops: 9,  rooms: 6, hall: [3, 4], theme: 1, mix: { lizardman: 5, ratling: 3, cultist: 2 } },
-    { n: 3, name: 'THE MEAT LOCKER', nx: 8, ny: 8, goons: 16, loops: 12, rooms: 7, hall: [3, 4], theme: 2, mix: { lizardman: 4, ratling: 3, cultist: 2, brute: 3 } },
-    { n: 4, name: 'THE DEEP',        nx: 9, ny: 9, goons: 20, loops: 15, rooms: 8, hall: [4, 4], cave: true, theme: 3, mix: { lizardman: 3, ratling: 3, cultist: 3, brute: 3, stalker: 3 } },
-    { n: 5, name: 'THE MIDDLE',      w: 25, h: 25, goons: 6,  loops: 0,  rooms: 0, theme: 4, arena: true, mix: { lizardman: 2, ratling: 2, cultist: 1, brute: 1 } },
+    { n: 1, name: 'THE GATE',        nx: 10, ny: 9,  goons: 12, loops: 12, rooms: 6, warrenRooms: 3, warren: [5, 4], hall: [3, 3], halls: 1, theme: 0, mix: { lizardman: 6, flayed: 2 } },
+    { n: 2, name: 'THE CATACOMBS',   nx: 12, ny: 10, goons: 18, loops: 18, rooms: 7, warrenRooms: 4, warren: [5, 5], hall: [3, 4], halls: 1, theme: 1, mix: { lizardman: 5, flayed: 3, cultist: 2 } },
+    { n: 3, name: 'THE MEAT LOCKER', nx: 13, ny: 12, goons: 24, loops: 24, rooms: 8, warrenRooms: 4, warren: [6, 5], hall: [3, 4], halls: 2, theme: 2, mix: { lizardman: 4, flayed: 3, cultist: 2, brute: 3 } },
+    { n: 4, name: 'THE DEEP',        nx: 15, ny: 13, goons: 28, loops: 30, rooms: 9, warrenRooms: 5, warren: [6, 6], hall: [4, 4], halls: 2, cave: true, theme: 3, mix: { lizardman: 3, flayed: 3, cultist: 3, brute: 3, stalker: 3 } },
+    { n: 5, name: 'THE MIDDLE',      w: 25, h: 25, goons: 6,  loops: 0,  rooms: 0, theme: 4, arena: true, mix: { lizardman: 2, flayed: 2, cultist: 1, brute: 1 } },
     { n: 6, name: 'THE THREE DOORS', w: 13, h: 13, goons: 0,  loops: 0,  rooms: 0, theme: 4, exit: true, mix: {} },
   ];
   const MAZES = 4;   // how many of them are mazes (the cards say MAZE n OF 4)
@@ -102,7 +111,8 @@
     else { const y = nodeY(Math.max(j, j + dj)) - 1; for (let x = 0; x < 2; x++) map[y * w + nodeX(i) + x] = 0; }
   }
   const passageOpen = (map, w, i, j, di, dj) => di ? map[nodeY(j) * w + nodeX(Math.max(i, i + di)) - 1] === 0 : map[(nodeY(Math.max(j, j + dj)) - 1) * w + nodeX(i)] === 0;
-  function makeMaze(nx, ny, rand, loops) {
+  function makeMaze(nx, ny, rand, loops, warren) {
+    const inWarren = (i, j) => !!warren && i < warren[0] && j < warren[1];
     const w = PITCH * nx + 1, h = PITCH * ny + 1;
     const g = new Uint8Array(w * h).fill(1);
     const seen = new Uint8Array(nx * ny);
@@ -122,6 +132,7 @@
       const i = Math.floor(rand() * nx), j = Math.floor(rand() * ny);
       const [di, dj] = pick(rand, [[1, 0], [0, 1]]);
       if (i + di >= nx || j + dj >= ny || passageOpen(g, w, i, j, di, dj)) continue;
+      if (inWarren(i, j) && inWarren(i + di, j + dj) && rand() < 0.6) continue;   // the warren keeps most of its dead ends and turns
       passage(g, w, i, j, di, dj); k++;
     }
     return g;
@@ -235,13 +246,13 @@
     const def = n === 'lab' ? LAB_LEVEL : LEVELS[n - 1];
     const rand = mulberry(hashStr(seedStr + ':' + n));
     const w = def.nx ? PITCH * def.nx + 1 : def.w, h = def.ny ? PITCH * def.ny + 1 : def.h;
-    const map = def.exit ? makeRound(w, h) : def.arena ? makeArena(w, h, rand, def.lab) : makeMaze(def.nx, def.ny, rand, def.loops);
-    const level = { n, name: def.name, w, h, nx: def.nx || 0, ny: def.ny || 0, map, theme: def.theme, arena: !!def.arena, exit: !!def.exit, lab: !!def.lab, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], armors: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [], markers: [], guide: null, landmarks: [] };
+    const map = def.exit ? makeRound(w, h) : def.arena ? makeArena(w, h, rand, def.lab) : makeMaze(def.nx, def.ny, rand, def.loops, def.warren);
+    const level = { n, name: def.name, w, h, nx: def.nx || 0, ny: def.ny || 0, map, theme: def.theme, arena: !!def.arena, exit: !!def.exit, lab: !!def.lab, spawn: null, key: null, door: null, driftDoors: [], goonSpawns: [], heals: [], armors: [], bossSpawn: null, tall: new Uint8Array(w * h), rooms: [], markers: [], guide: null, landmarks: [], warren: def.warren || null, mix: def.mix || {} };
     const at = (x, y) => y * w + x;
     // rooms: open chambers carved over whole nodes with a tall ceiling, the great hall taller still; the arena is one hall
     if (def.arena) level.tall.fill(def.lab ? 1 : 2);
     else if (def.exit) level.tall.fill(1);
-    else { carveRooms(level, def.rooms || 0, def.hall || null, rand); if (def.cave) erodeCave(level, rand); placeLandmarks(level); }
+    else { carveRooms(level, def.rooms || 0, def.hall || null, rand, def.warren || null, def.warrenRooms || 0, def.halls || 1); if (def.cave) erodeCave(level, rand); placeLandmarks(level); }
     if (def.exit) { const mid = Math.floor(w / 2); map[mid * w + mid] = PROP; level.landmarks = [{ x: mid, y: mid, room: -1, slot: 0, hall: false }]; }
     // wall variants: mostly A, some B/C, rare D (the train's breakable walls; the look comes from the district now)
     for (let i = 0; i < map.length; i++) if (map[i] === 1) {
@@ -298,9 +309,12 @@
     }
     level.key = { x: best[0] + 0.5, y: best[1] + 0.5 };
     const dK = bfs(level, best[0], best[1]);
-    // exit door: a boundary wall next to an open cell far from both spawn and key
+    // exit door: a boundary wall next to an open cell far from both spawn and key — and outside the warren, so the way out is
+    // always through the big spaces (the warren is where you start, never where you finish)
+    const inWarren = (x, y) => !!def.warren && Math.floor((x - 1) / PITCH) < def.warren[0] && Math.floor((y - 1) / PITCH) < def.warren[1];
     let door = null, doorScore = -1;
-    for (const [x, y] of open) {
+    for (let pass = 0; pass < 2 && !door; pass++) for (const [x, y] of open) {   // pass 1 (never needed on these sizes) lets the warren back in rather than have no door
+      if (pass === 0 && inWarren(x, y)) continue;
       const edge = x === 1 ? [0, y, 'w'] : x === w - 2 ? [w - 1, y, 'e'] : y === 1 ? [x, 0, 'n'] : y === h - 2 ? [x, h - 1, 's'] : null;
       if (!edge) continue;
       const s = Math.min(dS[at(x, y)], dK[at(x, y)] * 0.8);
@@ -387,21 +401,25 @@
   // Never on the spawn node, never over another room (a wall's width apart is fine). A room inherits every passage that
   // crossed its edge and gets one or two doorways more, so it is never a dead end. The big ones get a few one-cell
   // columns at their inner lattice crossings (a column is a cell; the room stays open around it).
-  function carveRooms(level, k, hall, rand) {
+  // THE WARREN (2026-09-12): with warren = [wx, wy] nodes, zone 'warren' rooms must fit inside that corner (small, no
+  // columns) and zone 'open' rooms and the halls must lie wholly outside it (i0 >= wx or j0 >= wy).
+  function carveRooms(level, k, hall, rand, warren, warrenRooms, halls) {
     const { w, map, tall, nx, ny } = level;
     const at = (x, y) => y * w + x;
     const rooms = level.rooms;
-    const tryPlace = (rw, rh, isHall) => {
-      for (let tries = 0; tries < 80; tries++) {
-        const i0 = Math.floor(rand() * (nx - rw + 1)), j0 = Math.floor(rand() * (ny - rh + 1));
+    const tryPlace = (rw, rh, isHall, zone) => {
+      for (let tries = 0; tries < 120; tries++) {
+        let i0, j0;
+        if (zone === 'warren') { if (warren[0] < rw || warren[1] < rh) return null; i0 = Math.floor(rand() * (warren[0] - rw + 1)); j0 = Math.floor(rand() * (warren[1] - rh + 1)); }
+        else { i0 = Math.floor(rand() * (nx - rw + 1)); j0 = Math.floor(rand() * (ny - rh + 1)); if (zone === 'open' && i0 < warren[0] && j0 < warren[1]) continue; }
         if (i0 === 0 && j0 === 0) continue;
         let clash = false;
         for (const r of rooms) if (i0 < r.i + r.nw && i0 + rw > r.i && j0 < r.j + r.nh && j0 + rh > r.j) clash = true;   // a wall's width apart is fine
         if (clash) continue;
         const x0 = nodeX(i0), y0 = nodeY(j0), cw = PITCH * rw - 1, ch = PITCH * rh - 1;
-        const room = { id: rooms.length, i: i0, j: j0, nw: rw, nh: rh, x: x0, y: y0, w: cw, h: ch, hall: isHall };
+        const room = { id: rooms.length, i: i0, j: j0, nw: rw, nh: rh, x: x0, y: y0, w: cw, h: ch, hall: isHall, warren: zone === 'warren' };
         for (let y = y0; y < y0 + ch; y++) for (let x = x0; x < x0 + cw; x++) { map[at(x, y)] = 0; tall[at(x, y)] = isHall ? 2 : 1; }
-        if (rw >= 3 && rh >= 3) for (let j = j0 + 1; j < j0 + rh; j++) for (let i = i0 + 1; i < i0 + rw; i++) if (rand() < (isHall ? 0.85 : 0.5)) map[at(PITCH * i, PITCH * j)] = 1;
+        if (rw >= 3 && rh >= 3 && zone !== 'warren') for (let j = j0 + 1; j < j0 + rh; j++) for (let i = i0 + 1; i < i0 + rw; i++) if (rand() < (isHall ? 0.85 : 0.5)) map[at(PITCH * i, PITCH * j)] = 1;
         // doorways
         const edges = [];
         for (let i = i0; i < i0 + rw; i++) { if (j0 > 0) edges.push([i, j0, 0, -1]); if (j0 + rh < ny) edges.push([i, j0 + rh - 1, 0, 1]); }
@@ -413,8 +431,10 @@
       }
       return null;
     };
-    if (hall) { const flip = rand() < 0.5; tryPlace(flip ? hall[1] : hall[0], flip ? hall[0] : hall[1], true); }
-    for (let n = 0; n < k; n++) tryPlace(pick(rand, [2, 2, 3]), pick(rand, [2, 2, 3]), false);
+    const openZone = warren ? 'open' : null;
+    if (hall) for (let n = 0; n < (halls || 1); n++) { const flip = rand() < 0.5; tryPlace(flip ? hall[1] : hall[0], flip ? hall[0] : hall[1], true, openZone); }
+    for (let n = 0; n < k; n++) tryPlace(pick(rand, warren ? [2, 3, 3] : [2, 2, 3]), pick(rand, warren ? [2, 3, 3] : [2, 2, 3]), false, openZone);
+    if (warren) for (let n = 0; n < warrenRooms; n++) tryPlace(2, 2, false, 'warren');
   }
   // LANDMARKS (2026-09-11, 'landmarks or unusual formations that you can differentiate'): every room gets a slot at its
   // middle, the great hall three along its long axis — a PROP cell, solid like a wall, that the renderer stands a Meshy
@@ -584,7 +604,7 @@
     const level = buildLevel(n, state.seed, state.opts);
     state.n = n; state.level = level; state.phase = 'play';
     state.player = {
-      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100, armor: state.player ? state.player.armor : 0, maxArmor: 100,
+      x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: 100, maxHp: 100, armor: 100, maxArmor: 100,   // full health AND full armor at the start of every level (James 2026-09-12; was: health carried over with a floor of 60, armor carried over)
       cool: 0, slow: 1, vx: 0, vy: 0, fx: { snot: 0, bees: 0, lump: 0, spin: 0, dead: 0, fall: 0, flash: 0, hurt: 0 },
       safe: { x: level.spawn.x, y: level.spawn.y }, driftPush: { i: -1, t: 0 }, spinDir: 1, ringing: 0,
       burst: 0, burstCool: 0, runHeld: false,   // the run burst: time left in it, time left before the next, and the key's last state (a tap starts one; holding does not chain)
@@ -600,6 +620,7 @@
     state.heals = level.heals.map((h) => ({ x: h.x, y: h.y, taken: false }));
     state.armors = (level.armors || []).map((a) => ({ x: a.x, y: a.y, kind: a.kind, taken: false }));
     state.doorOpen = level.bossSpawn ? false : !level.key;   // the arena's door opens when the boss dies
+    initWaves(state);
     state.pending = null;
     state.plate = null;
     state.events.push({ type: 'level', n, name: level.name });
@@ -965,6 +986,7 @@
     stepZones(state, dt);
     stepScars(state, dt);
     stepGoons(state, dt);
+    stepWaves(state, dt);
     for (const b of state.beams) b.t += dt;
     state.beams = state.beams.filter((b) => b.t < b.life);
   }
@@ -1453,7 +1475,7 @@
         }
         if (g.windup > 0) {
           g.windup -= dt;
-          if (g.windup <= 0 && dist < def.reach + (wp ? wp.reach : 0) + p.r + 0.2) hurtPlayer(state, { name: 'A ' + def.name + (wp ? ' WITH A ' + wp.name : ''), verb: wp ? wp.verb : 'BEATEN', tier: 'x', dmg: def.dmg * (wp ? wp.dmgMul : 1) }, 'goon');
+          if (g.windup <= 0 && dist < def.reach + (wp ? wp.reach : 0) + p.r + 0.2) hurtPlayer(state, { name: 'A ' + def.name + (wp ? (/^[AEIOU]/.test(wp.name) ? ' WITH AN ' : ' WITH A ') + wp.name : ''), verb: wp ? wp.verb : 'BEATEN', tier: 'x', dmg: def.dmg * (wp ? wp.dmgMul : 1) }, 'goon');   // 'WITH AN AXE' (2026-09-12)
         }
       }
       // goons don't stack
@@ -1463,6 +1485,78 @@
         if (d < min && d > 0.001) { const push = (min - d) * 0.5; g.x -= (o.x - g.x) / d * push; g.y -= (o.y - g.y) / d * push; }
       }
     }
+  }
+
+  // REINFORCEMENTS (James 2026-09-12: 'endless bad guys… once you kill the first whole set in a given space, then fewer
+  // spawn — say there's 12 in an area and you kill them all, a clock starts and after 6 seconds 4 more come out'): a space
+  // is a district (a room and the corridors that join it). Every goon remembers the district it was dealt to; when that
+  // district's whole set is down (dead, dying or pacified) its clock runs (waveDelay) and waveFrac of the first set comes
+  // back — out of your sight, well away from you, the far side of the space preferred — and again each time those fall,
+  // for as long as you stay. waveFrac 0 is the old one-set level. Mazes only: not the arena, not the lab. Corpses beyond
+  // twenty go, oldest first, so a long stay never piles up bodies.
+  const CORPSES_KEPT = 20;
+  function initWaves(state) {
+    const L = state.level; state.waves = null;
+    if (!L.district || L.arena || L.lab || L.exit || !L.rooms.length) return;
+    const waves = {};
+    for (const g of state.goons) {
+      g.district = Math.max(0, L.district[Math.floor(g.y) * L.w + Math.floor(g.x)]);
+      const w = waves[g.district] || (waves[g.district] = { first: 0, clock: -1, sent: 0 });
+      w.first++;
+    }
+    state.waves = waves;
+  }
+  function stepWaves(state, dt) {
+    const W = state.waves; if (!W) return;
+    const frac = state.opts.waveFrac == null ? DEFAULTS.waveFrac : state.opts.waveFrac;
+    if (frac <= 0) return;
+    const delay = state.opts.waveDelay == null ? DEFAULTS.waveDelay : state.opts.waveDelay;
+    const alive = {};
+    for (const g of state.goons) if (g.state !== 'dead' && g.state !== 'dying' && g.state !== 'pacified' && g.district != null) alive[g.district] = (alive[g.district] || 0) + 1;
+    for (const d in W) {
+      const w = W[d];
+      if (alive[d]) { w.clock = -1; continue; }
+      if (w.clock < 0) { w.clock = delay; continue; }
+      w.clock -= dt;
+      if (w.clock > 0) continue;
+      const sent = spawnWave(state, +d, Math.max(1, Math.round(w.first * frac)));
+      if (sent) { w.sent += sent; w.clock = -1; } else w.clock = 2;   // nowhere out of your sight just now: try again shortly
+    }
+    // the corpse cap
+    let dead = 0;
+    for (const g of state.goons) if (g.state === 'dead' && !g.isBoss) { if (g.deadAt == null) g.deadAt = state.t; dead++; }
+    if (dead > CORPSES_KEPT) {
+      const gone = state.goons.filter((g) => g.state === 'dead' && !g.isBoss).sort((a, b) => a.deadAt - b.deadAt).slice(0, dead - CORPSES_KEPT);
+      state.goons = state.goons.filter((g) => !gone.includes(g));
+    }
+  }
+  // n fresh goons into district d: open cells of it at least six away from you and out of your line of sight, never the
+  // key's cell or on top of somebody; dealt from the far third
+  function spawnWave(state, d, n) {
+    const L = state.level, p = state.player;
+    const cells = [];
+    for (let y = 1; y < L.h - 1; y++) for (let x = 1; x < L.w - 1; x++) {
+      const c = y * L.w + x;
+      if (L.map[c] !== OPEN || L.district[c] !== d) continue;
+      const cx = x + 0.5, cy = y + 0.5, dist = Math.hypot(cx - p.x, cy - p.y);
+      if (dist < 6) continue;
+      if (L.key && Math.floor(L.key.x) === x && Math.floor(L.key.y) === y) continue;
+      if (state.goons.some((g) => g.state !== 'dead' && Math.hypot(g.x - cx, g.y - cy) < 0.8)) continue;
+      if (lineOfSight(state, p.x, p.y, cx, cy)) continue;
+      cells.push({ x: cx, y: cy, dist });
+    }
+    if (!cells.length) return 0;
+    cells.sort((a, b) => b.dist - a.dist);
+    const pool = cells.slice(0, Math.max(n * 3, Math.ceil(cells.length / 3)));
+    let sent = 0;
+    for (let i = 0; i < n && pool.length; i++) {
+      const c = pool.splice(Math.floor(state.rand() * pool.length), 1)[0];
+      const g = makeGoon(weightedType(state.rand, L.mix), c.x, c.y, state.rand);
+      g.district = d; g.wave = true; g.wanderT = 0.3 + state.rand();
+      state.goons.push(g); sent++;
+      state.events.push({ type: 'wave', goon: g, x: g.x, y: g.y, district: d });
+    }
+    return sent;
   }
 
   function stepBoss(state, b, dt, dist) {
@@ -1539,15 +1633,15 @@
   function retryLevel(state) {
     if (state.lives <= 0) return false;
     startLevel(state, state.n);
-    state.player.hp = 100; state.player.armor = 0;
+    state.player.hp = 100; state.player.armor = 100;   // a retry is a level start: full, like every level (2026-09-12)
     return true;
   }
   function goonsLeft(state) { return state.goons.filter((g) => g.state !== 'dead' && g.state !== 'dying' && g.state !== 'pacified').length; }
 
   globalThis.JabberwockyCore = {
-    VERSION: 2, DEFAULTS, GOON_TYPES, WEAPONS, LEVELS, MAZES, PITCH, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT, PROP },
+    VERSION: 3, DEFAULTS, GOON_TYPES, WEAPONS, LEVELS, MAZES, PITCH, LAB_LEVEL, LAB_PADS, OUTCOMES, SCARS, GAGS, CELL: { OPEN, WALL_A, WALL_B, WALL_C, WALL_D, DOOR, DRIFT, PROP },
     hashStr, mulberry, makeMaze, buildLevel, bfs, bfsPath, cellAt, solidAt, castRay, lineOfSight, aimPoint,
     newGame, startLevel, nextLevel, retryLevel, step, fire, rollGag, bossRoll, launch, hitGoon, hurtPlayer, addScar, goonsLeft, angDiff,
-    makeLabGoon, respawnLabGoon, liveGags, rollTier,
+    makeLabGoon, respawnLabGoon, liveGags, rollTier, spawnWave, stepWaves,
   };
 })();

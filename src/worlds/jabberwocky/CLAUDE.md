@@ -6,7 +6,29 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
-## THE STRUCTURE — START HERE (2026-09-11, James's brief, built on his "let it rip"; read the changelog entry first)
+## START HERE (2026-09-12)
+
+- JAMES'S TODO TONIGHT: a music track per level — drop `theme-2.mp3` … `theme-6.mp3` into `assets/audio/` (2 THE CATACOMBS,
+  3 THE MEAT LOCKER, 4 THE DEEP, 5 THE MIDDLE, 6 THE THREE DOORS). Level 1 keeps `theme.mp3`. A level with no file is
+  silent on purpose (his "only play the music we have on level 1"); sound.js `setLevel(n)` swaps tracks with a fade.
+- THE WARREN (2026-09-12, "start in a smaller area with rooms and hallways and then reach the larger spaces"): `LEVELS[].warren`
+  [wx, wy] nodes at the spawn corner — only 2×2-node rooms (`warrenRooms`, `room.warren`, no columns) and hallways with few
+  loops; the big rooms, the halls (`halls`) and THE DOOR are always outside it. Mazes are ~2.5× (31×28 … 46×40 cells).
+- REINFORCEMENTS (2026-09-12, "endless bad guys"): a district's whole set down → `waveDelay` (6 s) → round(first × `waveFrac`
+  0.34) come back out of your sight, forever. Core `initWaves / stepWaves / spawnWave`, event `wave`, corpses capped at 20.
+  Dials PLAY → Reinforcements / Reinforcement clock; 0 = the old one-set level.
+- THE FLAYED ONE (2026-09-12) is the fast weak one — the ratling is OUT ("you cannot see it… hard to hit"; files on disk until
+  ship). `tmp/jabberwocky/creature.mjs <name> concept | model | clips` + `moves.mjs <name>` is THE PIPELINE for any new
+  creature now (a CREATURES row: prompt + rig height; keep concepts A-pose, front-on, tailless). Its hook = `PROPS.hook`.
+- PERFORMANCE (2026-09-12, his "a little laggy at times"): `R.profile = true` in the console, then `R.perf` = smoothed ms per
+  section (cam / torch / head / decor / goons / shots / bodies / render, mv* for the last creature view built). The rules that
+  came out of the pass: hand `canvasTex` a drawer FUNCTION, never a drawn canvas (a hit must not draw); anything past the fog
+  is switched off (`near2` / `cullR2`); creatures past ten cells are drawn only in sight (`goonInSight`); brackets are one
+  instanced mesh; clip actions bind on first use. Measure before and after in the pane with `renderer.info` (autoReset off).
+- AWAITING HIS FLIGHT of all of it: the warren's feel, the wave size / clock, the flayed one's look and speed, the armor glow,
+  the frame rate.
+
+## THE STRUCTURE (2026-09-11, James's brief, built on his "let it rip"; read the changelog entry first)
 
 - Six levels: four mazes (`LEVELS[].nx × ny` lattice nodes, `PITCH` 3 — every corridor two cells wide; rooms over whole
   nodes with `tall` 1 = 8 m, the great hall `tall` 2 = 11 m; THE DEEP `cave: true` erodes its walls), THE MIDDLE (the boss;
@@ -23,6 +45,7 @@ Meshy creatures, PG-13 cartoon gore.
   from `layGuide`; the renderer draws them (`guideTex`, per-theme `sign` style) and `syncGuide` fades the legs with the key
   (`look.guide` = configuration → LOOK → Route markings). Never remove the guide; James hates getting lost.
 - Goons spawn ≥ 8 steps out and on the far side of any room the route enters; notice ranges doubled. Keep fights far back.
+- EVERY LEVEL STARTS FULL (James 2026-09-12): 100 health, 100 armor, on the way through the door and on a retry.
 - LIVES (`opts.lives` 3, `state.lives`; `retryLevel` false at zero) and ARMOR (`player.armor` 0–100 takes two thirds of a hit;
   `state.armors` pickups plate +50 / helm +15; `armorMul`). HUD: ARMOR bar + three skulls. Dials: PLAY → Lives per run, Armor
   pickups ×.
@@ -31,9 +54,9 @@ Meshy creatures, PG-13 cartoon gore.
 - THE BAD GUYS' WEAPONS: core `WEAPONS` + `GOON_TYPES[].weapons` → `goon.weapon`; renderer `armGoon` (RightHand bone, PCA long
   axis, grip rule `GRIP_AT_FAT`) and `dropWeapon`. THE MOVES: `ATTACKS[type]` + `DEATHS4` in render3d.js, ids in
   tmp/jabberwocky/actions3.json, `moves.mjs` submits / downloads per creature (retries the ten-task cap).
-- THE LIZARDMAN is the common goon (the ghoul is out of the mixes and the lab; its files go at ship). Its pipeline:
-  `tmp/jabberwocky/lizardman.mjs concept | model | clips` then `moves.mjs lizardman`; take one (tail, turned head) was refused
-  by the rigger — keep creature concepts A-pose, front-on, tailless.
+- THE LIZARDMAN is the common goon (the ghoul and the ratling are out of the mixes and the lab; their files go at ship). Its
+  pipeline was `tmp/jabberwocky/lizardman.mjs`, now generalized as `creature.mjs <name>` (the flayed one, 2026-09-12); take one
+  (tail, turned head) was refused by the rigger — keep creature concepts A-pose, front-on, tailless.
 - THE CORNER MAP (2026-09-12, his "modernize the map"): `drawMap` in world.js — the world in miniature, you at the centre,
   ahead up, wings in their district colours, walls as lines, KEY / EXIT always labelled (pinned to the rim when off the map),
   bad guys red by kind (`GOON_INK`), a legend under it. Never back to blocks; keep the exit marked at all times.
@@ -146,7 +169,7 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   Every other `expire` kill deals from the death pool by the goon's seed (the same goon always dies the same way). A
   missing clip falls through to `die` / the old hand-coded motion. Meshy queues ten tasks at a time (429
   NoMorePendingTasks): `tmp/jabberwocky/animate-missing.mjs` resubmits whatever a batch dropped. Ghoul, brute, ratling,
-  cultist, stalker. The Jabberwock is `jabberwock/base.glb` only: Meshy's rigger wants a humanoid and
+  cultist, stalker, and the flayed one (2026-09-12, `creature.mjs`). The Jabberwock is `jabberwock/base.glb` only: Meshy's rigger wants a humanoid and
   refused the dragon twice, so he is a posed statue (rifle in hand) moved procedurally.
 - `assets/models/gibs/` — intestines, arm, leg, skull, ribs. `rifle.glb`, `gauntlets.glb` (the viewmodel).
 - `assets/models/props/` — 28 Meshy props (2026-09-06, `tmp/jabberwocky/props.mjs`, keyed by SPRITE name)
@@ -185,13 +208,14 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   vocabulary — reuse it, don't add bespoke particles. Explosions only for `BOOM_GAGS`.
 - **Shift is a burst, not a hold** (James 2026-09-12): two seconds at 1.9× walk, two seconds of cooldown, a tap starts it and
   holding never chains; the RUN bar on the HUD shows it. `burstMul / burstDur / burstCool` in DEFAULTS.
-- **Motion:** head bob defaults to 0, shake to 0.25, no CRT anything, native resolution. The 2D
+- **Motion:** head bob defaults to 0, shake to 0.25, no CRT anything, native resolution. MOTION SICKNESS PASS (James 2026-09-12): the look settle is a LOOK dial in ms (default 25, was a fixed 70), the corner map is NORTH-UP by default (PLAY → Map turns; the arrow turns, the dish does not), field of view 88 (was 76). Keep the run burst — he likes it. The 2D
   raycaster made James sick and is gone for good; never bring back per-column rendering.
-- **Space:** cells are 2.6 m wide, corridors two cells wide and 4.4 m tall, rooms 8 m, the great hall 11 m (2026-09-11; was 3.2 / 5.4 one-cell tunnels). Tightness was part of the nausea — never narrow it again.
+- **Space:** cells are 2.6 m wide, corridors two cells wide and 4.4 m tall, rooms 8 m, the great hall 11 m (2026-09-11; was 3.2 / 5.4 one-cell tunnels). Tightness was part of the nausea — never narrow it again. The warren (2026-09-12) is smaller ROOMS and more turns, never narrower halls.
 - **No clowns.** The enemies are dungeon creatures; the humour lives in the gags and the plate.
 - **Scars persist per level and clear at the door.** The train breaks up to six walls; the bus does not.
 - **The boss uses the same table** including duds and backfires (his backfires hurt him).
 - **Drift doors** are the three odd doors on the boundary of each maze and the three in THE THREE DOORS past the arena; keep walking into one for 0.7 s.
+- **Sound files are decoded buffers, never a media element per play** (2026-09-12, the leak that choked the mix by level 3): `buffers` / `decodeFile` at preflight, buffer sources that disconnect on end, a time-counted 40-voice cap; file:// keeps pooled elements (≤ 3 per name). `tmp/jabberwocky/sound-smoke.mjs` proves nothing accumulates — run it after touching sound.js.
 - **Sound is the shared control only.** New one-shots: add the prompt to `sfx-batch.mjs`, run it, map
   the id in `sound.js` `FILES`; keep a recipe fallback. James drops his own files into `assets/audio/sfx/` too;
   NUMBERED SETS: `<name>-01.mp3`, `-02` … beside any one-shot name are found at preflight (contiguous from 01) and

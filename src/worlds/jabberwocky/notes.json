@@ -1236,9 +1236,11 @@
       "gag": "sneaker",
       "text": "splat",
       "at": "2026-09-11T05:02:27.356Z",
-      "status": "new",
+      "status": "done",
       "rank": 2,
-      "action": "update"
+      "action": "update",
+      "reply": "Done: the sneaker's landing kill plays a splat now, on top of the blood, the pool and the wall splats it already had.",
+      "doneAt": "2026-09-12T15:51:48.728Z"
     }
   ],
   "updates": {
@@ -1355,8 +1357,8 @@
       "note": "the first victim always; a second or third only if it is within three and a half cells, else the swarm leaves — reload"
     },
     "sneaker": {
-      "at": "2026-09-11T04:49:31.134Z",
-      "note": "more blood: a big burst, a wide pool, wall splats, two giblets — reload"
+      "at": "2026-09-12T15:51:48.670Z",
+      "note": "a wet splat plays when the sneaker lands on someone"
     },
     "legos": {
       "at": "2026-09-11T04:49:18.067Z",
