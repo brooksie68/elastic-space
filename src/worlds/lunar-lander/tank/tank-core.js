@@ -692,7 +692,7 @@
   // the shell gets there (each enemy carried on at its speed and heading). Returns the arc
   // (a point every SOL_ARC steps), the landing point and what it is, and one lead ghost per
   // enemy: where its hull will stand when a shell fired now reaches its range.
-  const SOL_DT = 0.04, SOL_ARC = 3;
+  const SOL_DT = DT, SOL_ARC = 15;   // 2026-09-12: the march runs at the physics step — at 0.04 s it skipped a graze the real shell took (a rise 60 ft ahead of the muzzle)
   function shellSolution(state) {
     const t = state.tank;
     const o = muzzle(t), d = gunDir(t);

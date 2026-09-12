@@ -17,6 +17,10 @@
       --glass: rgba(6, 14, 9, 0.5);
       --glass-edge: rgba(109, 255, 142, 0.16);
       --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+      --ui: 1;                       /* the text-size dial (PLAY → text size): every instrument scales off it */
+      --strip-h: 7.2rem;             /* the strip map's height at the bottom */
+      --amber: #ffb457;
+      --pink: #ff8fa3;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
@@ -34,11 +38,12 @@
 
     /* ---- instruments: one console, top centre, in panels ------------------------- */
     #console {
-      /* sized in em off one base so the whole console scales together; James: 20% down from the first cut */
-      font-size: 0.8rem;
+      /* sized in em off one base so the whole console scales together (2026-09-12: up 25% and the
+         text dial on top — James: "all the icons and lettering is too tiny"); it never sits over the sitrep */
+      font-size: calc(0.95rem * var(--ui));
       pointer-events: none;
-      position: fixed; top: 0.9rem; left: 50%; transform: translateX(-50%); z-index: 10;
-      width: min(944px, 94vw);
+      position: fixed; top: 0.9rem; left: calc(22rem * var(--ui) + (100vw - 22rem * var(--ui)) / 2); transform: translateX(-50%); z-index: 10;
+      width: min(1400px, calc(100vw - 23rem * var(--ui)));
       display: flex; flex-direction: column; gap: 0.5rem;
       transition: opacity 500ms ease;
     }
@@ -124,16 +129,21 @@
     #tc-status { margin-top: 0.25em; font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-dim); }
     #tc-status.held { color: var(--ph); }
     #tc-how { margin-top: 0.6em; font-size: 0.92em; line-height: 1.5; letter-spacing: 0.02em; color: var(--ink); opacity: 0.9; text-transform: none; }
-    #tech-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: nowrap; }
+    #tech-note { font-size: 0.713em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); opacity: 0.7; white-space: normal; max-width: 13em; text-align: center; line-height: 1.4; }
+    #v-hostiles { display: none; }   /* the count lives in the sitrep now (2026-09-12) */
     /* ---- the weapons (round two): three rows, the armed one lit ---- */
     #weapons-panel { gap: 0.35em; }
     #weapons { display: flex; flex-direction: column; gap: 0.18em; margin-top: 0.3em; }
-    .wpn { pointer-events: auto; cursor: pointer; display: flex; align-items: baseline; gap: 0.55em; font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); padding: 0.12em 0.45em; border-radius: 6px; border: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
+    .wpn { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 0.5em; font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); padding: 0.1em 0.45em; border-radius: 6px; border: 1px solid transparent; transition: color 160ms ease, border-color 160ms ease, background 160ms ease; }
     .wpn .key { display: inline-block; min-width: 1.2em; text-align: center; font-size: 0.85em; color: var(--ink-faint); border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0 0.15em; letter-spacing: 0; }
+    /* the drawings (2026-09-12: "missiles look like a couple of teeny lines, lightning icon for laser?") */
+    .wpn svg.ico { width: 1.9em; height: 1.9em; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .wpn .wname { flex: 1; }
-    .wpn .wcount { font-variant-numeric: tabular-nums; font-size: 1.25em; font-weight: 300; letter-spacing: 0; color: var(--ink); }
+    .wpn .wcount { font-variant-numeric: tabular-nums; font-size: 1.35em; font-weight: 300; letter-spacing: 0; color: var(--ink); }
     .wpn.armed { color: var(--ph); border-color: color-mix(in srgb, var(--ph) 55%, transparent); background: color-mix(in srgb, var(--ph) 10%, transparent); }
     .wpn.armed .key { color: var(--ph); border-color: var(--ph); }
+    .wpn.out { color: var(--pink); }
+    .wpn.out .wcount { color: var(--pink); }
     .wpn.armed.locked { animation: hot 520ms ease-in-out infinite alternate; }
     .wpn.empty .wcount { color: var(--ink-faint); }
     .wpn:hover { color: var(--ink); border-color: var(--ink-faint); }
@@ -151,9 +161,23 @@
     .float.lost { color: #ff8fa3; }
     .float.sam { color: #ff8fa3; text-shadow: 0 0 14px rgba(255, 143, 163, 0.5); }
     /* the SAM range beside the threat icon on the direction circle: small, pink, counting down */
-    #sam-tag { display: none; color: #ff8fa3; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.18em; text-indent: 0.18em; text-shadow: 0 0 10px rgba(255, 143, 163, 0.5); }
+    #sam-tag { display: none; color: var(--pink); font-size: calc(0.9rem * var(--ui)); font-weight: 700; letter-spacing: 0.14em; text-indent: 0.14em; text-shadow: 0 0 10px rgba(255, 143, 163, 0.5); white-space: nowrap; }
     #sam-tag.show { display: block; }
     #sam-tag.decoyed { color: var(--ink-dim); }
+    /* the SAM edge pointer (2026-09-12): when the missile is off the screen, a readable pink word + arrow at the edge toward it */
+    #sam-edge { position: fixed; left: 0; top: 0; z-index: 7; pointer-events: none; display: none; color: var(--pink); font-size: calc(0.95rem * var(--ui)); font-weight: 700; letter-spacing: 0.16em; white-space: nowrap; text-shadow: 0 0 12px rgba(255, 143, 163, 0.5); animation: hot 400ms ease-in-out infinite alternate; }
+    #sam-edge.show { display: block; }
+    #sam-edge .arr { display: inline-block; font-size: 1.3em; margin: 0 0.3em; }
+    /* every hostile wears its name (2026-09-12: "label everything"): readable type over the blinker; the amber tag takes over on hover / target */
+    .host-label { font-size: calc(0.78rem * var(--ui)); font-weight: 700; letter-spacing: 0.16em; text-indent: 0.16em; color: var(--ink-dim); white-space: nowrap; transition: opacity 200ms ease; }
+    .host-label .x { font-weight: 300; letter-spacing: 0; margin-left: 0.3em; color: var(--ink-faint); }
+    .host-label.dead { color: var(--ink-faint); text-decoration: line-through; }
+    .host-label.hot { color: var(--pink); }
+    .pad-item { display: flex; align-items: center; gap: 0.25rem; transition: opacity 200ms ease; }
+    .pad-item span { font-size: calc(0.6rem * var(--ui)); font-weight: 700; letter-spacing: 0.16em; color: var(--ph); padding: 0.1em 0.3em; border: 1px solid color-mix(in srgb, var(--ph) 45%, transparent); border-radius: 4px; background: rgba(0, 0, 0, 0.35); white-space: nowrap; }
+    .pad-item span.care { color: var(--ink); border-color: var(--ink-faint); }
+    .pad-item.used { opacity: 0.45; }
+    .float.hit { color: var(--pink); text-shadow: 0 0 14px rgba(255, 143, 163, 0.5); }
     #btn-over { margin-left: 0.6rem; background: transparent; border: 1px solid var(--glass-edge); color: var(--ink-dim); }
     .card .line.tech { color: var(--ink-dim); font-size: 0.713em; min-height: 0; margin-top: 0.3em; }
     .card .line.tech:empty { display: none; }
@@ -306,12 +330,70 @@
 
     /* ---- chrome ------------------------------------------------------------------ */
     #hint {
-      position: fixed; bottom: 1.05rem; left: 1.6rem; z-index: 10;
+      position: fixed; bottom: calc(var(--strip-h) + 1.1rem); left: 1.6rem; z-index: 10;
       font-size: 0.667rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint);
       transition: opacity 800ms ease; white-space: nowrap;
     }
     .faded { opacity: 0 !important; }
-    #controls { position: fixed; bottom: 1rem; right: 1rem; z-index: 12; display: flex; gap: 0.4rem; }
+    #controls { position: fixed; bottom: calc(var(--strip-h) + 1rem); right: 1rem; z-index: 12; display: flex; gap: 0.4rem; }
+    /* THE CONTROLS PANEL (the standing rule: every key in readable type, scaled by the text dial) */
+    #controls-panel { position: fixed; right: 1rem; bottom: calc(var(--strip-h) + 3.6rem); z-index: 13; display: none; width: min(26rem, calc(100vw - 2rem)); max-height: calc(100vh - var(--strip-h) - 5rem); overflow-y: auto;
+      background: rgba(4, 9, 6, 0.94); border: 1px solid var(--glass-edge); border-radius: 16px; padding: 1rem 1.2rem 1.1rem; font-size: calc(0.95rem * var(--ui)); box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6); }
+    #controls-panel.open { display: block; }
+    #controls-panel h2 { font-size: 0.85em; font-weight: 700; letter-spacing: 0.3em; color: var(--ph); margin: 0.6em 0 0.35em; }
+    #controls-panel h2:first-child { margin-top: 0; }
+    #controls-panel .k { display: grid; grid-template-columns: 8.5em 1fr; gap: 0.25em 0.8em; align-items: baseline; }
+    #controls-panel .k b { font-weight: 700; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap; }
+    #controls-panel .k span { color: var(--ink-dim); line-height: 1.4; }
+    #controls-panel .k b i { font-style: normal; display: inline-block; min-width: 1.4em; text-align: center; border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0.05em 0.35em; margin-right: 0.25em; }
+    #btn-controls.on { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); }
+
+    /* ---- THE SITREP (2026-09-12, James: "a little sitrep panel... 'Mission One: 3 targets, you've taken out 1' in HUD info") ---- */
+    #sitrep { position: fixed; left: 1rem; top: 0.9rem; z-index: 10; width: calc(19rem * var(--ui)); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
+    #sitrep.show { display: block; }
+    #sitrep .panel { padding: 0.8em 1em 0.9em; gap: 0.55em; }
+    #sr-level { font-size: 1.6em; font-weight: 200; letter-spacing: 0.3em; color: var(--ink); line-height: 1; }
+    #sr-level small { font-size: 0.45em; font-weight: 700; letter-spacing: 0.3em; color: var(--ph); margin-left: 0.6em; vertical-align: middle; }
+    #sr-targets { display: flex; flex-wrap: wrap; gap: 0.3em; }
+    .tbox { position: relative; min-width: 3.2em; padding: 0.3em 0.35em 0.25em; text-align: center; border: 1px solid var(--ink-dim); border-radius: 4px; font-size: 0.6em; font-weight: 700; letter-spacing: 0.14em; color: var(--ink); }
+    .tbox.dead { border-color: var(--ink-faint); color: var(--ink-faint); background: repeating-linear-gradient(135deg, transparent 0 4px, rgba(236, 255, 240, 0.12) 4px 5px); }
+    .tbox.dead::after { content: 'X'; position: absolute; right: 0.25em; top: 0.1em; font-size: 0.9em; color: var(--ink); }
+    .tbox.sel { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 10px rgba(255, 180, 87, 0.35); }
+    .tbox.base { border-color: var(--ph); color: var(--ph); }
+    #sr-count { font-size: 0.85em; font-weight: 700; letter-spacing: 0.24em; color: var(--ink); }
+    #sr-count b { font-weight: 300; font-size: 1.4em; letter-spacing: 0; color: var(--ph); margin-right: 0.15em; font-variant-numeric: tabular-nums; }
+    #sr-steps { display: flex; flex-direction: column; gap: 0.15em; }
+    #sr-steps div { font-size: 0.68em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-faint); display: flex; gap: 0.6em; align-items: baseline; }
+    #sr-steps div b { font-weight: 300; font-size: 1.15em; letter-spacing: 0; min-width: 1.1em; }
+    #sr-steps div.now { color: var(--ph); }
+    #sr-steps div.now b { color: var(--ph); }
+    #sr-steps div.done { color: var(--ink-dim); text-decoration: line-through; }
+    .sr-h { font-size: 0.62em; font-weight: 700; letter-spacing: 0.3em; color: var(--ink); opacity: 0.6; margin-top: 0.2em; }
+    .bar { position: relative; height: 0.7em; border-radius: 3px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); overflow: hidden; flex: 1; }
+    .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); transition: width 220ms ease; }
+    .bar.armor i { background: var(--ink); box-shadow: 0 0 10px rgba(236, 255, 240, 0.35); }
+    .bar.low i { animation: hot 500ms ease-in-out infinite alternate; }
+    .cond { display: grid; grid-template-columns: 4.2em 1fr 3.2em; gap: 0.3em 0.6em; align-items: center; }
+    .cond .lbl { font-size: 0.68em; letter-spacing: 0.24em; }
+    .cond .n { font-size: 1.1em; font-weight: 300; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+    #sr-systems { display: flex; flex-direction: column; gap: 0.12em; }
+    #sr-systems div { display: flex; justify-content: space-between; font-size: 0.62em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-dim); }
+    #sr-systems div span:last-child { color: var(--ph); }
+    #sr-systems div.down { color: var(--ink); }
+    #sr-systems div.down span:last-child { color: var(--pink); animation: hot 600ms ease-in-out infinite alternate; }
+    #sr-target { border-top: 1px solid var(--glass-edge); padding-top: 0.5em; margin-top: 0.1em; min-height: 3.4em; }
+    #sr-target .tn { font-size: 0.9em; font-weight: 700; letter-spacing: 0.2em; color: var(--amber); text-shadow: 0 0 10px rgba(255, 180, 87, 0.35); display: flex; justify-content: space-between; align-items: baseline; }
+    #sr-target .tn .x { font-weight: 300; letter-spacing: 0; font-size: 1.2em; }
+    #sr-target .tr { display: flex; gap: 1em; font-size: 0.68em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink); margin-top: 0.2em; }
+    #sr-target .tr b { font-weight: 300; font-size: 1.3em; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+    #sr-target .tw { font-size: 0.64em; font-weight: 700; letter-spacing: 0.24em; color: var(--ph); margin-top: 0.25em; }
+    #sr-target .tw.deny { color: var(--pink); }
+    #sr-target .none { font-size: 0.66em; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-faint); line-height: 1.6; }
+
+    /* ---- THE STRIP MAP (2026-09-12: "Lander missions need a map, too. like a strip. with objectives indicated") ---- */
+    #strip-wrap { position: fixed; left: 1rem; right: 1rem; bottom: 0.6rem; height: var(--strip-h); z-index: 9; pointer-events: none; display: none; }
+    #strip-wrap.show { display: block; }
+    #strip { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 12px; background: rgba(4, 10, 6, 0.62); border: 1px solid var(--glass-edge); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     #controls button, #tuner-toggle {
       background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px;
       color: var(--ink-dim);
@@ -396,13 +478,30 @@
     }
     body.nogl #nogl { display: flex; }
     @media (max-width: 720px) {
-      #console { top: 0.5rem; width: 98vw; } .row { flex-wrap: wrap; } #hint { display: none; }
+      #console { top: 0.5rem; width: 98vw; left: 50%; } .row { flex-wrap: wrap; } #hint { display: none; } #sitrep { display: none !important; }
     }
   </style>
 </head>
 <body>
   <canvas id="field"></canvas>
   <div id="labels" aria-hidden="true"><div id="target-tag"></div><div id="sam-tag"></div></div>
+  <div id="sam-edge" aria-hidden="true"></div>
+  <div id="sitrep" aria-label="situation report">
+    <div class="panel">
+      <div id="sr-level">LEVEL 1<small id="sr-name"></small></div>
+      <div id="sr-targets"></div>
+      <div id="sr-count"><b>0</b>OF 0 TARGETS DOWN</div>
+      <div id="sr-steps"></div>
+      <div class="sr-h">CONDITION</div>
+      <div class="cond">
+        <div class="lbl">Hull</div><div class="bar" id="sr-hull"><i></i></div><div class="n" id="sr-hull-n">100</div>
+        <div class="lbl">Armor</div><div class="bar armor" id="sr-armor"><i></i></div><div class="n" id="sr-armor-n">0</div>
+      </div>
+      <div id="sr-systems"></div>
+      <div id="sr-target"><div class="none">NO TARGET<br />SHIFT CYCLES · RIGHT-CLICK FIRES</div></div>
+    </div>
+  </div>
+  <div id="strip-wrap" aria-label="the level map"><canvas id="strip"></canvas></div>
   <div class="ship-hud" id="shud-l" aria-hidden="true">
     <div class="row"><span class="v" id="sh-alt">0</span><span class="u">FT</span></div>
     <div class="row"><span class="v" id="sh-thr">0</span><span class="u">%</span></div>
@@ -448,9 +547,9 @@
       <div class="panel" id="weapons-panel" title="1 missile · 2 laser · click a target, click again to fire · right-click clears · C chaff">
         <div class="lbl">Weapons</div>
         <div id="weapons">
-          <div class="wpn" data-w="missiles"><span class="key">1</span><span class="wname">MISSILE</span><span class="wcount" id="w-missiles">4</span></div>
-          <div class="wpn" data-w="laser"><span class="key">2</span><span class="wname">LASER</span><span class="wcount" id="w-laser">3</span></div>
-          <div class="wpn" data-w="chaff"><span class="key">C</span><span class="wname">CHAFF</span><span class="wcount" id="w-chaff">3</span></div>
+          <div class="wpn" data-w="missiles"><span class="key">1</span><svg class="ico" viewBox="0 0 24 24"><path d="M12 2.5v13M12 2.5L8.5 8.5h7zM8.5 15.5l-3 4h13l-3-4M9.5 15.5h5M10 19.5l2 2.5 2-2.5"/></svg><span class="wname">MISSILES</span><span class="wcount" id="w-missiles">4</span></div>
+          <div class="wpn" data-w="laser"><span class="key">2</span><svg class="ico" viewBox="0 0 24 24"><circle cx="7" cy="12" r="4"/><path d="M7 9.5v5M4.5 12h5M11 12h11M14 10l3-4M14 14l3 4M19 9.2l2-1.4M19 14.8l2 1.4"/></svg><span class="wname">LASER</span><span class="wcount" id="w-laser">3</span></div>
+          <div class="wpn" data-w="chaff"><span class="key">C</span><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v5M12 8l-5 5M12 8l5 5M12 8v6M7 13l-2 5M17 13l2 5M12 14l-2 6M12 14l2 6M9 11l-4 1M15 11l4 1"/></svg><span class="wname">CHAFF</span><span class="wcount" id="w-chaff">3</span></div>
         </div>
         <div id="weapon-note"></div>
       </div>
@@ -495,6 +594,10 @@
           <button data-v="campaign" class="on" type="button">CAMPAIGN</button>
           <button data-v="free" type="button">FREE MODE</button>
         </div>
+        <div class="t-seg" id="m-camp" role="group" aria-label="campaign half">
+          <button data-v="lander" class="on" type="button">LANDER</button>
+          <button data-v="tank" type="button">TANK</button>
+        </div>
         <div class="t-seg" id="m-free" role="group" aria-label="free mode" hidden>
           <button data-v="lander" class="on" type="button">LANDER</button>
           <button data-v="tanks" type="button">TANKS</button>
@@ -522,11 +625,38 @@
     <div class="sub">P OR SPACE TO RESUME</div>
   </div>
 
-  <div id="hint">← → ROTATE · HOLD W OR SPACE TO BURN · SHIFT FULL · S KILLS THE TRIM · 1 MISSILE · 2 LASER · CLICK A TARGET, CLICK AGAIN TO FIRE · RIGHT-CLICK CLEARS · C CHAFF · X ABORT · P PAUSE · R RESTART</div>
+  <div id="hint">← → ROTATE · HOLD W OR SPACE TO BURN · WHEEL TRIMS · SHIFT CYCLES TARGETS · RIGHT-CLICK FIRES · 1 MISSILE · 2 LASER · C CHAFF · X ABORT · P PAUSE</div>
 
   <div id="controls">
+    <button id="btn-controls" type="button">CONTROLS</button>
     <button id="btn-pause" type="button">PAUSE</button>
     <button id="btn-restart" type="button">RESTART</button>
+  </div>
+  <div id="controls-panel" aria-label="every key">
+    <h2>FLYING</h2>
+    <div class="k">
+      <b><i>←</i><i>→</i> or <i>A</i><i>D</i></b><span>rotate the lander</span>
+      <b><i>W</i> or <i>Space</i></b><span>hold to burn — a tap is a nudge, a hold ramps to full</span>
+      <b><i>Wheel</i></b><span>sets a hover trim: thrust that stays on when you let go</span>
+      <b><i>S</i> or <i>↓</i></b><span>kills the trim</span>
+      <b><i>X</i></b><span>abort: a forced full burn for a second</span>
+    </div>
+    <h2>FIGHTING</h2>
+    <div class="k">
+      <b><i>Shift</i></b><span>cycles the targets in view, nearest first — the sitrep shows what is targeted</span>
+      <b><i>Right-click</i></b><span>fires the armed weapon at the target (arms missiles if nothing is armed)</span>
+      <b><i>Click</i></b><span>a hostile once to target it, again to fire</span>
+      <b><i>1</i></b><span>arm the missiles (85% hit, any target it can reach)</span>
+      <b><i>2</i></b><span>arm the laser (a line — needs a clear shot; cuts the base's shield)</span>
+      <b><i>C</i></b><span>drop chaff: decoys a SAM 80% of the time</span>
+      <b><i>Esc</i></b><span>clears the target (pauses when nothing is targeted)</span>
+    </div>
+    <h2>THE GAME</h2>
+    <div class="k">
+      <b><i>P</i></b><span>pause</span>
+      <b><i>R</i></b><span>restart (press twice)</span>
+      <b><i>Enter</i></b><span>start, or the next flight from a card</span>
+    </div>
   </div>
 
   <button id="tuner-toggle" type="button">TUNE</button>
@@ -565,6 +695,10 @@
       <div class="t-row">
         <div class="t-label"><span>Launch — how high it coasts</span><span id="t-lapex-val">75% of the way up</span></div>
         <input id="t-lapex" type="range" min="0.4" max="0.95" step="0.05" />
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Text size</span><span id="t-ui-val">100%</span></div>
+        <input id="t-ui" type="range" min="0.8" max="1.6" step="0.05" />
       </div>
       <div class="t-row">
         <div class="t-label"><span>Zoom on approach</span><span></span></div>

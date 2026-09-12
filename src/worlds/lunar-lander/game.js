@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=8';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=9';
 
 const Core = globalThis.LunarCore;
 
@@ -14,7 +14,7 @@ const LEDGER_KEY = 'lunar-lander-ledger-v1';
 const MODE_KEY = 'lunar-lander-mode-v1';       // the start card's choice: campaign | free, lander | tanks
 const CAMPAIGN_KEY = 'lunar-lander-campaign-v1';   // where the campaign stands: { seed, level, score } — a reload resumes at that level's start
 const TANK_PAGE = './tank/tank.html';         // FREE MODE → TANKS opens the tank half (the tank session's page)
-const PLAY_DEFAULTS = { fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75 };
+const PLAY_DEFAULTS = { fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75, ui: 1 };
 const LOOK_RANGES = {
   hue:        { min: 0, max: 1, step: 0.01, label: 'line colour' },
   saturation: { min: 0, max: 1, step: 0.05, label: 'colour depth' },
@@ -81,13 +81,21 @@ const MESSAGES = {
     body: ['INVERTED', 'MISSION CONTROL IS SPEECHLESS'],
     struck: ['FLEW INTO A BUILDING', 'THE STRUCTURES ARE SOLID. SO WAS THE LANDER.'],
     sam: ['SHOT DOWN', 'A SAM FOUND YOU. OUTFLY THEM, OR DROP CHAFF.'],
+    laser: ['CUT DOWN', 'A LASER TURRET HELD ITS BEAM ON YOU. KILL THEM FIRST, OR STAY OUT OF REACH.'],
+    pellets: ['SHREDDED', 'A PELLET GUN FOUND THE RANGE. THEY SPRAY — KEEP MOVING, OR KILL THEM.'],
   },
 };
+// the crash-card words for the shooters
+const SYSTEM_NAMES = {};
+for (const S of globalThis.LunarCore.SYSTEMS) SYSTEM_NAMES[S.id] = S.name;
+const ITEM_WORDS = { missiles: 'MISSILES', laser: 'LASER', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR' };
+const ITEM_SHORT = { missiles: 'MSL', laser: 'LSR', chaff: 'CHF', hull: 'HULL', armor: 'ARM' };
 const LEVEL_BRIEF = {
-  1: 'LEVEL 1 — DESTROY THE THREE HOSTILES IN THE STRETCH, THEN LAND ON THE RELAY',
-  2: 'LEVEL 2 — FOUR HOSTILES, TWO OF THEM SAM SITES. THE RELAY ENDS IT',
-  3: 'LEVEL 3 — FIVE HOSTILES, THEN THE BASE AT THE FAR END: TWO LASER SHOTS FOR ITS SHIELD, TWO MISSILES FOR ITS HULL. PADS EVERYWHERE',
+  1: 'LEVEL 1 — DESTROY THE FOUR TARGETS IN THE STRETCH (ONE SAM SITE, ONE PELLET GUN), THEN LAND ON THE RELAY',
+  2: 'LEVEL 2 — SIX TARGETS: TWO SAM SITES, A LASER TURRET, A PELLET GUN, ONE HARDENED. THE RELAY ENDS IT',
+  3: 'LEVEL 3 — NINE TARGETS, THEN THE BASE AT THE FAR END: TWO LASER SHOTS FOR ITS SHIELD, TWO MISSILES FOR ITS HULL. PADS EVERYWHERE',
 };
+const LEVEL_NAMES = { 1: 'THE APPROACH', 2: 'THE GAUNTLET', 3: 'THE BASE' };
 
 // ---- helpers -------------------------------------------------------------------
 function load(key, defaults) {
@@ -115,7 +123,6 @@ let carry = 0;
 let lastT = 0;
 // the throttle: hold to burn, release to cut; the wheel sets a hover trim
 let burnHeld = false;
-let shiftHeld = false;
 let trim = 0;
 let lever = 0;
 let rotHeld = 0;
@@ -143,7 +150,8 @@ let hover = null;            // structure sid under the cursor
 let target = null;           // selected structure sid
 let denyWhy = null, denyT = 0;   // the tag's refusal word and how long it shows
 const cursor = { x: 0, y: 0, on: false };
-const SUPPLY_NAMES = { missiles: 'MISSILES', laser: 'LASER CHARGE', chaff: 'CHAFF' };
+const SUPPLY_NAMES = { missiles: 'MISSILES', laser: 'LASER CHARGE', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR' };
+let dmgAcc = null;           // damage floats coalesce (a pellet burst is many small hits): { source, hull, armor, t }
 
 // Read-only handle for headless checks and the look-dev harness.
 Object.defineProperty(globalThis, 'LANDER_DEBUG', {
@@ -271,6 +279,11 @@ const Sfx = {
   deny() { this.env('square', 140, 0.07, 0.06); setTimeout(() => this.env('square', 120, 0.07, 0.06), 90); },
   lock() { this.env('sine', 880, 0.05, 0.07); setTimeout(() => this.env('sine', 1320, 0.06, 0.07), 60); },
   chaff() { this.noise(0.35, 0.4, 3200); this.env('triangle', 600, 0.2, 0.05, 200); },
+  // the hits on the lander (2026-09-12): a thud for a pellet, a crackle for the beam, the burst's rattle
+  hit() { this.noise(0.09, 0.5, 900); this.env('square', 110, 0.08, 0.08, 60); },
+  beam() { this.env('sawtooth', 240, 0.9, 0.07, 190); this.env('sine', 2400, 0.9, 0.03, 1900); this.noise(0.3, 0.2, 4000); },
+  burst() { for (let i = 0; i < 8; i++) setTimeout(() => this.env('square', 420 + i * 30, 0.03, 0.05, 200), i * 60); this.noise(0.5, 0.25, 2600); },
+  systemDown() { this.env('sawtooth', 300, 0.35, 0.09, 120); setTimeout(() => this.env('sawtooth', 240, 0.4, 0.09, 90), 200); },
   // the SAM warning: two falling tones, then the launch hiss
   warn() { this.env('square', 1180, 0.09, 0.07, 740); setTimeout(() => this.env('square', 1180, 0.09, 0.07, 740), 130); this.noise(0.5, 0.35, 2200); },
   over() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => this.env('triangle', f, 0.35, 0.14), i * 160)); },
@@ -304,12 +317,15 @@ function renderLedger(highlight) {
 // goal (core opts.free). Tanks hands off to the tank page. Remembered per browser.
 let gameMode = 'campaign';   // campaign | free
 let freeKind = 'lander';     // lander | tanks
+let campHalf = 'lander';     // campaign: lander | tank (2026-09-12, James: "begin the tank campaign from the start screen")
 try {
   const m = JSON.parse(localStorage.getItem(MODE_KEY) || '{}');
   if (m.mode === 'free') gameMode = 'free';
   if (m.kind === 'tanks') freeKind = 'tanks';
+  if (m.camp === 'tank') campHalf = 'tank';
 } catch (e) {}
-const KEYS_LINE = '<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · C CHAFF · X ABORTS · AFTER A LANDING: LAUNCH OR LIFT OFF';
+const KEYS_LINE = '<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · SHIFT CYCLES TARGETS · RIGHT-CLICK FIRES · 1 MISSILE · 2 LASER · C CHAFF · X ABORTS';
+const TANK_CAMP_BRIEF = 'THE TANK CAMPAIGN FROM LEVEL 1 ON A FRESH MOON — THE LANDER IS SKIPPED, THE SCORE STARTS AT ZERO<br />W S DRIVE · A D TURN · MOUSE AIMS · CLICK FIRES · RIGHT CLICK IS THE LASER · M IS THE MAP';
 const BRIEF = {
   lander: 'FREE FLIGHT — THE ENDLESS MOON, NO GOAL BUT THE SCORE' + KEYS_LINE,
   tanks: 'FREE ROLL — CLIMB INTO THE LUNAR TANK<br />W S DRIVE · A D TURN · MOUSE LOOKS · CLICK FIRES · RIGHT CLICK IS THE LASER · M IS THE MAP',
@@ -325,25 +341,30 @@ function campaignBrief() {
   const level = saved ? saved.level : 1;
   return LEVEL_BRIEF[level] + (saved ? ' — RESUMING WITH ' + pad(saved.score, 4) + ' POINTS' : '') + KEYS_LINE;
 }
-function modeChoice() { return gameMode === 'campaign' ? 'campaign' : freeKind; }
+function modeChoice() { return gameMode === 'campaign' ? (campHalf === 'tank' ? 'tankcamp' : 'campaign') : freeKind; }
 function renderModes() {
   document.querySelectorAll('#m-mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === gameMode));
   document.querySelectorAll('#m-free button').forEach((b) => b.classList.toggle('on', b.dataset.v === freeKind));
+  document.querySelectorAll('#m-camp button').forEach((b) => b.classList.toggle('on', b.dataset.v === campHalf));
   $('m-free').hidden = gameMode !== 'free';
+  $('m-camp').hidden = gameMode !== 'campaign';
   const saved = readCampaign();
-  $('start-brief').innerHTML = modeChoice() === 'campaign' ? campaignBrief() : BRIEF[modeChoice()];
-  $('btn-start').textContent = modeChoice() === 'tanks' ? 'ROLL OUT' : (modeChoice() === 'campaign' && saved) ? 'CONTINUE' : 'START';
-  $('btn-over').style.display = modeChoice() === 'campaign' && saved ? '' : 'none';
+  const mc = modeChoice();
+  $('start-brief').innerHTML = mc === 'campaign' ? campaignBrief() : mc === 'tankcamp' ? TANK_CAMP_BRIEF : BRIEF[mc];
+  $('btn-start').textContent = mc === 'tanks' ? 'ROLL OUT' : mc === 'tankcamp' ? 'START THE TANK' : (mc === 'campaign' && saved) ? 'CONTINUE' : 'START';
+  $('btn-over').style.display = mc === 'campaign' && saved ? '' : 'none';
   if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : (saved && saved.tank ? 'TANK ' : 'LEVEL ') + (saved ? saved.level : 1);
 }
-function setMode(m, k) {
+function setMode(m, k, c) {
   if (m) gameMode = m;
   if (k) freeKind = k;
-  try { localStorage.setItem(MODE_KEY, JSON.stringify({ mode: gameMode, kind: freeKind })); } catch (e) {}
+  if (c) campHalf = c;
+  try { localStorage.setItem(MODE_KEY, JSON.stringify({ mode: gameMode, kind: freeKind, camp: campHalf })); } catch (e) {}
   renderModes();
 }
-document.querySelectorAll('#m-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.v, null)));
-document.querySelectorAll('#m-free button').forEach((b) => b.addEventListener('click', () => setMode(null, b.dataset.v)));
+document.querySelectorAll('#m-mode button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.v, null, null)));
+document.querySelectorAll('#m-free button').forEach((b) => b.addEventListener('click', () => setMode(null, b.dataset.v, null)));
+document.querySelectorAll('#m-camp button').forEach((b) => b.addEventListener('click', () => setMode(null, null, b.dataset.v)));
 renderModes();
 
 // ---- flow -----------------------------------------------------------------------------------
@@ -360,7 +381,7 @@ function makeGame() {
   clearFloats();
   buildPadLabels();
 }
-function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; launchAfter = null; armed = null; target = null; hover = null; denyWhy = null; }
+function resetThrottle() { lever = 0; trim = 0; burnHeld = false; zoomIn = false; zoomChangedAt = -1e9; autoOn = false; squashT = -1; launchAfter = null; armed = null; target = null; hover = null; denyWhy = null; dmgAcc = null; }
 function enterAttract(resultLine, stamp) {
   mode = 'attract';
   document.body.classList.remove('paused');
@@ -377,6 +398,15 @@ function enterAttract(resultLine, stamp) {
 function startGame() {
   if (mode !== 'attract') return;
   if (modeChoice() === 'tanks') { window.location.href = TANK_PAGE; return; }
+  if (modeChoice() === 'tankcamp') {
+    // the tank campaign straight from here: a fresh moon, level 1, zero points — the saved campaign is forgotten
+    writeCampaign(null);
+    let seed = parseInt(play.seed, 10);
+    if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
+    try { localStorage.setItem('lunar-lander-handoff-v1', JSON.stringify({ seed: seed >>> 0, score: 0, from: 'start', at: Date.now() })); } catch (e) {}
+    window.location.href = TANK_PAGE + '?campaign=1';
+    return;
+  }
   const savedTank = gameMode === 'campaign' ? readCampaign() : null;
   if (savedTank && savedTank.tank) { window.location.href = TANK_PAGE + '?campaign=1'; return; }
   if (state && state.free !== (gameMode === 'free')) state = null;   // the card's choice changed since the last game was dealt
@@ -553,7 +583,8 @@ function showResult(result) {
   else if (result.reused) pts = 'NO POINTS — THIS PAD HAS PAID ALREADY' + (result.fuelBonus ? ' · FUEL +' + result.fuelBonus : '');
   else pts = pad(result.points, 3) + ' POINTS (' + result.pad.mult + 'X PAD)' + (result.fuelBonus ? ' · FUEL +' + result.fuelBonus : '');
   if (result.fuelPad) pts += ' · FUEL PAD +' + result.fuelPad;
-  if (result.supply) pts += ' · ' + SUPPLY_NAMES[result.supply.kind] + (result.supply.amount > 0 ? ' +' + result.supply.amount : ' FULL');
+  for (const it of (result.items || [])) pts += ' · ' + SUPPLY_NAMES[it.kind] + (it.amount > 0 ? ' +' + it.amount : ' FULL');
+  if (isCrash && result.shot) $('r-word').textContent = 'SHOT DOWN';
   if (result.levelDone) {
     $('r-word').textContent = 'LEVEL ' + result.levelDone + ' COMPLETE';
     $('r-msg').textContent = result.campaignDone ? 'THE BASE HAS FALLEN. THE LANDER HAS DONE ITS PART.' : 'THE STRETCH IS CLEAR. THE RELAY IS YOURS.';
@@ -590,7 +621,7 @@ function handleEvents(events) {
       if (r.points > 0) floatLabel(state.ship.x, state.ship.y + 34, '+' + r.points, 'pts', row++);
       if (r.techEarned) { floatLabel(state.ship.x, state.ship.y + 34, TECH_NAMES[r.techEarned], 'tech', row++); Sfx.earn(); }
       if (r.fuelPad) { floatLabel(state.ship.x, state.ship.y + 34, 'FUEL +' + r.fuelPad, 'fuel', row++); Sfx.refuel(); }
-      if (r.supply && r.supply.amount > 0) floatLabel(state.ship.x, state.ship.y + 34, SUPPLY_NAMES[r.supply.kind] + ' +' + r.supply.amount, 'fuel', row++);
+      for (const it of (r.items || [])) if (it.amount > 0) floatLabel(state.ship.x, state.ship.y + 34, SUPPLY_NAMES[it.kind] + ' +' + it.amount, it.kind === 'hull' || it.kind === 'armor' ? 'tech' : 'fuel', row++);
       if (r.levelDone) { floatLabel(state.ship.x, state.ship.y + 34, 'LEVEL ' + r.levelDone + ' COMPLETE', 'tech', row++); Sfx.earn(); }
       if (r.kind === 'secret') Sfx.secret(); else Sfx.land(r.kind);
       if (Core.hasTech(state, 'shock')) squashT = 0;
@@ -656,6 +687,26 @@ function handleEvents(events) {
       Sfx.lock();
     } else if (e.type === 'samEnd') {
       if (!e.hit) { scene.spawnImpact(e.x, e.y, false); Sfx.boom(false); }
+    } else if (e.type === 'damage') {
+      // the hits coalesce into one float per source per third of a second (a burst is eight small ones)
+      if (dmgAcc && dmgAcc.source === e.source && clock - dmgAcc.t < 0.35) { dmgAcc.hull += e.hull; dmgAcc.armor += e.armor; }
+      else { flushDamage(); dmgAcc = { source: e.source, hull: e.hull, armor: e.armor, t: clock }; }
+      scene.flash = Math.max(scene.flash, e.source === 'sam' ? 0.7 : 0.18);
+      if (e.source !== 'laser') Sfx.hit();
+    } else if (e.type === 'systemDown') {
+      flushDamage();
+      floatLabel(state.ship.x, state.ship.y + 50, e.name + ' OUT', 'hit', 1);
+      Sfx.systemDown();
+    } else if (e.type === 'systemUp') {
+      floatLabel(state.ship.x, state.ship.y + 50, e.name + ' BACK', 'tech', 1);
+    } else if (e.type === 'beamOn') {
+      floatLabel(e.x, e.y + 40, 'LASER', 'sam', 0);
+      Sfx.beam();
+    } else if (e.type === 'burst') {
+      floatLabel(e.x, e.y + 34, 'PELLETS', 'sam', 0);
+      Sfx.burst();
+    } else if (e.type === 'pelletEnd') {
+      scene.spawnDust(e.x, e.y);
     } else if (e.type === 'liftoff') {
       Sfx.refuel();
     } else if (e.type === 'over') {
@@ -670,48 +721,67 @@ function handleEvents(events) {
   }
 }
 
+// the coalesced damage float: HULL −12 · ARMOR −18, pink, at the ship
+function flushDamage() {
+  if (!dmgAcc || !state) return;
+  const parts = [];
+  if (dmgAcc.armor > 0.01) parts.push('ARMOR −' + Math.round(dmgAcc.armor));
+  if (dmgAcc.hull > 0.01) parts.push('HULL −' + Math.round(dmgAcc.hull));
+  const word = dmgAcc.source === 'sam' ? 'SAM' : dmgAcc.source === 'laser' ? 'LASER' : 'PELLETS';
+  if (parts.length) floatLabel(state.ship.x, state.ship.y + 40, parts.join(' · ') + '  ' + word, 'hit', 0);
+  dmgAcc = null;
+}
+
 // ---- world labels (DOM, contemporary type — no stroke lettering in the scene) ------------------
 const labelLayer = $('labels');
 let padLabels = [];
 let labelsKey = '';
 const floats = [];
 function buildPadLabels() {
-  labelLayer.querySelectorAll('.pad-label, .pad-fuel, .pad-supply').forEach((el) => el.remove());
+  labelLayer.querySelectorAll('.pad-label, .pad-fuel, .pad-supply, .pad-item, .host-label').forEach((el) => el.remove());
   padLabels = [];
+  hostLabels = [];
   if (!state || !scene) return;
   labelsKey = scene.builtKey;
   const [k0, k1] = scene.chunkSpan;
   for (let k = k0; k <= k1; k++) {
-    for (const p of Core.getChunk(state, k).pads) {
+    const ch = Core.getChunk(state, k);
+    for (const p of ch.pads) {
       const el = document.createElement('div');
       el.className = 'pad-label' + (p.fuel ? ' fuel' : '') + (p.used ? ' used' : '');
       el.innerHTML = '<span class="mult">' + p.mult + '<span class="x">×</span></span>' +
         (p.used ? '<span class="tag">USED</span>' : '');
       labelLayer.appendChild(el);
       padLabels.push({ el, x: (p.x0 + p.x1) / 2, y: p.y + 6 });
-      if (p.supply) {
-        // the supply mark under the pad, beside the fuel drop: a dart, a bolt, or shreds
-        const m = document.createElement('div');
-        m.className = 'pad-supply' + (p.used ? ' used' : '');
-        const glyph = p.supply === 'missiles' ? '<path d="M8 1.5v10M8 1.5L5.5 6M8 1.5l2.5 4.5M5 11.5l3 3 3-3"/>'
-          : p.supply === 'laser' ? '<path d="M9.5 1.5L4 8.5h4l-1.5 6L12 7.5H8l1.5-6z"/>'
-          : '<path d="M3 3l2 3M8 2l1 4M12 3l-1 3M4 9l1 3M8 9v4M12 9l-1 3"/>';
-        m.innerHTML = '<svg viewBox="0 0 16 16" aria-label="' + p.supply + ' supply">' + glyph + '</svg>';
-        labelLayer.appendChild(m);
-        padLabels.push({ el: m, x: (p.x0 + p.x1) / 2 + (p.fuel ? 14 : 0), y: p.y - 3, below: true });
-      }
       if (p.fuel) {
         // the fuel mark: a big drop UNDER the pad (James: the little droplet was too small to see)
         const f = document.createElement('div');
         f.className = 'pad-fuel' + (p.used ? ' used' : '');
         f.innerHTML = '<svg viewBox="0 0 12 16" aria-label="fuel pad"><path d="M6 1.5C4 5 2 7.5 2 10.2a4 4 0 0 0 8 0C10 7.5 8 5 6 1.5z"/></svg>';
         labelLayer.appendChild(f);
-        // the drop alone, right under the middle of the pad (James's pick)
-        padLabels.push({ el: f, x: (p.x0 + p.x1) / 2 - (p.supply ? 10 : 0), y: p.y - 3, below: true });
+        padLabels.push({ el: f, x: (p.x0 + p.x1) / 2, y: p.y - 3, below: true });
       }
+      if (p.items && p.items.length) {
+        // THE ITEMS (2026-09-12): a row of labelled chips under the pad, in words — never a tiny glyph
+        const m = document.createElement('div');
+        m.className = 'pad-item' + (p.used ? ' used' : '');
+        m.innerHTML = p.items.map((it) => '<span class="' + (it === 'hull' || it === 'armor' ? 'care' : '') + '">' + ITEM_WORDS[it] + (it === 'hull' || it === 'armor' ? ' +' + Core.PAD_SUPPLY[it] : '') + '</span>').join('');
+        labelLayer.appendChild(m);
+        padLabels.push({ el: m, x: (p.x0 + p.x1) / 2, y: p.y - (p.fuel ? 22 : 3), below: true });
+      }
+    }
+    // every hostile wears its name (2026-09-12: "label everything"): over the blinker, readable
+    for (const st of ch.structures) {
+      if (st.cls === 'civ') continue;
+      const h = document.createElement('div');
+      h.className = 'host-label' + (st.alive ? '' : ' dead');
+      h.innerHTML = st.name + (st.alive ? '<span class="x">' + st.mult + 'X</span>' : '');
+      labelLayer.appendChild(h);
+      hostLabels.push({ el: h, sid: st.sid, x: (st.x0 + st.x1) / 2, y: st.y + st.h + 30, alive: st.alive });
     }
   }
 }
+let hostLabels = [];
 function floatLabel(x, y, text, cls, row) {
   const el = document.createElement('div');
   el.className = 'float ' + cls;
@@ -723,18 +793,32 @@ function clearFloats() { for (const f of floats) f.el.remove(); floats.length = 
 const _pt = {};
 const samTag = $('sam-tag');
 // the pink range number beside the threat icon on the direction circle
+const samEdge = $('sam-edge');
+const _se = {};
 function placeSamTag() {
   const th = state && scene && mode === 'play' && state.phase === 'flying' ? Core.nearestThreat(state) : null;
-  if (!th) { samTag.classList.remove('show'); return; }
+  if (!th) { samTag.classList.remove('show'); samEdge.classList.remove('show'); return; }
   const s = state.ship;
   const zt = scene.view ? scene.view.t : 0;
   const ds = 1.0 + 0.76 * (1 - zt);
-  const R = 60 * ds + 16 * ds;
+  const R = 60 * ds + 22 * ds;
   scene.projectToScreen(s.x + Math.cos(th.bearing) * R, s.y + Math.sin(th.bearing) * R, _pt);
-  samTag.textContent = th.decoyed ? 'DECOYED' : th.range + ' FT';
+  samTag.textContent = th.decoyed ? 'SAM DECOYED' : 'SAM ' + th.range + ' FT';
   samTag.classList.toggle('decoyed', !!th.decoyed);
   samTag.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -50%)';
   samTag.classList.toggle('show', _pt.on);
+  // the edge pointer: the missile itself off the screen → a pink word at the edge toward it
+  scene.projectToScreen(th.x, th.y, _se);
+  if (_se.on) { samEdge.classList.remove('show'); return; }
+  const W = window.innerWidth, H = window.innerHeight, m = 26;
+  const cx = W / 2, cy = H / 2;
+  let dx = _se.x - cx, dy = _se.y - cy;
+  const k = Math.min((W / 2 - m) / Math.max(1e-6, Math.abs(dx)), (H / 2 - m) / Math.max(1e-6, Math.abs(dy)));
+  dx *= k; dy *= k;
+  const arrow = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? '▶' : '◀') : (dy > 0 ? '▼' : '▲');
+  samEdge.innerHTML = (arrow === '◀' ? '<span class="arr">◀</span>' : '') + (th.decoyed ? 'SAM DECOYED' : 'SAM ' + th.range + ' FT') + (arrow !== '◀' ? '<span class="arr">' + arrow + '</span>' : '');
+  samEdge.style.transform = 'translate(' + (cx + dx).toFixed(1) + 'px,' + (cy + dy).toFixed(1) + 'px) translate(-50%, -50%)';
+  samEdge.classList.add('show');
 }
 function placeLabels(dt) {
   if (!scene || !state) return;
@@ -744,6 +828,13 @@ function placeLabels(dt) {
     scene.projectToScreen(L.x, L.y, _pt);
     L.el.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(' + (L.left ? '0%' : '-50%') + ', ' + (L.below ? '0%' : '-100%') + ')';
     L.el.style.opacity = _pt.on ? 1 : 0;
+  }
+  for (const L of hostLabels) {
+    scene.projectToScreen(L.x, L.y, _pt);
+    L.el.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -100%)';
+    // the amber tag takes over while this one is hovered or targeted
+    const covered = L.alive && mode === 'play' && (hover === L.sid || target === L.sid);
+    L.el.style.opacity = _pt.on && !covered ? 1 : 0;
   }
   for (let i = floats.length - 1; i >= 0; i--) {
     const f = floats[i];
@@ -794,7 +885,7 @@ function placeShipHud() {
 
 // ---- frame ------------------------------------------------------------------------------------
 function currentInput() {
-  let l = shiftHeld ? 1 : lever;
+  let l = lever;
   // the auto-throttle holds a gentle descent; a hand on the burn key still adds
   if (autoOn && state && state.phase === 'flying') l = Math.max(l, Core.autoLever(state));
   return { rotate: rotHeld, lever: l, abort: abortReq };
@@ -911,6 +1002,8 @@ function frameStep(dt) {
     autoOn: autoOn && mode === 'play',
     shots: state.shots,
     threats: state.threats,
+    beams: mode === 'play' ? Core.activeBeams(state) : [],
+    blink: Math.floor(clock * 2) % 2 === 0,   // the hostile blinkers: 500 ms on, 500 ms off
     threat: mode === 'play' && state.phase === 'flying' ? Core.nearestThreat(state) : null,
     wideBase: (!state.free && Core.levelDef(state)) ? Core.levelDef(state).wide : 1,
     hover: mode === 'play' ? hover : null,
@@ -923,6 +1016,221 @@ function frameStep(dt) {
   if (scene.builtKey !== labelsKey) buildPadLabels();
   placeLabels(dt * slowMo);
   placeShipHud();
+  if (dmgAcc && clock - dmgAcc.t > 0.35) flushDamage();
+  renderSitrep();
+  drawStrip();
+}
+
+// ---- THE SITREP (2026-09-12) ----------------------------------------------------------------------
+// Level, one box per target (its kind word; an X when it is down), the count, the steps, the
+// lander's condition (hull, armor, the three systems), and what is targeted right now.
+const sitrep = $('sitrep');
+let sitrepKey = '';
+function bearingArrow(dx, dy) {
+  const a = Math.atan2(dy, dx) * 180 / Math.PI;   // 0 = right, 90 = up
+  if (a > 67.5 && a <= 112.5) return '↑';
+  if (a > 22.5 && a <= 67.5) return '↗';
+  if (a > -22.5 && a <= 22.5) return '→';
+  if (a > -67.5 && a <= -22.5) return '↘';
+  if (a > -112.5 && a <= -67.5) return '↓';
+  if (a > -157.5 && a <= -112.5) return '↙';
+  if (a > 112.5 && a <= 157.5) return '↖';
+  return '←';
+}
+function renderSitrep() {
+  const show = state && (mode === 'play' || mode === 'launch' || mode === 'settle' || mode === 'result' || (mode === 'paused'));
+  sitrep.classList.toggle('show', !!show);
+  if (!show) return;
+  const r = Core.readouts(state);
+  const targets = Core.levelTargets(state);
+  const tsel = target || hover;
+  const key = [state.level, state.free, targets ? targets.map((t) => (t.alive ? 1 : 0)).join('') : '-', r.hostilesLeft, state.levelClear, state.levelDone, state.campaignDone, r.hull, r.armor,
+    r.systems.launcher, r.systems.thrusters, r.systems.engine, tsel, armed, denyWhy, tsel ? Math.round(clock * 4) : 0].join('|');
+  if (key === sitrepKey) return;
+  sitrepKey = key;
+  $('sr-level').innerHTML = (state.free ? 'FREE FLIGHT' : 'LEVEL ' + state.level) + '<small id="sr-name">' + (state.free ? 'NO GOAL' : (LEVEL_NAMES[state.level] || '')) + '</small>';
+  const tb = $('sr-targets');
+  if (targets) {
+    tb.innerHTML = targets.map((t) => '<div class="tbox' + (t.alive ? '' : ' dead') + (t.sid === tsel ? ' sel' : '') + (t.base ? ' base' : '') + '">' + (t.base ? 'BASE' : (globalThis.LunarStructures.TAGS[t.id] || t.name)) + '</div>').join('');
+    const down = targets.filter((t) => !t.alive).length;
+    $('sr-count').innerHTML = '<b>' + down + '</b>OF ' + targets.length + ' TARGETS DOWN';
+    const L = Core.levelDef(state);
+    const steps = [
+      { w: 'DESTROY EVERY TARGET' + (L && L.base ? ' AND THE BASE' : ''), done: state.levelClear, now: !state.levelClear },
+      { w: 'LAND ON THE RELAY (THE GATE)', done: state.levelDone, now: state.levelClear && !state.levelDone },
+      { w: state.level >= Core.CAMPAIGN_LEVELS ? 'CLIMB OUT INTO THE TANK' : 'THEN LEVEL ' + (state.level + 1) + ' EAST OF HERE', done: false, now: state.levelDone },
+    ];
+    $('sr-steps').innerHTML = steps.map((s, i) => '<div class="' + (s.done ? 'done' : s.now ? 'now' : '') + '"><b>' + (i + 1) + '</b>' + s.w + '</div>').join('');
+  } else {
+    tb.innerHTML = '';
+    $('sr-count').innerHTML = '<b>' + r.score + '</b>POINTS · KILLS PAY, PADS PAY';
+    $('sr-steps').innerHTML = '';
+  }
+  $('sr-hull').querySelector('i').style.width = (100 * r.hull / r.hullMax).toFixed(1) + '%';
+  $('sr-hull').classList.toggle('low', r.hull > 0 && r.hull < 30);
+  $('sr-hull-n').textContent = r.hull;
+  $('sr-armor').querySelector('i').style.width = (100 * r.armor / r.armorMax).toFixed(1) + '%';
+  $('sr-armor-n').textContent = r.armor;
+  $('sr-systems').innerHTML = Core.SYSTEMS.map((S) => '<div class="' + (r.systems[S.id] ? '' : 'down') + '"><span>' + S.name + '</span><span>' + (r.systems[S.id] ? 'OK' : 'DAMAGED') + '</span></div>').join('');
+  const tg = $('sr-target');
+  const st = tsel ? Core.structureById(state, tsel) : null;
+  if (!st || !st.alive) {
+    tg.innerHTML = '<div class="none">NO TARGET<br />SHIFT CYCLES · RIGHT-CLICK FIRES</div>';
+  } else {
+    const s = state.ship;
+    const cx = (st.x0 + st.x1) / 2, cy = st.y + st.h / 2;
+    const dist = Math.round(Math.hypot(cx - s.x, cy - s.y));
+    const w = armed || (state.ammo.missiles > 0 && r.systems.launcher ? 'missiles' : 'laser');
+    const t = Core.targetable(state, st, w);
+    const word = denyWhy && (hover === tsel || target === tsel) ? denyWhy : t.ok ? (t.why ? t.why + ' · ' : '') + (target === tsel ? 'TARGETED — RIGHT-CLICK FIRES ' + (w === 'missiles' ? 'A MISSILE' : 'THE LASER') : 'IN REACH') : t.why;
+    tg.innerHTML = '<div class="tn"><span>' + st.name + '</span><span class="x">' + st.mult + 'X</span></div>' +
+      '<div class="tr"><span><b>' + dist + '</b> FT</span><span><b>' + bearingArrow(cx - s.x, cy - s.y) + '</b> BEARING</span><span>' + (st.hard ? st.hard.toUpperCase() : 'OPEN') + '</span></div>' +
+      '<div class="tw' + (t.ok ? '' : ' deny') + '">' + word + '</div>';
+  }
+}
+
+// ---- THE STRIP MAP (2026-09-12) --------------------------------------------------------------------
+// The whole level, west to east, along the bottom: the real ground line, pads with their multiplier
+// and items, every hostile as a blinking square with its kind word (an X once it is down), the
+// relay, the SAM reach, the lander as a bright caret with its altitude, a scale. Green and white:
+// weight, blink, hollow-vs-filled and dashes carry the classes. Free flight shows the miles around you.
+const stripWrap = $('strip-wrap');
+const strip = $('strip');
+const sctx = strip.getContext('2d');
+function drawStrip() {
+  const show = state && scene && (mode === 'play' || mode === 'launch' || mode === 'settle' || mode === 'result' || mode === 'paused');
+  stripWrap.classList.toggle('show', !!show);
+  if (!show) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = strip.clientWidth, H = strip.clientHeight;
+  if (!W || !H) return;
+  if (strip.width !== Math.round(W * dpr) || strip.height !== Math.round(H * dpr)) { strip.width = Math.round(W * dpr); strip.height = Math.round(H * dpr); }
+  const c = sctx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, W, H);
+  const ui = play.ui || 1;
+  const ph = getComputedStyle(document.documentElement).getPropertyValue('--ph').trim() || '#6dff8e';
+  const ink = 'rgba(236,255,240,0.94)', inkDim = 'rgba(236,255,240,0.5)', inkFaint = 'rgba(236,255,240,0.26)';
+  const s = state.ship;
+  const range = Core.levelRange(state);
+  const CW = Core.CHUNK_W;
+  let x0, x1;
+  if (range) { x0 = Math.min(range[0] * CW - 600, s.x - 300); x1 = Math.max((range[1] + 1) * CW + 300, s.x + 300); }   // the level, and you are always on it
+  else { x0 = s.x - 2.5 * CW; x1 = s.x + 2.5 * CW; }
+  const padL = 14, padR = 14, top = 14 * ui, bottom = H - 16 * ui;
+  const sx = (x) => padL + (x - x0) / (x1 - x0) * (W - padL - padR);
+  // two height scales: the ground band (150–900 ft) gets the lower 55%, the sky above it the rest
+  const gLo = 150, gHi = 900, skyHi = 2600;
+  const gBand = (bottom - top) * 0.55;
+  const sy = (y) => y <= gHi ? bottom - Math.max(0, (y - gLo)) / (gHi - gLo) * gBand : bottom - gBand - Math.min(1, (y - gHi) / (skyHi - gHi)) * (bottom - top - gBand);
+  const kA = Core.chunkIndex(x0), kB = Core.chunkIndex(x1);
+  const f = (px) => (px * ui).toFixed(1) + 'px "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif';
+  const blink = Math.floor(clock * 2) % 2 === 0;
+  // the scale: a tick every 1,000 ft, a number at every chunk seam (range from the level's start)
+  c.strokeStyle = inkFaint; c.lineWidth = 1; c.fillStyle = inkFaint; c.font = '600 ' + f(9); c.textAlign = 'center'; c.textBaseline = 'top';
+  const origin = range ? range[0] * CW : state.spawnX;
+  for (let x = Math.ceil(x0 / 1000) * 1000; x <= x1; x += 1000) {
+    const px = sx(x);
+    const seam = x % CW === 0;
+    c.beginPath(); c.moveTo(px, bottom + 2); c.lineTo(px, bottom + (seam ? 8 : 4)); c.stroke();
+    if (seam) { const ft = x - origin; c.fillText((ft >= 0 ? '' : '−') + (Math.abs(ft) / 1000).toFixed(0) + 'K', px, bottom + 6 * ui); }
+  }
+  // the ground: the real line, thin white
+  c.strokeStyle = 'rgba(236,255,240,0.55)'; c.lineWidth = 1;
+  c.beginPath();
+  let first = true;
+  for (let k = kA; k <= kB; k++) {
+    const ch = Core.getChunk(state, k);
+    for (const p of ch.pts) { if (p[0] < x0 || p[0] > x1) continue; const px = sx(p[0]), py = sy(p[1]); if (first) { c.moveTo(px, py); first = false; } else c.lineTo(px, py); }
+  }
+  c.stroke();
+  // the level's bounds
+  if (range) {
+    c.strokeStyle = inkDim; c.setLineDash([3, 3]);
+    for (const [x, w] of [[range[0] * CW, 'LEVEL ' + state.level + ' START'], [(range[1] + 1) * CW, 'END']]) {
+      const px = sx(x);
+      c.beginPath(); c.moveTo(px, top); c.lineTo(px, bottom); c.stroke();
+      c.fillStyle = inkDim; c.font = '700 ' + f(9); c.textAlign = x === range[0] * CW ? 'left' : 'right'; c.textBaseline = 'top';
+      c.fillText(w, px + (x === range[0] * CW ? 4 : -4), top);
+    }
+    c.setLineDash([]);
+  }
+  // the pads: flat green marks, the multiplier over, the items under; the relay a tower
+  c.textAlign = 'center';
+  for (let k = kA; k <= kB; k++) {
+    const ch = Core.getChunk(state, k);
+    for (const p of ch.pads) {
+      if (p.x1 < x0 || p.x0 > x1) continue;
+      const px0 = sx(p.x0), px1 = sx(p.x1), py = sy(p.y);
+      c.strokeStyle = p.used ? inkDim : ph; c.lineWidth = p.used ? 1.5 : 2.5;
+      c.beginPath(); c.moveTo(Math.min(px0, px1 - 4), py); c.lineTo(Math.max(px1, px0 + 4), py); c.stroke();
+      const mx = (px0 + px1) / 2;
+      c.fillStyle = p.used ? inkFaint : ink; c.font = '300 ' + f(11); c.textBaseline = 'bottom';
+      c.fillText(p.mult + '×', mx, py - 3);
+      if (p.relay) {
+        // the relay tower: a mast with a lamp; the gate says RELAY
+        c.strokeStyle = p.gate ? ph : inkDim; c.lineWidth = 1.2;
+        c.beginPath(); c.moveTo(px1 + 3, py); c.lineTo(px1 + 3, py - 16 * ui); c.moveTo(px1, py - 12 * ui); c.lineTo(px1 + 6, py - 12 * ui); c.stroke();
+        c.fillStyle = p.gate ? ph : inkDim; c.font = '700 ' + f(8.5); c.textBaseline = 'bottom';
+        c.fillText(p.gate ? 'RELAY · GATE' : 'RELAY', px1 + 3, py - 18 * ui);
+      }
+      const its = [];
+      if (p.fuel) its.push('F');
+      for (const it of (p.items || [])) its.push(ITEM_SHORT[it]);
+      if (its.length) { c.fillStyle = p.used ? inkFaint : (p.items && (p.items.indexOf('hull') >= 0 || p.items.indexOf('armor') >= 0) ? ink : ph); c.font = '700 ' + f(7.5); c.textBaseline = 'top'; c.fillText(its.join(' '), mx, py + 2); }
+    }
+    // the hostiles: a blinking square with the kind word; dead = dim with an X; the base wide
+    for (const st of ch.structures) {
+      if (st.cls === 'civ') continue;
+      const cx = (st.x0 + st.x1) / 2;
+      if (cx < x0 || cx > x1) continue;
+      const px = sx(cx), py = sy(st.y) - 6;
+      const tag = globalThis.LunarStructures.TAGS[st.id] || st.name;
+      const isT = st.sid === target || st.sid === hover;
+      if (!st.alive) {
+        c.strokeStyle = inkFaint; c.lineWidth = 1;
+        c.strokeRect(px - 3, py - 3, 6, 6);
+        c.beginPath(); c.moveTo(px - 4, py - 4); c.lineTo(px + 4, py + 4); c.moveTo(px + 4, py - 4); c.lineTo(px - 4, py + 4); c.stroke();
+        c.fillStyle = inkFaint; c.font = '700 ' + f(7.5); c.textBaseline = 'bottom'; c.fillText(tag, px, py - 5);
+        continue;
+      }
+      // the SAM reach: a faint arc for a launcher (doubled by a radar in its chunk)
+      if (Core.isLauncher ? Core.isLauncher(st) : (st.id === 'sam' || st.id === 'bunker' || st.id === 'base')) {
+        const R = Core.samRange(state, st);
+        c.strokeStyle = 'rgba(255,143,163,0.14)'; c.lineWidth = 1; c.setLineDash([2, 3]);
+        c.beginPath(); c.ellipse(px, sy(st.y), (sx(cx + R) - px), (sy(st.y) - sy(Math.min(skyHi, st.y + R))), 0, Math.PI, 0); c.stroke();
+        c.setLineDash([]);
+      }
+      const on = blink || isT;
+      c.fillStyle = isT ? '#ffb457' : on ? ink : 'rgba(236,255,240,0.25)';
+      const sz = st.id === 'base' ? 5 : 3.5;
+      c.fillRect(px - sz, py - sz, sz * 2, sz * 2);
+      c.fillStyle = isT ? '#ffb457' : ink; c.font = '700 ' + f(8); c.textBaseline = 'bottom';
+      c.fillText(tag, px, py - sz - 2);
+    }
+  }
+  // the lander: a bright caret, a hairline down to the ground, the altitude beside it
+  if (s && s.alive !== false) {
+    const px = sx(s.x), py = sy(s.y);
+    if (px >= padL - 2 && px <= W - padR + 2) {
+      const gy = sy(Core.groundAt(state, s.x));
+      c.strokeStyle = 'rgba(236,255,240,0.35)'; c.lineWidth = 1; c.setLineDash([2, 2]);
+      c.beginPath(); c.moveTo(px, py + 5); c.lineTo(px, gy); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#fff'; c.strokeStyle = ph; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(px, py - 5); c.lineTo(px + 5, py + 4); c.lineTo(px, py + 1.5); c.lineTo(px - 5, py + 4); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = ink; c.font = '600 ' + f(9); c.textAlign = 'left'; c.textBaseline = 'middle';
+      c.fillText(Math.max(0, Math.round(Core.altitude(state))) + ' FT', px + 8, py);
+      c.textAlign = 'center';
+    } else {
+      // off the strip (free flight scrolls, but a level's ship can wander off): an arrow at the edge
+      c.fillStyle = ink; c.font = '700 ' + f(11); c.textBaseline = 'middle'; c.textAlign = px < padL ? 'left' : 'right';
+      c.fillText(px < padL ? '◀ YOU' : 'YOU ▶', px < padL ? padL : W - padR, (top + bottom) / 2);
+      c.textAlign = 'center';
+    }
+  }
+  // the legend, bottom-left, tiny but readable
+  c.fillStyle = inkDim; c.font = '700 ' + f(7.5); c.textAlign = 'left'; c.textBaseline = 'top';
+  c.fillText((range ? 'THE LEVEL, WEST TO EAST' : 'FIVE CHUNKS AROUND YOU') + ' · BLINKING SQUARE = HOSTILE · X = DOWN · F FUEL · MSL LSR CHF AMMO · HULL ARM REPAIRS · DASHED ARC = SAM REACH', padL, bottom + 6 * ui);
 }
 function frame(t) {
   // clamped both ways: a clock that steps backwards (a resumed tab, a
@@ -1043,7 +1351,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === '2') { if (mode === 'play') toggleArm('laser'); }
   else if (k === 'c' || k === 'C') { if (mode === 'play' && state && Core.dropChaff(state)) { Sfx.chaff(); floatLabel(state.ship.x, state.ship.y - 30, 'CHAFF', 'fuel', 0); } }
   else if (k === 'ArrowDown' || k === 's' || k === 'S') { trim = 0; autoRelease(); e.preventDefault(); }
-  else if (k === 'Shift') { shiftHeld = true; autoRelease(); }
+  else if (k === 'Shift') { if (mode === 'play' && !e.repeat) cycleTarget(); e.preventDefault(); }   // 2026-09-12: Shift cycles the targets (James flies on Space + the wheel)
   else if (k === ' ') {
     e.preventDefault();
     if (mode === 'paused') togglePause();
@@ -1052,7 +1360,8 @@ window.addEventListener('keydown', (e) => {
   } else if (k === 'Enter') {
     if (mode === 'attract') startGame();
     else if (mode === 'result') nextAttempt();
-  } else if (k === 'p' || k === 'P' || k === 'Escape') { togglePause(); }
+  } else if (k === 'p' || k === 'P') { togglePause(); }
+  else if (k === 'Escape') { if ($('controls-panel').classList.contains('open')) toggleControls(); else if (mode === 'play' && (target || armed)) clearTarget(); else togglePause(); }
   else if (k === 'r' || k === 'R') { armRestart(); }
   if (!e.repeat && (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'a' || k === 'd' || k === 'A' || k === 'D') && mode === 'play') Sfx.tick();
 });
@@ -1061,9 +1370,8 @@ window.addEventListener('keyup', (e) => {
   if (k === 'ArrowLeft' || k === 'a' || k === 'A') { if (rotHeld === -1) rotHeld = 0; }
   else if (k === 'ArrowRight' || k === 'd' || k === 'D') { if (rotHeld === 1) rotHeld = 0; }
   else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') { burnHeld = false; }
-  else if (k === 'Shift') { shiftHeld = false; }
 });
-window.addEventListener('blur', () => { rotHeld = 0; burnHeld = false; shiftHeld = false; if (mode === 'play' || mode === 'launch') togglePause(); });
+window.addEventListener('blur', () => { rotHeld = 0; burnHeld = false; if (mode === 'play' || mode === 'launch') togglePause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && (mode === 'play' || mode === 'launch')) togglePause(); });
 // the wheel sets the hover trim anywhere over the field
 window.addEventListener('wheel', (e) => {
@@ -1081,7 +1389,7 @@ window.addEventListener('wheel', (e) => {
 canvas.addEventListener('pointerdown', (e) => {
   if (mode !== 'play') return;
   cursor.x = e.clientX; cursor.y = e.clientY; cursor.on = true;
-  if (e.button === 2) { clearTarget(); return; }
+  if (e.button === 2) { if (target) doFire(); return; }   // 2026-09-12: right-click FIRES at the target (nothing targeted = nothing happens)
   if (armed) {
     // an armed weapon: the click targets, never burns
     const st = hostileUnderCursor();
@@ -1095,7 +1403,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 canvas.addEventListener('pointermove', (e) => { cursor.x = e.clientX; cursor.y = e.clientY; cursor.on = true; });
 canvas.addEventListener('pointerleave', () => { cursor.on = false; });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (mode === 'play') clearTarget(); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 canvas.addEventListener('pointerup', () => { burnHeld = false; });
 canvas.addEventListener('pointercancel', () => { burnHeld = false; });
 
@@ -1107,6 +1415,27 @@ function toggleArm(w) {
   renderWeapons();
 }
 function clearTarget() { target = null; if (armed) { armed = null; } renderWeapons(); }
+// the weapon a fire falls back to when none is armed: missiles while they fly, else the laser
+function defaultWeapon() {
+  if (!state) return null;
+  if (state.ammo.missiles > 0 && state.systems.launcher) return 'missiles';
+  if (state.ammo.laser > 0) return 'laser';
+  return null;
+}
+// SHIFT (2026-09-12): step through the hostiles in view, nearest the ship first; arms a weapon
+// if none is armed so the next right-click fires
+function cycleTarget() {
+  if (!state || !scene || !scene.view) return;
+  const v = scene.view;
+  const list = Core.targetsInView(state, v.cx - v.w / 2, v.cx + v.w / 2);
+  if (!list.length) { denyWhy = null; Sfx.deny(); floatLabel(state.ship.x, state.ship.y + 50, 'NO HOSTILES IN VIEW', 'fuel', 0); return; }
+  const i = list.indexOf(target);
+  target = list[(i + 1) % list.length];
+  if (!armed) armed = defaultWeapon();
+  denyWhy = null;
+  Sfx.lock();
+  renderWeapons();
+}
 // the hostile under the cursor: its box grown by ~14 px in world feet
 function hostileUnderCursor() {
   if (!scene || !state || !cursor.on) return null;
@@ -1123,7 +1452,9 @@ function selectTarget(st) {
   renderWeapons();
 }
 function doFire() {
-  if (!armed || !target || !state) return;
+  if (!target || !state) return;
+  if (!armed) armed = defaultWeapon();
+  if (!armed) { denyWhy = 'NO WEAPON'; denyT = 1.2; Sfx.deny(); return; }
   const r = Core.fire(state, armed, target);
   if (!r.ok) { denyWhy = r.why; denyT = 1.2; Sfx.deny(); if (r.why === 'DESTROYED') target = null; return; }
   handleEvents(r.events);
@@ -1140,9 +1471,10 @@ function renderWeapons() {
     row.classList.toggle('armed', armed === w);
     row.classList.toggle('locked', armed === w && !!target);
     row.classList.toggle('empty', state.ammo[w] <= 0);
+    row.classList.toggle('out', w === 'missiles' && !state.systems.launcher);
   }
   const note = $('weapon-note');
-  if (note) note.textContent = !armed ? '' : target ? 'CLICK AGAIN TO FIRE' : (armed === 'missiles' ? 'MISSILE ARMED — CLICK A TARGET' : 'LASER ARMED — CLICK A TARGET');
+  if (note) note.textContent = (armed === 'missiles' && !state.systems.launcher) ? 'LAUNCHER OUT — REPAIR AT A PAD' : !armed ? (target ? 'RIGHT-CLICK FIRES' : 'SHIFT CYCLES TARGETS') : target ? 'RIGHT-CLICK OR CLICK AGAIN TO FIRE' : (armed === 'missiles' ? 'MISSILE ARMED — SHIFT OR CLICK A TARGET' : 'LASER ARMED — SHIFT OR CLICK A TARGET');
   const hs = $('v-hostiles');
   if (hs) hs.textContent = state.free ? '' : state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + (state.hostilesLeft === 1 ? ' HOSTILE' : ' HOSTILES');
 }
@@ -1205,6 +1537,20 @@ function armRestart() {
 }
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-restart').addEventListener('click', armRestart);
+// THE CONTROLS PANEL: every key in readable type (the standing rule)
+function toggleControls() {
+  const p = $('controls-panel');
+  p.classList.toggle('open');
+  $('btn-controls').classList.toggle('on', p.classList.contains('open'));
+}
+$('btn-controls').addEventListener('click', (e) => { e.stopPropagation(); toggleControls(); });
+document.addEventListener('pointerdown', (e) => {
+  const p = $('controls-panel');
+  if (!p.classList.contains('open')) return;
+  if (e.target.closest('#controls-panel') || e.target.closest('#btn-controls')) return;
+  toggleControls();
+});
+function applyUi() { document.documentElement.style.setProperty('--ui', String(play.ui || 1)); }
 $('btn-start').addEventListener('click', startGame);
 $('btn-next').addEventListener('click', () => nextAttempt(false));
 $('btn-lift').addEventListener('click', () => nextAttempt(true));
@@ -1256,6 +1602,7 @@ $('t-attack').addEventListener('input', (e) => { play.attack = parseFloat(e.targ
 $('t-wheel').addEventListener('input', (e) => { play.wheelStep = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
 $('t-langle').addEventListener('input', (e) => { play.launchAngle = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
 $('t-lapex').addEventListener('input', (e) => { play.launchApex = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
+$('t-ui').addEventListener('input', (e) => { play.ui = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); applyUi(); });
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
 function syncPlayUI() {
@@ -1267,6 +1614,7 @@ function syncPlayUI() {
   $('t-wheel').value = play.wheelStep; $('t-wheel-val').textContent = play.wheelStep + '% per notch';
   $('t-langle').value = play.launchAngle; $('t-langle-val').textContent = play.launchAngle + '°';
   $('t-lapex').value = play.launchApex; $('t-lapex-val').textContent = Math.round(play.launchApex * 100) + '% of the way up';
+  $('t-ui').value = play.ui || 1; $('t-ui-val').textContent = Math.round((play.ui || 1) * 100) + '%';
   $('t-seed').value = play.seed || '';
   if (mode === 'attract') renderModes();
 }
@@ -1372,6 +1720,7 @@ $('preset-del').addEventListener('click', async () => {
 window.addEventListener('resize', () => { if (scene) scene.resize(); });
 buildLookRows();
 syncPlayUI();
+applyUi();
 syncLookUI();
 applyLook(false);
 loadPresets();

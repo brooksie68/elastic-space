@@ -117,6 +117,22 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 
 ## START HERE (next session)
 
+**2026-09-12: THE SITREP + THE STRIP + THE CONDITION + THE SHOOTERS + SHIFT/RIGHT-CLICK, BUILT ON
+HIS APPROVED PLAN, AWAITING HIS FLIGHT** — read `changelog.md` 2026-09-12 first (and the tank's).
+The short form: a SITREP panel top left (level, one box per target with its kind word, N OF M
+DOWN, the three steps, hull + armor + the three systems, what is targeted); a STRIP MAP along the
+bottom (the whole level, ground line, pads + items, blinking hostiles with tags, the relay, SAM
+reach, you); a 4 px blinker + a readable name over every hostile; hull 100 / armor from pickups,
+a SAM = armor stripped + 50 hull (NOT a crash any more — the second one is), systems degrade
+(launcher < 60, thrusters < 40 at 70%, engine < 25 at 85%) and repairs fix them; two new open
+hostiles that shoot back — the LASER TURRET (beam, 12 per second-long beam) and the PELLET GUN
+(bursts of eight led pellets, 3 each) — dealt into the levels (targets 4 / 6 / 9 now); pads carry
+up to THREE items (weapon + HULL +40 + ARMOR +50); SHIFT cycles the targets in view (Shift never
+burns now — he flies on Space + the wheel), RIGHT-CLICK fires at the target; a TEXT SIZE dial
+(`--ui`); a CONTROLS panel on both pages; CAMPAIGN → TANK on the start card starts the tank
+campaign fresh. Sim TEST 17 (321,057). Standing rules from this round: the cycle key is SHIFT;
+every hostile is labelled in readable type; hostile kinds carry a `tag` for every map.
+
 **2026-09-11: MOON BATTLE 2100 — THE WHOLE GAME IS BUILT ("3 and 3 and out"),
 AWAITING JAMES'S FLIGHT.** Read `changelog.md` 2026-09-11 and
 `tank/changelog.md` 2026-09-11 first. The shape:

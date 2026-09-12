@@ -5,6 +5,37 @@ half's changelog is one folder up.
 
 <!-- TANK-ENTRY-2026-09-11 -->
 
+## 2026-09-12 — Claude — the map treatment: the minimap, the M map's upgrade, the direction line, the controls panel
+
+James (after the lander's sitrep brief): "go over to the tank battle side and give the map there
+the upgrade treatment as well. really give some clear indicators about what is around and what
+direction to go in to get the targets." Built:
+
+1. THE MINIMAP (`#mini`, `drawMini` in tank.js): a round map top right, always on while you play,
+   THE WAY YOU LOOK IS UP; 2,200 ft to the rim, rings at the radar's reach and half of it, an E at
+   the rim (the road runs east). The road dashed, its waypoints numbered (done ones faint, the
+   NEXT one bright with its name, boss and base amber), every enemy on the radar as an amber dot
+   with its kind (TANK / FAST / HOVER / MECH / WARDEN / STRIDER / SIEGE), hostile structures as
+   amber squares with their tag, missiles pink and blinking, pickups you have seen, civilians
+   faint, you at the centre as a triangle pointing where the HULL points with a dashed look line.
+   When the next waypoint is off the map an arrow sits at the rim toward it. Under the map: the
+   chevron + name, the range, N OF M DONE, hostiles left in the stretch.
+2. THE M MAP: a legend (every mark named), a 1,000 FT scale bar, an EAST compass, kind tags on
+   every hostile structure and enemy, a dashed heading line from the tank the way you look, a
+   dashed GO line to the next waypoint with the range on it.
+3. THE DIRECTION LINE under NEXT on the console: ▲ STRAIGHT AHEAD / ◀ 35° TO THE LEFT / ▶ 35° TO
+   THE RIGHT / ▼ BEHIND YOU — TURN ROUND; NEXT's type up a step.
+4. THE CONTROLS PANEL (CONTROLS, bottom right; pauses the game while open): every key in readable
+   type. A TEXT SIZE dial (PLAY → text size) scales the console, the minimap and the panel.
+5. The core: `shellSolution` marches at the physics step (SOL_DT = DT) — see the lander changelog.
+   `structures.js` kinds carry a `tag`; the two new lander shooters (laser turret, pellet gun) draw
+   here too (their moving part baked at rest into `solid()`).
+6. THE TANK CAMPAIGN FROM THE START SCREEN: the lander's start card offers CAMPAIGN → TANK, which
+   writes a fresh handoff (seed, zero points) and opens this page with `?campaign=1` at level 1.
+
+Sim 5,312 green. Driven in the pane (`?silent=1`): the minimap with THE PYLON LINE named and
+ranged, the M map with legend / scale / EAST / tags / the GO line.
+
 ## 2026-09-09 (later) — Claude — the barrel off again
 
 James drove it: "the barrel isn't going to work out. It's just floating in space. It looks

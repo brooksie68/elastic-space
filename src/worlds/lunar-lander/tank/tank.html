@@ -18,6 +18,9 @@
       --glass: rgba(6, 14, 9, 0.5);
       --glass-edge: rgba(109, 255, 142, 0.16);
       --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+      --ui: 1;                       /* the text-size dial (PLAY → text size) */
+      --amber: #ffb457;
+      --pink: #ff8fa3;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
@@ -34,7 +37,7 @@
 
     /* ---- instruments: one console, top centre, in panels ------------------------- */
     #console {
-      font-size: 0.8rem;
+      font-size: calc(0.8rem * var(--ui));
       pointer-events: none;
       position: fixed; top: 0.9rem; left: 50%; transform: translateX(-50%); z-index: 10;
       width: min(944px, 94vw);
@@ -119,9 +122,13 @@
     #meta.bonus { margin-top: 0.3em; opacity: 0.7; font-size: 0.76em; }
     #meta.bonus:empty, #v-bonus:empty { display: none; }
     #wp-wrap { margin-left: 1.2em; min-width: 11em; }
-    #v-wp { font-size: 0.851em; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; margin-top: 0.15em; }
+    #v-wp { font-size: 0.95em; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; margin-top: 0.15em; }
     #v-wp .rng { margin-left: 0.6em; font-weight: 300; letter-spacing: 0.02em; font-size: 1.15em; }
-    #v-wp .boss { color: #ffb457; }
+    #v-wp .boss { color: var(--amber); }
+    /* THE DIRECTION LINE (2026-09-12): which way the next waypoint is, in words and a chevron */
+    #v-dir { font-size: 0.8em; font-weight: 700; letter-spacing: 0.22em; color: var(--ph); margin-top: 0.2em; white-space: nowrap; }
+    #v-dir .chev { display: inline-block; font-size: 1.35em; margin-right: 0.35em; vertical-align: -0.08em; }
+    #v-dir.behind { color: var(--ink-dim); }
     #tape .wp { fill: none; stroke: var(--ph); stroke-width: 1.1; }
     #tape .wp.off { fill: var(--ph); stroke: none; opacity: 0.8; }
 
@@ -196,6 +203,27 @@
     #cracks path.on { opacity: 0.55; }
     #cracks path.fine { stroke-width: 0.7; }
     #veil { position: fixed; inset: 0; z-index: 8; pointer-events: none; background: #000; opacity: 0; transition: opacity 120ms ease; }
+    /* ---- THE MINIMAP (2026-09-12): always on, top right, the way you look is up ---- */
+    #mini { position: fixed; right: 1rem; top: 6.6rem; z-index: 9; width: calc(15rem * var(--ui)); pointer-events: none; display: none; }
+    #mini.show { display: block; }
+    #mini canvas { display: block; width: 100%; aspect-ratio: 1; border-radius: 50%; background: rgba(4, 10, 6, 0.62); border: 1px solid var(--glass-edge); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    #mini-cap { margin-top: 0.4em; text-align: center; font-size: calc(0.72rem * var(--ui)); font-weight: 700; letter-spacing: 0.2em; color: var(--ink); line-height: 1.5; }
+    #mini-cap b { font-weight: 300; letter-spacing: 0; font-size: 1.25em; color: var(--ph); }
+    #mini-cap .boss { color: var(--amber); }
+    #mini-cap .dim { color: var(--ink-faint); font-size: 0.85em; }
+
+    /* THE CONTROLS PANEL (the standing rule: every key in readable type) */
+    #controls-panel { position: fixed; right: 1rem; bottom: 3.6rem; z-index: 13; display: none; width: min(26rem, calc(100vw - 2rem)); max-height: calc(100vh - 5rem); overflow-y: auto;
+      background: rgba(4, 9, 6, 0.94); border: 1px solid var(--glass-edge); border-radius: 16px; padding: 1rem 1.2rem 1.1rem; font-size: calc(0.95rem * var(--ui)); box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6); }
+    #controls-panel.open { display: block; }
+    #controls-panel h2 { font-size: 0.85em; font-weight: 700; letter-spacing: 0.3em; color: var(--ph); margin: 0.6em 0 0.35em; }
+    #controls-panel h2:first-child { margin-top: 0; }
+    #controls-panel .k { display: grid; grid-template-columns: 8.5em 1fr; gap: 0.25em 0.8em; align-items: baseline; }
+    #controls-panel .k b { font-weight: 700; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap; }
+    #controls-panel .k span { color: var(--ink-dim); line-height: 1.4; }
+    #controls-panel .k b i { font-style: normal; display: inline-block; min-width: 1.4em; text-align: center; border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0.05em 0.35em; margin-right: 0.25em; }
+    #btn-controls.on { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); }
+
     /* ---- THE MAP (2026-09-11): the level from above, in the line register; M opens it, the game waits under it ---- */
     #map { position: fixed; inset: 0; z-index: 12; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; background: rgba(0, 0, 0, 0.86); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
     body.mapped #map { display: flex; }
@@ -220,6 +248,19 @@
     #map-svg .line { fill: none; stroke: var(--ink-faint); stroke-width: 1; }
     #map-svg .base { fill: none; stroke: #ffb457; stroke-width: 2.4; }
     #map-svg .lbl { fill: var(--ink-dim); font: 700 11px var(--sans); letter-spacing: 0.24em; text-anchor: middle; }
+    /* 2026-09-12: the upgrade — kind tags on every hostile, a heading line, a scale, the compass, ranges */
+    #map-svg .ctag { fill: #ffb457; font: 700 10px var(--sans); letter-spacing: 0.14em; text-anchor: middle; }
+    #map-svg .ctag.dim { fill: var(--ink-faint); }
+    #map-svg .head { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 6 5; opacity: 0.7; }
+    #map-svg .scale { stroke: var(--ink); stroke-width: 2; }
+    #map-svg .scale-t { fill: var(--ink-dim); font: 700 11px var(--sans); letter-spacing: 0.2em; }
+    #map-svg .comp { fill: var(--ink); font: 700 13px var(--sans); letter-spacing: 0.3em; text-anchor: middle; }
+    #map-svg .comp-l { stroke: var(--ink-dim); stroke-width: 1.4; }
+    #map-svg .rng { fill: var(--ph); font: 300 14px var(--sans); text-anchor: middle; }
+    #map-svg .go { fill: none; stroke: var(--ph); stroke-width: 2.4; stroke-dasharray: 8 6; opacity: 0.85; }
+    #map-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 1.4rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2em; color: var(--ink-dim); max-width: 92vw; }
+    #map-legend span { display: inline-flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+    #map-legend svg { width: 1.2rem; height: 1.2rem; overflow: visible; }
 
     /* ---- cards ------------------------------------------------------------------- */
     #centre { position: fixed; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -354,7 +395,7 @@
       <div class="panel" id="nav">
         <div id="tape-wrap"><div class="lbl"><span>Heading</span><span id="v-look">090</span></div><svg id="tape" viewBox="-100 -14 200 28" preserveAspectRatio="none" aria-label="compass tape"></svg></div>
         <div><div class="lbl">Speed</div><div class="num" id="v-spd">00<span class="unit">FT/S</span></div></div>
-        <div id="wp-wrap"><div class="lbl">Next</div><div id="v-wp">—</div></div>
+        <div id="wp-wrap"><div class="lbl">Next</div><div id="v-wp">—</div><div id="v-dir"></div></div>
       </div>
       <div class="panel" id="hud-right">
         <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
@@ -396,10 +437,50 @@
   <div id="map" aria-label="the level map">
     <div id="map-head"><span id="map-title">THE ROAD OUT</span><span id="map-sub"></span></div>
     <svg id="map-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="map-legend">
+      <span><svg viewBox="-10 -10 20 20"><polygon points="0,-8 6,7 -6,7" fill="rgba(236,255,240,0.94)" /></svg>YOU, THE ARROW IS YOUR HULL</span>
+      <span><svg viewBox="-10 -10 20 20"><line x1="-9" y1="0" x2="9" y2="0" stroke="rgba(236,255,240,0.94)" stroke-width="1.4" stroke-dasharray="4 3" /></svg>WHERE YOU LOOK</span>
+      <span><svg viewBox="-10 -10 20 20"><circle r="7" fill="none" stroke="#6dff8e" stroke-width="2" /></svg>WAYPOINT</span>
+      <span><svg viewBox="-10 -10 20 20"><circle r="7" fill="none" stroke="rgba(236,255,240,0.94)" stroke-width="3" /></svg>NEXT — GO HERE</span>
+      <span><svg viewBox="-10 -10 20 20"><circle r="8" fill="none" stroke="#ffb457" stroke-width="2" /></svg>BOSS / THE BASE</span>
+      <span><svg viewBox="-10 -10 20 20"><circle r="4" fill="#ffb457" /></svg>ENEMY ON RADAR</span>
+      <span><svg viewBox="-10 -10 20 20"><rect x="-5" y="-5" width="10" height="10" fill="none" stroke="#ffb457" stroke-width="1.6" /></svg>HOSTILE STRUCTURE</span>
+      <span><svg viewBox="-10 -10 20 20"><path d="M0 -6 l6 6 l-6 6 l-6 -6z" fill="none" stroke="#6dff8e" stroke-width="1.4" /></svg>PICKUP</span>
+      <span><svg viewBox="-10 -10 20 20"><rect x="-4" y="-4" width="8" height="8" fill="none" stroke="rgba(236,255,240,0.24)" /></svg>CIVILIAN</span>
+    </div>
     <div id="map-foot">M OR ESC CLOSES · THE ROAD RUNS EAST · REACH EVERY WAYPOINT · THE LAST ONE NEEDS ITS KILL</div>
   </div>
+  <div id="mini" aria-label="the minimap"><canvas id="mini-canvas"></canvas><div id="mini-cap"></div></div>
   <div id="hint">MOUSE AIMS · W S DRIVE · A D TURN THE HULL · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · Z SCOPE · WHEEL ZOOM · M MAP · ESC OR P PAUSE · R RESTART</div>
-  <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-map" type="button">MAP</button><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
+  <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-controls" type="button">CONTROLS</button><button id="btn-map" type="button">MAP</button><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
+  <div id="controls-panel" aria-label="every key">
+    <h2>DRIVING</h2>
+    <div class="k">
+      <b><i>Mouse</i></b><span>aims — the view turns with it, the gun follows in a breath</span>
+      <b><i>W</i> / <i>S</i></b><span>drive toward where you look / back away from it</span>
+      <b><i>A</i> / <i>D</i></b><span>veer, or pivot the hull in place while standing</span>
+      <b><i>Q</i> / <i>E</i></b><span>tilt the view</span>
+      <b><i>Z</i></b><span>the scope: a narrower view, a slower mouse</span>
+      <b><i>Wheel</i></b><span>zoom 1× to 2×</span>
+    </div>
+    <h2>FIGHTING</h2>
+    <div class="k">
+      <b><i>Click</i> or <i>Space</i></b><span>fire a shell — the crosshair turns amber when THIS shell would land on a hostile</span>
+      <b><i>Right-click</i> or <i>L</i></b><span>the laser: instant, a charge that refills</span>
+    </div>
+    <h2>THE ROAD</h2>
+    <div class="k">
+      <b><i>M</i></b><span>the map: the whole level, the road, where you are and where to go next</span>
+      <b>Minimap</b><span>top right, always on — the way you look is up; the next waypoint's name and range under it</span>
+      <b>NEXT</b><span>on the console: the next waypoint, its range, and which way to turn</span>
+    </div>
+    <h2>THE GAME</h2>
+    <div class="k">
+      <b><i>Esc</i> or <i>P</i></b><span>pause (Esc also lets the mouse go)</span>
+      <b><i>R</i></b><span>restart (press twice)</span>
+      <b><i>Enter</i></b><span>start, or the next step from a card</span>
+    </div>
+  </div>
 
   <button id="tuner-toggle" type="button">TUNE</button>
   <div id="tuner">
@@ -418,6 +499,10 @@
       <div class="t-row">
         <div class="t-label"><span>Hull turn rate (A D)</span><span id="t-turn-val">1.00×</span></div>
         <input id="t-turn" type="range" min="0.5" max="1.8" step="0.05" />
+      </div>
+      <div class="t-row">
+        <div class="t-label"><span>Text size</span><span id="t-ui-val">100%</span></div>
+        <input id="t-ui" type="range" min="0.8" max="1.6" step="0.05" />
       </div>
       <div class="t-row">
         <div class="t-label"><span>Moonscape seed</span><span></span></div>

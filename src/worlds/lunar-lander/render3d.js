@@ -903,6 +903,10 @@ export class LanderScene {
     for (let i = 0; i < (hit ? 60 : 24); i++) this._spark(x, y, 0, 40 + this._rand() * 150, 1.4, 1.3);
     this.flash = Math.max(this.flash, hit ? 0.9 : 0.4);
   }
+  // A pellet lands: a few motes of dust.
+  spawnDust(x, y) {
+    for (let i = 0; i < 4; i++) this._spark(x, y + 1, 0, 8 + this._rand() * 22, 0.5, 0.5);
+  }
   // A structure comes apart along its own strokes, the way the lander does.
   spawnBreak(st) {
     const ST = globalThis.LunarStructures;
@@ -1368,6 +1372,12 @@ export class LanderScene {
     if (view && view.threats && view.threats.length) {
       for (const th of view.threats) {
         const l = Math.hypot(th.vx, th.vy) || 1, ux = th.vx / l, uy = th.vy / l;
+        if (th.kind === 'pellet') {
+          // a tungsten pellet: a hot bead with a short dim trail
+          D.seg(th.x - ux * 1.5, th.y - uy * 1.5, 0, th.x + ux * 1.5, th.y + uy * 1.5, 0, 2.4);
+          D.seg(th.x - ux * 14, th.y - uy * 14, 0, th.x - ux * 2, th.y - uy * 2, 0, 0.55);
+          continue;
+        }
         const b = th.decoy ? 0.9 : 1.25;
         D.seg(th.x - ux * 8, th.y - uy * 8, 0, th.x + ux * 6, th.y + uy * 6, 0, b);
         D.seg(th.x - ux * 7, th.y - uy * 7, 0, th.x - ux * 10 - uy * 3.5, th.y - uy * 10 + ux * 3.5, 0, b * 0.7);
@@ -1394,6 +1404,46 @@ export class LanderScene {
         const b = (st.shield >= 2 ? 0.9 : 0.6) + 0.15 * Math.sin(this.time * 3);
         for (const g of kind.shieldSegs) D.seg(cx + g[0], cy + g[1], 0, cx + g[2], cy + g[3], 0, b);
       }
+    }
+    // THE HOSTILE BLINKERS (2026-09-12, James: "a square of just 4 pixels sitting above it blinking
+    // at 500ms") + the moving parts of the shooters turned to their aim, a charge tell while a turret
+    // warms up
+    if (this.world && this.view && globalThis.LunarStructures) {
+      const C = globalThis.LunarCore, ST = globalThis.LunarStructures;
+      const ftPerPx = this.view.w / Math.max(1, this.w);
+      const side = 4 * ftPerPx, half = side / 2;
+      const [k0, k1] = this.chunkSpan;
+      for (let k = k0; k <= k1; k++) for (const st of C.getChunk(this.world, k).structures) {
+        if (st.cls === 'civ' || !st.alive) continue;
+        const kind = ST.BY_ID[st.id];
+        const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
+        if (view && view.blink) {
+          const bx = cx, by = st.y + st.h + 14;
+          for (const oy of [-half, 0, half]) D.seg(bx - half, by + oy, 0, bx + half, by + oy, 0, 2.2);
+        }
+        if (kind && kind.dyn) {
+          const a = st.aim !== undefined && (st.turT > 0 || st.pelT > 0) ? st.aim : kind.rest;
+          const c = Math.cos(a), s = Math.sin(a), px = cx + kind.pivot[0], py = cy + kind.pivot[1];
+          const b = st.beamUntil > (this.world.time || 0) ? 1.8 : 0.95;
+          for (const g of kind.dyn) D.seg(px + g[0] * c - g[1] * s, py + g[0] * s + g[1] * c, 0, px + g[2] * c - g[3] * s, py + g[2] * s + g[3] * c, 0, b);
+          if (st.id === 'laserturret' && st.turT > 0 && !(st.beamUntil > (this.world.time || 0))) {
+            // the charge: a ring at the head growing with the warm-up
+            const u = Math.min(1, st.turT / C.TURRET.warmup), r = 3 + u * 9, n = 14;
+            for (let i = 0; i < n; i++) { const a0 = Math.PI * 2 * i / n, a1 = Math.PI * 2 * (i + 1) / n; D.seg(px + Math.cos(a0) * r, py + Math.sin(a0) * r, 0, px + Math.cos(a1) * r, py + Math.sin(a1) * r, 0, 0.5 + u * 1.2 * (0.6 + 0.4 * Math.sin(this.time * 18))); }
+          }
+        }
+      }
+    }
+    // THE BEAMS (the laser turrets' fire): a hot line from the head to the ship, jittering
+    if (view && view.beams && view.beams.length) {
+      for (const bm of view.beams) {
+        const jx = (this._rand() - 0.5) * 3, jy = (this._rand() - 0.5) * 3;
+        D.seg(bm.x0, bm.y0, 0, bm.x1 + jx, bm.y1 + jy, 0, 2.6);
+        D.seg(bm.x0, bm.y0, 0.5, bm.x1 - jx, bm.y1 - jy, 0.5, 1.2);
+        let n = 40 * dt + this._rand();
+        while (n >= 1 && this.particles.length < MAX_PARTICLES) { n -= 1; this._spark(bm.x1 + jx, bm.y1 + jy, 0, 20 + this._rand() * 60, 0.4, 0.9); }
+      }
+      this.flash = Math.max(this.flash, 0.12);
     }
     if (view && (view.hover || view.target)) {
       const C = globalThis.LunarCore, ST = globalThis.LunarStructures;

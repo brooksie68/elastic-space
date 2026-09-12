@@ -2,6 +2,13 @@
 
 ## START HERE — THE THREE LEVELS ARE BUILT (2026-09-11), AWAITING JAMES'S DRIVE
 
+**2026-09-12: THE MAP TREATMENT** — read `changelog.md` 2026-09-12: the MINIMAP top right (look-up,
+route + numbered waypoints, the next named and ranged, contacts by kind, hostile tags, the rim arrow),
+the M map's legend / scale / EAST / tags / heading line / GO line with the range, the DIRECTION LINE
+under NEXT (▲ ◀ ▶ ▼ with degrees), the CONTROLS panel, the text-size dial. `shellSolution` now
+marches at the physics step. The lander's start card can start the tank campaign directly
+(CAMPAIGN → TANK). Keep the four directional goals (item 5 below) AND the minimap in step.
+
 Read `changelog.md` 2026-09-11 first: it is the whole build. The shape now:
 
 1. **Three levels** (`MISSIONS[1..3]`, chunks 18–19 / 20–22 / 23–26, east of

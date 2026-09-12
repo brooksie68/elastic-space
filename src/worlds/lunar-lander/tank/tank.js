@@ -15,7 +15,7 @@ const CAMPAIGN_KEY = 'lunar-lander-campaign-v1';   // shared with the lander: { 
 const HANDOFF_KEY = 'lunar-lander-handoff-v1';     // what the lander wrote at CLIMB OUT: { seed, score }
 const LANDER_PAGE = '../index.html';
 const CAMPAIGN = /[?&]campaign=1/.test(location.search);   // opened by CLIMB OUT (or CONTINUE): the campaign's seed and score come along
-const PLAY_DEFAULTS = { mission: 1, sens: 1, turn: 1, seed: '' };
+const PLAY_DEFAULTS = { mission: 1, sens: 1, turn: 1, seed: '', ui: 1 };
 const LEVELS_MAX = 3;
 const SENS = 0.0021;          // rad per mouse pixel at sens 1 (the mouse aims: 2026-09-07)
 const LOOK_RANGES = {
@@ -511,9 +511,17 @@ function renderInstruments() {
   if (r.bonus.armor) bb.push('ARMOR ' + r.armorMax);
   $('v-bonus').textContent = bb.join(' · ');
   // the next waypoint: name + range, amber for a boss or the base
-  const wpEl = $('v-wp');
-  if (r.waypoint) wpEl.innerHTML = '<span class="' + (r.waypoint.boss || r.waypoint.base ? 'boss' : '') + '">' + r.waypoint.name + '</span><span class="rng">' + (r.waypoint.range >= 10000 ? (r.waypoint.range / 1000).toFixed(1) + 'K' : r.waypoint.range) + ' FT</span>';
-  else wpEl.textContent = 'THE ROAD IS DONE';
+  const wpEl = $('v-wp'), dirEl = $('v-dir');
+  if (r.waypoint) {
+    wpEl.innerHTML = '<span class="' + (r.waypoint.boss || r.waypoint.base ? 'boss' : '') + '">' + r.waypoint.name + '</span><span class="rng">' + (r.waypoint.range >= 10000 ? (r.waypoint.range / 1000).toFixed(1) + 'K' : r.waypoint.range) + ' FT</span>';
+    // THE DIRECTION LINE (2026-09-12): which way to turn, relative to where you look
+    const rel = r.waypoint.bearing * 180 / Math.PI;   // + = to the right
+    const a = Math.abs(rel);
+    const word = a < 12 ? '<span class="chev">▲</span>STRAIGHT AHEAD' : a > 150 ? '<span class="chev">▼</span>BEHIND YOU — TURN ROUND' : (rel < 0 ? '<span class="chev">◀</span>' : '<span class="chev">▶</span>') + Math.round(a) + '° TO THE ' + (rel < 0 ? 'LEFT' : 'RIGHT');
+    dirEl.innerHTML = word;
+    dirEl.classList.toggle('behind', a > 150);
+  } else { wpEl.textContent = 'THE ROAD IS DONE'; dirEl.innerHTML = ''; }
+  drawMini(r);
   renderTape(r);
   $('v-spd').innerHTML = pad(Math.abs(r.speed), 2) + '<span class="unit">' + (r.speed < -0.5 ? 'REV' : 'FT/S') + '</span>';
   // the projected range: what the gun's line meets, and how far
@@ -703,8 +711,11 @@ function buildMap() {
     const x = sx(o.x), z = sz(o.z);
     if (o.cls === 'civ') h += '<rect class="civ" x="' + (x - 4) + '" y="' + (z - 4) + '" width="8" height="8" />';
     else if (o.id === 'base') h += '<rect class="base" x="' + (x - 22) + '" y="' + (z - 12) + '" width="44" height="24" /><text class="lbl" x="' + x + '" y="' + (z - 18) + '">THE BASE</text>';
-    else h += '<rect class="contact site" x="' + (x - 5) + '" y="' + (z - 5) + '" width="10" height="10" />';
+    else h += '<rect class="contact site" x="' + (x - 5) + '" y="' + (z - 5) + '" width="10" height="10" /><text class="ctag" x="' + x + '" y="' + (z - 9) + '">' + (ST.TAGS[o.id] || o.name) + '</text>';
   }
+  // the scale: 1,000 ft, bottom left; the compass: EAST, the way the road runs
+  { const sx0 = pad, sx1 = sx(x0 + 1000) - sx(x0) + pad; h += '<line class="scale" x1="' + sx0 + '" y1="' + (H - 60) + '" x2="' + sx1 + '" y2="' + (H - 60) + '" /><line class="scale" x1="' + sx0 + '" y1="' + (H - 66) + '" x2="' + sx0 + '" y2="' + (H - 54) + '" /><line class="scale" x1="' + sx1 + '" y1="' + (H - 66) + '" x2="' + sx1 + '" y2="' + (H - 54) + '" /><text class="scale-t" x="' + sx0 + '" y="' + (H - 70) + '">1,000 FT</text>'; }
+  h += '<line class="comp-l" x1="' + (W - pad - 90) + '" y1="' + (H - 60) + '" x2="' + (W - pad - 10) + '" y2="' + (H - 60) + '" /><path class="comp-l" d="M' + (W - pad - 18) + ' ' + (H - 66) + ' l8 6 l-8 6" fill="none" /><text class="comp" x="' + (W - pad - 50) + '" y="' + (H - 70) + '">EAST</text>';
   // the road
   let prev = state.start ? { x: state.start[0], z: state.start[1], done: true } : null;
   for (const w of R) {
@@ -723,11 +734,18 @@ function buildMap() {
     const name = w.base ? '' : w.boss ? 'THE ' + (bossNameOf(w) || 'BOSS') : (w.landmark ? w.landmark.name : '');
     if (name) h += '<text class="lm" x="' + x + '" y="' + (z + (i % 2 ? 36 : -24)) + '">' + name + '</text>';
   });
-  // contacts on the radar now
-  for (const e of state.enemies) { if (!e.alive || Math.hypot(e.x - t.x, e.z - t.z) > T.RADAR_RANGE) continue; h += '<circle class="contact" cx="' + sx(e.x) + '" cy="' + sz(e.z) + '" r="' + (T.ENEMY[e.kind].boss ? 6 : 4) + '" />'; }
-  // the tank: a triangle at its heading
+  // contacts on the radar now, each with its kind
+  for (const e of state.enemies) { if (!e.alive || Math.hypot(e.x - t.x, e.z - t.z) > T.RADAR_RANGE) continue; const ex = sx(e.x), ez = sz(e.z); h += '<circle class="contact" cx="' + ex + '" cy="' + ez + '" r="' + (T.ENEMY[e.kind].boss ? 6 : 4) + '" /><text class="ctag" x="' + ex + '" y="' + (ez - 8) + '">' + (ENEMY_TAGS[e.kind] || e.kind.toUpperCase()) + '</text>'; }
+  // the tank: a triangle at its heading, a dashed line the way you look, a dashed GO line to the next waypoint with the range on it
   const hx = sx(t.x), hz = sz(t.z), a = t.heading;
   const tri = [[0, -16], [10, 12], [-10, 12]].map(([px, py]) => [hx + px * Math.cos(a) - py * Math.sin(a), hz + px * Math.sin(a) + py * Math.cos(a)]);
+  h += '<line class="head" x1="' + hx + '" y1="' + hz + '" x2="' + sx(t.x + Math.sin(t.look) * 400) + '" y2="' + sz(t.z - Math.cos(t.look) * 400) + '" />';
+  if (next) {
+    const nx = sx(next.x), nz = sz(next.z);
+    h += '<line class="go" x1="' + hx + '" y1="' + hz + '" x2="' + nx + '" y2="' + nz + '" />';
+    const mx = (hx + nx) / 2, mz = (hz + nz) / 2;
+    h += '<text class="rng" x="' + mx + '" y="' + (mz - 8) + '">' + Math.round(Math.hypot(next.x - t.x, next.z - t.z)) + ' FT</text>';
+  }
   h += '<polygon class="me" points="' + tri.map((q) => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ') + '" />';
   $('map-svg').innerHTML = h;
   $('map-title').textContent = 'LEVEL ' + state.mission + ' — ' + def.name;
@@ -735,6 +753,119 @@ function buildMap() {
   $('map-sub').textContent = (r ? r.routeDone + ' OF ' + r.routeTotal + ' WAYPOINTS' : '') + (next ? ' · NEXT: ' + next.name : ' · THE ROAD IS DONE');
 }
 function bossNameOf(w) { if (!w.encounter) return ''; for (const k of Object.keys(w.encounter)) if (T.ENEMY[k] && T.ENEMY[k].boss) return ENEMY_NAMES[k].replace(/^THE /, ''); return ''; }
+const ENEMY_TAGS = { slow: 'TANK', medium: 'FAST', boss: 'SIEGE', hover: 'HOVER', mech: 'MECH', warden: 'WARDEN', strider: 'STRIDER' };
+// THE MINIMAP (2026-09-12, James: "really give some clear indicators about what is around and what
+// direction to go in"): a round map top right, always on, the way you LOOK is up. The road and its
+// waypoints (the next one lit and named), every contact on the radar as an amber mark with its kind,
+// hostile structures as amber squares, pickups you have seen, the base, civilians faint, you at the
+// centre with your hull's arrow; an arrow at the rim toward the next waypoint when it is off the map.
+const mini = $('mini'), miniCanvas = $('mini-canvas'), miniCap = $('mini-cap');
+const mctx = miniCanvas.getContext('2d');
+const MINI_R = 2200;   // ft from you to the rim
+function drawMini(r) {
+  const show = state && (mode === 'play' || mode === 'paused' || mode === 'settle');
+  mini.classList.toggle('show', !!show);
+  if (!show) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = miniCanvas.clientWidth;
+  if (!W) return;
+  if (miniCanvas.width !== Math.round(W * dpr)) { miniCanvas.width = Math.round(W * dpr); miniCanvas.height = Math.round(W * dpr); }
+  const c = mctx;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, W, W);
+  const t = state.tank, L = t.look;
+  const cx = W / 2, cy = W / 2, R = W / 2 - 4, k = R / MINI_R;
+  const ph = getComputedStyle(document.documentElement).getPropertyValue('--ph').trim() || '#6dff8e';
+  const ink = 'rgba(236,255,240,0.94)', inkDim = 'rgba(236,255,240,0.5)', inkFaint = 'rgba(236,255,240,0.24)', amber = '#ffb457';
+  const ui = play.ui || 1;
+  const f = (px) => (px * ui).toFixed(1) + 'px "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif';
+  // world → map: u right, v up, the look direction up
+  const cl = Math.cos(L), sl = Math.sin(L);
+  const P = (x, z) => { const dx = x - t.x, dz = z - t.z; return [cx + (dx * cl + dz * sl) * k, cy - (dx * sl - dz * cl) * k]; };
+  const inside = (p) => Math.hypot(p[0] - cx, p[1] - cy) <= R;
+  c.save(); c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.clip();
+  // range rings: the radar's reach and half of it
+  c.strokeStyle = inkFaint; c.lineWidth = 1;
+  for (const rr of [T.RADAR_RANGE, T.RADAR_RANGE / 2]) { c.beginPath(); c.arc(cx, cy, rr * k, 0, Math.PI * 2); c.stroke(); }
+  // east: the road runs that way — a tick and an E at the rim
+  { const e = P(t.x + MINI_R * 0.92, t.z); c.fillStyle = inkDim; c.font = '700 ' + f(10); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('E', e[0], e[1]); }
+  // the road
+  const Rt = state.route;
+  let prev = state.start ? { x: state.start[0], z: state.start[1], done: true } : null;
+  c.lineWidth = 1.5;
+  for (const w of Rt) {
+    if (prev) { const a = P(prev.x, prev.z), b = P(w.x, w.z); c.strokeStyle = w.done ? inkFaint : ph; c.setLineDash(w.done ? [] : [5, 4]); c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
+    prev = w;
+  }
+  c.setLineDash([]);
+  // structures: hostiles amber squares with a tag, civilians faint, the base big
+  for (const o of T.structuresNear(state, t.x, t.z, MINI_R + 300)) {
+    if (!o.alive || o.landmark) continue;
+    const p = P(o.x, o.z);
+    if (!inside(p)) continue;
+    if (o.cls === 'civ') { c.strokeStyle = inkFaint; c.lineWidth = 1; c.strokeRect(p[0] - 2.5, p[1] - 2.5, 5, 5); continue; }
+    const big = o.id === 'base';
+    c.strokeStyle = amber; c.lineWidth = 1.6; c.strokeRect(p[0] - (big ? 8 : 4), p[1] - (big ? 5 : 4), big ? 16 : 8, big ? 10 : 8);
+    c.fillStyle = amber; c.font = '700 ' + f(7.5); c.textAlign = 'center'; c.textBaseline = 'bottom';
+    c.fillText(ST.TAGS[o.id] || o.name, p[0], p[1] - (big ? 7 : 6));
+  }
+  // pickups seen
+  for (const pk of state.pickups) {
+    if (pk.taken) continue;
+    if (Math.hypot(pk.x - t.x, pk.z - t.z) < T.RADAR_RANGE) seenPickups.add(pk.id);
+    if (!seenPickups.has(pk.id)) continue;
+    const p = P(pk.x, pk.z); if (!inside(p)) continue;
+    c.strokeStyle = ph; c.lineWidth = 1.2; c.beginPath(); c.moveTo(p[0], p[1] - 4); c.lineTo(p[0] + 4, p[1]); c.lineTo(p[0], p[1] + 4); c.lineTo(p[0] - 4, p[1]); c.closePath(); c.stroke();
+  }
+  // waypoints: numbered rings, the next lit with its name; boss + base amber
+  const next = T.nextWaypoint(state);
+  Rt.forEach((w, i) => {
+    const p = P(w.x, w.z); if (!inside(p)) return;
+    const isNext = w === next, bossy = w.boss || w.base;
+    c.strokeStyle = w.done ? inkFaint : bossy ? amber : isNext ? ink : ph; c.lineWidth = isNext ? 2.6 : 1.4;
+    c.beginPath(); c.arc(p[0], p[1], bossy ? 8 : 6, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = w.done ? inkFaint : ink; c.font = '700 ' + f(8); c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(w.base ? 'B' : w.boss ? '★' : String(i + 1), p[0], p[1] + 0.5);
+    if (isNext) { c.fillStyle = ink; c.font = '700 ' + f(7.5); c.textBaseline = 'top'; c.fillText(w.name, p[0], p[1] + 9); }
+  });
+  // enemies on the radar: amber dots with the kind; missiles pink, blinking
+  for (const e of state.enemies) {
+    if (!e.alive || Math.hypot(e.x - t.x, e.z - t.z) > T.RADAR_RANGE) continue;
+    const p = P(e.x, e.z); if (!inside(p)) continue;
+    const E = T.ENEMY[e.kind];
+    c.fillStyle = amber; c.beginPath(); c.arc(p[0], p[1], E.boss ? 4.5 : 3, 0, Math.PI * 2); c.fill();
+    c.font = '700 ' + f(7); c.textAlign = 'center'; c.textBaseline = 'bottom'; c.fillText(ENEMY_TAGS[e.kind] || e.kind.toUpperCase(), p[0], p[1] - 5);
+  }
+  if (Math.floor(clock * 3) % 2 === 0) for (const m of state.missiles) {
+    if (!m.alive) continue;
+    const p = P(m.x, m.z); if (!inside(p)) continue;
+    c.fillStyle = '#ff8fa3'; c.beginPath(); c.arc(p[0], p[1], 3, 0, Math.PI * 2); c.fill();
+  }
+  // you: a triangle pointing where the HULL points (the look is up)
+  {
+    const a = t.heading - L;   // hull relative to the look; 0 = up
+    const pts = [[0, -9], [6, 7], [-6, 7]].map(([px, py]) => [cx + px * Math.cos(a) - py * Math.sin(a), cy + px * Math.sin(a) + py * Math.cos(a)]);
+    c.fillStyle = ink; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); c.lineTo(pts[1][0], pts[1][1]); c.lineTo(pts[2][0], pts[2][1]); c.closePath(); c.fill();
+    c.strokeStyle = 'rgba(236,255,240,0.35)'; c.lineWidth = 1; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(cx, cy - 12); c.lineTo(cx, cy - R * 0.5); c.stroke(); c.setLineDash([]);
+  }
+  c.restore();
+  // the next waypoint off the map: an arrow at the rim toward it
+  if (next) {
+    const p = P(next.x, next.z);
+    if (!inside(p)) {
+      const ang = Math.atan2(p[1] - cy, p[0] - cx);
+      const ex = cx + Math.cos(ang) * (R - 10), ey = cy + Math.sin(ang) * (R - 10);
+      c.fillStyle = next.boss || next.base ? amber : ph;
+      c.beginPath(); c.moveTo(ex + Math.cos(ang) * 8, ey + Math.sin(ang) * 8); c.lineTo(ex + Math.cos(ang + 2.5) * 7, ey + Math.sin(ang + 2.5) * 7); c.lineTo(ex + Math.cos(ang - 2.5) * 7, ey + Math.sin(ang - 2.5) * 7); c.closePath(); c.fill();
+    }
+  }
+  // the caption: the next waypoint, its range, which way
+  if (r.waypoint) {
+    const rel = r.waypoint.bearing * 180 / Math.PI, a = Math.abs(rel);
+    const chev = a < 12 ? '▲' : a > 150 ? '▼' : rel < 0 ? '◀' : '▶';
+    miniCap.innerHTML = '<span class="' + (r.waypoint.boss || r.waypoint.base ? 'boss' : '') + '">' + chev + ' ' + r.waypoint.name + '</span><br /><b>' + r.waypoint.range + '</b> FT · ' + r.routeDone + ' OF ' + r.routeTotal + ' DONE<br /><span class="dim">' + (r.hostilesLeft ? r.hostilesLeft + ' HOSTILE' + (r.hostilesLeft === 1 ? '' : 'S') + ' IN THE STRETCH' : 'THE STRETCH IS CLEAR') + '</span>';
+  } else miniCap.innerHTML = 'THE ROAD IS DONE';
+}
 $('btn-map').addEventListener('click', (e) => { e.stopPropagation(); toggleMap(); });
 $('map').addEventListener('pointerdown', (e) => { if (e.target === $('map') || e.target === $('map-foot')) toggleMap(); });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -767,6 +898,21 @@ $('btn-pause').addEventListener('click', togglePause);
 $('btn-restart').addEventListener('click', armRestart);
 $('btn-start').addEventListener('click', startGame);
 $('btn-next').addEventListener('click', nextStep);
+// THE CONTROLS PANEL: every key in readable type (the standing rule)
+function toggleControls() {
+  const p = $('controls-panel');
+  p.classList.toggle('open');
+  $('btn-controls').classList.toggle('on', p.classList.contains('open'));
+  if (p.classList.contains('open') && mode === 'play') togglePause();
+}
+$('btn-controls').addEventListener('click', (e) => { e.stopPropagation(); toggleControls(); });
+document.addEventListener('pointerdown', (e) => {
+  const p = $('controls-panel');
+  if (!p.classList.contains('open')) return;
+  if (e.target.closest('#controls-panel') || e.target.closest('#btn-controls')) return;
+  toggleControls();
+});
+function applyUi() { document.documentElement.style.setProperty('--ui', String(play.ui || 1)); }
 
 // ---- tuner ---------------------------------------------------------------------------------------------
 const tuner = $('tuner');
@@ -792,6 +938,7 @@ function seg(id, key, parse) {
 seg('t-mission', 'mission', (v) => parseInt(v, 10));
 $('t-sens').addEventListener('input', (e) => { play.sens = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
 $('t-turn').addEventListener('input', (e) => { play.turn = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); });
+$('t-ui').addEventListener('input', (e) => { play.ui = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); applyUi(); });
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
 function syncPlayUI() {
@@ -799,6 +946,7 @@ function syncPlayUI() {
   on('t-mission', play.mission);
   $('t-sens').value = play.sens; $('t-sens-val').textContent = (+play.sens).toFixed(2) + '×';
   $('t-turn').value = play.turn; $('t-turn-val').textContent = (+play.turn).toFixed(2) + '×';
+  $('t-ui').value = play.ui || 1; $('t-ui-val').textContent = Math.round((play.ui || 1) * 100) + '%';
   $('t-seed').value = play.seed || '';
   if (mode === 'attract' && !(CAMPAIGN && campaignStart())) { const m = T.MISSIONS[clamp(play.mission | 0, 1, LEVELS_MAX)]; $('start-mission').textContent = 'LEVEL ' + clamp(play.mission | 0, 1, LEVELS_MAX) + ' — ' + m.name; }
 }
@@ -825,6 +973,6 @@ $('t-reset').addEventListener('click', () => { look = Object.assign({}, DEFAULT_
 
 // ---- go -------------------------------------------------------------------------------------------------
 window.addEventListener('resize', () => { if (scene) scene.resize(); });
-buildLookRows(); syncPlayUI(); syncLookUI(); applyLook(false);
+buildLookRows(); syncPlayUI(); applyUi(); syncLookUI(); applyLook(false);
 enterAttract();
 requestAnimationFrame(frame);

@@ -97,8 +97,34 @@
   // ladder, so you can always get some but may have to choose fuel or
   // weapons this landing.
   const LOADOUT = { missiles: 4, laser: 3, chaff: 3 };
-  const AMMO_MAX = { missiles: 6, laser: 5, chaff: 5 };
-  const PAD_SUPPLY = { missiles: 2, laser: 2, chaff: 2 };
+  const AMMO_MAX = { missiles: 6, laser: 5, chaff: 5, hull: 100, armor: 100 };
+  const PAD_SUPPLY = { missiles: 2, laser: 2, chaff: 2, hull: 40, armor: 50 };
+  // ITEMS (2026-09-12, James: "health and armor pickups at some of the pads... some pads can have
+  // multiple items"): a pad carries a LIST (`pad.items`, three at most). The weapon supply above is
+  // its first item; HULL (a repair) and ARMOR walk their own drought ladders like fuel does, and a
+  // pad with room rolls one more weapon ITEM_EXTRA of the time.
+  const REPAIR_ODDS = [0.1, 0.25, 0.5, 0.8, 1.0];
+  const ARMOR_ODDS = [0.08, 0.2, 0.4, 0.7, 1.0];
+  const ITEM_EXTRA = 0.25;
+  const ITEM_MAX = 3;
+  // THE LANDER'S CONDITION (2026-09-12, James: "the lander can take damage without being destroyed
+  // but its performance can become degraded, like a weapon is knocked out or it gets a little harder
+  // to fly"): HULL 100 to start, ARMOR 0 (pickups add it, up to 100) and it absorbs first. Systems
+  // go down at hull thresholds and come back when a repair lifts the hull over them. Hull 0 = a crash.
+  const HULL = { max: 100, armorMax: 100 };
+  const SYSTEMS = [
+    { id: 'launcher',  name: 'MISSILE LAUNCHER',   below: 60 },   // missiles refuse to fire
+    { id: 'thrusters', name: 'ROTATION THRUSTERS', below: 40 },   // rotation at DEGRADE.rot
+    { id: 'engine',    name: 'MAIN ENGINE',        below: 25 },   // thrust capped at DEGRADE.thrust
+  ];
+  const DEGRADE = { rot: 0.7, thrust: 0.85 };
+  const SAM_HIT = { hull: 50, stripArmor: true };   // a SAM strips every point of armor and takes half the hull
+  // THE LASER TURRET: tracks the ship inside its range, warms up, then holds a beam on it for
+  // TURRET.beam seconds (the damage lands in four ticks), then reloads.
+  const TURRET = { range: 1100, warmup: 1.5, beam: 1.0, ticks: 4, reload: 6, dmg: 12, spinup: 0 };
+  // THE PELLET GUN (a mini accelerator): after a short spin-up it fires a burst of tungsten pellets
+  // at PELLET.speed with a spread, led at where the ship will be; each pellet that lands takes dmg.
+  const PELLET = { range: 900, burst: 8, gap: 0.06, speed: 400, spread: 4 * Math.PI / 180, reload: 3, dmg: 3, life: 3.5, hitR: 14, spinup: 1.0 };
   const WEAPON_ODDS = [0.28, 0.45, 0.65, 0.85, 1.0];   // a supply on this pad, by the run of pads without one
   const HIT_ODDS = 0.85;            // "pretty accurate... a very small likelihood that they could miss"
   const MISSILE_SPEED = 260;        // ft/s, after a short boost
@@ -121,10 +147,12 @@
   // is clear. Level 3 is the big one: every chunk deals rich, every pad
   // carries a supply, the wide view sits at 0.75×, and THE BASE stands at the far right with the
   // gate pad beside it. Chunks past the last level roll the endless way.
+  // 2026-09-12: `lasers` laser turrets and `pellets` pellet guns are dealt on top (they shoot back);
+  // `targets` counts them — 4 / 6 / 9 now.
   const LEVELS = [null,
-    { name: 'LEVEL 1', chunks: [1, 4],   targets: 3, sams: 1, hard: 0, samReload: 9, wide: 1 },
-    { name: 'LEVEL 2', chunks: [5, 9],   targets: 4, sams: 2, hard: 1, samReload: 7, wide: 1 },
-    { name: 'LEVEL 3', chunks: [10, 17], targets: 5, sams: 3, hard: 1, samReload: 5, wide: 0.75, big: true, base: true },
+    { name: 'LEVEL 1', chunks: [1, 4],   targets: 4, sams: 1, hard: 0, lasers: 0, pellets: 1, samReload: 9, wide: 1 },
+    { name: 'LEVEL 2', chunks: [5, 9],   targets: 6, sams: 2, hard: 1, lasers: 1, pellets: 1, samReload: 7, wide: 1 },
+    { name: 'LEVEL 3', chunks: [10, 17], targets: 9, sams: 3, hard: 1, lasers: 2, pellets: 2, samReload: 5, wide: 0.75, big: true, base: true },
   ];
   const LEVEL_CHUNKS = LEVELS[1].chunks[1];   // kept for older callers: level 1's last chunk
   const SUPPLY_CYCLE = ['missiles', 'laser', 'missiles', 'chaff', 'laser'];   // level 3: every pad carries one, in this order (missiles favoured, the base needs two and two)
@@ -221,6 +249,8 @@
     const want = [];
     for (let i = 0; i < L.sams; i++) want.push('sam');
     for (let i = 0; i < L.hard; i++) want.push(HARD_KINDS[Math.floor(rng() * HARD_KINDS.length)]);
+    for (let i = 0; i < (L.lasers || 0); i++) want.push('laserturret');
+    for (let i = 0; i < (L.pellets || 0); i++) want.push('pelletgun');
     while (want.length < L.targets) want.push(OPEN_KINDS[Math.floor(rng() * OPEN_KINDS.length)]);
     // deal them over the chunks: a shuffled order of chunks (the base's chunk
     // kept clear), the SAM sites first one per chunk, a radar tower into a SAM
@@ -503,6 +533,22 @@
       for (const p of byX) { p.supply = SUPPLY_CYCLE[ci % SUPPLY_CYCLE.length]; ci++; }
       wdrought = 0;
     }
+    // THE ITEM WALK (2026-09-12): the supply is the pad's first item; HULL and ARMOR on their own
+    // droughts across seams; one more weapon sometimes; ITEM_MAX at most. `supply` stays the first
+    // weapon item for older callers.
+    let hdrought = carryIn.hull || 0, adrought = carryIn.armor || 0;
+    for (const p of byX) {
+      p.items = p.supply ? [p.supply] : [];
+      const hOdds = REPAIR_ODDS[Math.min(hdrought, REPAIR_ODDS.length - 1)];
+      if (hOdds >= 1 || rng() < hOdds) { p.items.push('hull'); hdrought = 0; } else hdrought++;
+      const aOdds = ARMOR_ODDS[Math.min(adrought, ARMOR_ODDS.length - 1)];
+      if (aOdds >= 1 || rng() < aOdds) { p.items.push('armor'); adrought = 0; } else adrought++;
+      if (p.items.length < ITEM_MAX && rng() < ITEM_EXTRA) {
+        const extra = ['missiles', 'laser', 'chaff'].filter((w) => p.items.indexOf(w) < 0);
+        if (extra.length) p.items.push(extra[Math.floor(rng() * extra.length)]);
+      }
+      if (p.items.length > ITEM_MAX) p.items.length = ITEM_MAX;
+    }
     // the secret flat — a strip that is not a pad
     let secret = null;
     if (rng() < opts.secretOdds) {
@@ -537,7 +583,7 @@
         if (deal === 'jackpot') want.push('core');
         else if (Math.abs(k) >= 2 && rng() < 0.3) want.push(pick(ST.HARD));
         const nOpen = 1 + (rng() < 0.45 ? 1 : 0);
-        for (let q = 0; q < nOpen; q++) want.push(pick(['sam', 'sam', 'gunpit', 'radar', 'jammer']));
+        for (let q = 0; q < nOpen; q++) want.push(pick(['sam', 'sam', 'gunpit', 'radar', 'jammer', 'laserturret', 'pelletgun']));
       }
       if (baseSeat) structures.push(baseSeat);
       const nCiv = 3 + Math.floor(rng() * 4);   // 3–6 civilians
@@ -612,7 +658,7 @@
       pts.push([x, ys[i4]]);
     }
     const zoneOut = zones.map((z) => ({ type: z.type, x0: X0 + z.i0 * TERRAIN_STEP, x1: X0 + z.i1 * TERRAIN_STEP }));
-    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought, wdrought: wdrought, structures: structures };
+    return { k: k, x0: X0, x1: X0 + CHUNK_W, pts: pts, pads: pads, secret: secret, zones: zoneOut, deal: deal, seed: seed, drought: drought, wdrought: wdrought, hdrought: hdrought, adrought: adrought, structures: structures };
   }
 
   // ---- the world: chunks on demand, kept for the life ----------------------
@@ -624,7 +670,7 @@
       // the fuel drought carries across the seam from the chunk before (flight
       // goes right; chunks left of home start fresh)
       const prev = k > 0 ? getChunk(state, k - 1) : null;
-      const carry = prev ? { fuel: prev.drought, weapon: prev.wdrought } : { fuel: 0, weapon: 0 };
+      const carry = prev ? { fuel: prev.drought, weapon: prev.wdrought, hull: prev.hdrought, armor: prev.adrought } : { fuel: 0, weapon: 0, hull: 0, armor: 0 };
       c = makeChunk(state.seed, k, state.opts, carry); w.chunks[k] = c; w.version++;
     }
     return c;
@@ -698,8 +744,12 @@
       farthest: 0,         // ft from the spawn, the furthest the ship has been
       gated: false,        // set once the ship has flown through a horizon ring
       ammo: { missiles: LOADOUT.missiles, laser: LOADOUT.laser, chaff: LOADOUT.chaff },
+      hull: HULL.max,      // the lander's condition (2026-09-12): hull, armor, and what still works
+      armor: 0,
+      systems: { launcher: true, thrusters: true, engine: true },
+      lastHit: null,       // what hurt the ship last (the crash reason when the hull goes)
       shots: [],           // missiles in the air and chaff clouds falling
-      threats: [],         // SAMs in the air (hostile fire)
+      threats: [],         // SAMs and pellets in the air (hostile fire)
       rolls: 0,            // the weapons' own seeded roll counter (hit / miss / spread)
       hostilesTotal: 0,    // the level's goal: hostiles in the level's stretch
       hostilesLeft: 0,
@@ -839,6 +889,7 @@
     if (state.phase !== 'flying') return { ok: false, why: 'NOT FLYING', events: events };
     if (weapon !== 'missiles' && weapon !== 'laser') return { ok: false, why: 'NO SUCH WEAPON', events: events };
     if (state.ammo[weapon] <= 0) return { ok: false, why: 'EMPTY', events: events };
+    if (weapon === 'missiles' && !state.systems.launcher) return { ok: false, why: 'LAUNCHER OUT', events: events };
     const st = structureById(state, sid);
     const t = targetable(state, st, weapon);
     if (!t.ok) return { ok: false, why: t.why, events: events };
@@ -917,6 +968,109 @@
   }
   function hostilesLeft(state) { return state.hostilesLeft; }
 
+  // ---- the lander's condition (2026-09-12) --------------------------------------------------------
+  // Damage lands on the armor first, then the hull; a SAM strips the armor whole and takes
+  // SAM_HIT.hull. Systems follow the hull (SYSTEMS thresholds) both ways — a repair brings
+  // them back. Returns true when the hull is gone (the caller crashes the ship).
+  function hurt(state, events, amount, source, sid) {
+    const s = state.ship;
+    if (!s || !s.alive || state.phase !== 'flying') return false;
+    let left = amount, armorHit = 0;
+    if (source === 'sam') { armorHit = SAM_HIT.stripArmor ? state.armor : Math.min(state.armor, SAM_HIT.hull); state.armor -= armorHit; left = SAM_HIT.stripArmor ? SAM_HIT.hull : SAM_HIT.hull - armorHit; }
+    else { armorHit = Math.min(state.armor, left); state.armor -= armorHit; left -= armorHit; }
+    const hullHit = Math.min(state.hull, Math.max(0, left));
+    state.hull -= hullHit;
+    state.lastHit = source;
+    events.push({ type: 'damage', source: source, sid: sid || null, armor: +armorHit.toFixed(2), hull: +hullHit.toFixed(2), hullLeft: state.hull, armorLeft: state.armor });
+    updateSystems(state, events);
+    return state.hull <= 0;
+  }
+  function updateSystems(state, events) {
+    for (const S of SYSTEMS) {
+      const ok = state.hull >= S.below;
+      if (state.systems[S.id] === ok) continue;
+      state.systems[S.id] = ok;
+      if (events) events.push({ type: ok ? 'systemUp' : 'systemDown', system: S.id, name: S.name });
+    }
+  }
+  function repair(state, kind, amount) {
+    const before = kind === 'hull' ? state.hull : state.armor;
+    const cap = kind === 'hull' ? HULL.max : HULL.armorMax;
+    const after = Math.min(cap, before + amount);
+    if (kind === 'hull') state.hull = after; else state.armor = after;
+    return after - before;
+  }
+  // THE LASER TURRET: inside range (and the ship above its ground) it tracks (`aim`), warms up,
+  // then holds a beam for TURRET.beam s — the damage in TURRET.ticks ticks — and reloads.
+  function stepTurrets(state, events) {
+    if (!state.opts.sams) return;
+    const s = state.ship;
+    for (const st of structuresNear(state, s.x, TURRET.range + 200)) {
+      if (!st.alive || st.id !== 'laserturret') continue;
+      const cx = (st.x0 + st.x1) / 2, cy = st.y + 20;
+      const d = Math.hypot(s.x - cx, s.y - cy);
+      if (d > TURRET.range || s.y < st.y) { st.turT = 0; st.beamUntil = 0; continue; }
+      st.aim = Math.atan2(s.y - cy, s.x - cx);
+      st.turT = (st.turT || 0) + DT;
+      if (st.beamUntil > state.time) {
+        st.beamTick = (st.beamTick || 0) + DT;
+        const per = TURRET.beam / TURRET.ticks;
+        if (st.beamTick >= per) { st.beamTick -= per; hurt(state, events, TURRET.dmg / TURRET.ticks, 'laser', st.sid); }
+        continue;
+      }
+      if (st.turT < TURRET.warmup) continue;
+      if (st.turNext === undefined || st.turNext < state.time - TURRET.reload * 2) st.turNext = state.time;
+      if (state.time < st.turNext) continue;
+      st.turNext = state.time + TURRET.reload;
+      st.beamUntil = state.time + TURRET.beam; st.beamTick = 0;
+      events.push({ type: 'beamOn', sid: st.sid, x: cx, y: cy });
+    }
+  }
+  // The beams standing right now (for the picture): from the turret's head to the ship.
+  function activeBeams(state) {
+    const out = [];
+    const s = state.ship;
+    if (!s || state.phase !== 'flying') return out;
+    for (const st of structuresNear(state, s.x, TURRET.range + 200)) {
+      if (!st.alive || st.id !== 'laserturret' || !(st.beamUntil > state.time)) continue;
+      out.push({ sid: st.sid, x0: (st.x0 + st.x1) / 2, y0: st.y + 20, x1: s.x, y1: s.y, left: st.beamUntil - state.time });
+    }
+    return out;
+  }
+  // THE PELLET GUN: inside range it spins up, then fires PELLET.burst pellets PELLET.gap apart,
+  // each led at where the ship will be when it arrives (gravity allowed for) with a spread; reloads.
+  function stepPellets(state, events) {
+    if (!state.opts.sams) return;
+    const s = state.ship;
+    for (const st of structuresNear(state, s.x, PELLET.range + 200)) {
+      if (!st.alive || st.id !== 'pelletgun') continue;
+      const cx = (st.x0 + st.x1) / 2, cy = st.y + 14;
+      const d = Math.hypot(s.x - cx, s.y - cy);
+      if (d > PELLET.range || s.y < st.y) { st.pelT = 0; st.burstLeft = 0; continue; }
+      st.aim = Math.atan2(s.y - cy, s.x - cx);
+      st.pelT = (st.pelT || 0) + DT;
+      if (st.burstLeft > 0) {
+        st.pelGap -= DT;
+        if (st.pelGap <= 0) { st.pelGap += PELLET.gap; st.burstLeft--; firePellet(state, st, cx, cy); }
+        continue;
+      }
+      if (st.pelT < PELLET.spinup) continue;
+      if (st.pelNext === undefined || st.pelNext < state.time - PELLET.reload * 2) st.pelNext = state.time;
+      if (state.time < st.pelNext) continue;
+      st.pelNext = state.time + PELLET.reload;
+      st.burstLeft = PELLET.burst; st.pelGap = 0;
+      events.push({ type: 'burst', sid: st.sid, x: cx, y: cy });
+    }
+  }
+  function firePellet(state, st, cx, cy) {
+    const s = state.ship;
+    const g = GRAVITY * FLIGHT.gravity * state.opts.gravityScale;
+    const tof = Math.hypot(s.x - cx, s.y - cy) / PELLET.speed;
+    const ax = s.x + s.vx * tof, ay = s.y + s.vy * tof + 0.5 * g * tof * tof;   // lead, and lift the aim for the drop
+    const ang = Math.atan2(ay - cy, ax - cx) + (rollW(state) - 0.5) * 2 * PELLET.spread;
+    state.threats.push({ kind: 'pellet', x: cx, y: cy, vx: Math.cos(ang) * PELLET.speed, vy: Math.sin(ang) * PELLET.speed, t: 0, sid: st.sid, id: 'p' + (state.rolls++) });
+  }
+
   // ---- hostile fire (round three) ---------------------------------------------------------------
   // Which live structures launch: SAM sites, bunkers (the roof rail), the base (two rails).
   function isLauncher(st) { return st.alive && (st.id === 'sam' || st.id === 'bunker' || st.id === 'base'); }
@@ -966,7 +1120,19 @@
     const keep = [];
     let struck = null;
     for (const th of state.threats) {
-      th.t += DT; th.beatT += DT;
+      th.t += DT;
+      if (th.kind === 'pellet') {
+        // a pellet: ballistic, no turn, no chaff; a hit takes PELLET.dmg; the ground or the life ends it
+        th.vy -= GRAVITY * FLIGHT.gravity * state.opts.gravityScale * DT;
+        th.x += th.vx * DT; th.y += th.vy * DT;
+        const gy = groundAt(state, th.x);
+        let done = th.y <= gy || th.t >= PELLET.life;
+        if (!done && s.alive && state.phase === 'flying' && Math.hypot(s.x - th.x, s.y - th.y) <= PELLET.hitR) { hurt(state, events, PELLET.dmg, 'pellets', th.sid); events.push({ type: 'pelletHit', threat: th.id, x: th.x, y: th.y }); done = true; }
+        if (done) { if (th.y <= gy) events.push({ type: 'pelletEnd', threat: th.id, x: th.x, y: gy }); continue; }
+        keep.push(th);
+        continue;
+      }
+      th.beatT += DT;
       if (th.beatT >= SAM.beat) {
         th.beatT -= SAM.beat;
         if (!th.decoy && rollW(state) < SAM.correct) { th.aim = Math.atan2(s.y - th.y, s.x - th.x); events.push({ type: 'samCorrect', threat: th.id }); }
@@ -1026,6 +1192,10 @@
     state.attempt += 1;
     state.launch = null;
     state.threats = [];
+    if (last && last.kind === 'crash') { state.hull = HULL.max; state.armor = 0; }   // a new lander
+    state.lastHit = null;
+    updateSystems(state, null);
+    for (const k of Object.keys(state.world.chunks)) for (const st of state.world.chunks[k].structures) { st.turT = 0; st.beamUntil = 0; st.burstLeft = 0; st.pelT = 0; st.samT = 0; }
     const ship = {
       x: state.spawnX, y: SPAWN.y, vx: SPAWN.vx, vy: SPAWN.vy,
       angle: 0, angVel: 0,
@@ -1233,10 +1403,11 @@
 
     // rotation
     const rot = input.rotate | 0;
+    const rotMult = state.systems.thrusters ? 1 : DEGRADE.rot;   // damaged thrusters turn slower
     if (d.inertia > 0) {
-      s.angVel += rot * d.inertia * o.rotScale * DT;
+      s.angVel += rot * d.inertia * o.rotScale * rotMult * DT;
     } else {
-      s.angVel = rot * d.rot * o.rotScale;
+      s.angVel = rot * d.rot * o.rotScale * rotMult;
     }
     s.angle += s.angVel * DT;
 
@@ -1247,6 +1418,7 @@
       events.push({ type: 'abort' });
     }
     let thrust = Math.pow(s.lever, o.leverCurve);
+    if (!state.systems.engine) thrust = Math.min(thrust, DEGRADE.thrust);   // a damaged engine caps the burn
     let burnMult = 1;
     if (s.abortT > 0) {
       s.abortT -= DT;
@@ -1279,7 +1451,10 @@
     state.attemptTime += DT;
     stepShots(state, events);
     stepSams(state, events);
+    stepTurrets(state, events);
+    stepPellets(state, events);
     const samHit = stepThreats(state, events);
+    if (samHit) hurt(state, events, 0, 'sam', samHit.sid);
     const range = Math.abs(s.x - state.spawnX);
     if (range > state.farthest) state.farthest = range;
     // the horizon ring: fly through it and the world lets you go (once)
@@ -1287,7 +1462,7 @@
 
     // contact
     const pts = shipPoints(s);
-    if (samHit) { resolveContact(state, pts, true, events, null, samHit); return events; }
+    if (state.hull <= 0) { resolveContact(state, pts, true, events, null, state.lastHit || 'sam'); return events; }
     if (s.grounded) return events;
     const gl = groundAt(state, pts.footL[0]);
     const gr = groundAt(state, pts.footR[0]);
@@ -1313,7 +1488,7 @@
     return events;
   }
 
-  function resolveContact(state, pts, bodyHit, events, struck, samHit) {
+  function resolveContact(state, pts, bodyHit, events, struck, shot) {
     const s = state.ship;
     const tilt = tiltOf(s.angle);
     const vy = -s.vy;                 // positive = descending
@@ -1335,7 +1510,7 @@
       x: s.x, y: s.y,
       chunk: chunkIndex(s.x),
       range: Math.round(s.x - state.spawnX),
-      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, supply: pad.supply || null, used: !!pad.used, relay: !!pad.relay, gate: pad.gate || 0 } : null,
+      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, supply: pad.supply || null, items: (pad.items || []).slice(), used: !!pad.used, relay: !!pad.relay, gate: pad.gate || 0 } : null,
       secret: !!secret,
       struck: struck ? { id: struck.id, name: struck.name, cls: struck.cls } : null,
       time: +state.attemptTime.toFixed(1),
@@ -1355,12 +1530,18 @@
         result.fuelPad = grade.name === 'perfect' ? FUEL_PAD_PERFECT : FUEL_PAD_REFILL;
         result.fuelBonus += result.fuelPad;
       }
-      if (pad.supply) {
-        // the pad's supply, every landing, like fuel; capped
-        const before = state.ammo[pad.supply];
-        state.ammo[pad.supply] = Math.min(AMMO_MAX[pad.supply], before + PAD_SUPPLY[pad.supply]);
-        result.supply = { kind: pad.supply, amount: state.ammo[pad.supply] - before };
+      // the pad's ITEMS, every landing, like fuel; each capped. `supply` = the first weapon item.
+      result.items = [];
+      for (const it of (pad.items || (pad.supply ? [pad.supply] : []))) {
+        if (it === 'hull' || it === 'armor') result.items.push({ kind: it, amount: repair(state, it, PAD_SUPPLY[it]) });
+        else {
+          const before = state.ammo[it];
+          state.ammo[it] = Math.min(AMMO_MAX[it], before + PAD_SUPPLY[it]);
+          result.items.push({ kind: it, amount: state.ammo[it] - before });
+        }
       }
+      updateSystems(state, events);
+      result.supply = result.items.find((i) => i.kind !== 'hull' && i.kind !== 'armor') || null;
       if (pad.gate === state.level && state.levelClear && !state.levelDone && !state.free) {
         // the level's end: the stretch is clear and you are down on its gate
         state.levelDone = true;
@@ -1378,8 +1559,9 @@
     } else {
       result.kind = 'crash';
       result.points = CRASH_POINTS;
-      result.sam = !!samHit;
-      result.reason = samHit ? 'sam' : struck ? 'struck' : bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
+      result.sam = shot === 'sam';
+      result.shot = shot || null;   // 'sam' | 'laser' | 'pellets' when the hull went to hostile fire
+      result.reason = shot ? shot : struck ? 'struck' : bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
         vy > grades[2].vy ? 'speed' : tilt > grades[2].tilt ? 'tilt' : 'drift';
       state.score += CRASH_POINTS;
       state.fuel = Math.max(0, state.fuel - CRASH_FUEL);
@@ -1433,15 +1615,47 @@
       levelClear: state.levelClear,
       level: state.level,
       threats: state.threats.length,
+      hull: Math.round(state.hull), hullMax: HULL.max,
+      armor: Math.round(state.armor), armorMax: HULL.armorMax,
+      systems: state.systems,
     };
+  }
+  // THE TARGETS IN VIEW (2026-09-12, the cycle key): every live hostile whose centre lies in
+  // [x0, x1], nearest the ship first — the shell steps through them.
+  function targetsInView(state, x0, x1) {
+    const s = state.ship;
+    const out = [];
+    for (const st of structuresNear(state, (x0 + x1) / 2, (x1 - x0) / 2 + CHUNK_W)) {
+      if (!st.alive || st.cls === 'civ') continue;
+      const cx = (st.x0 + st.x1) / 2;
+      if (cx < x0 || cx > x1) continue;
+      out.push({ sid: st.sid, dist: Math.hypot(cx - s.x, st.y - s.y) });
+    }
+    out.sort((a, b) => a.dist - b.dist);
+    return out.map((o) => o.sid);
+  }
+  // THE LEVEL'S TARGETS (the sitrep boxes + the strip): every hostile the stretch dealt, dead or
+  // alive, west to east; null in free flight.
+  function levelTargets(state) {
+    const r = levelRange(state);
+    if (!r) return null;
+    const out = [];
+    for (let k = r[0]; k <= r[1]; k++) for (const st of getChunk(state, k).structures) {
+      if (st.cls === 'civ') continue;
+      out.push({ sid: st.sid, id: st.id, name: st.name, alive: st.alive, x: (st.x0 + st.x1) / 2, y: st.y, k: k, hard: st.hard, mult: st.mult, base: st.id === 'base' });
+    }
+    out.sort((a, b) => a.x - b.x);
+    return out;
   }
   // The nearest SAM in the air: bearing and range from the ship (for the icon
   // on the direction circle and the pink number).
   function nearestThreat(state) {
     const s = state.ship;
     if (!s || !state.threats.length) return null;
+    if (!state.threats.some((th) => th.kind === 'sam')) return null;
     let best = null, bd = Infinity;
     for (const th of state.threats) {
+      if (th.kind !== 'sam') continue;
       const d = Math.hypot(th.x - s.x, th.y - s.y);
       if (d < bd) { bd = d; best = th; }
     }
@@ -1505,6 +1719,8 @@
     LEVELS: LEVELS, CAMPAIGN_LEVELS: CAMPAIGN_LEVELS, BASE: BASE, SAM: SAM, CHAFF_REACH: CHAFF_REACH, CHAFF_ODDS: CHAFF_ODDS, RADAR_RANGE_MULT: RADAR_RANGE_MULT, SUPPLY_CYCLE: SUPPLY_CYCLE,
     levelOf: levelOf, levelPlan: levelPlan, planFor: planFor, levelRange: levelRange, levelDef: levelDef, countLevel: countLevel, advanceLevel: advanceLevel,
     samRange: samRange, nearestThreat: nearestThreat,
+    HULL: HULL, SYSTEMS: SYSTEMS, DEGRADE: DEGRADE, SAM_HIT: SAM_HIT, TURRET: TURRET, PELLET: PELLET, REPAIR_ODDS: REPAIR_ODDS, ARMOR_ODDS: ARMOR_ODDS, ITEM_MAX: ITEM_MAX,
+    hurt: hurt, repair: repair, updateSystems: updateSystems, activeBeams: activeBeams, targetsInView: targetsInView, levelTargets: levelTargets, isLauncher: isLauncher,
     structureById: structureById, hostileAt: hostileAt, targetable: targetable, doorOpen: doorOpen,
     fire: fire, dropChaff: dropChaff, hostilesLeft: hostilesLeft, hitStructure: hitStructure,
     techNext: techNext,

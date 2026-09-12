@@ -2,6 +2,100 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-12 (THE SITREP, THE STRIP, THE CONDITION, THE SHOOTERS, SHIFT + RIGHT-CLICK) — Claude
+
+James's brief after his first flight of the levels: he could not tell what level he was in, what the
+objectives were, or how far along; "all the icons and lettering is too tiny... missiles look like a
+couple of teeny lines, lightning icon for laser?"; he wants a sitrep panel "ala a typical game", a
+strip map with the objectives on it ("i dont like games where I dont know my status and location"),
+a small blinking square over every enemy structure, lasers and pellet guns that hit the lander,
+damage that degrades the lander without destroying it, target cycling + right-click fire, armor,
+health and armor pickups, pads with several items, the tank map upgraded, and the tank campaign
+from the start screen. Plan approved whole; his one change: the cycle key is SHIFT, not Caps Lock
+("I never use shift for thrust. I use space and mostly the mouse scroll wheel"). Shift no longer burns.
+
+THE CORE (`game-core.js`, sim TEST 17, 321,057 green; TEST 13/16 updated for the new counts):
+1. THE CONDITION: `state.hull` 100, `state.armor` 0 (to 100), `state.systems`. `hurt()` lands on
+   the armor first, then the hull; a SAM strips every point of armor and takes 50 hull (`SAM_HIT`),
+   so a whole lander survives one and the second, with no armor, is the crash — `reason 'sam'`,
+   `result.shot` names the killer ('sam' / 'laser' / 'pellets'). SYSTEMS follow the hull both ways:
+   under 60 the MISSILE LAUNCHER is out (`fire` refuses LAUNCHER OUT), under 40 the ROTATION
+   THRUSTERS turn at 70%, under 25 the MAIN ENGINE caps at 85% (`DEGRADE`). A repair lifts the
+   hull and brings them back. A crash's next lander is whole; a landing keeps the hull.
+2. THE LASER TURRET (`laserturret`, open, 2X, structures.js): tracks the ship inside 1,100 ft
+   (`st.aim`), warms up 1.5 s, then holds a beam 1 s that lands 12 hull in four ticks, reloads 6 s
+   (`TURRET`, `stepTurrets`, `activeBeams()` for the picture). THE PELLET GUN (`pelletgun`, open,
+   2X): inside 900 ft it spins up 1 s, then fires a burst of eight tungsten pellets 0.06 s apart at
+   400 ft/s with a 4° spread, LED at where the ship will be (gravity allowed for); each pellet that
+   lands takes 3; reload 3 s (`PELLET`, `stepPellets`; pellets are `threats` of kind 'pellet' —
+   ballistic, no chaff; `nearestThreat` ignores them). Both only fire with `opts.sams` on.
+3. THE LEVELS deal them on top and count them: `lasers` / `pellets` 0+1, 1+1, 2+2 → targets
+   4 / 6 / 9. The endless chunks past the levels roll them too. Every hostile kind has a map `tag`
+   (SAM, GUN, RADAR, JAM, DATA, DEPOT, BUNKER, CORE, BASE, LASER, PELLET, TOWER, HANGAR).
+4. THE ITEMS: `pad.items` is a list (three at most): the weapon supply first, then HULL (+40, a
+   repair) and ARMOR (+50) on their own drought ladders across seams (`REPAIR_ODDS` / `ARMOR_ODDS`,
+   never five pads without either), and a second weapon a quarter of the time. A landing takes
+   every item (`result.items`); `pad.supply` / `result.supply` stay the first weapon item.
+   Level 3 pads still carry their supply first.
+5. THE CYCLE: `targetsInView(state, x0, x1)` — every live hostile in the span, nearest first.
+   `levelTargets(state)` — every hostile the stretch dealt, dead or alive, west to east (the
+   sitrep boxes and the strip). `readouts` carry hull / armor / systems.
+6. THE MOVING PART: a kind may carry `dyn` segments drawn pointing +x about `pivot` (the
+   turret's barrel, the pellet gun's tube); the lander's renderer turns them to `aim`, the tank's
+   `solid()` bakes them at `rest`.
+7. The tank core: `shellSolution` marches at the physics step now (was 0.04 s — it skipped a graze
+   the real shell took; a moon changed under the tank sim's bunker test and showed it). Tank sim
+   5,312 green.
+
+THE SHELL (`index.html` / `game.js`):
+1. THE SITREP, top left: LEVEL N + its name, one box per target with its kind word (an X when it
+   is down, amber when targeted, BASE in green), "N OF M TARGETS DOWN", the three steps (destroy /
+   land on the relay / climb out or the next level) with the current one lit, CONDITION (hull and
+   armor bars with numbers, the three systems OK / DAMAGED in pink), and THE TARGET: name, X,
+   range in feet, a bearing arrow, OPEN or the hardening, and the word that matters (TARGETED —
+   RIGHT-CLICK FIRES A MISSILE / OVERHANG / DOOR / SHIELD — LASER ONLY...). Free flight: no
+   targets row.
+2. THE STRIP MAP along the bottom (a canvas): the whole level west to east — and you are always
+   on it — the real ground line in white, pads as green marks with the multiplier over and the
+   items under (F MSL LSR CHF HULL ARM), every hostile a blinking square with its tag (an X when
+   down; amber when targeted), the relay tower (RELAY · GATE), the SAM reach as a faint pink arc,
+   the lander as a bright caret with its altitude and a hairline to the ground, a tick every
+   1,000 ft, the level's START and END, a legend. Free flight shows five chunks around you.
+3. THE BLINKER: a 4 px square over every live hostile, 500 ms on / 500 ms off (renderer, `view.blink`),
+   and every hostile wears its NAME + X in readable type above it (`.host-label`, DOM); the amber
+   tag takes over on hover / target.
+4. THE WEAPON ROWS: real drawings (a finned missile, a lens with a beam, a chaff spray), the words
+   MISSILES / LASER / CHAFF, counts in larger type; the missiles row goes pink with LAUNCHER OUT.
+   The whole console is up ~19% (0.8 → 0.95rem) and never sits over the sitrep; a TEXT SIZE dial
+   (PLAY → text size, 80–160%) scales every instrument (`--ui`).
+5. SHIFT cycles the targets in view nearest first (arms missiles, or the laser, if nothing is
+   armed); RIGHT-CLICK fires at the target (nothing targeted = nothing); a second click on the
+   target still fires; Esc clears the target (pauses when nothing is targeted). Shift never burns
+   again. Hint line, keys line and the card's line rewritten.
+6. THE SAM WARNING: the ring tag reads SAM 640 FT in readable pink; when the missile is off the
+   screen a pink SAM 640 FT ◀ pointer sits at the screen edge toward it.
+7. DAMAGE: floats coalesce per source ("HULL −12 · ARMOR −18  PELLETS"), a flash, a thud / a
+   crackle / a rattle (Sfx hit / beam / burst / systemDown), "MISSILE LAUNCHER OUT" and "... BACK"
+   floats; beams drawn hot from the head to the ship with sparks; pellets as beads with a trail;
+   the turret's charge ring while it warms up; the crash card says SHOT DOWN with CUT DOWN /
+   SHREDDED lines for the beam / the pellets.
+8. THE ITEMS in the world: labelled chips under each pad (MISSILES · HULL +40 · ARMOR +50), the
+   landing card and floats name each one.
+9. THE CONTROLS PANEL (bottom right, CONTROLS): every key in readable type, scaled by the dial.
+10. THE START CARD: CAMPAIGN → LANDER | TANK. TANK writes a fresh seed with zero points and opens
+    the tank page in campaign at level 1 ("I need to be able to jump right into it to test it").
+
+THE TANK: `tank/changelog.md` 2026-09-12 (the minimap, the M map's legend + scale + compass +
+heading + tags + the GO line, the direction line under NEXT, the controls panel, the text dial).
+
+Hand-driven in the pane (the smoke page): Shift → the GUN PIT targeted with its range and bearing
+in the sitrep → right-click → the kill, the box X'd, 1 OF 4; pellets landing (HULL −15 PELLETS,
+73 in the sitrep); the beam from a turret to the lander; a landing on a LASER + HULL pad (HULL +40,
+the launcher back); the SAM edge pointer; the tank's minimap and map.
+
+AWAITING JAMES'S FLIGHT: the sitrep and strip in play, the type sizes (the dial), the SAM as
+damage (50 + the armor) rather than a crash, the turret's and the pellet gun's bite, the item odds.
+
 ## 2026-09-11 (MOON BATTLE 2100: the name, the three levels, the base, hostile fire, the seam) — Claude
 
 James: "think the name needs to advance slightly. lets try 2100" — renamed everywhere live

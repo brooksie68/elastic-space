@@ -57,10 +57,22 @@
     seg(out, cx, cy, f[0], f[1]);
   }
 
+  // THE TAGS (2026-09-12): a short word for the maps and the sitrep boxes — the lander's strip, the
+  // tank's minimap and the M map all label hostiles with these, so a glance names the kind.
+  const TAGS = { sam: 'SAM', gunpit: 'GUN', radar: 'RADAR', jammer: 'JAM', datacentre: 'DATA', depot: 'DEPOT', bunker: 'BUNKER', core: 'CORE', base: 'BASE',
+    laserturret: 'LASER', pelletgun: 'PELLET', tower: 'TOWER', hangar: 'HANGAR' };
   function def(o) {
     const segs = [];
     o.draw(segs);
-    const kind = { id: o.id, name: o.name, cls: o.cls, w: o.w, h: o.h, d: o.d || Math.min(o.w, 40), mult: o.mult || 0, hard: o.hard || null, segs: segs, segs3: null };
+    const kind = { id: o.id, name: o.name, cls: o.cls, w: o.w, h: o.h, d: o.d || Math.min(o.w, 40), mult: o.mult || 0, hard: o.hard || null, segs: segs, segs3: null, tag: TAGS[o.id] || null };
+    if (o.dynDraw) {
+      // THE MOVING PART (2026-09-12): a barrel or tube drawn pointing +x around (0, 0); the lander's
+      // renderer turns it to the structure's `aim` about `pivot`; at `rest` it points where the
+      // drawing meant it to. The tank's solid() bakes it in at rest.
+      const dyn = [];
+      o.dynDraw(dyn);
+      kind.dyn = dyn; kind.pivot = o.pivot || [0, 0]; kind.rest = o.rest === undefined ? 0 : o.rest;
+    }
     K.push(kind); BY_ID[o.id] = kind;
   }
 
@@ -150,7 +162,13 @@
     }
     const hz = kind.d / 2;
     const corners = new Map();
-    for (const g of kind.segs) {
+    const all = kind.segs.slice();
+    if (kind.dyn) {
+      // the moving part at rest, baked in for the tank
+      const c = Math.cos(kind.rest), s = Math.sin(kind.rest), px = kind.pivot[0], py = kind.pivot[1];
+      for (const g of kind.dyn) all.push([+(px + g[0] * c - g[1] * s).toFixed(2), +(py + g[0] * s + g[1] * c).toFixed(2), +(px + g[2] * c - g[3] * s).toFixed(2), +(py + g[2] * s + g[3] * c).toFixed(2)]);
+    }
+    for (const g of all) {
       out.push([g[0], g[1], hz, g[2], g[3], hz]);
       out.push([g[0], g[1], -hz, g[2], g[3], -hz]);
       corners.set(g[0] + ',' + g[1], [g[0], g[1]]);
@@ -258,6 +276,31 @@
     seg(o, 0, 60, 0, 70);
     for (let i = 0; i < 6; i++) { const a = Math.PI * 2 * i / 6; seg(o, 0, 64, Math.cos(a) * 8, 64 + Math.sin(a) * 6); }
     box(o, -8, 0, 8, 6);
+  } });
+
+  // ---- hostile, in the open — the two that shoot back at the lander (2026-09-12, James: "lasers
+  // targeting and hitting the lander and some like mini accelerators that fire streams of tungsten
+  // pellets like a machine gun"). Both targetable from anywhere, both destroyable. The lander core
+  // owns their fire (TURRET / PELLET); `aim` on the seated structure is where the head points.
+  def({ id: 'laserturret', d: 26, name: 'LASER TURRET', cls: 'open', mult: 2, w: 34, h: 30, draw(o) {
+    box(o, -17, 0, 17, 8);                       // the base block
+    seg(o, -6, 8, -4, 18); seg(o, 6, 8, 4, 18);  // the pedestal
+    arc(o, 0, 20, 8, 0, Math.PI * 2, 10);        // the head: a ring
+    seg(o, -3, 17, 3, 23); seg(o, -3, 23, 3, 17);// the lens cross
+    seg(o, -12, 8, -12, 12); seg(o, -14, 12, -10, 12);   // a cooling vane
+  }, pivot: [0, 20], rest: Math.PI * 0.16, dynDraw(o) {
+    seg(o, 7, 1.2, 25, 1.2); seg(o, 7, -1.2, 25, -1.2); seg(o, 25, 1.2, 25, -1.2);   // the barrel, turned to the aim
+  } });
+  def({ id: 'pelletgun', d: 22, name: 'PELLET GUN', cls: 'open', mult: 2, w: 40, h: 22, draw(o) {
+    poly(o, [[-20, 0], [-16, 6], [16, 6], [20, 0]], false);   // the mount
+    box(o, -14, 6, -4, 16); seg(o, -9, 6, -9, 16);          // the pellet drum
+    seg(o, -4, 11, 2, 11);                                   // the feed
+    arc(o, 2, 11, 4, 0, Math.PI * 2, 8);                     // the trunnion
+  }, pivot: [2, 11], rest: Math.PI * 0.13, dynDraw(o) {
+    // the mini accelerator: a coil tube of five rings along the aim
+    for (let i = 0; i < 5; i++) { const x = 4 + i * 5; seg(o, x, -3, x, 3); }
+    seg(o, 3, 3, 24, 3); seg(o, 3, -3, 24, -3);              // the tube's two rails
+    seg(o, 24, 3, 27, 4.5); seg(o, 24, -3, 27, -4.5);        // the muzzle flare
   } });
 
   // ---- hostile, hardened ---------------------------------------------------------------------
@@ -393,5 +436,5 @@
   const OPEN = K.filter((k) => k.cls === 'open' && !k.tank).map((k) => k.id);   // the tank-only kinds (tower, hangar) are seated by the tank core
   const HARD = K.filter((k) => k.cls === 'hard' && k.id !== 'base').map((k) => k.id);   // the base is dealt by the level plan only
 
-  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, LANDMARKS: LANDMARKS, solid: solid };
+  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, LANDMARKS: LANDMARKS, TAGS: TAGS, solid: solid };
 })();
