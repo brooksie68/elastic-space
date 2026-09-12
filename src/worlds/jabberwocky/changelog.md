@@ -3,6 +3,13 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-12 — Claude (Fable 5.1) — THE EXIT SIGN over the real door
+
+James: "Put an Exit sign above the actual door, not just on the map." render3d.js `exitSignTex` + `doorSign`: a lit box on
+the wall over the door frame (in a low corridor it sits on the top of the frame), red "EXIT · LOCKED · FIND THE KEY" until
+the key (or the boss's death) opens the door, then green "EXIT"; a soft glow behind it that breathes faster while it is
+locked. THE MIDDLE's door has one too. Pane: both states over level 1's door. Tag: render3d 84.
+
 ## 2026-09-12 — Claude (Fable 5.1) — THE RUN BURST
 
 James: "shift to give a run burst for 2 seconds w a 2 second cooldown." Core stepPlayer: a tap of shift starts a burst

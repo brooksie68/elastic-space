@@ -324,7 +324,7 @@ export function createRenderer(canvas) {
   }
 
   // ---- the level ----------------------------------------------------------------------------------
-  let levelGroup = null, levelRef = null, torches = [], doorMesh = null, doorOpenAnim = 0, driftMeshes = [];
+  let levelGroup = null, levelRef = null, torches = [], doorMesh = null, doorOpenAnim = 0, driftMeshes = [], doorSign = null;
   const torchLights = [];
   for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0xffa040, 0, 12, 2); scene.add(l); torchLights.push(l); }
   const ambient = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambient);
@@ -456,7 +456,21 @@ export function createRenderer(canvas) {
       mat.color.setRGB(Math.min(1.4, l[0]), Math.min(1.4, l[1]), Math.min(1.4, l[2]));
       return mesh;
     };
-    if (level.door) { level.door.cx = level.door.cx != null ? level.door.cx : level.door.x; doorMesh = doorPlane(level.door, 'door', false); doorMesh.userData.baseY = H_LOW / 2; doorOpenAnim = state.doorOpen ? 1 : 0; }
+    doorSign = null;
+    if (level.door) {
+      level.door.cx = level.door.cx != null ? level.door.cx : level.door.x; doorMesh = doorPlane(level.door, 'door', false); doorMesh.userData.baseY = H_LOW / 2; doorOpenAnim = state.doorOpen ? 1 : 0;
+      // THE EXIT SIGN over the real door (James 2026-09-12): a lit box on the wall above the frame, red LOCKED until the key
+      // (or the boss) opens it, then green EXIT; in a low corridor it sits on the top of the frame
+      const d = level.door, dx = d.cx - d.x, dy = d.cy - d.y;
+      const hc = hgt(d.cx, d.cy);
+      const y = Math.min(hc - 0.4, H_LOW + 0.45);
+      const sx = (d.x + 0.5) * S + dx * (S * 0.5 + 0.05), sz = (d.y + 0.5) * S + dy * (S * 0.5 + 0.05);
+      doorSign = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.62), new THREE.MeshBasicMaterial({ map: exitSignTex(!!state.doorOpen), transparent: true, depthWrite: false }));
+      doorSign.position.set(sx, y, sz); doorSign.lookAt(sx + dx, y, sz + dy); doorSign.userData.open = !!state.doorOpen;
+      levelGroup.add(doorSign);
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: guideTex(level.theme, 'lamp', 'door', false, state.doorOpen ? 0x58ff7a : 0xff3050), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 }));
+      glow.scale.set(2.6, 1.6, 1); glow.position.set(0, 0, 0.05); doorSign.add(glow); doorSign.userData.glow = glow;
+    }
     level.driftDoors.forEach((d, i) => {
       const cell = d.cx != null ? d : Object.assign({}, d, { cx: d.x === 0 ? 1 : d.x === w - 1 ? w - 2 : d.x, cy: d.y === 0 ? 1 : d.y === h - 1 ? h - 2 : d.y });
       const m = doorPlane(cell, 'drift' + (i % 3), true);
@@ -632,6 +646,25 @@ export function createRenderer(canvas) {
     }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
     guideCache[key] = t;
+    return t;
+  }
+  // the sign over the real exit door: a lit box, EXIT in green when the door is open, LOCKED in red while it is shut
+  const exitCache = {};
+  function exitSignTex(open) {
+    const key = open ? 'open' : 'shut';
+    if (exitCache[key]) return exitCache[key];
+    const c = document.createElement('canvas'); c.width = 480; c.height = 200;
+    const ctx = c.getContext('2d');
+    const ink = open ? '#7cff9a' : '#ff4a5a';
+    ctx.fillStyle = '#07090a'; ctx.fillRect(0, 0, 480, 200);
+    ctx.strokeStyle = '#3a3f44'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, 470, 190);
+    ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.globalAlpha = 0.7; ctx.strokeRect(18, 18, 444, 164); ctx.globalAlpha = 1;
+    ctx.shadowColor = ink; ctx.shadowBlur = 28;
+    ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (open) { ctx.font = 'bold 118px Arial Black, Arial, sans-serif'; ctx.fillText('EXIT', 240, 104); }
+    else { ctx.font = 'bold 92px Arial Black, Arial, sans-serif'; ctx.fillText('EXIT', 240, 78); ctx.font = 'bold 40px Arial, sans-serif'; ctx.fillText('LOCKED · FIND THE KEY', 240, 156); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    exitCache[key] = t;
     return t;
   }
   let guideViews = [], armorViews = [];
@@ -1962,6 +1995,8 @@ export function createRenderer(canvas) {
     }
     // the door
     if (doorMesh) { const want = state.doorOpen ? 1 : 0; doorOpenAnim += (want - doorOpenAnim) * Math.min(1, dt * 2.5); doorMesh.position.y = doorMesh.userData.baseY + doorOpenAnim * H_LOW * 0.95; }
+    if (doorSign && doorSign.userData.open !== !!state.doorOpen) { doorSign.userData.open = !!state.doorOpen; doorSign.material.map = exitSignTex(!!state.doorOpen); doorSign.userData.glow.material.map = guideTex(levelRef.theme, 'lamp', 'door', false, state.doorOpen ? 0x58ff7a : 0xff3050); }
+    if (doorSign) doorSign.userData.glow.material.opacity = 0.45 + Math.sin(view.t * (state.doorOpen ? 2 : 5)) * 0.12;
     if (healViews.length) { const m = canvasTex('heal|' + (Math.floor(view.t * 8) % 16), D().healSprite(view.t)); for (const v of healViews) { v.spr.visible = !v.h.taken; v.spr.material.map = m; v.spr.position.y = 0.55 + Math.sin(view.t * 2.5 + v.h.x) * 0.06; } }
     syncGuide(state, dt); syncArmor(state, view.t);
     if (keyView) { keyView.material.map = canvasTex('key|' + (Math.floor(view.t * 8) % 16), D().keySprite(view.t)); keyView.position.y = 1.1 + Math.sin(view.t * 3) * 0.12; keyLight.position.copy(keyView.position); keyLight.intensity = state.key && state.key.held ? 0 : 6 + Math.sin(view.t * 5) * 2; if (state.key && state.key.held) keyView.visible = false; }

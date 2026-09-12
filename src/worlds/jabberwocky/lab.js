@@ -10,7 +10,7 @@
 // with its notes (`verdicts` in notes.json); trash also has the server write cuts.js, and the game's roll skips
 // those ids from its next load. Then the ACTION dropdown by SUBMIT (update — the default — / pass / trash): the
 // note carries its verdict, applied by the server in the same save, so he never has to write it in the note.
-import { createRenderer } from './render3d.js?v=83';
+import { createRenderer } from './render3d.js?v=84';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;

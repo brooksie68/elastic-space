@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=83';
+import { createRenderer, S } from './render3d.js?v=84';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
