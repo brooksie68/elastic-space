@@ -1,4 +1,4 @@
-# Moon Battle 2075 — the TANK half. Claude instructions.
+# Moon Battle 2100 — the TANK half. Claude instructions.
 
 **ONE SESSION NOW (James, 2026-09-07): "let's work on the tanks a little bit,
 just in this session, rather than trying to run two at the same time."** The
@@ -104,7 +104,7 @@ signal loss. Item 8 is dropped.
 "This is not a clone of Battlezone." Battlezone is the jumping-off point for a
 NOSTALGIC FEEL — a game from 40–50 years ago that is still fun to play now
 because it has 2026 affordances, UI and game thinking. "It's not Battlezone
-anyway. It's Moon Battle 2075." The first build was "the most
+anyway. It's Moon Battle 2100." The first build was "the most
 simplest basic wireframe" — a fair verdict; it proved the plumbing and the
 match with the lander, not the look. He is not asking for greebles; he is
 asking to be impressed that this session understands the aesthetic: modern,

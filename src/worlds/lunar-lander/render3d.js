@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the lander renderer (born as Lunar Lander).
+// Moon Battle 2100 — the lander renderer (born as Lunar Lander).
 //
 // Pure presentation: no game rules, no DOM, no audio, no input. game.js drives
 // it in the world; tmp/lunar-lander/lookdev.html drives it silently for look
@@ -1050,10 +1050,14 @@ export class LanderScene {
     // (James: "way above the top of the screen... I couldn't see my ship") —
     // zoom drops below 1 just enough to hold the ship halfway between centre
     // and the top of the screen (clear of the console), never below ZOOM_MIN
-    let wide = 1, lift = 0;
+    // the level may sit the wide view further back (level 3: 0.75× — James:
+    // "zoom out a bit... make it feel bigger"); the high-ship rule keeps its
+    // own floor under that
+    const wideBase = view && view.wideBase ? Math.max(ZOOM_MIN, Math.min(1, view.wideBase)) : 1;
+    let wide = wideBase, lift = 0;
     if (view && view.ship) {
       const up = view.ship.y - bv.cy;
-      if (up > bv.h * 0.25) wide = Math.max(ZOOM_MIN, (bv.h * 0.25) / up);
+      if (up > (bv.h / wideBase) * 0.25) wide = Math.max(ZOOM_MIN, (bv.h * 0.25) / up);
       // once the zoom is at its floor the camera pans UP instead, so a very
       // high ship (and the horizon ring it is aiming for) never climbs behind
       // the console (James: "they go behind the HUD... you can't see anything")
@@ -1233,6 +1237,24 @@ export class LanderScene {
             const tb = tbase;
             D.seg(tip[0], tip[1], 0, l[0], l[1], 0, tb); D.seg(l[0], l[1], 0, r[0], r[1], 0, tb); D.seg(r[0], r[1], 0, tip[0], tip[1], 0, tb);
           }
+          // THE THREAT ICON (round three): a small missile glyph riding the
+          // ring at the bearing of the nearest SAM in the air, pointing at it —
+          // the pink range number is the shell's DOM label beside it
+          if (view.threat) {
+            const R = 60 * ds, h = view.threat.bearing;
+            const ux = Math.cos(h), uy = Math.sin(h);
+            const bx = s.x + dx + ux * (R + 4 * ds), by = s.y + uy * (R + 4 * ds);
+            const L = 7 * ds, F = 2.6 * ds;
+            const blink = 0.9 + 0.5 * Math.sin(this.time * 14);
+            D.seg(bx - ux * L * 0.5, by - uy * L * 0.5, 0, bx + ux * L, by + uy * L, 0, blink);
+            D.seg(bx - ux * L * 0.5, by - uy * L * 0.5, 0, bx - ux * L * 0.9 - uy * F, by - uy * L * 0.9 + ux * F, 0, blink * 0.8);
+            D.seg(bx - ux * L * 0.5, by - uy * L * 0.5, 0, bx - ux * L * 0.9 + uy * F, by - uy * L * 0.9 - ux * F, 0, blink * 0.8);
+            // a short arc of the ring under it, brighter, so the eye finds the bearing
+            for (let i = -2; i < 2; i++) {
+              const a0 = h + i * 0.09, a1 = h + (i + 1) * 0.09;
+              D.seg(s.x + dx + Math.cos(a0) * R, s.y + Math.sin(a0) * R, 0, s.x + dx + Math.cos(a1) * R, s.y + Math.sin(a1) * R, 0, 0.7);
+            }
+          }
         }
       }
       if (view.flying) {
@@ -1339,6 +1361,38 @@ export class LanderScene {
             D.seg(x, y, oz, x + Math.cos(a) * 2.2, y + Math.sin(a) * 2.2, oz, (0.6 + rng() * 0.6) * fade);
           }
         }
+      }
+    }
+    // THE SAMs IN THE AIR (round three): a dart with a long plume, dimmer than
+    // the ship's own missile; a decoyed one dives after the chaff
+    if (view && view.threats && view.threats.length) {
+      for (const th of view.threats) {
+        const l = Math.hypot(th.vx, th.vy) || 1, ux = th.vx / l, uy = th.vy / l;
+        const b = th.decoy ? 0.9 : 1.25;
+        D.seg(th.x - ux * 8, th.y - uy * 8, 0, th.x + ux * 6, th.y + uy * 6, 0, b);
+        D.seg(th.x - ux * 7, th.y - uy * 7, 0, th.x - ux * 10 - uy * 3.5, th.y - uy * 10 + ux * 3.5, 0, b * 0.7);
+        D.seg(th.x - ux * 7, th.y - uy * 7, 0, th.x - ux * 10 + uy * 3.5, th.y - uy * 10 - ux * 3.5, 0, b * 0.7);
+        let n = 70 * dt + this._rand();
+        while (n >= 1 && this.particles.length < MAX_PARTICLES) {
+          n -= 1;
+          const j = (this._rand() - 0.5) * 22;
+          this.particles.push({ x: th.x - ux * 9, y: th.y - uy * 9, z: (this._rand() - 0.5) * 3,
+            vx: -ux * (40 + this._rand() * 30) + -uy * j, vy: -uy * (40 + this._rand() * 30) + ux * j, vz: (this._rand() - 0.5) * 16,
+            age: 0, life: 0.5 + this._rand() * 0.5, b: 0.7 });
+        }
+      }
+    }
+    // THE BASE'S SHIELD: drawn only while it stands, breathing; the last hit
+    // takes it away and the hull is bare
+    if (this.world && globalThis.LunarStructures && globalThis.LunarStructures.BY_ID.base) {
+      const C = globalThis.LunarCore, ST = globalThis.LunarStructures;
+      const kind = ST.BY_ID.base;
+      const [k0, k1] = this.chunkSpan;
+      for (let k = k0; k <= k1; k++) for (const st of C.getChunk(this.world, k).structures) {
+        if (st.id !== 'base' || !st.alive || !(st.shield > 0)) continue;
+        const cx = (st.x0 + st.x1) * 0.5, cy = st.y;
+        const b = (st.shield >= 2 ? 0.9 : 0.6) + 0.15 * Math.sin(this.time * 3);
+        for (const g of kind.shieldSegs) D.seg(cx + g[0], cy + g[1], 0, cx + g[2], cy + g[3], 0, b);
       }
     }
     if (view && (view.hover || view.target)) {

@@ -2,11 +2,11 @@
 
 Atari's Asteroids (1979), the rules kept and the look taken to 2026. Built
 2026-09-08 as a one-shot on James's go, from the plan in `tmp/asteroids/plan.md`.
-Third of the Retro arcade (Surround, Moon Battle 2075, this) — same architecture:
+Third of the Retro arcade (Surround, Moon Battle 2100, this) — same architecture:
 pure core + sim, three.js glow-line renderer, shell with the attract gate + the
 configuration panel + file-backed presets, a silent look-dev page, a
 sound-stubbed smoke page. **Draft, "unwired": not in the drift registry until
-James has flown it and said ship.** Standing rule from Moon Battle 2075 applies:
+James has flown it and said ship.** Standing rule from Moon Battle 2100 applies:
 a named old game is the FEEL, never the spec — when in doubt the contemporary
 choice wins, inside the one constraint (single-weight glowing lines on black).
 
@@ -110,7 +110,7 @@ loop on its own clock. **Regenerate it after editing index.html.**
 
 ## Renderer notes
 
-- Same line kit as Moon Battle 2075 (copied, not shared — extraction into a
+- Same line kit as Moon Battle 2100 (copied, not shared — extraction into a
   common vector kit waits until a third sibling needs it): screen-space quads,
   MAX blend, one half-res bloom level, tint in the composite. `pow()` never
   sees a negative; `half` is reserved in GLSL.

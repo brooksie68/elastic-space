@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the TANK core.
+// Moon Battle 2100 — the TANK core.
 //
 // The ground half of the game: the pilot has climbed out of the lander into a
 // lunar tank and fights among the same structures the lander flew over. First

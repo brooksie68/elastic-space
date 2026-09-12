@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the structures on the ground.
+// Moon Battle 2100 — the structures on the ground.
 //
 // Pure line drawings: every kind is a list of segments [x0, y0, x1, y1] in
 // feet, origin at the centre of the footprint on the ground, y up. Both
@@ -286,9 +286,39 @@
     arc(o, 0, 24, 24, Math.PI * 0.15, Math.PI * 0.85, 10);   // the shield, an arc over it
   } });
 
+  // ---- THE BASE (Moon Battle 2100, level 3's end) -------------------------------------------------
+  // A wide hull with a command block and mast, a hangar door, two SAM rails
+  // on the shoulders. Its shield is NOT in these strokes: the renderer draws
+  // it (`shieldSegs`) only while the base's shield stands, so the strokes
+  // fall away as the laser cuts it. mult 20 = 2,000 points.
+  def({ id: 'base', d: 120, name: 'THE BASE', cls: 'hard', hard: 'base', mult: 20, w: 220, h: 80, draw(o) {
+    // the hull: a long low block with sloped ends
+    poly(o, [[-110, 0], [-104, 26], [104, 26], [110, 0]], false);
+    seg(o, -104, 26, -96, 34); seg(o, 96, 34, 104, 26); seg(o, -96, 34, 96, 34);
+    for (let i = 0; i < 9; i++) { const x = -88 + i * 22; seg(o, x, 6, x, 20); }   // the bays
+    // the hangar door, centre-left
+    box(o, -70, 0, -30, 22); seg(o, -50, 0, -50, 22); seg(o, -70, 11, -30, 11);
+    // the command block and the mast
+    box(o, -24, 34, 24, 58); seg(o, -16, 40, 16, 40); seg(o, -16, 52, 16, 52);
+    seg(o, 0, 58, 0, 80); seg(o, -6, 74, 6, 74); seg(o, -4, 80, 4, 80);
+    // two SAM rails on the shoulders, aimed outward
+    for (const sx of [-1, 1]) {
+      const bx = sx * 72;
+      seg(o, bx - 6, 34, bx - 6, 42); seg(o, bx + 6, 34, bx + 6, 42); seg(o, bx - 8, 42, bx + 8, 42);
+      seg(o, bx - sx * 4, 42, bx + sx * 22, 62); seg(o, bx - sx * 1, 46, bx + sx * 19, 63); seg(o, bx + sx * 1, 40, bx + sx * 23, 58);
+    }
+  } });
+  // the shield: a dome of an ellipse over the whole base, drawn by the renderer while it stands
+  (function () {
+    const segs = [];
+    arc(segs, 0, 4, 128, Math.PI * 0.04, Math.PI * 0.96, 22, 96);
+    for (let i = 1; i <= 3; i++) arc(segs, 0, 4, 128 - i * 4, Math.PI * 0.3 + i * 0.05, Math.PI * 0.7 - i * 0.05, 8, 96 - i * 3);
+    BY_ID.base.shieldSegs = segs;
+  })();
+
   const CIV = K.filter((k) => k.cls === 'civ').map((k) => k.id);
   const OPEN = K.filter((k) => k.cls === 'open').map((k) => k.id);
-  const HARD = K.filter((k) => k.cls === 'hard').map((k) => k.id);
+  const HARD = K.filter((k) => k.cls === 'hard' && k.id !== 'base').map((k) => k.id);   // the base is dealt by the level plan only
 
   globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, solid: solid };
 })();

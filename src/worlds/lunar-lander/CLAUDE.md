@@ -1,6 +1,6 @@
-# Moon Battle 2075 — Claude instructions (folder `lunar-lander`)
+# Moon Battle 2100 — Claude instructions (folder `lunar-lander`)
 
-**RENAMED 2026-09-07 (James): the world is MOON BATTLE 2075** — in the admin
+**RENAMED 2026-09-07 (James): the world is MOON BATTLE 2100** — in the admin
 panel, world.json, the page title, the start card, the tank page, every doc.
 The folder / slug / preset route / localStorage keys stay `lunar-lander` (ids,
 not names). "Lunar Lander" below means the 1979 Atari game or the world's
@@ -15,7 +15,7 @@ lands; free mode never grows rules of its own.
 
 ## WHERE THIS IS GOING (James, 2026-09-06 — recorded, nothing built)
 
-Lunar Lander is the seed of a bigger game: **Moon Battle 2075**. His
+Lunar Lander is the seed of a bigger game: **Moon Battle 2100**. His
 words: it "is going to include the Battle Zone mode... some battling from the
 lander as well. We'll have more buildings on the ground. And we'll give the
 lander some weapons and some more goals. And eventually we get to a place where
@@ -111,7 +111,7 @@ side, promised to the tank: `chunk.structures` in the core and
 `structures.js` (pure segment lists for the ten structures + SAM site) so both
 renderers draw the same shapes; later, `vector-kit.js` (LineBatch + post
 chain + DEFAULT_PARAMS pulled out of render3d.js) with a heads-up to the tank
-session first. Commit prefix here: `Moon Battle 2075 (lander):`.
+session first. Commit prefix here: `Moon Battle 2100 (lander):`.
 ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 `state.score` through `hitStructure`; the joined game keeps one score.
 

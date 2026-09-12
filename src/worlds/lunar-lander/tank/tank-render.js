@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the TANK renderer.
+// Moon Battle 2100 — the TANK renderer.
 //
 // First person out of the tank's slit, drawn in the lander's register: one
 // green-to-white line drawing on black, max-blended, tightly glowed, no CRT
@@ -43,7 +43,7 @@ export const DEFAULT_PARAMS = {
   // ---- the tank's own (not in the lander's file) ----
   tankFov: 56,        // vertical field of view out of the slit, degrees
   gridBright: 0.11,   // a faint wide grid under everything (James, 2026-09-07: "massively flat and black... feels like nothing's there")
-  gridPitch: 100,     // ft between grid lines (James, 2026-09-08: "double up... still too much black")
+  gridPitch: 80,      // ft between grid lines (James, 2026-09-08: "double up... still too much black"; 2026-09-11: "another 20%" — 100 → 80)
   traceBright: 0.55,  // the flight line: the path the lander flew, a ticked trail on the ground
   contourBright: 0.34,// the contour lines (every contourStep ft of height; every fifth heavier)
   contourStep: 28,    // ft between contours: the lander's profile is walls along z, so a fine step drew stripes; coarse = one crest line per wall, a few per hill
@@ -79,7 +79,7 @@ const RIDGE_STEP = 120;     // ft between ridge samples
 const CRATER_CELL = 520;    // ft: one crater roll per cell
 const ROCK_CELL = 260;      // ft: one rock-field roll per cell
 const SKY_MID_R = 6500;     // ft: the mid ring, anchored at the stretch's start
-const GROUND_CELL = 25;     // ft: mesh cell — the grid lines ride the mesh's own rows, so they never sink under it
+const GROUND_CELL = 20;     // ft: mesh cell (25 until 2026-09-11: the 80 ft grid must sit on rows) — the grid lines ride the mesh's own rows, so they never sink under it
 const GROUND_REBUILD = 320; // ft: the tank moves this far before the ground is re-laid
 const PITCH_TAU = 0.6;      // s: the view eases onto the ground's pitch
 const MAX_ROLL = 0.05;      // rad — a few degrees, no more (the lander's MAX_BANK)
@@ -371,7 +371,7 @@ function wheel(S, x, y, z, r, n) {
   loop(S, pts);
 }
 // The slow tank: a wide low hull with a raked glacis, six big wheels on
-// outriggers, a squat turret, a long gun. A 2075 lunar vehicle, not a Sherman.
+// outriggers, a squat turret, a long gun. A 2100 lunar vehicle, not a Sherman.
 function buildTankSlow() {
   const S = [];
   const L = 24, W = 15, H = 8;

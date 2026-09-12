@@ -1,4 +1,4 @@
-# Moon Battle 2075 — the TANK side. Brief for the tank session.
+# Moon Battle 2100 — the TANK side. Brief for the tank session.
 
 You are the second Claude session on one game. James is building **Battle for
 the Moon 2075** in `src/worlds/lunar-lander/`. Another session (call it the
@@ -162,7 +162,7 @@ never shared:
 - Repo-level: `CLAUDE.md`, `World Ideas.md`, `index.html` (the admin panel),
   `src/core/world-registry.js`. Do not run `npm run registry`. The tank is not
   a world of its own and does not get an admin row, a registry entry or drift
-  exits — it is a part of Moon Battle 2075, and the seam (climbing out of
+  exits — it is a part of Moon Battle 2100, and the seam (climbing out of
   the lander into the tank, one page or two) is a decision James makes with
   both of you when both halves stand.
 
@@ -182,8 +182,8 @@ If you believe a shared file must change, do not change it: write the need in
    working tree.** The lander session has uncommitted edits in its files at
    any moment; those commands destroy them. If a commit went wrong, make a new
    commit.
-5. **Commit message prefix:** `Moon Battle 2075 (tank): ...`. The lander
-   session uses `Moon Battle 2075 (lander): ...`. End with the
+5. **Commit message prefix:** `Moon Battle 2100 (tank): ...`. The lander
+   session uses `Moon Battle 2100 (lander): ...`. End with the
    Co-Authored-By line your harness gives you.
 6. **Commit your own work before your session ends, every session,** with
    your changelog entry written in the same session. `git status` will always
@@ -219,7 +219,7 @@ Do not propose Battlezone mechanics before he has spoken.
 
 ## 2026-09-07 — the name and the door in
 
-James renamed the whole game **Moon Battle 2075** (the lander session replaced the
+James renamed the whole game **Moon Battle 2100** (the lander session replaced the
 name strings in `tank/` — title, card word, file headers — nothing else). The lander's
 start card now has FREE MODE → TANKS, which opens `tank/tank.html` directly; a way back
 to `../index.html` from the tank page is wanted when the tank session next touches its

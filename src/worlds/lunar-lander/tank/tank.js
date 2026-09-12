@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the TANK shell: mission flow, input, instruments,
+// Moon Battle 2100 — the TANK shell: mission flow, input, instruments,
 // sound, tuner. Rules live in tank-core.js (pure, sim-tested); the picture in
 // tank-render.js. This file wires them and owns nothing else.
 import { TankScene, DEFAULT_PARAMS, MODELS } from './tank-render.js?v=3';
@@ -33,7 +33,7 @@ const LOOK_RANGES = {
   rockBright:   { min: 0, max: 1.2, step: 0.02, label: 'rock fields' },
   traceBright:  { min: 0, max: 1.5, step: 0.05, label: 'the flight line' },
   gridBright:   { min: 0, max: 0.8, step: 0.02, label: 'the old grid' },
-  gridPitch:    { min: 50, max: 300, step: 25, label: 'grid spacing' },
+  gridPitch:    { min: 40, max: 300, step: 20, label: 'grid spacing' },
   fogNear:      { min: 100, max: 2000, step: 50, label: 'fade starts' },
   fogFar:       { min: 800, max: 6000, step: 100, label: 'fade ends' },
   ridgeBright:  { min: 0, max: 1.2, step: 0.02, label: 'near ridges' },

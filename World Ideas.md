@@ -290,7 +290,7 @@ Combat/Arachno lineage. Co-build, plan-first — not started.
 
 James, 2026-09-01, spun off roll 7 of the Valence Lab rethink: a continuous, scrubbable zoom from a glass of water down through the molecule, the atom, the electron cloud, past the Planck length, and every single time it bottoms out somewhere ridiculous: a Wendy's, the mall, a clown face, a cookie, a big turtle, or another Elastic Space world (those endings double as drift exits). The honest middle of the zoom can reuse the Valence Lab's baked Hartree-Fock densities. In the admin panel's page drafts as "Powers of Ten (it ends somewhere silly)".
 
-### 63. Moon Battle 2075 (born as Lunar Lander) — *one session* — `live`, back in progress (built 2026-09-04, shipped 2026-09-04, renamed 2026-09-07)
+### 63. Moon Battle 2100 (born as Lunar Lander) — *one session* — `live`, back in progress (built 2026-09-04, shipped 2026-09-04, renamed 2026-09-07)
 
 Atari's 1979 vector cabinet, the Surround treatment: faithful physics (lunar gravity, the
 proportional lever, four selections, pads worth 2×–5×, landings graded by speed / drift /
@@ -302,7 +302,7 @@ rounds with James: the 1979 look pulled all the way to 2026 (max-blend lines, no
 a two-stage LEM, landing tech, the endless chunked moon that remembers your life, the
 ring accelerator, and four ways out (drive-through door, relay tower, horizon ring, the
 hatch in your wreck). Missions are the next round. **2026-09-06, James's direction: this
-grows into MOON BATTLE 2075** — Battlezone mode inside it, battling from the lander,
+grows into MOON BATTLE 2100** — Battlezone mode inside it, battling from the lander,
 buildings on the ground, lander weapons + goals, and eventually out of the lander into a
 lunar tank whose targets you saw from the air. Recorded, not started. **RENAMED MOON
 BATTLE 2075 on 2026-09-07** (James) and moved back to In progress worlds while it grows;

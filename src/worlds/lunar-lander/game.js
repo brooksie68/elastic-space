@@ -1,9 +1,9 @@
-// Moon Battle 2075 — the lander shell (born as Lunar Lander): attempt flow, input, instruments, sound, tuner.
+// Moon Battle 2100 — the lander shell (born as Lunar Lander): attempt flow, input, instruments, sound, tuner.
 //
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=7';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=8';
 
 const Core = globalThis.LunarCore;
 
@@ -12,6 +12,7 @@ const PLAY_KEY = 'lunar-lander-play-v2';
 const LOOK_KEY = 'lunar-lander-look-v2';
 const LEDGER_KEY = 'lunar-lander-ledger-v1';
 const MODE_KEY = 'lunar-lander-mode-v1';       // the start card's choice: campaign | free, lander | tanks
+const CAMPAIGN_KEY = 'lunar-lander-campaign-v1';   // where the campaign stands: { seed, level, score } — a reload resumes at that level's start
 const TANK_PAGE = './tank/tank.html';         // FREE MODE → TANKS opens the tank half (the tank session's page)
 const PLAY_DEFAULTS = { fuel: 750, gravity: 1, attack: 0.35, zoom: 1, seed: '', wheelStep: 5, launchAngle: 60, launchApex: 0.75 };
 const LOOK_RANGES = {
@@ -79,7 +80,13 @@ const MESSAGES = {
     terrain: ['MISSED THE PAD', 'THE LANDER IS A CRATER NOW'],
     body: ['INVERTED', 'MISSION CONTROL IS SPEECHLESS'],
     struck: ['FLEW INTO A BUILDING', 'THE STRUCTURES ARE SOLID. SO WAS THE LANDER.'],
+    sam: ['SHOT DOWN', 'A SAM FOUND YOU. OUTFLY THEM, OR DROP CHAFF.'],
   },
+};
+const LEVEL_BRIEF = {
+  1: 'LEVEL 1 — DESTROY THE THREE HOSTILES IN THE STRETCH, THEN LAND ON THE RELAY',
+  2: 'LEVEL 2 — FOUR HOSTILES, TWO OF THEM SAM SITES. THE RELAY ENDS IT',
+  3: 'LEVEL 3 — FIVE HOSTILES, THEN THE BASE AT THE FAR END: TWO LASER SHOTS FOR ITS SHIELD, TWO MISSILES FOR ITS HULL. PADS EVERYWHERE — LIFT OFF FROM ANY OF THEM',
 };
 
 // ---- helpers -------------------------------------------------------------------
@@ -264,6 +271,8 @@ const Sfx = {
   deny() { this.env('square', 140, 0.07, 0.06); setTimeout(() => this.env('square', 120, 0.07, 0.06), 90); },
   lock() { this.env('sine', 880, 0.05, 0.07); setTimeout(() => this.env('sine', 1320, 0.06, 0.07), 60); },
   chaff() { this.noise(0.35, 0.4, 3200); this.env('triangle', 600, 0.2, 0.05, 200); },
+  // the SAM warning: two falling tones, then the launch hiss
+  warn() { this.env('square', 1180, 0.09, 0.07, 740); setTimeout(() => this.env('square', 1180, 0.09, 0.07, 740), 130); this.noise(0.5, 0.35, 2200); },
   over() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => this.env('triangle', f, 0.35, 0.14), i * 160)); },
 };
 if (window.ElasticSoundControl) {
@@ -300,19 +309,31 @@ try {
   if (m.mode === 'free') gameMode = 'free';
   if (m.kind === 'tanks') freeKind = 'tanks';
 } catch (e) {}
+const KEYS_LINE = '<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · C CHAFF · X ABORTS';
 const BRIEF = {
-  campaign: 'LEVEL 1 — DESTROY EVERY HOSTILE IN THE STRETCH, THEN LAND ON THE RELAY<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · X ABORTS',
-  lander: 'FREE FLIGHT — THE ENDLESS MOON, NO GOAL BUT THE SCORE<br />← → ROTATE · HOLD W TO BURN · WHEEL SETS A HOVER TRIM · 1 MISSILE · 2 LASER · X ABORTS',
-  tanks: 'FREE ROLL — CLIMB INTO THE LUNAR TANK<br />W S DRIVE · A D TURN · MOUSE LOOKS · CLICK FIRES · RIGHT CLICK IS THE LASER',
+  lander: 'FREE FLIGHT — THE ENDLESS MOON, NO GOAL BUT THE SCORE' + KEYS_LINE,
+  tanks: 'FREE ROLL — CLIMB INTO THE LUNAR TANK<br />W S DRIVE · A D TURN · MOUSE LOOKS · CLICK FIRES · RIGHT CLICK IS THE LASER · M IS THE MAP',
 };
+// the campaign's saved position (a reload resumes at the start of that level)
+function readCampaign() {
+  try { const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null'); return c && c.level > 1 && Number.isFinite(c.seed) ? c : null; } catch (e) { return null; }
+}
+function writeCampaign(c) { try { if (c) localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); else localStorage.removeItem(CAMPAIGN_KEY); } catch (e) {} }
+function campaignBrief() {
+  const saved = readCampaign();
+  const level = saved ? saved.level : 1;
+  return LEVEL_BRIEF[level] + (saved ? ' — RESUMING WITH ' + pad(saved.score, 4) + ' POINTS' : '') + KEYS_LINE;
+}
 function modeChoice() { return gameMode === 'campaign' ? 'campaign' : freeKind; }
 function renderModes() {
   document.querySelectorAll('#m-mode button').forEach((b) => b.classList.toggle('on', b.dataset.v === gameMode));
   document.querySelectorAll('#m-free button').forEach((b) => b.classList.toggle('on', b.dataset.v === freeKind));
   $('m-free').hidden = gameMode !== 'free';
-  $('start-brief').innerHTML = BRIEF[modeChoice()];
-  $('btn-start').textContent = modeChoice() === 'tanks' ? 'ROLL OUT' : 'START';
-  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL 1';
+  const saved = readCampaign();
+  $('start-brief').innerHTML = modeChoice() === 'campaign' ? campaignBrief() : BRIEF[modeChoice()];
+  $('btn-start').textContent = modeChoice() === 'tanks' ? 'ROLL OUT' : (modeChoice() === 'campaign' && saved) ? 'CONTINUE' : 'START';
+  $('btn-over').style.display = modeChoice() === 'campaign' && saved ? '' : 'none';
+  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL ' + (saved ? saved.level : 1);
 }
 function setMode(m, k) {
   if (m) gameMode = m;
@@ -328,7 +349,11 @@ renderModes();
 function makeGame() {
   let seed = parseInt(play.seed, 10);
   if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
-  state = Core.createGame({ seed, level: 1, fuel: play.fuel, gravityScale: play.gravity, free: gameMode === 'free' });
+  // a saved campaign resumes at its level's start, on its own moon, with its score
+  const saved = gameMode === 'campaign' ? readCampaign() : null;
+  if (saved) seed = saved.seed >>> 0;
+  state = Core.createGame({ seed, level: saved ? saved.level : 1, fuel: play.fuel, gravityScale: play.gravity, free: gameMode === 'free' });
+  if (saved) state.score = saved.score | 0;
   if (scene) { scene.setWorld(state); scene.clearEffects(); }
   clearFloats();
   buildPadLabels();
@@ -341,6 +366,7 @@ function enterAttract(resultLine, stamp) {
   const sr = $('start-result');
   if (resultLine) { sr.textContent = resultLine; sr.style.display = 'block'; } else { sr.style.display = 'none'; }
   renderLedger(stamp);
+  renderModes();
   $('start-card').classList.add('show');
   if (!state || state.phase === 'over') makeGame();
   resetThrottle();
@@ -359,7 +385,10 @@ function startGame() {
   $('ro-select').textContent = state.free ? 'FREE FLIGHT' : 'LEVEL ' + state.level;
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
-function nextAttempt() {
+// The next flight from the result card. `liftoff` (level 3) burns straight
+// off the pad instead of riding the accelerator. A LEVEL COMPLETE card
+// advances the level first; the last one hands over to the tank.
+function nextAttempt(liftoff) {
   if (mode !== 'result') return;
   if (state.phase === 'over') {
     const stamp = Date.now();
@@ -372,7 +401,14 @@ function nextAttempt() {
     enterAttract(line, stamp);
     return;
   }
-  Core.newAttempt(state);
+  if (state.campaignDone) { climbOut(); return; }
+  if (state.levelDone) {
+    Core.advanceLevel(state);
+    writeCampaign({ seed: state.seed, level: state.level, score: state.score });
+    $('ro-select').textContent = 'LEVEL ' + state.level;
+    floatLabel(state.ship.x, state.ship.y + 60, Core.LEVELS[state.level].name + ' — ' + state.hostilesTotal + ' HOSTILES EAST OF HERE', 'tech', 0);
+  }
+  Core.newAttempt(state, { liftoff: !!liftoff });
   scene.clearEffects();
   clearFloats();
   buildPadLabels();
@@ -380,7 +416,20 @@ function nextAttempt() {
   carry = 0;
   resetThrottle();
   if (state.phase === 'launch') { mode = 'launch'; launchT = 0; launchLit = 0; zoomIn = true; zoomChangedAt = -1e9; }
-  else mode = 'play';
+  else { mode = 'play'; if (state.ship.grounded) { zoomIn = true; zoomChangedAt = clock; } }
+}
+// THE SEAM: the base has fallen and the last gate is under the feet — the
+// pilot climbs out into the tank. The tank page takes the campaign's seed and
+// score so the two halves stay one game.
+function climbOut() {
+  writeCampaign(null);
+  const list = readLedger();
+  list.push({ score: state.score, attempts: state.attempt, level: state.level, free: false, stamp: Date.now() });
+  list.sort((a, b) => b.score - a.score);
+  writeLedger(list);
+  try { localStorage.setItem('lunar-lander-handoff-v1', JSON.stringify({ seed: state.seed, score: state.score, from: 'lander', at: Date.now() })); } catch (e) {}
+  Sfx.thrust(0);
+  window.location.href = TANK_PAGE + '?campaign=1';
 }
 // The accelerator sequence: the ship slides right onto the rail, the rail
 // tilts downrange, then the ship fires up through the rings, each lighting as
@@ -501,19 +550,28 @@ function showResult(result) {
   else pts = pad(result.points, 3) + ' POINTS (' + result.pad.mult + 'X PAD)' + (result.fuelBonus ? ' · FUEL +' + result.fuelBonus : '');
   if (result.fuelPad) pts += ' · FUEL PAD +' + result.fuelPad;
   if (result.supply) pts += ' · ' + SUPPLY_NAMES[result.supply.kind] + (result.supply.amount > 0 ? ' +' + result.supply.amount : ' FULL');
-  if (result.levelDone) { $('r-word').textContent = 'LEVEL ' + result.levelDone + ' COMPLETE'; $('r-msg').textContent = 'THE STRETCH IS CLEAR. THE RELAY IS YOURS.'; }
+  if (result.levelDone) {
+    $('r-word').textContent = 'LEVEL ' + result.levelDone + ' COMPLETE';
+    $('r-msg').textContent = result.campaignDone ? 'THE BASE HAS FALLEN. THE LANDER HAS DONE ITS PART.' : 'THE STRETCH IS CLEAR. THE RELAY IS YOURS.';
+  }
   if (state.phase === 'over') pts += ' · TANK DRY';
   $('r-points').textContent = pts;
   const rt = $('r-tech');
   if (result.techEarned) { rt.textContent = 'EARNED ' + TECH_NAMES[result.techEarned] + ' — ' + TECH_BLURB[result.techEarned]; rt.className = 'line tech earned'; }
   else if (result.techLost) { rt.textContent = 'LOST ' + TECH_NAMES[result.techLost]; rt.className = 'line tech lost'; }
+  else if (result.levelDone && !result.campaignDone) { rt.textContent = 'NEXT: ' + LEVEL_BRIEF[result.levelDone + 1]; rt.className = 'line tech earned'; }
+  else if (result.campaignDone) { rt.textContent = 'CLIMB OUT AND INTO THE TANK. THE SCORE COMES WITH YOU.'; rt.className = 'line tech earned'; }
   else { rt.textContent = ''; rt.className = 'line tech'; }
-  $('btn-next').textContent = state.phase === 'over' ? 'GAME OVER' : (!isCrash && result.pad) ? 'LAUNCH' : 'NEXT FLIGHT';
+  $('btn-next').textContent = state.phase === 'over' ? 'GAME OVER' : result.campaignDone ? 'CLIMB OUT' : result.levelDone ? 'NEXT LEVEL' : (!isCrash && result.pad) ? 'LAUNCH' : 'NEXT FLIGHT';
+  // level 3: lift straight off the pad on your own fuel, or ride the accelerator
+  const L = Core.levelDef(state);
+  const lift = $('btn-lift');
+  lift.style.display = (!isCrash && result.pad && !result.levelDone && L && L.liftoff && !state.free && state.phase !== 'over') ? '' : 'none';
   // the ways out this card can offer
   exitPending = null;
   const ex = $('btn-exit'), exNote = $('r-exit');
   if (result.kind === 'secret') { exitPending = 'drivethru'; ex.textContent = 'WALK IN'; exNote.textContent = 'THE DOOR UNDER THE ARCHES IS OPEN'; }
-  else if (!isCrash && result.pad && result.pad.relay) { exitPending = 'relay'; ex.textContent = 'ENTER THE RELAY'; exNote.textContent = 'THE TOWER LAMP HAS GONE SOLID. THE DOOR IS OPEN.'; }
+  else if (!isCrash && result.pad && result.pad.relay && !result.campaignDone) { exitPending = 'relay'; ex.textContent = 'ENTER THE RELAY'; exNote.textContent = 'THE TOWER LAMP HAS GONE SOLID. THE DOOR IS OPEN.'; }
   else if (state.phase === 'over') { exitPending = 'wreck'; ex.textContent = isCrash ? 'OPEN THE HATCH' : 'CLIMB OUT'; exNote.textContent = isCrash ? 'A DIM HATCH IN THE WRECK SWINGS OPEN' : 'THE TANK IS DRY. THE HATCH SWINGS OPEN.'; }
   ex.style.display = exitPending ? '' : 'none';
   exNote.textContent = exitPending ? exNote.textContent : '';
@@ -574,6 +632,29 @@ function handleEvents(events) {
     } else if (e.type === 'levelClear') {
       floatLabel(state.ship.x, state.ship.y + 60, 'LEVEL ' + e.level + ' CLEAR — LAND ON THE RELAY', 'tech', 0);
       Sfx.earn();
+    } else if (e.type === 'shieldDown') {
+      const st = Core.structureById(state, e.sid);
+      if (st) scene.spawnShield(st);
+      scene.flash = Math.max(scene.flash, 0.5);
+      floatLabel(e.x, e.y + 40, 'SHIELD DOWN — MISSILES NOW', 'tech', 0);
+      Sfx.clank(); setTimeout(() => Sfx.kill(), 200);
+    } else if (e.type === 'hull') {
+      scene.spawnImpact(e.x, e.y, true);
+      floatLabel(e.x, e.y + 40, 'HULL CRACKED — ONE MORE', 'tech', 0);
+      Sfx.boom(true);
+    } else if (e.type === 'samLaunch') {
+      floatLabel(e.x, e.y + 30, 'SAM LAUNCH', 'sam', 0);
+      scene.spawnImpact(e.x, e.y, false);
+      Sfx.warn();
+    } else if (e.type === 'samCorrect') {
+      Sfx.tick();
+    } else if (e.type === 'samDecoyed') {
+      floatLabel(e.x, e.y + 20, 'DECOYED', 'fuel', 0);
+      Sfx.lock();
+    } else if (e.type === 'samEnd') {
+      if (!e.hit) { scene.spawnImpact(e.x, e.y, false); Sfx.boom(false); }
+    } else if (e.type === 'liftoff') {
+      Sfx.refuel();
     } else if (e.type === 'over') {
       setTimeout(() => Sfx.over(), 900);
     } else if (e.type === 'gate') {
@@ -637,9 +718,25 @@ function floatLabel(x, y, text, cls, row) {
 }
 function clearFloats() { for (const f of floats) f.el.remove(); floats.length = 0; }
 const _pt = {};
+const samTag = $('sam-tag');
+// the pink range number beside the threat icon on the direction circle
+function placeSamTag() {
+  const th = state && scene && mode === 'play' && state.phase === 'flying' ? Core.nearestThreat(state) : null;
+  if (!th) { samTag.classList.remove('show'); return; }
+  const s = state.ship;
+  const zt = scene.view ? scene.view.t : 0;
+  const ds = 1.0 + 0.76 * (1 - zt);
+  const R = 60 * ds + 16 * ds;
+  scene.projectToScreen(s.x + Math.cos(th.bearing) * R, s.y + Math.sin(th.bearing) * R, _pt);
+  samTag.textContent = th.decoyed ? 'DECOYED' : th.range + ' FT';
+  samTag.classList.toggle('decoyed', !!th.decoyed);
+  samTag.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(-50%, -50%)';
+  samTag.classList.toggle('show', _pt.on);
+}
 function placeLabels(dt) {
   if (!scene || !state) return;
   placeTargetTag(dt);
+  placeSamTag();
   for (const L of padLabels) {
     scene.projectToScreen(L.x, L.y, _pt);
     L.el.style.transform = 'translate(' + _pt.x.toFixed(1) + 'px,' + _pt.y.toFixed(1) + 'px) translate(' + (L.left ? '0%' : '-50%') + ', ' + (L.below ? '0%' : '-100%') + ')';
@@ -810,6 +907,9 @@ function frameStep(dt) {
     fan, squash,
     autoOn: autoOn && mode === 'play',
     shots: state.shots,
+    threats: state.threats,
+    threat: mode === 'play' && state.phase === 'flying' ? Core.nearestThreat(state) : null,
+    wideBase: (!state.free && Core.levelDef(state)) ? Core.levelDef(state).wide : 1,
     hover: mode === 'play' ? hover : null,
     target: mode === 'play' ? target : null,
     launch: launchView,
@@ -1041,7 +1141,7 @@ function renderWeapons() {
   const note = $('weapon-note');
   if (note) note.textContent = !armed ? '' : target ? 'CLICK AGAIN TO FIRE' : (armed === 'missiles' ? 'MISSILE ARMED — CLICK A TARGET' : 'LASER ARMED — CLICK A TARGET');
   const hs = $('v-hostiles');
-  if (hs) hs.textContent = state.free ? '' : state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + ' HOSTILES';
+  if (hs) hs.textContent = state.free ? '' : state.levelClear ? 'CLEAR — LAND ON THE RELAY' : state.hostilesLeft + (state.hostilesLeft === 1 ? ' HOSTILE' : ' HOSTILES');
 }
 // the weapon rows in the console are buttons too (James: "click on the weapons in the HUD")
 document.querySelectorAll('#weapons .wpn').forEach((row) => {
@@ -1103,8 +1203,11 @@ function armRestart() {
 $('btn-pause').addEventListener('click', togglePause);
 $('btn-restart').addEventListener('click', armRestart);
 $('btn-start').addEventListener('click', startGame);
-$('btn-next').addEventListener('click', nextAttempt);
+$('btn-next').addEventListener('click', () => nextAttempt(false));
+$('btn-lift').addEventListener('click', () => nextAttempt(true));
 $('btn-exit').addEventListener('click', () => { if (exitPending) takeExit(exitPending); });
+// START OVER: forget the saved campaign position (the start card offers it while one exists)
+$('btn-over').addEventListener('click', (e) => { e.stopPropagation(); writeCampaign(null); state = null; renderModes(); });
 
 // ---- tuner --------------------------------------------------------------------------------------
 const tuner = $('tuner');
@@ -1162,7 +1265,7 @@ function syncPlayUI() {
   $('t-langle').value = play.launchAngle; $('t-langle-val').textContent = play.launchAngle + '°';
   $('t-lapex').value = play.launchApex; $('t-lapex-val').textContent = Math.round(play.launchApex * 100) + '% of the way up';
   $('t-seed').value = play.seed || '';
-  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL 1';
+  if (mode === 'attract') renderModes();
 }
 
 const lookRows = $('look-rows');

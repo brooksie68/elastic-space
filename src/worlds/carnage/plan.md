@@ -2,7 +2,7 @@
 # calls answered the same day — see "His calls" at the end)
 # BUILT 2026-09-08, the same night, on the brief below. The record of what landed is changelog.md.
 
-Reference family: the Retro arcade (Surround, Moon Battle 2075, the Asteroids
+Reference family: the Retro arcade (Surround, Moon Battle 2100, the Asteroids
 plan, this). Same architecture: pure core + sim, three.js renderer, shell with
 attract gate + configuration panel + file-backed presets, silent look-dev page,
 sound-stubbed smoke page. Faithful 1986 Bally Midway rules; the look is 2026.

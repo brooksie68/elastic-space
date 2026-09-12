@@ -88,7 +88,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
   note off, World Ideas #64 → live, draft status → built).
 
 - RETRO ARCADE — THE RUNNING LIST (James, 2026-09-08: "keep a running list for me of
-  the games I want to emulate"; Surround and Moon Battle 2075 are the reference treatment —
+  the games I want to emulate"; Surround and Moon Battle 2100 are the reference treatment —
   faithful rules, 2026 look). Keep this list current whenever he adds one:
   1. Asteroids — BUILT 2026-09-08 as a one-shot on his "ok" (`src/worlds/asteroids/`, read its
      CLAUDE.md first; draft, unwired, sim 2,230 green, smoke-pumped, World Ideas #65). AWAITING
@@ -1262,7 +1262,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
-7.5. MOON BATTLE 2075 (born as LUNAR LANDER, folder `lunar-lander`; RENAMED 2026-09-07 on
+7.5. MOON BATTLE 2100 (born as LUNAR LANDER, folder `lunar-lander`; RENAMED 2026-09-07 on
    James's word and moved back to In progress worlds — still in the drift registry; the
    start card switches CAMPAIGN | FREE MODE → LANDER / TANKS, free lander = no goal, tanks
    = `tank/tank.html`; his read: "the Lander levels are in a good position... ready to have some
@@ -1343,7 +1343,7 @@ consistent. `npm run check-worlds` audits every world against the contract.
    meteor showers, fuel crates, co-op tow, terrain sets), then drift exits +
    ship wiring. Battlezone discussed as the next vector sibling — not started.
    **THE DIRECTION (James, 2026-09-06, recorded only): Lunar Lander grows into
-   MOON BATTLE 2075** — the Battlezone mode inside it, battling from the
+   MOON BATTLE 2100** — the Battlezone mode inside it, battling from the
    lander, more buildings on the ground, lander weapons + more goals, and
    eventually climbing out of the lander into a lunar tank whose targets you
    saw going by from the air. "Lots more to come on this down the road."

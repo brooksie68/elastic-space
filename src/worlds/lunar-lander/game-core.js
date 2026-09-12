@@ -1,4 +1,4 @@
-// Moon Battle 2075 — the lander core (born as Lunar Lander).
+// Moon Battle 2100 — the lander core (born as Lunar Lander).
 //
 // Lunar gravity, momentum, a proportional thrust lever that burns fuel,
 // landings graded by vertical speed, drift, and attitude — flown over an
@@ -90,7 +90,7 @@
   // always carries at least one.
   const FUEL_ODDS = [0.15, 0.35, 0.60, 0.85, 1.0];
 
-  // THE WEAPONS (Moon Battle 2075, round two, 2026-09-06 — James's riff +
+  // THE WEAPONS (Moon Battle 2100, round two, 2026-09-06 — James's riff +
   // answers, world CLAUDE.md "Round one design"). Two weapons from the start
   // and chaff for round three. Ammo refills at pads the way fuel does: each
   // pad may carry ONE supply (missiles / laser / chaff) on its own drought
@@ -109,9 +109,45 @@
   const CIVILIAN_PENALTY = 150;     // a missile miss that lands on a civilian building
   const OVERHANG_SLOPE = 0.9;       // a data centre under its rock lip: the shot comes from the open (right) side, rise/run under this
   const RIDGE_ALT = 220;            // an ammo depot behind a ridge: the missile needs this much height over it to arc in
-  const DOOR_PERIOD = 12, DOOR_OPEN = 2.0;   // a bunker's blast door: open DOOR_OPEN s every DOOR_PERIOD s (round three ties it to its own SAM firing)
-  const LEVEL_CHUNKS = 8;           // level 1 is clear when every hostile in chunks 1..8 is gone (James's yes, 2026-09-06)
+  const DOOR_PERIOD = 12, DOOR_OPEN = 2.0;   // a bunker's blast door: open DOOR_OPEN s after its own SAM fires (the period clock is the fallback when hostile fire is off)
   const BASE_MISS_CHECK = 22;       // ft: a miss within this of a civilian's box edge hits it
+
+  // THE LEVELS (Moon Battle 2100, James 2026-09-11: "3 and 3 and out" — three
+  // lander levels, the base, then the tank's three). Each level is a stretch
+  // of consecutive chunks flown east; the stretch deals EXACTLY `targets`
+  // hostiles (`sams` of them SAM sites, `hard` hardened, the rest open), the
+  // SAM sites reload faster each level, and the last chunk of every stretch
+  // carries the GATE pad (a relay tower) that ends the level once the stretch
+  // is clear. Level 3 is the big one: every chunk deals rich, every pad
+  // carries a supply, lift-off from a pad is allowed (the only place), the
+  // wide view sits at 0.75×, and THE BASE stands at the far right with the
+  // gate pad beside it. Chunks past the last level roll the endless way.
+  const LEVELS = [null,
+    { name: 'LEVEL 1', chunks: [1, 4],   targets: 3, sams: 1, hard: 0, samReload: 9, wide: 1 },
+    { name: 'LEVEL 2', chunks: [5, 9],   targets: 4, sams: 2, hard: 1, samReload: 7, wide: 1 },
+    { name: 'LEVEL 3', chunks: [10, 17], targets: 5, sams: 3, hard: 1, samReload: 5, wide: 0.75, big: true, liftoff: true, base: true },
+  ];
+  const LEVEL_CHUNKS = LEVELS[1].chunks[1];   // kept for older callers: level 1's last chunk
+  const SUPPLY_CYCLE = ['missiles', 'laser', 'missiles', 'chaff', 'laser'];   // level 3: every pad carries one, in this order (missiles favoured, the base needs two and two)
+  // THE BASE: the shield takes two LASER shots (missiles burst on it for
+  // nothing), then the hull takes two MISSILES (the laser scratches it). It
+  // fires from two rails of its own. Points = TARGET_POINTS × its mult (20).
+  const BASE = { shield: 2, hull: 2, rails: 2 };
+
+  // HOSTILE FIRE (round three, the design agreed 2026-09-06, built 2026-09-11):
+  // a SAM site that has the ship inside its range fires a surface-to-air
+  // missile every `samReload` seconds (by level) after a short warm-up; the
+  // missile boosts to SAM_SPEED and flies a STRAIGHT shot at where the ship
+  // was — slow enough to outfly — except that every SAM_BEAT seconds it has a
+  // SAM_CORRECT chance to re-aim at the ship. A hit is a crash. Chaff within
+  // CHAFF_REACH of a missile's path decoys it CHAFF_ODDS of the time (it dives
+  // to the cloud and dies there). A live radar tower doubles the range of
+  // every SAM in its chunk. The bunker's blast door opens DOOR_OPEN s when
+  // its roof SAM fires.
+  const SAM = { range: 1400, warmup: 2.2, speed: 115, turn: 2.2, life: 16, hitR: 16, beat: 0.25, correct: 0.04 };
+  const CHAFF_REACH = 140, CHAFF_ODDS = 0.8;
+  const RADAR_RANGE_MULT = 2;
+  const CAMPAIGN_LEVELS = LEVELS.length - 1;
   const FUEL_DEAL_MULT = { standard: 1, sparse: 1, rich: 1.25, dry: 0.5, jackpot: 1 };
 
   // The ring accelerator beside every pad: rail base sits `offset` ft right of
@@ -163,7 +199,57 @@
     leverCurve: LEVER_CURVE,
     secretOdds: 0.35,      // chance a chunk hides the secret flat
     free: false,           // FREE MODE (2026-09-07): the same moon with no level goal
+    sams: true,            // hostile fire on (the sim turns it off where it parks a ship)
   };
+
+  // ---- the level plan ------------------------------------------------------
+  // Which level a chunk belongs to (null outside every stretch), and the
+  // level's PLAN: exactly the hostiles it promises, dealt over its chunks —
+  // hashed from the seed and the level, so free mode and the campaign fly
+  // the same moon, and a chunk is the same every time it is reached. No chunk
+  // takes more than two; the SAM sites and the hardened one spread out.
+  function levelOf(k) {
+    for (let n = 1; n < LEVELS.length; n++) if (k >= LEVELS[n].chunks[0] && k <= LEVELS[n].chunks[1]) return n;
+    return null;
+  }
+  const HARD_KINDS = ['datacentre', 'depot', 'bunker', 'core'];
+  const OPEN_KINDS = ['gunpit', 'radar', 'jammer', 'gunpit'];
+  function levelPlan(seed, level) {
+    const L = LEVELS[level];
+    const rng = mulberry32(hashSeed(seed ^ 0x2545f491, level * 977 + 13));
+    const [k0, k1] = L.chunks;
+    const n = k1 - k0 + 1;
+    const want = [];
+    for (let i = 0; i < L.sams; i++) want.push('sam');
+    for (let i = 0; i < L.hard; i++) want.push(HARD_KINDS[Math.floor(rng() * HARD_KINDS.length)]);
+    while (want.length < L.targets) want.push(OPEN_KINDS[Math.floor(rng() * OPEN_KINDS.length)]);
+    // deal them over the chunks: a shuffled order of chunks (the base's chunk
+    // kept clear), the SAM sites first one per chunk, a radar tower into a SAM
+    // site's chunk when it can (it doubles that site's reach — kill it first),
+    // then the rest into empty chunks before any chunk takes a second
+    const order = [];
+    for (let k = k0; k <= k1; k++) { if (L.base && k === k1) continue; order.push(k); }
+    for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = order[i]; order[i] = order[j]; order[j] = t; }
+    const byChunk = {};
+    for (let k = k0; k <= k1; k++) byChunk[k] = [];
+    const seat = (id, prefer) => {
+      let k = prefer !== undefined && byChunk[prefer].length < 2 ? prefer : undefined;
+      if (k === undefined) k = order.find((q) => byChunk[q].length === 0);
+      if (k === undefined) k = order.find((q) => byChunk[q].length < 2);
+      if (k !== undefined) byChunk[k].push(id);
+    };
+    for (const id of want.filter((w) => w === 'sam')) seat(id);
+    for (const id of want.filter((w) => w === 'radar')) seat(id, order.find((q) => byChunk[q].indexOf('sam') >= 0 && byChunk[q].length < 2));
+    for (const id of want.filter((w) => w !== 'sam' && w !== 'radar')) seat(id);
+    return { level: level, byChunk: byChunk, n: n };
+  }
+  function planFor(seed, k) {
+    const level = levelOf(k);
+    if (!level) return null;
+    const L = LEVELS[level];
+    const plan = levelPlan(seed, level);
+    return { level: level, kinds: plan.byChunk[k] || [], big: !!L.big, base: !!(L.base && k === L.chunks[1]), gate: k === L.chunks[1] };
+  }
 
   // ---- rng ---------------------------------------------------------------
   function mulberry32(seed) {
@@ -282,11 +368,14 @@
     ys[n] = levelB; ys[n - 1] = levelB + (ys[n - 2] - levelB) * 0.5;
 
     // ---- the deal: which pads this chunk offers ----
+    // the level plan (Moon Battle 2100): what this chunk owes its level
+    const plan = planFor(seed, k);
     let deal = 'standard';
     if (k !== 0) {
       const r = rng();
       deal = r < 0.16 ? 'sparse' : r < 0.34 ? 'rich' : r < 0.46 ? 'dry' : r < 0.54 ? 'jackpot' : 'standard';
     }
+    if (plan && plan.big) deal = 'rich';   // level 3: pads everywhere (James: "an increased number of pads")
     const tiers = [];
     if (deal === 'standard') {
       const count = FLIGHT.pads;
@@ -317,6 +406,21 @@
     }
     const taken = [];
     const clear = (x0, x1, gap) => { for (const t of taken) if (x0 < t[1] + gap && x1 > t[0] - gap) return false; return true; };
+    // THE BASE (level 3's last chunk): seated first, at the far right, on the
+    // seam mare — every pad and structure keeps clear of it
+    let baseSeat = null;
+    if (plan && plan.base && globalThis.LunarStructures && globalThis.LunarStructures.BY_ID.base) {
+      const kind = globalThis.LunarStructures.BY_ID.base;
+      const bx1 = CHUNK_W - 30, bx0 = bx1 - kind.w;
+      const i0 = Math.floor(bx0 / TERRAIN_STEP), i1 = Math.ceil(bx1 / TERRAIN_STEP);
+      let sum = 0;
+      for (let i3 = i0; i3 <= i1; i3++) sum += ys[Math.min(n, i3)];
+      const by = Math.max(200, Math.min(760, sum / (i1 - i0 + 1)));
+      taken.push([bx0, bx1]);
+      baseSeat = { id: kind.id, name: kind.name, cls: kind.cls, mult: kind.mult, hard: kind.hard,
+        x0: +(X0 + bx0).toFixed(2), x1: +(X0 + bx1).toFixed(2), y: +by.toFixed(2), h: kind.h, k: k,
+        sid: k + ':base', alive: true, hp: BASE.shield + BASE.hull, shield: BASE.shield, hull: BASE.hull };
+    }
     const pads = [];
     for (let q = 0; q < tiers.length; q++) {
       const w = tiers[q].width;
@@ -328,7 +432,8 @@
           // the pad sits inside the zone; its apron may spill into the next one
           if (!f || f[1] - f[0] < w + 40) continue;
           x0 = f[0] + 20 + rng() * (f[1] - f[0] - w - 40);
-          ok = x0 + w + APRON <= CHUNK_W - 20 && clear(x0, x0 + w + APRON, 60);
+          ok = x0 + w + APRON <= CHUNK_W - 20 && clear(x0, x0 + w + APRON, 60) &&
+            (!baseSeat || x0 + w + APRON + 130 <= baseSeat.x0 - X0);   // the launch lane stays clear of the base
         }
         if (ok) break;
       }
@@ -345,6 +450,15 @@
     // the relay: one pad on some far chunks belongs to a derelict relay tower
     if (pads.length && Math.abs(k) >= RELAY_MIN_CHUNK && rng() < RELAY_ODDS) {
       pads[Math.floor(rng() * pads.length)].relay = true;
+    }
+    // THE GATE (the level's end): the rightmost pad of a level's last chunk is
+    // a relay tower whose landing ends the level once the stretch is clear —
+    // beside the base on level 3
+    if (plan && plan.gate && pads.length) {
+      let gate = pads[0];
+      for (const p of pads) if (p.x0 > gate.x0) gate = p;
+      for (const p of pads) p.relay = false;   // the gate is the chunk's one relay tower
+      gate.relay = true; gate.gate = plan.level;
     }
     // the fuel drought walk: flight order, odds climbing since the last fuel pad
     const carryIn = typeof carry === 'number' ? { fuel: carry, weapon: 0 } : (carry || { fuel: 0, weapon: 0 });
@@ -383,6 +497,13 @@
       byX[byX.length - 1].supply = 'missiles';
       wdrought = 0;
     }
+    if (plan && plan.big) {
+      // level 3: EVERY pad carries a supply, dealt round the cycle from a hashed
+      // start, so the stretch always holds the missiles and the laser the base wants
+      let ci = Math.floor(hash01(seed, k * 31 + 5) * SUPPLY_CYCLE.length);
+      for (const p of byX) { p.supply = SUPPLY_CYCLE[ci % SUPPLY_CYCLE.length]; ci++; }
+      wdrought = 0;
+    }
     // the secret flat — a strip that is not a pad
     let secret = null;
     if (rng() < opts.secretOdds) {
@@ -399,7 +520,7 @@
         break;
       }
     }
-    // ---- the structures (Moon Battle 2075, round one): civilians on every
+    // ---- the structures (Moon Battle 2100, round one): civilians on every
     // chunk, hostiles by the deal, none hostile on chunk 0. Drawings live in
     // structures.js (LunarStructures); the core keeps the footprint, the class
     // and the multiplier. Each footprint flattens the ground under it like a
@@ -410,12 +531,16 @@
       const pick = (list) => list[Math.floor(rng() * list.length)];
       // hostiles are seated first (they are the game), civilians fill what is left
       const want = [];
-      if (k !== 0) {
+      if (plan) {
+        // inside a level: exactly what the plan deals this chunk
+        for (const id of plan.kinds) want.push(id);
+      } else if (k !== 0) {
         if (deal === 'jackpot') want.push('core');
         else if (Math.abs(k) >= 2 && rng() < 0.3) want.push(pick(ST.HARD));
         const nOpen = 1 + (rng() < 0.45 ? 1 : 0);
         for (let q = 0; q < nOpen; q++) want.push(pick(['sam', 'sam', 'gunpit', 'radar', 'jammer']));
       }
+      if (baseSeat) structures.push(baseSeat);
       const nCiv = 3 + Math.floor(rng() * 4);   // 3–6 civilians
       for (let q = 0; q < nCiv; q++) want.push(pick(ST.CIV));
       const launchClear = (x0, x1) => { for (const p of pads) if (x0 < p.apron - X0 + 130 && x1 > p.x0 - X0 - 30) return false; return true; };
@@ -439,6 +564,23 @@
             ok = true;
           }
           if (ok) break;
+        }
+        // a level's hostile is a promise: when the pools have no room, search the
+        // whole chunk with a closer gap and a looser slope before giving up
+        if (!ok && plan && kind.cls !== 'civ') {
+          for (let tries = 0; tries < 900 && !ok; tries++) {
+            x0 = 60 + rng() * (CHUNK_W - 120 - w);
+            if (!clear(x0, x0 + w, 25) || !launchClear(x0, x0 + w)) continue;
+            const i0 = Math.floor(x0 / TERRAIN_STEP), i1 = Math.ceil((x0 + w) / TERRAIN_STEP);
+            let sum = 0, lo = 1e9, hi = -1e9;
+            for (let i3 = i0; i3 <= i1; i3++) { sum += ys[i3]; lo = Math.min(lo, ys[i3]); hi = Math.max(hi, ys[i3]); }
+            if (hi - lo > Math.max(90, w * 0.7)) continue;
+            let onMountain = false;
+            for (const z of zones) if (z.type === 'mountain' && x0 < z.i1 * TERRAIN_STEP && x0 + w > z.i0 * TERRAIN_STEP) onMountain = true;
+            if (onMountain) continue;
+            y = sum / (i1 - i0 + 1);
+            ok = true;
+          }
         }
         if (!ok) continue;
         taken.push([x0, x0 + w]);
@@ -558,28 +700,51 @@
       gated: false,        // set once the ship has flown through a horizon ring
       ammo: { missiles: LOADOUT.missiles, laser: LOADOUT.laser, chaff: LOADOUT.chaff },
       shots: [],           // missiles in the air and chaff clouds falling
+      threats: [],         // SAMs in the air (hostile fire)
       rolls: 0,            // the weapons' own seeded roll counter (hit / miss / spread)
-      hostilesTotal: 0,    // the level's goal: hostiles in chunks 1..LEVEL_CHUNKS
+      hostilesTotal: 0,    // the level's goal: hostiles in the level's stretch
       hostilesLeft: 0,
-      levelClear: false,   // every hostile in the level's stretch is gone — the relay ends the level
+      levelClear: false,   // every hostile in the level's stretch is gone — the gate pad ends the level
+      levelDone: false,
+      campaignDone: false, // the last level's gate landed on: the lander half is over
+      spawnX: SPAWN.x,     // where this game's first flight began (the range readout)
     };
+    if (state.level > CAMPAIGN_LEVELS) state.level = CAMPAIGN_LEVELS;
+    if (state.level > 1 && !state.free) {
+      // a resumed campaign starts a flight and a half before its stretch
+      state.spawnX = LEVELS[state.level].chunks[0] * CHUNK_W - 1500;
+    }
     getChunk(state, 0);
-    // the level's stretch exists from the start: its hostiles are the goal,
-    // and a relay pad is promised inside it (chunk LEVEL_CHUNKS gets one if
-    // none was dealt) so the level can always be ended
-    let relay = false, n = 0;
-    for (let k = 1; k <= LEVEL_CHUNKS && !state.free; k++) {
-      const c = getChunk(state, k);
-      for (const st of c.structures) if (st.cls !== 'civ') n++;
-      if (c.pads.some((p) => p.relay)) relay = true;
-    }
-    if (!relay && !state.free) {
-      const c = getChunk(state, LEVEL_CHUNKS);
-      if (c.pads.length) c.pads[c.pads.length - 1].relay = true;
-    }
-    state.hostilesTotal = n; state.hostilesLeft = n;
+    countLevel(state);
     newAttempt(state);
     return state;
+  }
+  // The level's stretch as [k0, k1]; a free game has none.
+  function levelRange(state) {
+    const L = LEVELS[state.level];
+    return L && !state.free ? L.chunks : null;
+  }
+  function levelDef(state) { return LEVELS[state.level] || null; }
+  // Count the level's hostiles (the goal) — the stretch exists from the start
+  // so the count is exact, and the gate pad is dealt by the plan.
+  function countLevel(state) {
+    const r = levelRange(state);
+    let n = 0;
+    if (r) for (let k = r[0]; k <= r[1]; k++) for (const st of getChunk(state, k).structures) if (st.cls !== 'civ' && st.alive) n++;
+    state.hostilesTotal = n; state.hostilesLeft = n;
+    state.levelClear = n === 0 && !!r;
+    state.levelDone = false;
+    return n;
+  }
+  // The next level: called by the shell from the LEVEL COMPLETE card. The
+  // world, the score, the fuel, the ammo and the tech all carry on; only the
+  // goal moves east. False when there is no next level (the campaign is done).
+  function advanceLevel(state) {
+    if (!state.levelDone || state.free) return false;
+    if (state.level >= CAMPAIGN_LEVELS) { state.campaignDone = true; return false; }
+    state.level += 1;
+    countLevel(state);
+    return true;
   }
 
   // ---- the weapons --------------------------------------------------------------------------------
@@ -603,6 +768,10 @@
     return null;
   }
   function doorOpen(state, st) {
+    // the blast door opens when the bunker's own SAM fires (round three);
+    // with hostile fire off (the sim's parked ships) the old period clock stands in
+    if (st.doorUntil !== undefined && state.time < st.doorUntil) return true;
+    if (state.opts.sams) return false;
     const t = (state.time + st.k * 3.7) % DOOR_PERIOD;
     return t < DOOR_OPEN;
   }
@@ -621,20 +790,39 @@
       if (weapon !== 'missiles' || s.y - st.y < RIDGE_ALT) return { ok: false, why: 'RIDGE' };
     } else if (st.hard === 'door') {
       if (!doorOpen(state, st)) return { ok: false, why: 'DOOR' };
+    } else if (st.hard === 'base') {
+      // the shield only the laser cuts; then the hull only missiles crack
+      if (st.shield > 0 && weapon !== 'laser') return { ok: false, why: 'SHIELD — LASER ONLY' };
+      if (st.shield <= 0 && weapon !== 'missiles') return { ok: false, why: 'HULL — MISSILES ONLY' };
+      return { ok: true, why: st.shield > 0 ? 'SHIELD ' + st.shield : 'HULL ' + st.hull };
     }
     return { ok: true, why: st.hard === 'shield' && st.hp > 1 ? 'SHIELD' : null };
   }
   // A hit lands: the shield goes first on a shielded target, then the building.
-  function damage(state, st, events, x, y) {
-    st.hp -= 1;
-    if (st.hp > 0) { events.push({ type: 'shield', sid: st.sid, x: x, y: y }); return false; }
+  function damage(state, st, events, x, y, weapon) {
+    if (st.hard === 'base') {
+      // the base: two on the shield (laser), two on the hull (missiles); the
+      // wrong weapon is refused upstream by targetable(), so a hit here counts
+      if (st.shield > 0) {
+        st.shield -= 1; st.hp -= 1;
+        state.world.version++;
+        events.push({ type: st.shield > 0 ? 'shield' : 'shieldDown', sid: st.sid, x: x, y: y, left: st.shield });
+        return false;
+      }
+      st.hull -= 1; st.hp -= 1;
+      if (st.hull > 0) { state.world.version++; events.push({ type: 'hull', sid: st.sid, x: x, y: y, left: st.hull }); return false; }
+    } else {
+      st.hp -= 1;
+      if (st.hp > 0) { events.push({ type: 'shield', sid: st.sid, x: x, y: y }); return false; }
+    }
     st.alive = false;
     state.world.version++;
     if (st.cls !== 'civ') {
       const points = TARGET_POINTS * st.mult;
       state.score += points;
       events.push({ type: 'kill', sid: st.sid, id: st.id, name: st.name, mult: st.mult, points: points, x: (st.x0 + st.x1) / 2, y: st.y });
-      if (!state.free && st.k >= 1 && st.k <= LEVEL_CHUNKS) {
+      const r = levelRange(state);
+      if (r && st.k >= r[0] && st.k <= r[1]) {
         state.hostilesLeft = Math.max(0, state.hostilesLeft - 1);
         if (state.hostilesLeft === 0 && !state.levelClear) { state.levelClear = true; events.push({ type: 'levelClear', level: state.level }); }
       }
@@ -729,6 +917,92 @@
     state.shots = keep;
   }
   function hostilesLeft(state) { return state.hostilesLeft; }
+
+  // ---- hostile fire (round three) ---------------------------------------------------------------
+  // Which live structures launch: SAM sites, bunkers (the roof rail), the base (two rails).
+  function isLauncher(st) { return st.alive && (st.id === 'sam' || st.id === 'bunker' || st.id === 'base'); }
+  // A launcher's reach: SAM.range, doubled while a radar tower lives in its chunk.
+  function samRange(state, st) {
+    let r = SAM.range;
+    const c = state.world.chunks[st.k];
+    if (c) for (const o of c.structures) if (o.id === 'radar' && o.alive) { r *= RADAR_RANGE_MULT; break; }
+    return r;
+  }
+  function samReload(state) {
+    const L = levelDef(state);
+    return L && !state.free ? L.samReload : LEVELS[1].samReload;
+  }
+  // Every launcher with the ship inside its range warms up, then fires on its
+  // reload. Fires straight at where the ship is now (a correction may come
+  // later). The bunker's door opens as it fires.
+  function stepSams(state, events) {
+    if (!state.opts.sams) return;
+    const s = state.ship;
+    const reload = samReload(state);
+    for (const st of structuresNear(state, s.x, SAM.range * RADAR_RANGE_MULT + 200)) {
+      if (!isLauncher(st)) continue;
+      const cx = (st.x0 + st.x1) / 2, cy = st.y + st.h * 0.6;
+      const inRange = Math.hypot(s.x - cx, s.y - cy) <= samRange(state, st);
+      if (!inRange) { st.samT = 0; continue; }
+      st.samT = (st.samT || 0) + DT;
+      if (st.samT < SAM.warmup) continue;
+      if (st.samNext === undefined || st.samNext < state.time - reload * 2) st.samNext = state.time;   // first shot at once after the warm-up
+      if (state.time < st.samNext) continue;
+      const rails = st.id === 'base' ? BASE.rails : 1;
+      st.samNext = state.time + reload / rails;
+      if (st.id === 'bunker') st.doorUntil = state.time + DOOR_OPEN;
+      const lx = st.id === 'sam' ? cx + 14 : cx, ly = st.y + st.h;
+      const ang = Math.atan2(s.y - ly, s.x - lx);
+      const th = { kind: 'sam', x: lx, y: ly, vx: Math.cos(ang) * 30, vy: Math.sin(ang) * 30, aim: ang, t: 0, beatT: 0, sid: st.sid, id: 't' + (state.rolls++), decoy: null };
+      state.threats.push(th);
+      events.push({ type: 'samLaunch', threat: th.id, sid: st.sid, x: lx, y: ly, door: st.id === 'bunker' });
+    }
+  }
+  // The SAMs in the air, one step: boost to speed along the aim; every beat a
+  // small chance to re-aim at the ship; chaff can steal the lock (once, on the
+  // roll); a hit on the ship is a crash; the ground, or the life, ends it.
+  function stepThreats(state, events) {
+    if (!state.threats.length) return null;
+    const s = state.ship;
+    const keep = [];
+    let struck = null;
+    for (const th of state.threats) {
+      th.t += DT; th.beatT += DT;
+      if (th.beatT >= SAM.beat) {
+        th.beatT -= SAM.beat;
+        if (!th.decoy && rollW(state) < SAM.correct) { th.aim = Math.atan2(s.y - th.y, s.x - th.x); events.push({ type: 'samCorrect', threat: th.id }); }
+      }
+      // chaff: a cloud within reach of the missile decoys it 80% of the time (rolled once per cloud per missile)
+      if (!th.decoy) {
+        for (const c of state.shots) {
+          if (c.kind !== 'chaff') continue;
+          th.tried = th.tried || {};
+          if (th.tried[c.id]) continue;
+          if (Math.hypot(c.x - th.x, c.y - th.y) > CHAFF_REACH) continue;
+          th.tried[c.id] = true;
+          if (rollW(state) < CHAFF_ODDS) { th.decoy = { x: c.x, y: c.y }; events.push({ type: 'samDecoyed', threat: th.id, x: c.x, y: c.y }); break; }
+          else events.push({ type: 'samIgnored', threat: th.id });
+        }
+      }
+      if (th.decoy) th.aim = Math.atan2(th.decoy.y - th.y, th.decoy.x - th.x);
+      // turn toward the aim (a straight shot turns nothing; a correction or a decoy bends it)
+      let have = Math.atan2(th.vy, th.vx), d = th.aim - have;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      have += Math.max(-SAM.turn * DT, Math.min(SAM.turn * DT, d));
+      const speed = Math.min(SAM.speed, 30 + th.t * 140);
+      th.vx = Math.cos(have) * speed; th.vy = Math.sin(have) * speed;
+      th.x += th.vx * DT; th.y += th.vy * DT;
+      const gy = groundAt(state, th.x);
+      let done = th.y <= gy || th.t >= SAM.life;
+      if (th.decoy && Math.hypot(th.decoy.x - th.x, th.decoy.y - th.y) < speed * DT * 1.5 + 6) done = true;
+      if (!done && s.alive && state.phase === 'flying' && Math.hypot(s.x - th.x, s.y - th.y) <= SAM.hitR + 12) { struck = th; done = true; }
+      if (done) { events.push({ type: 'samEnd', threat: th.id, x: th.x, y: Math.max(th.y, gy), hit: struck === th }); continue; }
+      keep.push(th);
+    }
+    state.threats = keep;
+    return struck;
+  }
   // For the tank side (or any other shooter): a hit on a structure through the
   // same rules — shield first, then dead, score, the level's count. Returns
   // the events a shell would draw.
@@ -744,21 +1018,30 @@
   // it and the phase is 'launch' — the shell plays the accelerator sequence
   // and calls launchFire(). After a crash (or the secret flat) the ship drops
   // in from above where it ended. The very first flight is the classic spawn.
-  function newAttempt(state) {
+  // opts.liftoff (level 3 only): the ship stays on the pad under its own
+  // power and the pilot burns off it — no accelerator, fuel spent.
+  function newAttempt(state, opts) {
     if (state.phase === 'over') return false;
     const last = state.result;
     state.attempt += 1;
     state.launch = null;
+    state.threats = [];
     const ship = {
-      x: SPAWN.x, y: SPAWN.y, vx: SPAWN.vx, vy: SPAWN.vy,
+      x: state.spawnX, y: SPAWN.y, vx: SPAWN.vx, vy: SPAWN.vy,
       angle: 0, angVel: 0,
-      lever: 0, thrust: 0, abortT: 0, alive: true,
+      lever: 0, thrust: 0, abortT: 0, alive: true, grounded: null,
     };
     if (last && last.kind !== 'crash' && last.pad) {
       const pad = findPad(state, last.pad.id);
       ship.x = last.x; ship.y = pad.y - SHIP.footL[1]; ship.vx = 0; ship.vy = 0;
-      state.launch = { pad: pad };
-      state.phase = 'launch';
+      const L = levelDef(state);
+      if (opts && opts.liftoff && L && L.liftoff && !state.free) {
+        ship.grounded = { padId: pad.id, y: pad.y };
+        state.phase = 'flying';
+      } else {
+        state.launch = { pad: pad };
+        state.phase = 'launch';
+      }
     } else if (last) {
       ship.x = last.x;
       ship.y = Math.max(SPAWN.y, groundAt(state, last.x) + RESPAWN_ABOVE);
@@ -811,6 +1094,8 @@
       for (const key of ['footL', 'footR', 'top', 'sideL', 'sideR']) {
         const q = pts[key];
         if (q[1] - groundAt(state, q[0]) < LAUNCH_CLEAR) return false;
+        // a live structure in the coast (the base beside its pad) steepens the shot too
+        for (const st of structuresNear(state, q[0], 100)) if (st.alive && q[0] >= st.x0 && q[0] <= st.x1 && q[1] <= st.y + st.h + LAUNCH_CLEAR) return false;
       }
       if (sim.vy < 0 && sim.y < floor) return true;
     }
@@ -982,18 +1267,29 @@
     const ay = Math.cos(s.angle) * a - g;
     s.vx += ax * DT;
     s.vy += ay * DT;
+    // LIFT-OFF (level 3): sitting on the pad under its own power — the pad
+    // holds the ship up until the burn lifts it clear; no contact until then
+    if (s.grounded) {
+      if (s.vy < 0) s.vy = 0;
+      if (s.vy <= 0) { s.vx = 0; s.y = s.grounded.y - SHIP.footL[1]; }
+      else if (s.y > s.grounded.y - SHIP.footL[1] + 3) { s.grounded = null; events.push({ type: 'liftoff' }); }
+    }
     s.x += s.vx * DT;
     s.y += s.vy * DT;
     state.time += DT;
     state.attemptTime += DT;
     stepShots(state, events);
-    const range = Math.abs(s.x - SPAWN.x);
+    stepSams(state, events);
+    const samHit = stepThreats(state, events);
+    const range = Math.abs(s.x - state.spawnX);
     if (range > state.farthest) state.farthest = range;
     // the horizon ring: fly through it and the world lets you go (once)
     if (!state.gated && inHorizon(state)) { state.gated = true; events.push({ type: 'gate' }); }
 
     // contact
     const pts = shipPoints(s);
+    if (samHit) { resolveContact(state, pts, true, events, null, samHit); return events; }
+    if (s.grounded) return events;
     const gl = groundAt(state, pts.footL[0]);
     const gr = groundAt(state, pts.footR[0]);
     const footHit = pts.footL[1] <= gl || pts.footR[1] <= gr;
@@ -1018,7 +1314,7 @@
     return events;
   }
 
-  function resolveContact(state, pts, bodyHit, events, struck) {
+  function resolveContact(state, pts, bodyHit, events, struck, samHit) {
     const s = state.ship;
     const tilt = tiltOf(s.angle);
     const vy = -s.vy;                 // positive = descending
@@ -1039,8 +1335,8 @@
       vy: +vy.toFixed(1), vx: +vx.toFixed(1), tilt: +(tilt * 180 / Math.PI).toFixed(1),
       x: s.x, y: s.y,
       chunk: chunkIndex(s.x),
-      range: Math.round(s.x - SPAWN.x),
-      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, supply: pad.supply || null, used: !!pad.used, relay: !!pad.relay } : null,
+      range: Math.round(s.x - state.spawnX),
+      pad: pad ? { id: pad.id, mult: pad.mult, x0: pad.x0, x1: pad.x1, fuel: !!pad.fuel, supply: pad.supply || null, used: !!pad.used, relay: !!pad.relay, gate: pad.gate || 0 } : null,
       secret: !!secret,
       struck: struck ? { id: struck.id, name: struck.name, cls: struck.cls } : null,
       time: +state.attemptTime.toFixed(1),
@@ -1066,10 +1362,11 @@
         state.ammo[pad.supply] = Math.min(AMMO_MAX[pad.supply], before + PAD_SUPPLY[pad.supply]);
         result.supply = { kind: pad.supply, amount: state.ammo[pad.supply] - before };
       }
-      if (pad.relay && state.levelClear && !state.levelDone && !state.free) {
-        // the level's end: the stretch is clear and you are down on the relay
+      if (pad.gate === state.level && state.levelClear && !state.levelDone && !state.free) {
+        // the level's end: the stretch is clear and you are down on its gate
         state.levelDone = true;
         result.levelDone = state.level;
+        if (state.level >= CAMPAIGN_LEVELS) { state.campaignDone = true; result.campaignDone = true; }
       }
       state.score += result.points;
       state.fuel += result.fuelBonus;
@@ -1082,7 +1379,8 @@
     } else {
       result.kind = 'crash';
       result.points = CRASH_POINTS;
-      result.reason = struck ? 'struck' : bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
+      result.sam = !!samHit;
+      result.reason = samHit ? 'sam' : struck ? 'struck' : bodyHit ? 'body' : (!pad && !secret) ? 'terrain' :
         vy > grades[2].vy ? 'speed' : tilt > grades[2].tilt ? 'tilt' : 'drift';
       state.score += CRASH_POINTS;
       state.fuel = Math.max(0, state.fuel - CRASH_FUEL);
@@ -1128,13 +1426,27 @@
       score: state.score,
       time: state.time,
       tilt: Math.round(tiltOf(s.angle) * 180 / Math.PI),
-      range: Math.round(s.x - SPAWN.x),      // ft downrange of the spawn (negative = left)
+      range: Math.round(s.x - state.spawnX),      // ft downrange of the spawn (negative = left)
       chunk: chunkIndex(s.x),
       ammo: state.ammo,
       hostilesLeft: state.hostilesLeft,
       hostilesTotal: state.hostilesTotal,
       levelClear: state.levelClear,
+      level: state.level,
+      threats: state.threats.length,
     };
+  }
+  // The nearest SAM in the air: bearing and range from the ship (for the icon
+  // on the direction circle and the pink number).
+  function nearestThreat(state) {
+    const s = state.ship;
+    if (!s || !state.threats.length) return null;
+    let best = null, bd = Infinity;
+    for (const th of state.threats) {
+      const d = Math.hypot(th.x - s.x, th.y - s.y);
+      if (d < bd) { bd = d; best = th; }
+    }
+    return { id: best.id, x: best.x, y: best.y, range: Math.round(bd), bearing: Math.atan2(best.y - s.y, best.x - s.x), decoyed: !!best.decoy };
   }
 
   globalThis.LunarCore = {
@@ -1191,6 +1503,9 @@
     LOADOUT: LOADOUT, AMMO_MAX: AMMO_MAX, PAD_SUPPLY: PAD_SUPPLY, WEAPON_ODDS: WEAPON_ODDS, HIT_ODDS: HIT_ODDS,
     MISSILE_SPEED: MISSILE_SPEED, TARGET_POINTS: TARGET_POINTS, CIVILIAN_PENALTY: CIVILIAN_PENALTY,
     LEVEL_CHUNKS: LEVEL_CHUNKS, RIDGE_ALT: RIDGE_ALT, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
+    LEVELS: LEVELS, CAMPAIGN_LEVELS: CAMPAIGN_LEVELS, BASE: BASE, SAM: SAM, CHAFF_REACH: CHAFF_REACH, CHAFF_ODDS: CHAFF_ODDS, RADAR_RANGE_MULT: RADAR_RANGE_MULT, SUPPLY_CYCLE: SUPPLY_CYCLE,
+    levelOf: levelOf, levelPlan: levelPlan, planFor: planFor, levelRange: levelRange, levelDef: levelDef, countLevel: countLevel, advanceLevel: advanceLevel,
+    samRange: samRange, nearestThreat: nearestThreat,
     structureById: structureById, hostileAt: hostileAt, targetable: targetable, doorOpen: doorOpen,
     fire: fire, dropChaff: dropChaff, hostilesLeft: hostilesLeft, hitStructure: hitStructure,
     techNext: techNext,
