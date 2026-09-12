@@ -3,6 +3,15 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-12 — Claude (Fable 5.1) — THE RUN BURST
+
+James: "shift to give a run burst for 2 seconds w a 2 second cooldown." Core stepPlayer: a tap of shift starts a burst
+(`burstDur` 2 s at `burstMul` 1.9 × walk — was a flat 1.35× while held), then `burstCool` 2 s before the next; holding shift
+through the cooldown does not chain — let go and press again. `player.burst / burstCool / runHeld`; events `burst` (a rising
+whoosh, sound.js `burst`) and `burst-end`. HUD: a thin RUN · SHIFT bar under ARMOR — white while it runs, dim gold while it
+cools, gold when ready. Dials are DEFAULTS only (burstMul / burstDur / burstCool), not on the panel. Sim TEST 15
+(1.9×, the two seconds, the cooldown, no chaining, the dials): 545,051 green. Tags: core 25, world 65, sound 24.
+
 ## 2026-09-12 — Claude (Fable 5.1) — THE CORNER MAP, rebuilt
 
 James flew the structure ("Very fun. What a great improvement… I love the wider world. It feels so much nicer to move

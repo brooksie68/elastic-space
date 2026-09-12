@@ -183,6 +183,8 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
   gib burst is THE spectacle (ribs + skull every time, mist, wall splats, a pool) and the gore kit in
   render3d.js (`gibBurst / spawnGib / mist / puff / pool / ash / splatAt / boomFx / impactFx`) is the
   vocabulary — reuse it, don't add bespoke particles. Explosions only for `BOOM_GAGS`.
+- **Shift is a burst, not a hold** (James 2026-09-12): two seconds at 1.9× walk, two seconds of cooldown, a tap starts it and
+  holding never chains; the RUN bar on the HUD shows it. `burstMul / burstDur / burstCool` in DEFAULTS.
 - **Motion:** head bob defaults to 0, shake to 0.25, no CRT anything, native resolution. The 2D
   raycaster made James sick and is gone for good; never bring back per-column rendering.
 - **Space:** cells are 2.6 m wide, corridors two cells wide and 4.4 m tall, rooms 8 m, the great hall 11 m (2026-09-11; was 3.2 / 5.4 one-cell tunnels). Tightness was part of the nausea — never narrow it again.

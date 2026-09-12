@@ -23,6 +23,8 @@
     healHp: 35,          // what a pie is worth
     startLevel: 1,
     lives: 3,            // THE STRUCTURE (James 2026-09-11): a run has three lives; a death costs one and restarts the maze
+    burstMul: 1.9,       // THE RUN BURST (James 2026-09-12): shift = a two-second burst at this × walk speed, then a two-second cooldown
+    burstDur: 2, burstCool: 2,
     armorMul: 1,         // how many armor pickups a maze gets (× the level's deal)
   };
 
@@ -585,6 +587,7 @@
       x: level.spawn.x, y: level.spawn.y, a: level.spawn.a, aim: 0, r: 0.25, hp: state.player ? Math.max(state.player.hp, 60) : 100, maxHp: 100, armor: state.player ? state.player.armor : 0, maxArmor: 100,
       cool: 0, slow: 1, vx: 0, vy: 0, fx: { snot: 0, bees: 0, lump: 0, spin: 0, dead: 0, fall: 0, flash: 0, hurt: 0 },
       safe: { x: level.spawn.x, y: level.spawn.y }, driftPush: { i: -1, t: 0 }, spinDir: 1, ringing: 0,
+      burst: 0, burstCool: 0, runHeld: false,   // the run burst: time left in it, time left before the next, and the key's last state (a tap starts one; holding does not chain)
     };
     state.goons = level.goonSpawns.map((s) => level.lab ? makeLabGoon(state, s) : makeGoon(s.type, s.x, s.y, state.rand));
     if (level.bossSpawn) {
@@ -983,7 +986,13 @@
     let slow = 1;
     for (const s of state.scars) if (s.hazard === 'slow' && Math.hypot(s.x - p.x, s.y - p.y) < s.r) slow = Math.min(slow, s.slow);
     p.slow = slow;
-    const sp = o.moveSpeed * (input.run ? 1.35 : 1) * slow;
+    // THE RUN BURST: shift starts a burst (burstDur seconds at burstMul × walk) when the cooldown is over; then burstCool
+    // seconds before the next; holding shift through it does not start another — let go and press again (James 2026-09-12)
+    if (p.burst > 0) { p.burst -= dt; if (p.burst <= 0) { p.burst = 0; p.burstCool = o.burstCool == null ? 2 : o.burstCool; state.events.push({ type: 'burst-end' }); } }
+    else if (p.burstCool > 0) p.burstCool = Math.max(0, p.burstCool - dt);
+    if (input.run && !p.runHeld && p.burst <= 0 && p.burstCool <= 0) { p.burst = o.burstDur == null ? 2 : o.burstDur; state.events.push({ type: 'burst' }); }
+    p.runHeld = !!input.run;
+    const sp = o.moveSpeed * (p.burst > 0 ? (o.burstMul == null ? 1.9 : o.burstMul) : 1) * slow;
     let mx = Math.cos(p.a) * (input.fwd || 0) + Math.cos(p.a + Math.PI / 2) * (input.strafe || 0);
     let my = Math.sin(p.a) * (input.fwd || 0) + Math.sin(p.a + Math.PI / 2) * (input.strafe || 0);
     const m = Math.hypot(mx, my);

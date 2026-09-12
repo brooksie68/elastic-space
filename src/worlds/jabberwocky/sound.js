@@ -205,6 +205,7 @@
     swing: (p) => whoosh({ dur: 0.25, gain: 0.3, pan: p }),
     hurt: () => { voice({ f: 180, f2: 120, dur: 0.3, formants: [600, 1500], gain: 0.25 }); noise({ dur: 0.15, f: 600, f2: 200, gain: 0.3 }); },
     throw: (p) => whoosh({ dur: 0.3, gain: 0.25, pan: p }),
+    burst: () => { noise({ dur: 0.35, f: 400, f2: 2400, gain: 0.22 }); tone({ f: 180, f2: 420, dur: 0.3, type: 'triangle', gain: 0.12 }); },   // the run burst: a quick rising whoosh (2026-09-12)
     armor: (p) => { noise({ dur: 0.08, f: 3200, f2: 900, gain: 0.5, pan: p }); tone({ f: 540, f2: 500, dur: 0.4, type: 'triangle', gain: 0.25, pan: p }); tone({ f: 1620, dur: 0.3, type: 'sine', gain: 0.1, delay: 0.02, pan: p }); tone({ f: 810, dur: 0.22, type: 'square', gain: 0.06, delay: 0.09, pan: p }); },   // the armor pickup: a plate clank with a ring (2026-09-11)
     heal: () => { for (let i = 0; i < 3; i++) { noise({ dur: 0.1, f: 700, f2: 250, gain: 0.3, delay: i * 0.16 }); clicks(1, 0, { f: 1800, gain: 0.25, delay: i * 0.16 }); } seq([[523, 0.08], [659, 0.08], [784, 0.2]], { type: 'triangle', gain: 0.12, delay: 0.5 }); },
     key: () => { seq([[1568, 0.08], [2093, 0.08], [2637, 0.25]], { type: 'sine', gain: 0.15 }); noise({ dur: 0.15, f: 6000, type: 'highpass', gain: 0.1 }); },

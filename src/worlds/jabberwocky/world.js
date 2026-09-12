@@ -155,7 +155,7 @@ function skipCard() { if (cardTimer) { clearTimeout(cardTimer); cardTimer = null
 $('card-btn').addEventListener('click', () => skipCard());
 card.addEventListener('click', () => { if (mode === 'card' && cardTimer) skipCard(); });
 
-const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>space</b> fires · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration · <b>esc</b> frees the mouse';
+const KEYS_LINE = '<b>WASD</b> walk · <b>mouse</b> look · <b>click</b> or <b>space</b> fires · <b>shift</b> a two-second run · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration · <b>esc</b> frees the mouse';
 const KEYS_LINE_CURSOR = '<b>WASD</b> walk · <b>the rifle points at the cursor</b> · <b>click</b> or <b>space</b> fires · <b>arrows</b> or <b>the screen edge</b> turn · <b>shift</b> runs · <b>M</b> map · <b>P</b> pause · <b>C</b> configuration';
 const keysLine = () => cursorMode() ? KEYS_LINE_CURSOR : KEYS_LINE;
 const BLURBS = {
@@ -253,6 +253,7 @@ function handleEvents() {
       case 'hurt': fx.hurt = 1; R.shake(0.6); Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); deathCard(); break;
       case 'heal': Sfx.play('heal'); hint('A MEAT PIE OF DUBIOUS ORIGIN · +' + e.gained + ' · DO NOT ASK WHAT KIND', 2600); break;
+      case 'burst': Sfx.play('burst'); break;
       case 'armor': Sfx.play('armor'); hint(e.kind === 'plate' ? 'A DENTED SUIT OF ARMOR · +' + e.gained + ' · SOMEBODY DIED IN THIS' : 'A HELM · +' + e.gained + ' · IT SMELLS OF SOMEONE ELSE', 2600); break;
       case 'key': Sfx.play('key'); setTimeout(() => Sfx.play('door'), 400); hint('THE DOOR IS OPEN — IT IS NOT HERE', 3500); break;
       case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: e.n === 5 ? 'THE MIDDLE, BEHIND YOU' : 'MAZE ' + e.n + ' CLEARED', title: e.n === 5 ? 'THROUGH HIS DOOR' : 'THROUGH THE DOOR', sub: e.n === 5 ? 'Three doors hum on the other side. Each one leaves.' : 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); view.pitch = 0; mode = 'play'; handleEvents(); } }); break;
@@ -291,6 +292,9 @@ function syncHud(force) {
   $('hp-num').textContent = hp;
   const fill = $('hp-fill'); fill.style.width = hp + '%'; fill.classList.toggle('low', hp < 30);
   const ar = Math.max(0, Math.round(p.armor || 0));
+  const rb = $('run-fill'); const dur = state.opts.burstDur || 2, cool = state.opts.burstCool || 2;
+  rb.style.width = (p.burst > 0 ? (p.burst / dur) * 100 : p.burstCool > 0 ? (1 - p.burstCool / cool) * 100 : 100) + '%';
+  rb.classList.toggle('going', p.burst > 0); rb.classList.toggle('cooling', p.burst <= 0 && p.burstCool > 0);
   $('ar-num').textContent = ar; $('ar-fill').style.width = ar + '%';
   const lives = $('lives'); const want = Math.max(state.lives, 3);
   if (lives.childElementCount !== want) lives.innerHTML = Array.from({ length: want }, () => '<span>☠</span>').join('');
