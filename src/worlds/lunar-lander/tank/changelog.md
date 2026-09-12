@@ -1,7 +1,9 @@
-# Moon Battle 2075 — the tank half — changelog
+# Moon Battle 2100 — the tank half — changelog
 
 Newest entries first. Never rewrite or delete earlier entries. The lander
 half's changelog is one folder up.
+
+<!-- TANK-ENTRY-2026-09-11 -->
 
 ## 2026-09-09 (later) — Claude — the barrel off again
 

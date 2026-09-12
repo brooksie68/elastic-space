@@ -1,5 +1,43 @@
 # Moon Battle 2100 — the TANK half. Claude instructions.
 
+## START HERE — THE THREE LEVELS ARE BUILT (2026-09-11), AWAITING JAMES'S DRIVE
+
+Read `changelog.md` 2026-09-11 first: it is the whole build. The shape now:
+
+1. **Three levels** (`MISSIONS[1..3]`, chunks 18–19 / 20–22 / 23–26, east of
+   the lander's base): THE ROAD OUT, STRIDER COUNTRY, THE LAST MILE. Each is a
+   ROUTE (`layRoute`, `state.route`): waypoints ~1,200 ft apart winding across
+   the flight line, a unique LANDMARK beside each (eight kinds in
+   `structures.js`, `LANDMARKS`), an encounter from the level's `deck` that
+   comes out when the tank is within 950 ft, a mini boss at the last one
+   (THE WARDEN / THE STRIDER / the SIEGE TANK), and on level 3 THE BASE
+   (hull + hangar + two towers + four pits, seated by `seatStructure`, facing
+   west). A waypoint is reached inside 150 ft; a boss's needs its kill; the
+   base's its hull and hangar; the hangar spawns two waves. The level
+   completes when the last waypoint is done. Pickups lie on the road.
+2. **The tank's own structures** (`seated: true`) take damage locally — the
+   lander core knows nothing of them. Never route them through `hitStructure`.
+3. **The hull is an armor pool** (`TANK.armor` 100, `DAMAGE` by source);
+   `hullHit(state, events, by, what, dmg)`; the HUD bar is armor / max.
+4. **Enemies**: slow / medium / hover (fast, never stops) / mech (2 hp, a
+   weak frequent BEAM) / warden / strider / boss. Walkers have `box` (the
+   pod) for occlusion. Guns on the ground (`GUN`: tower, gunpit) fire via
+   `stepGuns`. Every lob uses `lobElevation` — the real ballistic angle.
+5. **Directional goals in the HUD**: NEXT under the tape (name + range), a
+   diamond on the tape, the column of light + the dashed road in the world,
+   THE MAP on M (the game waits under it). Keep all four in step when the
+   route changes.
+6. **The campaign**: `?campaign=1` reads the lander's handoff or the tank's
+   own save (`lunar-lander-campaign-v1`, `tank: true`); the last level's
+   THE MOON IS YOURS → BACK TO THE START clears it and returns to the lander
+   page. Free play (no `?campaign`) is the tuner's level pick.
+7. Sim: `node tmp/lunar-lander/tank-sim.mjs` — 5,248 green (TESTs 7–9 are the
+   levels, TEST 13 the new enemies / pool / pickups). Look-dev: L1 / L2 / L3
+   buttons, WAVE spawns a tank + a hover + a mech.
+
+Everything under the next heading is the history it stands on; where it says
+"missions", "waves" or "three cells", the paragraph above wins.
+
 **ONE SESSION NOW (James, 2026-09-07): "let's work on the tanks a little bit,
 just in this session, rather than trying to run two at the same time."** The
 lander session owns this folder too from here on; `../tank-brief.md` is the

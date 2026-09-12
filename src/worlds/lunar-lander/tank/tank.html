@@ -116,11 +116,22 @@
     #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.2em; }
     #meta { white-space: nowrap; margin-top: 0.55em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
     #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-dim); }
+    #meta.bonus { margin-top: 0.3em; opacity: 0.7; font-size: 0.76em; }
+    #meta.bonus:empty, #v-bonus:empty { display: none; }
+    #wp-wrap { margin-left: 1.2em; min-width: 11em; }
+    #v-wp { font-size: 0.851em; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; margin-top: 0.15em; }
+    #v-wp .rng { margin-left: 0.6em; font-weight: 300; letter-spacing: 0.02em; font-size: 1.15em; }
+    #v-wp .boss { color: #ffb457; }
+    #tape .wp { fill: none; stroke: var(--ph); stroke-width: 1.1; }
+    #tape .wp.off { fill: var(--ph); stroke: none; opacity: 0.8; }
 
     /* HULL — the critical one: its own large bar under everything, three cells */
     #hull { flex-direction: row; align-items: center; gap: 1.2em; padding: 0.8em 1.2em; }
     #hull .lbl { font-size: 1.035em; letter-spacing: 0.3em; }
-    #hull-track { flex: 1; display: flex; gap: 0.4em; height: 1.15em; }
+    #hull-track { flex: 1; position: relative; height: 1.15em; background: rgba(255, 255, 255, 0.06); border-radius: 3px; overflow: hidden; }
+    #hull-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--ph); box-shadow: 0 0 12px var(--ph-dim); transition: width 220ms ease, background 220ms ease; }
+    #hull-fill.low { animation: hot 500ms ease-in-out infinite alternate; }
+    #hull-scale span { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(0, 0, 0, 0.55); }
     #hull-track span {
       flex: 1; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.12);
       background: linear-gradient(180deg, color-mix(in srgb, var(--ph) 85%, white) 0%, var(--ph) 55%, color-mix(in srgb, var(--ph) 70%, black) 100%);
@@ -185,6 +196,30 @@
     #cracks path.on { opacity: 0.55; }
     #cracks path.fine { stroke-width: 0.7; }
     #veil { position: fixed; inset: 0; z-index: 8; pointer-events: none; background: #000; opacity: 0; transition: opacity 120ms ease; }
+    /* ---- THE MAP (2026-09-11): the level from above, in the line register; M opens it, the game waits under it ---- */
+    #map { position: fixed; inset: 0; z-index: 12; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; background: rgba(0, 0, 0, 0.86); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    body.mapped #map { display: flex; }
+    #map-head { display: flex; gap: 1.4rem; align-items: baseline; font-weight: 700; letter-spacing: 0.3em; text-indent: 0.3em; color: var(--ink); font-size: 1.1rem; }
+    #map-head #map-sub { font-weight: 300; letter-spacing: 0.08em; color: var(--ink-dim); font-size: 0.9rem; }
+    #map-svg { width: min(92vw, 160vh); height: auto; max-height: 80vh; }
+    #map-foot { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.26em; text-indent: 0.26em; color: var(--ink-dim); }
+    #map-svg .road { fill: none; stroke: var(--ph); stroke-width: 2; stroke-dasharray: 10 8; opacity: 0.7; }
+    #map-svg .road.done { stroke-dasharray: none; opacity: 0.35; }
+    #map-svg .wp { fill: rgba(0, 0, 0, 0.6); stroke: var(--ph); stroke-width: 2; }
+    #map-svg .wp.done { stroke: var(--ink-faint); }
+    #map-svg .wp.next { stroke: var(--ink); stroke-width: 3; filter: drop-shadow(0 0 8px var(--ph)); }
+    #map-svg .wp.boss { stroke: #ffb457; }
+    #map-svg .wpn { fill: var(--ink); font: 700 15px var(--sans); letter-spacing: 0.08em; text-anchor: middle; }
+    #map-svg .wpn.done { fill: var(--ink-faint); }
+    #map-svg .lm { fill: var(--ink-dim); font: 600 12px var(--sans); letter-spacing: 0.18em; text-anchor: middle; }
+    #map-svg .me { fill: var(--ink); stroke: none; }
+    #map-svg .contact { fill: #ffb457; }
+    #map-svg .contact.site { fill: none; stroke: #ffb457; stroke-width: 1.6; }
+    #map-svg .pick { fill: none; stroke: var(--ph); stroke-width: 1.3; }
+    #map-svg .civ { fill: none; stroke: var(--ink-faint); stroke-width: 1; }
+    #map-svg .line { fill: none; stroke: var(--ink-faint); stroke-width: 1; }
+    #map-svg .base { fill: none; stroke: #ffb457; stroke-width: 2.4; }
+    #map-svg .lbl { fill: var(--ink-dim); font: 700 11px var(--sans); letter-spacing: 0.24em; text-anchor: middle; }
 
     /* ---- cards ------------------------------------------------------------------- */
     #centre { position: fixed; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -319,16 +354,18 @@
       <div class="panel" id="nav">
         <div id="tape-wrap"><div class="lbl"><span>Heading</span><span id="v-look">090</span></div><svg id="tape" viewBox="-100 -14 200 28" preserveAspectRatio="none" aria-label="compass tape"></svg></div>
         <div><div class="lbl">Speed</div><div class="num" id="v-spd">00<span class="unit">FT/S</span></div></div>
+        <div id="wp-wrap"><div class="lbl">Next</div><div id="v-wp">—</div></div>
       </div>
       <div class="panel" id="hud-right">
         <div id="score"><div class="lbl">Score</div><div class="num" id="v-score">0000</div></div>
-        <div id="meta"><span id="v-mission">MISSION 1</span><span id="v-time">0:00</span><span id="v-left">— LEFT</span></div>
+        <div id="meta"><span id="v-mission">LEVEL 1</span><span id="v-time">0:00</span><span id="v-left">— LEFT</span></div>
+        <div id="meta" class="bonus"><span id="v-bonus"></span></div>
       </div>
     </div>
     <div class="panel" id="hull">
       <div class="lbl">Hull</div>
-      <div id="hull-track"><span></span><span></span><span></span></div>
-      <div class="num" id="v-hull">WHOLE</div>
+      <div id="hull-track"><div id="hull-fill"></div><div id="hull-scale"><span style="left: 33.3%"></span><span style="left: 66.6%"></span></div></div>
+      <div class="num" id="v-hull">100</div>
       <div id="lives" aria-label="tanks left">
         <svg viewBox="0 0 32 22"><path d="M4 16h24l-3 4H7z M9 10h14l3 6H6z M16 6v4 M16 8h10" /></svg>
         <svg viewBox="0 0 32 22"><path d="M4 16h24l-3 4H7z M9 10h14l3 6H6z M16 6v4 M16 8h10" /></svg>
@@ -356,18 +393,22 @@
   </div>
 
   <div id="pause-card"><div class="word">PAUSED</div><div class="sub">P OR SPACE TO RESUME</div></div>
-  <div id="hint">MOUSE AIMS · W S DRIVE · A D TURN THE HULL · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · Z SCOPE · WHEEL ZOOM · ESC OR P PAUSE · R RESTART</div>
-  <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
+  <div id="map" aria-label="the level map">
+    <div id="map-head"><span id="map-title">THE ROAD OUT</span><span id="map-sub"></span></div>
+    <svg id="map-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet"></svg>
+    <div id="map-foot">M OR ESC CLOSES · THE ROAD RUNS EAST · REACH EVERY WAYPOINT · THE LAST ONE NEEDS ITS KILL</div>
+  </div>
+  <div id="hint">MOUSE AIMS · W S DRIVE · A D TURN THE HULL · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · Z SCOPE · WHEEL ZOOM · M MAP · ESC OR P PAUSE · R RESTART</div>
+  <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-map" type="button">MAP</button><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
 
   <button id="tuner-toggle" type="button">TUNE</button>
   <div id="tuner">
     <div id="tabs"><button data-tab="play" class="on" type="button">PLAY</button><button data-tab="look" type="button">LOOK</button></div>
     <div class="tab-body on" data-body="play">
       <div class="t-row">
-        <div class="t-label"><span>Mission</span><span></span></div>
+        <div class="t-label"><span>Level</span><span></span></div>
         <div class="t-seg" id="t-mission">
           <button data-v="1" type="button">1</button><button data-v="2" type="button">2</button><button data-v="3" type="button">3</button>
-          <button data-v="4" type="button">4</button><button data-v="5" type="button">5</button><button data-v="6" type="button">BOSS</button>
         </div>
       </div>
       <div class="t-row">
@@ -382,7 +423,7 @@
         <div class="t-label"><span>Moonscape seed</span><span></span></div>
         <div id="t-seed-row"><input id="t-seed" type="text" placeholder="random" /><button class="t-btn" id="t-seed-roll" type="button" style="width: auto; margin: 0; padding: 0 0.7rem">ROLL</button></div>
       </div>
-      <div class="t-note">mission · seed take hold at the next ROLL OUT</div>
+      <div class="t-note">level · seed take hold at the next ROLL OUT</div>
     </div>
     <div class="tab-body" data-body="look">
       <div id="look-rows"></div>
@@ -397,10 +438,10 @@
   <script src="../../../core/sound-control.js"></script>
   <script src="../structures.js"></script>
   <script src="../game-core.js"></script>
-  <script src="tank-core.js?v=6"></script>
+  <script src="tank-core.js?v=7"></script>
   <script type="importmap">
     { "imports": { "three": "../../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="tank.js?v=7"></script>
+  <script type="module" src="tank.js?v=8"></script>
 </body>
 </html>

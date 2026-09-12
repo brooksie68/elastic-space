@@ -35,9 +35,20 @@
     turnAccel: 5.5,                   // rad/s² — the turn eases in and out
     pitchMax: 0.42, pitchMin: -0.22,  // look up / down, radians
     pitchRate: 2.4,                   // rad/s the look moves under the keys (the mouse sets it directly)
-    hits: 3,                          // the third hit kills
+    hits: 3,                          // (kept for older readers: the hull is an ARMOR pool now, see below)
     lives: 3,
+    armor: 100,                       // THE HULL POOL (2026-09-11): a shell takes DAMAGE.shell, a beam a nibble; 0 = dead
   };
+  // What hurts the hull, by what fired it (James: the mech beam "isn't very
+  // powerful but can fire relatively frequently"). Three tank shells kill a
+  // whole hull, as before.
+  const DAMAGE = { shell: 34, tower: 34, gunpit: 26, missile: 34, hover: 12, beam: 5, boss: 34 };
+  // THE PICKUPS (James, 2026-09-11: "armor pickups here and there and some
+  // bonus pickups: increased speed, increased shell speed, increased armor"):
+  // canisters on the route, taken by driving over them. Bonuses stack to
+  // BONUS_MAX each and hold for the whole tank campaign.
+  const PICKUP = { reach: 18, armor: 34, bonusStep: 0.2, armorMaxStep: 34, max: 3 };
+  const PICKUP_KINDS = ['armor', 'speed', 'shell', 'armormax'];
   // ---- the turret (2026-09-07, James: "the way the steering works... so goofy") -----
   // The commander's VIEW is the mouse: instant, free, any way round (t.look /
   // t.pitch). The GUN follows the view with mass: it slews toward it at a
@@ -60,11 +71,24 @@
   const LASER = { range: 1400, recharge: 6.0, radius: 6, beamLife: 0.22 };
   // ---- the enemies ---------------------------------------------------------------------
   // `mult` is the X rating on the lander's scale: points = 100 × mult.
+  // `dmg` names the DAMAGE row a hit does; `hover` lifts the hull that far off
+  // the ground (hovercraft); `beam` = an instant hit-scan weapon instead of a
+  // shell; `boss` = a mini boss (the level's last waypoint needs its death).
   const ENEMY = {
-    slow:   { name: 'TANK',        mult: 1, speed: 24, turn: 0.55, range: 780, reload: 5.2, shellSpeed: 260, hp: 1, length: 24, width: 15, hullH: 8 },
-    medium: { name: 'FAST TANK',   mult: 2, speed: 44, turn: 1.0,  range: 860, reload: 3.6, shellSpeed: 300, hp: 1, length: 21, width: 13, hullH: 6 },
-    boss:   { name: 'SIEGE TANK',  mult: 5, speed: 30, turn: 0.7,  range: 1000, reload: 2.4, shellSpeed: 320, hp: 6, length: 44, width: 26, hullH: 14 },
+    slow:    { name: 'TANK',        mult: 1, speed: 24, turn: 0.55, range: 780, reload: 5.2, shellSpeed: 260, hp: 1, length: 24, width: 15, hullH: 8, dmg: 'shell' },
+    medium:  { name: 'FAST TANK',   mult: 2, speed: 44, turn: 1.0,  range: 860, reload: 3.6, shellSpeed: 300, hp: 1, length: 21, width: 13, hullH: 6, dmg: 'shell' },
+    hover:   { name: 'HOVER',       mult: 1, speed: 84, turn: 2.4,  range: 520, reload: 1.6, shellSpeed: 400, hp: 1, length: 14, width: 10, hullH: 5, dmg: 'hover', hover: 6, strafe: true },
+    mech:    { name: 'MECH WALKER', mult: 2, speed: 30, turn: 1.3,  range: 720, reload: 1.4, shellSpeed: 0,   hp: 2, length: 12, width: 12, hullH: 24, dmg: 'beam', beam: true, box: { y0: 12, y1: 22, w: 10, l: 10 } },
+    warden:  { name: 'THE WARDEN',  mult: 4, speed: 20, turn: 0.5,  range: 900, reload: 2.2, shellSpeed: 300, hp: 4, length: 34, width: 20, hullH: 11, dmg: 'shell', boss: true },
+    strider: { name: 'THE STRIDER', mult: 5, speed: 34, turn: 1.1,  range: 900, reload: 0.9, shellSpeed: 320, hp: 5, length: 20, width: 20, hullH: 40, dmg: 'beam', beam: true, boss: true, shells: 3.0, box: { y0: 20.4, y1: 37.4, w: 17, l: 17 } },
+    boss:    { name: 'SIEGE TANK',  mult: 5, speed: 30, turn: 0.7,  range: 1000, reload: 2.4, shellSpeed: 320, hp: 6, length: 44, width: 26, hullH: 14, dmg: 'boss', boss: true },
   };
+  // Structures that shoot: the gun tower and the gun pit (emplacements) fire a
+  // shell at the tank in range on a reload; the hangar spawns the base's
+  // garrison as the tank closes.
+  const GUN = { tower: { range: 900, reload: 3.6, shellSpeed: 300, hp: 2, dmg: 'tower' }, gunpit: { range: 620, reload: 4.4, shellSpeed: 280, hp: 1, dmg: 'gunpit' } };
+  const HANGAR = { trigger: 1100, waves: [{ slow: 2, hover: 1 }, { slow: 1, hover: 2 }], hp: 4 };
+  const BASE_HP = 6;
   const SAM = { range: 1100, reload: 6.5, missileSpeed: 150, missileTurn: 0.9, missileLife: 9, radius: 8, doorOpen: 2.0 };
   const SPAWN_MIN = 1900, SPAWN_MAX = 2800;   // ft from the tank, where a wave appears (was 1300–2200: "in the freaking kill box")
   const START_CLEAR = 1300;                   // ft: no hostile structure this near the start
@@ -74,17 +98,31 @@
   // Each mission is a stretch of the lander's chunks. It is complete when every
   // hostile structure in the stretch is dead and every wave has been spawned
   // and killed. Waves come when the field is nearly clear.
+  // THE LEVELS (James, 2026-09-11: "same setup as the lander: 3 levels, each
+  // level should entail laying waste to a variety of enemies and structures
+  // on the way to a mini boss of some sort. base at the end"). Three stretches
+  // EAST of the lander's base (the lander's levels end at chunk 17). Each is
+  // a ROUTE: waypoints WP.spacing apart from the start to the end, each one a
+  // landmark + an encounter dealt from the level's deck (in order, so the
+  // fights escalate), the last one the mini boss; level 3 ends at THE BASE.
   const MISSIONS = [
     null,
-    { name: 'FIRST PATROL',   chunks: [1, 2], waves: [{ slow: 2 }, { slow: 3 }] },
-    { name: 'THE OUTPOST',    chunks: [3, 4], waves: [{ slow: 2, medium: 1 }, { slow: 2, medium: 1 }, { medium: 2 }] },
-    { name: 'CROSSFIRE',      chunks: [5, 6], waves: [{ slow: 3, medium: 1 }, { medium: 2 }, { slow: 2, medium: 2 }] },
-    { name: 'THE LONG FIELD', chunks: [7, 9], waves: [{ slow: 2, medium: 2 }, { medium: 3 }, { slow: 3, medium: 2 }] },
-    { name: 'HOLD THE LINE',  chunks: [10, 12], waves: [{ medium: 3 }, { slow: 3, medium: 3 }, { medium: 4 }] },
-    { name: 'THE SIEGE',      chunks: [13, 14], waves: [{ medium: 2 }, { boss: 1, medium: 2 }] },
+    { name: 'THE ROAD OUT',    chunks: [18, 19],
+      deck: [{ slow: 2 }, { hover: 2 }, { slow: 1, hover: 1 }, { tower: 1 }, { mech: 1 }, { slow: 2, hover: 1 }],
+      boss: { warden: 1, slow: 1 } },
+    { name: 'STRIDER COUNTRY', chunks: [20, 22],
+      deck: [{ hover: 2 }, { mech: 1, slow: 1 }, { gunpit: 2 }, { medium: 2 }, { mech: 2 }, { tower: 1, hover: 1 }, { medium: 1, hover: 2 }, { mech: 1, medium: 1 }, { slow: 2, mech: 1 }],
+      boss: { strider: 1, hover: 2 } },
+    { name: 'THE LAST MILE',   chunks: [23, 26],
+      deck: [{ medium: 2 }, { mech: 2 }, { hover: 3 }, { tower: 2 }, { slow: 2, mech: 1 }, { gunpit: 2, hover: 1 }, { medium: 2, mech: 1 }, { tower: 1, mech: 1 }, { hover: 3, medium: 1 }, { mech: 2, slow: 1 }, { medium: 3 }],
+      boss: { boss: 1, hover: 2 }, base: true },
   ];
-
-  const DEFAULTS = { seed: 1, mission: 1, lives: TANK.lives, structureSpread: 420, spawnGrace: 7.0 };
+  // The route: waypoints WP.spacing ft apart (jittered), winding ±WP.z off the
+  // flight line; an encounter spawns when the tank comes within WP.trigger,
+  // a waypoint is REACHED within WP.reach (a boss waypoint needs its kill).
+  const WP = { spacing: 1200, jitter: 220, z: 620, reach: 150, trigger: 950, first: 900 };
+  const LANDMARK_SIDE = 130;          // ft: a landmark stands this far beside its waypoint, never on the road
+  const DEFAULTS = { seed: 1, mission: 1, lives: TANK.lives, structureSpread: 420, spawnGrace: 7.0, score: 0, campaign: false };
 
   // ---- rng --------------------------------------------------------------------------------
   const C = () => globalThis.LunarCore;
@@ -167,8 +205,29 @@
       o.y = naturalAt(state, cx, z);
       out.push(o);
     }
+    for (const o of (state.seated[k] || [])) out.push(o);
     cache[k] = out;
     return out;
+  }
+  // Seat a structure of the tank's own (a landmark, a gun tower, the base's
+  // parts) at (x, z) on chunk k: the same object shape as the lander's, with a
+  // faux lander record so every reader sees `st.alive`. Solid, flat under it.
+  function seatStructure(state, id, x, z, extra) {
+    const kind = S().BY_ID[id];
+    const k = Math.floor(x / CHUNK_W);
+    const n = (state.seated[k] || []).length;
+    const d = kind.d;
+    const sid = k + ':t' + n;
+    const west = !!(extra && extra.face === 'west');   // the profile faces the road (west), so its footprint turns: w along z, d along x
+    const fw = west ? d : kind.w, fd = west ? kind.w : d;
+    const o = Object.assign({ st: { alive: true, id: id, sid: sid }, sid: sid, id: id, name: kind.name, cls: kind.cls, mult: kind.mult, hard: kind.hard, k: k,
+      x: x, z: z, w: fw, h: kind.h, d: fd, x0: x - fw / 2, x1: x + fw / 2, z0: z - fd / 2, z1: z + fd / 2,
+      y: 0, alive: true, hp: GUN[id] ? GUN[id].hp : id === 'hangar' ? HANGAR.hp : id === 'base' ? BASE_HP : 1, door: 0, reload: 0, fired: 0, seated: true, landmark: !!kind.landmark, gun: !!GUN[id] }, extra || {});
+    o.y = naturalAt(state, x, z);
+    if (!state.seated[k]) state.seated[k] = [];
+    state.seated[k].push(o);
+    if (state.structs[k]) state.structs[k].push(o);   // already cached: add it in place
+    return o;
   }
   function structuresNear(state, x, z, reach) {
     const out = [];
@@ -211,10 +270,13 @@
     const state = {
       opts: o, seed: seed, land: land,
       rng: C().mulberry32(C().hashSeed(seed, 4242)),
-      structs: {}, prof: {},
+      structs: {}, prof: {}, seated: {},
       mission: 0, missionDef: null, wave: 0, waveT: 0, time: 0, missionTime: 0,
       phase: 'idle',      // idle | play | dead | complete | over
-      score: 0, lives: o.lives, kills: 0,
+      score: o.score | 0, lives: o.lives, kills: 0,
+      campaign: !!o.campaign, campaignDone: false,
+      bonus: { speed: 0, shell: 0, armor: 0 },   // the pickups' bonuses, stacked, for the whole tank campaign
+      route: [], wp: 0, pickups: [], beams: [],
       tank: null, shells: [], laser: { charge: 1, beam: null }, enemies: [], missiles: [], eshells: [],
       events: [], nextId: 1,
       log: [],
@@ -222,11 +284,16 @@
     startMission(state, o.mission);
     return state;
   }
+  // The bonuses bend the tank: top speed, the shell's speed (a flatter arc,
+  // longer reach), the hull's size.
+  function topSpeed(state) { return TANK.topSpeed * (1 + PICKUP.bonusStep * state.bonus.speed); }
+  function shellSpeed(state) { return SHELL.speed * (1 + PICKUP.bonusStep * state.bonus.shell); }
+  function armorMax(state) { return TANK.armor + PICKUP.armorMaxStep * state.bonus.armor; }
   function newTank(state, x, z, heading) {
     return { x: x, z: z, y: groundAt(state, x, z), heading: heading, turnV: 0, speed: 0,
       look: heading, pitch: 0,          // the view: yaw + pitch, absolute, the mouse's
       turret: heading, gunPitch: 0, turretV: 0,   // the gun: follows the view with mass
-      hits: 0, alive: true, reload: 0, recoil: 0, grace: state.opts.spawnGrace };
+      hits: 0, armor: armorMax(state), alive: true, reload: 0, recoil: 0, grace: state.opts.spawnGrace };
   }
   // A mission starts the tank near the left edge of its stretch, facing down
   // the stretch (+x) — on the HIGHEST clear ground in the first 1,500 ft with
@@ -253,16 +320,89 @@
     state.mission = m;
     state.missionDef = def;
     state.wave = 0; state.waveT = 0; state.missionTime = 0;
-    state.enemies = []; state.missiles = []; state.eshells = []; state.shells = [];
+    state.enemies = []; state.missiles = []; state.eshells = []; state.shells = []; state.beams = [];
     state.laser = { charge: 1, beam: null };
     // make sure every chunk of the stretch exists (and its structures are placed)
     for (let k = def.chunks[0] - 1; k <= def.chunks[1] + 1; k++) chunkStructures(state, k);
     const sp = startSpot(state, def);
     state.start = sp;
     state.tank = newTank(state, sp[0], sp[1], Math.PI / 2);
+    layRoute(state, def, sp);
     state.phase = 'play';
-    spawnWave(state);
     return true;
+  }
+  // THE ROUTE (James, 2026-09-11: "clear directional goals... waypoints, and
+  // visual indicators, unique items and structures along the way. a definite
+  // path in each level from the start to the end"). Waypoints march east from
+  // the start to the stretch's end, winding across the flight line; each gets
+  // a LANDMARK beside it (every level's set unique, in a hashed order), an
+  // ENCOUNTER from the level's deck (in order), and the pickups lie on the
+  // road between them. The last waypoint is the mini boss; on the last level
+  // THE BASE stands beyond it as a waypoint of its own.
+  function layRoute(state, def, sp) {
+    const rng = C().mulberry32(C().hashSeed(state.seed, 7000 + state.mission));
+    const x0 = sp[0], x1 = (def.chunks[1] + 1) * CHUNK_W - (def.base ? 900 : 500);
+    const span = x1 - x0 - WP.first;
+    const count = Math.max(3, Math.round(span / WP.spacing));
+    const step = span / count;
+    const marks = S().LANDMARKS.slice();
+    for (let i = marks.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = marks[i]; marks[i] = marks[j]; marks[j] = t; }
+    const route = [];
+    let z = sp[1];
+    for (let i = 0; i < count; i++) {
+      const last = i === count - 1;
+      const x = Math.min(x1, x0 + WP.first + step * i + (last ? step * 0.5 : (rng() - 0.5) * WP.jitter));
+      z = Math.max(-WP.z, Math.min(WP.z, z + (rng() - 0.5) * 2 * 520));
+      // never on a footprint: nudge across the road until the ground is open
+      for (let tries = 0; tries < 16 && blocked(state, x, z, 14); tries++) z += (z > 0 ? -1 : 1) * 40;
+      const enc = last ? def.boss : def.deck[i % def.deck.length];
+      const wp = { i: i, x: x, z: z, y: 0, name: last ? 'THE ' + (def.base ? 'SIEGE' : 'BOSS') : 'WAYPOINT ' + (i + 1), landmark: null, encounter: enc, spawned: false, reached: false, done: false, boss: last, base: false, killsNeeded: [] };
+      // the landmark beside it (not on the last: the boss has the ground)
+      if (!last && i < marks.length) {
+        const id = marks[i];
+        // beside the road, inward when the road runs near its edge
+        const side = z > WP.z - 220 ? -1 : z < -WP.z + 220 ? 1 : (rng() < 0.5 ? -1 : 1);
+        const lz = z + side * LANDMARK_SIDE;
+        const o = seatStructure(state, id, x, lz, {});
+        wp.landmark = o; wp.name = o.name;
+      }
+      wp.y = groundAt(state, x, z);
+      route.push(wp);
+    }
+    if (def.base) {
+      // the base: a compound at the far end — the hull, the hangar, two towers, four pits
+      const bx = (def.chunks[1] + 1) * CHUNK_W - 420, bz = 0;
+      const hull = seatStructure(state, 'base', bx, bz, { hp: BASE_HP, face: 'west' });
+      const hangar = seatStructure(state, 'hangar', bx - 260, bz + 200, { face: 'west' });
+      const towers = [seatStructure(state, 'tower', bx - 300, bz - 260, {}), seatStructure(state, 'tower', bx + 40, bz - 300, {})];
+      const pits = [seatStructure(state, 'gunpit', bx - 420, bz - 60, {}), seatStructure(state, 'gunpit', bx - 400, bz + 360, {}), seatStructure(state, 'gunpit', bx - 120, bz + 330, {}), seatStructure(state, 'gunpit', bx - 140, bz - 400, {})];
+      const wp = { i: route.length, x: bx - 560, z: bz, y: 0, name: 'THE BASE', landmark: null, encounter: null, spawned: false, reached: false, done: false, boss: false, base: true, killsNeeded: [hull, hangar], hangar: hangar, hull: hull, towers: towers, pits: pits, hangarWave: 0 };
+      wp.y = groundAt(state, wp.x, wp.z);
+      route.push(wp);
+    }
+    state.route = route;
+    state.wp = 0;
+    // the pickups: an armor canister on most legs, a bonus on every third
+    const pickups = [];
+    for (let i = 0; i < route.length; i++) {
+      const a = i === 0 ? { x: sp[0], z: sp[1] } : route[i - 1], b = route[i];
+      const f = 0.35 + rng() * 0.3;
+      const px = a.x + (b.x - a.x) * f, pz = a.z + (b.z - a.z) * f + (rng() - 0.5) * 120;
+      if (i % 3 === 2) { const kind = ['speed', 'shell', 'armormax'][Math.floor(rng() * 3)]; pickups.push(makePickup(state, kind, px, pz)); }
+      else if (rng() < 0.75) pickups.push(makePickup(state, 'armor', px, pz));
+    }
+    state.pickups = pickups;
+    // the first waypoint's encounter is already on the field (a patrol waits by the road)
+  }
+  function makePickup(state, kind, x, z) {
+    // never inside a footprint: nudge sideways until clear
+    let px = x, pz = z, tries = 0;
+    while (blocked(state, px, pz, 10) && tries++ < 12) pz += 30;
+    return { id: state.nextId++, kind: kind, x: px, z: pz, y: groundAt(state, px, pz), taken: false };
+  }
+  function nextWaypoint(state) {
+    for (const wp of state.route) if (!wp.done) return wp;
+    return null;
   }
   function stretchHostiles(state) {
     const def = state.missionDef;
@@ -276,35 +416,101 @@
     for (const e of state.enemies) if (e.alive) n++;
     return n;
   }
-  function spawnWave(state) {
-    const def = state.missionDef;
-    const w = def.waves[state.wave];
-    if (!w) return false;
-    state.wave++;
+  // The road, one step: the next waypoint's encounter comes out as the tank
+  // closes; the waypoint is reached inside WP.reach (a boss's needs its kill;
+  // the base's its hull and hangar); the level ends when the last is done.
+  function stepRoute(state, events) {
     const t = state.tank;
-    const [k0, k1] = def.chunks;
-    for (const kind of Object.keys(w)) {
-      for (let i = 0; i < w[kind]; i++) {
-        // ahead of the tank, spread across the stretch's width, never inside a footprint
-        let x = 0, z = 0, ok = false;
-        for (let tries = 0; tries < 40 && !ok; tries++) {
-          const ang = (state.rng() - 0.5) * Math.PI * 1.1;     // mostly ahead (+x)
-          const dist = SPAWN_MIN + state.rng() * (SPAWN_MAX - SPAWN_MIN);
-          x = t.x + Math.cos(ang) * dist;
-          z = t.z + Math.sin(ang) * dist;
-          x = Math.max(k0 * CHUNK_W + 100, Math.min((k1 + 1) * CHUNK_W - 100, x));
-          z = Math.max(-900, Math.min(900, z));
-          ok = Math.hypot(x - t.x, z - t.z) >= SPAWN_MIN * 0.85;   // the clamp can pull it in: never inside the start's breathing room
-          for (const o of structuresNear(state, x, z, 80)) if (boxDist(o, x, z) < 40) ok = false;
-        }
-        const E = ENEMY[kind];
-        state.enemies.push({ id: state.nextId++, kind: kind, x: x, z: z, y: groundAt(state, x, z),
-          heading: Math.atan2(t.x - x, -(t.z - z)), speed: 0, hp: E.hp, alive: true,
-          reload: 1.5 + state.rng() * E.reload, strafe: state.rng() < 0.5 ? -1 : 1, strafeT: 2 + state.rng() * 4, mode: 'approach', age: 0 });
+    const wp = nextWaypoint(state);
+    if (!wp) return;
+    const dist = Math.hypot(wp.x - t.x, wp.z - t.z);
+    if (!wp.spawned && dist < WP.trigger) {
+      wp.spawned = true;
+      if (wp.encounter) {
+        const spawned = spawnGroup(state, wp.encounter, wp);
+        if (wp.boss) for (const e of spawned) if (ENEMY[e.kind] && ENEMY[e.kind].boss) wp.killsNeeded.push(e);
+        events.push({ type: 'encounter', wp: wp.i, name: wp.name, boss: wp.boss, count: spawned.length });
       }
     }
-    state.events.push({ type: 'wave', wave: state.wave, of: def.waves.length });
-    return true;
+    if (wp.base && wp.spawned && wp.hangar.alive) {
+      // the hangar's garrison: a wave each time the tank is inside the trigger with the field quiet
+      const hd = Math.hypot(wp.hangar.x - t.x, wp.hangar.z - t.z);
+      const alive = state.enemies.filter((e) => e.alive).length;
+      if (hd < HANGAR.trigger && wp.hangarWave < HANGAR.waves.length && alive <= 1) {
+        state.waveT += DT;
+        if (state.waveT > 2.0) { state.waveT = 0; const w = HANGAR.waves[wp.hangarWave++]; spawnGroup(state, w, wp.hangar); events.push({ type: 'hangar', wave: wp.hangarWave, of: HANGAR.waves.length }); }
+      }
+    }
+    if (!wp.reached && dist < WP.reach) { wp.reached = true; events.push({ type: 'waypoint', wp: wp.i, name: wp.name, of: state.route.length }); }
+    if (wp.reached && !wp.done) {
+      const need = wp.killsNeeded.every((o) => !o.alive);
+      if (need) {
+        wp.done = true;
+        state.start = [wp.x, wp.z];   // a death respawns here now
+        events.push({ type: 'waypointDone', wp: wp.i, name: wp.name, last: !nextWaypoint(state) });
+        if (!nextWaypoint(state)) {
+          state.phase = 'complete';
+          state.log.push({ mission: state.mission, time: +state.missionTime.toFixed(1), score: state.score });
+          const last = !MISSIONS[state.mission + 1];
+          if (last) state.campaignDone = true;
+          events.push({ type: 'complete', mission: state.mission, last: last });
+        }
+      }
+    }
+  }
+  // Pickups: drive over one to take it.
+  function stepPickups(state, events) {
+    const t = state.tank;
+    for (const pk of state.pickups) {
+      if (pk.taken) continue;
+      if (Math.hypot(pk.x - t.x, pk.z - t.z) > PICKUP.reach) continue;
+      pk.taken = true;
+      let text = '';
+      if (pk.kind === 'armor') { const before = t.armor; t.armor = Math.min(armorMax(state), t.armor + PICKUP.armor); text = 'ARMOR +' + Math.round(t.armor - before); }
+      else if (pk.kind === 'speed') { state.bonus.speed = Math.min(PICKUP.max, state.bonus.speed + 1); text = 'SPEED +' + Math.round(PICKUP.bonusStep * 100 * state.bonus.speed) + '%'; }
+      else if (pk.kind === 'shell') { state.bonus.shell = Math.min(PICKUP.max, state.bonus.shell + 1); text = 'SHELL SPEED +' + Math.round(PICKUP.bonusStep * 100 * state.bonus.shell) + '%'; }
+      else if (pk.kind === 'armormax') { state.bonus.armor = Math.min(PICKUP.max, state.bonus.armor + 1); t.armor = armorMax(state); text = 'ARMOR ' + Math.round(armorMax(state)) + ' — FULL'; }
+      events.push({ type: 'pickup', kind: pk.kind, x: pk.x, y: pk.y, z: pk.z, text: text });
+    }
+  }
+  // A group (an encounter) comes out around a point: vehicles spread on the far
+  // side of it from the tank, never inside a footprint and never nearer the
+  // tank than SPAWN_NEAR; a tower or a gun pit is SEATED there for good.
+  const SPAWN_NEAR = 420, SPAWN_RING = 260;
+  function spawnGroup(state, w, at) {
+    const t = state.tank;
+    const out = [];
+    state.wave++;
+    const away = headingTo(t.x, t.z, at.x, at.z);
+    for (const kind of Object.keys(w)) {
+      for (let i = 0; i < w[kind]; i++) {
+        let x = 0, z = 0, ok = false;
+        for (let tries = 0; tries < 60 && !ok; tries++) {
+          const ang = away + (state.rng() - 0.5) * Math.PI * 1.2;
+          const dist = 80 + state.rng() * SPAWN_RING;
+          const f = forward(ang);
+          x = at.x + f[0] * dist; z = at.z + f[1] * dist;
+          z = Math.max(-1100, Math.min(1100, z));
+          ok = Math.hypot(x - t.x, z - t.z) >= SPAWN_NEAR;
+          for (const o of structuresNear(state, x, z, 100)) if (boxDist(o, x, z) < (GUN[kind] ? 70 : 40)) ok = false;
+          for (const e of state.enemies) if (e.alive && Math.hypot(e.x - x, e.z - z) < 40) ok = false;
+        }
+        if (GUN[kind]) { const o = seatStructure(state, kind, x, z, {}); out.push(o); continue; }
+        const E = ENEMY[kind];
+        if (!E) continue;
+        const e = { id: state.nextId++, kind: kind, x: x, z: z, y: groundAt(state, x, z) + (E.hover || 0),
+          heading: Math.atan2(t.x - x, -(t.z - z)), speed: 0, hp: E.hp, alive: true,
+          reload: 1.2 + state.rng() * E.reload, strafe: state.rng() < 0.5 ? -1 : 1, strafeT: 2 + state.rng() * 4, mode: 'approach', age: 0, phase: state.rng() * 6.28 };
+        state.enemies.push(e); out.push(e);
+      }
+    }
+    return out;
+  }
+  // kept for older callers and the sim: a group around the tank's own front
+  function spawnWave(state, w) {
+    const t = state.tank;
+    const f = forward(t.heading);
+    return spawnGroup(state, w || { slow: 2 }, { x: t.x + f[0] * (SPAWN_MIN + 200), z: t.z + f[1] * (SPAWN_MIN + 200) });
   }
 
   // heading: 0 = toward -z (the way the camera looks at rest), +x is heading π/2
@@ -332,14 +538,15 @@
 
     // ---- drive ----
     const drive = input.drive | 0;
-    const want = drive > 0 ? TANK.topSpeed : drive < 0 ? -TANK.reverse : 0;
+    const top = topSpeed(state);
+    const want = drive > 0 ? top : drive < 0 ? -TANK.reverse : 0;
     const slope = slopeAlong(state, t.x, t.z, t.heading);
     const grade = Math.max(0.45, 1 - Math.max(0, slope) * 1.4);     // uphill slows it, downhill does not speed it
     const target = want * (want > 0 ? grade : 1);
     if (Math.abs(target) > Math.abs(t.speed) && Math.sign(target) === Math.sign(t.speed || target)) t.speed += Math.sign(target) * TANK.accel * DT;
     else t.speed += (target - t.speed) * Math.min(1, TANK.brake * DT / Math.max(1, Math.abs(target - t.speed)));
     if (Math.abs(t.speed) < 0.05 && drive === 0) t.speed = 0;
-    t.speed = Math.max(-TANK.reverse, Math.min(TANK.topSpeed, t.speed));
+    t.speed = Math.max(-TANK.reverse, Math.min(top, t.speed));
     // ---- turn (eased, never instant: motion restraint) ----
     // W goes where you LOOK (James, 2026-09-07: "W and S are reversed!" — after a mouse turn the
     // hull's own heading felt backwards): while driving, the hull swings toward the view
@@ -384,7 +591,8 @@
     const g = forward(t.turret);   // the gun's line, not the view's
     if (input.fire && t.reload <= 0) {
       const mz = muzzle(t), d = gunDir(t);
-      state.shells.push({ x: mz[0], y: mz[1], z: mz[2], vx: d[0] * SHELL.speed, vy: d[1] * SHELL.speed, vz: d[2] * SHELL.speed, age: 0, mine: true });
+      const v = shellSpeed(state);
+      state.shells.push({ x: mz[0], y: mz[1], z: mz[2], vx: d[0] * v, vy: d[1] * v, vz: d[2] * v, age: 0, mine: true });
       t.recoil = 1; t.reload = SHELL.reload;
       events.push({ type: 'fire' });
     }
@@ -406,22 +614,12 @@
     stepShell(state, events);
     stepEnemies(state, events);
     stepSams(state, events);
+    stepGuns(state, events);
     stepMissiles(state, events);
     stepEnemyShells(state, events);
-
-    // ---- waves + the mission's end ----
-    if (state.phase === 'play') {
-      const aliveEnemies = state.enemies.filter((e) => e.alive).length;
-      if (aliveEnemies <= 1 && state.wave < state.missionDef.waves.length) {
-        state.waveT += DT;
-        if (state.waveT > 2.5) { state.waveT = 0; spawnWave(state); }
-      }
-      if (hostilesLeft(state) === 0 && state.wave >= state.missionDef.waves.length) {
-        state.phase = 'complete';
-        state.log.push({ mission: state.mission, time: +state.missionTime.toFixed(1), score: state.score });
-        events.push({ type: 'complete', mission: state.mission, last: !MISSIONS[state.mission + 1] });
-      }
-    }
+    stepBeams(state);
+    if (state.phase === 'play') stepPickups(state, events);
+    if (state.phase === 'play') stepRoute(state, events);
     return events;
   }
 
@@ -498,7 +696,8 @@
   function shellSolution(state) {
     const t = state.tank;
     const o = muzzle(t), d = gunDir(t);
-    let x = o[0], y = o[1], z = o[2], vx = d[0] * SHELL.speed, vy = d[1] * SHELL.speed, vz = d[2] * SHELL.speed;
+    const sv = shellSpeed(state);
+    let x = o[0], y = o[1], z = o[2], vx = d[0] * sv, vy = d[1] * sv, vz = d[2] * sv;
     const near = structuresNear(state, t.x, t.z, 2600);
     const arc = [[x, y, z]];
     let impact = null, tau = 0;
@@ -531,7 +730,7 @@
       if (!e.alive) continue;
       const range = Math.hypot(e.x - t.x, e.z - t.z);
       if (range > RADAR_RANGE) continue;
-      const ft = Math.min(SHELL.life, range / (SHELL.speed * cp));
+      const ft = Math.min(SHELL.life, range / (sv * cp));
       const f = forward(e.heading);
       const lx = e.x + f[0] * e.speed * ft, lz = e.z + f[1] * e.speed * ft;
       const E = ENEMY[e.kind];
@@ -583,7 +782,7 @@
   function damageStructure(state, s, events, by) {
     if (s.cls === 'civ') { events.push({ type: 'absorbed', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s }); return; }
     if (s.hard === 'door' && s.door <= 0) { events.push({ type: 'absorbed', x: s.x, y: s.y + s.h / 2, z: s.z, structure: s, door: true }); return; }
-    if (typeof C().hitStructure === 'function') {
+    if (!s.seated && typeof C().hitStructure === 'function') {
       C().hitStructure(state.land, s.sid, s.x, s.y + s.h / 2);
       s.hp = s.st.alive === false ? 0 : Math.max(1, s.hp - 1);
     } else {
@@ -642,15 +841,18 @@
       else if (dist < E.range * 0.45) { e.mode = 'back'; }
       else { e.mode = 'circle'; }
       // about to fire and in range: stop, square up, shoot — the arcade's
-      // fairness, a tank that pauses to aim can be hit
-      if (dist < E.range && e.reload < 1.1 && t.grace <= 0 && !(e.reposT > 0)) { e.mode = 'aim'; wantH = toTank; wantS = 0; }
+      // fairness, a tank that pauses to aim can be hit. A HOVER never stops:
+      // it strafes across and fires on the move; a MECH fires its beam while
+      // it walks (no shell to lob).
+      if (dist < E.range && e.reload < 1.1 && t.grace <= 0 && !(e.reposT > 0) && !E.strafe && !E.beam) { e.mode = 'aim'; wantH = toTank; wantS = 0; }
+      if (E.strafe && dist < E.range * 0.85) { e.mode = 'circle'; }
       // its line was blocked by a building: move sideways for a while
       if (e.reposT > 0) { e.reposT -= DT; e.mode = 'circle'; }
       if (e.mode === 'circle') {
         e.strafeT -= DT;
-        if (e.strafeT <= 0) { e.strafe = -e.strafe; e.strafeT = 2.5 + state.rng() * 4; }
-        wantH = toTank + e.strafe * Math.PI / 2 * 0.8;
-        wantS = E.speed * 0.7;
+        if (e.strafeT <= 0) { e.strafe = -e.strafe; e.strafeT = (E.strafe ? 1.4 : 2.5) + state.rng() * (E.strafe ? 1.8 : 4); }
+        wantH = toTank + e.strafe * Math.PI / 2 * (E.strafe ? 1.0 : 0.8);
+        wantS = E.speed * (E.strafe ? 1.0 : 0.7);
       } else if (e.mode === 'back') {
         wantH = toTank; wantS = -E.speed * 0.5;
       }
@@ -676,27 +878,108 @@
       }
       // never into the player's tank
       if (Math.hypot(nx - t.x, nz - t.z) > TANK.length) { e.x = nx; e.z = nz; }
-      e.y = groundAt(state, e.x, e.z);
+      e.y = groundAt(state, e.x, e.z) + (E.hover || 0);
       // fire when lined up, in range, reloaded, with a clear line
       e.reload -= DT;
       const aimErr = Math.abs(wrapAngle(toTank - e.heading));
-      if (e.reload <= 0 && dist < E.range && aimErr < 0.12 && t.grace <= 0 && Math.abs(e.speed) < 4) {
+      if (E.beam) {
+        // THE BEAM: an instant line from the emitter to the hull, weak, frequent — it fires on the move
+        // (the strider also lobs shells from its shoulders on its own clock)
+        if (e.reload <= 0 && dist < E.range && t.grace <= 0) {
+          const o = [e.x, e.y + E.hullH * 0.85, e.z];
+          const target = [t.x, t.y + 4, t.z];
+          const dd = [target[0] - o[0], target[1] - o[1], target[2] - o[2]];
+          const L = Math.hypot(dd[0], dd[1], dd[2]) || 1;
+          const dir = dd.map((v) => v / L);
+          const rh = lineClear(state, o, target, e);
+          const clear = rh === null;
+          e.reload = E.reload * (0.9 + state.rng() * 0.2);
+          if (clear) {
+            state.beams.push({ x0: o[0], y0: o[1], z0: o[2], x1: target[0], y1: target[1], z1: target[2], age: 0, kind: e.kind });
+            events.push({ type: 'beamFire', x: o[0], y: o[1], z: o[2], enemy: e });
+            hullHit(state, events, 'beam', e, DAMAGE[E.dmg]);
+          } else {
+            state.beams.push({ x0: o[0], y0: o[1], z0: o[2], x1: rh[0], y1: rh[1], z1: rh[2], age: 0, kind: e.kind });
+            events.push({ type: 'beamFire', x: o[0], y: o[1], z: o[2], enemy: e, blocked: true });
+            e.reposT = 1.5 + state.rng() * 1.5;
+          }
+        }
+        if (!E.shells) continue;
+        // the strider's shells ride a second clock
+        e.reload2 = (e.reload2 === undefined ? 2.5 : e.reload2) - DT;
+        if (!(e.reload2 <= 0 && dist < E.range && aimErr < 0.2 && t.grace <= 0)) continue;
+        e.reload2 = E.shells * (0.85 + state.rng() * 0.3);
+      }
+      const canFire = E.beam ? true : e.reload <= 0 && dist < E.range && aimErr < (E.strafe ? 0.5 : 0.12) && t.grace <= 0 && (E.strafe || Math.abs(e.speed) < 4);
+      if (canFire) {
         const o = [e.x, e.y + E.hullH * 0.8, e.z];
         const dd = [dx / dist, 0, dz / dist];
         // the lob: solve the launch elevation for a flat shot that carries to the tank
         const g = GRAVITY, v = E.shellSpeed;
         const drop = (t.y + 3) - o[1];
-        const s2 = Math.asin(Math.max(-1, Math.min(1, (g * dist / (v * v)))));   // sin(2θ) ≈ g·d/v²
-        const el = s2 / 2 + Math.atan2(drop, dist) * 0.5;
+        const el = lobElevation(v, dist, drop);
         const dir = [dd[0] * Math.cos(el), Math.sin(el), dd[2] * Math.cos(el)];
         // a structure in the way? then hold fire
         const rh = rayHit(state, o, dir, dist, 0);
         if (rh.what === 'structure' || rh.what === 'civilian') { e.reload = 0.6; e.reposT = 2.5 + state.rng() * 2; continue; }
-        e.reload = E.reload * (0.85 + state.rng() * 0.3);
-        state.eshells.push({ x: o[0], y: o[1], z: o[2], vx: dir[0] * v, vy: dir[1] * v, vz: dir[2] * v, age: 0, from: e.id });
+        if (!E.beam) e.reload = E.reload * (0.85 + state.rng() * 0.3);
+        state.eshells.push({ x: o[0], y: o[1], z: o[2], vx: dir[0] * v, vy: dir[1] * v, vz: dir[2] * v, age: 0, from: e.id, dmg: E.beam ? 'shell' : E.dmg });
         events.push({ type: 'enemyFire', x: o[0], y: o[1], z: o[2], enemy: e });
       }
     }
+  }
+  // The low ballistic elevation that carries a shell at speed v over `dist` ft
+  // to a point `drop` ft above the muzzle (uphill targets get the aim they
+  // deserve — the old half-angle guess fell short on a rise). Out of reach: 45°.
+  function lobElevation(v, dist, drop) {
+    const g = GRAVITY;
+    const disc = v * v * v * v - g * (g * dist * dist + 2 * drop * v * v);
+    if (disc < 0) return Math.PI / 4;
+    return Math.atan2(v * v - Math.sqrt(disc), g * dist);
+  }
+  // The guns on the ground: a gun tower or a gun pit (an emplacement, seated
+  // by the route) lobs a shell at the tank inside its range on its reload.
+  function stepGuns(state, events) {
+    const t = state.tank;
+    for (const s of structuresNear(state, t.x, t.z, 1000)) {
+      if (!s.alive || !s.gun) continue;
+      const G = GUN[s.id];
+      s.reload -= DT;
+      const dist = Math.hypot(t.x - s.x, t.z - s.z);
+      if (s.reload > 0 || dist > G.range || t.grace > 0) continue;
+      const o = [s.x, s.y + s.h * 0.9, s.z];
+      const dd = [(t.x - s.x) / dist, 0, (t.z - s.z) / dist];
+      const v = G.shellSpeed;
+      const drop = (t.y + 3) - o[1];
+      const el = lobElevation(v, dist, drop);
+      const dir = [dd[0] * Math.cos(el), Math.sin(el), dd[2] * Math.cos(el)];
+      const rh = rayHit(state, o, dir, dist, 0);
+      if ((rh.what === 'structure' || rh.what === 'civilian') && rh.structure !== s) { s.reload = 0.8; continue; }
+      s.reload = G.reload * (0.85 + state.rng() * 0.3); s.fired++;
+      state.eshells.push({ x: o[0], y: o[1], z: o[2], vx: dir[0] * v, vy: dir[1] * v, vz: dir[2] * v, age: 0, from: s.sid, dmg: G.dmg });
+      events.push({ type: 'gunFire', x: o[0], y: o[1], z: o[2], structure: s });
+    }
+  }
+  // Is the straight line from a to b clear of the ground (a little tolerance:
+  // the hull sits on the ground) and of live structures? null = clear, else the
+  // point where it meets something.
+  function lineClear(state, a, b, shooter) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const L = Math.hypot(dx, dy, dz);
+    const n = Math.max(2, Math.ceil(L / 15));
+    const near = structuresNear(state, (a[0] + b[0]) / 2, (a[2] + b[2]) / 2, L / 2 + 60);
+    for (let i = 1; i < n; i++) {
+      const f = i / n, x = a[0] + dx * f, y = a[1] + dy * f, z = a[2] + dz * f;
+      if (y < groundAt(state, x, z) - 2.5) return [x, y, z];
+      for (const s of near) if (s.alive && inBox(s, x, y, z, 0) && (!shooter || Math.hypot(s.x - shooter.x, s.z - shooter.z) > 30)) return [x, y, z];
+    }
+    return null;
+  }
+  function stepBeams(state) {
+    if (!state.beams.length) return;
+    const keep = [];
+    for (const b of state.beams) { b.age += DT; if (b.age < 0.16) keep.push(b); }
+    state.beams = keep;
   }
   // SAM sites in the stretch (and any nearby) fire a ground missile at the
   // tank in range; a bunker's roof SAM fires too and opens its door for two
@@ -736,7 +1019,7 @@
       const cp = Math.cos(m.pitch);
       m.x += f[0] * cp * m.speed * DT; m.z += f[1] * cp * m.speed * DT; m.y += Math.sin(m.pitch) * m.speed * DT;
       if (m.age > SAM.missileLife) { events.push({ type: 'missileOut', x: m.x, y: m.y, z: m.z }); continue; }
-      if (Math.hypot(m.x - t.x, m.y - (t.y + 4), m.z - t.z) < TANK.length * 0.6) { hullHit(state, events, 'missile', m); continue; }
+      if (Math.hypot(m.x - t.x, m.y - (t.y + 4), m.z - t.z) < TANK.length * 0.6) { hullHit(state, events, 'missile', m, DAMAGE.missile); continue; }
       const gy = groundAt(state, m.x, m.z);
       if (m.y <= gy) { events.push({ type: 'missileGround', x: m.x, y: gy, z: m.z }); continue; }
       let struck = false;
@@ -754,7 +1037,7 @@
       sh.vy -= GRAVITY * DT;
       sh.x += sh.vx * DT; sh.y += sh.vy * DT; sh.z += sh.vz * DT;
       if (sh.age > 6) continue;
-      if (Math.hypot(sh.x - t.x, sh.y - (t.y + 4), sh.z - t.z) < TANK.length * 0.55) { hullHit(state, events, 'shell', sh); continue; }
+      if (Math.hypot(sh.x - t.x, sh.y - (t.y + 4), sh.z - t.z) < TANK.length * 0.55) { hullHit(state, events, sh.dmg === 'tower' || sh.dmg === 'gunpit' ? 'gun' : sh.dmg === 'hover' ? 'hover' : 'shell', sh, DAMAGE[sh.dmg] || DAMAGE.shell); continue; }
       let struck = false;
       for (const s of structuresNear(state, sh.x, sh.z, 40)) if (s.alive && inBox(s, sh.x, sh.y, sh.z, 0)) { struck = true; break; }
       if (struck) { events.push({ type: 'shellGround', x: sh.x, y: sh.y, z: sh.z }); continue; }
@@ -764,15 +1047,22 @@
     }
     state.eshells = keep;
   }
-  function hullHit(state, events, by, what) {
+  // A hit on the hull takes `dmg` off the armor pool; `hits` (0..3) is the
+  // pool read as thirds for the older instruments. Zero is the end of the tank.
+  function hullHit(state, events, by, what, dmg) {
     const t = state.tank;
-    t.hits += 1;
-    if (t.hits < TANK.hits) { events.push({ type: 'hullHit', hits: t.hits, by: by }); return; }
+    if (!t.alive) return;
+    const d = dmg === undefined ? DAMAGE.shell : dmg;
+    t.armor = Math.max(0, t.armor - d);
+    const max = armorMax(state);
+    t.hits = Math.min(3, Math.floor((1 - t.armor / max) * 3 + 1e-6));
+    if (t.armor > 0) { events.push({ type: 'hullHit', hits: t.hits, by: by, dmg: d, armor: t.armor }); return; }
+    t.hits = 3;
     t.alive = false;
     state.lives -= 1;
     state.phase = state.lives > 0 ? 'dead' : 'over';
     events.push({ type: 'dead', by: by, lives: state.lives });
-    if (state.phase === 'over') events.push({ type: 'over' });
+    if (state.phase === 'over') { state.bonus = { speed: 0, shell: 0, armor: 0 }; events.push({ type: 'over' }); }
   }
   // After a death with lives left: the same mission, the field as it stands
   // (kills stay dead), the tank back at the stretch's start, hull whole.
@@ -780,7 +1070,7 @@
     if (state.phase !== 'dead') return false;
     const sp = state.start || startSpot(state, state.missionDef);
     state.tank = newTank(state, sp[0], sp[1], Math.PI / 2);
-    state.shells = []; state.eshells = []; state.missiles = [];
+    state.shells = []; state.eshells = []; state.missiles = []; state.beams = [];
     state.laser.charge = 1; state.laser.beam = null;
     state.phase = 'play';
     return true;
@@ -833,6 +1123,9 @@
     return {
       score: state.score, mission: state.mission, missionName: state.missionDef ? state.missionDef.name : '',
       hits: t.hits, hitsMax: TANK.hits, lives: state.lives,
+      armor: Math.round(t.armor), armorMax: Math.round(armorMax(state)), bonus: state.bonus, topSpeed: Math.round(topSpeed(state)), shellSpeed: Math.round(shellSpeed(state)),
+      waypoint: (() => { const wp = nextWaypoint(state); if (!wp) return null; const rng2 = Math.hypot(wp.x - t.x, wp.z - t.z); return { i: wp.i, of: state.route.length, name: wp.name, range: Math.round(rng2), bearing: wrapAngle(headingTo(t.x, t.z, wp.x, wp.z) - t.look), reached: wp.reached, boss: wp.boss, base: wp.base, x: wp.x, z: wp.z }; })(),
+      routeDone: state.route.filter((w) => w.done).length, routeTotal: state.route.length,
       shellReady: t.reload <= 0, reload: Math.max(0, Math.min(1, 1 - t.reload / SHELL.reload)), shellsOut: state.shells.length, laser: state.laser.charge,
       heading: t.heading, headingDeg: deg(t.heading),
       look: t.look, lookDeg: deg(t.look),
@@ -841,7 +1134,7 @@
       gunRange: gr.range, gunHit: gr.what, solution: sol,
       speed: Math.round(t.speed), pitchDeg: Math.round(t.pitch * 180 / Math.PI),
       contacts: contacts, nearest: nearest, inRange: !!(nearest && nearest.range < 900),
-      hostilesLeft: hostilesLeft(state), wave: state.wave, waves: state.missionDef ? state.missionDef.waves.length : 0,
+      hostilesLeft: hostilesLeft(state), wave: state.wave, waves: 0, campaign: state.campaign, campaignDone: state.campaignDone,
       time: state.missionTime, x: Math.round(t.x), z: Math.round(t.z),
     };
   }
@@ -849,6 +1142,8 @@
   globalThis.LunarTankCore = {
     DT: DT, CHUNK_W: CHUNK_W, GRAVITY: GRAVITY, shellSolution: shellSolution, muzzle: muzzle, gunDir: gunDir, inHull: inHull,
     TANK: TANK, TURRET: TURRET, SHELL: SHELL, LASER: LASER, ENEMY: ENEMY, SAM: SAM, MISSIONS: MISSIONS, DEFAULTS: DEFAULTS,
+    DAMAGE: DAMAGE, PICKUP: PICKUP, PICKUP_KINDS: PICKUP_KINDS, GUN: GUN, HANGAR: HANGAR, BASE_HP: BASE_HP, WP: WP,
+    layRoute: layRoute, nextWaypoint: nextWaypoint, seatStructure: seatStructure, spawnGroup: spawnGroup, topSpeed: topSpeed, shellSpeed: shellSpeed, armorMax: armorMax,
     RADAR_RANGE: RADAR_RANGE, SPAWN_MIN: SPAWN_MIN, SPAWN_MAX: SPAWN_MAX, FLAT_MARGIN: FLAT_MARGIN,
     createGame: createGame, startMission: startMission, startSpot: startSpot, respawn: respawn, nextMission: nextMission,
     START_CLEAR: START_CLEAR,

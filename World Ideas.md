@@ -306,7 +306,7 @@ grows into MOON BATTLE 2100** — Battlezone mode inside it, battling from the l
 buildings on the ground, lander weapons + goals, and eventually out of the lander into a
 lunar tank whose targets you saw from the air. Recorded, not started. **RENAMED MOON
 BATTLE 2075 on 2026-09-07** (James) and moved back to In progress worlds while it grows;
-the start card now switches CAMPAIGN | FREE MODE (lander or tanks).
+the start card now switches CAMPAIGN | FREE MODE (lander or tanks). **2026-09-11: MOON BATTLE 2100 (renamed again, "advance slightly") and the whole game built on his plan approval — "3 and 3 and out": three lander levels (3 / 4 / 5 targets, SAMs that fire, the base with a laser-only shield and a missile-only hull, lift-off on level 3), CLIMB OUT, three tank levels on a route of waypoints with landmarks, mini bosses, hovers, mech walkers, guns on the ground, pickups, the map on M, the base at the end, THE END. Awaiting his flight.**
 
 ### 64. Jabberwocky — *one session* — `draft` (built 2026-09-05)
 

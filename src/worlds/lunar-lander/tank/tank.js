@@ -1,7 +1,7 @@
 // Moon Battle 2100 — the TANK shell: mission flow, input, instruments,
 // sound, tuner. Rules live in tank-core.js (pure, sim-tested); the picture in
 // tank-render.js. This file wires them and owns nothing else.
-import { TankScene, DEFAULT_PARAMS, MODELS } from './tank-render.js?v=3';
+import { TankScene, DEFAULT_PARAMS, MODELS, MECH_SCALE } from './tank-render.js?v=4';
 
 const T = globalThis.LunarTankCore;
 const ST = globalThis.LunarStructures;
@@ -11,7 +11,12 @@ const SILENT = /[?&]silent=1/.test(location.search);   // pane-safe: no AudioCon
 const PLAY_KEY = 'bftm-tank-play-v1';
 const LOOK_KEY = 'bftm-tank-look-v1';
 const LEDGER_KEY = 'bftm-tank-ledger-v1';
+const CAMPAIGN_KEY = 'lunar-lander-campaign-v1';   // shared with the lander: { seed, level, score, tank: true, bonus } while the tank half is under way
+const HANDOFF_KEY = 'lunar-lander-handoff-v1';     // what the lander wrote at CLIMB OUT: { seed, score }
+const LANDER_PAGE = '../index.html';
+const CAMPAIGN = /[?&]campaign=1/.test(location.search);   // opened by CLIMB OUT (or CONTINUE): the campaign's seed and score come along
 const PLAY_DEFAULTS = { mission: 1, sens: 1, turn: 1, seed: '' };
+const LEVELS_MAX = 3;
 const SENS = 0.0021;          // rad per mouse pixel at sens 1 (the mouse aims: 2026-09-07)
 const LOOK_RANGES = {
   hue:          { min: 0, max: 1, step: 0.01, label: 'line colour' },
@@ -49,12 +54,16 @@ const LOOK_RANGES = {
   stars:        { min: 0, max: 1.5, step: 0.05, label: 'stars' },
   res:          { min: 0.5, max: 1, step: 0.05, label: 'render scale' },
 };
-const ENEMY_NAMES = { slow: 'TANK', medium: 'FAST TANK', boss: 'SIEGE TANK' };
+const ENEMY_NAMES = { slow: 'TANK', medium: 'FAST TANK', boss: 'SIEGE TANK', hover: 'HOVER', mech: 'MECH WALKER', warden: 'THE WARDEN', strider: 'THE STRIDER' };
 const DEATH_MSG = {
   shell: ['A SHELL THROUGH THE HULL', 'THE CREW NEVER HEARD IT'],
   missile: ['A MISSILE FOUND YOU', 'THE SAM SITE IS STILL OUT THERE'],
+  beam: ['CUT DOWN BY A BEAM', 'THE WALKERS ARE WEAK. THEY ARE ALSO PATIENT.'],
+  hover: ['STUNG TO DEATH', 'THE HOVERS NEVER STOP. NEITHER SHOULD YOU.'],
+  gun: ['A SHELL FROM THE TOWERS', 'THE GUNS ON THE GROUND HAVE THE RANGE'],
   test: ['HULL BREACHED', ''],
 };
+const PICKUP_WORDS = { armor: 'ARMOR', speed: 'SPEED', shell: 'SHELL SPEED', armormax: 'ARMOR PLATE' };
 
 // ---- helpers -------------------------------------------------------------------
 function load(key, defaults) { try { return Object.assign({}, defaults, JSON.parse(localStorage.getItem(key) || '{}')); } catch (e) { return Object.assign({}, defaults); } }
@@ -69,7 +78,7 @@ let play = load(PLAY_KEY, PLAY_DEFAULTS);
 let look = load(LOOK_KEY, DEFAULT_PARAMS);
 let state = null;
 let scene = null;
-let mode = 'attract';         // attract | play | settle | result | paused
+let mode = 'attract';         // attract | play | settle | result | paused | map
 let pausedFrom = 'play';
 let carry = 0, lastT = 0, clock = 0;
 const keys = {};
@@ -175,6 +184,9 @@ const Sfx = {
   complete() { [523, 659, 784, 1046, 1318].forEach((f, i) => this.env('triangle', f, 0.3, 0.14, undefined, i * 0.13)); },
   over() { [392, 330, 262, 196].forEach((f, i) => this.env('triangle', f, 0.35, 0.14, undefined, i * 0.16)); },
   bump() { this.noise(0.2, 0.3, 300); },
+  beam(dist) { const v = Math.max(0.03, 0.16 - dist / 6000); this.env('sawtooth', 640, 0.14, v, 380); this.env('sine', 1900, 0.08, v * 0.5, 900); },
+  nibble() { this.noise(0.08, 0.25, 2600); this.env('square', 180, 0.06, 0.04, 120); },
+  pickup(kind) { const notes = kind === 'armor' ? [523, 784] : [659, 880, 1175]; notes.forEach((f, i) => this.env('triangle', f, 0.18, 0.1, undefined, i * 0.09)); },
 };
 if (!SILENT && window.ElasticSoundControl) {
   ElasticSoundControl.attach({ start: () => Sfx.start(), stop: () => Sfx.stop(), setVolume: (v) => Sfx.setVolume(v) });
@@ -187,15 +199,32 @@ function renderLedger(highlight) {
   const el = $('ledger'); const list = readLedger(); el.innerHTML = '';
   list.forEach((e, i) => {
     const cls = highlight && e.stamp === highlight ? ' me' : '';
-    el.insertAdjacentHTML('beforeend', `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">MISSION ${e.mission} · ${e.kills} KILLS</span>`);
+    el.insertAdjacentHTML('beforeend', `<span class="${cls}">${i + 1}.</span><span class="r${cls}">${pad(e.score, 4)}</span><span class="${cls}">LEVEL ${e.mission} · ${e.kills} KILLS</span>`);
   });
 }
 
+// ---- the campaign (2026-09-11): the lander hands over its seed and score at CLIMB OUT; the tank
+// half writes its own position under the same key so the lander's start card can CONTINUE here.
+function readHandoff() { try { return JSON.parse(localStorage.getItem(HANDOFF_KEY) || 'null'); } catch (e) { return null; } }
+function readCampaign() { try { const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null'); return c && c.tank ? c : null; } catch (e) { return null; } }
+function writeCampaign(c) { try { if (c) localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); else localStorage.removeItem(CAMPAIGN_KEY); } catch (e) {} }
+function campaignStart() {
+  // a saved tank position wins; else the lander's handoff (level 1); else nothing
+  const saved = readCampaign();
+  if (saved && Number.isFinite(saved.seed)) return { seed: saved.seed >>> 0, mission: clamp(saved.level | 0, 1, LEVELS_MAX), score: saved.score | 0, bonus: saved.bonus || null };
+  const h = readHandoff();
+  if (h && Number.isFinite(h.seed)) return { seed: h.seed >>> 0, mission: 1, score: h.score | 0, bonus: null };
+  return null;
+}
 // ---- flow -------------------------------------------------------------------------------------
 function makeGame() {
   let seed = parseInt(play.seed, 10);
   if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
-  state = T.createGame({ seed, mission: clamp(play.mission | 0, 1, 6) });
+  const cs = CAMPAIGN ? campaignStart() : null;
+  if (cs) {
+    state = T.createGame({ seed: cs.seed, mission: cs.mission, campaign: true, score: cs.score });
+    if (cs.bonus) { state.bonus = Object.assign({ speed: 0, shell: 0, armor: 0 }, cs.bonus); state.tank.armor = T.armorMax(state); }
+  } else state = T.createGame({ seed, mission: clamp(play.mission | 0, 1, LEVELS_MAX) });
   state.tank.turnScale = play.turn;
   if (scene) { scene.setWorld(state); scene.clearEffects(); }
   clearFloats();
@@ -215,8 +244,11 @@ function enterAttract(resultLine, stamp) {
   const sr = $('start-result');
   if (resultLine) { sr.textContent = resultLine; sr.style.display = 'block'; } else { sr.style.display = 'none'; }
   renderLedger(stamp);
-  const m = T.MISSIONS[clamp(play.mission | 0, 1, 6)];
-  $('start-mission').textContent = 'MISSION ' + play.mission + ' — ' + m.name;
+  const cs = CAMPAIGN ? campaignStart() : null;
+  const lv = cs ? cs.mission : clamp(play.mission | 0, 1, LEVELS_MAX);
+  const m = T.MISSIONS[lv];
+  $('start-mission').textContent = (cs ? 'THE CAMPAIGN — ' : '') + 'LEVEL ' + lv + ' — ' + m.name + (cs && cs.score ? ' — ' + pad(cs.score, 4) + ' POINTS SO FAR' : '');
+  $('btn-start').textContent = cs ? 'CLIMB IN' : 'ROLL OUT';
   $('start-card').classList.add('show');
   if (!state || state.phase === 'over') makeGame();
   resetInput();
@@ -246,18 +278,21 @@ function nextStep() {
   if (state.phase === 'dead') { T.respawn(state); setCracks(0); scene.clearEffects(); }
   else if (state.phase === 'complete') {
     if (!T.MISSIONS[state.mission + 1]) {
+      // THE END: the base has fallen — the campaign is out
       const stamp = Date.now();
       const list = readLedger();
       list.push({ score: state.score, mission: state.mission, kills: state.kills, stamp });
       list.sort((a, b) => b.score - a.score);
       writeLedger(list);
       const line = 'THE MOON IS YOURS — ' + pad(state.score, 4) + ' · ' + state.kills + ' KILLS';
+      if (state.campaign) { writeCampaign(null); try { localStorage.removeItem(HANDOFF_KEY); } catch (e) {} window.location.href = LANDER_PAGE; return; }
       state = null;
       enterAttract(line, stamp);
       return;
     }
     T.nextMission(state); setCracks(0); scene.clearEffects(); scene.setWorld(state); contactsSeen = new Set(); inRangeWas = false;
     play.mission = state.mission; save(PLAY_KEY, play); syncPlayUI();
+    if (state.campaign) writeCampaign({ seed: state.seed, level: state.mission, score: state.score, tank: true, bonus: state.bonus });
   }
   $('result-card').classList.remove('show');
   mode = 'play'; carry = 0; resetInput(); syncLook(); lockPointer();
@@ -269,18 +304,18 @@ function showResult() {
   const w = $('r-word'), msg = $('r-msg'), det = $('r-detail'), pts = $('r-points'), btn = $('btn-next');
   if (ph === 'complete') {
     const last = !T.MISSIONS[state.mission + 1];
-    w.textContent = last ? 'THE MOON IS YOURS' : 'STRETCH CLEARED';
-    msg.textContent = 'MISSION ' + state.mission + ' — ' + state.missionDef.name;
+    w.textContent = last ? 'THE MOON IS YOURS' : 'LEVEL ' + state.mission + ' CLEAR';
+    msg.textContent = last ? 'THE BASE HAS FALLEN. 3 AND 3 AND OUT.' : 'LEVEL ' + state.mission + ' — ' + state.missionDef.name + ' · NEXT: ' + T.MISSIONS[state.mission + 1].name;
     det.textContent = fmtTime(state.missionTime) + ' · ' + state.kills + ' KILLS SO FAR';
-    pts.textContent = 'SCORE ' + pad(state.score, 4);
-    btn.textContent = last ? 'AGAIN' : 'NEXT MISSION';
+    pts.textContent = (last ? 'FINAL SCORE ' : 'SCORE ') + pad(state.score, 4);
+    btn.textContent = last ? (state.campaign ? 'BACK TO THE START' : 'AGAIN') : 'NEXT LEVEL';
   } else {
     const by = state.lastDeath || 'shell';
     const m = DEATH_MSG[by] || DEATH_MSG.shell;
     w.textContent = ph === 'over' ? 'ALL TANKS LOST' : 'HULL BREACHED';
     msg.textContent = m[0];
     det.textContent = m[1];
-    pts.textContent = 'SCORE ' + pad(state.score, 4) + (ph === 'over' ? ' · MISSION ' + state.mission : ' · ' + state.lives + (state.lives === 1 ? ' TANK LEFT' : ' TANKS LEFT'));
+    pts.textContent = 'SCORE ' + pad(state.score, 4) + (ph === 'over' ? ' · LEVEL ' + state.mission : ' · ' + state.lives + (state.lives === 1 ? ' TANK LEFT' : ' TANKS LEFT'));
     btn.textContent = ph === 'over' ? 'GAME OVER' : 'NEXT TANK';
   }
   $('result-card').classList.add('show');
@@ -291,9 +326,9 @@ function handleEvents(events) {
     if (e.type === 'fire') Sfx.fire();
     else if (e.type === 'laser') Sfx.laser();
     else if (e.type === 'kill') {
-      if (e.enemy) scene.spawnBreak(MODELS[e.enemy.kind] || MODELS.slow, e.enemy.x, e.enemy.y, e.enemy.z, e.enemy.heading, 1, e.enemy.kind === 'boss' ? 1.6 : 1);
+      if (e.enemy) scene.spawnBreak(MODELS[e.enemy.kind] || MODELS.slow, e.enemy.x, e.enemy.y, e.enemy.z, e.enemy.heading, 1, T.ENEMY[e.enemy.kind] && T.ENEMY[e.enemy.kind].boss ? 1.6 : 1);
       else if (e.structure) scene.spawnBreak(ST.solid(e.structure.id), e.structure.x, e.structure.y, e.structure.z, 0, 1, 1.4);
-      Sfx.kill(e.kind === 'boss' || (e.structure && e.structure.mult >= 3));
+      Sfx.kill((T.ENEMY[e.kind] && T.ENEMY[e.kind].boss) || (e.structure && e.structure.mult >= 3));
       floatLabel(e.x, e.y + 24, e.z, '+' + e.points, '');
       const name = e.enemy ? ENEMY_NAMES[e.enemy.kind] : e.structure.name;
       floatLabel(e.x, e.y + 24, e.z, name + ' ' + (e.enemy ? T.ENEMY[e.enemy.kind].mult : e.structure.mult) + 'X', 'word', 1);
@@ -304,7 +339,14 @@ function handleEvents(events) {
     else if (e.type === 'missileDown') { scene.spawnBurst(e.x, e.y, e.z, 1.4); Sfx.missileDown(); floatLabel(e.x, e.y + 8, e.z, 'MISSILE DOWN', 'word'); }
     else if (e.type === 'enemyFire') Sfx.enemyFire(Math.hypot(e.x - t.x, e.z - t.z));
     else if (e.type === 'samLaunch') { Sfx.samLaunch(); floatLabel(e.x, e.y + 12, e.z, 'MISSILE', 'word'); }
-    else if (e.type === 'hullHit') { hullFlash = 0.7; veilT = 0.09; setCracks(e.hits); Sfx.hullHit(); }
+    else if (e.type === 'gunFire') { scene.spawnBurst(e.x, e.y, e.z, 0.5); Sfx.enemyFire(Math.hypot(e.x - t.x, e.z - t.z)); }
+    else if (e.type === 'beamFire') { if (!e.blocked) { hullFlash = Math.max(hullFlash, 0.25); } Sfx.beam(Math.hypot(e.x - t.x, e.z - t.z)); }
+    else if (e.type === 'pickup') { Sfx.pickup(e.kind); floatLabel(e.x, e.y + 10, e.z, e.text, ''); }
+    else if (e.type === 'encounter') { floatCentre(e.boss ? e.name + ' — ' + bossName(e) : 'CONTACT — ' + e.name); if (e.boss) Sfx.wave(); }
+    else if (e.type === 'waypoint') { Sfx.ping(); }
+    else if (e.type === 'waypointDone') { Sfx.wave(); if (!e.last) floatCentre('WAYPOINT ' + (e.wp + 1) + ' OF ' + state.route.length + ' — THE ROAD GOES ON'); }
+    else if (e.type === 'hangar') { Sfx.wave(); floatCentre('THE HANGAR OPENS — ' + e.wave + ' OF ' + e.of); }
+    else if (e.type === 'hullHit') { const big = e.dmg >= 20; hullFlash = big ? 0.7 : 0.3; veilT = big ? 0.09 : 0; setCracks(e.hits); if (big) Sfx.hullHit(); else Sfx.nibble(); }
     else if (e.type === 'dead') { hullFlash = 1; veilT = 0.12; setCracks(3); state.lastDeath = e.by; Sfx.dead(); resultTimer = 2.6; mode = 'settle'; }
     else if (e.type === 'over') setTimeout(() => Sfx.over(), 1500);
     else if (e.type === 'wave') { Sfx.wave(); if (e.wave > 1) floatCentre('WAVE ' + e.wave + ' OF ' + e.of); }
@@ -312,6 +354,7 @@ function handleEvents(events) {
     else if (e.type === 'bump') Sfx.bump();
   }
 }
+function bossName(e) { const wp = state.route[e.wp]; if (!wp || !wp.encounter) return ''; for (const k of Object.keys(wp.encounter)) if (T.ENEMY[k] && T.ENEMY[k].boss) return ENEMY_NAMES[k]; return ''; }
 function setCracks(hits) {
   $('crack-1').classList.toggle('on', hits >= 1); $('crack-1b').classList.toggle('on', hits >= 1);
   $('crack-2').classList.toggle('on', hits >= 2); $('crack-2b').classList.toggle('on', hits >= 2);
@@ -416,6 +459,7 @@ function frameStep(dt) {
       tank: t,
       enemies: state.enemies, missiles: state.missiles, eshells: state.eshells, shells: state.shells, beam: state.laser.beam,
       structures: T.structuresNear(state, t.x, t.z, 2800),
+      beams: state.beams, pickups: state.pickups, route: state.route, start: state.start,
       dead: state.phase === 'dead' || state.phase === 'over',
       flash: hullFlash * 0.22,
       hover: hoverId,
@@ -457,9 +501,19 @@ function renderInstruments() {
   const r = lastReadouts;
   const t = state.tank;
   $('v-score').textContent = pad(r.score, 4);
-  $('v-mission').textContent = 'MISSION ' + r.mission + (r.missionName ? ' · ' + r.missionName : '');
+  $('v-mission').textContent = 'LEVEL ' + r.mission + (r.missionName ? ' · ' + r.missionName : '');
   $('v-time').textContent = fmtTime(r.time);
-  $('v-left').textContent = r.hostilesLeft + ' LEFT' + (r.waves ? ' · WAVE ' + r.wave + '/' + r.waves : '');
+  $('v-left').textContent = 'WP ' + r.routeDone + '/' + r.routeTotal + ' · ' + r.hostilesLeft + ' HOSTILE' + (r.hostilesLeft === 1 ? '' : 'S');
+  // the bonuses (the pickups): only what is held
+  const bb = [];
+  if (r.bonus.speed) bb.push('SPEED +' + Math.round(T.PICKUP.bonusStep * 100 * r.bonus.speed) + '%');
+  if (r.bonus.shell) bb.push('SHELL +' + Math.round(T.PICKUP.bonusStep * 100 * r.bonus.shell) + '%');
+  if (r.bonus.armor) bb.push('ARMOR ' + r.armorMax);
+  $('v-bonus').textContent = bb.join(' · ');
+  // the next waypoint: name + range, amber for a boss or the base
+  const wpEl = $('v-wp');
+  if (r.waypoint) wpEl.innerHTML = '<span class="' + (r.waypoint.boss || r.waypoint.base ? 'boss' : '') + '">' + r.waypoint.name + '</span><span class="rng">' + (r.waypoint.range >= 10000 ? (r.waypoint.range / 1000).toFixed(1) + 'K' : r.waypoint.range) + ' FT</span>';
+  else wpEl.textContent = 'THE ROAD IS DONE';
   renderTape(r);
   $('v-spd').innerHTML = pad(Math.abs(r.speed), 2) + '<span class="unit">' + (r.speed < -0.5 ? 'REV' : 'FT/S') + '</span>';
   // the projected range: what the gun's line meets, and how far
@@ -479,17 +533,14 @@ function renderInstruments() {
   const lf = $('laser-fill');
   lf.style.width = (r.laser * 100).toFixed(1) + '%';
   lf.classList.toggle('charging', r.laser < 1);
-  // the hull
-  const hk = r.hits + '|' + r.lives;
+  // the hull: a pool — the bar is what is left, the number the armor points
+  const hk = r.armor + '|' + r.armorMax + '|' + r.lives;
   if (hk !== lastHullKey) {
     lastHullKey = hk;
-    const cells = $('hull-track').children;
-    for (let i = 0; i < cells.length; i++) {
-      const alive = i < r.hitsMax - r.hits;
-      cells[i].classList.toggle('gone', !alive);
-      cells[i].classList.toggle('last', alive && r.hitsMax - r.hits === 1);
-    }
-    $('v-hull').textContent = r.hits === 0 ? 'WHOLE' : r.hits === 1 ? 'HIT ONCE' : r.hits === 2 ? 'ONE MORE' : 'BREACHED';
+    const fill = $('hull-fill');
+    fill.style.width = (100 * Math.max(0, Math.min(1, r.armor / Math.max(1, r.armorMax)))).toFixed(1) + '%';
+    fill.classList.toggle('low', r.armor > 0 && r.armor <= r.armorMax / 3);
+    $('v-hull').textContent = r.armor <= 0 ? 'BREACHED' : r.armor + ' / ' + r.armorMax;
     const lv = $('lives').children;
     for (let i = 0; i < lv.length; i++) lv[i].classList.toggle('gone', i >= r.lives);
   }
@@ -529,7 +580,7 @@ let tapeKey = '';
 function renderTape(r) {
   const deg = (rad) => rad * 180 / Math.PI;
   const px = (relDeg) => relDeg / TAPE_HALF * TAPE_W;
-  const key = r.lookDeg + '|' + Math.round(deg(r.hullBearing)) + '|' + Math.round(deg(r.gunBearing) * 2) + '|' + r.contacts.map((c) => c.kind[0] + Math.round(deg(c.bearing))).join(',');
+  const key = r.lookDeg + '|' + Math.round(deg(r.hullBearing)) + '|' + Math.round(deg(r.gunBearing) * 2) + '|' + (r.waypoint ? Math.round(deg(r.waypoint.bearing)) : '-') + '|' + r.contacts.map((c) => c.kind[0] + Math.round(deg(c.bearing))).join(',');
   if (key === tapeKey) return;
   tapeKey = key;
   let h = '';
@@ -556,6 +607,12 @@ function renderTape(r) {
   const hb = deg(r.hullBearing);
   if (Math.abs(hb) <= TAPE_HALF) h += '<g class="hull" transform="translate(' + px(hb).toFixed(1) + ',10)"><path d="M-5 2h10l-1.5 2.5h-7z M-3 -1h6l1 3h-8z M0 -3.5v2.5" /></g>';
   else h += '<path class="hull off" d="' + (hb > 0 ? 'M' + (TAPE_W - 6) + ' 9 l6 3 l-6 3' : 'M' + (-TAPE_W + 6) + ' 9 l-6 3 l6 3') + '" />';
+  // the next waypoint: a diamond above the tape at its bearing, a filled one at the edge when it is off the tape
+  if (r.waypoint) {
+    const wb = deg(r.waypoint.bearing);
+    if (Math.abs(wb) <= TAPE_HALF) h += '<path class="wp" d="M' + px(wb).toFixed(1) + ' -13 l3 3 l-3 3 l-3 -3z" />';
+    else h += '<path class="wp off" d="' + (wb > 0 ? 'M' + (TAPE_W - 4) + ' -13 l4 3 l-4 3z' : 'M' + (-TAPE_W + 4) + ' -13 l-4 3 l4 3z') + '" />';
+  }
   // the gun: a caret under the tape, sliding toward the lubber line
   const gb = deg(r.gunBearing);
   if (Math.abs(gb) <= TAPE_HALF) h += '<path class="gun" d="M' + px(gb).toFixed(1) + ' 7 l-2.5 4 h5z" />';
@@ -578,9 +635,10 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'attract') startGame();
   } else if (k === 'l') { if (mode === 'play' && !e.repeat) laserEdge = true; }
   else if (k === 'z') { if (mode === 'play' && !e.repeat) scope = !scope; }
+  else if (k === 'm') { if (!e.repeat) toggleMap(); }
   else if (k === 'enter') { if (mode === 'attract') startGame(); else if (mode === 'result') nextStep(); }
   else if (k === 'p') togglePause();
-  else if (k === 'escape') { if (mode === 'play') togglePause(); }   // Esc also drops the pointer lock (the browser's own)
+  else if (k === 'escape') { if (mode === 'map') toggleMap(); else if (mode === 'play') togglePause(); }   // Esc also drops the pointer lock (the browser's own)
   else if (k === 'r') armRestart();
 });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -612,12 +670,80 @@ canvas.addEventListener('pointerdown', (e) => {
 document.addEventListener('pointerlockchange', () => {
   if (document.pointerLockElement !== canvas && mode === 'play') togglePause();
 });
+// THE MAP (James, 2026-09-11: "a map view that can be brought up to see the goals along the way"):
+// the level from above in the line register — the road, the waypoints numbered and named, the
+// landmarks, the boss and the base, your tank, contacts on the radar, pickups you have seen.
+// The game waits under it; M or Esc closes it.
+const seenPickups = new Set();
+function toggleMap() {
+  if (mode === 'map') { mode = pausedFrom; document.body.classList.remove('mapped'); lastT = 0; if (mode === 'play') lockPointer(); return; }
+  if (mode !== 'play' && mode !== 'paused' && mode !== 'settle') return;
+  pausedFrom = mode === 'paused' ? 'play' : mode;
+  document.body.classList.remove('paused');
+  mode = 'map';
+  document.body.classList.add('mapped');
+  Sfx.quiet(); unlockPointer();
+  buildMap();
+}
+function buildMap() {
+  if (!state) return;
+  const def = state.missionDef, R = state.route, t = state.tank;
+  const W = 1600, H = 900, pad = 90;
+  const x0 = Math.min(state.start ? state.start[0] : t.x, R.length ? R[0].x : t.x, def.chunks[0] * T.CHUNK_W + 200) - 300;
+  const x1 = (def.chunks[1] + 1) * T.CHUNK_W;
+  const sx = (x) => pad + (x - x0) / (x1 - x0) * (W - pad * 2);
+  const sz = (z) => H / 2 + z / 1400 * (H - pad * 2);
+  let h = '';
+  // the flight line (the lander's road) and the chunk seams, faint
+  h += '<line class="line" x1="' + pad + '" y1="' + sz(0) + '" x2="' + (W - pad) + '" y2="' + sz(0) + '" />';
+  for (let k = def.chunks[0]; k <= def.chunks[1] + 1; k++) { const x = sx(k * T.CHUNK_W); if (x > pad && x < W - pad) h += '<line class="line" x1="' + x + '" y1="' + (H - 40) + '" x2="' + x + '" y2="' + (H - 20) + '" />'; }
+  // the buildings: hostiles as small amber squares, civilians faint
+  for (let k = def.chunks[0]; k <= def.chunks[1]; k++) for (const o of T.chunkStructures(state, k)) {
+    if (!o.alive || o.landmark) continue;
+    const x = sx(o.x), z = sz(o.z);
+    if (o.cls === 'civ') h += '<rect class="civ" x="' + (x - 4) + '" y="' + (z - 4) + '" width="8" height="8" />';
+    else if (o.id === 'base') h += '<rect class="base" x="' + (x - 22) + '" y="' + (z - 12) + '" width="44" height="24" /><text class="lbl" x="' + x + '" y="' + (z - 18) + '">THE BASE</text>';
+    else h += '<rect class="contact site" x="' + (x - 5) + '" y="' + (z - 5) + '" width="10" height="10" />';
+  }
+  // the road
+  let prev = state.start ? { x: state.start[0], z: state.start[1], done: true } : null;
+  for (const w of R) {
+    if (prev) h += '<line class="road' + (w.done ? ' done' : '') + '" x1="' + sx(prev.x) + '" y1="' + sz(prev.z) + '" x2="' + sx(w.x) + '" y2="' + sz(w.z) + '" />';
+    prev = w;
+  }
+  // the pickups seen (within radar range at some point)
+  for (const pk of state.pickups) { if (pk.taken) continue; if (Math.hypot(pk.x - t.x, pk.z - t.z) < T.RADAR_RANGE) seenPickups.add(pk.id); if (!seenPickups.has(pk.id)) continue; const x = sx(pk.x), z = sz(pk.z); h += '<path class="pick" d="M' + x + ' ' + (z - 6) + ' l6 6 l-6 6 l-6 -6z" />'; }
+  // the waypoints: numbered, named, the next lit, the boss and the base amber
+  const next = T.nextWaypoint(state);
+  R.forEach((w, i) => {
+    const x = sx(w.x), z = sz(w.z);
+    const cls = 'wp' + (w.done ? ' done' : '') + (w === next ? ' next' : '') + (w.boss || w.base ? ' boss' : '');
+    h += '<circle class="' + cls + '" cx="' + x + '" cy="' + z + '" r="' + (w.boss || w.base ? 18 : 14) + '" />';
+    h += '<text class="wpn' + (w.done ? ' done' : '') + '" x="' + x + '" y="' + (z + 5) + '">' + (w.base ? 'B' : w.boss ? '★' : (i + 1)) + '</text>';
+    const name = w.base ? '' : w.boss ? 'THE ' + (bossNameOf(w) || 'BOSS') : (w.landmark ? w.landmark.name : '');
+    if (name) h += '<text class="lm" x="' + x + '" y="' + (z + (i % 2 ? 36 : -24)) + '">' + name + '</text>';
+  });
+  // contacts on the radar now
+  for (const e of state.enemies) { if (!e.alive || Math.hypot(e.x - t.x, e.z - t.z) > T.RADAR_RANGE) continue; h += '<circle class="contact" cx="' + sx(e.x) + '" cy="' + sz(e.z) + '" r="' + (T.ENEMY[e.kind].boss ? 6 : 4) + '" />'; }
+  // the tank: a triangle at its heading
+  const hx = sx(t.x), hz = sz(t.z), a = t.heading;
+  const tri = [[0, -16], [10, 12], [-10, 12]].map(([px, py]) => [hx + px * Math.cos(a) - py * Math.sin(a), hz + px * Math.sin(a) + py * Math.cos(a)]);
+  h += '<polygon class="me" points="' + tri.map((q) => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ') + '" />';
+  $('map-svg').innerHTML = h;
+  $('map-title').textContent = 'LEVEL ' + state.mission + ' — ' + def.name;
+  const r = lastReadouts;
+  $('map-sub').textContent = (r ? r.routeDone + ' OF ' + r.routeTotal + ' WAYPOINTS' : '') + (next ? ' · NEXT: ' + next.name : ' · THE ROAD IS DONE');
+}
+function bossNameOf(w) { if (!w.encounter) return ''; for (const k of Object.keys(w.encounter)) if (T.ENEMY[k] && T.ENEMY[k].boss) return ENEMY_NAMES[k].replace(/^THE /, ''); return ''; }
+$('btn-map').addEventListener('click', (e) => { e.stopPropagation(); toggleMap(); });
+$('map').addEventListener('pointerdown', (e) => { if (e.target === $('map') || e.target === $('map-foot')) toggleMap(); });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 // the console's weapon rows are buttons too (the lander's console got the same on James's ask)
 $('wpn-shell').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (mode === 'play') fireEdge = true; });
 $('wpn-laser').addEventListener('pointerdown', (e) => { e.stopPropagation(); if (mode === 'play') laserEdge = true; });
 
 function togglePause() {
+  if (mode === 'map') return;
   if (mode === 'paused') { mode = pausedFrom; document.body.classList.remove('paused'); lastT = 0; if (mode === 'play') lockPointer(); }
   else if (mode === 'play' || mode === 'settle') { pausedFrom = mode; mode = 'paused'; document.body.classList.add('paused'); Sfx.quiet(); unlockPointer(); }
 }
@@ -674,7 +800,7 @@ function syncPlayUI() {
   $('t-sens').value = play.sens; $('t-sens-val').textContent = (+play.sens).toFixed(2) + '×';
   $('t-turn').value = play.turn; $('t-turn-val').textContent = (+play.turn).toFixed(2) + '×';
   $('t-seed').value = play.seed || '';
-  if (mode === 'attract') { const m = T.MISSIONS[clamp(play.mission | 0, 1, 6)]; $('start-mission').textContent = 'MISSION ' + play.mission + ' — ' + m.name; }
+  if (mode === 'attract' && !(CAMPAIGN && campaignStart())) { const m = T.MISSIONS[clamp(play.mission | 0, 1, LEVELS_MAX)]; $('start-mission').textContent = 'LEVEL ' + clamp(play.mission | 0, 1, LEVELS_MAX) + ' — ' + m.name; }
 }
 const lookRows = $('look-rows');
 function buildLookRows() {

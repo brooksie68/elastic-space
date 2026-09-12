@@ -316,11 +316,12 @@ const BRIEF = {
 };
 // the campaign's saved position (a reload resumes at the start of that level)
 function readCampaign() {
-  try { const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null'); return c && c.level > 1 && Number.isFinite(c.seed) ? c : null; } catch (e) { return null; }
+  try { const c = JSON.parse(localStorage.getItem(CAMPAIGN_KEY) || 'null'); return c && (c.tank || c.level > 1) && Number.isFinite(c.seed) ? c : null; } catch (e) { return null; }
 }
 function writeCampaign(c) { try { if (c) localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(c)); else localStorage.removeItem(CAMPAIGN_KEY); } catch (e) {} }
 function campaignBrief() {
   const saved = readCampaign();
+  if (saved && saved.tank) return 'THE LANDER HAS DONE ITS PART. THE TANK CAMPAIGN STANDS AT LEVEL ' + saved.level + ' WITH ' + pad(saved.score, 4) + ' POINTS<br />CONTINUE CLIMBS BACK INTO THE TANK · START OVER BEGINS A NEW CAMPAIGN AT LEVEL 1';
   const level = saved ? saved.level : 1;
   return LEVEL_BRIEF[level] + (saved ? ' — RESUMING WITH ' + pad(saved.score, 4) + ' POINTS' : '') + KEYS_LINE;
 }
@@ -333,7 +334,7 @@ function renderModes() {
   $('start-brief').innerHTML = modeChoice() === 'campaign' ? campaignBrief() : BRIEF[modeChoice()];
   $('btn-start').textContent = modeChoice() === 'tanks' ? 'ROLL OUT' : (modeChoice() === 'campaign' && saved) ? 'CONTINUE' : 'START';
   $('btn-over').style.display = modeChoice() === 'campaign' && saved ? '' : 'none';
-  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : 'LEVEL ' + (saved ? saved.level : 1);
+  if (mode === 'attract') $('ro-select').textContent = gameMode === 'free' ? 'FREE FLIGHT' : (saved && saved.tank ? 'TANK ' : 'LEVEL ') + (saved ? saved.level : 1);
 }
 function setMode(m, k) {
   if (m) gameMode = m;
@@ -351,9 +352,10 @@ function makeGame() {
   if (!Number.isFinite(seed)) seed = (Math.random() * 0xffffffff) >>> 0;
   // a saved campaign resumes at its level's start, on its own moon, with its score
   const saved = gameMode === 'campaign' ? readCampaign() : null;
-  if (saved) seed = saved.seed >>> 0;
-  state = Core.createGame({ seed, level: saved ? saved.level : 1, fuel: play.fuel, gravityScale: play.gravity, free: gameMode === 'free' });
-  if (saved) state.score = saved.score | 0;
+  if (saved && saved.tank) { /* the tank half owns the campaign now; the lander deals a fresh moon for free flight only */ }
+  else if (saved) seed = saved.seed >>> 0;
+  state = Core.createGame({ seed, level: saved && !saved.tank ? saved.level : 1, fuel: play.fuel, gravityScale: play.gravity, free: gameMode === 'free' });
+  if (saved && !saved.tank) state.score = saved.score | 0;
   if (scene) { scene.setWorld(state); scene.clearEffects(); }
   clearFloats();
   buildPadLabels();
@@ -375,6 +377,8 @@ function enterAttract(resultLine, stamp) {
 function startGame() {
   if (mode !== 'attract') return;
   if (modeChoice() === 'tanks') { window.location.href = TANK_PAGE; return; }
+  const savedTank = gameMode === 'campaign' ? readCampaign() : null;
+  if (savedTank && savedTank.tank) { window.location.href = TANK_PAGE + '?campaign=1'; return; }
   if (state && state.free !== (gameMode === 'free')) state = null;   // the card's choice changed since the last game was dealt
   makeGame();
   $('start-card').classList.remove('show');

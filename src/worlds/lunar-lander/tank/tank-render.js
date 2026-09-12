@@ -436,7 +436,116 @@ function buildTankBoss() {
   for (const sx of [-1, 1]) { seg(S, [sx * 3.2 - 0.7, gy, -2], [sx * 3.2 - 0.5, gy, -hz - 14]); seg(S, [sx * 3.2 + 0.7, gy, -2], [sx * 3.2 + 0.5, gy, -hz - 14]); }
   return S;
 }
-export const MODELS = { slow: buildTankSlow(), medium: buildTankMedium(), boss: buildTankBoss() };
+// THE HOVER (2026-09-11): a low wedge on a skirt, no wheels, a fan ring at the back, a light gun.
+function buildHover() {
+  const S = [];
+  const L = 14, W = 10, H = 5, hz = L / 2, hw = W / 2;
+  // the skirt: a rounded rim at the bottom, drawn as an octagon-ish loop
+  const rim = [[-hw, 0, -hz + 2], [-hw + 2, 0, -hz], [hw - 2, 0, -hz], [hw, 0, -hz + 2], [hw, 0, hz - 2], [hw - 2, 0, hz], [-hw + 2, 0, hz], [-hw, 0, hz - 2]];
+  loop(S, rim);
+  // the deck: a wedge, nose down
+  const deck = [[-hw + 1, H, -hz + 5], [hw - 1, H, -hz + 5], [hw - 1, H, hz - 1], [-hw + 1, H, hz - 1]];
+  loop(S, deck);
+  seg(S, deck[0], [-hw + 2, 1.2, -hz]); seg(S, deck[1], [hw - 2, 1.2, -hz]);
+  seg(S, deck[2], rim[4]); seg(S, deck[3], rim[7]);
+  seg(S, [-hw + 2, 1.2, -hz], [hw - 2, 1.2, -hz]);
+  // the fan ring at the stern
+  wheel(S, 0, 2.6, hz + 0.6, 2.4, 8);
+  // the gun: a short tube off the nose, a canopy bump
+  seg(S, [0, H - 0.6, -hz + 5], [0, H - 0.3, -hz - 4]); seg(S, [-0.5, H - 0.3, -hz - 4], [0.5, H - 0.3, -hz - 4]);
+  loop(S, [[-1.6, H, 1], [1.6, H, 1], [1.2, H + 1.6, 2.5], [-1.2, H + 1.6, 2.5]]);
+  return S;
+}
+// THE MECH WALKER: a pod body on two legs, a beam emitter under the chin, an
+// antenna. The legs are drawn by mechLegs() each frame so they can walk.
+function buildMechBody(sc) {
+  const S = [];
+  const k = sc || 1;
+  const y0 = 12 * k, y1 = 22 * k, hw = 5 * k, hz = 5 * k;
+  // the pod: a box with chamfered front
+  loop(S, [[-hw, y0, hz], [hw, y0, hz], [hw, y0, -hz + 2 * k], [hw - 2 * k, y0, -hz], [-hw + 2 * k, y0, -hz], [-hw, y0, -hz + 2 * k]]);
+  loop(S, [[-hw, y1, hz], [hw, y1, hz], [hw, y1, -hz + 2 * k], [hw - 2 * k, y1, -hz], [-hw + 2 * k, y1, -hz], [-hw, y1, -hz + 2 * k]]);
+  for (const c of [[-hw, hz], [hw, hz], [hw - 2 * k, -hz], [-hw + 2 * k, -hz]]) seg(S, [c[0], y0, c[1]], [c[0], y1, c[1]]);
+  // the visor slit, the emitter under the chin, the antenna
+  seg(S, [-3 * k, y1 - 3 * k, -hz - 0.1], [3 * k, y1 - 3 * k, -hz - 0.1]);
+  seg(S, [0, y0 + 1 * k, -hz], [0, y0 + 1 * k, -hz - 3 * k]); wheel(S, 0, y0 + 1 * k, -hz - 3 * k, 1.1 * k, 6);
+  seg(S, [hw - 1 * k, y1, hz - 1 * k], [hw - 1 * k, y1 + 5 * k, hz - 1 * k]);
+  // the hips: a bar under the pod
+  seg(S, [-hw - 1.5 * k, y0, 0], [hw + 1.5 * k, y0, 0]);
+  return S;
+}
+// the legs: hip → knee → foot, each swung by ±swing about the hip; one leg forward, one back
+function mechLegs(swing, sc) {
+  const S = [];
+  const k = sc || 1;
+  const hipY = 12 * k, hipX = 6.5 * k;
+  for (const side of [-1, 1]) {
+    const a = swing * side;                       // thigh swing (rad) — forward is -z
+    const kneeBend = 0.55 + Math.max(0, -a) * 0.8;  // the trailing leg bends more
+    const thigh = 7 * k, shin = 6.5 * k;
+    const hx = side * hipX;
+    const kx = hx, ky = hipY - Math.cos(a) * thigh, kz = -Math.sin(a) * thigh;
+    const fa = a - kneeBend;
+    const fx = hx, fy = ky - Math.cos(fa) * shin, fz = kz - Math.sin(fa) * shin;
+    seg(S, [hx, hipY, 0], [kx, ky, kz]);
+    seg(S, [hx - 0.8 * k, hipY - 0.5 * k, 0], [kx - 0.8 * k, ky, kz]);
+    seg(S, [kx, ky, kz], [fx, Math.max(0.3, fy), fz]);
+    // the foot: a splayed pad
+    seg(S, [fx - 2 * k, Math.max(0.3, fy), fz + 1.5 * k], [fx + 2 * k, Math.max(0.3, fy), fz + 1.5 * k]);
+    seg(S, [fx - 2 * k, Math.max(0.3, fy), fz + 1.5 * k], [fx, Math.max(0.3, fy), fz - 2.5 * k]);
+    seg(S, [fx + 2 * k, Math.max(0.3, fy), fz + 1.5 * k], [fx, Math.max(0.3, fy), fz - 2.5 * k]);
+  }
+  return S;
+}
+// THE WARDEN (level 1's mini boss): the slow tank's language at 1.4×, a twin gun, a raised cupola.
+function buildWarden() {
+  const base = buildTankSlow();
+  const S = base.map((q) => [q[0] * 1.4, q[1] * 1.35, q[2] * 1.4, q[3] * 1.4, q[4] * 1.35, q[5] * 1.4]);
+  const gy = 8 * 1.35 + 2.7, hz = 24 * 1.4 / 2;
+  for (const sx of [-1, 1]) { seg(S, [sx * 2.2 - 0.6, gy, -1], [sx * 2.2 - 0.45, gy, -hz - 11]); seg(S, [sx * 2.2 + 0.6, gy, -1], [sx * 2.2 + 0.45, gy, -hz - 11]); }
+  loop(S, [[-2.5, 8 * 1.35 + 4.6, 3], [2.5, 8 * 1.35 + 4.6, 3], [2.5, 8 * 1.35 + 7.2, 3], [-2.5, 8 * 1.35 + 7.2, 3]]);
+  return S;
+}
+// THE STRIDER (level 2's): the mech at 1.7× with two shoulder pods (its shells) and a crown of antennae.
+function buildStriderBody() {
+  const S = buildMechBody(1.7);
+  const y1 = 22 * 1.7, hw = 5 * 1.7;
+  for (const sx of [-1, 1]) {
+    boxWire(S, sx * (hw + 0.5) - (sx < 0 ? 4 : 0), y1 - 5, -3, sx * (hw + 0.5) + (sx > 0 ? 4 : 0), y1 - 1, 3);
+    seg(S, [sx * (hw + 2.5), y1 - 3, -3], [sx * (hw + 2.5), y1 - 2.4, -9]);
+  }
+  for (let i = 0; i < 3; i++) seg(S, [(-3 + i * 3), y1, 2], [(-3 + i * 3) * 1.4, y1 + 6 + i * 2, 2]);
+  return S;
+}
+export const MODELS = { slow: buildTankSlow(), medium: buildTankMedium(), boss: buildTankBoss(), hover: buildHover(), mech: buildMechBody(1), warden: buildWarden(), strider: buildStriderBody() };
+export const MECH_SCALE = { mech: 1, strider: 1.7 };
+// THE PICKUPS: canisters that spin on the road — armor a hexagonal crate with a
+// cross; speed a tall can with chevrons; shell a shell; armor-max a double crate.
+function buildPickup(kind) {
+  const S = [];
+  const hex = (y, r) => { const p = []; for (let i = 0; i < 6; i++) { const a = Math.PI * 2 * i / 6; p.push([Math.cos(a) * r, y, Math.sin(a) * r]); } return p; };
+  if (kind === 'armor' || kind === 'armormax') {
+    const r = kind === 'armormax' ? 3.4 : 2.8, h = kind === 'armormax' ? 6 : 4.5;
+    const a = hex(0.6, r), b = hex(0.6 + h, r);
+    loop(S, a); loop(S, b);
+    for (let i = 0; i < 6; i += 2) seg(S, a[i], b[i]);
+    seg(S, [-1.4, 0.6 + h / 2, -r], [1.4, 0.6 + h / 2, -r]); seg(S, [0, 0.6 + h / 2 - 1.4, -r], [0, 0.6 + h / 2 + 1.4, -r]);
+    if (kind === 'armormax') { const c = hex(0.6 + h + 1.5, r * 0.6); loop(S, c); for (let i = 0; i < 6; i += 3) seg(S, b[i], c[i]); }
+  } else if (kind === 'speed') {
+    const a = hex(0.6, 2), b = hex(6.5, 2);
+    loop(S, a); loop(S, b);
+    for (let i = 0; i < 6; i += 2) seg(S, a[i], b[i]);
+    for (const y of [2.2, 3.6, 5.0]) { seg(S, [-1.4, y, -2], [0, y + 1, -2]); seg(S, [0, y + 1, -2], [1.4, y, -2]); }
+  } else {
+    // a shell: a cylinder with an ogive nose, standing up
+    const a = hex(0.6, 1.6), b = hex(4.6, 1.6);
+    loop(S, a); loop(S, b);
+    for (let i = 0; i < 6; i += 2) { seg(S, a[i], b[i]); seg(S, b[i], [0, 8, 0]); }
+    loop(S, hex(6.2, 1.0));
+  }
+  return S;
+}
+export const PICKUPS = { armor: buildPickup('armor'), speed: buildPickup('speed'), shell: buildPickup('shell'), armormax: buildPickup('armormax') };
 // the ground missile: a dart with three fins, nose at -z
 const MISSILE = (() => {
   const S = [];
@@ -880,11 +989,12 @@ export class TankScene {
     for (const e of enemies) {
       if (!e.alive) continue;
       const k = E[e.kind];
-      const hl = k.length / 2 - 0.8, hw = k.width / 2 - 0.8, c = Math.cos(e.heading), s = Math.sin(e.heading);
+      const bx = k.box || null;   // a walker's box is its pod, so the legs and the far edges show
+      const hl = (bx ? bx.l : k.length) / 2 - 0.8, hw = (bx ? bx.w : k.width) / 2 - 0.8, c = Math.cos(e.heading), s = Math.sin(e.heading);
       // an oriented box: eight corners rotated by the heading
       const corners = [];
       for (const lz of [-hl, hl]) for (const lx of [-hw, hw]) corners.push([e.x + lx * c - lz * s, e.z + lx * s + lz * c]);
-      boxes.push({ o: true, c: corners, y0: e.y + 1.2, y1: e.y + k.hullH - 0.6 });
+      boxes.push({ o: true, c: corners, y0: e.y + (bx ? bx.y0 + 0.4 : 1.2), y1: e.y + (bx ? bx.y1 - 0.4 : k.hullH - 0.6) });
     }
     const pos = new Float32Array(boxes.length * 36 * 3);
     let v = 0;
@@ -1064,7 +1174,8 @@ export class TankScene {
       // crosshair 1.25 (its "hover"); rubble carries its own brightness per stroke
       const hov = view && view.hover && view.hover === s.sid;
       const b = s.alive ? (hov ? 1.25 : s.cls === 'civ' ? P.civBright : P.hostBright) : 0;
-      for (const q of segs) SB.seg(s.x + q[0], s.y + q[1], s.z + q[2], s.x + q[3], s.y + q[4], s.z + q[5], s.alive ? b : q[6]);
+      if (s.face === 'west') for (const q of segs) SB.seg(s.x - q[2], s.y + q[1], s.z + q[0], s.x - q[5], s.y + q[4], s.z + q[3], s.alive ? b : q[6]);   // turned to face the road
+      else for (const q of segs) SB.seg(s.x + q[0], s.y + q[1], s.z + q[2], s.x + q[3], s.y + q[4], s.z + q[5], s.alive ? b : q[6]);
       if (s.alive && s.hard === 'door' && s.door > 0) {
         const gl = 1.6 + 0.5 * Math.sin(this.time * 14);
         const hz = s.d / 2;
@@ -1082,7 +1193,82 @@ export class TankScene {
       const M = MODELS[e.kind] || MODELS.slow;
       const c = Math.cos(e.heading), s = Math.sin(e.heading);
       const eb = view && view.hover && view.hover === e.id ? 1.25 : P.enemyBright;
-      for (const q of M) D.seg(e.x + q[0] * c - q[2] * s, e.y + q[1], e.z + q[0] * s + q[2] * c, e.x + q[3] * c - q[5] * s, e.y + q[4], e.z + q[3] * s + q[5] * c, eb);
+      const E = T.ENEMY[e.kind] || {};
+      let ey = e.y;
+      const mechK = MECH_SCALE[e.kind];
+      if (E.hover) ey += 0.7 * Math.sin(this.time * 4 + (e.phase || 0));   // a hover breathes on its cushion
+      if (mechK) {
+        // a walker: the legs swing with the stride, the body bobs on the step
+        const moving = Math.abs(e.speed || 0) > 2;
+        const stride = moving ? Math.sin(e.age * (5.5 / mechK)) : 0;
+        ey += moving ? Math.abs(Math.cos(e.age * (5.5 / mechK))) * 0.6 * mechK : 0;
+        const legs = mechLegs(stride * 0.45, mechK);
+        for (const q of legs) D.seg(e.x + q[0] * c - q[2] * s, e.y + q[1], e.z + q[0] * s + q[2] * c, e.x + q[3] * c - q[5] * s, e.y + q[4], e.z + q[3] * s + q[5] * c, eb * 0.9);
+      }
+      for (const q of M) D.seg(e.x + q[0] * c - q[2] * s, ey + q[1], e.z + q[0] * s + q[2] * c, e.x + q[3] * c - q[5] * s, ey + q[4], e.z + q[3] * s + q[5] * c, eb);
+      if (E.hover) {
+        // the cushion: a faint shimmer ring under the skirt
+        const r = 6 + Math.sin(this.time * 9 + (e.phase || 0)) * 0.6;
+        for (let i = 0; i < 10; i++) { const a0 = Math.PI * 2 * i / 10, a1 = Math.PI * 2 * (i + 1) / 10; D.seg(e.x + Math.cos(a0) * r, e.y - E.hover + 0.4, e.z + Math.sin(a0) * r, e.x + Math.cos(a1) * r, e.y - E.hover + 0.4, e.z + Math.sin(a1) * r, 0.35 + 0.15 * this._rand()); }
+      }
+    }
+    // THE BEAMS (mechs, the strider): a hot line for a blink, a flicker along it
+    for (const b of (view && view.beams) || []) {
+      const fade = Math.max(0, 1 - b.age / 0.16);
+      D.seg(b.x0, b.y0, b.z0, b.x1, b.y1, b.z1, 1.2 + 1.6 * fade);
+      const f = 0.3 + this._rand() * 0.5;
+      D.seg(b.x0 + (b.x1 - b.x0) * f, b.y0 + (b.y1 - b.y0) * f + 0.4, b.z0 + (b.z1 - b.z0) * f, b.x0 + (b.x1 - b.x0) * (f + 0.05), b.y0 + (b.y1 - b.y0) * (f + 0.05) - 0.4, b.z0 + (b.z1 - b.z0) * (f + 0.05), 2.2 * fade);
+    }
+    // THE PICKUPS: canisters spinning on the road, a ring on the ground under each
+    for (const pk of (view && view.pickups) || []) {
+      if (pk.taken) continue;
+      const M = PICKUPS[pk.kind] || PICKUPS.armor;
+      const a = this.time * 1.6 + pk.id, c = Math.cos(a), s = Math.sin(a);
+      const py = pk.y + 0.4 * Math.sin(this.time * 2.2 + pk.id);
+      const pb = pk.kind === 'armor' ? 1.1 : 1.45 + 0.3 * Math.sin(this.time * 5);
+      for (const q of M) D.seg(pk.x + q[0] * c - q[2] * s, py + q[1], pk.z + q[0] * s + q[2] * c, pk.x + q[3] * c - q[5] * s, py + q[4], pk.z + q[3] * s + q[5] * c, pb);
+      const r = 7;
+      for (let i = 0; i < 12; i++) { const a0 = Math.PI * 2 * i / 12, a1 = Math.PI * 2 * (i + 1) / 12; D.seg(pk.x + Math.cos(a0) * r, pk.y + 0.4, pk.z + Math.sin(a0) * r, pk.x + Math.cos(a1) * r, pk.y + 0.4, pk.z + Math.sin(a1) * r, 0.5); }
+    }
+    // THE ROUTE (2026-09-11): the road as a dashed trail on the ground from the last
+    // waypoint to the next and the one after; the NEXT waypoint as a column of light
+    // (a pulsing ring on the ground, a line straight up, a diamond at the top); the one
+    // after as a faint column. Reached ones are gone from the ground.
+    if (view && view.route && view.route.length && t) {
+      const R = view.route;
+      let ni = R.findIndex((w) => !w.done);
+      if (ni < 0) ni = R.length;
+      const from = ni > 0 ? R[ni - 1] : (view.start ? { x: view.start[0], z: view.start[1] } : null);
+      const legs = [];
+      if (from && R[ni]) legs.push([from, R[ni]]);
+      if (R[ni] && R[ni + 1]) legs.push([R[ni], R[ni + 1]]);
+      for (const [a, b] of legs) {
+        const dx = b.x - a.x, dz = b.z - a.z, L = Math.hypot(dx, dz) || 1;
+        const ux = dx / L, uz = dz / L;
+        for (let d = 20; d < L - 20; d += 60) {
+          const x0 = a.x + ux * d, z0 = a.z + uz * d, x1 = a.x + ux * (d + 28), z1 = a.z + uz * (d + 28);
+          if (Math.hypot(x0 - t.x, z0 - t.z) > 2400) continue;
+          D.seg(x0, this._groundAt(x0, z0) + 0.7, z0, x1, this._groundAt(x1, z1) + 0.7, z1, 0.55);
+        }
+      }
+      for (let j = ni; j < Math.min(R.length, ni + 2); j++) {
+        const w = R[j];
+        if (Math.hypot(w.x - t.x, w.z - t.z) > 3600) continue;
+        const next = j === ni;
+        const gy = this._groundAt(w.x, w.z);
+        const pulse = next ? 0.9 + 0.5 * Math.sin(this.time * 3) : 0.35;
+        const H = next ? 130 : 90;
+        // the column: four lines close together so it reads at any range
+        for (const [ox, oz] of [[0, 0], [1.2, 0], [0, 1.2], [-1.2, 0]]) D.seg(w.x + ox, gy + 1, w.z + oz, w.x + ox, gy + H, w.z + oz, pulse * (next ? 1 : 0.8));
+        // the ring on the ground, breathing
+        const r = next ? 22 + 6 * Math.sin(this.time * 3) : 16;
+        for (let i = 0; i < 24; i++) { const a0 = Math.PI * 2 * i / 24, a1 = Math.PI * 2 * (i + 1) / 24; D.seg(w.x + Math.cos(a0) * r, gy + 0.8, w.z + Math.sin(a0) * r, w.x + Math.cos(a1) * r, gy + 0.8, w.z + Math.sin(a1) * r, pulse); }
+        // the diamond at the top, turning
+        const a = this.time * 1.2, c = Math.cos(a), s = Math.sin(a), dr = next ? 9 : 6;
+        const top = gy + H, mid = top - dr * 0.7, cap = top + dr * 0.7;
+        const pts = [[dr * c, 0, dr * s], [-dr * s, 0, dr * c], [-dr * c, 0, -dr * s], [dr * s, 0, -dr * c]];
+        for (let i = 0; i < 4; i++) { const q0 = pts[i], q1 = pts[(i + 1) % 4]; D.seg(w.x + q0[0], top, w.z + q0[2], w.x + q1[0], top, w.z + q1[2], pulse); D.seg(w.x + q0[0], top, w.z + q0[2], w.x, cap, w.z, pulse * 0.8); D.seg(w.x + q0[0], top, w.z + q0[2], w.x, mid, w.z, pulse * 0.8); }
+      }
     }
     for (const m of (view && view.missiles) || []) {
       if (!m.alive) continue;

@@ -316,9 +316,82 @@
     BY_ID.base.shieldSegs = segs;
   })();
 
-  const CIV = K.filter((k) => k.cls === 'civ').map((k) => k.id);
-  const OPEN = K.filter((k) => k.cls === 'open').map((k) => k.id);
+  // ---- THE TANK'S GROUND (Moon Battle 2100, 2026-09-11) --------------------------------------------
+  // Gun towers and the base's hangar are hostile kinds the TANK seats on its
+  // route (the lander's plan never deals them); the LANDMARKS are the places
+  // along the tank's route — civilian to both halves, never targetable, each
+  // one unique so the pilot knows where the road has taken them. The lander
+  // seats none of these; both renderers can draw them.
+  def({ id: 'tower', d: 24, name: 'GUN TOWER', cls: 'open', mult: 2, w: 24, h: 70, tank: true, draw(o) {
+    lattice(o, 24, 10, 52, 4);
+    box(o, -9, 52, 9, 62); seg(o, -9, 57, 9, 57);
+    seg(o, 0, 62, 0, 70); seg(o, 9, 58, 24, 66); seg(o, 9, 56, 23, 63);   // the gun, out to the right
+  } });
+  def({ id: 'hangar', d: 90, name: 'THE HANGAR', cls: 'open', mult: 5, w: 90, h: 36, tank: true, draw(o) {
+    poly(o, [[-45, 0], [-45, 24], [-30, 36], [30, 36], [45, 24], [45, 0]], false);
+    box(o, -28, 0, 28, 22); seg(o, -28, 11, 28, 11); seg(o, 0, 0, 0, 22);   // the doors
+    for (let i = 0; i < 4; i++) seg(o, -36 + i * 24, 26, -28 + i * 24, 26);
+    seg(o, 30, 36, 30, 44); seg(o, 26, 44, 34, 44);
+  } });
+  const LANDMARK_DEFS = [
+    { id: 'freighter', d: 40, name: 'THE CRASHED FREIGHTER', w: 140, h: 42, draw(o) {
+      poly(o, [[-70, 0], [-64, 18], [-50, 30], [-10, 34], [30, 30], [56, 20], [70, 6], [70, 0]], false);
+      seg(o, -50, 30, -46, 42); seg(o, -46, 42, -30, 40); seg(o, -30, 40, -34, 33);   // the torn bridge
+      for (let i = 0; i < 6; i++) seg(o, -40 + i * 18, 10, -34 + i * 18, 22);
+      seg(o, 30, 30, 44, 38); seg(o, 44, 38, 48, 28);
+      seg(o, -70, 0, -84, 4); seg(o, -84, 4, -78, 12);   // a shed plate
+      seg(o, 56, 20, 62, 8); seg(o, 20, 0, 26, 8); seg(o, 26, 8, 40, 8);
+    } },
+    { id: 'massdriver', d: 20, name: 'THE MASS DRIVER', w: 170, h: 40, draw(o) {
+      for (let i = 0; i < 5; i++) { const x = -80 + i * 40; seg(o, x - 6, 0, x, 22 + i * 4); seg(o, x + 6, 0, x, 22 + i * 4); seg(o, x - 6, 0, x + 6, 0); }
+      poly(o, [[-80, 22], [-40, 26], [0, 30], [40, 34], [80, 38]], false);
+      poly(o, [[-80, 25], [-40, 29], [0, 33], [40, 37], [80, 41]], false);
+      for (let i = 0; i < 9; i++) { const x = -80 + i * 20; seg(o, x, 22 + i * 2, x, 25 + i * 2); }
+      seg(o, 80, 38, 92, 44); seg(o, 80, 41, 92, 47); seg(o, 92, 44, 92, 47);
+    } },
+    { id: 'monolith', d: 8, name: 'THE MONOLITH', w: 22, h: 96, draw(o) {
+      poly(o, [[-11, 0], [-10, 96], [10, 96], [11, 0]], true);
+      seg(o, -10, 96, 10, 96);
+      for (let i = 1; i < 4; i++) seg(o, -8, 24 * i, 8, 24 * i - 3);
+    } },
+    { id: 'pylons', d: 12, name: 'THE PYLON LINE', w: 160, h: 56, draw(o) {
+      for (let i = 0; i < 3; i++) {
+        const x = -60 + i * 60;
+        seg(o, x - 8, 0, x - 3, 46); seg(o, x + 8, 0, x + 3, 46); seg(o, x - 3, 46, x + 3, 46);
+        seg(o, x - 14, 34, x + 14, 34); seg(o, x - 10, 42, x + 10, 42); seg(o, x, 46, x, 56);
+        seg(o, x - 8, 0, x + 8, 0);
+      }
+      // the lines sag between the arms
+      for (const y of [34, 42]) for (let i = 0; i < 2; i++) { const x0 = -60 + i * 60, x1 = x0 + 60; poly(o, [[x0 + 14, y], [x0 + 30, y - 5], [x1 - 14, y]], false); }
+    } },
+    { id: 'wreckcrater', d: 60, name: 'THE IMPACT CRATER', w: 130, h: 16, draw(o) {
+      poly(o, [[-65, 0], [-50, 10], [-30, 14], [30, 14], [50, 10], [65, 0]], false);
+      poly(o, [[-40, 8], [-20, 3], [20, 3], [40, 8]], false);
+      seg(o, -6, 3, 4, 16); seg(o, 4, 16, 10, 12); seg(o, -2, 9, 8, 9);   // the thing that made it
+    } },
+    { id: 'lavatube', d: 70, name: 'THE LAVA TUBE', w: 96, h: 44, draw(o) {
+      arc(o, 0, 0, 44, 0, Math.PI, 12, 40);
+      arc(o, 0, 0, 30, Math.PI * 0.08, Math.PI * 0.92, 10, 28);
+      seg(o, -48, 0, 48, 0);
+      seg(o, -30, 0, -24, 8); seg(o, 30, 0, 22, 10); seg(o, 0, 28, 0, 20);   // rubble at the mouth, a stalactite
+    } },
+    { id: 'antennas', d: 30, name: 'THE ANTENNA FIELD', w: 120, h: 64, draw(o) {
+      for (let i = 0; i < 7; i++) { const x = -54 + i * 18, h = 30 + ((i * 7) % 4) * 9; seg(o, x, 0, x, h); seg(o, x - 5, h - 8, x + 5, h - 8); seg(o, x - 3, h - 16, x + 3, h - 16); seg(o, x - 4, 0, x + 4, 0); }
+      seg(o, -60, 0, 60, 0);
+    } },
+    { id: 'fueldepot', d: 40, name: 'THE FUEL DEPOT', w: 110, h: 34, draw(o) {
+      for (const cx of [-36, 0, 36]) { arc(o, cx, 14, 13, 0, Math.PI * 2, 12); seg(o, cx - 8, 0, cx - 8, 4); seg(o, cx + 8, 0, cx + 8, 4); seg(o, cx - 10, 4, cx + 10, 4); }
+      seg(o, -49, 27, 49, 27); seg(o, 49, 27, 55, 27); seg(o, 55, 27, 55, 0); seg(o, 55, 20, 60, 34); seg(o, 60, 34, 64, 34);
+    } },
+  ];
+  for (const L of LANDMARK_DEFS) def(Object.assign({ cls: 'civ', landmark: true }, L));
+  for (const L of LANDMARK_DEFS) BY_ID[L.id].landmark = true;
+  BY_ID.tower.tank = true; BY_ID.hangar.tank = true;
+  const LANDMARKS = LANDMARK_DEFS.map((L) => L.id);
+
+  const CIV = K.filter((k) => k.cls === 'civ' && !k.landmark).map((k) => k.id);
+  const OPEN = K.filter((k) => k.cls === 'open' && !k.tank).map((k) => k.id);   // the tank-only kinds (tower, hangar) are seated by the tank core
   const HARD = K.filter((k) => k.cls === 'hard' && k.id !== 'base').map((k) => k.id);   // the base is dealt by the level plan only
 
-  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, solid: solid };
+  globalThis.LunarStructures = { KINDS: K, BY_ID: BY_ID, CIV: CIV, OPEN: OPEN, HARD: HARD, LANDMARKS: LANDMARKS, solid: solid };
 })();

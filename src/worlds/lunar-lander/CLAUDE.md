@@ -117,9 +117,37 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 
 ## START HERE (next session)
 
-**2026-09-06: start at "Round one design" item 3 above (hostile fire), on
-James's go.** Read `tank/NEEDS.md` first. The rest of this section is the
-shipped Lunar Lander state underneath.
+**2026-09-11: MOON BATTLE 2100 — THE WHOLE GAME IS BUILT ("3 and 3 and out"),
+AWAITING JAMES'S FLIGHT.** Read `changelog.md` 2026-09-11 and
+`tank/changelog.md` 2026-09-11 first. The shape:
+
+1. **The lander's three levels** (`LEVELS[1..3]`, chunks 1–4 / 5–9 / 10–17):
+   exactly 3 / 4 / 5 targets dealt by `levelPlan` (SAM sites 1 / 2 / 3, a
+   hardened one on 2 and 3, a radar goes into a SAM's chunk), SAM reload 9 /
+   7 / 5 s. The GATE pad (`pad.gate`, the rightmost pad of the last chunk, a
+   relay tower) ends the level once the stretch is clear; `advanceLevel`
+   moves the goal east. Level 3 is BIG: rich deals, a supply on every pad
+   (`SUPPLY_CYCLE`), LIFT OFF from any pad (`ship.grounded`, the only place),
+   the wide view at 0.75×, and THE BASE at the far right of chunk 17 (kind
+   `base`: two laser shots for the shield, then two missiles for the hull,
+   2,000 points, two SAM rails). Chunks past 17 roll the endless way.
+2. **Hostile fire is live** (`stepSams` / `stepThreats`, `state.threats`):
+   warm-up 2.2 s, straight shots at 115 ft/s with a 4% re-aim every quarter
+   second, chaff decoys 80%, a live radar doubles the range, the bunker's
+   door opens 2 s when its rail fires, a hit is a crash (`reason 'sam'`).
+   `opts.sams` turns it off (the sim does, where it parks ships).
+3. **The seam**: the last gate → CLIMB OUT → `tank/tank.html?campaign=1`
+   with `lunar-lander-handoff-v1` (seed + score); the campaign position
+   lives in `lunar-lander-campaign-v1` (the lander's `{ seed, level, score }`
+   or the tank's `{ tank: true, ... }`); the start card offers CONTINUE /
+   START OVER while one stands.
+4. Sim: `node tmp/lunar-lander/sim.mjs` — 307,479 green (TEST 16 is the
+   levels, the base, lift-off, hostile fire). The smoke page is regenerated.
+5. The tank half: `tank/CLAUDE.md` START HERE.
+
+His flight decides everything from here: the levels' pacing, the SAMs' feel,
+the base fight, lift-off, the 0.75× view, then the tank's road. The rest of
+this section is the shipped Lunar Lander state underneath.
 
 **SHIPPED 2026-09-04** — James flew rounds three and four the same night, said
 "I really like this. It's fun," and asked for egress: four ways out are in and

@@ -2,6 +2,64 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-09-11 (MOON BATTLE 2100: the name, the three levels, the base, hostile fire, the seam) — Claude
+
+James: "think the name needs to advance slightly. lets try 2100" — renamed everywhere live
+(the admin row, world.json, titles, cards, headers, docs; old changelog entries keep their
+names). Then the plan for the whole game, approved whole ("rock it, man"): "3 and 3 and out".
+
+THE LANDER (`game-core.js`):
+1. `LEVELS`: level 1 chunks 1–4 (3 targets, 1 SAM), level 2 chunks 5–9 (4 targets, 2 SAMs,
+   1 hardened), level 3 chunks 10–17 (5 targets, 3 SAMs, 1 hardened, `big`, `liftoff`,
+   `base`, wide 0.75). SAM reload 9 / 7 / 5 s. `levelPlan(seed, level)` deals EXACTLY the
+   promised hostiles over the stretch (no chunk more than two; a radar tower goes into a SAM
+   site's chunk when it can; the base's chunk stays clear); `planFor(seed, k)` is what
+   `makeChunk` reads inside a level; chunks past 17 roll the endless way. A promised hostile
+   that finds no room in the pools searches the whole chunk with a closer gap and a looser
+   slope before giving up (the sim proves every level deals its count on 60 moons).
+2. THE GATE: the rightmost pad of a level's last chunk is a relay tower with `pad.gate =
+   level` (the chunk's one relay); landing on it with the stretch clear sets `levelDone`;
+   `advanceLevel` moves the goal east (`countLevel`); after level 3 `campaignDone`.
+   `createGame({ level })` resumes a flight and a half before the stretch (`state.spawnX`).
+3. LEVEL 3: every chunk deals rich; every pad carries a supply round `SUPPLY_CYCLE` from a
+   hashed start (at least three missile and two laser pads, ~40 pads a moon, ~17 with fuel);
+   LIFT-OFF — `newAttempt(state, { liftoff: true })` sits the ship on the pad (`ship.grounded`)
+   and the burn lifts it, no accelerator, fuel spent — only where the level says so; the wide
+   view sits at 0.75× (`view.wideBase`).
+4. THE BASE (`structures.js` kind `base`, hard `'base'`, mult 20, 220 × 80 ft; its shield
+   is `shieldSegs`, drawn only while it stands): seated first at the far right of chunk 17,
+   pads and their launch lanes keep clear of it. `targetable`: the shield refuses everything
+   but the laser (SHIELD — LASER ONLY), the bare hull everything but missiles (HULL — MISSILES
+   ONLY); `damage`: two laser hits (`shield`, `shieldDown`), two missiles (`hull`, then the
+   kill for 2,000). Two SAM rails of its own.
+5. HOSTILE FIRE (round three, the agreed design): `stepSams` — a SAM site / bunker / the
+   base with the ship inside `samRange` (1,400 ft, doubled while a radar tower lives in its
+   chunk) warms up 2.2 s then fires on the level's reload; the missile boosts to 115 ft/s on a
+   straight shot at where the ship was, with a 4% chance every quarter second to re-aim
+   (`samCorrect`); a chaff cloud within 140 ft decoys it 80% of the time (rolled once per cloud
+   per missile — `samDecoyed` / `samIgnored`); a hit is a crash (`reason 'sam'`); the bunker's
+   door opens 2 s when its own rail fires (`doorUntil`; the old period clock only when
+   `opts.sams` is off). `state.threats`, `nearestThreat()` for the icon. `launchClear` steepens
+   past live structures too.
+6. The sim: TEST 16 (the deal on 60 moons, the flow 1 → 2 → 3 → the base → done, the resume,
+   lift-off, SAMs: a parked ship is hit, a running one never, the radar, chaff ~80%, the door);
+   older tests turn hostile fire off where they park ships; 306,374 green.
+
+THE RENDERER: SAM darts with a long plume; THE THREAT ICON on the direction circle (a missile
+glyph at the bearing of the nearest SAM, a brighter arc of the ring under it); the base's shield
+breathing while it stands; `wideBase`.
+
+THE SHELL: level briefs; the campaign position remembered (`lunar-lander-campaign-v1`; the start
+card says CONTINUE + START OVER); LEVEL N COMPLETE → NEXT LEVEL (the goal moves east, the launch
+follows); level 3 landings offer LAUNCH or LIFT OFF; the last gate → CLIMB OUT → the tank page
+with `?campaign=1` and the handoff (`lunar-lander-handoff-v1`: seed + score); a SAM crash says
+SHOT DOWN; floats for the launch / decoy / shield down / hull cracked; the pink range beside the
+threat icon (`#sam-tag`); the warning sound. The tank half's own entry is in
+`tank/changelog.md` (the route, the map, the new enemies, the base, the pickups).
+
+AWAITING JAMES'S FLIGHT of all of it: the levels' pacing, the SAMs' feel (speed, corrections,
+chaff), the base fight, lift-off on level 3, the 0.75× view; then the tank's road.
+
 ## 2026-09-07 (the name, the shelf, the mode switch) — Claude
 
 James: "Move Lunar Lander back to In Progress Worlds and rename it Moon Battle

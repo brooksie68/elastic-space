@@ -8,6 +8,19 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-11 — Claude — MOON BATTLE 2100: the name, 3 and 3 and out
+
+James renamed the game (2075 → 2100) and approved the whole-game plan: the lander's three
+levels (3 / 4 / 5 targets, more SAMs each, the gate pad, level 3 big with lift-off and THE
+BASE — two laser shots for the shield, two missiles for the hull), hostile fire (SAMs, chaff,
+the radar, the bunker door), the campaign remembered, CLIMB OUT into the tank; the tank's
+three levels on a ROUTE of waypoints with landmarks, encounters, a mini boss each and the base
+at the end (hangar spawns, towers, gun pits), THE MAP on M, hovers + mech walkers (weak
+frequent beams) + the warden + the strider, guns on the ground, the hull as an armor pool,
+armor / speed / shell-speed / armor-plate pickups, the grid 20% denser; THE END card. Sims:
+lander 306,374 green (TEST 16), tank 5,248 green (TESTs 7–9 rewritten, TEST 13). Details:
+`src/worlds/lunar-lander/changelog.md` + `tank/changelog.md`.
+
 ## 2026-09-09 — Moon Battle 2075 (the tank): the wheel zoom + the honest gun
 - Mouse wheel zooms the view 1×–2× in four clicks, eased like the scope, mouse slowed to match.
 - The crosshair reads the SHELL'S ARC now (core `shellSolution`): landing point marched under gravity against ground, structures and each hull where it will be; amber / TANK / range all mean "this shell lands there".
