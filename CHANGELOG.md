@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-09-12 — Claude — JABBERWOCKY: the run burst + the EXIT sign over the door
+
+- Shift is a two-second run burst (1.9× walk) with a two-second cooldown, no chaining while held; a RUN bar on the HUD, a whoosh; sim TEST 15.
+- A lit EXIT sign box over the real exit door: red "EXIT · LOCKED · FIND THE KEY" until the key (or the boss's death) opens it, then green EXIT; THE MIDDLE's door has one too.
+- Committed locally (two commits); details in `src/worlds/jabberwocky/changelog.md` 2026-09-12.
+
 ## 2026-09-11 — Claude — MOON BATTLE 2100: the name, 3 and 3 and out
 
 James renamed the game (2075 → 2100) and approved the whole-game plan: the lander's three
