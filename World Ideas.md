@@ -325,7 +325,7 @@ with physics, PG-13 cartoon gore, the rifle as a real viewmodel, ElevenLabs one-
 unwired, awaiting James's flight of the rebuild and his Suno track.
 
 
-### 65. Asteroids — *one session* — `draft` (built 2026-09-08)
+### 65. Asteroids — *one session* — `live` (built 2026-09-08, shipped 2026-09-21)
 
 Atari's Asteroids (1979), the Retro arcade treatment: the rules kept (20/50/100, the two
 saucers at 200 and 1000 with the small one aiming better as the score climbs, shots without limit (his call; 1979's four is a dial),
@@ -336,7 +336,7 @@ camera with the field filling the window and wrap copies at the seams, a heartbe
 quickens as the field thins. Four ways out: the derelict's lit bay, a hyperspace jump that
 goes too far, the hollow rock (shoot it open, fly through), and a dusty smudge at the edge.
 `src/worlds/asteroids/`. Built in one shot on James's "ok" to the plan (`tmp/asteroids/plan.md`);
-awaiting his flight before ship wiring. James's running list of games to emulate (2026-09-08):
+SHIPPED 2026-09-21 (in the drift registry; the hollow rock every wave, the derelict every other wave, a CONTROLS panel). James's running list of games to emulate (2026-09-08):
 Asteroids, Rampage, Double Dragon — kept in the repo CLAUDE.md Todo.
 
 ### 66. Carnage (was Rampage) — *one session* — `draft`, BUILT 2026-09-08, unwired, awaiting his flight

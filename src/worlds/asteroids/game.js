@@ -332,6 +332,19 @@ $('btn-start').addEventListener('click', startGame);
 $('btn-again').addEventListener('click', () => enterAttract());
 $('btn-pause').addEventListener('click', () => togglePause());
 $('btn-restart').addEventListener('click', () => armRestart());
+// THE CONTROLS PANEL: every key in readable type (the standing rule)
+function toggleControls() {
+  const p = $('controls-panel');
+  p.classList.toggle('open');
+  $('btn-controls').classList.toggle('on', p.classList.contains('open'));
+}
+$('btn-controls').addEventListener('click', (e) => { e.stopPropagation(); toggleControls(); });
+document.addEventListener('pointerdown', (e) => {
+  const p = $('controls-panel');
+  if (!p.classList.contains('open')) return;
+  if (e.target.closest('#controls-panel') || e.target.closest('#btn-controls')) return;
+  toggleControls();
+});
 
 // ---- the loop ----------------------------------------------------------------------------------
 function handleEvents(st) {

@@ -212,15 +212,15 @@
     const n = waveCount(state, state.wave);
     const o = state.opts;
     for (let i = 0; i < n; i++) spawnRock(state, 2, null, null, null);
-    // the hollow rock: from wave 2 on, one large rock in the wave hides a doorway (wave 1: a coin flip)
-    if (o.exits && (state.wave >= 2 || rng(state) < 0.5)) {
+    // the hollow rock: every wave, one large rock hides a doorway (James, 2026-09-21: "in every wave")
+    if (o.exits) {
       const r = spawnRock(state, 2, null, null, null);
       r.hollow = true; r.open = false;
       r.vx *= 0.5; r.vy *= 0.5;
     }
-    // the derelict: drifts across every third wave or so
+    // the derelict: drifts across every other wave (James, 2026-09-21), starting on wave 2
     state.hulkWaves++;
-    if (o.exits && !state.hulk && (state.hulkWaves >= 3 || (state.wave >= 2 && rng(state) < 0.35))) spawnHulk(state);
+    if (o.exits && !state.hulk && state.hulkWaves >= 2) spawnHulk(state);
     emit(state, 'wave', { wave: state.wave, rocks: n });
   }
 

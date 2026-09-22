@@ -5,8 +5,8 @@ Atari's Asteroids (1979), the rules kept and the look taken to 2026. Built
 Third of the Retro arcade (Surround, Moon Battle 2100, this) — same architecture:
 pure core + sim, three.js glow-line renderer, shell with the attract gate + the
 configuration panel + file-backed presets, a silent look-dev page, a
-sound-stubbed smoke page. **Draft, "unwired": not in the drift registry until
-James has flown it and said ship.** Standing rule from Moon Battle 2100 applies:
+sound-stubbed smoke page. **SHIPPED 2026-09-21: in the drift registry.** (The
+admin row's "unwired" note is James's to remove.) Standing rule from Moon Battle 2100 applies:
 a named old game is the FEEL, never the spec — when in doubt the contemporary
 choice wins, inside the one constraint (single-weight glowing lines on black).
 
@@ -88,12 +88,13 @@ loop on its own clock. **Regenerate it after editing index.html.**
   reserve (glyphs), wave, the hyperspace bar, best. Never scatter it to the
   corners; never shrink the labels.
 - **The ways out (four, `data-drift`, all found by playing, none labelled):**
-  1. THE DERELICT — a dead station that drifts across every third wave or so
-     (`state.hulk`, no wrap, rocks pass over it); flying into its lit bay leaves.
+  1. THE DERELICT — a dead station that drifts across EVERY OTHER WAVE, from
+     wave 2 (James, 2026-09-21; `state.hulk`, no wrap, rocks pass over it);
+     flying into its lit bay leaves.
   2. THE LONG JUMP — every hyperspace has a growing chance (3% + 5% per jump,
      cap 50%) of landing you somewhere else entirely.
-  3. THE HOLLOW ROCK — from wave 2 every wave hides one large rock with a glint
-     inside (wave 1: a coin flip). It never counts toward the wave and never
+  3. THE HOLLOW ROCK — EVERY wave, wave 1 included (James, 2026-09-21), hides one
+     large rock with a glint inside. It never counts toward the wave and never
      splits: a shot OPENS it (rings of light inside), and flying through the
      open rock leaves. Closed, it is still a rock.
   4. THE SMUDGE — a static dusty rose-amber blob at the field's left edge
@@ -101,6 +102,9 @@ loop on its own clock. **Regenerate it after editing index.html.**
   The core emits `{ type: 'exit', which }`; the shell waits `EXIT_BEAT` then
   clicks the hidden anchor. `opts.exits = 0` removes all three played exits (the
   sim's pure-rules suites run that way).
+- **The CONTROLS button** (bottom right, the standing rule) opens a panel listing every
+  key and the three played ways out in readable type, sized by the TEXT SIZE dial;
+  click-away closes it.
 - **Configuration panel**: PLAY (ships, turn rate, thrust, brake, shots on
   screen, hold-to-fire, saucer cadence, hyperspace risk, lurk, seed, TEXT SIZE)
   + LOOK (13 render dials, file-backed presets via `PUT /api/worlds/asteroids/
@@ -129,4 +133,3 @@ loop on its own clock. **Regenerate it after editing index.html.**
 ## Not built (needs a conversation)
 
 Two-player alternating, touch controls, a tumbling 3-D rock dial, a rename.
-Ship wiring (registry, admin note, World Ideas → live) waits on James's flight.

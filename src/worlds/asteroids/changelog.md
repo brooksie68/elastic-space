@@ -2,6 +2,25 @@
 
 Newest first. Never rewrite or delete earlier entries.
 
+## 2026-09-21 — SHIPPED: the exits tuned + the controls panel (Claude Fable 5.1, James's calls)
+
+James: "Asteroids. needs some drift points." He had never found an exit — the page had no
+controls panel, and hyperspace (the long jump) was on keys nobody told him about. His calls
+after hearing the four described: the hollow rock in EVERY wave (was: from wave 2, a coin flip
+on wave 1), the derelict EVERY OTHER wave (was: every third or so, plus a 35% roll), the smudge
+"a cop out but it's aight", the long jump fine as is.
+
+- `game-core.js`: `startWave` always deals one hollow rock; the derelict spawns when
+  `hulkWaves >= 2` (wave 2, 4, 6…), no random roll.
+- Sim: the wave-deal test now walks waves 1–4 for ten seeds (a doorway every wave, the
+  derelict on 2 and 4, not 1 and 3). 2,291 green.
+- `index.html` / `game.js`: the CONTROLS button (bottom right) + panel — every key, the three
+  played ways out, sized by the TEXT SIZE dial, click-away closes.
+- Ship wiring: `asteroids/index.html` added to `src/core/world-registry.js` by hand (the
+  generator would pull every draft in), world.json → live, World Ideas #65 → live. The admin
+  row's "unwired" note removed on his "you do it then". Smoke page regenerated. The panel's
+  key column widened to 11em after a pane look (the hyperspace keys overran it).
+
 ## 2026-09-08 (later) — the shot cap removed (Claude Fable 5.1, James's ask)
 
 James: "remove the shot restriction. i want to be able to shoot as much as I want."

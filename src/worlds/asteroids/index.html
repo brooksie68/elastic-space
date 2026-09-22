@@ -109,6 +109,23 @@
     #controls button:hover, #tuner-toggle:hover { color: var(--ink); }
     #btn-restart.armed { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); background: color-mix(in srgb, var(--ph) 14%, transparent); }
     #tuner-toggle { position: fixed; bottom: 2.9rem; left: 1.6rem; z-index: 12; }
+    /* THE CONTROLS PANEL (the standing rule: every key in readable type, scaled by the text dial) */
+    #controls-panel {
+      font-size: calc(var(--ui-base) * var(--ui-scale));
+      position: fixed; right: 1rem; bottom: 3.6rem; z-index: 13; display: none;
+      width: min(26em, calc(100vw - 2rem)); max-height: calc(100vh - 5rem); overflow-y: auto;
+      background: rgba(4, 9, 6, 0.9); border: 1px solid var(--glass-edge); border-radius: 1em;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      padding: 0.85em 0.95em 0.8em; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.6);
+    }
+    #controls-panel.open { display: block; }
+    #controls-panel h2 { font-size: 0.85em; font-weight: 700; letter-spacing: 0.3em; color: var(--ph); margin: 0.6em 0 0.35em; }
+    #controls-panel h2:first-child { margin-top: 0; }
+    #controls-panel .k { display: grid; grid-template-columns: 11em 1fr; gap: 0.25em 0.8em; align-items: baseline; }
+    #controls-panel .k b { font-weight: 700; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap; }
+    #controls-panel .k span { color: var(--ink-dim); line-height: 1.4; }
+    #controls-panel .k b i { font-style: normal; display: inline-block; min-width: 1.4em; text-align: center; border: 1px solid var(--ink-faint); border-radius: 4px; padding: 0.05em 0.35em; margin-right: 0.25em; }
+    #btn-controls.on { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); }
 
     /* ---- tuner: the whole panel sized in em off one base (text-size control) --------------- */
     #tuner {
@@ -199,8 +216,31 @@
   <div id="hint">← → OR A D TURN · W OR ↑ BURNS · SPACE OR CLICK FIRES · SHIFT OR H JUMPS · P PAUSE · R RESTART · C CONFIGURATION</div>
 
   <div id="controls">
+    <button id="btn-controls" type="button">CONTROLS</button>
     <button id="btn-pause" type="button">PAUSE</button>
     <button id="btn-restart" type="button">RESTART</button>
+  </div>
+  <div id="controls-panel" aria-label="every key">
+    <h2>FLYING</h2>
+    <div class="k">
+      <b><i>←</i><i>→</i> or <i>A</i><i>D</i></b><span>turn the ship</span>
+      <b><i>↑</i> or <i>W</i></b><span>thrust — the ship keeps drifting when you let go</span>
+      <b><i>Space</i> or <i>Click</i></b><span>fire — hold it to keep firing</span>
+      <b><i>Shift</i>, <i>H</i>, <i>S</i> or <i>↓</i></b><span>hyperspace: vanish, reappear somewhere random. A small chance it kills you, and each jump raises the odds it takes you out of this world</span>
+    </div>
+    <h2>THE WAYS OUT</h2>
+    <div class="k">
+      <b>The derelict</b><span>a dead station drifts across every other wave — fly into its lit bay</span>
+      <b>The hollow rock</b><span>every wave one large rock has a glint inside. Shoot it and it opens; fly through</span>
+      <b>The long jump</b><span>keep using hyperspace</span>
+    </div>
+    <h2>THE GAME</h2>
+    <div class="k">
+      <b><i>Enter</i></b><span>start</span>
+      <b><i>P</i> or <i>Esc</i></b><span>pause; Space resumes</span>
+      <b><i>R</i></b><span>restart (press twice)</span>
+      <b><i>C</i></b><span>the configuration panel</span>
+    </div>
   </div>
 
   <button id="tuner-toggle" type="button">CONFIGURATION</button>

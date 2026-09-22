@@ -106,9 +106,12 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - RETRO ARCADE — THE RUNNING LIST (James, 2026-09-08: "keep a running list for me of
   the games I want to emulate"; Surround and Moon Battle 2100 are the reference treatment —
   faithful rules, 2026 look). Keep this list current whenever he adds one:
-  1. Asteroids — BUILT 2026-09-08 as a one-shot on his "ok" (`src/worlds/asteroids/`, read its
-     CLAUDE.md first; draft, unwired, sim 2,230 green, smoke-pumped, World Ideas #65). AWAITING
-     HIS FLIGHT, then ship wiring on his word.
+  1. Asteroids — BUILT 2026-09-08 as a one-shot on his "ok"; **SHIPPED 2026-09-21** on his
+     "needs some drift points" (`src/worlds/asteroids/`, read its CLAUDE.md first): his calls —
+     the hollow rock EVERY wave, the derelict EVERY OTHER wave, smudge + long jump as is; a
+     CONTROLS panel (he had never found an exit — no key list); in the drift registry, world.json
+     live, World Ideas #65 live, unwired tag removed at his word. Sim 2,291 green. AWAITING HIS
+     FLIGHT of the tuned exits.
   2. Rampage → CARNAGE — **BUILT 2026-09-08 (night) as a one-shot on his evening brief**
      (`src/worlds/carnage/`, READ ITS CLAUDE.md FIRST; his brief is the top of plan.md: variety
      on, company none/one/both, FREE MODE first + a small campaign later that is his to write,
