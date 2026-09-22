@@ -58,7 +58,7 @@
     tapWindow: 0.25,         // s between two taps for a burst
   };
 
-  const MON = { COL_T: 0.16, REVERT_T: 1.6, WALKOFF: 2.0, HIT_T: 0.4, EAT_T: 0.5, ARRIVE_Y: 11, INVULN: 1.5 };
+  const MON = { COL_T: 0.16, REVERT_T: 1.6, WALKOFF: 2.0, HIT_T: 0.4, EAT_T: 0.5, ARRIVE_Y: 11, INVULN: 1.5, STAGGER: 4 };   // hits under STAGGER health never stop you
   // the monster's size, from the dial: hands at 55% of the height, reach 70%, half-width 22%
   const monH = (state) => state.opts.monsterH || 2.7;
   const monHand = (state) => monH(state) * 0.55;
@@ -142,7 +142,7 @@
       st: 'street', b: -1, col: 0, colT: 0, fallFrom: 0, homeX: 0,
       hp: 100, lives: Infinity, score: 0,
       punchT: 0, punchFull: 0, punchDir: { dx: 0, dy: 0 }, punchHit: false, punchHeld: 0, prevPunch: false, prevJump: false, prevUp: false,
-      eatT: 0, hitT: 0, invulnT: 0, stateT: 0, holdT: 0, subT: 0,
+      eatT: 0, hitT: 0, flashT: 0, invulnT: 0, stateT: 0, holdT: 0, subT: 0,
       // round two: the lane (0 = at the faces, 1 = the road) and the crossing, the run burst, the cell hop, the smash
       lane: 0, laneK: 0, laneMoving: 0, tapT: 0, tapDir: 0, prevMove: 0, burstT: 0, burstDir: 0, skidT: 0,
       hop: 0, hopT: 0, hopDur: 0, hopFrom: 0, hopTo: 0, hopHand: 0, smashing: false,
@@ -212,7 +212,8 @@
     if (m.invulnT > 0) return false;
     amount = Math.round(amount * 10) / 10;
     m.hp = Math.max(0, m.hp - amount);
-    m.hitT = MON.HIT_T;
+    // bullets sting but never stop you (James, 2026-09-21: "I can't fight them if I can't get close"); the big hits stagger
+    if (amount >= MON.STAGGER) m.hitT = MON.HIT_T; else m.flashT = 0.15;
     state.events.push({ type: 'damage', who: m.id, slug: m.slug, amount, src, x: x == null ? m.x : x, y: y == null ? m.y + 1 : y, hp: m.hp });
     if (m.hp <= 0) revert(state, m, src);
     return true;
@@ -506,6 +507,7 @@
     }
     if (m.invulnT > 0) m.invulnT -= dt;
     if (m.hitT > 0) m.hitT -= dt;
+    if (m.flashT > 0) m.flashT -= dt;
     if (m.eatT > 0) m.eatT -= dt;
     if (m.colT > 0) m.colT -= dt;
     if (m.tapT > 0) m.tapT -= dt;

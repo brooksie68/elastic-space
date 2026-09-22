@@ -1325,7 +1325,7 @@ export function createRenderer(canvas, lookIn) {
       if (m.burstT > 0 && Math.random() < 0.45) spawnDust(v.smoothX - m.facing * 0.8, 0.3, v.root.position.z, 1, 1.0, 0.5, -m.facing * 2, 0.4, 0.35);
       if (m.skidT > 0 && Math.random() < 0.7) spawnDust(v.smoothX - m.facing * 0.5, 0.25, v.root.position.z, 1, 1.4, 0.6, -m.facing * 3, 0.6, 0.45);
       // hurt: a red tint that fades; the spawn shield: a flicker
-      const hurt = m.hitT > 0 ? Math.min(1, m.hitT / 0.4) * (Math.floor(clock.t * 20) % 2 ? 1 : 0.4) : 0;
+      const hurt = m.hitT > 0 ? Math.min(1, m.hitT / 0.4) * (Math.floor(clock.t * 20) % 2 ? 1 : 0.4) : m.flashT > 0 ? 0.6 : 0;
       const fill = night ? 0.34 : 0.1;
       for (const mat of v.mats) { if (mat.emissive) { mat.emissive.setRGB(fill + hurt * 0.45, fill * (1 - hurt * 0.5), fill * (1 - hurt * 0.5)); } }
       v.inner.visible = !(m.invulnT > 0 && Math.floor(clock.t * 14) % 2 === 0);

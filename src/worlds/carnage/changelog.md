@@ -92,6 +92,10 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   window cuts it off). Now THE STOMP IS A DRIVEN LEG: the bone layer kicks the near leg up ahead (38% of the punch),
   slams the foot to the ground on the beat, holds, releases; the body drops and steps toward the side of a diagonal.
   Leg chains (`UpLeg / Leg / Foot`) join the arm chains in `view.bones`. Captures r5-stomp-lift / r5-stomp-slam.
+- **Bullets never stop you** (his note while flying: "I can't fight them if I can't get close"): every hit used to
+  stagger for 0.4 s and a burst re-staggered faster than that. Now a hit under 4 health (`MON.STAGGER`: every
+  bullet) only flashes (`m.flashT`) and you keep walking; a shell, a rival's punch, a fall, a hazard still stagger.
+  Sim: shot six times mid-walk and still moved forward.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).
