@@ -2,7 +2,7 @@
 // the HUD, the plate (one cynical line at a time), the day tally and the map between days, the
 // configuration panel with file-backed presets, sound hooks, the ways out.
 // Rules live in game-core.js and city.js; the picture in render3d.js; the sounds in sound.js.
-import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=12';
+import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=13';
 
 const Core = globalThis.CarnageCore, City = globalThis.CarnageCity, Icons = globalThis.CarnageIcons;
 const Sfx = globalThis.CarnageSfx || { play() {}, start() {}, stop() {}, setVolume() {}, voice() {}, bed() {}, setDrone() {}, setSiren() {}, setDust() {}, setNight() {}, setMusic() {} };

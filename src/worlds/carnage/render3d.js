@@ -298,7 +298,7 @@ const FACADE_FS = /* glsl */`
           float shelf = step(0.15, f.y) * step(f.y, 0.62) * step(0.5, fract(f.y * 7.0));
           interior = mix(interior, vec3(0.32, 0.24, 0.16), shelf * 0.8);
           float goods = shelf * step(0.55, fract(f.x * 11.0 + seed));
-          interior = mix(interior, hsv(fract(f.x * 2.0 + seed * 3.0), 0.55, 0.85), goods * 0.9);
+          interior = mix(interior, hsv(fract(f.x * 2.0 + seed * 3.0), 0.35, 0.7), goods * 0.9);
         }
       }
       vec3 n = vec3(0.0, 0.0, 1.0);
@@ -311,7 +311,9 @@ const FACADE_FS = /* glsl */`
         float cw = (o1.x - o0.x) * 0.42;
         float side = step(0.5, fract(seed * 13.0));
         float inCurt = side > 0.5 ? step(f.x, o0.x + cw) : step(o1.x - cw, f.x);
-        vec3 ccol = hsv(fract(seed * 5.0), 0.55, 0.85) * (0.75 + 0.25 * sin(f.x * 60.0 + seed));
+        // curtains are muted: linens, creams, grays, a dusty blue or rose now and then
+        float ch = fract(seed * 5.0);
+        vec3 ccol = mix(vec3(0.78, 0.74, 0.66), hsv(ch, 0.22, 0.72), step(0.6, fract(seed * 9.0))) * (0.8 + 0.2 * sin(f.x * 60.0 + seed));
         glass = mix(glass, ccol * (0.35 + 0.65 * lit + uDay * 0.3), inCurt * 0.9);
       }
       if (blind > 0.5 && broken < 0.5) {
@@ -653,9 +655,11 @@ export function createRenderer(canvas, lookIn) {
     const carGeo = new THREE.BoxGeometry(4.4, 1.2, 1.9), roofGeo = new THREE.BoxGeometry(2.4, 0.65, 1.7), wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 10);
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.9 });
     for (let x = 3, i = 0; x < width * CELL; x += 7 + (i * 37 % 9), i++) {
-      if (i % 3 === 1) continue;
+      if (i % 3 === 1 || i % 7 === 4) continue;
       const z = SW + ROAD - 1.6;
-      const model = i % 5 === 0 ? models.statics.taxi : i % 5 === 3 ? models.statics.cruiser : null;
+      // only the real models park here (the block cars are gone — James, 2026-09-21): taxis mostly, a cruiser now and then
+      const model = i % 5 === 3 ? (models.statics.cruiser || models.statics.taxi) : models.statics.taxi;
+      if (!model) continue;
       if (model) {
         const m = model.clone(true);
         const box = new THREE.Box3().setFromObject(m); const dims = new THREE.Vector3(); box.getSize(dims);
