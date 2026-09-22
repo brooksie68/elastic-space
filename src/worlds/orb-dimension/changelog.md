@@ -3,6 +3,16 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v76 — 2026-09-22 (Claude, James: a file for the pulse engine)
+
+- **The pulse engine as a file.** James drops a 10 s seamless loop at
+  `assets/ship/pulse-engine.mp3` (ogg / wav also tried, in that order). A looped media
+  element (file:// safe) feeds `eng.pulseGain` on the engine bus. It swells in over ~0.4 s
+  when overdrive (Space) fires and fades over ~0.8 s when the throttle drops; playback rate
+  climbs up to +12% with speed and drops to 0.82× on a reverse burn, like the saws did.
+  Once the file can play, the synth saws go silent; without the file nothing changes.
+  Engine slider still governs it. Cache tag ?v=763.
+
 ## v75.2 — 2026-09-06 (James's traffic numbers)
 
 - "traffic speed ×" and "traffic amount" default to 0.65 each (DEFAULTS + james-prefs-01) — his

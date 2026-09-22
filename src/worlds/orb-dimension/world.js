@@ -9878,6 +9878,37 @@ void main() {
     odLfo.start();
     eng.white = white;
 
+    // v76: THE PULSE ENGINE AS A FILE — James's 10 s seamless loop at
+    // assets/ship/pulse-engine.mp3 (ogg / wav also tried). A media element
+    // (file:// safe, no fetch) feeding the engine bus; it swells in when
+    // overdrive fires and fades when the throttle drops. Until the file
+    // plays, the synth saws above carry the pulse; once it does, they yield.
+    eng.pulseGain = ctx.createGain();
+    eng.pulseGain.gain.value = 0;
+    eng.pulseGain.connect(eng.bus);
+    eng.pulseOk = false;
+    {
+      const el = document.createElement("audio");
+      el.loop = true;
+      el.preload = "auto";
+      const exts = ["mp3", "ogg", "wav"];
+      let i = 0;
+      const tryNext = () => {
+        if (i >= exts.length) return;
+        el.src = "assets/ship/pulse-engine." + exts[i++];
+        el.load();
+      };
+      el.addEventListener("error", tryNext);
+      el.addEventListener("canplay", () => {
+        if (eng.pulseOk) return;
+        eng.pulseOk = true;
+        ctx.createMediaElementSource(el).connect(eng.pulseGain);
+        el.play().catch(() => {});
+      }, { once: true });
+      eng.pulseEl = el;
+      tryNext();
+    }
+
     // the city's hum (v47 as the Lantern's; retargeted v52): warm low sines
     // with a slow beat, silent until you drift near Korrudan's crust — gain
     // steered from the frame loop by distance to the bone
@@ -9945,7 +9976,15 @@ void main() {
     // Reverse burn darkens it instead of dropping a tone.
     set(e.boRushLp.frequency, (180 + 300 * clamp(mag / cfg.boostTop, 0, 1)) * rv, 0.25);
     const od = overdrive ? clamp(mag / cfg.overTop, 0.25, 1) : 0;
-    set(e.odGain.gain, od * 0.4, 0.3);
+    // the file loop: swells in over ~0.4 s as the drive fires, fades over
+    // ~0.8 s when throttled down; speed lifts its pitch a touch, a reverse
+    // burn drops it. The saws only sound while the file is not playing.
+    if (e.pulseOk) {
+      set(e.pulseGain.gain, od * 0.9, overdrive ? 0.4 : 0.8);
+      e.pulseEl.playbackRate = (1 + 0.12 * clamp(mag / cfg.overTop, 0, 1)) * rv;
+      if (e.pulseEl.paused && overdrive) e.pulseEl.play().catch(() => {});
+    }
+    set(e.odGain.gain, e.pulseOk ? 0 : od * 0.4, 0.3);
     set(e.odSaw1.frequency, (66 + 28 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
     set(e.odSaw2.frequency, (66.5 + 28.2 * clamp(mag / cfg.overTop, 0, 1)) * rv, 0.3);
   }

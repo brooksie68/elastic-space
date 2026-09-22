@@ -257,6 +257,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
    work verified good and owned as v56; see memory task-queue-auto-worker.
    AWAITING JAMES: B1 first flight verdicts, crust v57 in-flight look,
    pinned-reticle + roll-dial feel.
+   2026-09-22: THE PULSE ENGINE AS A FILE (v76) — his 10 s loop at
+   `assets/ship/pulse-engine.mp3` swells with overdrive (Space) and fades on release;
+   the synth saws yield when it plays. His verdict: "sounds sooo good." Booster (Shift)
+   still synthesis unless he wants a file there too.
    2026-08-14/15 (JAMES FLEW B1 + v57 — the verdicts): Saelyri "teensy and
    sparse" → wants ~600/town, 1,000 at the capital, purposeful crowd
    behavior (groups doing things, pairs, streams — Jerry's Pool-style tuning;
