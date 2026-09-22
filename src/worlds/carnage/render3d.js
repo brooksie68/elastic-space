@@ -1643,7 +1643,10 @@ export function createRenderer(canvas, lookIn) {
         if (chain) aimArm(chain, _tgt, w * 0.95, 0.9);
         lunge = 0.12 * CELL * dropK * (m.punchDir.dx ? 1 : 0.4); lean = 0.12 * dropK;
         v.inner.position.y = -0.1 * CELL * dropK;
-      } else if (v.mixer) v.inner.position.y += (0 - v.inner.position.y) * Math.min(1, dt * 20); else if (v.bones && m.anim === 'punch' && v.punchTarget) {
+      } else if (v.mixer) v.inner.position.y += (0 - v.inner.position.y) * Math.min(1, dt * 20);
+      // (the body-drop reset above used to swallow the whole strike chain in its else — the rigged monsters never got the
+      // strike layer at all, only the raw library clip, which is why the punch read as a shrug / a clap)
+      if (!stomping && v.bones && m.anim === 'punch' && v.punchTarget) {
         const kk = punchK;
         let w, tgt = _tgt;
         const d = m.punchDir, stomp = m.st === 'street' && d.dy < 0;

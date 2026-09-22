@@ -49,6 +49,10 @@ old squash; the mound visual only, stylised, fading fairly quickly).
   three media elements per sound, reused; every synthesis chain frees itself on `onended` (`freeOnEnd`, incl. the vibrato
   LFOs). Pane check: 2,000 plays in a burst — 58 files decoded, voices peak 24, back to 0 six seconds later.
 - Cache tags: render3d v23, game.js v6, sound v3, game-core v6 (index, lab, look-dev).
+- LATE, at his bedtime: found that the strike-and-reach layer never ran for rigged monsters (an `else if` swallowed
+  the chain after the stomp branch) — fixed in `render3d.js`, syntax-checked, NOT seen in the pane (he went to bed
+  mid-check). His two notes for next time are at the top of the world CLAUDE.md: a real punch, up as well as left /
+  right / down; and half the screams and window-people reactions from punching.
 
 ## 2026-09-21 — Claude — ROUND TWO, built on James's first flight brief ("GREAT plan... have at it")
 

@@ -16,6 +16,18 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
   16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
   fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
+- **OPEN, HIS BEDTIME NOTES 2026-09-22 (build these next, no plan needed):**
+  1. **A REAL PUNCHING ACTION.** "The hand clapping is lame." He wants a punch that reads as a punch, punching UP as
+     well as LEFT, RIGHT and DOWN (the arrows). Found tonight, fixed but NOT yet seen: the strike-and-reach layer in
+     `render3d.js` was dead for every rigged monster — the stomp branch's `else if (v.mixer)` body-drop reset swallowed
+     the whole strike chain (and the climb reach / smash / slam-hold branches after it), so the monsters only ever
+     played the raw library clip. The chain now runs (`if (!stomping && v.bones && m.anim === 'punch' ...)`). Drive a
+     punch each way in `tmp/carnage/lookdev.html` (`LAB.drive({punch:true, pdx, pdy}, 0.6)`) and look before anything
+     else; if it still reads weak, the fix is the wind-up / strike phases, a real fist pose, and an up-punch that lifts
+     the shoulder — not another clip.
+  2. **HALF THE SOUND.** Too many sounds from punching: too many screams and too many people affected by breaking
+     windows. Cut the frequency of the scream / person-in-the-window reactions to about half (the screamer deal
+     weight in `city.js`, the punch-hit voice cues in `game.js`).
 - **2026-09-22 — HIS SECOND-FLIGHT NOTES, ALL BUILT (changelog 2026-09-22):** the wordmark paints from the first
   frame and fits the start card; residential windows are 1.36 m x 1.7 m with the sill at 0.9 m (the 4 m cell stays; the
   people stayed the size he called perfect); the back rows' shader was reading the ground-anchored boxes as centred
