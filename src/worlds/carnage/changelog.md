@@ -107,6 +107,11 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   shop's colour; restaurants keep their brand front. (4) On a face the hips are yaw-locked into the wall after the
   mixer (the boxing clips twisted the body toward the camera). Gap trees smaller so they never hide a shop. Two
   sim tests loosened where the per-building shop roll shifted the seeds. Sim 1,947,466 green.
+- **Same night, his notes while flying**: the block cars (the parked-spot fallback boxes) are gone — only the real taxi and
+  cruiser park, some spots empty; curtains muted to linens, creams and grays; the near side was a 30 m pavement with
+  the planters in the middle ("another sidewalk?") — now one 8.5 m sidewalk with the planters, trees and a railing at
+  its back, nothing beyond, and the camera base a touch higher (`baseCamY` 0.40 → 0.49 of the view) so the frame
+  ends just past the planters and the roofs come into view.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

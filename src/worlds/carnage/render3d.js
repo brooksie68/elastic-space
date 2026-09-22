@@ -621,7 +621,7 @@ export function createRenderer(canvas, lookIn) {
     const mk = (w, d, z, t, rep) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tile(t, w / rep, d / rep), roughness: 0.95, metalness: 0 })); m.rotation.x = -Math.PI / 2; m.position.set(x0 + w / 2, 0, z); return m; };
     ground.add(mk(W, SW, SW / 2, 'sidewalk', 3.2));             // the pavement in front of the faces, deep enough for a giant
     const road = mk(W, ROAD, SW + ROAD / 2, 'asphalt', 6); road.position.y = -0.04; ground.add(road);
-    const near = mk(W, 30, SW + ROAD + 15, 'sidewalk', 3.2); ground.add(near);   // the near pavement, all the way under the camera
+    const near = mk(W, 8.5, SW + ROAD + 4.25, 'sidewalk', 3.2); ground.add(near);   // the near pavement: one sidewalk, the planters on it, a railing at its back
     const back = new THREE.Mesh(new THREE.PlaneGeometry(W, 500), new THREE.MeshStandardMaterial({ color: 0x5a5058, roughness: 1 }));
     back.rotation.x = -Math.PI / 2; back.position.set(x0 + W / 2, -0.08, -100); ground.add(back);
     // planters and a low fence along the near pavement, low enough to stay under the road in the frame
@@ -629,10 +629,10 @@ export function createRenderer(canvas, lookIn) {
     const southern = city && city.lat < 33.5;
     let ti = 0;
     for (let x = -10; x < width * CELL + 10; x += 6, ti++) {
-      const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, SW + ROAD + 6); ground.add(pl);
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, SW + ROAD + 5.2); ground.add(pl);
       const kind = ti % 3 === 1 ? 'flowers' : 'bush';
-      ground.add(billboard(Icons().tree(kind, ti * 7 + 3), 3.4, kind === 'bush' ? 2.4 : 1.6, x, 0.6, SW + ROAD + 6.1));
-      if (ti % 5 === 2) ground.add(billboard(Icons().tree(southern ? 'palm' : (ti % 2 ? 'round' : 'tall'), ti * 13 + 1), 7.5, 8.5, x + 2.5, 0, SW + ROAD + 8.6));
+      ground.add(billboard(Icons().tree(kind, ti * 7 + 3), 3.4, kind === 'bush' ? 2.4 : 1.6, x, 0.6, SW + ROAD + 5.3));
+      if (ti % 5 === 2) ground.add(billboard(Icons().tree(southern ? 'palm' : (ti % 2 ? 'round' : 'tall'), ti * 13 + 1), 6.5, 7.5, x + 2.5, 0, SW + ROAD + 7.2));
     }
     void leafMat;
     // trees in the gaps between the buildings, on the front pavement
@@ -650,7 +650,7 @@ export function createRenderer(canvas, lookIn) {
       }
     }
     const fence = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.6 }));
-    fence.position.set(x0 + W / 2, 0.45, SW + ROAD + 9.5); ground.add(fence);
+    fence.position.set(x0 + W / 2, 0.45, SW + ROAD + 8.3); ground.add(fence);
     // parked cars along the near kerb: the real taxi and cruiser when they are loaded, dark blocks with wheels otherwise
     const carGeo = new THREE.BoxGeometry(4.4, 1.2, 1.9), roofGeo = new THREE.BoxGeometry(2.4, 0.65, 1.7), wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 10);
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.9 });
@@ -1675,7 +1675,7 @@ export function createRenderer(canvas, lookIn) {
 
   // ---- the camera ---------------------------------------------------------------------------------------------------------------
   let camX = 0, camY = 0, camDist = 100, viewW = 26 * CELL, viewH = 60;
-  function baseCamY() { return viewH * 0.40; }
+  function baseCamY() { return viewH * 0.49; }   // a little higher: the frame ends just past the near planters, not a second sidewalk
   function fitCamera() {
     const w = Math.max(1, canvas.clientWidth || window.innerWidth), h = Math.max(1, canvas.clientHeight || window.innerHeight);
     const aspect = w / h;
