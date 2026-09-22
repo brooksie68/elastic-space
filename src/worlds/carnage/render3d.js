@@ -1272,7 +1272,12 @@ export function createRenderer(canvas, lookIn) {
         else { w = 1 - ease((kk - 0.72) / 0.28); tgt.copy(v.punchTarget); }
         const strikeK = kk < 0.22 ? 0 : kk < 0.42 ? ease((kk - 0.22) / 0.2) : kk < 0.72 ? 1 : 1 - ease((kk - 0.72) / 0.28);
         lean = 0.14 * strikeK; lunge = 0.1 * CELL * strikeK;
-        if (stomp || anim === 'bothFists') { aimArm(v.bones.Right, tgt, w, 0.85); aimArm(v.bones.Left, tgt, w, 0.85); }
+        if (stomp || anim === 'bothFists') {
+          // two fists, two landing spots a shoulder's width apart (one point and they clap)
+          const sep = 0.32 * CELL;
+          _pF.copy(tgt); _pF.x += sep; aimArm(v.bones.Right, _pF, w, 0.85);
+          _pH.copy(tgt); _pH.x -= sep; aimArm(v.bones.Left, _pH, w, 0.85);
+        }
         else { const side = (anim === 'punchL' || anim === 'hookL') ? 'Left' : 'Right'; aimArm(v.bones[side], tgt, w, 0.9); }
       } else if (v.bones && m.st === 'climb' && m.hop) {
         // THE REACH: the free hand goes to the next sill first
@@ -1290,7 +1295,7 @@ export function createRenderer(canvas, lookIn) {
       } else if (v.bones && v.slamHold > 0) {
         v.slamHold -= dt;
         _tgt.set(v.smoothX + m.facing * CELL * 0.5, 0.2, v.root.position.z + 1.5);
-        aimArm(v.bones.Right, _tgt, 0.9, 0.9); aimArm(v.bones.Left, _tgt, 0.9, 0.9);
+        _pF.copy(_tgt); _pF.x += 0.32 * CELL; aimArm(v.bones.Right, _pF, 0.9, 0.9); _pH.copy(_tgt); _pH.x -= 0.32 * CELL; aimArm(v.bones.Left, _pH, 0.9, 0.9);
         lean = 0.35;
       }
       v.inner.rotation.x += (-lean - v.inner.rotation.x) * Math.min(1, dt * 20);
