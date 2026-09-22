@@ -1227,7 +1227,7 @@ export function createRenderer(canvas, lookIn) {
         v.lastPunchK = punchK;
         const d = m.punchDir;
         const stomp = m.st === 'street' && d.dy < 0;
-        if (stomp) anim = 'bothFists';
+        if (stomp) anim = 'stomp';   // THE STOMP is a foot (James, 2026-09-21): the ground-stomp clip, never the fists
         else if (d.dy > 0 && v.actions.upperR) anim = 'upperR';
         else if (v.punchN % 2 === 0 && v.actions.hookL) anim = 'hookL';
         else anim = v.punchN % 2 ? 'punchR' : 'punchL';
@@ -1262,7 +1262,12 @@ export function createRenderer(canvas, lookIn) {
       if (v.mixer) v.mixer.update(dt);
       // THE STRIKE: wind up, strike, hold, recover — the fist ends in the cell the rules hit
       let lean = 0, lunge = 0;
-      if (v.bones && m.anim === 'punch' && v.punchTarget) {
+      const stomping = m.anim === 'punch' && m.st === 'street' && m.punchDir.dy < 0;
+      if (stomping) {
+        // the foot stomp: the clip does the work; the body steps toward the side of a diagonal
+        const kk = punchK, strikeK = kk < 0.35 ? ease(kk / 0.35) : kk < 0.7 ? 1 : 1 - ease((kk - 0.7) / 0.3);
+        lunge = 0.22 * CELL * strikeK * (m.punchDir.dx ? 1 : 0.3); lean = 0.1 * strikeK;
+      } else if (v.bones && m.anim === 'punch' && v.punchTarget) {
         const kk = punchK;
         let w, tgt = _tgt;
         const d = m.punchDir, stomp = m.st === 'street' && d.dy < 0;
