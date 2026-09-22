@@ -11,14 +11,19 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
 
 ## START HERE
 
+- **ROUND TWO BUILT 2026-09-21** on his first-flight brief (plan.md "ROUND TWO", changelog top entry): W A S D move, the
+  ARROWS punch eight ways, Space smashes down, double-tap runs, two lanes (S into the road, W back), the hop-per-cell
+  climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
+  16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
+  fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
 - `changelog.md` top entry — what was built, what he has not seen, the open list.
 - The notes loop is his channel for verb work: `node tmp/carnage/notes.mjs watch` under the Monitor tool at
   the start of any Carnage session (a note in the Damage Lab wakes the session). THE RULE (from the Jabberwocky
   weapon lab): act on a note without asking; when a verb changes, `notes.mjs update <verb> "what changed"`
   (green dot + toast in the lab), then `done <id> "reply"`. Run `tmp/carnage/sim.mjs` before marking anything
   done. Bump `?v=` on the changed file in index.html / lab.html.
-- Meshy: 522 credits spent on this build (his cap was 550; balance 3,146 → 2,624). Anything new costs
-  credits: state the cost first.
+- Meshy: 522 credits on the first build (balance 3,146 → 2,624) + 45 on round two's five clips (1,192 → 1,147). Anything
+  new costs credits: state the cost first.
 
 ## Files
 
@@ -35,7 +40,9 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   rows, the sky dome, day and night, the monsters / teenager / soldiers as rigged Meshy models with clips,
   the statics, the things in the windows as canvas icons, the post chain (the composite tone-maps and
   encodes — render targets are linear), `portrait(slug)` for the HUD.
-- `icons.js` — the 2D art: 23 window icons, the neon atlas (8 signs), the blimp banners, the brand marks.
+- `icons.js` — the 2D art: 23 window icons + the screamer's four frames, the neon atlas (8 signs), the painted shop
+  atlas (8), the trees (`tree(kind, seed)`), the skyline painter (`skyline(layer, seed, night, colour, w, h)`), the
+  blimp banners, the brand marks.
 - `sound.js` — file-backed one-shots (`assets/audio/sfx/`, 54 ElevenLabs files incl. the voices: the clown
   laughs, the girl speaks as Lily, the king creaks) with a synthesis recipe behind every id; beds (traffic,
   rotor, siren, dust, neon hum at night). No music unless `assets/audio/theme.mp3` appears (0.22).
@@ -67,7 +74,16 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
 - THE SIZE is a dial (`opts.monsterH`, default 2.7 floors — half again the first cut, chosen so a standing
   monster's fists sit in the middle of the second-floor window). Hands at 55% of the height, reach 70%:
   everything that aims at or reaches from a monster goes through `monH / monHand / monReach`, never a
-  number. On the street the punch is the stomp clip (a downward smash); on a face the jabs.
+  number. THE KEYS: W A S D move (S on the street = into the road lane, W = back / grab), the ARROWS punch by direction
+  (`input.pdx / pdy`), Space = jump / THE SMASH, a double tap = the run burst (the core reads taps). Never put movement
+  back on the arrows. The punch's fist lands where the rules hit: `render3d.js` turns the arm bones after the mixer
+  (`aimArm`); the climb is a hop per cell (`m.hop`), the ladder clip paced to it.
+- THE LANES: `m.lane` 0 = the faces (buildings, soldiers, the bot), 1 = the road (cars, the truck); `laneOf(m)` for
+  bullets and shells; the stomp and the smash reach both. Companions never cross.
+- THE ARMY comes in waves (`state.army`, `launchWave`): quiet until `armyStart` s AND `armyCells` broken on day one;
+  never the same kind twice running; dials armyStart / waveGap / armyDay. No free-running soldier timers.
+- The things in the windows sit at z = +0.14 (in front of the facade plane, inside the opening) — behind it they are
+  invisible (the round-one bug).
 - Camera restraint: a fixed side camera, a long-eased follow, one low thud on a collapse, nothing else.
 - The rules are the cabinet's where they are the game: a window in one punch, a wall in two, a building
   down past 55–65% broken (bigger needs more), two floors of fall are free, the revert at zero. Points:
@@ -86,7 +102,7 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
 
 ## Status
 
-BUILT 2026-09-08. His first look, later that night: "this looks amazing!" — then, before playing, the size
+ROUND TWO BUILT 2026-09-21 (see START HERE) — awaiting his flight. The first build: BUILT 2026-09-08. His first look, later that night: "this looks amazing!" — then, before playing, the size
 (2.7 floors, a dial) and the CONTROLS panel, both built the same night. He has not flown it yet. His eyes decide:
 the feel of the keys, the pace of the army, the look of the rooms and the holes, the copy. The campaign is
 unwritten (the start card says SOON).

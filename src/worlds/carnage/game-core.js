@@ -47,6 +47,15 @@
     monsterH: 2.7,           // floors tall (James, 2026-09-08: bigger — half again the first cut's 1.8)
     cpuIdle: 0,              // 1 = the companions stand still (the Damage Lab's dummies)
     maxFloors: 16,
+    // round two (James, 2026-09-21): the army comes later and in waves, the street has two lanes, a run burst
+    armyDay: 1,              // the first day the army comes at all
+    armyStart: 40,           // s into day 1 before the first wave (AND armyCells cells broken)
+    armyCells: 10,
+    waveGap: 20,             // s of lull between waves (shrinks a little each day)
+    laneT: 0.28,             // s to cross between the face lane and the road
+    burstT: 0.6,             // s a run burst lasts
+    burstK: 2.2,             // × the run speed during a burst
+    tapWindow: 0.25,         // s between two taps for a burst
   };
 
   const MON = { COL_T: 0.16, REVERT_T: 1.6, WALKOFF: 2.0, HIT_T: 0.4, EAT_T: 0.5, ARRIVE_Y: 11, INVULN: 1.5 };
@@ -61,7 +70,7 @@
   };
   // what each deal does when you punch the cell it is in (after the window broke and showed it)
   const DEAL_FX = {
-    customer: { pts: 500, hp: 12, eat: 1 }, worker: { pts: 500, hp: 12, eat: 1 }, waver: { pts: 500, hp: 12, eat: 1, waves: 1 }, zombie: { pts: 500, hp: 12, eat: 1 },
+    customer: { pts: 500, hp: 12, eat: 1 }, worker: { pts: 500, hp: 12, eat: 1 }, waver: { pts: 500, hp: 12, eat: 1, waves: 1 }, screamer: { pts: 500, hp: 12, eat: 1, waves: 1 }, zombie: { pts: 500, hp: 12, eat: 1 },
     fries: { pts: 100, hp: 8, eat: 1 }, shake: { pts: 100, hp: 8, eat: 1 }, nuggets: { pts: 100, hp: 8, eat: 1 }, patty: { pts: 100, hp: 8, eat: 1 }, cake: { pts: 150, hp: 10, eat: 1 },
     crown: { pts: 250, hp: 0, take: 1 }, cash: { pts: 500, take: 1 }, crypto: { pts: 2500, take: 1 },
     battery: { dmg: 20, fuse: 1.2, boom: 1 }, fryer: { dmg: 10, cool: 2.0, then: { pts: 100, hp: 8 } }, peloton: { dmg: 15, gone: 1 }, cactus: { dmg: 8, gone: 1 }, vape: { dmg: 5, gone: 1 }, smoothie: { dmg: 12, gone: 1 },
@@ -109,6 +118,8 @@
       monsters: [], playerId: 0,
       soldiers: [], tank: null, drone: null, cars: [], bullets: [], shells: [], items: [], blimp: null,
       timers: { soldier: 6, tank: 20, drone: 35, car: 4 },
+      army: { phase: 'grace', t: 0, kind: '', waveN: 0, side: 1 },   // the wave director (round two)
+      dayCells: 0,
       phase: 'play', phaseT: 0,
       score: 0, nextExtra: opts.extraEvery,
       stats: { cells: 0, buildings: 0, eaten: 0, soldiers: 0, tanks: 0, drones: 0, cars: 0, falls: 0, reverts: 0, days: 0 },
@@ -132,6 +143,9 @@
       hp: 100, lives: Infinity, score: 0,
       punchT: 0, punchFull: 0, punchDir: { dx: 0, dy: 0 }, punchHit: false, punchHeld: 0, prevPunch: false, prevJump: false, prevUp: false,
       eatT: 0, hitT: 0, invulnT: 0, stateT: 0, holdT: 0, subT: 0,
+      // round two: the lane (0 = at the faces, 1 = the road) and the crossing, the run burst, the cell hop, the smash
+      lane: 0, laneK: 0, laneMoving: 0, tapT: 0, tapDir: 0, prevMove: 0, burstT: 0, burstDir: 0, skidT: 0,
+      hop: 0, hopT: 0, hopDur: 0, hopFrom: 0, hopTo: 0, hopHand: 0, smashing: false,
       flavour: flavourFor(slug, state.opts.flavour),
       lastEat: null, anim: 'idle',
       ai: { goal: -1, dir: 1, punchCd: 0, t: 0, wander: 0, stuck: 0 },
@@ -144,12 +158,15 @@
     state.soldiers.length = 0; state.tank = null; state.drone = null; state.cars.length = 0; state.bullets.length = 0; state.shells.length = 0; state.items.length = 0;
     state.blimp = null; state.blimpT = state.city.exits.blimp ? 20 : -1;
     const g = Math.min(8, day - 1);
-    state.timers.soldier = 6; state.timers.tank = 20 - g; state.timers.drone = 35 - g * 2; state.timers.car = 4;
+    state.timers.soldier = 6; state.timers.tank = 20 - g; state.timers.drone = 35 - g * 2; state.timers.car = day === 1 ? 14 : 4;
+    state.army.phase = 'grace'; state.army.t = 0; state.army.kind = ''; state.army.waveN = 0;
+    state.dayCells = 0;
     state.dayPoints = 0;
     const sx = state.city.spawnX;
     state.monsters.forEach((m, i) => {
       m.x = Math.max(1, Math.min(state.city.width - 1, sx + i * 7)); m.y = 0; m.vx = 0; m.vy = 0; m.st = 'street'; m.b = -1; m.homeX = m.x;
       m.punchT = 0; m.eatT = 0; m.hitT = 0; m.stateT = 0; m.holdT = 0; m.subT = 0; m.invulnT = 0.5;
+      m.lane = 0; m.laneK = 0; m.laneMoving = 0; m.burstT = 0; m.skidT = 0; m.tapT = 0; m.hop = 0; m.smashing = false;
       if (m.hp <= 0) m.hp = 100;
       m.ai.goal = -1; m.ai.t = 0; m.ai.punchCd = 2;
     });
@@ -170,6 +187,8 @@
     return best;
   }
   const isTarget = (m) => m.st === 'street' || m.st === 'climb' || m.st === 'roof' || m.st === 'jump' || m.st === 'fall';
+  // which lane a monster is in for bullets, shells and the truck: the road only when standing (or jumping) there
+  const laneOf = (m) => ((m.st === 'street' || m.st === 'jump' || m.st === 'fall') && m.lane === 1 && m.laneK > 0.5) ? 1 : 0;
   const isBig = (m) => m.st !== 'revert' && m.st !== 'walkoff' && m.st !== 'gone' && m.st !== 'dead';
   function bodyHit(state, m, x, y) { return Math.abs(x - m.x) < monHalf(state) + 0.1 && y >= m.y - 0.1 && y <= m.y + monH(state) + 0.1; }
   function building(state, id) { return id >= 0 ? state.city.buildings[id] : null; }
@@ -380,7 +399,7 @@
     const t = b.cells[k];
     b.state[k] = S.BROKEN; b.broken++;
     if (t === T.NEON && b.neon) { b.neon.dead = true; }
-    state.stats.cells++;
+    state.stats.cells++; state.dayCells++;
     const col = k % b.cols, row = Math.floor(k / b.cols);
     const deal = (t === T.WINDOW || t === T.STORE) ? b.deal[k] : 'none';
     const ev = { type: 'cellBreak', b: b.id, k, col, row, x: b.x0 + col + 0.5, y: row, cellType: t, deal, how: how || 'punch', by: m ? m.slug : null };
@@ -415,23 +434,56 @@
 
   // ---- monsters -----------------------------------------------------------------------------------------
   function startFall(state, m, from, vx) {
-    m.st = 'fall'; m.fallFrom = from; m.vy = 0; m.vx = vx || 0; m.b = -1;
+    m.st = 'fall'; m.fallFrom = from; m.vy = 0; m.vx = vx || 0; m.b = -1; m.hop = 0;
     state.events.push({ type: 'fall', who: m.id, slug: m.slug, from });
   }
   function land(state, m) {
     m.y = 0; m.vy = 0; m.st = 'street';
     const h = m.fallFrom;
-    if (h > state.opts.fallFree) {
-      const dmg = (h - state.opts.fallFree) * state.opts.fallDmg;
+    const smashing = m.smashing;
+    m.smashing = false;
+    const free = state.opts.fallFree + (smashing ? 1.5 : 0);   // a smash is a controlled drop: a floor and a half more for free
+    if (h > free) {
+      const dmg = (h - free) * state.opts.fallDmg;
       state.stats.falls++;
       state.events.push({ type: 'landHard', who: m.id, slug: m.slug, x: m.x, from: h, dmg });
       damage(state, m, dmg, 'fall', m.x, 0);
-    } else state.events.push({ type: 'land', who: m.id, slug: m.slug, x: m.x });
+    } else if (!smashing) state.events.push({ type: 'land', who: m.id, slug: m.slug, x: m.x });
     m.fallFrom = 0;
+    if (smashing) smashLand(state, m, h);
+  }
+  // the landing of a smash: everything under the fists, in either lane, takes it
+  function smashLand(state, m, from) {
+    let hit = false;
+    const reach = monReach(state) * 0.9;
+    const b = faceAt(state, m.x);
+    if (b) for (const dc of [-1, 0, 1]) { const c = Math.floor(m.x - b.x0) + dc; if (c < 0 || c >= b.cols) continue; if (dc !== 0 && Math.abs(b.x0 + c + 0.5 - m.x) > reach) continue; const k = City.cellAt(b, c, 0); if (k >= 0 && b.state[k] !== S.BROKEN && b.cells[k] !== T.NEON) hit = punchCell(state, m, b, k) || hit; }
+    for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire' || s.st === 'leave') && Math.abs(s.x - m.x) <= reach) {
+      s.st = 'dead'; s.t = 0; state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier'); hit = true;
+      state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: 'smashed' });
+    }
+    const tk = state.tank;
+    if (tk && tk.st !== 'wreck' && Math.abs(tk.x - m.x) <= reach + 0.9) { tk.hp -= 2; hit = true; state.events.push({ type: 'tankHit', x: tk.x, hp: tk.hp }); if (tk.hp <= 0) { tk.st = 'wreck'; tk.t = 0; state.stats.tanks++; addPoints(state, m, POINTS.tank, tk.x, 1, 'tank'); state.events.push({ type: 'tankDie', x: tk.x }); } }
+    for (const c of state.cars) if (c.st === 'drive' && Math.abs(c.x - m.x) <= reach + 0.6) {
+      c.st = 'wreck'; c.t = 0; c.vx = 0; state.stats.cars++; hit = true;
+      addPoints(state, m, CARS[c.kind].pts, c.x, 0.5, c.kind);
+      if (CARS[c.kind].hp) { heal(m, CARS[c.kind].hp); m.eatT = MON.EAT_T; m.lastEat = 'burrito'; }
+      state.events.push({ type: 'carWreck', kind: c.kind, x: c.x, how: 'smashed', dir: m.facing });
+    }
+    for (const t of state.monsters) {
+      if (t === m || !isBig(t) || t.st === 'gone' || t.st === 'arrive' || t.st !== 'street') continue;
+      if (Math.abs(t.x - m.x) <= reach + 0.3 && damage(state, t, 12, 'monster', t.x, t.y + 1)) { state.events.push({ type: 'monsterHit', who: t.id, slug: t.slug, by: m.slug, x: t.x, y: t.y + 1 }); hit = true; }
+    }
+    for (const t of state.monsters) if (t !== m && t.st === 'walkoff' && Math.abs(t.x - m.x) <= reach) {
+      addPoints(state, m, POINTS.teen, t.x, 1, 'teen'); heal(m, 15); m.eatT = MON.EAT_T; m.lastEat = 'teen'; state.stats.eaten++; hit = true;
+      state.events.push({ type: 'eaten', who: t.id, slug: t.slug, by: m.slug, x: t.x });
+      loseLife(state, t, 'eaten');
+    }
+    state.events.push({ type: 'smashLand', who: m.id, slug: m.slug, x: m.x, from, hit, big: from >= 3 });
   }
   function grab(state, m, b, y) {
     m.st = 'climb'; m.b = b.id; m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0)));
-    m.y = Math.max(0, Math.min(b.floors - 1, y)); m.vy = 0; m.vx = 0; m.colT = MON.COL_T; m.fallFrom = 0;
+    m.y = Math.max(0, Math.min(b.floors - 1, y)); m.vy = 0; m.vx = 0; m.colT = MON.COL_T; m.fallFrom = 0; m.hop = 0; m.lane = 0; m.laneK = 0; m.laneMoving = 0; m.burstT = 0; m.skidT = 0;
     state.events.push({ type: 'grab', who: m.id, slug: m.slug, b: b.id });
   }
   function stepMonster(state, m, input, dt) {
@@ -456,14 +508,19 @@
     if (m.hitT > 0) m.hitT -= dt;
     if (m.eatT > 0) m.eatT -= dt;
     if (m.colT > 0) m.colT -= dt;
+    if (m.tapT > 0) m.tapT -= dt;
     const stunned = m.hitT > 0 || m.eatT > 0;
     const move = stunned ? 0 : (input.move | 0);
+    const moveEdge = move !== 0 && move !== m.prevMove;
+    m.prevMove = move;
     if (move) m.facing = move > 0 ? 1 : -1;
     const upEdge = input.up && !m.prevUp;
     const jumpEdge = input.jump && !m.prevJump;
     m.prevUp = !!input.up; m.prevJump = !!input.jump;
+    void upEdge;
 
-    // the punch: edge, or held with a repeat
+    // the punch: edge, or held with a repeat. Aimed by pdx / pdy (the arrows); without them, the old way (the
+    // move key and up / down held with the punch).
     if (m.punchT > 0) {
       m.punchT -= dt;
       if (!m.punchHit && m.punchT <= m.punchFull - 0.12) { m.punchHit = true; resolvePunch(state, m); }
@@ -471,50 +528,83 @@
     } else if (m.punchHeld > 0) m.punchHeld -= dt;
     const wantPunch = input.punch && (!m.prevPunch || m.punchHeld <= 0);
     m.prevPunch = !!input.punch;
-    if (wantPunch && m.punchT <= 0 && !stunned && (m.st === 'street' || m.st === 'climb' || m.st === 'roof')) {
+    if (wantPunch && m.punchT <= 0 && !stunned && !m.laneMoving && (m.st === 'street' || m.st === 'climb' || m.st === 'roof')) {
       m.punchFull = o.punchT / m.flavour.punch; m.punchT = m.punchFull; m.punchHit = false;
-      m.punchDir.dx = move; m.punchDir.dy = (input.up ? 1 : 0) - (input.down ? 1 : 0);
-      if (m.st === 'street') m.punchDir.dy = 0;
-      state.events.push({ type: 'punch', who: m.id, slug: m.slug, x: m.x, y: m.y, dx: m.punchDir.dx, dy: m.punchDir.dy });
+      const pdx = input.pdx != null ? (input.pdx | 0) : move;
+      const pdy = input.pdy != null ? (input.pdy | 0) : (input.up ? 1 : 0) - (input.down ? 1 : 0);
+      m.punchDir.dx = Math.max(-1, Math.min(1, pdx)); m.punchDir.dy = Math.max(-1, Math.min(1, pdy));
+      if (m.st === 'roof') m.punchDir.dy = 0;
+      if (m.punchDir.dx) m.facing = m.punchDir.dx;
+      m.burstT = 0;
+      state.events.push({ type: 'punch', who: m.id, slug: m.slug, x: m.x, y: m.y, dx: m.punchDir.dx, dy: m.punchDir.dy, st: m.st, lane: m.lane });
     }
     const punching = m.punchT > 0;
 
     if (m.st === 'street') {
-      const speed = o.run * m.flavour.run * (punching ? 0.35 : 1);
-      m.vx = move * speed;
+      // the lanes: crossing between the faces (0) and the road (1)
+      if (m.laneMoving) {
+        m.laneK += (m.lane ? 1 : -1) * dt / o.laneT;
+        if ((m.lane && m.laneK >= 1) || (!m.lane && m.laneK <= 0)) { m.laneK = m.lane; m.laneMoving = 0; state.events.push({ type: 'lane', who: m.id, slug: m.slug, x: m.x, lane: m.lane }); }
+      }
+      // the run burst: two taps of the same way inside the window
+      if (moveEdge && !punching) {
+        if (m.tapDir === move && m.tapT > 0 && m.burstT <= 0) { m.burstT = o.burstT; m.burstDir = move; m.tapT = 0; state.events.push({ type: 'burst', who: m.id, slug: m.slug, x: m.x, dir: move }); }
+        else { m.tapDir = move; m.tapT = o.tapWindow; }
+      }
+      const speed = o.run * m.flavour.run * (punching ? 0.35 : 1) * (m.laneMoving ? 0.5 : 1);
+      if (m.burstT > 0) {
+        m.burstT -= dt;
+        if ((move && move !== m.burstDir) || stunned) m.burstT = 0;
+        m.vx = m.burstDir * speed * o.burstK;
+        if (m.burstT <= 0) { m.burstT = 0; m.skidT = 0.18; state.events.push({ type: 'skid', who: m.id, slug: m.slug, x: m.x, dir: m.burstDir }); }
+        // bowling over soldiers in the face lane
+        if (m.lane === 0) for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire' || s.st === 'leave') && Math.abs(s.x - m.x) < monHalf(state) + 0.5) {
+          s.st = 'flyup'; s.t = 0; s.vx = m.burstDir * 7; s.vy = 6; state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier');
+          state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: 'bowled', dir: m.burstDir });
+        }
+      } else if (m.skidT > 0) { m.skidT -= dt; m.vx = m.facing * o.run * 0.6 * Math.max(0, m.skidT / 0.18); if (move) m.skidT = 0; }
+      else m.vx = move * speed;
       m.x = Math.max(0.6, Math.min(W - 0.6, m.x + m.vx * dt));
       m.y = 0;
-      // the subway: stand over it and hold down
+      // the subway: stand over it in the face lane and hold down
       const sub = state.city.exits.subway;
-      if (sub != null && !m.cpu && state.opts.exits && input.down && Math.abs(m.x - sub) < 0.9) { m.subT += dt; if (m.subT >= 0.6) takeExit(state, 'subway', sub, 0); } else m.subT = 0;
-      if (!stunned && !punching) {
-        if (input.up) { const b = faceAt(state, m.x); if (b) grab(state, m, b, 0); }
+      const overSub = sub != null && !m.cpu && state.opts.exits && m.lane === 0 && Math.abs(m.x - sub) < 0.9;
+      if (overSub && input.down) { m.subT += dt; if (m.subT >= 0.6) takeExit(state, 'subway', sub, 0); } else m.subT = 0;
+      if (!stunned && !punching && !m.laneMoving && m.burstT <= 0) {
+        if (input.down && m.lane === 0 && !overSub && !m.cpu) { m.lane = 1; m.laneMoving = 1; m.subT = 0; state.events.push({ type: 'laneStart', who: m.id, slug: m.slug, x: m.x, lane: 1 }); }
+        else if (input.up && m.lane === 1) { m.lane = 0; m.laneMoving = 1; state.events.push({ type: 'laneStart', who: m.id, slug: m.slug, x: m.x, lane: 0 }); }
+        else if (input.up && m.lane === 0) { const b = faceAt(state, m.x); if (b) grab(state, m, b, 0); }
         else if (jumpEdge) { m.st = 'jump'; m.vy = o.jumpV; m.vx = move * speed; state.events.push({ type: 'jump', who: m.id, slug: m.slug, x: m.x, y: 0 }); }
       }
-      // eating a reverted teenager who is walking past
-      if (punching && m.punchHit && !m.ateTeen) { /* handled in resolvePunch */ }
     } else if (m.st === 'climb') {
       const b = building(state, m.b);
       if (!b || b.down) { startFall(state, m, m.y, 0); }
       else {
-        if (!stunned) {
-          const dy = ((input.up ? 1 : 0) - (input.down ? 1 : 0)) * o.climb * m.flavour.climb * (punching ? 0.4 : 1);
-          m.y += dy * dt;
-          if (m.y > b.floors - 1) {
-            if (input.up) { m.st = 'roof'; m.y = b.floors; m.x = b.x0 + m.col + 0.5; m.vx = 0; state.events.push({ type: 'roof', who: m.id, slug: m.slug, b: b.id }); }
-            else m.y = b.floors - 1;
+        // the climb is a hop per cell (the cabinet's hand-over-hand): once started it finishes
+        if (m.hop) {
+          m.hopT += dt;
+          const k = Math.min(1, m.hopT / m.hopDur);
+          m.y = m.hopFrom + (m.hopTo - m.hopFrom) * k;
+          if (k >= 1) { m.y = m.hopTo; m.hop = 0; m.hopHand ^= 1; state.events.push({ type: 'hopEnd', who: m.id, slug: m.slug, x: m.x, y: m.y, hand: m.hopHand }); }
+        }
+        if (!stunned && !m.hop) {
+          const want = (input.up ? 1 : 0) - (input.down ? 1 : 0);
+          if (want > 0 && m.y >= b.floors - 1 - 1e-6) { m.st = 'roof'; m.y = b.floors; m.x = b.x0 + m.col + 0.5; m.vx = 0; m.hop = 0; state.events.push({ type: 'roof', who: m.id, slug: m.slug, b: b.id }); }
+          else if (want < 0 && m.y <= 1e-6) { m.y = 0; m.st = 'street'; m.b = -1; m.vx = 0; m.lane = 0; m.laneK = 0; }
+          else if (want && !(punching && m.punchT > m.punchFull * 0.5)) {
+            m.hop = want; m.hopT = 0; m.hopFrom = m.y; m.hopTo = Math.max(0, Math.min(b.floors - 1, Math.round(m.y) + want));
+            m.hopDur = (Math.abs(m.hopTo - m.hopFrom) / (o.climb * m.flavour.climb)) * (punching ? 2.2 : 1);
+            if (m.hopDur < 1e-4) m.hop = 0;
+            else state.events.push({ type: 'hop', who: m.id, slug: m.slug, x: m.x, y: m.y, dir: want, hand: m.hopHand });
           }
-          if (m.y < 0) {
-            m.y = 0;
-            if (input.down) { m.st = 'street'; m.b = -1; m.vx = 0; }
-          }
-          if (m.st === 'climb' && move && m.colT <= 0 && !punching) {
+          if (m.st === 'climb' && move && m.colT <= 0 && !punching && !m.hop) {
             const nc = m.col + move;
-            if (nc >= 0 && nc < b.cols) { m.col = nc; m.colT = MON.COL_T; }
-            else if (m.y <= 0.05) { m.st = 'street'; m.b = -1; m.x = b.x0 + m.col + 0.5 + move * 0.6; }
+            if (nc >= 0 && nc < b.cols) { m.col = nc; m.colT = MON.COL_T; state.events.push({ type: 'sidestep', who: m.id, slug: m.slug, x: b.x0 + nc + 0.5, y: m.y, dir: move }); }
+            else if (m.y <= 0.05) { m.st = 'street'; m.b = -1; m.x = b.x0 + m.col + 0.5 + move * 0.6; m.lane = 0; m.laneK = 0; }
             else { m.x = b.x0 + m.col + 0.5 + move * 0.7; startFall(state, m, m.y, move * 2.2); }
           }
-          if (m.st === 'climb' && jumpEdge && !punching) { m.x = b.x0 + m.col + 0.5 - m.facing * 0.3; startFall(state, m, m.y, -m.facing * 1.5); state.events.push({ type: 'letGo', who: m.id, slug: m.slug }); }
+          // Space on a face: let go and SMASH DOWN on whatever is under the fists
+          if (m.st === 'climb' && jumpEdge && !punching) startSmash(state, m);
         }
         if (m.st === 'climb') m.x = b.x0 + m.col + 0.5;
       }
@@ -528,23 +618,32 @@
         m.y = b.floors;
         if (m.x < b.x0 - 0.2 || m.x > b.x0 + b.cols + 0.2) { startFall(state, m, m.y, move * 2); }
         else if (!stunned && !punching) {
-          if (input.down) { m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0))); m.st = 'climb'; m.y = b.floors - 1; m.x = b.x0 + m.col + 0.5; m.colT = MON.COL_T; }
-          else if (jumpEdge) { m.st = 'jump'; m.vy = o.jumpV; m.vx = move * speed; m.jumpFrom = m.y; state.events.push({ type: 'jump', who: m.id, slug: m.slug, x: m.x, y: m.y }); }
+          if (input.down) { m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0))); m.st = 'climb'; m.y = b.floors - 1; m.x = b.x0 + m.col + 0.5; m.colT = MON.COL_T; m.hop = 0; }
+          else if (jumpEdge) startSmash(state, m);
         }
       }
     } else if (m.st === 'jump' || m.st === 'fall') {
       const jumping = m.st === 'jump';
-      if (jumping && move) m.vx += move * 4 * dt;
+      if (jumping && move && !m.smashing) m.vx += move * 4 * dt;
       m.x = Math.max(0.6, Math.min(W - 0.6, m.x + m.vx * dt));
-      m.y += m.vy * dt; m.vy -= o.gravity * dt;
+      m.y += m.vy * dt; m.vy -= o.gravity * (m.smashing ? 1.8 : 1) * dt;
       if (jumping && m.vy < 0 && m.fallFrom === 0) m.fallFrom = m.y;   // the top of the arc counts as the height you fall from
+      // Space in the air: the smash
+      if (jumpEdge && !m.smashing && m.y > 0.8) startSmash(state, m);
       // catch a face on the way (up held, or moving into it while jumping)
-      if (input.up && m.vy < 2) { const b = faceAt(state, m.x); if (b && m.y < b.floors - 0.5 && m.y > 0.2) grab(state, m, b, m.y); }
+      if (input.up && m.vy < 2 && !m.smashing && m.lane === 0) { const b = faceAt(state, m.x); if (b && m.y < b.floors - 0.5 && m.y > 0.2) grab(state, m, b, m.y); }
       // the blimp
       if (m.st !== 'climb' && state.blimp && !m.cpu && state.opts.exits && Math.abs(m.x - state.blimp.x) < 2.6 && Math.abs(m.y + monH(state) * 0.5 - state.blimp.y) < 1.8) takeExit(state, 'blimp', state.blimp.x, state.blimp.y);
       if (m.st !== 'climb' && m.y <= 0) { if (jumping && m.fallFrom < o.fallFree + 0.01) m.fallFrom = 0; land(state, m); }
     }
     m.anim = animFor(m, punching, input);
+  }
+  // the smash: let go of wherever you are, drop fast, and the landing hits everything under the fists
+  function startSmash(state, m) {
+    const from = Math.max(m.fallFrom || 0, m.y);
+    if (m.st === 'climb' || m.st === 'roof') { m.x = (m.st === 'climb') ? m.x : m.x; m.b = -1; }
+    m.st = 'fall'; m.fallFrom = from; m.vy = Math.min(m.vy, -2); m.vx = 0; m.smashing = true; m.hop = 0;
+    state.events.push({ type: 'smash', who: m.id, slug: m.slug, x: m.x, y: m.y });
   }
   function animFor(m, punching, input) {
     if (m.st === 'revert') return 'revert';
@@ -552,10 +651,11 @@
     if (m.hitT > 0) return 'hit';
     if (punching) return 'punch';
     if (m.eatT > 0) return 'eat';
-    if (m.st === 'climb') return (input.up || input.down) ? 'climb' : 'hang';
+    if (m.st === 'climb') return m.hop ? 'climb' : 'hang';
     if (m.st === 'jump') return 'jump';
-    if (m.st === 'fall' || m.st === 'arrive') return 'fall';
-    if (m.st === 'roof' || m.st === 'street') return m.vx !== 0 ? 'walk' : 'idle';
+    if (m.st === 'fall' || m.st === 'arrive') return m.smashing ? 'smash' : 'fall';
+    if (m.st === 'roof' || m.st === 'street') { if (m.st === 'street' && m.laneMoving) return 'cross'; return m.burstT > 0 ? 'run' : m.vx !== 0 ? 'walk' : 'idle'; }
+    void input;
     return 'idle';
   }
 
@@ -569,27 +669,38 @@
         if (k >= 0) hit = punchCell(state, m, b, k) || hit;
       }
     } else if (m.st === 'street') {
-      const b = faceAt(state, m.x);
-      if (b) { const k = City.cellAt(b, Math.floor(m.x - b.x0), 0); if (k >= 0) hit = punchCell(state, m, b, k) || hit; }
+      // on the street: the arrows aim. Straight = the cell the fists are at (the second floor at the default
+      // size), up = a floor higher, down = THE STOMP (the ground floor under you and everything on the ground
+      // within reach). The face lane reaches the buildings and the soldiers; the road lane the cars and the truck.
       const reach = monReach(state);
-      const ahead = (x) => (x - m.x) * m.facing > -0.3 && Math.abs(x - m.x) <= reach + 0.3;
-      for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire') && ahead(s.x)) {
-        s.st = 'flyup'; s.t = 0; s.vx = m.facing * 6; s.vy = 7; state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier');
-        state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: 'punched', dir: m.facing }); hit = true;
+      const stomp = dir.dy < 0;
+      const b = faceAt(state, m.x + (stomp ? 0 : dir.dx * 0.6));
+      if (b && m.lane === 0) {
+        const col = Math.floor(m.x + (stomp ? 0 : dir.dx * 0.6) - b.x0);
+        const row = stomp ? 0 : punchRow(state, m, b) + (dir.dy > 0 ? 1 : 0);
+        const k = City.cellAt(b, col, row);
+        if (k >= 0) hit = punchCell(state, m, b, k) || hit;
+        if (stomp) for (const dc of [-1, 1]) { const kk = City.cellAt(b, col + dc, 0); if (kk >= 0 && Math.abs(b.x0 + col + dc + 0.5 - m.x) <= reach * 0.8 && b.state[kk] !== S.BROKEN && b.cells[kk] !== T.NEON) hit = punchCell(state, m, b, kk) || hit; }
+      }
+      const inWay = (x) => stomp ? Math.abs(x - m.x) <= reach * 0.8 : ((x - m.x) * m.facing > -0.3 && Math.abs(x - m.x) <= reach + 0.3);
+      if (m.lane === 0 && dir.dy <= 0) for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire' || s.st === 'leave') && inWay(s.x)) {
+        if (stomp) { s.st = 'dead'; s.t = 0; } else { s.st = 'flyup'; s.t = 0; s.vx = m.facing * 6; s.vy = 7; }
+        state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier');
+        state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: stomp ? 'smashed' : 'punched', dir: m.facing }); hit = true;
       }
       const tk = state.tank;
-      if (tk && tk.st !== 'wreck' && ahead(tk.x) && Math.abs(tk.x - m.x) <= reach + 0.9) {
+      if (m.lane === 1 && tk && tk.st !== 'wreck' && inWay(tk.x) && Math.abs(tk.x - m.x) <= reach + 0.9) {
         tk.hp--; hit = true; state.events.push({ type: 'tankHit', x: tk.x, hp: tk.hp });
         if (tk.hp <= 0) { tk.st = 'wreck'; tk.t = 0; state.stats.tanks++; addPoints(state, m, POINTS.tank, tk.x, 1, 'tank'); state.events.push({ type: 'tankDie', x: tk.x }); }
       }
-      for (const c of state.cars) if (c.st === 'drive' && ahead(c.x) && Math.abs(c.x - m.x) <= reach + 0.6) {
+      for (const c of state.cars) if (c.st === 'drive' && (c.kind === 'bot' ? m.lane === 0 : m.lane === 1) && inWay(c.x) && Math.abs(c.x - m.x) <= reach + 0.6) {
         c.st = 'wreck'; c.t = 0; c.vx = 0; state.stats.cars++; hit = true;
         addPoints(state, m, CARS[c.kind].pts, c.x, 0.5, c.kind);
         if (CARS[c.kind].hp) { heal(m, CARS[c.kind].hp); m.eatT = MON.EAT_T; m.lastEat = 'burrito'; }
         state.events.push({ type: 'carWreck', kind: c.kind, x: c.x, how: 'punched', dir: m.facing });
       }
       // a reverted teenager walking past: dinner
-      for (const t of state.monsters) if (t !== m && t.st === 'walkoff' && Math.abs(t.x - m.x) <= reach + 0.2) {
+      for (const t of state.monsters) if (t !== m && t.st === 'walkoff' && inWay(t.x) && Math.abs(t.x - m.x) <= reach + 0.2) {
         addPoints(state, m, POINTS.teen, t.x, 1, 'teen'); heal(m, 15); m.eatT = MON.EAT_T; m.lastEat = 'teen'; state.stats.eaten++; hit = true;
         state.events.push({ type: 'eaten', who: t.id, slug: t.slug, by: m.slug, x: t.x });
         loseLife(state, t, 'eaten');
@@ -606,7 +717,7 @@
     for (const t of state.monsters) {
       if (t === m || !isBig(t) || t.st === 'gone' || t.st === 'arrive') continue;
       const dx = t.x - m.x, dy = t.y - m.y;
-      if (Math.abs(dx) > monReach(state) + 0.2 || Math.abs(dy) > monH(state) * 0.5) continue;
+      if (Math.abs(dx) > monReach(state) + 0.2 || Math.abs(dy) > monH(state) * 0.5 || laneOf(t) !== laneOf(m)) continue;
       const wantDir = dir.dx || m.facing;
       if (Math.abs(dx) > 0.3 && Math.sign(dx) !== wantDir) continue;
       if (damage(state, t, 8, 'monster', t.x, t.y + 1)) { state.events.push({ type: 'monsterHit', who: t.id, slug: t.slug, by: m.slug, x: t.x, y: t.y + 1 }); hit = true; }
@@ -626,7 +737,7 @@
     const tx = target.x, ty = target.y + monH(state) * 0.5;
     const spread = from === 'drone' ? DRONE.spread : SOLDIER.spread;
     const a = Math.atan2(ty - y, tx - x) + (rng(state) - 0.5) * 2 * spread;
-    state.bullets.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 2.2, dmg, from });
+    state.bullets.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, life: 2.2, dmg, from, lane: laneOf(target) });
     state.events.push({ type: 'shot', x, y, from });
   }
   function stepEnemies(state, dt) {
@@ -637,6 +748,7 @@
       s.t += dt;
       if (s.st === 'dead') { if (s.t > 0.3) state.soldiers.splice(i, 1); continue; }
       if (s.st === 'flyup') { s.x += s.vx * dt; s.y += s.vy * dt; s.vy -= 20 * dt; if (s.t > SOLDIER.flyT) state.soldiers.splice(i, 1); continue; }
+      if (s.st === 'leave') { s.dir = s.x < W / 2 ? -1 : 1; s.x += s.dir * SOLDIER.speed * 1.3 * dt; if (s.x < -2 || s.x > W + 2) state.soldiers.splice(i, 1); continue; }
       const tgt = nearestMonster(state, s.x, 0, true);
       if (!tgt) { s.st = 'walk'; s.x += s.dir * SOLDIER.speed * dt; if (s.x < -2 || s.x > W + 2) state.soldiers.splice(i, 1); continue; }
       const dist = Math.abs(tgt.x - s.x);
@@ -653,7 +765,7 @@
         if (s.burstT <= SOLDIER.burst) {
           s.shotT -= dt;
           if (s.shotT <= 0) { s.shotT = SOLDIER.shotGap; fireBullet(state, s.x, 0.5, tgt, SOLDIER.bullet, SOLDIER.dmg, 'soldier'); }
-        } else if (s.burstT > SOLDIER.burst + SOLDIER.pause) s.burstT = 0;
+        } else if (s.burstT > SOLDIER.burst + SOLDIER.pause) { s.burstT = 0; s.bursts = (s.bursts || 0) + 1; if (s.maxBursts && s.bursts >= s.maxBursts) { s.st = 'leave'; s.t = 0; state.events.push({ type: 'soldierLeave', id: s.id, x: s.x }); } }
       }
     }
     // the armoured truck
@@ -670,13 +782,15 @@
           else if (dist < TANK.backoff) { tk.x -= tk.dir * 2 * dt; tk.st = 'back'; }
           else tk.st = 'stop';
           tk.x = Math.max(-1, Math.min(W + 1, tk.x));
+          // anyone standing in the road in its way gets rammed
+          if (tk.st === 'roll') for (const m of state.monsters) if (isTarget(m) && laneOf(m) === 1 && Math.abs(m.x - tk.x) < 1.3 && m.invulnT <= 0) { if (damage(state, m, 6, 'truck', m.x, 1)) { m.x = Math.max(0.6, Math.min(W - 0.6, m.x + tk.dir * 0.9)); state.events.push({ type: 'rammed', who: m.id, slug: m.slug, x: m.x, by: 'truck', dir: tk.dir }); } }
           tk.fireT -= dt;
           if (tk.fireT <= 0 && tk.st !== 'roll') {
             tk.fireT = TANK.fireGap;
             // a lob: solve for the target in ~1 s
             const ty = tgt.y + monH(state) * 0.5, tt = 1.0, aimX = tgt.x + (rng(state) - 0.5) * 2 * TANK.spread;
             const vx = (aimX - tk.x) / tt, vy = (ty - 0.8 + 0.5 * state.opts.gravity * tt * tt) / tt;
-            state.shells.push({ x: tk.x, y: 0.8, vx, vy, life: 2.5 });
+            state.shells.push({ x: tk.x, y: 0.8, vx, vy, life: 2.5, lane: laneOf(tgt) });
             state.events.push({ type: 'tankFire', x: tk.x, dir: tk.dir });
           }
         }
@@ -705,14 +819,20 @@
       c.t += dt;
       if (c.st === 'wreck') { if (c.t > 4) state.cars.splice(i, 1); continue; }
       c.x += c.vx * dt;
-      if (c.x < -3 || c.x > W + 3) state.cars.splice(i, 1);
+      // a car meeting a monster in the road crumples against its shins
+      if (c.kind !== 'bot') for (const m of state.monsters) if (isTarget(m) && laneOf(m) === 1 && Math.abs(m.x - c.x) < 0.9) {
+        c.st = 'wreck'; c.t = 0; c.vx = 0; state.events.push({ type: 'carWreck', kind: c.kind, x: c.x, how: 'ran', dir: m.facing });
+        if (m.invulnT <= 0 && damage(state, m, 4, 'car', m.x, 1)) state.events.push({ type: 'rammed', who: m.id, slug: m.slug, x: m.x, by: c.kind, dir: c.vx > 0 ? 1 : -1 });
+        break;
+      }
+      if (c.st === 'drive' && (c.x < -3 || c.x > W + 3)) state.cars.splice(i, 1);
     }
     // bullets
     for (let i = state.bullets.length - 1; i >= 0; i--) {
       const b = state.bullets[i];
       b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
       let gone = b.life <= 0 || b.y < -0.2;
-      if (!gone) for (const m of state.monsters) { if (isTarget(m) && bodyHit(state, m, b.x, b.y)) { if (damage(state, m, b.dmg, b.from, b.x, b.y)) state.events.push({ type: 'bulletHit', who: m.id, x: b.x, y: b.y }); gone = true; break; } }
+      if (!gone) for (const m of state.monsters) { if (isTarget(m) && laneOf(m) === b.lane && bodyHit(state, m, b.x, b.y)) { if (damage(state, m, b.dmg, b.from, b.x, b.y)) state.events.push({ type: 'bulletHit', who: m.id, x: b.x, y: b.y }); gone = true; break; } }
       if (gone) state.bullets.splice(i, 1);
     }
     // shells
@@ -720,7 +840,7 @@
       const s = state.shells[i];
       s.x += s.vx * dt; s.y += s.vy * dt; s.vy -= state.opts.gravity * dt; s.life -= dt;
       let gone = s.life <= 0;
-      for (const m of state.monsters) if (isTarget(m) && Math.abs(m.x - s.x) < 0.9 && s.y > m.y - 0.3 && s.y < m.y + monH(state) + 0.4) { damage(state, m, TANK.shellDmg, 'shell', s.x, s.y); gone = true; break; }
+      for (const m of state.monsters) if (isTarget(m) && laneOf(m) === s.lane && Math.abs(m.x - s.x) < 0.9 && s.y > m.y - 0.3 && s.y < m.y + monH(state) + 0.4) { damage(state, m, TANK.shellDmg, 'shell', s.x, s.y); gone = true; break; }
       if (!gone && s.y <= 0) { gone = true; state.events.push({ type: 'shellGround', x: s.x }); }
       if (gone) { state.events.push({ type: 'shellBoom', x: s.x, y: Math.max(0, s.y) }); state.shells.splice(i, 1); }
     }
@@ -730,30 +850,27 @@
     const tm = state.timers, W = state.city.width, day = state.day, sc = state.opts.spawnScale;
     const p = player(state);
     const farSide = () => (p.x < W / 2 ? W + 1.5 : -1.5);
-    tm.soldier -= dt;
-    if (tm.soldier <= 0) {
-      tm.soldier = Math.max(4, 12 - day) * sc;
-      const alive = state.soldiers.filter((s) => s.st === 'walk' || s.st === 'kneel' || s.st === 'fire').length;
-      if (alive >= SOLDIER.cap(day)) tm.soldier = 2 * sc;
-      else {
-      const x = rng(state) < 0.5 ? -1.5 : W + 1.5;
-      state.soldiers.push({ id: state.nextId++, x, y: 0, vx: 0, vy: 0, dir: x < 0 ? 1 : -1, st: 'walk', t: 0, stop: rand(state, SOLDIER.stopMin, SOLDIER.stopMax), shotT: 0, burstT: 0 });
-      state.events.push({ type: 'soldier', x });
+    const o = state.opts;
+    // THE ARMY IN WAVES (round two): day 1 opens quiet — nothing until armyStart seconds in AND armyCells cells
+    // broken; then a wave, a lull, a wave. Each day adds a kind and shortens the lull.
+    const A = state.army;
+    A.t += dt;
+    if (day >= (o.armyDay | 0)) {
+      const soldiersUp = state.soldiers.some((s) => s.st === 'walk' || s.st === 'kneel' || s.st === 'fire');
+      const anyUp = soldiersUp || (state.tank && state.tank.st !== 'wreck') || (state.drone && state.drone.st !== 'dead');
+      const gap = Math.max(6, o.waveGap - day * 1.2) * sc;
+      if (A.phase === 'grace') {
+        const ok = day === 1 ? (A.t >= o.armyStart * sc && state.dayCells >= o.armyCells) : A.t >= 8 * sc;
+        if (ok) launchWave(state);
+      } else if (A.phase === 'wave') {
+        if (!anyUp || A.t > 32) {
+          A.phase = 'lull'; A.t = 0;
+          for (const s of state.soldiers) if (s.st === 'walk' || s.st === 'kneel' || s.st === 'fire') { s.st = 'leave'; s.t = 0; }
+          state.events.push({ type: 'lull', day, gap });
+        }
+      } else if (A.phase === 'lull') {
+        if (A.t >= gap) launchWave(state);
       }
-    }
-    tm.tank -= dt;
-    if (tm.tank <= 0 && !state.tank) {
-      tm.tank = 30 * sc;
-      const x = farSide();
-      state.tank = { x, y: 0, dir: x < 0 ? 1 : -1, st: 'roll', t: 0, fireT: 2.5, hp: TANK.hp, stop: rand(state, TANK.stopMin, TANK.stopMax) };
-      state.events.push({ type: 'tank', x });
-    }
-    tm.drone -= dt;
-    if (tm.drone <= 0 && !state.drone) {
-      tm.drone = 40 * sc;
-      const x = farSide();
-      state.drone = { x, y: 9, vx: 0, vy: 0, st: 'move', t: 0, fireT: 3, burst: 0, shotT: 0, side: x < 0 ? -1 : 1, sideT: 4, hover: 3, spin: 0 };
-      state.events.push({ type: 'drone', x });
     }
     tm.car -= dt;
     if (tm.car <= 0) {
@@ -764,6 +881,64 @@
       state.cars.push({ id: state.nextId++, kind, x, vx: (x < 0 ? 1 : -1) * CARS[kind].speed, st: 'drive', t: 0 });
       state.events.push({ type: 'car', kind, x });
     }
+  }
+  // ---- the waves ----------------------------------------------------------------------------------------
+  const WAVE_KINDS = (day) => { const k = ['squad']; if (day >= 2) k.push('truck', 'sniper'); if (day >= 3) k.push('drone'); if (day >= 4) k.push('squadCar'); return k; };
+  function spawnSoldier(state, x, maxBursts) {
+    const s = { id: state.nextId++, x, y: 0, vx: 0, vy: 0, dir: x < state.city.width / 2 ? 1 : -1, st: 'walk', t: 0, stop: rand(state, SOLDIER.stopMin, SOLDIER.stopMax), shotT: 0, burstT: 0, bursts: 0, maxBursts: maxBursts || 0 };
+    state.soldiers.push(s);
+    state.events.push({ type: 'soldier', x });
+    return s;
+  }
+  function spawnTruck(state, x) {
+    if (state.tank) return state.tank;
+    state.tank = { x, y: 0, dir: x < state.city.width / 2 ? 1 : -1, st: 'roll', t: 0, fireT: 2.5, hp: TANK.hp, stop: rand(state, TANK.stopMin, TANK.stopMax) };
+    state.events.push({ type: 'tank', x });
+    return state.tank;
+  }
+  function spawnDrone(state, x) {
+    if (state.drone) return state.drone;
+    state.drone = { x, y: 9, vx: 0, vy: 0, st: 'move', t: 0, fireT: 3, burst: 0, shotT: 0, side: x < state.city.width / 2 ? -1 : 1, sideT: 4, hover: 3, spin: 0 };
+    state.events.push({ type: 'drone', x });
+    return state.drone;
+  }
+  // a sniper: a window near the player opens on its own with a soldier in it
+  function spawnSniper(state) {
+    const p = player(state);
+    const cands = state.city.buildings.filter((b) => !b.down && !b.collapsing && Math.abs(b.x0 + b.cols / 2 - p.x) < 14);
+    if (!cands.length) return false;
+    const b = cands[Math.floor(rng(state) * cands.length)];
+    for (let tries = 0; tries < 30; tries++) {
+      const k = Math.floor(rng(state) * b.cells.length);
+      if (b.cells[k] === T.WINDOW && b.state[k] !== S.BROKEN && Math.floor(k / b.cols) >= 1) {
+        b.deal[k] = 'soldier';
+        breakCell(state, b, k, null, 'sniper');
+        state.events.push({ type: 'sniper', b: b.id, k, x: b.x0 + (k % b.cols) + 0.5, y: Math.floor(k / b.cols) });
+        return true;
+      }
+    }
+    return false;
+  }
+  function launchWave(state, forced) {
+    const A = state.army, day = state.day, W = state.city.width, p = player(state);
+    const kinds = WAVE_KINDS(day).filter((k) => forced ? true : (kinds1(k)));
+    function kinds1(k) { return !(k === A.kind && WAVE_KINDS(day).length > 1); }   // never the same kind twice running
+    const kind = forced || kinds[Math.floor(rng(state) * kinds.length)];
+    A.kind = kind; A.waveN++; A.phase = 'wave'; A.t = 0;
+    const side = rng(state) < 0.5 ? -1 : 1;
+    A.side = side;
+    const edge = side < 0 ? -1.5 : W + 1.5;
+    const far = p.x < W / 2 ? W + 1.5 : -1.5;
+    if (kind === 'squad' || kind === 'squadCar') {
+      const n = day === 1 ? 2 : Math.min(5, 2 + Math.floor(day / 2));
+      const bursts = day === 1 ? 2 : 3 + Math.floor(day / 2);
+      for (let i = 0; i < n; i++) spawnSoldier(state, edge - side * i * 1.3, bursts);
+      if (kind === 'squadCar') { const x = far; state.cars.push({ id: state.nextId++, kind: 'cruiser', x, vx: (x < 0 ? 1 : -1) * CARS.cruiser.speed, st: 'drive', t: 0 }); state.events.push({ type: 'car', kind: 'cruiser', x }); }
+    } else if (kind === 'truck') spawnTruck(state, far);
+    else if (kind === 'drone') spawnDrone(state, far);
+    else if (kind === 'sniper') { if (!spawnSniper(state)) { for (let i = 0; i < 2; i++) spawnSoldier(state, edge - side * i * 1.3, 3); } }
+    state.events.push({ type: 'wave', kind, n: A.waveN, day, side });
+    return kind;
   }
   function stepBlimp(state, dt) {
     if (state.blimpT >= 0) { state.blimpT -= dt; if (state.blimpT < 0) { const top = Math.max(...state.city.buildings.map((b) => b.floors)); state.blimp = { x: -6, y: top + BLIMP.lift, vx: BLIMP.speed }; state.events.push({ type: 'blimp', y: state.blimp.y }); } }
@@ -842,8 +1017,9 @@
   }
 
   globalThis.CarnageCore = {
-    createGame, step, autopilot, skipMap, advanceDay, summary, DEFAULTS, POINTS, DEAL_FX, MON, SOLDIER, TANK, DRONE, CARS, SLUGS, flavourFor, monH, monHand, monReach,
+    createGame, step, autopilot, skipMap, advanceDay, summary, DEFAULTS, POINTS, DEAL_FX, MON, SOLDIER, TANK, DRONE, CARS, SLUGS, flavourFor, monH, monHand, monReach, laneOf,
     // for the sim and the labs
     punchCell, breakCell, startCollapse, damage, revert, spawnItem, itemAt, faceAt, building, player, rng, hashSeed, grab, startFall, takeExit,
+    spawnSoldier, spawnTruck, spawnDrone, spawnSniper, launchWave, startSmash, WAVE_KINDS,
   };
 })();

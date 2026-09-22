@@ -11,7 +11,7 @@ const PLAY_KEY = 'carnage-play-v1';
 const LOOK_KEY = 'carnage-look-v1';
 const UI_KEY = 'carnage-ui-v1';
 const MODE_KEY = 'carnage-mode-v1';
-const PLAY_DEFAULTS = { lives: 3, flavour: 0.6, monsterH: 2.7, thresholdScale: 1, fallDmg: 8, spawnScale: 1, hazardScale: 1, streamerT: 1.5, dealShift: 0, day: 1, seed: '' };
+const PLAY_DEFAULTS = { lives: 3, flavour: 0.6, monsterH: 2.7, thresholdScale: 1, fallDmg: 8, spawnScale: 1, hazardScale: 1, streamerT: 1.5, dealShift: 0, day: 1, seed: '', armyStart: 40, waveGap: 20, armyDay: 1 };
 const LOOK_RANGES = {
   viewCells: { label: 'How wide the picture is (cells)', min: 16, max: 40, step: 1 },
   pitch: { label: 'Camera tilt', min: 0, max: 14, step: 0.5 },
@@ -31,12 +31,15 @@ const NAMES = { george: 'THE CLOWN', lizzie: 'THE GIRL', ralph: 'THE KING' };
 const EDGES = { george: 'hits harder', lizzie: 'climbs faster', ralph: 'runs faster' };
 const STEP = 1 / 120;
 const EXIT_BEAT = 900;
+// the first thirty seconds of a day-one game teach the keys, one calm line at a time
+const LESSONS = [[1.5, 'W A S D — WALK. CLIMB.'], [7, 'THE ARROWS PUNCH. UP, DOWN, SIDEWAYS, THE CORNERS.'], [13, 'SPACE JUMPS. SPACE UP HIGH SMASHES DOWN.'], [19, 'TAP A OR D TWICE TO RUN.'], [25, 'S STEPS INTO THE ROAD. W STEPS BACK.']];
+let lessonT = 0, lessonI = 0, lessonsOn = false;
 const MAP_AUTO = 7;   // s on the map before it drives itself
 
 // ---- the register: cynical, funny, PG-13. One line at a time on the plate. -------------------------------
 const COPY = {
   eat: {
-    customer: 'CUSTOMER. FIVE STARS.', worker: 'REMOTE WORKER. STILL ON MUTE.', waver: 'HE WAVED. HE\'S EATEN.', zombie: 'NEVER LOOKED UP FROM THE PHONE.',
+    screamer: 'SHE SCREAMED. SHE\'S EATEN.', customer: 'CUSTOMER. FIVE STARS.', worker: 'REMOTE WORKER. STILL ON MUTE.', waver: 'HE WAVED. HE\'S EATEN.', zombie: 'NEVER LOOKED UP FROM THE PHONE.',
     fries: 'FRIES. COLD.', shake: 'THE MACHINE WORKED TODAY.', nuggets: 'NUGGETS. SHAPE UNCLEAR.', patty: 'SQUARE. NEVER CUTS CORNERS.', cake: 'SOMEBODY\'S BIRTHDAY.',
     streamer: 'LIVESTREAMER. FOUR VIEWERS.', soldier: 'NATIONAL GUARD. WEEKEND WARRIOR.', supplement: 'MEGA SUPPLEMENT. SIDE EFFECTS INCLUDE THIS.', toast: 'THE AIR FRYER DINGED. TOAST.', teen: 'EMPLOYEE OF THE MONTH.', burrito: 'THE BURRITO WAS YOURS ANYWAY.',
   },
@@ -47,7 +50,9 @@ const COPY = {
   building: 'CONDEMNED.', rival: 'REGIONAL MANAGER PROMOTED TO RUBBLE.', own: 'THAT ONE WAS YOURS. NICE.',
   neonOut: 'SIGN\'S OFF. NOBODY\'S HOME.',
   revert: 'SHIFT\'S OVER. CLOCK OUT.', gone: 'ANOTHER SHIFT.', arrive: 'BACK ON THE CLOCK.',
-  soldier: { punched: 'WEEKEND WARRIOR. WEEKEND\'S OVER.', crushed: 'IN THE WAY.' },
+  soldier: { punched: 'WEEKEND WARRIOR. WEEKEND\'S OVER.', crushed: 'IN THE WAY.', bowled: 'BOWLED OVER. STRIKE.', smashed: 'FLAT. LIKE THE PATTY.' },
+  wave: { squad: 'THE GUARD IS HERE. BOTH OF THEM.', squadCar: 'THE GUARD, WITH AN ESCORT.', truck: 'SWAT. FINALLY.', sniper: 'A SNIPER. IN SOMEBODY\'S BEDROOM.', drone: 'THE DRONE. FOUR VIEWERS.' },
+  rammed: 'HIT AND RUN. THEY RAN.', smashLand: 'SMASH.',
   tank: 'SWAT. RETIRED.', drone: 'DRONE. DEPRECATED.',
   car: { cruiser: 'OFFICER DOWN. HIS CAR, ANYWAY.', taxi: 'SURGE PRICING CANCELLED.', bot: 'DELIVERY ROBOT. IT HAD ONE JOB.' },
   fall: 'THAT WAS MORE THAN TWO FLOORS.', knockedOff: 'OFF THE BUILDING. ON CAMERA.',
@@ -208,6 +213,7 @@ function coreOpts(attract) {
     monster: attract ? Core.SLUGS[Math.floor(Math.random() * 3)] : choice.monster,
     companions: attract ? 2 : choice.companions,
     flavour: play.flavour, monsterH: play.monsterH, thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT, dealShift: play.dealShift,
+    armyStart: attract ? 4 : play.armyStart, waveGap: play.waveGap, armyDay: play.armyDay, armyCells: attract ? 0 : 10,
     exits: attract ? 0 : 1, enemies: 1, free: 1,
   };
 }
@@ -241,6 +247,7 @@ function startGame() {
   $('controls').style.display = 'flex';
   $('hud').style.opacity = '1'; $('ticker').style.opacity = '1';
   buildHud(); renderHud();
+  lessonsOn = state.day === 1; lessonT = 0; lessonI = 0;
   plate(state.city.name.toUpperCase() + ', ' + state.city.state + '. ' + state.city.tag.toUpperCase(), '', true);
   Sfx.play('start'); Sfx.voice(choice.monster, 'start');
 }
@@ -315,15 +322,21 @@ function renderPick() {
 document.querySelectorAll('#m-comp button').forEach((b) => b.addEventListener('click', () => { choice.companions = parseInt(b.dataset.v, 10); save(MODE_KEY, choice); renderPick(); Sfx.play('ui'); }));
 
 // ---- input ------------------------------------------------------------------------------------------------------------
+// THE KEYS (James, 2026-09-21): W A S D walk, climb and cross the street; the ARROWS punch by direction (eight
+// ways); Space jumps, and up high it smashes down; a double tap of A or D on the street is a run burst (the core
+// reads the taps). J / K / a click punch straight ahead.
 function currentInput() {
-  const left = keys.has('ArrowLeft') || keys.has('KeyA');
-  const right = keys.has('ArrowRight') || keys.has('KeyD');
+  const left = keys.has('KeyA'), right = keys.has('KeyD');
+  const aL = keys.has('ArrowLeft'), aR = keys.has('ArrowRight'), aU = keys.has('ArrowUp'), aD = keys.has('ArrowDown');
+  const arrows = aL || aR || aU || aD;
   return {
     move: (right ? 1 : 0) - (left ? 1 : 0),
-    up: keys.has('ArrowUp') || keys.has('KeyW'),
-    down: keys.has('ArrowDown') || keys.has('KeyS'),
+    up: keys.has('KeyW'),
+    down: keys.has('KeyS'),
     jump: keys.has('Space'),
-    punch: keys.has('KeyJ') || keys.has('KeyK') || mouseDown,
+    punch: arrows || keys.has('KeyJ') || keys.has('KeyK') || mouseDown,
+    pdx: arrows ? (aR ? 1 : 0) - (aL ? 1 : 0) : 0,
+    pdy: arrows ? (aU ? 1 : 0) - (aD ? 1 : 0) : 0,
   };
 }
 document.addEventListener('keydown', (e) => {
@@ -372,10 +385,19 @@ function handleEvents(st) {
     switch (e.type) {
       case 'punch': Sfx.play('swing', pan(e.x)); break;
       case 'punchLand': if (e.hit) Sfx.play('hit', pan(e.x)); break;
-      case 'cellBreak': Sfx.play(e.cellType === 1 ? 'wallBreak' : e.cellType === 2 ? 'neonBreak' : 'glass', pan(e.x)); if (e.deal !== 'none' && e.deal !== 'corridor') Sfx.play('reveal', pan(e.x)); break;
+      case 'lane': Sfx.play('step', pan(e.x)); break;
+      case 'burst': Sfx.play('burst', pan(e.x)); break;
+      case 'skid': Sfx.play('skid', pan(e.x)); break;
+      case 'smash': Sfx.play('swing', pan(e.x)); break;
+      case 'smashLand': Sfx.play(e.big ? 'slam' : 'thud', pan(e.x)); if (mine && e.hit) plate(COPY.smashLand); break;
+      case 'hop': Sfx.play('grip', pan(e.x)); break;
+      case 'wave': plate(COPY.wave[e.kind] || COPY.wave.squad, 'bad'); break;
+      case 'rammed': if (e.who === you.id) { plate(COPY.rammed, 'bad'); hurtT = 0.35; } break;
+      case 'sniper': Sfx.play('glass', pan(e.x)); break;
+      case 'cellBreak': Sfx.play(e.cellType === 1 ? 'wallBreak' : e.cellType === 2 ? 'neonBreak' : 'glass', pan(e.x)); if (e.deal === 'screamer') Sfx.play('scream', pan(e.x)); else if (e.deal !== 'none' && e.deal !== 'corridor') Sfx.play('reveal', pan(e.x)); break;
       case 'cellCrack': Sfx.play('crack', pan(e.x)); break;
       case 'points': if (e.points >= 100) floatText(e.x, e.y, '+' + fmt(e.points), e.points >= 1000 ? 'big' : ''); break;
-      case 'eat': if (e.who === you.id) { plate(COPY.eat[e.what] || 'EATEN.'); Sfx.play(e.what === 'customer' || e.what === 'worker' || e.what === 'waver' || e.what === 'zombie' || e.what === 'streamer' || e.what === 'soldier' || e.what === 'teen' ? 'chomp' : 'munch', pan(e.x)); if (e.what === 'supplement') Sfx.play('power', pan(e.x)); Sfx.voice(you.slug, 'eat'); } else Sfx.play('chomp', pan(e.x)); break;
+      case 'eat': if (e.who === you.id) { plate(COPY.eat[e.what] || 'EATEN.'); Sfx.play(e.what === 'customer' || e.what === 'worker' || e.what === 'waver' || e.what === 'screamer' || e.what === 'zombie' || e.what === 'streamer' || e.what === 'soldier' || e.what === 'teen' ? 'chomp' : 'munch', pan(e.x)); if (e.what === 'supplement') Sfx.play('power', pan(e.x)); Sfx.voice(you.slug, 'eat'); } else Sfx.play('chomp', pan(e.x)); break;
       case 'take': if (e.who === you.id) plate(COPY.take[e.what]); Sfx.play('cash', pan(e.x)); break;
       case 'hazard': if (e.who === you.id) plate(COPY.hazard[e.what] || 'OUCH.', 'bad'); Sfx.play(e.what === 'peloton' ? 'zap' : e.what === 'fryer' ? 'sizzle' : e.what === 'vape' ? 'cough' : 'ouch', pan(e.x)); break;
       case 'boom': plate(COPY.boom, 'bad'); Sfx.play('boom', pan(e.x)); break;
@@ -442,6 +464,7 @@ function frameStep(dt) {
   const input = mode === 'play' ? currentInput() : { move: 0, up: false, down: false, jump: false, punch: false };
   Core.step(state, input, dt);
   handleEvents(state);
+  if (lessonsOn && mode === 'play') { lessonT += dt; if (lessonI < LESSONS.length && lessonT >= LESSONS[lessonI][0]) { plate(LESSONS[lessonI][1], 'teach'); lessonI++; } if (lessonI >= LESSONS.length) lessonsOn = false; }
   if (restartArmed > 0) { restartArmed -= dt; if (restartArmed <= 0) { restartArmed = 0; $('btn-restart').classList.remove('armed'); $('btn-restart').textContent = 'RESTART'; } }
 }
 function frame(t) {
@@ -484,6 +507,7 @@ document.querySelectorAll('#tabs button').forEach((b) => b.addEventListener('cli
 function seg(id, key, parse) { $(id).querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { play[key] = parse ? parse(b.dataset.v) : b.dataset.v; save(PLAY_KEY, play); syncPlayUI(); applyLiveOpts(); })); }
 seg('t-lives', 'lives', (v) => parseInt(v, 10));
 function slider(id, key) { $(id).addEventListener('input', (e) => { play[key] = parseFloat(e.target.value); save(PLAY_KEY, play); syncPlayUI(); applyLiveOpts(); }); }
+slider('t-army-start', 'armyStart'); slider('t-wave', 'waveGap'); slider('t-army-day', 'armyDay');
 slider('t-flavour', 'flavour'); slider('t-size', 'monsterH'); slider('t-thr', 'thresholdScale'); slider('t-fall', 'fallDmg'); slider('t-spawn', 'spawnScale'); slider('t-haz', 'hazardScale'); slider('t-streamer', 'streamerT'); slider('t-deal', 'dealShift'); slider('t-day', 'day');
 $('t-seed').addEventListener('change', (e) => { play.seed = e.target.value.trim(); save(PLAY_KEY, play); });
 $('t-seed-roll').addEventListener('click', () => { play.seed = String((Math.random() * 99999) | 0); save(PLAY_KEY, play); syncPlayUI(); });
@@ -494,6 +518,9 @@ function syncPlayUI() {
   $('t-size').value = play.monsterH; $('t-size-val').textContent = play.monsterH.toFixed(1) + ' FLOORS';
   $('t-thr').value = play.thresholdScale; $('t-thr-val').textContent = '×' + play.thresholdScale.toFixed(2);
   $('t-fall').value = play.fallDmg; $('t-fall-val').textContent = play.fallDmg;
+  $('t-army-start').value = play.armyStart; $('t-army-start-val').textContent = play.armyStart + 's';
+  $('t-wave').value = play.waveGap; $('t-wave-val').textContent = play.waveGap + 's';
+  $('t-army-day').value = play.armyDay; $('t-army-day-val').textContent = play.armyDay <= 1 ? 'DAY 1' : 'DAY ' + play.armyDay;
   $('t-spawn').value = play.spawnScale; $('t-spawn-val').textContent = play.spawnScale < 1 ? 'MORE (' + play.spawnScale.toFixed(1) + ')' : play.spawnScale > 1 ? 'FEWER (' + play.spawnScale.toFixed(1) + ')' : 'AS DEALT';
   $('t-haz').value = play.hazardScale; $('t-haz-val').textContent = '×' + play.hazardScale.toFixed(1);
   $('t-streamer').value = play.streamerT; $('t-streamer-val').textContent = play.streamerT.toFixed(1) + 's';

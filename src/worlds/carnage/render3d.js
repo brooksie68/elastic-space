@@ -35,6 +35,9 @@ export const LOOK_DEFAULTS = {
 
 const FAMILY_TILE = { brick_red: 'brick_red', brick_tan: 'brick_tan', concrete: 'concrete', stucco: 'stucco', steel: 'steel', glass: 'glass' };
 const FAMILY_TILE_CELLS = { brick_red: 1.7, brick_tan: 1.8, concrete: 2.2, stucco: 2.6, steel: 1.6, glass: 1.0 };
+// the 16-bit palettes: a saturated wall colour and a trim colour per family (the tile only gives the value)
+const FAMILY_TINT = { brick_red: [0.88, 0.30, 0.22], brick_tan: [0.96, 0.62, 0.44], concrete: [0.30, 0.66, 0.66], stucco: [0.80, 0.68, 0.92], steel: [0.36, 0.46, 0.70], glass: [0.32, 0.74, 0.68] };
+const FAMILY_TRIM = { brick_red: [0.97, 0.90, 0.74], brick_tan: [1.0, 0.98, 0.94], concrete: [0.95, 0.85, 0.50], stucco: [0.99, 0.97, 0.94], steel: [0.86, 0.90, 0.97], glass: [0.92, 0.96, 0.99] };
 const FAMILY_INNARDS = { brick_red: [0.28, 0.12, 0.08], brick_tan: [0.3, 0.22, 0.14], concrete: [0.2, 0.2, 0.2], stucco: [0.3, 0.26, 0.2], steel: [0.14, 0.14, 0.16], glass: [0.1, 0.12, 0.14] };
 const BRAND_COLOR = { george: [0.88, 0.17, 0.17, 1.0, 0.82, 0.23], lizzie: [0.18, 0.44, 0.85, 1.0, 1.0, 1.0], ralph: [0.95, 0.55, 0.16, 0.42, 0.23, 0.07] };
 const BRAND_ID = { george: 1, lizzie: 2, ralph: 3 };
@@ -61,10 +64,11 @@ const FACADE_FS = /* glsl */`
   uniform sampler2D uCells;
   uniform sampler2D uWall;
   uniform sampler2D uSigns;
+  uniform sampler2D uShops;
   uniform float uCols, uFloors, uCell, uTileCells, uSeed, uTime, uNight, uWear, uRoomLight, uCollapse, uDay;
   uniform vec3 uInnards, uCamPos, uOrigin, uSky, uGround, uSunDir;
-  uniform vec3 uBrandA, uBrandB;
-  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue;
+  uniform vec3 uBrandA, uBrandB, uTint, uTrim;
+  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
@@ -74,9 +78,70 @@ const FACADE_FS = /* glsl */`
   float fbm(vec2 p) { return 0.5 * noise(p) + 0.25 * noise(p * 2.1 + 3.7) + 0.125 * noise(p * 4.3 + 9.1); }
   vec3 hsv(float h, float s, float v) { vec3 k = vec3(h, h + 1.0 / 3.0, h + 2.0 / 3.0); vec3 p = abs(fract(k) * 6.0 - 3.0); return v * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), s); }
   float box(vec2 p, vec2 b) { vec2 d = abs(p) - b; return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0); }
+  float rbox(vec2 p, vec2 b, float r) { return box(p, b - r) - r; }
+  float seg(vec2 p, vec2 a, vec2 b) { vec2 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h); }
+  // THE FIST: a palm with four knuckles, the shape every hole takes (mirrored for a left hand by the seed)
+  float fist(vec2 f, float seed) {
+    vec2 p = f - vec2(0.5, 0.47);
+    p.x *= mix(1.0, -1.0, step(0.5, fract(seed * 3.0)));
+    float d = rbox(p - vec2(0.0, -0.02), vec2(0.2, 0.15), 0.06);
+    for (int i = 0; i < 4; i++) { float x = -0.165 + 0.11 * float(i); d = min(d, length(p - vec2(x, 0.155)) - 0.072); }
+    d = min(d, rbox(p - vec2(-0.2, -0.1), vec2(0.075, 0.09), 0.05));   // the thumb
+    return d;
+  }
+  // a person behind the glass: a silhouette doing something, keyed by the seed
+  vec3 person(vec3 c, vec2 q, float seed, float lit, vec3 light) {
+    int kind = int(mod(floor(seed * 37.0), 6.0));
+    if (kind == 5) return c;   // an empty lit room now and then
+    float sway = sin(uTime * (0.7 + seed) + seed * 20.0) * 0.012;
+    vec3 dark = c * 0.22;
+    if (kind == 0) {
+      // typing: head, shoulders, a laptop glow at the desk
+      vec2 h = q - vec2(0.5 + sway, 0.56);
+      float head = smoothstep(0.085, 0.075, length(h * vec2(1.0, 1.1)));
+      float body = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(0.5 + sway, 0.36), vec2(0.17, 0.11), 0.08));
+      float desk = step(abs(q.x - 0.5), 0.34) * step(abs(q.y - 0.26), 0.02);
+      float lap = step(abs(q.x - 0.5), 0.1) * step(0.27, q.y) * step(q.y, 0.36);
+      c = mix(c, dark, max(head, body)); c = mix(c, dark * 0.8, desk);
+      c = mix(c, vec3(0.6, 0.8, 1.0) * (1.4 + 0.3 * sin(uTime * 7.0 + seed * 9.0)), lap * lit);
+    } else if (kind == 1) {
+      // on the couch, watching the screen: a head from behind, low
+      vec2 h = q - vec2(0.42 + sway, 0.38);
+      float head = smoothstep(0.08, 0.07, length(h * vec2(1.0, 1.1)));
+      float body = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(0.42 + sway, 0.2), vec2(0.15, 0.12), 0.08));
+      c = mix(c, dark, max(head, body));
+    } else if (kind == 2) {
+      // cooking: a figure at the side, a pot, steam
+      vec2 h = q - vec2(0.72 + sway, 0.6);
+      float head = smoothstep(0.08, 0.07, length(h * vec2(1.0, 1.1)));
+      float body = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(0.72 + sway, 0.38), vec2(0.13, 0.15), 0.08));
+      float pot = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(0.42, 0.3), vec2(0.1, 0.06), 0.02));
+      float steam = smoothstep(0.06, 0.0, abs(q.x - 0.42 - 0.03 * sin(q.y * 20.0 + uTime * 2.0))) * step(0.37, q.y) * step(q.y, 0.6) * 0.35;
+      c = mix(c, dark, max(head, body)); c = mix(c, vec3(0.12, 0.12, 0.14), pot); c += steam * light * 0.4;
+    } else if (kind == 3) {
+      // a couple
+      for (int i = 0; i < 2; i++) {
+        float x = 0.36 + 0.26 * float(i) + sway * (float(i) * 2.0 - 1.0);
+        vec2 h = q - vec2(x, 0.56 - 0.03 * float(i));
+        float head = smoothstep(0.08, 0.07, length(h * vec2(1.0, 1.1)));
+        float body = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(x, 0.34), vec2(0.14, 0.13), 0.08));
+        c = mix(c, dark, max(head, body));
+      }
+    } else {
+      // a cat on the sill
+      vec2 h = q - vec2(0.7, 0.1);
+      float body = 1.0 - smoothstep(0.0, 0.01, rbox(h - vec2(0.0, 0.0), vec2(0.13, 0.05), 0.04));
+      float head = smoothstep(0.05, 0.04, length((h - vec2(0.13, 0.06)) * vec2(1.0, 1.1)));
+      float ears = step(abs(h.x - 0.11), 0.012) * step(0.08, h.y) * step(h.y, 0.13) + step(abs(h.x - 0.15), 0.012) * step(0.08, h.y) * step(h.y, 0.13);
+      float tail = smoothstep(0.012, 0.0, abs(h.y - 0.02 - 0.05 * sin(h.x * 12.0 + uTime * 3.0))) * step(-0.28, h.x) * step(h.x, -0.13);
+      c = mix(c, vec3(0.06, 0.05, 0.05), max(max(body, head), max(ears, tail)));
+      c += vec3(0.5, 0.9, 0.3) * (smoothstep(0.012, 0.0, length(h - vec2(0.115, 0.065))) + smoothstep(0.012, 0.0, length(h - vec2(0.145, 0.065)))) * lit;
+    }
+    return c;
+  }
 
   // the room behind the glass: a box of depth D behind the opening, walls shaded by a seeded style
-  vec3 room(vec2 f, vec2 o0, vec2 o1, vec3 d, float seed, float lit, float wrecked) {
+  vec3 room(vec2 f, vec2 o0, vec2 o1, vec3 d, float seed, float lit, float wrecked, float people) {
     float D = 0.85;
     vec3 p = vec3(f, 0.0);
     float tz = -D / min(d.z, -0.02);
@@ -87,30 +152,37 @@ const FACADE_FS = /* glsl */`
     vec3 h = p + d * t;
     float depth = clamp(-h.z / D, 0.0, 1.0);
     int style = int(mod(floor(seed * 7.0), 7.0));
+    // painted rooms: wallpaper, a picture, a lamp, a bed, a bar — five looks and two plain ones
     vec3 wall = vec3(0.86, 0.80, 0.70);
     vec3 light = vec3(1.0, 0.86, 0.66);
-    if (style == 1) { wall = vec3(0.9, 0.92, 0.95); light = vec3(0.85, 0.95, 1.0); }
-    if (style == 2) { wall = vec3(0.55, 0.6, 0.7); light = vec3(0.6, 0.75, 1.0); }
-    if (style == 3) { wall = vec3(0.75, 0.62, 0.7); light = vec3(1.0, 0.6, 0.9); }
-    if (style == 4) { wall = vec3(0.82, 0.86, 0.8); light = vec3(0.8, 1.0, 0.8); }
-    if (style == 5) { wall = vec3(0.35, 0.36, 0.4); light = vec3(0.4, 0.9, 1.0); }
-    if (style == 6) { wall = vec3(0.9, 0.85, 0.75); light = vec3(1.0, 0.9, 0.7); }
+    if (style == 1) { wall = vec3(0.72, 0.80, 0.90); light = vec3(0.85, 0.95, 1.0); }
+    if (style == 2) { wall = vec3(0.45, 0.5, 0.62); light = vec3(0.6, 0.75, 1.0); }
+    if (style == 3) { wall = vec3(0.88, 0.66, 0.70); light = vec3(1.0, 0.7, 0.85); }
+    if (style == 4) { wall = vec3(0.70, 0.84, 0.72); light = vec3(0.8, 1.0, 0.8); }
+    if (style == 5) { wall = vec3(0.40, 0.30, 0.28); light = vec3(1.0, 0.7, 0.4); }
+    if (style == 6) { wall = vec3(0.92, 0.88, 0.70); light = vec3(1.0, 0.9, 0.7); }
     vec3 c;
+    vec2 q = (h.xy - o0) / (o1 - o0);
     if (t == tz) {
-      // the back wall: a feature in the middle (a picture, a screen, a poster)
-      vec2 q = (h.xy - o0) / (o1 - o0);
       c = wall;
-      float feat = step(abs(q.x - 0.5), 0.22) * step(abs(q.y - 0.55), 0.16);
-      if (style == 2) { float fl = 0.6 + 0.4 * sin(uTime * 9.0 + seed * 40.0) * sin(uTime * 3.1); c = mix(c, vec3(0.5, 0.7, 1.0) * (1.0 + fl), feat); }
-      else if (style == 1) { c = mix(c, vec3(0.3, 0.5, 0.9), feat * 0.9); }
-      else if (style == 5) { c = mix(c, vec3(0.1, 0.5, 0.3) + 0.5 * step(0.7, fract(q.y * 12.0 + uTime * 0.5 + seed)), feat); }
-      else { c = mix(c, hsv(seed * 3.0, 0.6, 0.7), feat * 0.8); }
-      // a skirting line and a dado
+      // wallpaper: stripes or a diamond pattern on some
+      if (style == 3) c *= 0.92 + 0.08 * step(0.5, fract(q.x * 7.0));
+      if (style == 6) c *= 0.94 + 0.06 * step(0.5, fract(q.x * 5.0 + q.y * 5.0));
+      if (style == 0) c *= 0.93 + 0.07 * step(0.5, fract(q.y * 6.0));
+      float feat = step(abs(q.x - 0.5), 0.2) * step(abs(q.y - 0.6), 0.14);
+      if (style == 2) { float fl = 0.6 + 0.4 * sin(uTime * 9.0 + seed * 40.0) * sin(uTime * 3.1); c = mix(c, vec3(0.5, 0.7, 1.0) * (1.0 + fl), feat); c = mix(c, vec3(0.08), step(abs(q.x - 0.5), 0.22) * step(abs(q.y - 0.6), 0.16) * (1.0 - feat)); }
+      else if (style == 1) { c = mix(c, vec3(0.16, 0.14, 0.1), step(abs(q.x - 0.5), 0.2) * step(abs(q.y - 0.6), 0.14)); c = mix(c, hsv(seed * 5.0, 0.6, 0.8), step(abs(q.x - 0.5), 0.17) * step(abs(q.y - 0.6), 0.11)); }
+      else if (style == 5) { float shelf = step(0.35, q.y) * step(q.y, 0.75) * step(0.5, fract(q.y * 6.0)); c = mix(c, vec3(0.2, 0.12, 0.08), shelf); float bottles = shelf * step(0.6, fract(q.x * 14.0)); c = mix(c, hsv(fract(q.x * 3.0 + seed), 0.7, 0.9), bottles); }
+      else if (style == 4) { c = mix(c, vec3(0.55, 0.35, 0.2), step(abs(q.x - 0.5), 0.36) * step(q.y, 0.42)); c = mix(c, vec3(0.95, 0.95, 1.0), step(abs(q.x - 0.5), 0.34) * step(0.25, q.y) * step(q.y, 0.4)); c = mix(c, hsv(seed * 7.0, 0.5, 0.9), step(abs(q.x - 0.5), 0.34) * step(0.1, q.y) * step(q.y, 0.25)); }
+      else { c = mix(c, vec3(0.3, 0.2, 0.12), step(abs(q.x - 0.5), 0.17) * step(abs(q.y - 0.62), 0.12)); c = mix(c, hsv(seed * 3.0, 0.6, 0.7), step(abs(q.x - 0.5), 0.15) * step(abs(q.y - 0.62), 0.1)); }
+      // a lamp on the side table
+      if (style == 0 || style == 3 || style == 6) { float shade = 1.0 - smoothstep(0.0, 0.01, rbox(q - vec2(0.15, 0.32), vec2(0.06, 0.05), 0.02)); c = mix(c, light * 1.6 * lit + vec3(0.2), shade); c = mix(c, vec3(0.2, 0.15, 0.1), step(abs(q.x - 0.15), 0.008) * step(0.14, q.y) * step(q.y, 0.27)); }
       c *= 0.85 + 0.15 * step(0.08, q.y);
+      if (people > 0.5) c = person(c, q, seed, lit, light);
     } else if (t == ty) {
       c = d.y > 0.0 ? wall * 0.95 : wall * 0.55;   // ceiling / floor
-      if (d.y > 0.0) { vec2 q = (h.xz); float lamp = smoothstep(0.12, 0.0, length((h.xy - (o0 + o1) * 0.5) * vec2(1.0, 0.0) + vec2(0.0, h.z + D * 0.5))); c += light * lamp * 2.0 * lit; }
-      else { c *= 0.9 + 0.1 * step(0.5, fract(h.x * 6.0 + h.z * 6.0)); }
+      if (d.y > 0.0) { float lamp = smoothstep(0.12, 0.0, length((h.xy - (o0 + o1) * 0.5) * vec2(1.0, 0.0) + vec2(0.0, h.z + D * 0.5))); c += light * lamp * 2.0 * lit; }
+      else { c = (style == 5 ? vec3(0.3, 0.18, 0.1) : wall * 0.5) * (0.9 + 0.1 * step(0.5, fract(h.x * 6.0 + h.z * 6.0))); }
     } else {
       c = wall * 0.72;   // side walls
     }
@@ -135,87 +207,128 @@ const FACADE_FS = /* glsl */`
     float ac = float((flags >> 3) & 1);
     float item = float((flags >> 4) & 1);
 
-    // the wall everywhere, in world space so bricks run across cells
+    // the wall everywhere, in world space so bricks run across cells: the tile's value under the family's colour
     vec2 wuv = (vWorld.xy) / (uCell * uTileCells) + uSeed * 3.0;
-    vec3 wall = texture(uWall, wuv).rgb;
+    vec3 tex = texture(uWall, wuv).rgb;
+    float val = dot(tex, vec3(0.3, 0.5, 0.2));
+    vec3 wall = uTint * (0.5 + 1.0 * val);
     float grime = smoothstep(2.5, 0.0, vWorld.y / uCell) * 0.35 + fbm(vWorld.xy * 0.35 + uSeed) * 0.25;
     float streak = smoothstep(0.35, 0.0, abs(fract(cell.x) - 0.5)) * smoothstep(0.85, 0.2, f.y) * noise(vec2(ci.x * 3.1 + uSeed * 9.0, vWorld.y * 0.7)) * 0.5;
-    wall *= 1.0 - uWear * (grime + streak) * 0.9;
+    wall *= 1.0 - uWear * (grime + streak) * 0.7;
     wall *= 1.0 - 0.25 * step(0.5, uCollapse) * fbm(vWorld.xy * 2.0);
     vec3 col = wall;
     float emit = 0.0;
-
     vec3 d = normalize(vWorld - uCamPos);
+
+    // cracks that run toward a broken neighbour
+    float nbCrack = 0.0;
+    if (state != 2 && type != 2) {
+      for (int i = 0; i < 4; i++) {
+        vec2 off = i == 0 ? vec2(1.0, 0.0) : i == 1 ? vec2(-1.0, 0.0) : i == 2 ? vec2(0.0, 1.0) : vec2(0.0, -1.0);
+        vec2 nc = ci + off;
+        if (nc.x < 0.0 || nc.y < 0.0 || nc.x >= uCols || nc.y >= uFloors) continue;
+        float ns = texelFetch(uCells, ivec2(int(nc.x), int(nc.y)), 0).g * 255.0;
+        if (ns < 1.5) continue;
+        vec2 a = vec2(0.5) + off * 0.5, b = vec2(0.5) + off * 0.12 + vec2(hash(ci + off * 3.0 + uSeed) - 0.5, hash(ci * 2.0 + off + uSeed) - 0.5) * 0.3;
+        float wob = (noise(f * 14.0 + ci * 5.0 + uSeed * 4.0) - 0.5) * 0.04;
+        nbCrack = max(nbCrack, 1.0 - smoothstep(0.0, 0.014, seg(f, a, b) + wob));
+      }
+    }
+    col *= 1.0 - nbCrack * 0.7;
+
     if (type == 1) {
-      // a wall cell: cracked, then a hole
+      // a wall cell: the fist print, then the hole with the room behind it
+      float fd = fist(f, seed);
       if (state == 1 || uCollapse > 0.0) {
         float cr = abs(fbm(cell * 5.0 + uSeed * 7.0) - 0.5);
         float crack = 1.0 - smoothstep(0.0, 0.03 + 0.03 * uCollapse, cr);
-        col *= 1.0 - crack * 0.75 * max(float(state == 1), uCollapse);
+        float near = state == 1 ? smoothstep(0.42, 0.05, fd) : 1.0;
+        col *= 1.0 - crack * 0.75 * max(float(state == 1) * near, uCollapse);
+      }
+      if (state == 1) {
+        // the dent: the fist sunk into the wall, a light lip on the upper left, a dark shadow inside
+        float dent = 1.0 - smoothstep(-0.005, 0.01, fd);
+        float lip = smoothstep(0.03, 0.0, fd) * (1.0 - dent);
+        float inner = smoothstep(0.0, -0.08, fd);
+        col = mix(col, col * 0.55, dent);
+        col = mix(col, col * (0.35 + 0.25 * noise(f * 20.0)), inner * 0.8);
+        col = mix(col, col * 1.35, lip * 0.6);
+        col = mix(col, col * 0.8, smoothstep(0.02, -0.02, fd) * step(f.y, 0.47) * 0.5);   // deeper below the knuckles
       }
       if (state == 2) {
-        float r = 0.22 + 0.18 * fbm(f * 4.0 + seed * 20.0);
-        float dd = length((f - 0.5) * vec2(1.0, 1.1));
-        float hole = 1.0 - smoothstep(r - 0.02, r + 0.02, dd);
-        vec3 innards = uInnards * (0.6 + 0.4 * noise(f * 9.0));
-        float rim = smoothstep(r + 0.02, r + 0.06, dd) * (1.0 - smoothstep(r + 0.06, r + 0.12, dd));
-        col = mix(col, innards * 0.35, hole);
-        col = mix(col, col * 1.3, rim * 0.6);
-        // rebar
-        float bar = step(abs(f.x - 0.5 - 0.08), 0.012) * step(0.5, f.y) * hole + step(abs(f.x - 0.5 + 0.11), 0.012) * step(0.45, f.y) * hole;
-        col = mix(col, vec3(0.25, 0.14, 0.1), bar);
+        float rag = 0.06 * fbm(f * 9.0 + seed * 30.0);
+        float hd = fd - 0.07 - rag;
+        float hole = 1.0 - smoothstep(-0.005, 0.005, hd);
+        vec3 inside = room(f, vec2(0.08, 0.06), vec2(0.92, 0.94), d, seed + 0.31, 0.18, 0.7, 0.0) * 0.55;
+        float rimN = fbm(f * 12.0 + seed * 40.0);
+        float rim = smoothstep(0.0, 0.05 + 0.04 * rimN, hd) * (1.0 - smoothstep(0.05, 0.12, hd));
+        col = mix(col, inside, hole);
+        col = mix(col, mix(uInnards * 0.6, uTint * 0.5, 0.5) * (0.6 + 0.6 * rimN), rim * 0.85);
+        float lip = smoothstep(-0.012, 0.0, hd) * (1.0 - smoothstep(0.0, 0.012, hd));
+        col = mix(col, vec3(0.04, 0.03, 0.03), lip * 0.8);
+        // rebar and a chunk still hanging
+        float bar = step(abs(f.x - 0.5 - 0.08), 0.012) * step(0.45, f.y) * hole + step(abs(f.x - 0.5 + 0.11), 0.012) * step(0.4, f.y) * hole;
+        col = mix(col, vec3(0.28, 0.16, 0.1), bar);
+        float dust = smoothstep(0.0, 0.25, -hd + 0.12) * (1.0 - hole) * step(f.y, 0.4) * 0.35 * (0.6 + 0.4 * fbm(f * 6.0 + seed * 3.0));
+        col *= 1.0 - dust;
       }
     } else if (type == 0 || type == 3) {
-      // a window (or a storefront): the opening, the frame, the glass and the room
-      vec2 o0 = type == 3 ? vec2(0.06, 0.0) : vec2(0.13, 0.15);
-      vec2 o1 = type == 3 ? vec2(0.94, 0.72) : vec2(0.87, 0.9);
+      // a window (or a storefront): the opening, the frame, the sill, the glass and the room
+      vec2 o0 = type == 3 ? vec2(0.06, 0.0) : vec2(0.14, 0.16);
+      vec2 o1 = type == 3 ? vec2(0.94, 0.72) : vec2(0.86, 0.9);
       float openBox = box(f - (o0 + o1) * 0.5, (o1 - o0) * 0.5);
       float broken = float(state == 2);
-      // a ragged edge once it is broken
       float rag = broken * (0.04 + 0.05 * fbm(f * 7.0 + seed * 30.0));
       float inOpen = 1.0 - smoothstep(-0.005, 0.005, openBox - rag);
-      float frame = (1.0 - smoothstep(0.0, 0.04, -openBox)) * (1.0 - broken * 0.85);
-      vec3 frameCol = type == 3 ? vec3(0.12, 0.12, 0.13) : mix(vec3(0.16, 0.17, 0.19), vec3(0.72, 0.7, 0.66), step(0.5, fract(uSeed * 5.0)));
+      float frame = (1.0 - smoothstep(0.0, 0.045, -openBox)) * (1.0 - broken * 0.85);
+      vec3 frameCol = type == 3 ? vec3(0.12, 0.12, 0.13) : uTrim;
       float lit = (uNight > 0.5 ? litF : litF * step(0.7, seed)) * (1.0 - broken * 0.6);
       if (type == 3) lit = 1.0 - broken * 0.5;
-      vec3 interior = room(f, o0, o1, d, seed + float(type) * 0.13, lit, broken);
+      float people = uPeople * step(0.5, lit) * (1.0 - broken) * (1.0 - curtain) * float(type == 0);
+      vec3 interior = room(f, o0, o1, d, seed + float(type) * 0.13, lit, broken, people);
       if (type == 3) {
-        // a restaurant: a counter, a menu board glow, the brand's colour on the walls
         interior *= mix(vec3(1.0), uBrandA * 1.4, 0.35);
         float board = step(abs(f.x - 0.5), 0.3) * step(0.5, f.y) * step(f.y, 0.62);
         interior += board * uBrandB * 0.9 * (1.0 - broken);
       }
-      // glass: a reflection of the sky, more at grazing angles
       vec3 n = vec3(0.0, 0.0, 1.0);
       vec3 rdir = reflect(d, n);
       vec3 refl = mix(uGround, uSky, smoothstep(-0.2, 0.6, rdir.y)) * (0.9 + 0.3 * noise(vWorld.xy * 0.2));
       float fres = mix(0.10, 0.30, uDay) + 0.5 * pow(1.0 - max(0.0, -d.z), 3.0);
       float diag = smoothstep(0.02, 0.0, abs(fract((f.x + f.y * 0.6 + uSeed) * 1.3) - 0.5) - 0.42) * 0.25;
       vec3 glass = mix(interior, refl, clamp(fres + diag, 0.0, 0.8) * (1.0 - broken));
-      // curtains and a half blind
       if (curtain > 0.5 && broken < 0.5) {
         float cw = (o1.x - o0.x) * 0.42;
         float side = step(0.5, fract(seed * 13.0));
         float inCurt = side > 0.5 ? step(f.x, o0.x + cw) : step(o1.x - cw, f.x);
-        vec3 ccol = hsv(fract(seed * 5.0), 0.35, 0.75) * (0.75 + 0.25 * sin(f.x * 60.0 + seed));
+        vec3 ccol = hsv(fract(seed * 5.0), 0.55, 0.85) * (0.75 + 0.25 * sin(f.x * 60.0 + seed));
         glass = mix(glass, ccol * (0.35 + 0.65 * lit + uDay * 0.3), inCurt * 0.9);
       }
       if (blind > 0.5 && broken < 0.5) {
         float bh = o1.y - (o1.y - o0.y) * (0.22 + 0.33 * fract(seed * 17.0));
         float inBlind = step(bh, f.y);
         float slat = 0.72 + 0.28 * step(0.5, fract(f.y * 28.0));
-        glass = mix(glass, vec3(0.62, 0.60, 0.55) * slat * (0.45 + 0.45 * lit + uDay * 0.25), inBlind * 0.92);
+        glass = mix(glass, vec3(0.92, 0.88, 0.78) * slat * (0.45 + 0.45 * lit + uDay * 0.25), inBlind * 0.92);
       }
       col = mix(col, glass, inOpen);
       col = mix(col, frameCol, frame * inOpen);
+      // a mullion: the cross bar in the glass
+      if (type == 0 && broken < 0.5) { float mull = step(abs(f.x - 0.5), 0.012) + step(abs(f.y - (o0.y + o1.y) * 0.55), 0.01); col = mix(col, frameCol * 0.9, clamp(mull, 0.0, 1.0) * inOpen * (1.0 - frame)); }
+      // the sill below and the lintel above, in the trim colour
+      if (type == 0) {
+        float sill = step(o0.x - 0.05, f.x) * step(f.x, o1.x + 0.05) * step(o0.y - 0.07, f.y) * step(f.y, o0.y);
+        float sillShade = step(o0.x - 0.05, f.x) * step(f.x, o1.x + 0.05) * step(o0.y - 0.1, f.y) * step(f.y, o0.y - 0.07);
+        float lintel = step(o0.x - 0.03, f.x) * step(f.x, o1.x + 0.03) * step(o1.y, f.y) * step(f.y, o1.y + 0.045);
+        col = mix(col, uTrim * 0.95, sill * (1.0 - broken * 0.5));
+        col = mix(col, col * 0.6, sillShade);
+        col = mix(col, uTrim * 0.8, lintel);
+      }
       if (ac > 0.5 && broken < 0.5 && type == 0) {
-        float acb = 1.0 - smoothstep(0.0, 0.01, box(f - vec2(0.7, 0.24), vec2(0.13, 0.08)));
+        float acb = 1.0 - smoothstep(0.0, 0.01, box(f - vec2(0.7, 0.25), vec2(0.13, 0.08)));
         float grille = 0.8 + 0.2 * step(0.5, fract(f.y * 30.0));
-        col = mix(col, vec3(0.62, 0.62, 0.6) * grille, acb);
+        col = mix(col, vec3(0.72, 0.72, 0.7) * grille, acb);
       }
       if (broken > 0.5) {
-        // a punched window: a dark ragged rim of torn wall, soot fanning out, a few glass teeth on the sill,
-        // a blind hanging out, rebar at the top, the room behind wrecked and dim
         float rimN = fbm(f * 9.0 + seed * 40.0);
         float edge = smoothstep(-0.01, 0.01, openBox - rag) * (1.0 - smoothstep(0.03, 0.09 + 0.05 * rimN, openBox - rag));
         col = mix(col, uInnards * (0.35 + 0.5 * rimN), edge);
@@ -223,17 +336,16 @@ const FACADE_FS = /* glsl */`
         col = mix(col, vec3(0.05, 0.04, 0.04), lip * 0.9);
         float soot = smoothstep(0.0, 0.32, -(openBox - rag) + 0.16) * 0.55 * (0.6 + 0.4 * fbm(f * 6.0 + seed * 3.0));
         col *= 1.0 - soot * (1.0 - inOpen);
-        float teeth = step(f.y, o0.y + 0.03 * abs(sin(f.x * 37.0 + seed * 9.0)) * (0.4 + 0.6 * noise(vec2(f.x * 5.0, seed)))) * step(o0.y - 0.005, f.y) * inOpen;
-        col = mix(col, vec3(0.55, 0.65, 0.75), teeth * 0.7);
+        // glass teeth on the sill and round the edge
+        float teeth = step(f.y, o0.y + 0.05 * abs(sin(f.x * 37.0 + seed * 9.0)) * (0.4 + 0.6 * noise(vec2(f.x * 5.0, seed)))) * step(o0.y - 0.005, f.y) * inOpen;
+        float teethTop = step(o1.y - 0.04 * abs(sin(f.x * 29.0 + seed * 4.0)), f.y) * step(f.y, o1.y + 0.005) * inOpen;
+        col = mix(col, vec3(0.75, 0.88, 1.0), max(teeth, teethTop) * 0.8);
         float sw = sin(uTime * 1.7 + seed * 6.0) * 0.06;
         float hang = step(abs(f.x - (o0.x + 0.22 + (o1.y - f.y) * sw)), 0.12) * step(f.y, o1.y) * step(o1.y - 0.3 - 0.1 * fract(seed * 7.0), f.y) * inOpen * step(0.5, blind + curtain);
         col = mix(col, vec3(0.5, 0.48, 0.44) * (0.6 + 0.4 * step(0.5, fract(f.y * 22.0))), hang * 0.9);
-        float bar = (step(abs(f.x - o0.x - 0.18), 0.008) + step(abs(f.x - o1.x + 0.24), 0.008)) * step(o1.y - 0.22 - 0.1 * fract(seed * 11.0), f.y) * step(f.y, o1.y + 0.02) * inOpen;
-        col = mix(col, vec3(0.22, 0.12, 0.08), bar);
       }
       emit = lit * inOpen * (1.0 - frame) * uRoomLight * (uNight > 0.5 ? 0.55 : 0.12) * (type == 3 ? 1.6 : 1.0);
       if (type == 3) {
-        // the awning band along the top, striped, with the brand's mark space in the middle
         float aw = step(0.74, f.y) * step(f.y, 0.98);
         float stripe = step(0.5, fract(f.x * 6.0 + ci.x));
         vec3 awCol = mix(uBrandA, uBrandB, stripe * 0.85);
@@ -244,7 +356,6 @@ const FACADE_FS = /* glsl */`
         col *= 1.0 - shadow;
       }
     } else if (type == 2) {
-      // a neon sign across its cells: the atlas glyphs, lit or dead
       float su = (cell.x - uNeonC0) / max(1.0, uNeonW);
       float sv = f.y;
       vec2 auv = vec2((mod(uNeonIdx, 4.0) + clamp(su, 0.0, 1.0)) / 4.0, 1.0 - (floor(uNeonIdx / 4.0) + (1.0 - clamp(sv * 0.9 + 0.05, 0.0, 1.0))) / 2.0);
@@ -256,14 +367,31 @@ const FACADE_FS = /* glsl */`
       float flick = 0.85 + 0.15 * step(0.1, fract(sin(uTime * 13.0 + uSeed) * 7.0));
       vec3 tube = mix(hue * 0.18, hue * 2.4 * flick + sign * 0.8, on);
       col = mix(panel, tube, glyph);
-      // a soft halo on the panel when it is on
-      float halo = on * glyph * 0.0;
       col += hue * on * 0.15 * smoothstep(0.0, 0.5, sign.r + sign.g + sign.b);
       emit = on * glyph * 1.4 + on * 0.06;
       if (state == 2) { col = panel * 0.6 + vec3(0.3, 0.32, 0.36) * step(0.9, fract(f.x * 9.0 + f.y * 7.0)) * 0.3; emit = 0.0; }
       float frame = 1.0 - smoothstep(0.0, 0.05, -box(f - 0.5, vec2(0.5, 0.5)) + 0.03);
       col = mix(col, vec3(0.2, 0.2, 0.22), frame * 0.9);
     }
+    // the painted shop sign over the ground floor (buildings that are not one of the three)
+    if (uShop >= 0.0 && ci.y < 0.5 && f.y > 0.79 && f.y < 0.97 && type != 2) {
+      vec2 suv = vec2((mod(uShop, 4.0) + clamp(vUv.x, 0.0, 1.0)) / 4.0, 1.0 - (floor(uShop / 4.0) + (1.0 - (f.y - 0.79) / 0.18)) / 2.0);
+      vec3 signCol = texture(uShops, suv).rgb;
+      col = signCol * (0.85 + 0.15 * noise(f * 30.0));
+      emit = uNight * 0.35;
+      col *= 1.0 - step(0.955, f.y) * 0.4;   // the board's top shadow
+    }
+    // the cornice along the top and the base course at the bottom
+    float topBand = step(1.0 - 0.12 / uFloors, vUv.y);
+    float topLip = step(1.0 - 0.04 / uFloors, vUv.y);
+    float topShadow = step(1.0 - 0.16 / uFloors, vUv.y) * (1.0 - topBand);
+    if (type != 2 && ci.y >= uFloors - 1.0) {
+      col = mix(col, uTrim * (0.7 + 0.15 * step(0.5, fract(vUv.x * uCols * 3.0))), topBand);
+      col = mix(col, uTrim * 1.1, topLip);
+      col = mix(col, col * 0.7, topShadow);
+      emit *= 1.0 - topBand;
+    }
+    if (ci.y < 0.5 && f.y < 0.05 && type != 3) col = mix(col, uTint * 0.45, 0.9);
     // daylight on the face: the sun's side is brighter
     float sunFace = 0.7 + 0.3 * max(0.0, uSunDir.z);
     vec3 lightCol = mix(vec3(0.30, 0.34, 0.5) * 0.45, vec3(1.08, 1.04, 0.96) * sunFace, uDay);
@@ -311,10 +439,17 @@ const SKY_FS = /* glsl */`
   void main() {
     vec3 dir = normalize(vP);
     float h = clamp(dir.y, -0.1, 1.0);
-    vec3 col = mix(uHorizon, uTop, smoothstep(-0.03, 0.32, h));
-    float sun = smoothstep(0.9985, 0.9995, dot(dir, uSunDir));
-    float halo = pow(max(0.0, dot(dir, uSunDir)), 30.0) * 0.5;
-    col += uSunCol * (sun * 4.0 + halo);
+    // the 16-bit sky: the gradient in painted bands with a little dither, a big sun with a ring
+    float k = smoothstep(-0.03, 0.45, h);
+    float bands = 8.0;
+    float dith = (hash(floor(dir.xz * 900.0)) - 0.5) * 0.9;
+    k = floor(k * bands + 0.5 + dith) / bands;
+    vec3 col = mix(uHorizon, uTop, k);
+    float sd = dot(dir, uSunDir);
+    float sun = smoothstep(0.9962, 0.9972, sd);
+    float ring = smoothstep(0.9938, 0.9944, sd) * (1.0 - smoothstep(0.9952, 0.9958, sd));
+    float halo = pow(max(0.0, sd), 24.0) * 0.45;
+    col += uSunCol * (sun * 3.5 + ring * 0.9 + halo);
     if (uNight > 0.5) {
       vec2 sp = dir.xz / max(0.05, dir.y + 0.15) * 40.0;
       vec2 c = floor(sp); vec2 f = fract(sp);
@@ -384,7 +519,7 @@ export function createRenderer(canvas, lookIn) {
       }
     });
   }
-  const MONSTER_CLIPS = ['walk', 'run', 'idle', 'punchL', 'punchR', 'climb', 'eat', 'hit', 'fall', 'jump', 'stomp'];
+  const MONSTER_CLIPS = ['walk', 'run', 'idle', 'punchL', 'punchR', 'climb', 'eat', 'hit', 'fall', 'jump', 'stomp', 'hookL', 'upperR', 'slam', 'ladder', 'bothFists'];
   const TILES = ['brick_red', 'brick_tan', 'concrete', 'stucco', 'steel', 'glass', 'asphalt', 'sidewalk', 'rubble', 'roof'];
   async function load(onProgress) {
     let done = 0, total = 0;
@@ -427,7 +562,7 @@ export function createRenderer(canvas, lookIn) {
   sky.renderOrder = -10;
   scene.add(sky);
   let night = false;
-  const palette = { day: { top: 0x2f6fd0, horizon: 0xbcd3ea, ground: 0x6e6a60, fog: 0xb9cbe0, sunCol: 0xfff0d0 }, night: { top: 0x050818, horizon: 0x2a1c3a, ground: 0x15121a, fog: 0x14101e, sunCol: 0xd8e4ff } };
+  const palette = { day: { top: 0x2464d4, horizon: 0xf8caa0, ground: 0x6e6a60, fog: 0xd9c0b4, sunCol: 0xfff0c0 }, night: { top: 0x070a24, horizon: 0x6a2c66, ground: 0x15121a, fog: 0x1c1030, sunCol: 0xd8e4ff } };
   function applyDayNight() {
     const p = night ? palette.night : palette.day;
     skyUniforms.uTop.value.setHex(p.top); skyUniforms.uHorizon.value.setHex(p.horizon); skyUniforms.uNight.value = night ? 1 : 0; skyUniforms.uSunCol.value.setHex(p.sunCol);
@@ -437,6 +572,7 @@ export function createRenderer(canvas, lookIn) {
     amb.intensity = night ? 0.06 : 0.18;
     scene.fog = new THREE.Fog(p.fog, 110 * look.fogDepth, 380 * look.fogDepth);
     shardMat.color.setHex(night ? 0x5a6a7a : 0xcfe8ff); debrisMat.color.setHex(night ? 0x8a8a90 : 0xffffff);
+    if (skylinePlanes.length) paintSkyline();
     farUniforms.uNight.value = night ? 1 : 0; farUniforms.uFogCol.value.setHex(p.fog); farUniforms.uFogA.value = 100 * look.fogDepth; farUniforms.uFogB.value = 360 * look.fogDepth;
     for (const u of facadeUniformsAll) { u.uNight.value = night ? 1 : 0; u.uDay.value = night ? 0 : 1; u.uSky.value.setHex(p.top); u.uGround.value.setHex(p.ground); u.uSunDir.value.copy(skyUniforms.uSunDir.value); }
     exposure = look.exposure * (night ? 0.95 : 1);
@@ -446,7 +582,12 @@ export function createRenderer(canvas, lookIn) {
   const ground = new THREE.Group();
   scene.add(ground);
   let streetBuilt = false;
-  function buildStreet(width) {
+  function billboard(canvasEl, w, h, x, y, z) {
+    const t = canvasTex(canvasEl); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.45, roughness: 1, side: THREE.DoubleSide }));
+    m.position.set(x, y + h / 2, z); m.frustumCulled = false; return m;
+  }
+  function buildStreet(width, city) {
     for (const c of ground.children.slice()) { ground.remove(c); if (c.geometry) c.geometry.dispose(); }
     const W = width * CELL + 400;
     const x0 = -200;
@@ -454,13 +595,32 @@ export function createRenderer(canvas, lookIn) {
     ground.add(mk(W, SW, SW / 2, 'sidewalk', 3.2));             // the pavement in front of the faces, deep enough for a giant
     const road = mk(W, ROAD, SW + ROAD / 2, 'asphalt', 6); road.position.y = -0.04; ground.add(road);
     const near = mk(W, 30, SW + ROAD + 15, 'sidewalk', 3.2); ground.add(near);   // the near pavement, all the way under the camera
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(W, 500), new THREE.MeshStandardMaterial({ color: 0x1c1a1e, roughness: 1 }));
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(W, 500), new THREE.MeshStandardMaterial({ color: 0x5a5058, roughness: 1 }));
     back.rotation.x = -Math.PI / 2; back.position.set(x0 + W / 2, -0.08, -100); ground.add(back);
     // planters and a low fence along the near pavement, low enough to stay under the road in the frame
     const planterMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.8 }), leafMat = new THREE.MeshStandardMaterial({ color: 0x2f6a34, roughness: 0.9 });
-    for (let x = -10; x < width * CELL + 10; x += 6) {
+    const southern = city && city.lat < 33.5;
+    let ti = 0;
+    for (let x = -10; x < width * CELL + 10; x += 6, ti++) {
       const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, SW + ROAD + 6); ground.add(pl);
-      const lf = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.6, 1.0), leafMat); lf.position.set(x, 0.95, SW + ROAD + 6); ground.add(lf);
+      const kind = ti % 3 === 1 ? 'flowers' : 'bush';
+      ground.add(billboard(Icons().tree(kind, ti * 7 + 3), 3.4, kind === 'bush' ? 2.4 : 1.6, x, 0.6, SW + ROAD + 6.1));
+      if (ti % 5 === 2) ground.add(billboard(Icons().tree(southern ? 'palm' : (ti % 2 ? 'round' : 'tall'), ti * 13 + 1), 7.5, 8.5, x + 2.5, 0, SW + ROAD + 8.6));
+    }
+    void leafMat;
+    // trees in the gaps between the buildings, on the front pavement
+    if (city) {
+      const bs = city.buildings;
+      for (let i = 1; i < bs.length; i++) {
+        const a = bs[i - 1], b = bs[i];
+        const gap = b.x0 - (a.x0 + a.cols);
+        if (gap < 1) continue;
+        const gx = ((a.x0 + a.cols + b.x0) / 2) * CELL;
+        if (city.exits && city.exits.subway != null && Math.abs(city.exits.subway * CELL - gx) < 3) continue;
+        const kind = southern ? 'palm' : ((i * 31) % 3 === 0 ? 'tall' : 'round');
+        const h = 7 + ((i * 17) % 4);
+        ground.add(billboard(Icons().tree(kind, i * 19 + city.day), h * 0.9, h, gx, 0, 3.0));
+      }
     }
     const fence = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.6 }));
     fence.position.set(x0 + W / 2, 0.45, SW + ROAD + 9.5); ground.add(fence);
@@ -523,12 +683,40 @@ export function createRenderer(canvas, lookIn) {
   const farUniforms = { uNight: { value: 0 }, uDim: { value: 1 }, uTime: { value: 0 }, uTint: { value: new THREE.Color(0.55, 0.55, 0.6) }, uFogCol: { value: new THREE.Color(0xc9d6e6) }, uFogA: { value: 120 }, uFogB: { value: 420 } };
   const farGroup = new THREE.Group();
   scene.add(farGroup);
+  // THE SKYLINE (round two): four painted layers of silhouettes behind the street, parallax from the camera itself
+  const SKY_LAYERS = [{ z: -70, h: 62 }, { z: -150, h: 115 }, { z: -280, h: 175 }, { z: -470, h: 250 }];
+  let skylinePlanes = [], skylineSeed = 1;
+  function layerColour(i) {
+    const p = night ? palette.night : palette.day;
+    const base = night ? new THREE.Color(0x10102a) : new THREE.Color(0x4a5a8a);
+    const hor = new THREE.Color(p.horizon);
+    const k = night ? [0.12, 0.28, 0.45, 0.6][i] : [0.22, 0.42, 0.62, 0.78][i];
+    return '#' + base.lerp(hor, k).getHexString();
+  }
+  function paintSkyline() {
+    for (const pl of skylinePlanes) { const i = pl.userData.layer; const hpx = [256, 256, 384, 512][i]; const wpx = Math.min(8192, Math.round(hpx * pl.userData.w / SKY_LAYERS[i].h)); const t = canvasTex(Icons().skyline(i, skylineSeed, night, layerColour(i), wpx, hpx)); t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (pl.material.map) pl.material.map.dispose(); pl.material.map = t; pl.material.needsUpdate = true; }
+  }
+  function buildSkyline(width, seed) {
+    for (const pl of skylinePlanes) { farGroup.remove(pl); pl.geometry.dispose(); }
+    skylinePlanes = []; skylineSeed = seed;
+    const Wl = width * CELL + 1600;
+    SKY_LAYERS.forEach((L, i) => {
+      const geo = new THREE.PlaneGeometry(Wl, L.h);
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.5, fog: false, depthWrite: true });
+      const pl = new THREE.Mesh(geo, mat);
+      pl.position.set(width * CELL / 2, L.h / 2 - 0.5, L.z);
+      pl.userData.layer = i; pl.userData.w = Wl; pl.renderOrder = -5 + i; pl.frustumCulled = false;
+      farGroup.add(pl); skylinePlanes.push(pl);
+    });
+    paintSkyline();
+  }
   function buildFar(width, seed) {
-    for (const c of farGroup.children.slice()) { farGroup.remove(c); c.geometry.dispose(); }
+    for (const c of farGroup.children.slice()) { if (c.userData.layer != null) continue; farGroup.remove(c); if (c.geometry) c.geometry.dispose(); }
+    buildSkyline(width, seed);
     let r = seed * 7919 + 17;
     const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
     const rows = [{ z: ROW2_Z, n: Math.ceil(width / 6) + 8, hMin: 5, hMax: 22, w: [14, 30], dim: 0.48, tint: [0.42, 0.44, 0.52] }, { z: ROW3_Z, n: Math.ceil(width / 5) + 14, hMin: 14, hMax: 46, w: [16, 36], dim: 0.34, tint: [0.36, 0.4, 0.5] }];
-    for (const row of rows) {
+    for (const row of (rows.length ? [] : rows)) {
       const geo = new THREE.BoxGeometry(1, 1, 1);
       geo.translate(0, 0.5, 0);
       const sizes = new Float32Array(row.n * 3), seeds = new Float32Array(row.n);
@@ -563,6 +751,7 @@ export function createRenderer(canvas, lookIn) {
   scene.add(cityGroup);
   const facadeUniformsAll = [];
   const signsTex = canvasTex(Icons().signAtlas());
+  const shopsTex = canvasTex(Icons().shopAtlas());
   const buildingViews = new Map();   // b.id → view
   let cityRef = null, stateRef = null;
   const FLAG_LIT = 1, FLAG_CURTAIN = 2, FLAG_BLIND = 4, FLAG_AC = 8, FLAG_ITEM = 16;
@@ -590,18 +779,41 @@ export function createRenderer(canvas, lookIn) {
     const W = b.cols * CELL, H = b.floors * CELL;
     // the body: sides, back, roof in the family's tile
     const wallTex = tex(FAMILY_TILE[fam.id]);
-    const sideMat = new THREE.MeshStandardMaterial({ map: tile(FAMILY_TILE[fam.id], DEPTH / (CELL * FAMILY_TILE_CELLS[fam.id]), H / (CELL * FAMILY_TILE_CELLS[fam.id])), roughness: 0.92, metalness: fam.id === 'steel' || fam.id === 'glass' ? 0.35 : 0.02 });
+    // the building's own colours: the family's palette rolled a little per building
+    const roll = () => 0.86 + 0.28 * seedRnd();
+    const tint = FAMILY_TINT[fam.id].map((c) => Math.min(1, c * roll())), trim = FAMILY_TRIM[fam.id].map((c) => Math.min(1, c * (0.95 + 0.1 * seedRnd())));
+    const sideMat = new THREE.MeshStandardMaterial({ map: tile(FAMILY_TILE[fam.id], DEPTH / (CELL * FAMILY_TILE_CELLS[fam.id]), H / (CELL * FAMILY_TILE_CELLS[fam.id])), color: new THREE.Color(Math.min(1, tint[0] * 1.6), Math.min(1, tint[1] * 1.6), Math.min(1, tint[2] * 1.6)), emissive: new THREE.Color(tint[0] * 0.22, tint[1] * 0.22, tint[2] * 0.22), roughness: 0.92, metalness: fam.id === 'steel' || fam.id === 'glass' ? 0.35 : 0.02 });
     const roofMat = new THREE.MeshStandardMaterial({ map: tile('roof', W / 10, DEPTH / 10), roughness: 1 });
     const backMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 1 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, DEPTH), [sideMat, sideMat, roofMat, backMat, backMat, backMat]);   // +x -x +y -y +z(front, hidden by the facade) -z
     body.position.set(W / 2, H / 2, -DEPTH / 2);
     g.add(body);
     // a parapet and rooftop kit: a water tank, an AC plant, a vent or two
-    const parapet = new THREE.Mesh(new THREE.BoxGeometry(W + 0.3, 0.7, DEPTH + 0.3), new THREE.MeshStandardMaterial({ color: 0x6f6a62, roughness: 0.9 }));
-    parapet.position.set(W / 2, H + 0.3, -DEPTH / 2); g.add(parapet);
-    const kitMat = new THREE.MeshStandardMaterial({ map: tile('steel', 0.5, 0.5), roughness: 0.6, metalness: 0.5 });
+    // THE CORNICE: a trim-coloured cap that overhangs the face, with a darker underside
+    const trimCol = new THREE.Color(trim[0], trim[1], trim[2]);
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(W + 0.9, 0.9, DEPTH + 0.6), new THREE.MeshStandardMaterial({ color: trimCol, roughness: 0.85 }));
+    parapet.position.set(W / 2, H + 0.42, -DEPTH / 2 + 0.3); g.add(parapet);
+    const under = new THREE.Mesh(new THREE.BoxGeometry(W + 0.9, 0.16, DEPTH + 0.6), new THREE.MeshStandardMaterial({ color: trimCol.clone().multiplyScalar(0.55), roughness: 0.9 }));
+    under.position.set(W / 2, H - 0.1, -DEPTH / 2 + 0.3); g.add(under);
+    const kitMat = new THREE.MeshStandardMaterial({ map: tile('steel', 0.5, 0.5), color: 0xd8d2c4, roughness: 0.6, metalness: 0.4 });
+    const rustMat = new THREE.MeshStandardMaterial({ map: tile('steel', 0.5, 0.5), color: 0xb85a3a, roughness: 0.8, metalness: 0.3 });
+    // a fire escape down two columns of the face, on some buildings
+    if (b.cols >= 3 && b.floors >= 4 && seedRnd() < 0.45) {
+      const ironMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.5, metalness: 0.6 });
+      const c0 = Math.floor(seedRnd() * (b.cols - 1));
+      const fx = (c0 + 1) * CELL;
+      for (let r = 1; r < b.floors; r++) {
+        const landing = new THREE.Mesh(new THREE.BoxGeometry(CELL * 1.9, 0.09, 1.1), ironMat); landing.position.set(fx, r * CELL + 0.05, 0.6); g.add(landing);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(CELL * 1.9, 0.05, 0.05), ironMat); rail.position.set(fx, r * CELL + 0.75, 1.12); g.add(rail);
+        for (let i = -3; i <= 3; i++) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.75, 0.05), ironMat); post.position.set(fx + i * CELL * 0.3, r * CELL + 0.4, 1.12); g.add(post); }
+        if (r < b.floors - 1) { const stair = new THREE.Mesh(new THREE.BoxGeometry(CELL * 1.25, 0.08, 0.7), ironMat); stair.position.set(fx + (r % 2 ? 0.35 : -0.35) * CELL, r * CELL + CELL * 0.5, 0.62); stair.rotation.z = (r % 2 ? 1 : -1) * 0.72; g.add(stair); }
+      }
+      const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.5, CELL * 0.9, 0.06), ironMat); ladder.position.set(fx - CELL * 0.6, CELL * 0.6, 0.9); g.add(ladder);
+    }
+    // a drainpipe down one edge
+    { const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, H - 0.6, 8), new THREE.MeshStandardMaterial({ color: trimCol.clone().multiplyScalar(0.6), roughness: 0.6, metalness: 0.4 })); pipe.position.set(seedRnd() < 0.5 ? 0.28 : W - 0.28, H / 2 - 0.3, 0.16); g.add(pipe); }
     const r1 = seedRnd(), r2 = seedRnd();
-    if (r1 < 0.45) { const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 3.2, 12), kitMat); tank.position.set(W * (0.25 + r2 * 0.5), H + 2.3, -DEPTH * 0.55); g.add(tank); const legs = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 2.6), kitMat); legs.position.set(tank.position.x, H + 0.6, tank.position.z); g.add(legs); }
+    if (r1 < 0.45) { const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 3.2, 12), rustMat); tank.position.set(W * (0.25 + r2 * 0.5), H + 2.3, -DEPTH * 0.55); g.add(tank); const legs = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 2.6), kitMat); legs.position.set(tank.position.x, H + 0.6, tank.position.z); g.add(legs); }
     else { const ac = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.6, 2.6), kitMat); ac.position.set(W * (0.2 + r2 * 0.6), H + 0.8, -DEPTH * 0.4); g.add(ac); }
     for (let i = 0; i < 1 + Math.floor(seedRnd() * 3); i++) { const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.4, 8), kitMat); vent.position.set(1.5 + seedRnd() * (W - 3), H + 0.7, -1.5 - seedRnd() * (DEPTH - 3)); g.add(vent); }
     if (b.floors >= 10 && seedRnd() < 0.5) { const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 7, 6), kitMat); mast.position.set(W * 0.5, H + 3.5, -DEPTH * 0.5); g.add(mast); const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2020 })); beacon.position.set(W * 0.5, H + 7.1, -DEPTH * 0.5); beacon.userData.beacon = true; g.add(beacon); }
@@ -613,7 +825,8 @@ export function createRenderer(canvas, lookIn) {
     const brand = b.restaurant ? BRAND_COLOR[b.restaurant] : [0.5, 0.5, 0.5, 0.8, 0.8, 0.8];
     const neonSpan = b.neon ? { c0: b.neon.cells[0] % b.cols, w: b.neon.cells.length } : { c0: 0, w: 1 };
     const uniforms = {
-      uCells: { value: cellsTex }, uWall: { value: wallTex }, uSigns: { value: signsTex },
+      uCells: { value: cellsTex }, uWall: { value: wallTex }, uSigns: { value: signsTex }, uShops: { value: shopsTex },
+      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: (!b.restaurant && seedRnd() < 0.75) ? Math.floor(seedRnd() * 8) : -1 }, uPeople: { value: 1 },
       uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: FAMILY_TILE_CELLS[fam.id] },
       uSeed: { value: seedRnd() }, uTime: { value: 0 }, uNight: { value: night ? 1 : 0 }, uDay: { value: night ? 0 : 1 }, uWear: { value: look.wear }, uRoomLight: { value: look.roomLight }, uCollapse: { value: 0 },
       uInnards: { value: new THREE.Vector3(...FAMILY_INNARDS[fam.id]) }, uCamPos: { value: new THREE.Vector3() }, uOrigin: { value: new THREE.Vector3(b.x0 * CELL, 0, 0) },
@@ -636,7 +849,7 @@ export function createRenderer(canvas, lookIn) {
     const rubble = makeRubble(W, seedRnd);
     rubble.visible = false; g.add(rubble);
     cityGroup.add(g);
-    const view = { g, body, facade, uniforms, data, cellsTex, rubble, parapet, W, H, collapsed: false, dropShown: 0, items: new Map(), fam };
+    const view = { g, body, facade, uniforms, data, cellsTex, rubble, parapet, W, H, collapsed: false, dropShown: 0, items: new Map(), fam, tint, trim };
     buildingViews.set(b.id, view);
     return view;
   }
@@ -668,6 +881,8 @@ export function createRenderer(canvas, lookIn) {
   const itemViews = new Map();   // item id → sprite
   const iconTex = {};
   function iconTexture(name) { if (!iconTex[name]) iconTex[name] = canvasTex(Icons().icon(name, 128)); return iconTex[name]; }
+  const screamerTex = [];
+  function screamerFrame(i) { if (!screamerTex[i]) screamerTex[i] = canvasTex(Icons().screamer(i, 160)); return screamerTex[i]; }
   function syncItems(state) {
     const seen = new Set();
     for (const it of state.items) {
@@ -675,9 +890,10 @@ export function createRenderer(canvas, lookIn) {
       let v = itemViews.get(it.id);
       if (!v) {
         const name = it.deal === 'fryer' ? 'fryer' : it.deal;
-        const mat = new THREE.MeshBasicMaterial({ map: iconTexture(name), transparent: true, depthWrite: false });
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.62, CELL * 0.62), mat);
-        mesh.position.set(it.x * CELL, (it.row + 0.5) * CELL - CELL * 0.08, -CELL * 0.3);
+        const mat = new THREE.MeshBasicMaterial({ map: it.deal === 'screamer' ? screamerFrame(0) : iconTexture(name), transparent: true, depthWrite: false });
+        const big = it.deal === 'screamer' ? 0.86 : 0.78;
+        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CELL * big, CELL * big), mat);
+        mesh.position.set(it.x * CELL, (it.row + 0.5) * CELL - CELL * 0.06, 0.14);   // just in front of the wall, inside the opening
         mesh.renderOrder = 2;
         cityGroup.add(mesh);
         v = { mesh, mat, deal: it.deal, hot: it.hot, glow: null, t: 0 };
@@ -690,7 +906,9 @@ export function createRenderer(canvas, lookIn) {
       }
       v.t += 0.016;
       if (it.deal === 'fryer' && !it.hot && !v.cooled) { v.cooled = true; v.mat.map = iconTexture('toast'); v.mat.needsUpdate = true; }
-      if (it.deal === 'waver') v.mesh.position.y = (it.row + 0.5) * CELL - CELL * 0.08 + Math.sin(clock.t * 6) * 0.15;
+      if (it.deal === 'waver') v.mesh.position.y = (it.row + 0.5) * CELL - CELL * 0.06 + Math.sin(clock.t * 6) * 0.15;
+      if (it.deal === 'screamer') { const fr = Math.floor(clock.t * 9 + it.id) % 4; if (fr !== v.frame) { v.frame = fr; v.mat.map = screamerFrame(fr); v.mat.needsUpdate = true; } v.mesh.position.y = (it.row + 0.5) * CELL - CELL * 0.06 + Math.abs(Math.sin(clock.t * 9)) * 0.12; }
+      if (it.deal === 'customer' || it.deal === 'worker' || it.deal === 'zombie' || it.deal === 'streamer') v.mesh.rotation.z = Math.sin(clock.t * 2.4 + it.id) * 0.05;
       if (v.glow) {
         const k = it.deal === 'streamer' ? 0.5 + 0.5 * Math.sin(clock.t * 14) * (it.t / Math.max(0.1, state.opts.streamerT)) : it.deal === 'battery' ? 0.55 + 0.45 * Math.sin(clock.t * 25) : 0.6 + 0.2 * Math.sin(clock.t * 3);
         v.glow.material.opacity = 0.35 + 0.5 * k;
@@ -856,6 +1074,7 @@ export function createRenderer(canvas, lookIn) {
   let tankView = null, droneView = null, blimpView = null, subwayView = null;
   const SW = 5.4, ROAD = 22;   // the front pavement and the road, in metres from the faces
   const MON_Z = 1.2, SOLDIER_Z = 2.4, CAR_Z = SW + 4.4, TANK_Z = SW + 3.0, DRONE_Z = 3.2, BOT_Z = 1.9;
+  const ROAD_LANE_Z = SW + 7.4;   // how far out the road lane stands (the cars pass just behind the shins)
   const FALLBACK_COLOR = { george: 0xffd23a, lizzie: 0x3f7fd8, ralph: 0xf28c28 };
   function fitModel(model, height, faceYaw) {
     // precise: Meshy rigs keep the geometry at a hundredth under the armature and the bones in centimetres —
@@ -882,6 +1101,13 @@ export function createRenderer(canvas, lookIn) {
       view.inner.add(model); view.model = model;
       view.mixer = new THREE.AnimationMixer(model);
       for (const k in asset.clips) view.actions[k] = view.mixer.clipAction(asset.clips[k]);
+      // the arm chains for the strike-and-reach layer (Meshy's rigs use the Mixamo names)
+      view.bones = {};
+      for (const side of ['Left', 'Right']) {
+        const arm = model.getObjectByName(side + 'Arm'), fore = model.getObjectByName(side + 'ForeArm'), hand = model.getObjectByName(side + 'Hand');
+        if (arm && fore && hand) view.bones[side] = { arm, fore, hand };
+      }
+      view.spine = model.getObjectByName('Spine02') || model.getObjectByName('Spine01') || null;
     } else {
       const body = new THREE.Mesh(new THREE.CapsuleGeometry(height * 0.16, height * 0.55, 4, 10), new THREE.MeshStandardMaterial({ color: fallback, roughness: 0.6 }));
       body.position.y = height * 0.5; view.inner.add(body);
@@ -904,6 +1130,35 @@ export function createRenderer(canvas, lookIn) {
     view.current = a; view.currentName = name;
     return true;
   }
+  // ---- the strike-and-reach layer ---------------------------------------------------------------------------------
+  // The 1986 read: a punch is a wind-up and a full arm strike that ends INSIDE the cell; a climb is hand over hand,
+  // the free hand reaching the next sill first. The clips are the base; this runs after the mixer and turns the
+  // arm bones in world space so the fist arrives where the hole appears. `w` is the blend (0 = the clip alone).
+  const _qA = new THREE.Quaternion(), _qB = new THREE.Quaternion(), _qI = new THREE.Quaternion(), _pA = new THREE.Vector3(), _pF = new THREE.Vector3(), _pH = new THREE.Vector3(), _d0 = new THREE.Vector3(), _d1 = new THREE.Vector3();
+  function rotateBoneWorld(bone, q, w) {
+    // rotate a bone by the world-space quaternion q, blended by w
+    bone.parent.getWorldQuaternion(_qA);
+    _qB.copy(_qA).invert().multiply(q).multiply(_qA);
+    _qI.identity().slerp(_qB, w);
+    bone.quaternion.premultiply(_qI);
+    bone.updateWorldMatrix(false, true);
+  }
+  function aimArm(chain, target, w, straighten) {
+    if (!chain || w <= 0.001) return;
+    chain.arm.updateWorldMatrix(true, true);
+    if (straighten > 0) {
+      chain.arm.getWorldPosition(_pA); chain.fore.getWorldPosition(_pF); chain.hand.getWorldPosition(_pH);
+      _d0.subVectors(_pH, _pF).normalize(); _d1.subVectors(_pF, _pA).normalize();
+      _qA.setFromUnitVectors(_d0, _d1);
+      rotateBoneWorld(chain.fore, _qA.clone(), w * straighten);
+    }
+    chain.arm.getWorldPosition(_pA); chain.hand.getWorldPosition(_pH);
+    _d0.subVectors(_pH, _pA).normalize(); _d1.subVectors(target, _pA).normalize();
+    _qA.setFromUnitVectors(_d0, _d1);
+    rotateBoneWorld(chain.arm, _qA.clone(), w);
+  }
+  const _tgt = new THREE.Vector3();
+  const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
   function syncMonsters(state, dt) {
     const seen = new Set();
     for (const m of state.monsters) {
@@ -914,6 +1169,7 @@ export function createRenderer(canvas, lookIn) {
       if (!v) {
         v = makeRig(models.monsters[m.slug], CELL * mh, FALLBACK_COLOR[m.slug]);
         v.height = mh; v.teen = null; v.slug = m.slug; v.prevAnim = ''; v.punchSide = 0; v.shadow = makeShadow(CELL * mh * 0.45);
+        v.kickT = 0; v.kickDir = -1; v.slamHold = 0; v.punchN = 0; v.lastPunchK = 1; v.punchNew = false; v.punchTarget = null; v.punchWind = null; v.climbSpeed = 1.2;
         v.root.add(v.shadow);
         v.smoothX = m.x * CELL; v.smoothY = m.y * CELL; v.yaw = 0; v.scaleK = 1;
         monsterViews.set(m.id, v);
@@ -923,10 +1179,13 @@ export function createRenderer(canvas, lookIn) {
       if (gone) continue;
       // position: ease the x on a face (the core snaps to columns), follow y directly
       const tx = m.x * CELL, ty = m.y * CELL;
-      const k = m.st === 'climb' ? Math.min(1, dt * 14) : 1;
+      const k = m.st === 'climb' ? Math.min(1, dt * 18) : 1;
       v.smoothX += (tx - v.smoothX) * k; v.smoothY = ty;
+      // the grip kick: a small dip as each hop lands, the cabinet's re-grip
+      if (v.kickT > 0) { v.kickT -= dt; v.smoothY += Math.sin(Math.PI * Math.max(0, v.kickT) / 0.14) * 0.09 * CELL * (v.kickDir || 1); }
       const onFace = m.st === 'climb';
-      const z = (onFace ? 0.25 : 0.5) + v.size.d * 0.5;   // the model's own thickness keeps it in front of the wall
+      const laneZ = (m.st === 'street' || m.st === 'jump' || m.st === 'fall') ? m.laneK || 0 : 0;   // 0 = at the faces, 1 = the road
+      const z = (onFace ? 0.25 : 0.5) + v.size.d * 0.5 + laneZ * ROAD_LANE_Z;   // the model's own thickness keeps it in front of the wall
       v.root.position.set(v.smoothX, v.smoothY, m.st === 'roof' ? Math.min(z, DEPTH * 0.5) - DEPTH * 0.5 : z);
       // facing: on the street, left or right; on a face, into the wall; the revert faces us
       let targetYaw = onFace ? Math.PI : (m.facing > 0 ? Math.PI / 2 : -Math.PI / 2);
@@ -958,31 +1217,87 @@ export function createRenderer(canvas, lookIn) {
       }
       // shadow on the ground below
       v.shadow.position.y = -v.smoothY + 0.03; v.shadow.material.opacity = Math.max(0.05, 0.4 - v.smoothY * 0.008);
-      // animation
+      // animation: the clip is the base, the strike-and-reach layer below puts the fists where the rules put them
       let anim = m.anim;
-      if (anim === 'punch') { if (m.st === 'street') anim = 'stomp'; else { if (v.prevAnim !== 'punch') v.punchSide ^= 1; anim = v.punchSide ? 'punchR' : 'punchL'; } }   // on the street the giant smashes down
-      if (anim !== v.prevAnim || (anim === 'punchL' || anim === 'punchR')) {
-        const restart = (anim === 'punchL' || anim === 'punchR') && v.prevAnim !== 'punch' && v.currentName !== anim;
+      const punchK = m.punchT > 0 && m.punchFull > 0 ? 1 - m.punchT / m.punchFull : 1;   // 0 at the start of a punch, 1 at its end
+      if (anim === 'punch') {
+        // a new punch starts when the core's timer resets (punchK drops back near zero)
+        if (v.prevAnim !== 'punch' || punchK < v.lastPunchK - 0.3) { v.punchN = (v.punchN || 0) + 1; v.punchNew = true; }
+        v.lastPunchK = punchK;
+        const d = m.punchDir;
+        const stomp = m.st === 'street' && d.dy < 0;
+        if (stomp) anim = 'bothFists';
+        else if (d.dy > 0 && v.actions.upperR) anim = 'upperR';
+        else if (v.punchN % 2 === 0 && v.actions.hookL) anim = 'hookL';
+        else anim = v.punchN % 2 ? 'punchR' : 'punchL';
+        if (!v.actions[anim]) anim = m.st === 'street' ? 'stomp' : 'punchL';
+      } else v.lastPunchK = 1;
+      const punchAnim = anim === 'punchL' || anim === 'punchR' || anim === 'hookL' || anim === 'upperR' || anim === 'bothFists' || anim === 'stomp';
+      if (anim !== v.prevAnim || (punchAnim && v.punchNew)) {
+        const ps = (m.flavour ? m.flavour.punch : 1);
         if (anim === 'idle') play(v, 'idle', { speed: 0.9 });
         else if (anim === 'walk') play(v, 'walk', { speed: 1.1 * (m.flavour ? m.flavour.run : 1) });
-        else if (anim === 'climb') play(v, 'climb', { speed: 1.2 });
-        else if (anim === 'hang') play(v, 'climb', { speed: 0.001 });
-        else if (anim === 'punchL' || anim === 'punchR') { if (restart || v.currentName !== anim) play(v, anim, { once: true, restart: true, speed: 2.2 * (m.flavour ? m.flavour.punch : 1), fade: 0.05 }); }
-        else if (anim === 'stomp') { if (v.prevAnim !== 'punch') play(v, 'stomp', { once: true, restart: true, speed: 2.6 * (m.flavour ? m.flavour.punch : 1), fade: 0.05 }); }
+        else if (anim === 'run') play(v, v.actions.run ? 'run' : 'walk', { speed: 1.5, fade: 0.06 });
+        else if (anim === 'cross') play(v, 'walk', { speed: 0.9, fade: 0.08 });
+        else if (anim === 'climb') { const clip = v.actions.ladder ? 'ladder' : 'climb'; play(v, clip, { speed: v.climbSpeed || 1.2, fade: 0.06 }); }
+        else if (anim === 'hang') { const clip = v.actions.ladder ? 'ladder' : 'climb'; play(v, clip, { speed: 0.001, fade: 0.1 }); }
+        else if (punchAnim) { v.punchNew = false; play(v, anim, { once: true, restart: true, speed: (anim === 'bothFists' ? 2.4 : anim === 'stomp' ? 2.6 : 2.0) * ps, fade: 0.04 }); }
         else if (anim === 'eat') play(v, 'eat', { once: true, restart: true, speed: 2.5, fade: 0.06 });
         else if (anim === 'hit') play(v, 'hit', { once: true, restart: v.prevAnim !== 'hit', speed: 1.6, fade: 0.05 });
         else if (anim === 'fall') play(v, 'fall', { speed: 1 });
+        else if (anim === 'smash') play(v, v.actions.slam ? 'slam' : 'fall', { once: true, restart: true, speed: 1.6, fade: 0.05 });
         else if (anim === 'jump') play(v, 'jump', { once: true, speed: 1.3 });
         else if (anim === 'revert') play(v, 'hit', { speed: 0.5 });
         else play(v, 'idle');
         v.prevAnim = m.anim === 'punch' ? 'punch' : anim;
       }
+      // the ladder clip runs at the hop's pace: one cycle every two hops
+      if (anim === 'climb' && v.current && v.currentName === 'ladder' && m.hopDur > 0) { const dur = v.current.getClip().duration || 1; v.climbSpeed = Math.max(0.6, Math.min(4, (dur / 2) / m.hopDur)); v.current.timeScale = v.climbSpeed; }
       if (!v.actions.idle && v.model && !v.mixer) {
         // the fallback shape: bob a little
         v.inner.position.y = (anim === 'walk' || anim === 'climb') ? Math.abs(Math.sin(clock.t * 9)) * 0.3 : 0;
-        v.inner.rotation.x = anim === 'punchL' || anim === 'punchR' ? -0.4 : 0;
+        v.inner.rotation.x = punchAnim ? -0.4 : 0;
       }
       if (v.mixer) v.mixer.update(dt);
+      // THE STRIKE: wind up, strike, hold, recover — the fist ends in the cell the rules hit
+      let lean = 0, lunge = 0;
+      if (v.bones && m.anim === 'punch' && v.punchTarget) {
+        const kk = punchK;
+        let w, tgt = _tgt;
+        const d = m.punchDir, stomp = m.st === 'street' && d.dy < 0;
+        if (kk < 0.22) { w = ease(kk / 0.22) * 0.9; tgt.copy(v.punchWind); }
+        else if (kk < 0.42) { w = 1; tgt.copy(v.punchWind).lerp(v.punchTarget, ease((kk - 0.22) / 0.2)); }
+        else if (kk < 0.72) { w = 1; tgt.copy(v.punchTarget); }
+        else { w = 1 - ease((kk - 0.72) / 0.28); tgt.copy(v.punchTarget); }
+        const strikeK = kk < 0.22 ? 0 : kk < 0.42 ? ease((kk - 0.22) / 0.2) : kk < 0.72 ? 1 : 1 - ease((kk - 0.72) / 0.28);
+        lean = 0.14 * strikeK; lunge = 0.1 * CELL * strikeK;
+        if (stomp || anim === 'bothFists') { aimArm(v.bones.Right, tgt, w, 0.85); aimArm(v.bones.Left, tgt, w, 0.85); }
+        else { const side = (anim === 'punchL' || anim === 'hookL') ? 'Left' : 'Right'; aimArm(v.bones[side], tgt, w, 0.9); }
+      } else if (v.bones && m.st === 'climb' && m.hop) {
+        // THE REACH: the free hand goes to the next sill first
+        const kk = Math.min(1, m.hopT / Math.max(1e-3, m.hopDur));
+        const w = Math.sin(Math.PI * kk);
+        const side = m.hopHand ? 'Left' : 'Right';
+        const sx = (side === 'Left' ? 1 : -1) * 0.3 * CELL;   // facing the wall, the model's left is world +x
+        _tgt.set(m.x * CELL + sx, (m.hopTo + (state.opts.monsterH || 2.7) * 0.55 + 0.55) * CELL, -0.12 * CELL);
+        aimArm(v.bones[side], _tgt, w * 0.95, 0.7);
+        lean = 0.05 * w;
+      } else if (v.bones && m.st === 'fall' && m.smashing) {
+        // both fists up over the head, ready to come down
+        _tgt.set(v.smoothX, v.smoothY + CELL * (state.opts.monsterH || 2.7) * 1.15, v.root.position.z + 1);
+        aimArm(v.bones.Right, _tgt, 0.8, 0.6); aimArm(v.bones.Left, _tgt, 0.8, 0.6);
+      } else if (v.bones && v.slamHold > 0) {
+        v.slamHold -= dt;
+        _tgt.set(v.smoothX + m.facing * CELL * 0.5, 0.2, v.root.position.z + 1.5);
+        aimArm(v.bones.Right, _tgt, 0.9, 0.9); aimArm(v.bones.Left, _tgt, 0.9, 0.9);
+        lean = 0.35;
+      }
+      v.inner.rotation.x += (-lean - v.inner.rotation.x) * Math.min(1, dt * 20);
+      v.inner.position.x += (lunge * (m.st === 'climb' ? 0 : m.facing) - v.inner.position.x) * Math.min(1, dt * 20);
+      v.inner.position.z += ((m.st === 'climb' ? -lunge : 0) - v.inner.position.z) * Math.min(1, dt * 20);
+      // the run burst kicks up dust behind the feet; the skid too
+      if (m.burstT > 0 && Math.random() < 0.45) spawnDust(v.smoothX - m.facing * 0.8, 0.3, v.root.position.z, 1, 1.0, 0.5, -m.facing * 2, 0.4, 0.35);
+      if (m.skidT > 0 && Math.random() < 0.7) spawnDust(v.smoothX - m.facing * 0.5, 0.25, v.root.position.z, 1, 1.4, 0.6, -m.facing * 3, 0.6, 0.45);
       // hurt: a red tint that fades; the spawn shield: a flicker
       const hurt = m.hitT > 0 ? Math.min(1, m.hitT / 0.4) * (Math.floor(clock.t * 20) % 2 ? 1 : 0.4) : 0;
       const fill = night ? 0.34 : 0.1;
@@ -1170,7 +1485,7 @@ export function createRenderer(canvas, lookIn) {
     const seedRnd = () => { r = (r * 1664525 + 1013904223) >>> 0; return r / 4294967296; };
     const City = globalThis.CarnageCity;
     for (const b of city.buildings) buildBuilding(b, City.FAMILIES[b.family], seedRnd);
-    buildStreet(city.width);
+    buildStreet(city.width, city);
     buildFar(city.width, state.day);
     if (city.exits && city.exits.subway != null) subwayView = makeSubway(city.exits.subway);
     applyDayNight();
@@ -1189,19 +1504,60 @@ export function createRenderer(canvas, lookIn) {
           refreshCells(bv, b);
           const inn = FAMILY_INNARDS[bv.fam.id];
           const x = e.x * CELL, y = (e.y + 0.5) * CELL;
-          if (e.cellType === 1) { spawnDebris(x, y, 0.6, Math.round(10 * look.debris), 2.5, inn, false); spawnDust(x, y - 1, 0.2, 4, 1.1, 1.3, 0, 0.5, 0.4); }
-          else { spawnShards(x, y, 0.4, Math.round(14 * look.debris)); spawnDebris(x, y, 0.6, Math.round(4 * look.debris), 2, [0.5, 0.5, 0.52], false); spawnDust(x, y - 1.2, 0.2, 3, 0.9, 1.0, 0, 0.35, 0.3); }
+          const tintCol = bv.tint ? [bv.tint[0] * 0.8, bv.tint[1] * 0.8, bv.tint[2] * 0.8] : inn;
+          if (e.cellType === 1) { spawnDebris(x, y, 0.6, Math.round(8 * look.debris), 2.5, inn, false); spawnDebris(x, y, 0.6, Math.round(7 * look.debris), 2.2, tintCol, true); spawnDust(x, y - 1, 0.2, 6, 1.3, 1.4, 0, 0.5, 0.45); }
+          else { spawnShards(x, y, 0.4, Math.round(26 * look.debris)); spawnDebris(x, y, 0.6, Math.round(4 * look.debris), 2, [0.5, 0.5, 0.52], false); spawnDust(x, y - 1.2, 0.2, 3, 0.9, 1.0, 0, 0.35, 0.3); }
           if (e.cellType === 2) spawnSparks(x, y, 0.5, 20, 6);
         }
         break;
       }
-      case 'cellCrack': if (bv && b) { refreshCells(bv, b); spawnDust(e.x * CELL, (e.y + 0.5) * CELL, 1, 3, 1.2, 0.8, 0, 0.3, 0.35); } break;
+      case 'cellCrack': if (bv && b) { refreshCells(bv, b); spawnDust(e.x * CELL, (e.y + 0.5) * CELL, 1, 4, 1.2, 0.8, 0, 0.3, 0.4); spawnDebris(e.x * CELL, (e.y + 0.5) * CELL, 0.5, Math.round(5 * look.debris), 1.5, bv.tint ? bv.tint.map((c) => c * 0.8) : FAMILY_INNARDS[bv.fam.id], false); } break;
       case 'neon': if (bv) bv.uniforms.uNeonLit.value = e.on ? 1 : 0; break;
       case 'neonOut': if (bv && b) { refreshCells(bv, b); bv.uniforms.uNeonLit.value = 0; spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 0.5, 40, 7); spawnShards(e.x * CELL, (e.y + 0.5) * CELL, 0.4, 20); } break;
       case 'neonShock': spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 0.8, 30, 8); flash(e.x * CELL, (e.y + 0.6) * CELL, 1.2, 6, 0x9ad8ff, 0.25); break;
       case 'collapseStart': if (bv) { bv.collapsing = true; thudT = 0.35; thudAmt = 0.5; } break;
       case 'collapseEnd': if (bv && b) { finishCollapse(bv, b); thudT = 0.45; thudAmt = 1; } break;
       case 'punchLand': if (e.hit) spawnDust(e.x * CELL, (e.y + 1.2) * CELL, 0.2, 2, 0.8, 0.45, 0, 0.5, 0.3); break;
+      case 'punch': {
+        // where this punch lands, for the strike layer: the cell the rules will hit
+        const m = state.monsters.find((mm) => mm.id === e.who), v = m && monsterViews.get(m.id);
+        if (!m || !v) break;
+        const mh = state.opts.monsterH || 2.7, hand = mh * 0.55, reach = mh * 0.7;
+        const rootZ = v.root.position.z;
+        if (!v.punchTarget) { v.punchTarget = new THREE.Vector3(); v.punchWind = new THREE.Vector3(); }
+        const t = v.punchTarget;
+        if (e.st === 'climb') {
+          const bb = state.city.buildings[m.b];
+          const row = Math.floor(m.y + hand) + e.dy, col = (bb ? bb.x0 : 0) + m.col + e.dx;
+          t.set((col + 0.5) * CELL, (row + 0.5) * CELL, -0.35 * CELL);
+        } else if (e.st === 'street' && e.dy < 0) {
+          t.set(m.x * CELL + m.facing * 0.7 * CELL, 0.25, rootZ + 0.6 * CELL);
+        } else {
+          const row = Math.floor(m.y + hand) + (e.dy > 0 ? 1 : 0);
+          t.set(m.x * CELL + m.facing * reach * CELL * 0.95, (row + 0.5) * CELL, rootZ - (m.lane === 0 ? 0.3 : 0) * CELL);
+        }
+        // the wind-up: the fist pulled back from the target, a little up
+        _pA.set(m.x * CELL, m.y * CELL + hand * CELL, rootZ);
+        v.punchWind.copy(_pA).add(_pF.subVectors(_pA, t).normalize().multiplyScalar(0.7 * CELL)).add(_pH.set(0, 0.3 * CELL, 0));
+        break;
+      }
+      case 'hopEnd': { const v = monsterViews.get(e.who); if (v) { v.kickT = 0.14; v.kickDir = -1; } spawnDust(e.x * CELL, (e.y + 0.9) * CELL, 0.3, 1, 0.5, 0.35, 0, 0.2, 0.25); break; }
+      case 'smash': break;
+      case 'smashLand': {
+        const v = monsterViews.get(e.who); if (v) v.slamHold = 0.32;
+        const z = v ? v.root.position.z : MON_Z;
+        const n = e.big ? 22 : 12;
+        for (let i = 0; i < n; i++) { const a = (i / n) * TAU; spawnDust(e.x * CELL + Math.cos(a) * 1.2, 0.3, z + Math.sin(a) * 1.2, 1, e.big ? 2.6 : 1.8, 1.3, Math.cos(a) * 6, 0.6, 0.55); }
+        spawnDebris(e.x * CELL, 0.4, z, Math.round((e.big ? 14 : 6) * look.debris), 3, [0.45, 0.42, 0.38], false);
+        thudT = e.big ? 0.4 : 0.25; thudAmt = e.big ? 0.8 : 0.45;
+        flash(e.x * CELL, 0.6, z + 0.5, e.big ? 6 : 3.5, 0xffe0b0, 0.14);
+        break;
+      }
+      case 'burst': { const v = monsterViews.get(e.who); spawnDust(e.x * CELL - e.dir * 0.8, 0.3, v ? v.root.position.z : MON_Z, 4, 1.4, 0.7, -e.dir * 4, 0.6, 0.45); break; }
+      case 'skid': { const v = monsterViews.get(e.who); spawnDust(e.x * CELL - e.dir * 0.4, 0.3, v ? v.root.position.z : MON_Z, 6, 1.6, 0.8, -e.dir * 3, 0.8, 0.5); break; }
+      case 'lane': { const v = monsterViews.get(e.who); spawnDust(e.x * CELL, 0.3, v ? v.root.position.z : MON_Z, 2, 1.2, 0.6, 0, 0.4, 0.35); break; }
+      case 'rammed': { const v = monsterViews.get(e.who); const z = v ? v.root.position.z : CAR_Z; spawnSparks(e.x * CELL, 1.2, z, 12, 5); spawnDust(e.x * CELL, 0.8, z, 4, 1.4, 0.7, e.dir * 2, 0.5, 0.45); break; }
+      case 'sniper': spawnShards(e.x * CELL, (e.y + 0.5) * CELL, 0.4, 10); break;
       case 'eat': { const x = e.x * CELL, y = (e.y + 0.5) * CELL; spawnDebris(x, y, 0.4, 6, 1.2, [0.9, 0.7, 0.3], false); break; }
       case 'boom': spawnDebris(e.x * CELL, (e.y + 0.5) * CELL, 0.6, Math.round(30 * look.debris), 3, [0.3, 0.25, 0.2], true); spawnDust(e.x * CELL, (e.y + 0.5) * CELL, 1, 14, 3, 2.2, 0, 1.5, 0.7); flash(e.x * CELL, (e.y + 0.5) * CELL, 1.5, 14, 0xffa040, 0.35); spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 1, 40, 9); thudT = 0.2; thudAmt = 0.4; break;
       case 'flash': flash(e.x * CELL, (e.y + 0.5) * CELL, 1.2, 22, 0xffffff, 0.4); screenFlash = 1; break;

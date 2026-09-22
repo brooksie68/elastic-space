@@ -93,6 +93,7 @@
     customer: { kind: 'person', w: (d) => 8 },
     worker: { kind: 'person', w: (d) => 5 },
     waver: { kind: 'person', w: (d) => 3 },
+    screamer: { kind: 'person', w: (d) => (d <= 1 ? 42 : Math.max(6, 42 - 8 * (d - 1))) },   // THE SCREAMER (round two): she appears in the hole, arms up; a third of day one's windows
     zombie: { kind: 'person', w: (d) => 3 },
     fries: { kind: 'food', w: (d) => 4 },
     shake: { kind: 'food', w: (d) => 3 },

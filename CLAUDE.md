@@ -129,8 +129,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
      standing giant's fists sit in the second-floor window; hands / reach / hitbox / every aim point
      and the drone's swipe follow it; the street punch is a downward stomp; they stand clear of the
      wall by their own thickness) and a CONTROLS button bottom right opening a panel with every key
-     in readable type (the text-size dial scales it). Sim 1,904,917 green. AWAITING HIS FLIGHT; then
-     the copy/feel thread, the campaign (the start card says SOON), ship wiring on his word.
+     in readable type (the text-size dial scales it). Sim 1,904,917 green. HE FLEW IT 2026-09-21 → HIS BRIEF
+     (lanes across the street, weak climbing, the punch "a shrug", arrows to punch, Space to smash, double-tap run,
+     the police too early, 16-bit colour, real damage, people in the windows, the screaming lady) → **ROUND TWO
+     BUILT the same night on his "GREAT plan... have at it"** (plan.md ROUND TWO; the world changelog 2026-09-21 is
+     the record): W A S D + eight-way arrow punches + the smash + the run burst, two lanes, the hop-per-cell climb
+     with a strike-and-reach bone layer (five Meshy clips per monster, 45 cr, balance 1,192 → 1,147), the army in
+     waves after a quiet opening (dials), the 16-bit city (palettes, cornices, fire escapes, shop signs, painted sky
+     + skyline layers, billboard trees), the fist-shaped dent/hole with rooms inside, people behind lit glass, THE
+     SCREAMER; the window things were invisible behind the facade all along — fixed. Sim 1,908,149 green.
+     AWAITING HIS FLIGHT; then the copy/feel thread, the campaign (the start card says SOON), ship wiring on his word.
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four

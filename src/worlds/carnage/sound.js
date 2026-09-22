@@ -95,6 +95,11 @@ globalThis.CarnageSfx = (function () {
     step: (p) => thud(p, 0.6),
     jump: (p) => noise({ dur: 0.25, f: 300, f2: 1600, type: 'bandpass', q: 0.8, gain: 0.2, pan: p }),
     grab: (p) => noise({ dur: 0.2, f: 500, f2: 200, gain: 0.35, pan: p }),
+    grip: (p) => noise({ dur: 0.09, f: 700, f2: 250, gain: 0.16, pan: p }),
+    burst: (p) => noise({ dur: 0.45, f: 200, f2: 1800, type: 'bandpass', q: 0.6, gain: 0.3, pan: p }),
+    skid: (p) => noise({ dur: 0.3, f: 2400, f2: 900, type: 'bandpass', q: 1.2, gain: 0.28, pan: p }),
+    slam: (p) => { thud(p, 1.4); noise({ dur: 0.7, f: 900, f2: 80, gain: 0.7, pan: p }); tone({ f: 55, f2: 28, dur: 0.8, type: 'sine', gain: 0.5, pan: p }); },
+    scream: (p) => { voice({ f: 880, f2: 640, dur: 0.9, formants: [900, 2600], vib: 30, vibRate: 7, gain: 0.22, pan: p }); voice({ f: 1100, f2: 700, dur: 0.6, formants: [1000, 2800], vib: 20, vibRate: 9, gain: 0.12, delay: 0.25, pan: p }); },
     revert: (p) => { voice({ f: 420, f2: 110, dur: 1.4, formants: [700, 1900], vib: 12, vibRate: 5, gain: 0.18, pan: p }); tone({ f: 600, f2: 120, dur: 1.4, type: 'sine', gain: 0.08, pan: p }); },
     walkoff: (p) => chord(p, [330, 311, 294, 262], 0.5, 'sawtooth', 0.32),
     arrive: (p) => { tone({ f: 1800, f2: 300, dur: 0.9, type: 'sine', gain: 0.1, pan: p }); noise({ dur: 0.9, f: 800, f2: 200, gain: 0.25, pan: p }); },
@@ -126,7 +131,7 @@ globalThis.CarnageSfx = (function () {
   const FILES = {
     swing: 'swing', hit: 'hit', glass: 'glass', wallBreak: 'wallbreak', crack: 'crack', neonBreak: 'neonbreak', chomp: 'chomp', munch: 'munch', cash: 'cash', power: 'power',
     zap: 'zap', sizzle: 'sizzle', cough: 'cough', ouch: ['ouch1', 'ouch2'], boom: 'boom', ding: 'ding', flash: 'flash', neonOut: 'neonout', rumble: 'rumble', crash: 'crash',
-    thud: 'thud', jump: 'jump', grab: 'grab', revert: 'revert', walkoff: 'walkoff', arrive: 'arrive', bark: ['bark1', 'bark2'], shot: 'shot', droneShot: 'droneshot', squish: 'squish',
+    thud: 'thud', jump: 'jump', grab: 'grab', scream: ['scream1', 'scream2'], slam: 'slam', skid: 'skid', revert: 'revert', walkoff: 'walkoff', arrive: 'arrive', bark: ['bark1', 'bark2'], shot: 'shot', droneShot: 'droneshot', squish: 'squish',
     yelp: 'yelp', engine: 'engine', cannon: 'cannon', shell: 'shell', clang: 'clang', droneDie: 'dronedie', horn: 'horn', wreck: 'wreck', extra: 'extra', start: 'start', over: 'over', dayEnd: 'dayend', exit: 'exit',
   };
   const VOICES = {

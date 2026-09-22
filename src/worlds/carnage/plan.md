@@ -178,3 +178,65 @@ stop and tell James before any call that would take the running total past
 5. Meshy spend ~540 cr — GO, HARD CAP 550: stop and tell him before any
    call that would pass it.
 6. The name — CARNAGE.
+
+## ROUND TWO — his first flight brief, 2026-09-21 (his go: "GREAT plan... have at it" — BUILT the same night, changelog 2026-09-21)
+
+His words: the monsters should move back and forth across the street; the climbing is weak; the punch is
+"a shrug", he can't see any punching; punches on the arrow keys by direction; Space = jump and smash
+down; double-tap left / right for a run burst; the police attack right away and all the time, he can't
+explore or learn the keys; the graphics need a lot more — a detailed, highly colourful 16-bit look with the
+1980s arcade vibe (backgrounds, individual buildings, the plants are rectangles); real definitive building
+damage; concrete things, people and interiors in the windows; plain glass windows that smash, walls that
+smash in fist-shaped holes, and then a lady screaming and waving her arms that you can eat.
+
+1. THE KEYS. Arrows punch by direction (8 ways: up / up-right / right / down-right / down / down-left / left
+   / up-left; on the street up-diagonals reach the first floor, down = the stomp). Movement moves to W A S D.
+   Space = jump; Space on a face or a roof = the ground smash (let go, drop, and the landing breaks what is under
+   the fists — a car, a soldier, the storefront, the truck). Double-tap A or D on the street = a run burst
+   (0.6 s at 2.2×, a skid at the end). Mouse click stays a punch in the facing direction. The CONTROLS panel
+   and the hint line rewritten. The Damage Lab takes the same keys.
+2. THE LANES. The street gets two lanes: the face lane (where the buildings, the soldiers and the storefronts
+   are) and the road lane (the cars, the SWAT truck, the tank). S steps out to the road, W steps back to the
+   faces; at the faces W grabs the wall like now. The road is where you punch traffic and where the truck can
+   hit you; bullets aimed at the other lane miss. The sim gets the lane (`m.lane`), the camera does not move for it.
+3. THE ARCADE MOTION. The 1986 read: every climb is a cell hop, hand over hand, the body lifts and re-grips; a
+   punch is a wind-up and a full arm strike that ends INSIDE the cell. Built as a bone layer on top of the
+   clips: (a) the climb snaps per cell (0.22 s per cell, an overshoot and a settle, the free hand reaching the
+   next sill first); (b) the punch drives the shoulder / elbow / hand of the striking arm toward the target
+   cell — pull back 0.08 s, strike 0.07 s, hold 0.12 s — and the body leans into it; the fist arrives where the
+   hole appears; (c) the stomp on the street is a real two-fisted overhead smash; (d) the ground smash from
+   Space. New base clips from Meshy's library where they beat ours (a straight punch, a hook, an uppercut, a
+   ladder climb, a ground pound: 3 cr per clip, ~5 clips × 3 monsters = ~45 cr; stated before the call).
+4. THE ARMY LATER AND VARIED. Day 1 opens quiet: no soldiers until 40 s in AND ten cells broken; then one
+   squad of two from one side that fires a burst and pulls back. The tank from day 2, the drone from day 3,
+   the SWAT truck from day 2. WAVES, not a drip: a wave (one of: a squad, a sniper in a window, the truck,
+   the drone, a squad + a cruiser) → a 15–25 s lull → the next; day n adds one wave kind and shortens the lull.
+   PLAY dials: "the army starts" (s), "wave gap", "army from day". The first 30 s of free mode teach the keys
+   on the plate one line at a time (WALK · CLIMB · PUNCH → · SMASH).
+5. THE 16-BIT CITY. Colour first: each building family gets a saturated 16-bit palette (brick red / salmon /
+   teal / mustard / lavender / cream) with a darker cornice and a lighter trim; per-city palette rolls; the
+   sun and the night both push saturation up, not down. Buildings get cornices, fire escapes, drainpipes,
+   window frames + sills, awnings with painted signs, roof clutter in colour, the storefronts painted (a
+   diner, a bodega, a laundromat, the three restaurants). The sky is painted bands + big soft clouds + a sun
+   or moon; the skyline behind is four parallax layers of painted silhouettes (towers, a water tower, a
+   bridge, hills) in the city's palette, lit windows at night. Plants become plants: trees (a trunk and a
+   two-tone leafy canopy), bushes, palms on the southern days, all code-drawn billboards in the 16-bit
+   register (zero credits); the planters get flowers.
+6. THE DAMAGE. A glass window: one punch shatters it (a glass sheet sprays out, shards on the sill, the
+   frame stays). A wall: a fist-shaped hole — the shape of the fist that hit it — with cracked brick edges
+   and dust, the second punch blows the chunk out as falling debris. Every hole shows the room inside:
+   wallpaper, a picture, a lamp, a desk, a bed, a bar (painted interiors, five rooms per family); the room
+   darkens as its floor gets wrecked. Cracks spread between neighbouring holes. A collapse sheds the
+   painted pieces (window frames, awnings, the sign) as debris.
+7. THE PEOPLE IN THE WINDOWS. A lit window shows the room and, often, a person doing something (typing,
+   a TV, cooking, a couple, a cat). When the window breaks: sometimes nothing, sometimes THE SCREAMER —
+   she appears in the hole, arms up, waving, screaming (a real animated figure: a 4-frame arm wave, a
+   scream one-shot), scores like the waver; a punch on her cell = eaten (the chew, the plate line). Day 1
+   deals a screamer in a third of the windows; the meaner deals stay behind by day. The existing 23
+   icons get the same treatment: bigger, animated, in the room, not a sticker.
+8. VERIFY: the sim grows tests for the lanes, the 8-way punch, the smash, the run burst, the grace and the
+   waves; the look-dev page gets PUNCH ↑ ↗ → etc, LANE, SMASH, SCREAMER; snapshot sheets of one building
+   before / after; the Damage Lab's verbs updated. Then his flight.
+
+Order: 1 → 2 → 3 (the feel first, one flight), then 4, then 5 → 6 → 7 (the look, one flight), then 8 runs
+throughout. Spend: ~45 cr of Meshy clips in item 3; nothing else costs credits.

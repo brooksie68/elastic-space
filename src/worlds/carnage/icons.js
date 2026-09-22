@@ -270,5 +270,171 @@
     cache[key] = c; return c;
   }
 
-  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
+
+  // ---- ROUND TWO (2026-09-21): the painted shop signs, the trees, the screamer, the skyline -----------------------
+  // the painted shop signs over the ground floors that are not one of the three: 8 in one atlas, 4 × 2, 512 × 128
+  const SHOPS = [
+    ['DINER', '#c8322c', '#fff1c9'], ['BODEGA', '#2f8a4c', '#ffe86b'], ['LAUNDROMAT', '#2b6fb8', '#e8f4ff'], ['PAWN', '#d19a2a', '#2a1a06'],
+    ['PIZZA BY THE SLICE', '#f0d78a', '#b4271f'], ['TATTOO', '#1d1d24', '#ff6fa8'], ['PHONES UNLOCKED', '#7a3fb8', '#f6efff'], ['NAILS & WAX', '#f28bb8', '#3a1030'],
+  ];
+  function shopAtlas() {
+    if (cache.shops) return cache.shops;
+    const c = canvas(2048, 256), g = c.getContext('2d');
+    SHOPS.forEach(([text, bg, fg], i) => {
+      const x = (i % 4) * 512, y = Math.floor(i / 4) * 128;
+      g.fillStyle = bg; g.fillRect(x, y, 512, 128);
+      g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(x, y, 512, 10); g.fillRect(x, y + 118, 512, 10);
+      g.strokeStyle = fg; g.lineWidth = 4; g.strokeRect(x + 12, y + 14, 488, 100);
+      g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+      let size = 62; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
+      while (g.measureText(text).width > 440 && size > 24) { size -= 4; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
+      g.fillText(text, x + 256, y + 66);
+    });
+    cache.shops = c; return c;
+  }
+
+  // the trees and bushes: two-tone canopies, a dark outline, a highlight — the 16-bit register, 256 px, transparent
+  const TREE_KINDS = ['round', 'tall', 'palm', 'bush', 'flowers'];
+  function tree(kind, seed) {
+    const key = 'tree:' + kind + ':' + seed;
+    if (cache[key]) return cache[key];
+    const s = 256, c = canvas(s, s), g = c.getContext('2d');
+    let r = (seed * 7919 + 13) >>> 0;
+    const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+    const hue = 95 + rnd() * 40, dark = `hsl(${hue}, 55%, 22%)`, mid = `hsl(${hue}, 60%, 34%)`, light = `hsl(${hue + 8}, 65%, 48%)`;
+    const blob = (x, y, rad, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill(); };
+    g.lineJoin = 'round';
+    if (kind === 'round' || kind === 'tall') {
+      const tall = kind === 'tall';
+      // the trunk
+      g.fillStyle = '#4a2c18'; g.beginPath(); g.moveTo(s * 0.44, s); g.lineTo(s * 0.47, s * (tall ? 0.55 : 0.62)); g.lineTo(s * 0.53, s * (tall ? 0.55 : 0.62)); g.lineTo(s * 0.56, s); g.closePath(); g.fill();
+      g.strokeStyle = '#2a170c'; g.lineWidth = 5; g.stroke();
+      g.fillStyle = '#6b4224'; g.fillRect(s * 0.455, s * 0.66, s * 0.03, s * 0.34);
+      // the canopy: dark blobs, then mid, then light on the sun side
+      const n = tall ? 7 : 6, cx = s * 0.5, cy = s * (tall ? 0.34 : 0.4), rx = s * (tall ? 0.2 : 0.3), ry = s * (tall ? 0.3 : 0.22);
+      const pts = [];
+      for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2 + rnd() * 0.5; pts.push([cx + Math.cos(a) * rx * (0.6 + rnd() * 0.5), cy + Math.sin(a) * ry * (0.6 + rnd() * 0.5), s * (0.11 + rnd() * 0.06)]); }
+      pts.push([cx, cy, s * (tall ? 0.19 : 0.2)]);
+      for (const [x, y, rad] of pts) blob(x, y, rad + 6, '#1d2a12');
+      for (const [x, y, rad] of pts) blob(x, y, rad, dark);
+      for (const [x, y, rad] of pts) blob(x - rad * 0.12, y - rad * 0.18, rad * 0.78, mid);
+      for (const [x, y, rad] of pts) blob(x - rad * 0.3, y - rad * 0.35, rad * 0.42, light);
+    } else if (kind === 'palm') {
+      g.strokeStyle = '#2a170c'; g.lineWidth = 12; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(s * 0.5, s); g.quadraticCurveTo(s * 0.62, s * 0.6, s * 0.56, s * 0.28); g.stroke();
+      g.strokeStyle = '#8a5a30'; g.lineWidth = 7; g.stroke();
+      g.strokeStyle = '#5a3818'; g.lineWidth = 2; for (let i = 0; i < 9; i++) { const t = 0.3 + i * 0.075; g.beginPath(); g.moveTo(s * (0.5 + 0.06 * Math.sin(t * 6)), s * (1 - t * 0.9)); g.lineTo(s * (0.5 + 0.06 * Math.sin(t * 6)) + 10, s * (1 - t * 0.9) - 3); g.stroke(); }
+      const tip = [s * 0.56, s * 0.28];
+      for (let i = 0; i < 7; i++) {
+        const a = -Math.PI * 0.95 + (i / 6) * Math.PI * 0.9 + (rnd() - 0.5) * 0.2, len = s * (0.28 + rnd() * 0.1);
+        for (const [col, w] of [['#1d2a12', 14], [dark, 10], [light, 5]]) {
+          g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(tip[0], tip[1]);
+          g.quadraticCurveTo(tip[0] + Math.cos(a) * len * 0.6, tip[1] + Math.sin(a) * len * 0.6 - s * 0.06, tip[0] + Math.cos(a) * len, tip[1] + Math.sin(a) * len + s * 0.12); g.stroke();
+        }
+      }
+      blob(tip[0], tip[1] + 8, 10, '#7a4a20'); blob(tip[0] - 9, tip[1] + 12, 7, '#7a4a20');
+    } else if (kind === 'bush') {
+      const pts = [];
+      for (let i = 0; i < 7; i++) pts.push([s * (0.22 + rnd() * 0.56), s * (0.62 + rnd() * 0.22), s * (0.12 + rnd() * 0.08)]);
+      for (const [x, y, rad] of pts) blob(x, y, rad + 6, '#1d2a12');
+      for (const [x, y, rad] of pts) blob(x, y, rad, dark);
+      for (const [x, y, rad] of pts) blob(x - rad * 0.15, y - rad * 0.2, rad * 0.75, mid);
+      for (const [x, y, rad] of pts) blob(x - rad * 0.3, y - rad * 0.38, rad * 0.4, light);
+    } else {
+      // flowers: a low green mound with bright heads
+      const pts = [];
+      for (let i = 0; i < 6; i++) pts.push([s * (0.2 + rnd() * 0.6), s * (0.78 + rnd() * 0.12), s * (0.1 + rnd() * 0.06)]);
+      for (const [x, y, rad] of pts) blob(x, y, rad + 5, '#1d2a12');
+      for (const [x, y, rad] of pts) blob(x, y, rad, mid);
+      for (const [x, y, rad] of pts) blob(x - rad * 0.2, y - rad * 0.25, rad * 0.6, light);
+      const cols = ['#ff4d6d', '#ffd23a', '#ff8ad8', '#ffffff', '#ff7a2a'];
+      for (let i = 0; i < 14; i++) { const x = s * (0.18 + rnd() * 0.64), y = s * (0.66 + rnd() * 0.18); blob(x, y, s * 0.032, '#1a1014'); blob(x, y, s * 0.026, cols[i % cols.length]); blob(x, y, s * 0.01, '#fff6a0'); }
+    }
+    cache[key] = c; return c;
+  }
+
+  // THE SCREAMER: she appears in the hole, arms up, waving, mouth open — four frames of the wave
+  function screamer(frame, size) {
+    const key = 'screamer:' + frame + '@' + (size || 128);
+    if (cache[key]) return cache[key];
+    const s = size || 128, c = canvas(s, s), g = c.getContext('2d');
+    const cx = s * 0.5, top = s * 0.22;
+    const k = frame % 4, swing = [-0.15, 0.25, -0.05, 0.35][k], bob = [0, -0.02, 0.01, -0.03][k];
+    g.save(); g.translate(0, s * bob);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    // the dress
+    g.fillStyle = '#e83e8c'; g.beginPath(); g.moveTo(cx - s * 0.16, s * 0.42); g.lineTo(cx + s * 0.16, s * 0.42); g.lineTo(cx + s * 0.26, s * 0.86); g.lineTo(cx - s * 0.26, s * 0.86); g.closePath(); g.fill(); outline(g, s * 0.025); g.stroke();
+    g.fillStyle = '#ffffff'; for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(cx - s * 0.14 + i * s * 0.07, s * 0.62 + (i % 2) * s * 0.08, s * 0.02, 0, Math.PI * 2); g.fill(); }
+    // legs
+    g.fillStyle = '#f5d0b0'; rr(g, cx - s * 0.12, s * 0.84, s * 0.09, s * 0.12, s * 0.03); g.fill(); g.stroke(); rr(g, cx + s * 0.03, s * 0.84, s * 0.09, s * 0.12, s * 0.03); g.fill(); g.stroke();
+    // the arms, up and waving
+    g.fillStyle = '#f5d0b0';
+    for (const side of [-1, 1]) {
+      g.save(); g.translate(cx + side * s * 0.15, s * 0.45); g.rotate(side * (-1.9 + swing * side)); rr(g, -s * 0.045, -s * 0.3, s * 0.09, s * 0.32, s * 0.045); g.fill(); g.stroke();
+      // the hand
+      g.beginPath(); g.arc(0, -s * 0.3, s * 0.065, 0, Math.PI * 2); g.fill(); g.stroke(); g.restore();
+    }
+    // the head: hair flying, the mouth an O
+    g.fillStyle = '#f5d0b0'; g.beginPath(); g.arc(cx, top + s * 0.02, s * 0.14, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#7a3b1e'; g.beginPath(); g.arc(cx, top - s * 0.03, s * 0.15, Math.PI, 0); g.fill(); g.stroke();
+    for (const [dx, dy] of [[-0.18, -0.02], [0.18, -0.03], [-0.14, -0.12], [0.15, -0.12]]) { g.beginPath(); g.ellipse(cx + s * dx, top + s * dy + s * (k % 2) * 0.02, s * 0.05, s * 0.025, dx < 0 ? -0.6 : 0.6, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    g.fillStyle = '#1a1014'; g.beginPath(); g.arc(cx - s * 0.05, top - s * 0.01, s * 0.022, 0, Math.PI * 2); g.arc(cx + s * 0.05, top - s * 0.01, s * 0.022, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(cx - s * 0.055, top - s * 0.015, s * 0.008, 0, Math.PI * 2); g.arc(cx + s * 0.045, top - s * 0.015, s * 0.008, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1a1014'; g.lineWidth = s * 0.015; g.beginPath(); g.moveTo(cx - s * 0.08, top - s * 0.06); g.lineTo(cx - s * 0.03, top - s * 0.04); g.moveTo(cx + s * 0.08, top - s * 0.06); g.lineTo(cx + s * 0.03, top - s * 0.04); g.stroke();
+    g.fillStyle = '#5a0a1a'; g.beginPath(); g.ellipse(cx, top + s * 0.07, s * 0.04, s * (0.04 + 0.015 * (k % 2)), 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.restore();
+    cache[key] = c; return c;
+  }
+
+  // the skyline: four painted layers of silhouettes (towers with set-back tops, antennas, a water tower, a dome,
+  // a bridge on the third, hills on the fourth), one flat colour each, window dots — day or night
+  function skyline(layer, seed, night, colour, w, h) {
+    const key = 'sky:' + layer + ':' + seed + ':' + (night ? 'n' : 'd') + ':' + colour;
+    if (cache[key]) return cache[key];
+    w = w || 2048; h = h || 512;
+    const c = canvas(w, h), g = c.getContext('2d');
+    let r = (seed * 48271 + layer * 977 + 7) >>> 0;
+    const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+    g.fillStyle = colour;
+    const winCol = night ? 'rgba(255, 220, 140, 0.95)' : 'rgba(0, 0, 0, 0.14)';
+    const lit = night ? 0.45 : 0.55;
+    if (layer === 3) {
+      // hills
+      g.beginPath(); g.moveTo(0, h);
+      for (let x = 0; x <= w; x += 32) { const y = h * (0.55 + 0.18 * Math.sin(x * 0.0021 + seed) + 0.08 * Math.sin(x * 0.0093 + seed * 3) + 0.03 * Math.sin(x * 0.031)); g.lineTo(x, y); }
+      g.lineTo(w, h); g.closePath(); g.fill();
+      // a few far towers on the ridge
+      for (let i = 0; i < 6; i++) { const x = rnd() * w, tw = 30 + rnd() * 50, th = 90 + rnd() * 160; g.fillRect(x, h * 0.42 - th + 120, tw, th + 200); }
+      cache[key] = c; return c;
+    }
+    let x = -20;
+    const maxH = [0.5, 0.75, 0.92][layer] * h, minH = [0.12, 0.2, 0.3][layer] * h;
+    while (x < w + 40) {
+      const tw = (40 + rnd() * 110) * (layer === 0 ? 0.7 : 1) * (h / 512), th = minH + rnd() * (maxH - minH);
+      const top = h - th;
+      const kind = rnd();
+      g.fillRect(x, top, tw, th);
+      if (kind < 0.35) { const sw = tw * (0.4 + rnd() * 0.3); g.fillRect(x + (tw - sw) / 2, top - th * 0.18, sw, th * 0.2); if (rnd() < 0.6) g.fillRect(x + tw / 2 - 2, top - th * 0.18 - 40 - rnd() * 60, 4, 40 + 60); }
+      else if (kind < 0.5) { g.beginPath(); g.moveTo(x, top); g.lineTo(x + tw / 2, top - tw * 0.4); g.lineTo(x + tw, top); g.closePath(); g.fill(); }
+      else if (kind < 0.6) { g.beginPath(); g.arc(x + tw / 2, top, tw / 2, Math.PI, 0); g.fill(); }
+      else if (kind < 0.68 && layer >= 1) { const px = x + tw * 0.5, py = top - 34; g.fillRect(px - 10, py + 6, 20, 30); g.beginPath(); g.ellipse(px, py, 22, 14, 0, 0, Math.PI * 2); g.fill(); g.fillRect(px - 20, py - 2, 40, 22); }
+      // the windows
+      if (layer <= 1) {
+        const u = h / 512; const cw = (layer === 0 ? 9 : 12) * u, ch = (layer === 0 ? 12 : 16) * u, gapx = (layer === 0 ? 7 : 9) * u, gapy = (layer === 0 ? 8 : 11) * u;
+        g.fillStyle = winCol;
+        for (let wy = top + 14; wy < h - 10; wy += ch + gapy) for (let wx = x + 8; wx < x + tw - cw - 4; wx += cw + gapx) if (rnd() < lit) g.fillRect(wx, wy, cw, ch);
+        g.fillStyle = colour;
+      }
+      x += tw + (4 + rnd() * 30) * (h / 512);
+    }
+    if (layer === 2) {
+      // a bridge across a stretch of the third layer
+      const bx = w * (0.1 + rnd() * 0.5), bw = w * 0.3, by = h * 0.62;
+      g.fillRect(bx, by, bw, 10);
+      for (const px of [bx + bw * 0.25, bx + bw * 0.75]) { g.fillRect(px - 8, by - 120, 16, 130); for (let i = -10; i <= 10; i++) { const cx = px + i * bw * 0.024; const cy = by - 120 + (i * i) * 1.1; g.fillRect(cx, cy, 2, by - cy); } }
+    }
+    cache[key] = c; return c;
+  }
+
+  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
 })();

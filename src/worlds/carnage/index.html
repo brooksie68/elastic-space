@@ -58,6 +58,7 @@
     #plate-line { font-family: var(--heavy); font-size: clamp(1.2rem, 2.6vw, 2.2rem); letter-spacing: 0.05em; color: var(--amber); text-shadow: 0 0 2px #000, 3px 3px 0 #120a0c, 0 0 22px rgba(255, 179, 71, 0.4); }
     #plate.bad #plate-line { color: var(--red); }
     #plate.good #plate-line { color: #7ed957; }
+    #plate.teach #plate-line { color: #dfe8ff; font-size: clamp(1rem, 2vw, 1.6rem); letter-spacing: 0.12em; text-shadow: 0 0 2px #000, 2px 2px 0 #120a0c; }
     #float { position: fixed; inset: 0; pointer-events: none; z-index: 8; overflow: hidden; }
     .float { position: absolute; transform: translate(-50%, -50%); font-family: var(--heavy); font-size: 1.1rem; letter-spacing: 0.06em; color: var(--ink); text-shadow: 0 0 2px #000, 2px 2px 0 #120a0c; font-variant-numeric: tabular-nums; white-space: nowrap; animation: rise 1.1s ease-out forwards; }
     .float.big { font-size: 1.6rem; color: var(--amber); }
@@ -224,7 +225,7 @@
     <div class="sub">P OR SPACE TO RESUME</div>
   </div>
 
-  <div id="hint">A D OR ← → WALK · W OR ↑ CLIMBS · S OR ↓ DOWN · SPACE JUMPS · J OR CLICK PUNCHES · P PAUSE · R RESTART · C CONFIGURATION</div>
+  <div id="hint">W A S D WALK · CLIMB · CROSS THE STREET · ARROWS PUNCH (8 WAYS) · SPACE JUMPS, UP HIGH SMASHES · DOUBLE-TAP A / D RUNS · P PAUSE · R RESTART · C CONFIGURATION</div>
 
   <div id="controls">
     <button id="btn-pause" type="button">BREAK</button>
@@ -234,12 +235,13 @@
   <div id="keys-panel">
     <h2>THE CONTROLS</h2>
     <table>
-      <tr><td class="k"><kbd>A</kbd><kbd>D</kbd> or <kbd>←</kbd><kbd>→</kbd></td><td class="w">Walk along the street<small>On a building: step one window sideways. Step off the side and you fall.</small></td></tr>
-      <tr><td class="k"><kbd>W</kbd> or <kbd>↑</kbd></td><td class="w">Grab the building in front of you, then climb<small>Keep going past the top and you are on the roof.</small></td></tr>
-      <tr><td class="k"><kbd>S</kbd> or <kbd>↓</kbd></td><td class="w">Climb down<small>At the bottom it puts you back on the street. Hold it over the subway stairs to go down there.</small></td></tr>
-      <tr><td class="k"><kbd>SPACE</kbd></td><td class="w">Jump<small>On a building it lets go. From a roof it can reach the blimp.</small></td></tr>
-      <tr><td class="k"><kbd>J</kbd> <kbd>K</kbd> or <kbd>CLICK</kbd></td><td class="w">Punch<small>A punch also eats whatever is in an open window. Hold it to keep punching. On the street the giant smashes down.</small></td></tr>
-      <tr><td class="k"><kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> + punch</td><td class="w">Aim the punch up, down or sideways</td></tr>
+      <tr><td class="k"><kbd>A</kbd><kbd>D</kbd></td><td class="w">Walk along the street<small>On a building: step one window sideways. Step off the side and you fall.</small></td></tr>
+      <tr><td class="k"><kbd>A</kbd><kbd>A</kbd> or <kbd>D</kbd><kbd>D</kbd></td><td class="w">Tap twice: a run burst<small>A short sprint on the street. It bowls soldiers over. It ends in a skid.</small></td></tr>
+      <tr><td class="k"><kbd>W</kbd></td><td class="w">Grab the building in front of you, then climb<small>Each press is one window up. Keep going past the top and you are on the roof. From the road, W steps back to the buildings.</small></td></tr>
+      <tr><td class="k"><kbd>S</kbd></td><td class="w">Climb down · step into the road<small>On a building: one window down; at the bottom it puts you on the street. On the street: S steps out into the road, where the cars and the truck are (and where their bullets are not). Hold it over the subway stairs to go down there.</small></td></tr>
+      <tr><td class="k"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></td><td class="w">Punch that way<small>Eight ways: hold two arrows for a corner. On a building: the window beside, above, below or diagonal. On the street: straight hits the floor your fists are at, up reaches a floor higher, DOWN is the stomp — everything on the ground around you. Hold an arrow to keep punching. A punch also eats whatever is in an open window.</small></td></tr>
+      <tr><td class="k"><kbd>SPACE</kbd></td><td class="w">Jump · smash<small>On the street or a roof: a jump. On a building, on a roof, or in the air: let go and SMASH DOWN — the landing flattens whatever is under the fists (soldiers, cars, the truck, the storefront). Three and a half floors of smash are free.</small></td></tr>
+      <tr><td class="k"><kbd>J</kbd> <kbd>K</kbd> or <kbd>CLICK</kbd></td><td class="w">Punch straight ahead</td></tr>
       <tr><td class="k"><kbd>P</kbd> or <kbd>ESC</kbd></td><td class="w">Take a break (pause)<small>SPACE resumes.</small></td></tr>
       <tr><td class="k"><kbd>R</kbd></td><td class="w">Restart<small>Press it twice.</small></td></tr>
       <tr><td class="k"><kbd>C</kbd></td><td class="w">Configuration<small>Lives, variety, monster size, the collapse, falls, the army, hazards, the look, text size.</small></td></tr>
@@ -260,6 +262,9 @@
       <div class="t-row"><div class="t-label"><span>Monster size — floors tall</span><span id="t-size-val"></span></div><input id="t-size" type="range" min="2" max="4" step="0.1" /></div>
       <div class="t-row"><div class="t-label"><span>Collapse — how much of a building must go</span><span id="t-thr-val"></span></div><input id="t-thr" type="range" min="0.6" max="1.4" step="0.05" /></div>
       <div class="t-row"><div class="t-label"><span>Falls — health per floor past two</span><span id="t-fall-val"></span></div><input id="t-fall" type="range" min="0" max="20" step="1" /></div>
+      <div class="t-row"><div class="t-label"><span>The army starts — seconds into day one (and ten cells broken)</span><span id="t-army-start-val"></span></div><input id="t-army-start" type="range" min="0" max="120" step="5" /></div>
+      <div class="t-row"><div class="t-label"><span>Wave gap — seconds of quiet between waves</span><span id="t-wave-val"></span></div><input id="t-wave" type="range" min="4" max="60" step="1" /></div>
+      <div class="t-row"><div class="t-label"><span>The army from day</span><span id="t-army-day-val"></span></div><input id="t-army-day" type="range" min="1" max="10" step="1" /></div>
       <div class="t-row"><div class="t-label"><span>The army — how often they come</span><span id="t-spawn-val"></span></div><input id="t-spawn" type="range" min="0.4" max="2.5" step="0.1" /></div>
       <div class="t-row"><div class="t-label"><span>Hazards — how much they sting</span><span id="t-haz-val"></span></div><input id="t-haz" type="range" min="0" max="2.5" step="0.1" /></div>
       <div class="t-row"><div class="t-label"><span>Livestreamer — seconds before the flash</span><span id="t-streamer-val"></span></div><input id="t-streamer" type="range" min="0.6" max="4" step="0.1" /></div>
@@ -290,13 +295,13 @@
   <script src="../../core/sound-control.js"></script>
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
-  <script src="city.js?v=1"></script>
-  <script src="game-core.js?v=1"></script>
-  <script src="icons.js?v=1"></script>
-  <script src="sound.js?v=1"></script>
+  <script src="city.js?v=2"></script>
+  <script src="game-core.js?v=2"></script>
+  <script src="icons.js?v=2"></script>
+  <script src="sound.js?v=2"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=1"></script>
+  <script type="module" src="game.js?v=2"></script>
 </body>
 </html>

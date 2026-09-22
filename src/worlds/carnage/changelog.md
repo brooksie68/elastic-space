@@ -3,6 +3,85 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-21 — Claude — ROUND TWO, built on James's first flight brief ("GREAT plan... have at it")
+
+His brief: the monsters should move back and forth across the street; the climbing is weak; the punch is "a shrug",
+he can't see any punching; punches on the arrow keys by direction; Space = jump and smash down; double-tap for a run
+burst; the police attack right away and all the time; a detailed, highly colourful 16-bit look (backgrounds, buildings,
+the plants are rectangles); real definitive damage; things, people and interiors in the windows; plain glass that
+smashes, fist-shaped holes, and a lady screaming and waving that you can eat. The plan is plan.md "ROUND TWO".
+
+- **THE KEYS** (`game.js`, `lab.js`, the CONTROLS panel, the hint): W A S D walk, climb, cross the street; the ARROWS
+  punch by direction, eight ways (`input.pdx / pdy`; two arrows = a corner; hold to keep punching); Space jumps, and
+  on a face / a roof / in the air it is THE SMASH; a double tap of A or D on the street is THE RUN BURST (the core reads
+  the taps: 0.6 s at 2.2x, a skid, soldiers bowled over). J / K / click punch straight. Day one's first thirty seconds
+  teach the keys on the plate, one calm line at a time (`LESSONS`, kind `teach`).
+- **THE LANES** (core): `m.lane` 0 = at the faces, 1 = the road; S steps out (0.28 s crossing, `laneK`), W steps back,
+  W held at the faces grabs. Cars, the SWAT truck and the drone's swipe are reached from the road; soldiers, the bot and the
+  buildings from the faces (the stomp and the smash reach both). Bullets and shells carry the target's lane and miss the
+  other one. The truck rams a monster in its way in the road (6 health); a car meeting one crumples (4 health, a wreck,
+  no points). The companions never cross (`!m.cpu`).
+- **THE ARCADE MOTION** (core + renderer): the climb is a HOP PER CELL — once started it finishes (`m.hop / hopT /
+  hopDur / hopFrom / hopTo`, the hand alternates), the roof / the street at the ends as before; `grab` and `startFall`
+  reset it. THE STRIKE-AND-REACH LAYER in `render3d.js` (`aimArm`, `rotateBoneWorld`): after the mixer, the striking
+  arm's Arm / ForeArm / Hand bones are turned in world space so the fist arrives in the cell the rules hit (wind-up 22%,
+  strike to 42%, hold to 72%, recover; the body leans and lunges); on a hop the free hand reaches the next sill first;
+  the smash holds both fists up on the way down and slams them into the ground on landing (`slamHold`); a grip kick
+  dips the body as each hop lands. Five new Meshy library clips per monster (45 cr, balance 1,192 -> 1,147): a left hook,
+  a right uppercut, jump-and-slam, a ladder climb (paced to the hop: one cycle per two hops), a two-fisted forward
+  punch (the stomp). The punch picks by direction: up = the uppercut, else hook / jab alternating; the street stomp =
+  both fists. Slimmed through `slim_models.py` from `models/anims2/` (`CARNAGE_ANIMS_DIR`), the old clips untouched.
+- **THE SMASH** (core): Space on a face, a roof, or in the air (above 0.8 floors): let go, drop at 1.8x gravity, and
+  `smashLand` takes everything within 0.9 x reach in either lane — the ground-floor cells under and beside, soldiers
+  (`smashed`), the truck (two hits' worth), cars, a rival on the street (12), a walking-off teenager. A smash gets a
+  floor and a half more of free fall. Events `smash`, `smashLand { big }` (a dust ring, debris, a thud, a flash).
+- **THE ARMY IN WAVES** (core `state.army`, `launchWave`, `WAVE_KINDS`): day one opens quiet — nothing until
+  `armyStart` (40 s) AND `armyCells` (10) cells are broken; day n >= 2 waits 8 s. A wave, then a lull (`waveGap` 20 s,
+  -1.2 s a day, floor 6), never the same kind twice running: a SQUAD (two on day one, both from one side, two bursts
+  each and they pull back — `s.maxBursts`, state `leave`), the TRUCK (day 2), a SNIPER (day 2: a window near you
+  opens on its own with a soldier in it), the DRONE (day 3), a SQUAD WITH A CRUISER (day 4). A wave ends when its
+  units are gone or after 32 s. PLAY dials: the army starts / wave gap / the army from day (`armyDay`). The old
+  soldier / tank / drone timers are gone; `spawnSoldier / spawnTruck / spawnDrone / spawnSniper / launchWave` are
+  exported for the lab and the sim. Traffic stays on its own clock (14 s quiet on day one).
+- **THE 16-BIT CITY** (`render3d.js` + `icons.js`): a saturated palette per family (`FAMILY_TINT / FAMILY_TRIM`,
+  rolled a little per building; the tile only gives the value now — `uTint`, `uTrim`); a trim-coloured CORNICE with a
+  dark underside; window frames, mullions, sills and lintels in the trim; FIRE ESCAPES on 45% of the buildings
+  (landings, rails, stairs, a ladder); a drainpipe; painted SHOP SIGNS over three quarters of the plain ground floors
+  (`shopAtlas`: DINER / BODEGA / LAUNDROMAT / PAWN / PIZZA BY THE SLICE / TATTOO / PHONES UNLOCKED / NAILS & WAX,
+  `uShop`); the water tank in rust. THE SKY is painted bands with dither and a big sun with a ring (peach horizon by
+  day, purple by night). THE SKYLINE is four painted layers of silhouettes (`Icons.skyline`: set-back towers,
+  antennas, water towers, domes, a bridge on the third, hills on the fourth; window dots by day, lit by night; each
+  layer's canvas sized to its plane so nothing stretches) at -70 / -150 / -280 / -470 m — the instanced far rows are
+  retired (the code stays, skipped). THE PLANTS: code-drawn 16-bit billboards (`Icons.tree`: round, tall, palm on
+  southern days, bush, flowers): bushes and flowers on the planters, trees on the near pavement now and then, a tree in
+  every gap between buildings. The ground behind the buildings is a dim fog colour, not black.
+- **THE DAMAGE** (the facade shader): a wall's first punch is THE FIST PRINT — a fist-shaped dent (palm, four
+  knuckles, a thumb; mirrored by the seed) with a light lip, a dark inside and cracks radiating from it; the second
+  punch is the hole in the same shape with a jagged brick rim and THE ROOM VISIBLE INSIDE; cracks run from any cell
+  toward a broken neighbour (`texelFetch` of the four neighbours). Windows shatter with a sheet of glass (26 shards)
+  and teeth top and bottom; the wall sheds tinted chunks. Rooms are painted now: wallpaper stripes and diamonds, a
+  framed picture, a lamp on a side table, a bed, a bar with bottles, the TV.
+- **THE PEOPLE**: a lit window shows a person doing something (`person()` in the shader, six rolls: typing at a
+  laptop, on the couch by the screen, cooking with steam, a couple, a cat on the sill with green eyes, or nobody).
+  THE SCREAMER is a new deal (`screamer`, 42 weight on day one = about a third of the windows, -8 a day to a floor of 6):
+  she appears in the hole, arms up, waving (four frames, `Icons.screamer`, 9 fps), a scream one-shot on the reveal
+  (two ElevenLabs takes + a synthesis fallback), scores like the waver while you hold the cell, a punch eats her
+  (500, +12; plate "SHE SCREAMED. SHE'S EATEN."). THE BUG THAT HID EVERYONE: the window things sat at z = -1.2 m
+  behind the opaque facade plane and were never visible in-game; they now sit at +0.14 m inside the opening, bigger
+  (0.78 / 0.86 of a cell), the people sway.
+- **Sounds**: `scream1 / scream2 / slam / skid` (ElevenLabs) + recipes for `grip / burst / skid / slam / scream`.
+- **Verification**: sim TEST 23 (the lanes, bullets by lane, the ram, the 8-way punch, the smash, the burst, the
+  grace + waves + kinds, the screamer's weight) — 1,908,149 green; tests 6 / 10 / 11 / 12 / 13 updated to the new rules
+  (the stomp for the ground floor, waves instead of timers, the road lane for cars and the truck). The look-dev page
+  got PUNCH / LANE / SMASH / BURST / SCREAMER / WAVE / CLIMB buttons and `LAB.drive(input, seconds)`;
+  captures in tmp/snapshots/r2-*.jpg (the strike, the stomp, the road lane, the day and night city, the damage
+  close-up). The smoke page ran a game through the keys, a lane crossing, a climb, punches and the first wave with no
+  errors. The Damage Lab's verbs follow the keys (new: Cross the street, The run burst, The stomp, The screamer, The
+  waves; "Let go" is now "The smash"). Cache tags ?v=2.
+- **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
+  signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
+  pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).
+
 ## 2026-09-08 (later that night) — Claude — his first two asks before flying it
 
 - "This looks amazing!" — then, before playing: the characters larger, half again at least. Answered with the

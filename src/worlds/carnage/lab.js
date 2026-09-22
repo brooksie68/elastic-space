@@ -78,8 +78,11 @@ canvas.addEventListener('pointerdown', (e) => { if (e.button === 0) mouseDown = 
 addEventListener('pointerup', () => { mouseDown = false; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 function currentInput() {
-  const left = keys.has('ArrowLeft') || keys.has('KeyA'), right = keys.has('ArrowRight') || keys.has('KeyD');
-  return { move: (right ? 1 : 0) - (left ? 1 : 0), up: keys.has('ArrowUp') || keys.has('KeyW'), down: keys.has('ArrowDown') || keys.has('KeyS'), jump: keys.has('Space'), punch: keys.has('KeyJ') || keys.has('KeyK') || mouseDown };
+  // the game's keys (round two): W A S D move, the arrows punch by direction, Space jumps / smashes
+  const left = keys.has('KeyA'), right = keys.has('KeyD');
+  const aL = keys.has('ArrowLeft'), aR = keys.has('ArrowRight'), aU = keys.has('ArrowUp'), aD = keys.has('ArrowDown');
+  const arrows = aL || aR || aU || aD;
+  return { move: (right ? 1 : 0) - (left ? 1 : 0), up: keys.has('KeyW'), down: keys.has('KeyS'), jump: keys.has('Space'), punch: arrows || keys.has('KeyJ') || keys.has('KeyK') || mouseDown, pdx: arrows ? (aR ? 1 : 0) - (aL ? 1 : 0) : 0, pdy: arrows ? (aU ? 1 : 0) - (aD ? 1 : 0) : 0 };
 }
 
 // ---- the loop ------------------------------------------------------------------------------------------------------
@@ -91,7 +94,13 @@ function sound(e) {
   switch (e.type) {
     case 'punch': Sfx.play('swing', pan(e.x)); break;
     case 'punchLand': if (e.hit) Sfx.play('hit', pan(e.x)); break;
-    case 'cellBreak': Sfx.play(e.cellType === 1 ? 'wallBreak' : e.cellType === 2 ? 'neonBreak' : 'glass', pan(e.x)); break;
+    case 'lane': Sfx.play('step', pan(e.x)); break;
+    case 'burst': Sfx.play('burst', pan(e.x)); break;
+    case 'skid': Sfx.play('skid', pan(e.x)); break;
+    case 'smash': Sfx.play('swing', pan(e.x)); break;
+    case 'smashLand': Sfx.play(e.big ? 'slam' : 'thud', pan(e.x)); break;
+    case 'hop': Sfx.play('grip', pan(e.x)); break;
+    case 'cellBreak': Sfx.play(e.cellType === 1 ? 'wallBreak' : e.cellType === 2 ? 'neonBreak' : 'glass', pan(e.x)); if (e.deal === 'screamer') Sfx.play('scream', pan(e.x)); break;
     case 'cellCrack': Sfx.play('crack', pan(e.x)); break;
     case 'eat': Sfx.play('chomp', pan(e.x)); break;
     case 'take': Sfx.play('cash', pan(e.x)); break;
