@@ -138,7 +138,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
      waves after a quiet opening (dials), the 16-bit city (palettes, cornices, fire escapes, shop signs, painted sky
      + skyline layers, billboard trees), the fist-shaped dent/hole with rooms inside, people behind lit glass, THE
      SCREAMER; the window things were invisible behind the facade all along — fixed. Sim 1,908,149 green.
-     AWAITING HIS FLIGHT; then the copy/feel thread, the campaign (the start card says SOON), ship wiring on his word.
+     HE FLEW IT AGAIN 2026-09-21/22 → all his notes BUILT the same night (world changelog 2026-09-21 + 2026-09-22): the
+     storefront pass, Meshy window people, THE BACK STREETS, dark wall grids that line up, THE WORDMARK, real 1.36 x 1.7 m
+     windows, the back-row shader bug, THE CRUMBLE (rigid floor-by-floor drops + rock chunks + a mound that fills the lot
+     and slumps), the sound leak fixed (decoded buffers, 24 voices). Meshy 518 cr; balance 4,214. **NEXT (his bedtime
+     notes, top of the world CLAUDE.md): A REAL PUNCH up / left / right / down (the strike layer was dead for rigged
+     monsters — fixed, not yet seen) and HALF the punch screams / window-people reactions.** Then the copy/feel thread,
+     the campaign (the start card says SOON), ship wiring on his word.
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
    (v50, James's go after full plan consensus) — the Saelyri + the Cadence, four
