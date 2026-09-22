@@ -204,9 +204,10 @@
       g.font = 'bold 84px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineJoin = 'round';
       // the tube: a thick dark stroke then the colour, then a thin white core
-      g.lineWidth = 16; g.strokeStyle = '#111'; g.strokeText(sg[0], 256, 66);
-      g.lineWidth = 9; g.strokeStyle = sg[1]; g.strokeText(sg[0], 256, 66);
-      g.lineWidth = 3; g.strokeStyle = '#ffffff'; g.strokeText(sg[0], 256, 66);
+      // solid letters in the colour with a thin white core: a tube that reads on and off
+      g.lineWidth = 10; g.strokeStyle = '#0a0a0c'; g.strokeText(sg[0], 256, 66);
+      g.fillStyle = sg[1]; g.fillText(sg[0], 256, 66);
+      g.lineWidth = 2.5; g.strokeStyle = '#ffffff'; g.strokeText(sg[0], 256, 66);
       g.restore();
     });
     cache.signs = c;
@@ -293,6 +294,33 @@
     cache.shops = c; return c;
   }
 
+  // the three restaurants' fascia signs (described, never a brand) and the awning canvas
+  const BRAND_NAMES = { george: 'BURGER CLOWN', lizzie: 'SQUARE PATTY', ralph: 'KING BURGER' };
+  function brandSign(slug, w, h) {
+    const key = 'brandsign:' + slug + ':' + w + 'x' + h;
+    if (cache[key]) return cache[key];
+    const br = BRAND[slug] || BRAND.george;
+    const c = canvas(w, h), g = c.getContext('2d');
+    g.fillStyle = br.a; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(0,0,0,0.2)'; g.fillRect(0, 0, w, h * 0.08); g.fillRect(0, h * 0.92, w, h * 0.08);
+    g.fillStyle = br.b; g.textAlign = 'center'; g.textBaseline = 'middle';
+    let size = h * 0.6; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
+    const text = BRAND_NAMES[slug] || 'BURGERS';
+    while (g.measureText(text).width > w * 0.7 && size > 8) { size -= 2; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
+    g.fillText(text, w * 0.56, h * 0.52);
+    cache[key] = c; return c;
+  }
+  function awning(brand, striped) {
+    const key = 'awning:' + brand.join(',') + ':' + (striped ? 's' : 'p');
+    if (cache[key]) return cache[key];
+    const c = canvas(512, 128), g = c.getContext('2d');
+    const a = 'rgb(' + brand.slice(0, 3).map((v) => Math.round(v * 255)).join(',') + ')', b = 'rgb(' + brand.slice(3, 6).map((v) => Math.round(v * 255)).join(',') + ')';
+    g.fillStyle = a; g.fillRect(0, 0, 512, 128);
+    if (striped) { g.fillStyle = b; for (let x = 0; x < 512; x += 64) g.fillRect(x + 16, 0, 32, 128); }
+    g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(0, 0, 512, 6); g.fillRect(0, 122, 512, 6);
+    cache[key] = c; return c;
+  }
+
   // a shop's sign board at the board's own aspect (w × h px): the name in big type on the shop's colour, a frame
   function shopSign(i, w, h, night) {
     const key = 'shopsign:' + i + ':' + w + 'x' + h + (night ? 'n' : 'd');
@@ -301,10 +329,9 @@
     const c = canvas(w, h), g = c.getContext('2d');
     g.fillStyle = bg; g.fillRect(0, 0, w, h);
     g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, 0, w, h * 0.08); g.fillRect(0, h * 0.92, w, h * 0.08);
-    g.strokeStyle = fg; g.lineWidth = Math.max(2, h * 0.035); g.strokeRect(h * 0.12, h * 0.14, w - h * 0.24, h * 0.72);
     g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
-    let size = h * 0.56; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
-    while (g.measureText(text).width > w - h * 0.5 && size > 8) { size -= 2; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
+    let size = h * 0.7; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
+    while (g.measureText(text).width > w * 0.92 && size > 8) { size -= 2; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
     g.fillText(text, w / 2, h * 0.52);
     if (night) { g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, 0, w, h); }
     cache[key] = c; return c;
@@ -453,5 +480,5 @@
     cache[key] = c; return c;
   }
 
-  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, shopSign, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
+  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, shopSign, brandSign, awning, BRAND_NAMES, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
 })();

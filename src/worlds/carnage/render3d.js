@@ -38,7 +38,7 @@ const FAMILY_TILE_CELLS = { brick_red: 1.7, brick_tan: 1.8, concrete: 2.2, stucc
 // the 16-bit palettes: a saturated wall colour and a trim colour per family (the tile only gives the value)
 // real-city colours (James, 2026-09-21: the candy palette "looks like it was designed for little kids"): brick red-brown,
 // limestone tan, weathered concrete, cream stucco, slate steel, gray-teal glass; trims in stone, cream and iron
-const FAMILY_TINT = { brick_red: [0.60, 0.30, 0.24], brick_tan: [0.76, 0.64, 0.50], concrete: [0.64, 0.62, 0.57], stucco: [0.78, 0.72, 0.60], steel: [0.40, 0.44, 0.50], glass: [0.42, 0.54, 0.58] };
+const FAMILY_TINT = { brick_red: [0.58, 0.29, 0.23], brick_tan: [0.66, 0.52, 0.40], concrete: [0.56, 0.55, 0.51], stucco: [0.68, 0.62, 0.52], steel: [0.38, 0.42, 0.48], glass: [0.40, 0.50, 0.55] };
 const FAMILY_TRIM = { brick_red: [0.86, 0.80, 0.68], brick_tan: [0.92, 0.88, 0.80], concrete: [0.80, 0.78, 0.74], stucco: [0.94, 0.90, 0.82], steel: [0.22, 0.23, 0.26], glass: [0.18, 0.20, 0.24] };
 const FAMILY_INNARDS = { brick_red: [0.28, 0.12, 0.08], brick_tan: [0.3, 0.22, 0.14], concrete: [0.2, 0.2, 0.2], stucco: [0.3, 0.26, 0.2], steel: [0.14, 0.14, 0.16], glass: [0.1, 0.12, 0.14] };
 const BRAND_COLOR = { george: [0.88, 0.17, 0.17, 1.0, 0.82, 0.23], lizzie: [0.18, 0.44, 0.85, 1.0, 1.0, 1.0], ralph: [0.95, 0.55, 0.16, 0.42, 0.23, 0.07] };
@@ -67,10 +67,11 @@ const FACADE_FS = /* glsl */`
   uniform sampler2D uWall;
   uniform sampler2D uSigns;
   uniform sampler2D uShops;
+  uniform sampler2D uShopTex;
   uniform float uCols, uFloors, uCell, uTileCells, uSeed, uTime, uNight, uWear, uRoomLight, uCollapse, uDay;
   uniform vec3 uInnards, uCamPos, uOrigin, uSky, uGround, uSunDir;
   uniform vec3 uBrandA, uBrandB, uTint, uTrim;
-  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople, uDoor;
+  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople, uDoor, uShopKind;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
@@ -194,6 +195,130 @@ const FACADE_FS = /* glsl */`
     return shade;
   }
 
+  // THE SHOP INTERIORS (round two, storefront pass): eight businesses and the burger counter (kind 8), drawn on the
+  // back wall of the display window in q-space (0..1 across the glass, 0..1 up it) and on the floor
+  vec3 shopInterior(vec2 f, vec2 g0, vec2 g1, vec3 d, float kind, float seed, float lit, float wrecked) {
+    float D = 0.9;
+    vec3 p = vec3(f, 0.0);
+    float tz = -D / min(d.z, -0.02);
+    float tx = ((d.x > 0.0 ? g1.x : g0.x) - f.x) / (abs(d.x) < 1e-4 ? 1e-4 * sign(d.x + 1e-5) : d.x);
+    float ty = ((d.y > 0.0 ? g1.y : g0.y) - f.y) / (abs(d.y) < 1e-4 ? 1e-4 * sign(d.y + 1e-5) : d.y);
+    tx = tx < 0.0 ? 1e9 : tx; ty = ty < 0.0 ? 1e9 : ty;
+    float t = min(tz, min(tx, ty));
+    vec3 h = p + d * t;
+    float depth = clamp(-h.z / D, 0.0, 1.0);
+    int k = int(kind + 0.5);
+    vec2 q = (h.xy - g0) / (g1 - g0);
+    vec3 wall = vec3(0.86, 0.84, 0.78), light = vec3(1.0, 0.92, 0.78), floorC = vec3(0.35, 0.32, 0.3);
+    if (k == 0) { wall = vec3(0.92, 0.88, 0.76); light = vec3(1.0, 0.9, 0.7); floorC = vec3(0.2, 0.2, 0.22); }
+    if (k == 1) { wall = vec3(0.80, 0.78, 0.66); floorC = vec3(0.4, 0.36, 0.3); }
+    if (k == 2) { wall = vec3(0.78, 0.86, 0.88); light = vec3(0.9, 0.98, 1.0); floorC = vec3(0.55, 0.56, 0.58); }
+    if (k == 3) { wall = vec3(0.55, 0.42, 0.3); light = vec3(1.0, 0.85, 0.6); floorC = vec3(0.3, 0.24, 0.18); }
+    if (k == 4) { wall = vec3(0.90, 0.86, 0.74); light = vec3(1.0, 0.8, 0.55); floorC = vec3(0.4, 0.26, 0.18); }
+    if (k == 5) { wall = vec3(0.16, 0.15, 0.17); light = vec3(1.0, 0.6, 0.7); floorC = vec3(0.12, 0.12, 0.13); }
+    if (k == 6) { wall = vec3(0.96, 0.96, 0.97); light = vec3(0.92, 0.96, 1.0); floorC = vec3(0.75, 0.75, 0.78); }
+    if (k == 7) { wall = vec3(0.94, 0.80, 0.86); light = vec3(1.0, 0.85, 0.95); floorC = vec3(0.6, 0.5, 0.55); }
+    if (k == 8) { wall = vec3(0.90, 0.88, 0.84); floorC = vec3(0.45, 0.42, 0.4); }
+    vec3 c;
+    if (t == tz) {
+      c = wall;
+      if (k == 0) {
+        // the diner: a menu board up top, a pie case and a counter with stools
+        float board = step(0.7, q.y) * step(q.y, 0.93) * step(0.08, q.x) * step(q.x, 0.92);
+        c = mix(c, vec3(0.08), board);
+        c = mix(c, vec3(0.9, 0.85, 0.6), board * step(0.55, fract(q.y * 18.0)) * step(0.5, fract(q.x * 9.0 + seed)));
+        float counter = step(0.22, q.y) * step(q.y, 0.42);
+        c = mix(c, vec3(0.7, 0.12, 0.14), counter);
+        c = mix(c, vec3(0.85, 0.85, 0.88), step(0.40, q.y) * step(q.y, 0.44));
+        float pie = step(0.62, q.x) * step(q.x, 0.9) * step(0.44, q.y) * step(q.y, 0.66);
+        c = mix(c, light * 1.3, pie);
+        c = mix(c, vec3(0.5, 0.3, 0.15), pie * step(0.45, fract(q.x * 8.0)) * step(0.5, fract(q.y * 12.0)));
+        for (int i = 0; i < 4; i++) { float sx = 0.14 + float(i) * 0.14; c = mix(c, vec3(0.75, 0.75, 0.8), smoothstep(0.035, 0.025, length((q - vec2(sx, 0.16)) * vec2(1.0, 1.6)))); c = mix(c, vec3(0.3), step(abs(q.x - sx), 0.008) * step(0.04, q.y) * step(q.y, 0.15)); }
+      } else if (k == 1) {
+        // the bodega: shelves of goods, crates of fruit, a lotto sign
+        float shelf = step(0.28, q.y) * step(q.y, 0.9) * step(0.5, fract(q.y * 6.0));
+        c = mix(c, vec3(0.3, 0.22, 0.14), shelf * 0.9);
+        float goods = shelf * step(0.5, fract(q.x * 12.0 + seed));
+        c = mix(c, hsv(fract(q.x * 3.0 + seed * 3.0 + floor(q.y * 6.0) * 0.3), 0.45, 0.75), goods);
+        float crate = step(q.y, 0.26) * step(0.06, q.x) * step(q.x, 0.62);
+        c = mix(c, vec3(0.55, 0.4, 0.22), crate);
+        c = mix(c, mix(vec3(0.9, 0.5, 0.1), vec3(0.3, 0.6, 0.2), step(0.5, fract(q.x * 5.0))), crate * step(0.14, q.y) * smoothstep(0.5, 0.2, length(fract(q * vec2(14.0, 8.0)) - 0.5)));
+        float lotto = step(0.7, q.x) * step(q.x, 0.95) * step(0.05, q.y) * step(q.y, 0.24);
+        c = mix(c, vec3(1.0, 0.85, 0.2), lotto); c = mix(c, vec3(0.8, 0.1, 0.1), lotto * step(0.4, fract(q.y * 6.0)) * step(0.5, fract(q.x * 20.0)));
+      } else if (k == 2) {
+        // the laundromat: two rows of washers with round doors
+        vec2 cellq = vec2(fract(q.x * 5.0), fract((q.y - 0.05) * 2.2));
+        float inRow = step(0.05, q.y) * step(q.y, 0.95);
+        float box2 = step(0.06, cellq.x) * step(cellq.x, 0.94) * step(0.05, cellq.y) * step(cellq.y, 0.95) * inRow;
+        c = mix(c, vec3(0.86, 0.87, 0.88), box2);
+        float door = smoothstep(0.3, 0.27, length((cellq - vec2(0.5, 0.42)) * vec2(1.0, 1.3))) * inRow;
+        c = mix(c, vec3(0.2, 0.25, 0.3), door);
+        c = mix(c, vec3(0.5, 0.7, 0.9), smoothstep(0.2, 0.17, length((cellq - vec2(0.5, 0.42)) * vec2(1.0, 1.3))) * inRow * (0.5 + 0.5 * sin(uTime * 3.0 + q.x * 20.0)));
+        c = mix(c, vec3(0.2, 0.8, 0.3), step(abs(cellq.x - 0.5), 0.15) * step(0.8, cellq.y) * step(cellq.y, 0.88) * inRow);
+      } else if (k == 3) {
+        // the pawn shop: things on the wall, a glass counter
+        for (int i = 0; i < 5; i++) { float sx = 0.12 + float(i) * 0.19; float body = smoothstep(0.075, 0.065, length((q - vec2(sx, 0.62)) * vec2(1.0, 1.4))); float neck = step(abs(q.x - sx), 0.014) * step(0.68, q.y) * step(q.y, 0.9); c = mix(c, hsv(0.05 + float(i) * 0.13, 0.6, 0.55), max(body, neck)); }
+        float counter = step(0.12, q.y) * step(q.y, 0.42) * step(0.05, q.x) * step(q.x, 0.95);
+        c = mix(c, vec3(0.75, 0.82, 0.9), counter * 0.7);
+        c = mix(c, vec3(1.0, 0.95, 0.6), counter * step(0.96, hash(floor(q * 40.0) + seed)) * 1.5);
+        c = mix(c, vec3(0.2, 0.15, 0.1), step(0.42, q.y) * step(q.y, 0.45));
+      } else if (k == 4) {
+        // the pizza place: an oven with a glow, a counter, a menu board, a red and white check band
+        float oven = step(0.62, q.x) * step(q.x, 0.95) * step(0.25, q.y) * step(q.y, 0.75);
+        c = mix(c, vec3(0.5, 0.36, 0.28) * (0.8 + 0.2 * step(0.5, fract(q.y * 14.0 + step(0.5, fract(q.x * 8.0)) * 0.5))), oven);
+        float mouth = smoothstep(0.14, 0.12, length((q - vec2(0.785, 0.42)) * vec2(1.0, 2.0))) * step(0.42, q.y + 0.2);
+        c = mix(c, vec3(1.0, 0.55, 0.15) * (1.3 + 0.4 * sin(uTime * 9.0 + seed * 3.0)), mouth * oven);
+        float board = step(0.72, q.y) * step(q.y, 0.94) * step(0.05, q.x) * step(q.x, 0.58);
+        c = mix(c, vec3(0.1), board); c = mix(c, vec3(0.95, 0.9, 0.7), board * step(0.55, fract(q.y * 16.0)) * step(0.5, fract(q.x * 10.0 + seed)));
+        float counter = step(0.2, q.y) * step(q.y, 0.4) * step(q.x, 0.58);
+        c = mix(c, mix(vec3(0.85, 0.15, 0.15), vec3(0.95), step(0.5, fract(q.x * 8.0)) * step(0.5, fract(q.y * 8.0)) + step(0.5, fract(q.x * 8.0 + 0.5)) * step(0.5, fract(q.y * 8.0 + 0.5))), counter);
+        c = mix(c, vec3(0.9, 0.75, 0.3), counter * smoothstep(0.07, 0.05, length(q - vec2(0.25, 0.44))));
+      } else if (k == 5) {
+        // the tattoo parlour: a wall of flash sheets, a chair
+        vec2 sq = vec2(fract(q.x * 6.0), fract((q.y - 0.3) * 3.0));
+        float sheet = step(0.1, sq.x) * step(sq.x, 0.9) * step(0.1, sq.y) * step(sq.y, 0.9) * step(0.3, q.y) * step(q.y, 0.96);
+        c = mix(c, vec3(0.94, 0.9, 0.8), sheet);
+        float ink = sheet * smoothstep(0.32, 0.28, length(sq - 0.5)) * step(0.5, hash(floor(vec2(q.x * 6.0, (q.y - 0.3) * 3.0)) + seed));
+        c = mix(c, hsv(hash(floor(vec2(q.x * 6.0, q.y * 3.0)) * 3.0 + seed), 0.7, 0.6), ink);
+        float chair = step(0.15, q.x) * step(q.x, 0.55) * step(0.08, q.y) * step(q.y, 0.24) + step(0.15, q.x) * step(q.x, 0.25) * step(0.08, q.y) * step(q.y, 0.4);
+        c = mix(c, vec3(0.08, 0.08, 0.09), clamp(chair, 0.0, 1.0));
+      } else if (k == 6) {
+        // the phone shop: a bright wall of phones on a shelf, a counter
+        vec2 pq = vec2(fract(q.x * 7.0), fract((q.y - 0.4) * 3.5));
+        float phone = step(0.3, pq.x) * step(pq.x, 0.7) * step(0.15, pq.y) * step(pq.y, 0.85) * step(0.4, q.y) * step(q.y, 0.97);
+        c = mix(c, vec3(0.05), phone);
+        c = mix(c, hsv(hash(floor(vec2(q.x * 7.0, q.y * 3.5)) + seed), 0.5, 1.0), phone * step(0.36, pq.x) * step(pq.x, 0.64) * step(0.22, pq.y) * step(pq.y, 0.8));
+        c = mix(c, vec3(0.9), step(0.36, q.y) * step(q.y, 0.4));
+        c = mix(c, vec3(0.2, 0.2, 0.22), step(0.1, q.y) * step(q.y, 0.3));
+      } else if (k == 7) {
+        // the nail salon: pink, a row of little tables with lamps, bottles on a shelf
+        float shelf = step(0.72, q.y) * step(q.y, 0.9);
+        c = mix(c, vec3(0.98), shelf);
+        c = mix(c, hsv(hash(vec2(floor(q.x * 24.0), seed * 7.0)), 0.65, 0.9), shelf * step(0.3, fract(q.x * 24.0)) * step(fract(q.x * 24.0), 0.7) * step(0.74, q.y) * step(q.y, 0.86));
+        for (int i = 0; i < 3; i++) { float sx = 0.2 + float(i) * 0.3; c = mix(c, vec3(0.95), step(abs(q.x - sx), 0.1) * step(0.24, q.y) * step(q.y, 0.29)); c = mix(c, vec3(0.6), step(abs(q.x - sx), 0.01) * step(0.05, q.y) * step(q.y, 0.24)); c = mix(c, light * 1.6, smoothstep(0.05, 0.03, length((q - vec2(sx + 0.06, 0.4)) * vec2(1.0, 1.6)))); }
+      } else {
+        // the burger place: a counter, a three-panel lit menu board, the fryer glow, the brand colour on the wall
+        c = mix(c, uBrandA, step(0.62, q.y) * step(q.y, 0.66) + step(0.92, q.y) * 0.9);
+        float board = step(0.68, q.y) * step(q.y, 0.9) * step(0.06, q.x) * step(q.x, 0.94) * step(0.08, fract(q.x * 3.4 + 0.03));
+        c = mix(c, vec3(1.0, 0.97, 0.9) * 1.2, board);
+        c = mix(c, uBrandA * 0.8, board * step(0.6, fract(q.y * 14.0)) * step(0.5, fract(q.x * 12.0 + seed)));
+        float counter = step(0.2, q.y) * step(q.y, 0.42);
+        c = mix(c, vec3(0.45, 0.45, 0.48), counter);
+        c = mix(c, uBrandB, counter * step(0.38, q.y));
+        c = mix(c, vec3(1.0, 0.7, 0.3) * (1.2 + 0.3 * sin(uTime * 7.0 + seed)), step(0.78, q.x) * step(q.x, 0.95) * step(0.42, q.y) * step(q.y, 0.6));
+      }
+    } else if (t == ty) {
+      c = d.y > 0.0 ? wall * 0.9 : floorC * (0.85 + 0.15 * step(0.5, fract(h.x * 8.0 + h.z * 8.0)));
+      if (d.y > 0.0) { float lamp = smoothstep(0.2, 0.0, abs(h.z + D * 0.5)) * (0.5 + 0.5 * step(0.5, fract(h.x * 3.0))); c += light * lamp * 1.6 * lit; }
+    } else {
+      c = wall * 0.7;
+    }
+    float outside = uDay * 0.35 + 0.03;
+    vec3 shade = c * (outside * (1.0 - depth * 0.45) + light * lit * uRoomLight * (0.7 + 0.3 * (1.0 - depth)));
+    shade = mix(shade, shade * vec3(0.22, 0.19, 0.17), wrecked);
+    return shade;
+  }
+
   void main() {
     vec2 cell = vec2(vUv.x * uCols, vUv.y * uFloors);
     vec2 ci = floor(cell);
@@ -274,7 +399,7 @@ const FACADE_FS = /* glsl */`
         float dust = smoothstep(0.0, 0.25, -hd + 0.12) * (1.0 - hole) * step(f.y, 0.4) * 0.35 * (0.6 + 0.4 * fbm(f * 6.0 + seed * 3.0));
         col *= 1.0 - dust;
       }
-    } else if (type == 0 || type == 3) {
+    } else if (type == 0) {
       // a window (or a storefront): the opening, the frame, the sill, the glass and the room
       vec2 o0 = type == 3 ? vec2(0.06, 0.0) : vec2(0.14, 0.16);
       vec2 o1 = type == 3 ? vec2(0.94, 0.72) : vec2(0.86, 0.9);
@@ -381,6 +506,67 @@ const FACADE_FS = /* glsl */`
         float shadow = smoothstep(0.74, 0.62, f.y) * step(0.5, f.y) * 0.3;
         col *= 1.0 - shadow;
       }
+    } else if (type == 3) {
+      // THE STOREFRONT (round two, storefront pass): a dark bulkhead, plate glass with the shop inside, a transom, a
+      // recessed door with an OPEN sign, the name lettered on the glass, and the fascia sign INSIDE the ground floor
+      float bulk = 0.15, glassTop = 0.66, transTop = 0.74, fasciaTop = 0.97;
+      float broken = float(state == 2);
+      float isDoor = (uDoor >= 0.0 && abs(ci.x - uDoor) < 0.5) ? 1.0 : 0.0;
+      vec3 fr = vec3(0.10, 0.10, 0.11);
+      vec3 tile = vec3(0.16, 0.15, 0.15) * (0.75 + 0.25 * step(0.5, fract(f.x * 8.0)) * step(0.5, fract(f.y * 30.0)));
+      col = mix(col, tile, step(f.y, bulk));
+      col = mix(col, fr, step(bulk - 0.02, f.y) * step(f.y, bulk));
+      vec2 g0 = vec2(0.04, bulk), g1 = vec2(0.96, glassTop);
+      float gb = box(f - (g0 + g1) * 0.5, (g1 - g0) * 0.5);
+      float rag = broken * (0.04 + 0.05 * fbm(f * 7.0 + seed * 30.0));
+      float inGlass = 1.0 - smoothstep(-0.004, 0.004, gb - rag);
+      float lit = 1.0 - broken * 0.5;
+      vec3 interior = shopInterior(f, g0, g1, d, uShopKind, seed, lit, broken);
+      vec3 n = vec3(0.0, 0.0, 1.0); vec3 rdir = reflect(d, n);
+      vec3 refl = mix(uGround, uSky, smoothstep(-0.2, 0.6, rdir.y)) * (0.9 + 0.3 * noise(vWorld.xy * 0.2));
+      float fres = mix(0.05, 0.12, uDay) + 0.25 * pow(1.0 - max(0.0, -d.z), 3.0);
+      vec3 glass = mix(interior, refl, clamp(fres, 0.0, 0.5) * (1.0 - broken));
+      // the name lettered on the glass, small and white, on every other window
+      if (isDoor < 0.5 && mod(ci.x, 2.0) < 0.5 && broken < 0.5) {
+        vec2 lu = vec2((f.x - 0.14) / 0.72, (f.y - 0.43) / 0.11);
+        if (lu.x > 0.0 && lu.x < 1.0 && lu.y > 0.0 && lu.y < 1.0) { vec4 sg = textureLod(uShopTex, lu, 0.0); float isText = step(0.3, distance(sg.rgb, uBrandA)); glass = mix(glass, vec3(0.97), isText * 0.85); }
+      }
+      if (isDoor > 0.5) {
+        float doorBox = box(f - vec2(0.5, 0.36), vec2(0.22, 0.36));
+        float inDoor = 1.0 - smoothstep(-0.005, 0.005, doorBox);
+        vec3 doorCol = mix(vec3(0.08, 0.09, 0.11), refl * 0.4, 0.3 * (1.0 - broken));
+        glass = mix(glass, doorCol, inDoor * (1.0 - broken * 0.7));
+        glass = mix(glass, vec3(0.75, 0.72, 0.65), step(abs(f.x - 0.64), 0.012) * step(0.3, f.y) * step(f.y, 0.46) * inDoor);
+        glass = mix(glass, vec3(0.16, 0.16, 0.18), (1.0 - smoothstep(0.0, 0.03, -doorBox)) * inDoor * 0.9);
+        float openSign = step(abs(f.x - 0.5), 0.1) * step(0.5, f.y) * step(f.y, 0.56) * inDoor;
+        glass = mix(glass, vec3(1.0, 0.15, 0.1) * 1.4, openSign * (1.0 - broken));
+        col = mix(col, vec3(0.55, 0.53, 0.5), step(f.y, bulk) * step(abs(f.x - 0.5), 0.28));
+        emit += openSign * 0.8 * (1.0 - broken);
+      }
+      col = mix(col, glass, inGlass);
+      float mull = step(abs(f.x - 0.5), 0.008) * (1.0 - isDoor);
+      col = mix(col, fr, mull * inGlass);
+      col = mix(col, fr, (1.0 - smoothstep(0.0, 0.03, -gb)) * inGlass * (1.0 - broken * 0.8));
+      // the transom: small panes over the glass
+      float trans = step(glassTop + 0.01, f.y) * step(f.y, transTop);
+      col = mix(col, mix(vec3(0.85, 0.9, 0.95), interior * 0.6, 0.5) * (0.8 + 0.6 * lit * uNight), trans);
+      col = mix(col, fr, trans * clamp(step(fract(f.x * 3.0), 0.05) + step(f.y, glassTop + 0.02) + step(transTop - 0.01, f.y), 0.0, 1.0));
+      // THE FASCIA: the sign band inside the ground floor (never the second floor), the name centred over up to three cells
+      float fas = step(transTop, f.y) * step(f.y, fasciaTop);
+      float span = min(uCols, 3.0), c0 = (uCols - span) * 0.5;
+      float su = (cell.x - c0) / span;
+      vec3 fasCol = uBrandA * 0.7 * (0.9 + 0.1 * noise(f * 25.0));
+      if (su >= 0.0 && su <= 1.0) { vec4 sg = textureLod(uShopTex, vec2(su, (f.y - transTop) / (fasciaTop - transTop)), 0.0); fasCol = sg.rgb; }
+      col = mix(col, fasCol, fas);
+      col = mix(col, col * 0.55, step(fasciaTop, f.y) * step(f.y, fasciaTop + 0.02));
+      col = mix(col, fr, step(transTop, f.y) * step(f.y, transTop + 0.012));
+      emit += fas * uNight * 0.45 + lit * inGlass * uRoomLight * (uNight > 0.5 ? 0.6 : 0.1);
+      if (broken > 0.5) {
+        float lip = smoothstep(-0.012, 0.0, gb - rag) * (1.0 - smoothstep(0.0, 0.012, gb - rag));
+        col = mix(col, vec3(0.05, 0.04, 0.04), lip * 0.9 * inGlass);
+        float teeth = step(f.y, g0.y + 0.05 * abs(sin(f.x * 37.0 + seed * 9.0))) * step(g0.y - 0.005, f.y) * inGlass;
+        col = mix(col, vec3(0.75, 0.88, 1.0), teeth * 0.8);
+      }
     } else if (type == 2) {
       float su = (cell.x - uNeonC0) / max(1.0, uNeonW);
       float sv = f.y;
@@ -391,10 +577,13 @@ const FACADE_FS = /* glsl */`
       vec3 hue = hsv(uNeonHue, 0.85, 1.0);
       float on = uNeonLit * (1.0 - float(state == 2));
       float flick = 0.85 + 0.15 * step(0.1, fract(sin(uTime * 13.0 + uSeed) * 7.0));
-      vec3 tube = mix(hue * 0.18, hue * 2.4 * flick + sign * 0.8, on);
+      vec3 offTube = vec3(0.42, 0.43, 0.45) * (0.8 + 0.2 * sign.r);
+      vec3 onTube = mix(hue, vec3(1.0), 0.35) * 1.25 * flick;
+      vec3 tube = mix(offTube, onTube, on);
+      panel = vec3(0.12, 0.11, 0.13) * (0.85 + 0.15 * noise(f * 20.0));
       col = mix(panel, tube, glyph);
-      col += hue * on * 0.15 * smoothstep(0.0, 0.5, sign.r + sign.g + sign.b);
-      emit = on * glyph * 1.4 + on * 0.06;
+      col += hue * on * 0.28 * textureLod(uSigns, auv, 2.5).r * (1.0 - glyph);
+      emit = on * glyph * 0.75;
       if (state == 2) { col = panel * 0.6 + vec3(0.3, 0.32, 0.36) * step(0.9, fract(f.x * 9.0 + f.y * 7.0)) * 0.3; emit = 0.0; }
       float frame = 1.0 - smoothstep(0.0, 0.05, -box(f - 0.5, vec2(0.5, 0.5)) + 0.03);
       col = mix(col, vec3(0.2, 0.2, 0.22), frame * 0.9);
@@ -857,7 +1046,8 @@ export function createRenderer(canvas, lookIn) {
     const neonSpan = b.neon ? { c0: b.neon.cells[0] % b.cols, w: b.neon.cells.length } : { c0: 0, w: 1 };
     const uniforms = {
       uCells: { value: cellsTex }, uWall: { value: wallTex }, uSigns: { value: signsTex }, uShops: { value: shopsTex },
-      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: -1 }, uDoor: { value: b.restaurant ? -1 : Math.floor(b.cols / 2) }, uPeople: { value: 1 },
+      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: -1 }, uDoor: { value: Math.floor(b.cols / 2) }, uPeople: { value: 1 },
+      uShopTex: { value: canvasTex(b.restaurant ? Icons().brandSign(b.restaurant, 1024, 96) : Icons().shopSign(b.shop || 0, 1024, 96, false)) }, uShopKind: { value: b.restaurant ? 8 : (b.shop || 0) % 8 },
       uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: FAMILY_TILE_CELLS[fam.id] },
       uSeed: { value: seedRnd() }, uTime: { value: 0 }, uNight: { value: night ? 1 : 0 }, uDay: { value: night ? 0 : 1 }, uWear: { value: look.wear }, uRoomLight: { value: look.roomLight }, uCollapse: { value: 0 },
       uInnards: { value: new THREE.Vector3(...FAMILY_INNARDS[fam.id]) }, uCamPos: { value: new THREE.Vector3() }, uOrigin: { value: new THREE.Vector3(b.x0 * CELL, 0, 0) },
@@ -869,21 +1059,25 @@ export function createRenderer(canvas, lookIn) {
     facade.position.set(W / 2, H / 2, 0.02);
     g.add(facade);
     facadeUniformsAll.push(uniforms);
-    // THE SIGN BOARD over a plain shop's ground floor: a board the width of the shop (up to three cells), a frame, lit at night
-    if (!b.restaurant) {
-      const bw = Math.min(W - 0.6, CELL * 4.2), bh = 2.3;
-      const wpx = 1024, hpx = Math.round(wpx * bh / bw);
-      const signMat = new THREE.MeshStandardMaterial({ map: canvasTex(Icons().shopSign(b.shop || 0, wpx, hpx, false)), roughness: 0.6, emissive: 0xffffff, emissiveMap: canvasTex(Icons().shopSign(b.shop || 0, wpx, hpx, true)), emissiveIntensity: night ? 0.7 : 0.0 });
-      const board = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.22), [kitMat, kitMat, kitMat, kitMat, signMat, kitMat]);
-      board.position.set(W / 2, CELL * 1.0 + 0.08 + bh / 2, 0.2); board.userData.sign = true; g.add(board);
-      for (const dx of [-bw * 0.42, bw * 0.42]) { const br = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.35), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.6, metalness: 0.5 })); br.position.set(W / 2 + dx, CELL * 1.0 + 0.08 + bh + 0.2, 0.1); g.add(br); }
-    }
     // the brand mark over the storefront
     if (b.restaurant) {
-      const mark = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), new THREE.MeshBasicMaterial({ map: canvasTex(Icons().brandMark(b.restaurant, 256)), transparent: true }));
-      mark.position.set(W / 2, CELL * 0.86, 0.12); g.add(mark);
-      const marquee = new THREE.Mesh(new THREE.BoxGeometry(W * 0.7, 0.9, 0.5), new THREE.MeshStandardMaterial({ color: new THREE.Color(brand[0], brand[1], brand[2]), emissive: new THREE.Color(brand[0], brand[1], brand[2]), emissiveIntensity: night ? 0.9 : 0.15, roughness: 0.5 }));
-      marquee.position.set(W / 2, CELL * 0.98, 0.3); marquee.userData.marquee = true; g.add(marquee);
+      // the brand mark on the fascia, left of the name
+      const span = Math.min(b.cols, 3), c0 = (b.cols - span) / 2;
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: canvasTex(Icons().brandMark(b.restaurant, 256)), transparent: true }));
+      mark.position.set(c0 * CELL + 0.55, CELL * 0.855, 0.06); g.add(mark);
+    }
+    // THE AWNING: a real sloped canopy with a valance over the glass, on every restaurant and some shops
+    if (b.restaurant || seedRnd() < 0.45) {
+      const striped = b.restaurant || seedRnd() < 0.5;
+      const awTex = canvasTex(Icons().awning(brand, striped));
+      const awMat = new THREE.MeshStandardMaterial({ map: awTex, roughness: 0.85, side: THREE.DoubleSide });
+      const aw = W - 0.5, drop = 0.55, out = 1.5;
+      const slope = new THREE.Mesh(new THREE.PlaneGeometry(aw, Math.hypot(out, drop)), awMat);
+      slope.rotation.x = Math.PI / 2 - Math.atan2(drop, out);   // sloping down and out from the wall
+      slope.position.set(W / 2, CELL * 0.69 - drop / 2, out / 2); g.add(slope);
+      const valance = new THREE.Mesh(new THREE.PlaneGeometry(aw, 0.32), awMat);
+      valance.position.set(W / 2, CELL * 0.69 - drop - 0.16, out); g.add(valance);
+      for (const dx of [-aw / 2 + 0.2, aw / 2 - 0.2]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, out), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.5, metalness: 0.5 })); arm.position.set(W / 2 + dx, CELL * 0.69 - drop, out / 2); g.add(arm); }
     }
     // the rubble for later, hidden
     const rubble = makeRubble(W, seedRnd);
@@ -1785,7 +1979,7 @@ export function createRenderer(canvas, lookIn) {
     stepEffects(dt);
     stepCamera(state, dt);
     for (const c of farGroup.children) if (c.userData.cloud) { c.position.x += c.userData.drift * dt; if (c.position.x > state.city.width * CELL + 200) c.position.x = -160; }
-    cityGroup.traverse((o) => { if (o.userData.beacon) o.material.color.setHex(Math.floor(clock.t) % 2 ? 0xff2020 : 0x300808); if (o.userData.marquee) o.material.emissiveIntensity = night ? 0.9 : 0.15; if (o.userData.sign) o.material[4].emissiveIntensity = night ? 0.7 : 0.0; });
+    cityGroup.traverse((o) => { if (o.userData.beacon) o.material.color.setHex(Math.floor(clock.t) % 2 ? 0xff2020 : 0x300808); });
     compMat.uniforms.vig.value = 0.35 + Math.max(0, screenFlash) * 0.0;
     compMat.uniforms.exposure.value = exposure * (1 + Math.max(0, screenFlash) * 2.5);
   }

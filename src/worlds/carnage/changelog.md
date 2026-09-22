@@ -112,6 +112,22 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   the planters in the middle ("another sidewalk?") — now one 8.5 m sidewalk with the planters, trees and a railing at
   its back, nothing beyond, and the camera base a touch higher (`baseCamY` 0.40 → 0.49 of the view) so the frame
   ends just past the planters and the roofs come into view.
+- **THE STOREFRONT PASS, same night, on his notes** (neon unreadable, sign boards covering the second floor, awnings
+  as strips, shops as squares and curtains, the same shop next door, too many light buildings): NEON is a real tube —
+  solid letters in the atlas, a gray tube when off, a clean bright tube when on (no bloom smear). The ground floor is
+  built the way city shops are: a dark tiled bulkhead, plate glass with the shop inside, a transom of small panes, a
+  recessed door with a bar handle, a step and a lit OPEN sign, the name lettered small on every other window, and THE
+  FASCIA sign inside the ground floor (never the second floor), the name centred over up to three cells at the sign's
+  own aspect (`uShopTex`), lit at night. Eight interiors (`shopInterior`, `uShopKind`): the diner (menu board, pie
+  case, counter, stools), the bodega (shelves, fruit crates, a lotto sign), the laundromat (two rows of washers), the
+  pawn shop (things on the wall, a glass counter), the pizza place (an oven with a glow, a check counter, a menu
+  board), the tattoo parlour (a wall of flash sheets, a chair), the phone shop (a bright wall of phones), the nail
+  salon (tables with lamps, bottles) — and the burger counter for the three brands (a three-panel lit menu board,
+  the fryer glow), whose fascias read BURGER CLOWN / SQUARE PATTY / KING BURGER with the mark at the left. REAL
+  AWNINGS: a sloped canopy with a valance and arms over the glass on every restaurant and 45% of shops (striped or
+  plain in the shop's colours); the sign board geometry and the marquee are gone. No two neighbouring shops alike
+  (`b.shop`); the family draw is weighted toward brick, concrete and steel, tan and stucco darker. The shop glass
+  reflects less by day so the interiors read. Four sim tests made seed-proof; sim 1,918,935 green.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

@@ -148,7 +148,7 @@
         state: new Uint8Array(cols * floors),    // 0 intact, 1 cracked, 2 broken
         deal: new Array(cols * floors).fill('none'),
         restaurant: null,
-        shop: Math.floor(rng() * 8),                // which painted shop the ground floor is (restaurants ignore it)
+        shop: (function () { let v = Math.floor(rng() * 8); const prev = buildings.length ? buildings[buildings.length - 1].shop : -1; if (v === prev) v = (v + 1 + Math.floor(rng() * 6)) % 8; return v; })(),   // never the same shop next door
         broken: 0, punchable: 0,
         threshold: 0,
         collapsing: false, down: false, dropT: 0,
@@ -218,10 +218,16 @@
     };
   }
 
+  // more brick, cement and metal than tan and stucco (James, 2026-09-21): a weighted draw of three, the first repeated
+  const FAMILY_WEIGHT = [3, 1.2, 2.6, 1, 2.2, 1.2];
   function pickFamilies(rng) {
-    const all = range(FAMILIES.length);
-    const picked = shuffle(rng, all).slice(0, 3);
-    // the pool weights: repeat the first pick so a city has a look
+    const left = range(FAMILIES.length), picked = [];
+    while (picked.length < 3) {
+      let total = 0; for (const i of left) total += FAMILY_WEIGHT[i];
+      let r = rng() * total, chosen = left[0];
+      for (const i of left) { r -= FAMILY_WEIGHT[i]; if (r <= 0) { chosen = i; break; } }
+      picked.push(chosen); left.splice(left.indexOf(chosen), 1);
+    }
     return [picked[0], picked[0], picked[1], picked[2]];
   }
   function gapX(rng, buildings) {
