@@ -78,6 +78,10 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   close-up). The smoke page ran a game through the keys, a lane crossing, a climb, punches and the first wave with no
   errors. The Damage Lab's verbs follow the keys (new: Cross the street, The run burst, The stomp, The screamer, The
   waves; "Let go" is now "The smash"). Cache tags ?v=2.
+- **His first read, the same night** ("huge improvements all around"): the monsters shrank a little on every action.
+  Measured in the lab: the IDLE clip carried a hips scale track of 1.176, so the standing pose was 17% bigger than
+  every other clip and every action was a shrink back to true size. Scale tracks are now stripped from every clip at
+  load (`rigged()` in render3d.js); idle / punch / walk all measure 10.3–10.9 m. Tags: game.js?v=3, render3d.js?v=2.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

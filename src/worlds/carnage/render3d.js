@@ -540,7 +540,8 @@ export function createRenderer(canvas, lookIn) {
       if (!g) return null;
       prepModel(g.scene);
       const clips = {};
-      await Promise.all(clipNames.map((c) => loadGlb('assets/models/' + dir + '/' + c + '.glb').then((a) => { if (a && a.animations && a.animations.length) clips[c] = a.animations[0]; })));
+      // scale tracks are dropped: the idle clip scaled the hips by 1.176, so every action looked like a shrink (James, 2026-09-21)
+      await Promise.all(clipNames.map((c) => loadGlb('assets/models/' + dir + '/' + c + '.glb').then((a) => { if (a && a.animations && a.animations.length) { const clip = a.animations[0]; clip.tracks = clip.tracks.filter((t) => !t.name.endsWith('.scale')); clips[c] = clip; } })));
       return { scene: g.scene, clips };
     };
     for (const slug of ['george', 'lizzie', 'ralph']) { total++; jobs.push(rigged(slug, MONSTER_CLIPS).then((a) => { models.monsters[slug] = a; tick(); })); }
