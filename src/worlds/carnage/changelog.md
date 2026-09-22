@@ -96,6 +96,17 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   stagger for 0.4 s and a burst re-staggered faster than that. Now a hit under 4 health (`MON.STAGGER`: every
   bullet) only flashes (`m.flashT`) and you keep walking; a shell, a rival's punch, a fall, a hazard still stagger.
   Sim: shot six times mid-walk and still moved forward.
+- **His next notes, built the same night**: (1) the shop signs were unreadable and did not look like signs (a thin
+  shader band stretched across the building) — now THE SIGN BOARD, real geometry over every plain shop's ground
+  floor (2.3 m tall, up to 4.2 cells wide, the name drawn at the board's own aspect, a frame, brackets, lit at night
+  through an emissive map); (2) "this city looks like it was designed for little kids" — real-city palettes
+  (brick red-brown, limestone, weathered concrete, cream stucco, slate steel, gray-teal glass; stone / cream / iron
+  trims), a natural blue sky with a pale horizon, a grayer skyline, muted trees; (3) no first-floor apartments —
+  every ground floor is a shopfront (`T.STORE` on row 0 of every building, `b.shop` picks the painted shop): shelves
+  of goods behind the glass, a glass door with a handle and a step in the middle column, a modest awning in the
+  shop's colour; restaurants keep their brand front. (4) On a face the hips are yaw-locked into the wall after the
+  mixer (the boxing clips twisted the body toward the camera). Gap trees smaller so they never hide a shop. Two
+  sim tests loosened where the per-building shop roll shifted the seeds. Sim 1,947,466 green.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

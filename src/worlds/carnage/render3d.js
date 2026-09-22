@@ -36,8 +36,10 @@ export const LOOK_DEFAULTS = {
 const FAMILY_TILE = { brick_red: 'brick_red', brick_tan: 'brick_tan', concrete: 'concrete', stucco: 'stucco', steel: 'steel', glass: 'glass' };
 const FAMILY_TILE_CELLS = { brick_red: 1.7, brick_tan: 1.8, concrete: 2.2, stucco: 2.6, steel: 1.6, glass: 1.0 };
 // the 16-bit palettes: a saturated wall colour and a trim colour per family (the tile only gives the value)
-const FAMILY_TINT = { brick_red: [0.88, 0.30, 0.22], brick_tan: [0.96, 0.62, 0.44], concrete: [0.30, 0.66, 0.66], stucco: [0.80, 0.68, 0.92], steel: [0.36, 0.46, 0.70], glass: [0.32, 0.74, 0.68] };
-const FAMILY_TRIM = { brick_red: [0.97, 0.90, 0.74], brick_tan: [1.0, 0.98, 0.94], concrete: [0.95, 0.85, 0.50], stucco: [0.99, 0.97, 0.94], steel: [0.86, 0.90, 0.97], glass: [0.92, 0.96, 0.99] };
+// real-city colours (James, 2026-09-21: the candy palette "looks like it was designed for little kids"): brick red-brown,
+// limestone tan, weathered concrete, cream stucco, slate steel, gray-teal glass; trims in stone, cream and iron
+const FAMILY_TINT = { brick_red: [0.60, 0.30, 0.24], brick_tan: [0.76, 0.64, 0.50], concrete: [0.64, 0.62, 0.57], stucco: [0.78, 0.72, 0.60], steel: [0.40, 0.44, 0.50], glass: [0.42, 0.54, 0.58] };
+const FAMILY_TRIM = { brick_red: [0.86, 0.80, 0.68], brick_tan: [0.92, 0.88, 0.80], concrete: [0.80, 0.78, 0.74], stucco: [0.94, 0.90, 0.82], steel: [0.22, 0.23, 0.26], glass: [0.18, 0.20, 0.24] };
 const FAMILY_INNARDS = { brick_red: [0.28, 0.12, 0.08], brick_tan: [0.3, 0.22, 0.14], concrete: [0.2, 0.2, 0.2], stucco: [0.3, 0.26, 0.2], steel: [0.14, 0.14, 0.16], glass: [0.1, 0.12, 0.14] };
 const BRAND_COLOR = { george: [0.88, 0.17, 0.17, 1.0, 0.82, 0.23], lizzie: [0.18, 0.44, 0.85, 1.0, 1.0, 1.0], ralph: [0.95, 0.55, 0.16, 0.42, 0.23, 0.07] };
 const BRAND_ID = { george: 1, lizzie: 2, ralph: 3 };
@@ -68,7 +70,7 @@ const FACADE_FS = /* glsl */`
   uniform float uCols, uFloors, uCell, uTileCells, uSeed, uTime, uNight, uWear, uRoomLight, uCollapse, uDay;
   uniform vec3 uInnards, uCamPos, uOrigin, uSky, uGround, uSunDir;
   uniform vec3 uBrandA, uBrandB, uTint, uTrim;
-  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople;
+  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople, uDoor;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
@@ -287,9 +289,17 @@ const FACADE_FS = /* glsl */`
       float people = uPeople * step(0.5, lit) * (1.0 - broken) * (1.0 - curtain) * float(type == 0);
       vec3 interior = room(f, o0, o1, d, seed + float(type) * 0.13, lit, broken, people);
       if (type == 3) {
-        interior *= mix(vec3(1.0), uBrandA * 1.4, 0.35);
-        float board = step(abs(f.x - 0.5), 0.3) * step(0.5, f.y) * step(f.y, 0.62);
-        interior += board * uBrandB * 0.9 * (1.0 - broken);
+        if (uBrand > 0.5) {
+          interior *= mix(vec3(1.0), uBrandA * 1.4, 0.35);
+          float board = step(abs(f.x - 0.5), 0.3) * step(0.5, f.y) * step(f.y, 0.62);
+          interior += board * uBrandB * 0.9 * (1.0 - broken);
+        } else {
+          // a plain shop: shelves of goods behind the glass
+          float shelf = step(0.15, f.y) * step(f.y, 0.62) * step(0.5, fract(f.y * 7.0));
+          interior = mix(interior, vec3(0.32, 0.24, 0.16), shelf * 0.8);
+          float goods = shelf * step(0.55, fract(f.x * 11.0 + seed));
+          interior = mix(interior, hsv(fract(f.x * 2.0 + seed * 3.0), 0.55, 0.85), goods * 0.9);
+        }
       }
       vec3 n = vec3(0.0, 0.0, 1.0);
       vec3 rdir = reflect(d, n);
@@ -309,6 +319,19 @@ const FACADE_FS = /* glsl */`
         float inBlind = step(bh, f.y);
         float slat = 0.72 + 0.28 * step(0.5, fract(f.y * 28.0));
         glass = mix(glass, vec3(0.92, 0.88, 0.78) * slat * (0.45 + 0.45 * lit + uDay * 0.25), inBlind * 0.92);
+      }
+      // the shop's door in the middle column: a dark glass door with a bar handle and a step
+      if (type == 3 && uDoor >= 0.0 && abs(ci.x - uDoor) < 0.5) {
+        float doorBox = box(f - vec2(0.5, 0.36), vec2(0.2, 0.36));
+        float inDoor = 1.0 - smoothstep(-0.005, 0.005, doorBox);
+        vec3 doorCol = mix(vec3(0.10, 0.11, 0.13), refl * 0.5, 0.35 * (1.0 - broken));
+        float handle = step(abs(f.x - 0.63), 0.012) * step(0.3, f.y) * step(f.y, 0.46);
+        float doorFrame = (1.0 - smoothstep(0.0, 0.03, -doorBox)) * inDoor;
+        glass = mix(glass, doorCol, inDoor * (1.0 - broken * 0.7));
+        glass = mix(glass, vec3(0.75, 0.72, 0.65), handle * inDoor);
+        glass = mix(glass, vec3(0.16, 0.16, 0.18), doorFrame * 0.8);
+        float stepStone = step(f.y, 0.03) * step(abs(f.x - 0.5), 0.26);
+        col = mix(col, vec3(0.55, 0.53, 0.5), stepStone);
       }
       col = mix(col, glass, inOpen);
       col = mix(col, frameCol, frame * inOpen);
@@ -349,7 +372,8 @@ const FACADE_FS = /* glsl */`
         float aw = step(0.74, f.y) * step(f.y, 0.98);
         float stripe = step(0.5, fract(f.x * 6.0 + ci.x));
         vec3 awCol = mix(uBrandA, uBrandB, stripe * 0.85);
-        float scallop = step(0.74, f.y) * step(f.y, 0.78) * step(0.5, fract(f.x * 6.0 + 0.5));
+        float scallop = step(0.74, f.y) * step(f.y, 0.78) * step(0.5, fract(f.x * 6.0 + 0.5)) * uBrand;
+        if (uBrand < 0.5) awCol = uBrandA * (0.55 + 0.2 * stripe);
         col = mix(col, awCol * (0.8 + 0.2 * f.y), aw);
         col = mix(col, uBrandB, scallop);
         float shadow = smoothstep(0.74, 0.62, f.y) * step(0.5, f.y) * 0.3;
@@ -563,7 +587,7 @@ export function createRenderer(canvas, lookIn) {
   sky.renderOrder = -10;
   scene.add(sky);
   let night = false;
-  const palette = { day: { top: 0x2464d4, horizon: 0xf8caa0, ground: 0x6e6a60, fog: 0xd9c0b4, sunCol: 0xfff0c0 }, night: { top: 0x070a24, horizon: 0x6a2c66, ground: 0x15121a, fog: 0x1c1030, sunCol: 0xd8e4ff } };
+  const palette = { day: { top: 0x2a68c8, horizon: 0xdde6ec, ground: 0x6e6a60, fog: 0xc9ccd2, sunCol: 0xfff0c0 }, night: { top: 0x070a24, horizon: 0x3a2a4a, ground: 0x15121a, fog: 0x1c1830, sunCol: 0xd8e4ff } };
   function applyDayNight() {
     const p = night ? palette.night : palette.day;
     skyUniforms.uTop.value.setHex(p.top); skyUniforms.uHorizon.value.setHex(p.horizon); skyUniforms.uNight.value = night ? 1 : 0; skyUniforms.uSunCol.value.setHex(p.sunCol);
@@ -619,8 +643,8 @@ export function createRenderer(canvas, lookIn) {
         const gx = ((a.x0 + a.cols + b.x0) / 2) * CELL;
         if (city.exits && city.exits.subway != null && Math.abs(city.exits.subway * CELL - gx) < 3) continue;
         const kind = southern ? 'palm' : ((i * 31) % 3 === 0 ? 'tall' : 'round');
-        const h = 7 + ((i * 17) % 4);
-        ground.add(billboard(Icons().tree(kind, i * 19 + city.day), h * 0.9, h, gx, 0, 3.0));
+        const h = 4.5 + ((i * 17) % 3);
+        ground.add(billboard(Icons().tree(kind, i * 19 + city.day), h * 0.8, h, gx, 0, 3.0));
       }
     }
     const fence = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 0.08), new THREE.MeshStandardMaterial({ color: 0x24262c, roughness: 0.5, metalness: 0.6 }));
@@ -689,7 +713,7 @@ export function createRenderer(canvas, lookIn) {
   let skylinePlanes = [], skylineSeed = 1;
   function layerColour(i) {
     const p = night ? palette.night : palette.day;
-    const base = night ? new THREE.Color(0x10102a) : new THREE.Color(0x4a5a8a);
+    const base = night ? new THREE.Color(0x10102a) : new THREE.Color(0x56607a);
     const hor = new THREE.Color(p.horizon);
     const k = night ? [0.12, 0.28, 0.45, 0.6][i] : [0.22, 0.42, 0.62, 0.78][i];
     return '#' + base.lerp(hor, k).getHexString();
@@ -781,7 +805,7 @@ export function createRenderer(canvas, lookIn) {
     // the body: sides, back, roof in the family's tile
     const wallTex = tex(FAMILY_TILE[fam.id]);
     // the building's own colours: the family's palette rolled a little per building
-    const roll = () => 0.86 + 0.28 * seedRnd();
+    const roll = () => 0.9 + 0.2 * seedRnd();
     const tint = FAMILY_TINT[fam.id].map((c) => Math.min(1, c * roll())), trim = FAMILY_TRIM[fam.id].map((c) => Math.min(1, c * (0.95 + 0.1 * seedRnd())));
     const sideMat = new THREE.MeshStandardMaterial({ map: tile(FAMILY_TILE[fam.id], DEPTH / (CELL * FAMILY_TILE_CELLS[fam.id]), H / (CELL * FAMILY_TILE_CELLS[fam.id])), color: new THREE.Color(Math.min(1, tint[0] * 1.6), Math.min(1, tint[1] * 1.6), Math.min(1, tint[2] * 1.6)), emissive: new THREE.Color(tint[0] * 0.22, tint[1] * 0.22, tint[2] * 0.22), roughness: 0.92, metalness: fam.id === 'steel' || fam.id === 'glass' ? 0.35 : 0.02 });
     const roofMat = new THREE.MeshStandardMaterial({ map: tile('roof', W / 10, DEPTH / 10), roughness: 1 });
@@ -823,11 +847,13 @@ export function createRenderer(canvas, lookIn) {
     packCells(b, data, seedRnd);
     const cellsTex = new THREE.DataTexture(data, b.cols, b.floors, THREE.RGBAFormat, THREE.UnsignedByteType);
     cellsTex.magFilter = cellsTex.minFilter = THREE.NearestFilter; cellsTex.needsUpdate = true;
-    const brand = b.restaurant ? BRAND_COLOR[b.restaurant] : [0.5, 0.5, 0.5, 0.8, 0.8, 0.8];
+    const shopDef = Icons().SHOPS[(b.shop || 0) % 8];
+    const hex = (h) => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
+    const brand = b.restaurant ? BRAND_COLOR[b.restaurant] : hex(shopDef[1]).concat(hex(shopDef[2]));
     const neonSpan = b.neon ? { c0: b.neon.cells[0] % b.cols, w: b.neon.cells.length } : { c0: 0, w: 1 };
     const uniforms = {
       uCells: { value: cellsTex }, uWall: { value: wallTex }, uSigns: { value: signsTex }, uShops: { value: shopsTex },
-      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: (!b.restaurant && seedRnd() < 0.75) ? Math.floor(seedRnd() * 8) : -1 }, uPeople: { value: 1 },
+      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: -1 }, uDoor: { value: b.restaurant ? -1 : Math.floor(b.cols / 2) }, uPeople: { value: 1 },
       uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: FAMILY_TILE_CELLS[fam.id] },
       uSeed: { value: seedRnd() }, uTime: { value: 0 }, uNight: { value: night ? 1 : 0 }, uDay: { value: night ? 0 : 1 }, uWear: { value: look.wear }, uRoomLight: { value: look.roomLight }, uCollapse: { value: 0 },
       uInnards: { value: new THREE.Vector3(...FAMILY_INNARDS[fam.id]) }, uCamPos: { value: new THREE.Vector3() }, uOrigin: { value: new THREE.Vector3(b.x0 * CELL, 0, 0) },
@@ -839,6 +865,15 @@ export function createRenderer(canvas, lookIn) {
     facade.position.set(W / 2, H / 2, 0.02);
     g.add(facade);
     facadeUniformsAll.push(uniforms);
+    // THE SIGN BOARD over a plain shop's ground floor: a board the width of the shop (up to three cells), a frame, lit at night
+    if (!b.restaurant) {
+      const bw = Math.min(W - 0.6, CELL * 4.2), bh = 2.3;
+      const wpx = 1024, hpx = Math.round(wpx * bh / bw);
+      const signMat = new THREE.MeshStandardMaterial({ map: canvasTex(Icons().shopSign(b.shop || 0, wpx, hpx, false)), roughness: 0.6, emissive: 0xffffff, emissiveMap: canvasTex(Icons().shopSign(b.shop || 0, wpx, hpx, true)), emissiveIntensity: night ? 0.7 : 0.0 });
+      const board = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 0.22), [kitMat, kitMat, kitMat, kitMat, signMat, kitMat]);
+      board.position.set(W / 2, CELL * 1.0 + 0.08 + bh / 2, 0.2); board.userData.sign = true; g.add(board);
+      for (const dx of [-bw * 0.42, bw * 0.42]) { const br = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.35), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.6, metalness: 0.5 })); br.position.set(W / 2 + dx, CELL * 1.0 + 0.08 + bh + 0.2, 0.1); g.add(br); }
+    }
     // the brand mark over the storefront
     if (b.restaurant) {
       const mark = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), new THREE.MeshBasicMaterial({ map: canvasTex(Icons().brandMark(b.restaurant, 256)), transparent: true }));
@@ -1113,6 +1148,9 @@ export function createRenderer(canvas, lookIn) {
         if (up && leg && foot) view.bones[side + 'Leg'] = { arm: up, fore: leg, hand: foot };
       }
       view.spine = model.getObjectByName('Spine02') || model.getObjectByName('Spine01') || null;
+      // the hips' own forward axis, measured at rest (the model faces +z at yaw 0): the face-lock below uses it
+      view.hips = model.getObjectByName('Hips') || null;
+      if (view.hips) { model.updateMatrixWorld(true); const q = new THREE.Quaternion(); view.hips.getWorldQuaternion(q); view.hipsFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q.invert()); }
     } else {
       const body = new THREE.Mesh(new THREE.CapsuleGeometry(height * 0.16, height * 0.55, 4, 10), new THREE.MeshStandardMaterial({ color: fallback, roughness: 0.6 }));
       body.position.y = height * 0.5; view.inner.add(body);
@@ -1264,6 +1302,15 @@ export function createRenderer(canvas, lookIn) {
         v.inner.rotation.x = punchAnim ? -0.4 : 0;
       }
       if (v.mixer) v.mixer.update(dt);
+      // on a face the body stays square to the wall: the boxing clips twist the hips toward the camera (James, 2026-09-21)
+      if (v.hips && v.hipsFwd && m.st === 'climb') {
+        v.hips.getWorldQuaternion(_qA);
+        _d0.copy(v.hipsFwd).applyQuaternion(_qA);            // the hips' forward, in world
+        v.inner.getWorldQuaternion(_qB);
+        _d1.copy(_d0).applyQuaternion(_qB.invert());          // ... in the body's frame, where forward should be +z
+        const err = Math.atan2(_d1.x, _d1.z);
+        if (Math.abs(err) > 0.02) { _qA.setFromAxisAngle(_d1.set(0, 1, 0), -err); rotateBoneWorld(v.hips, _qA.clone(), 1); }
+      }
       // THE STRIKE: wind up, strike, hold, recover — the fist ends in the cell the rules hit
       let lean = 0, lunge = 0;
       const stomping = m.anim === 'punch' && m.st === 'street' && m.punchDir.dy < 0;
@@ -1734,7 +1781,7 @@ export function createRenderer(canvas, lookIn) {
     stepEffects(dt);
     stepCamera(state, dt);
     for (const c of farGroup.children) if (c.userData.cloud) { c.position.x += c.userData.drift * dt; if (c.position.x > state.city.width * CELL + 200) c.position.x = -160; }
-    cityGroup.traverse((o) => { if (o.userData.beacon) o.material.color.setHex(Math.floor(clock.t) % 2 ? 0xff2020 : 0x300808); if (o.userData.marquee) o.material.emissiveIntensity = night ? 0.9 : 0.15; });
+    cityGroup.traverse((o) => { if (o.userData.beacon) o.material.color.setHex(Math.floor(clock.t) % 2 ? 0xff2020 : 0x300808); if (o.userData.marquee) o.material.emissiveIntensity = night ? 0.9 : 0.15; if (o.userData.sign) o.material[4].emissiveIntensity = night ? 0.7 : 0.0; });
     compMat.uniforms.vig.value = 0.35 + Math.max(0, screenFlash) * 0.0;
     compMat.uniforms.exposure.value = exposure * (1 + Math.max(0, screenFlash) * 2.5);
   }

@@ -148,6 +148,7 @@
         state: new Uint8Array(cols * floors),    // 0 intact, 1 cracked, 2 broken
         deal: new Array(cols * floors).fill('none'),
         restaurant: null,
+        shop: Math.floor(rng() * 8),                // which painted shop the ground floor is (restaurants ignore it)
         broken: 0, punchable: 0,
         threshold: 0,
         collapsing: false, down: false, dropT: 0,
@@ -160,7 +161,7 @@
         for (let c = 0; c < cols; c++) {
           let t = F.pattern[c % F.pattern.length] ? T.WALL : T.WINDOW;
           if (bandRow) t = T.WALL;
-          if (r === 0 && t === T.WALL && c === Math.floor(cols / 2)) t = T.WINDOW;   // a door
+          if (r === 0) t = T.STORE;   // no first-floor apartments (James, 2026-09-21): the ground floor is a shopfront with a door
           b.cells[r * cols + c] = t;
         }
       }

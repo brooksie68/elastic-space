@@ -293,6 +293,23 @@
     cache.shops = c; return c;
   }
 
+  // a shop's sign board at the board's own aspect (w × h px): the name in big type on the shop's colour, a frame
+  function shopSign(i, w, h, night) {
+    const key = 'shopsign:' + i + ':' + w + 'x' + h + (night ? 'n' : 'd');
+    if (cache[key]) return cache[key];
+    const [text, bg, fg] = SHOPS[i % SHOPS.length];
+    const c = canvas(w, h), g = c.getContext('2d');
+    g.fillStyle = bg; g.fillRect(0, 0, w, h);
+    g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, 0, w, h * 0.08); g.fillRect(0, h * 0.92, w, h * 0.08);
+    g.strokeStyle = fg; g.lineWidth = Math.max(2, h * 0.035); g.strokeRect(h * 0.12, h * 0.14, w - h * 0.24, h * 0.72);
+    g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+    let size = h * 0.56; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
+    while (g.measureText(text).width > w - h * 0.5 && size > 8) { size -= 2; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
+    g.fillText(text, w / 2, h * 0.52);
+    if (night) { g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(0, 0, w, h); }
+    cache[key] = c; return c;
+  }
+
   // the trees and bushes: two-tone canopies, a dark outline, a highlight — the 16-bit register, 256 px, transparent
   const TREE_KINDS = ['round', 'tall', 'palm', 'bush', 'flowers'];
   function tree(kind, seed) {
@@ -301,7 +318,7 @@
     const s = 256, c = canvas(s, s), g = c.getContext('2d');
     let r = (seed * 7919 + 13) >>> 0;
     const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
-    const hue = 95 + rnd() * 40, dark = `hsl(${hue}, 55%, 22%)`, mid = `hsl(${hue}, 60%, 34%)`, light = `hsl(${hue + 8}, 65%, 48%)`;
+    const hue = 80 + rnd() * 45, dark = `hsl(${hue}, 30%, 17%)`, mid = `hsl(${hue}, 32%, 26%)`, light = `hsl(${hue + 8}, 34%, 35%)`;
     const blob = (x, y, rad, col) => { g.fillStyle = col; g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fill(); };
     g.lineJoin = 'round';
     if (kind === 'round' || kind === 'tall') {
@@ -436,5 +453,5 @@
     cache[key] = c; return c;
   }
 
-  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
+  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, shopSign, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
 })();
