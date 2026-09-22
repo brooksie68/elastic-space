@@ -674,15 +674,17 @@
       // within reach). The face lane reaches the buildings and the soldiers; the road lane the cars and the truck.
       const reach = monReach(state);
       const stomp = dir.dy < 0;
-      const b = faceAt(state, m.x + (stomp ? 0 : dir.dx * 0.6));
+      // a plain down stomps under you; down-right / down-left stomp to that side (the cell that way)
+      const lean = stomp ? dir.dx * 0.9 : dir.dx * 0.6;
+      const b = faceAt(state, m.x + lean);
       if (b && m.lane === 0) {
-        const col = Math.floor(m.x + (stomp ? 0 : dir.dx * 0.6) - b.x0);
+        const col = Math.floor(m.x + lean - b.x0);
         const row = stomp ? 0 : punchRow(state, m, b) + (dir.dy > 0 ? 1 : 0);
         const k = City.cellAt(b, col, row);
         if (k >= 0) hit = punchCell(state, m, b, k) || hit;
-        if (stomp) for (const dc of [-1, 1]) { const kk = City.cellAt(b, col + dc, 0); if (kk >= 0 && Math.abs(b.x0 + col + dc + 0.5 - m.x) <= reach * 0.8 && b.state[kk] !== S.BROKEN && b.cells[kk] !== T.NEON) hit = punchCell(state, m, b, kk) || hit; }
+        if (stomp && !dir.dx) for (const dc of [-1, 1]) { const kk = City.cellAt(b, col + dc, 0); if (kk >= 0 && Math.abs(b.x0 + col + dc + 0.5 - m.x) <= reach * 0.8 && b.state[kk] !== S.BROKEN && b.cells[kk] !== T.NEON) hit = punchCell(state, m, b, kk) || hit; }
       }
-      const inWay = (x) => stomp ? Math.abs(x - m.x) <= reach * 0.8 : ((x - m.x) * m.facing > -0.3 && Math.abs(x - m.x) <= reach + 0.3);
+      const inWay = (x) => stomp ? (dir.dx ? ((x - m.x) * dir.dx > -0.4 && Math.abs(x - m.x) <= reach + 0.2) : Math.abs(x - m.x) <= reach * 0.8) : ((x - m.x) * m.facing > -0.3 && Math.abs(x - m.x) <= reach + 0.3);
       if (m.lane === 0 && dir.dy <= 0) for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire' || s.st === 'leave') && inWay(s.x)) {
         if (stomp) { s.st = 'dead'; s.t = 0; } else { s.st = 'flyup'; s.t = 0; s.vx = m.facing * 6; s.vy = 7; }
         state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier');

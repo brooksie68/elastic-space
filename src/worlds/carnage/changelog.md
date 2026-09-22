@@ -82,6 +82,11 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   Measured in the lab: the IDLE clip carried a hips scale track of 1.176, so the standing pose was 17% bigger than
   every other clip and every action was a shrink back to true size. Scale tracks are now stripped from every clip at
   load (`rigged()` in render3d.js); idle / punch / walk all measure 10.3–10.9 m. Tags: game.js?v=3, render3d.js?v=2.
+- **His next two asks, same night, built**: (1) the camera never loses a climbing monster — after the eased follow, a
+  projected clamp keeps the head under the top edge and the feet above the bottom (two passes in `stepCamera`); a
+  climb onto an 11-floor roof keeps the head at 72% of the frame at worst. (2) DOWN-RIGHT / DOWN-LEFT on the street
+  are directional stomps: both fists come down to that side and the ground-floor cell that way breaks (a plain DOWN
+  still takes the cell under you and its neighbours). Sim +1 assertion. Tags: game-core.js?v=3, render3d.js?v=3.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

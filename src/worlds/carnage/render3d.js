@@ -1532,7 +1532,7 @@ export function createRenderer(canvas, lookIn) {
           const row = Math.floor(m.y + hand) + e.dy, col = (bb ? bb.x0 : 0) + m.col + e.dx;
           t.set((col + 0.5) * CELL, (row + 0.5) * CELL, -0.35 * CELL);
         } else if (e.st === 'street' && e.dy < 0) {
-          t.set(m.x * CELL + m.facing * 0.7 * CELL, 0.25, rootZ + 0.6 * CELL);
+          t.set(m.x * CELL + (e.dx ? e.dx * 1.1 : m.facing * 0.5) * CELL, 0.25, rootZ + 0.6 * CELL);
         } else {
           const row = Math.floor(m.y + hand) + (e.dy > 0 ? 1 : 0);
           t.set(m.x * CELL + m.facing * reach * CELL * 0.95, (row + 0.5) * CELL, rootZ - (m.lane === 0 ? 0.3 : 0) * CELL);
@@ -1622,10 +1622,23 @@ export function createRenderer(canvas, lookIn) {
     if (py > ty + viewH * 0.2) ty = py - viewH * 0.2;
     const k = 1 - Math.exp(-dt * look.camEase);
     camX += (tx - camX) * k; camY += (ty - camY) * k;
+    camera.position.set(camX, camY, camDist);
+    camera.rotation.set(-THREE.MathUtils.degToRad(look.pitch), 0, 0);
+    camera.updateMatrixWorld();
+    // never out of view (James, 2026-09-21): the head stays under the top edge and the feet above the bottom, whatever
+    // the ease is doing — a climb, a roof, a jump. Two passes of a projected clamp.
+    const mh = (state.opts.monsterH || 2.7) * CELL;
+    for (let pass = 0; pass < 2; pass++) {
+      _p.set(p.x * CELL, py + mh * 1.08, MON_Z).project(camera);
+      const over = _p.y - 0.86;
+      _p.set(p.x * CELL, py - 0.5, MON_Z).project(camera);
+      const under = -0.9 - _p.y;
+      if (over > 0) camY += over * viewH * 0.5; else if (under > 0) camY -= under * viewH * 0.5;
+      camera.position.y = camY; camera.updateMatrixWorld();
+    }
     let thud = 0;
     if (thudT > 0) thud = Math.sin(thudT * 22) * thudAmt * 0.35 * thudT;
     camera.position.set(camX, camY + thud, camDist);
-    camera.rotation.set(-THREE.MathUtils.degToRad(look.pitch), 0, 0);
   }
 
   // ---- post ---------------------------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 // you write a note on a verb, Claude reads it from disk (tmp/carnage/notes.mjs watch), acts, and stamps the
 // verb updated (the green dot + a toast here). Ranks 1–5 and PASSED / TRASH verdicts per verb, like the
 // Jabberwocky weapon lab. Same core, same renderer, same sounds as the game; no music in the lab, ever.
-import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=2';
+import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=3';
 
 const C = globalThis.CarnageCore, City = globalThis.CarnageCity, V = globalThis.CARNAGE_VERBS, Sfx = globalThis.CarnageSfx;
 const T = City.T, S = City.S;
