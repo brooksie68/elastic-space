@@ -16,6 +16,15 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
   16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
   fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
+- **OPEN, HIS LAST NOTE BEFORE THE COMPACT (2026-09-21 late): THE PROPORTIONS ARE OFF.** Apartment windows are as big
+  as (or bigger than) the shop windows and doors below, and shrinking the people made them "too small and silly".
+  The fix is the openings, not the people: a cell is 4 m; a residential window should read ~1.2 m wide × 1.5 m tall
+  (the opening in the facade shader is `o0 = (0.14, 0.16) … o1 = (0.86, 0.9)` of the cell — too big), sills at ~0.9 m;
+  the ground floor's glass/door should be the BIG openings; then put the people back to ~0.55 of a cell so they fit a
+  window and the door. Keep the 4 m cell (the rules and the wall grids depend on it). Verify with a close capture
+  (`tmp/carnage/lookdev.html`, `LAB.snap`) before handing over.
+- The session's history since round two is the changelog's 2026-09-21 entry (long; read it): every build was on his
+  notes while flying, one at a time, each committed locally. Meshy this session: 45 + 473 cr; balance 4,214.
 - `changelog.md` top entry — what was built, what he has not seen, the open list.
 - The notes loop is his channel for verb work: `node tmp/carnage/notes.mjs watch` under the Monitor tool at
   the start of any Carnage session (a note in the Damage Lab wakes the session). THE RULE (from the Jabberwocky
