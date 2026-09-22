@@ -149,6 +149,16 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   half its own fascia, door, interior, colours and awning, a party-wall line between. Soldiers 2.7 m and lit with a
   fill (they were reading black); window people at 0.62 of a cell. `slim_models.py` takes CARNAGE_RIGS_DIR /
   CARNAGE_STATICS_DIR; manifests meshy-r2-*.json. Sim tests 8 / 13 made seed-proof; 1,969,331 green.
+- **His next three, same night**: (1) victims proportionate to the shop doors (people 0.46 of a cell, the screamer 0.5;
+  the things smaller) — comically edible; (2) THE WORDMARK: an SVG on the loading gate and the start card, CARNAGE in
+  Impact bent along a rainbow arc (`textPath`), a yellow-to-red gradient, a fat dark outline, a turbulence drip filter
+  that roughs the letters up; (3) DARK, UNSATURATED BUILDINGS WITH GRIDS THAT LINE UP: the draped photo tiles are
+  gone from the walls — `Icons.wallTile(family, seed)` draws one crisp tile exactly ONE CELL (4 m) square: bricks
+  0.5 × 0.125 m in running bond (8 across, 32 courses), stone blocks 0.5 m square (8 × 8, a light top edge and a dark
+  bottom), slate panels 1 × 0.5 m, cement panels 2 m with tie holes, dark glass in 1 m panels; the facade shader
+  samples it anchored at the building's corner (`(vWorld - uOrigin) / uCell`) and the box sides repeat it once per
+  cell, so the grid meets itself at every edge and corner. Family looks: red brick, dark brick, stone, cement, slate,
+  dark glass; trims in gray stone, gray, and iron; the back rows in the same dark tints.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

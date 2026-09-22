@@ -38,8 +38,8 @@ const FAMILY_TILE_CELLS = { brick_red: 1.7, brick_tan: 1.8, concrete: 2.2, stucc
 // the 16-bit palettes: a saturated wall colour and a trim colour per family (the tile only gives the value)
 // real-city colours (James, 2026-09-21: the candy palette "looks like it was designed for little kids"): brick red-brown,
 // limestone tan, weathered concrete, cream stucco, slate steel, gray-teal glass; trims in stone, cream and iron
-const FAMILY_TINT = { brick_red: [0.58, 0.29, 0.23], brick_tan: [0.66, 0.52, 0.40], concrete: [0.56, 0.55, 0.51], stucco: [0.68, 0.62, 0.52], steel: [0.38, 0.42, 0.48], glass: [0.40, 0.50, 0.55] };
-const FAMILY_TRIM = { brick_red: [0.86, 0.80, 0.68], brick_tan: [0.92, 0.88, 0.80], concrete: [0.80, 0.78, 0.74], stucco: [0.94, 0.90, 0.82], steel: [0.22, 0.23, 0.26], glass: [0.18, 0.20, 0.24] };
+const FAMILY_TINT = { brick_red: [0.36, 0.18, 0.15], brick_tan: [0.23, 0.16, 0.13], concrete: [0.46, 0.46, 0.44], stucco: [0.44, 0.42, 0.40], steel: [0.26, 0.28, 0.33], glass: [0.16, 0.19, 0.23] };
+const FAMILY_TRIM = { brick_red: [0.70, 0.66, 0.58], brick_tan: [0.62, 0.58, 0.52], concrete: [0.62, 0.61, 0.58], stucco: [0.72, 0.70, 0.66], steel: [0.18, 0.19, 0.22], glass: [0.14, 0.15, 0.18] };
 const FAMILY_INNARDS = { brick_red: [0.28, 0.12, 0.08], brick_tan: [0.3, 0.22, 0.14], concrete: [0.2, 0.2, 0.2], stucco: [0.3, 0.26, 0.2], steel: [0.14, 0.14, 0.16], glass: [0.1, 0.12, 0.14] };
 const BRAND_COLOR = { george: [0.88, 0.17, 0.17, 1.0, 0.82, 0.23], lizzie: [0.18, 0.44, 0.85, 1.0, 1.0, 1.0], ralph: [0.95, 0.55, 0.16, 0.42, 0.23, 0.07] };
 const BRAND_ID = { george: 1, lizzie: 2, ralph: 3 };
@@ -337,10 +337,8 @@ const FACADE_FS = /* glsl */`
     float item = float((flags >> 4) & 1);
 
     // the wall everywhere, in world space so bricks run across cells: the tile's value under the family's colour
-    vec2 wuv = (vWorld.xy) / (uCell * uTileCells) + uSeed * 3.0;
-    vec3 tex = texture(uWall, wuv).rgb;
-    float val = dot(tex, vec3(0.3, 0.5, 0.2));
-    vec3 wall = uTint * (0.5 + 1.0 * val);
+    vec2 wuv = (vWorld.xy - uOrigin.xy) / uCell;   // one tile per cell, anchored at the building's corner: the grid lands on every edge
+    vec3 wall = texture(uWall, wuv).rgb;
     float grime = smoothstep(2.5, 0.0, vWorld.y / uCell) * 0.35 + fbm(vWorld.xy * 0.35 + uSeed) * 0.25;
     float streak = smoothstep(0.35, 0.0, abs(fract(cell.x) - 0.5)) * smoothstep(0.85, 0.2, f.y) * noise(vec2(ci.x * 3.1 + uSeed * 9.0, vWorld.y * 0.7)) * 0.5;
     wall *= 1.0 - uWear * (grime + streak) * 0.7;
@@ -723,7 +721,7 @@ export function createRenderer(canvas, lookIn) {
   const textures = {};
   const models = { monsters: {}, teen: null, soldier: null, statics: {}, people: {} };
   const PEOPLE_CLIPS = { screamer: 'help', customer: 'phone', worker: 'talk', zombie: 'phone', streamer: 'cheer', waver: 'wave' };
-  const THING_MODELS = { fryer: 0.42, peloton: 0.55, battery: 0.3, cash: 0.28, cake: 0.3, cactus: 0.5 };   // longest side, in cells
+  const THING_MODELS = { fryer: 0.3, peloton: 0.42, battery: 0.24, cash: 0.22, cake: 0.24, cactus: 0.4 };   // longest side, in cells
   let assetsFailed = 0;
   const texClones = {};
   function tex(name) {
@@ -978,7 +976,7 @@ export function createRenderer(canvas, lookIn) {
     // THE BACK STREETS (James, 2026-09-21): an alley behind the front row, a row of blocks, a second street, a taller row —
     // then the painted skyline. Front faces at ALLEY_Z and STREET2_Z; the x range runs well past both ends.
     const rows = [{ z: ALLEY_Z, n: Math.ceil(width / 4) + 40, hMin: 3, hMax: 9, w: [10, 26], d: [14, 30], dim: 0.92 }, { z: STREET2_Z, n: Math.ceil(width / 4) + 40, hMin: 5, hMax: 16, w: [14, 32], d: [16, 34], dim: 0.8 }];
-    const tints = Object.values(FAMILY_TINT);
+    const tints = Object.values(FAMILY_TINT).map((t) => t.map((c) => Math.min(1, c * 1.25)));
     for (const row of rows) {
       const geo = new THREE.BoxGeometry(1, 1, 1);
       geo.translate(0, 0.5, 0);
@@ -1045,11 +1043,14 @@ export function createRenderer(canvas, lookIn) {
     g.position.set(b.x0 * CELL, 0, 0);
     const W = b.cols * CELL, H = b.floors * CELL;
     // the body: sides, back, roof in the family's tile
-    const wallTex = tex(FAMILY_TILE[fam.id]);
-    // the building's own colours: the family's palette rolled a little per building
-    const roll = () => 0.9 + 0.2 * seedRnd();
+    // THE WALL: a crisp tile exactly one cell square (bricks / stone / slate / cement / dark glass), the same canvas on
+    // the face and the sides, repeated once per cell so the grid meets itself at the corners
+    const wallCanvas = Icons().wallTile(fam.id, Math.floor(seedRnd() * 6));
+    const wallTex = canvasTex(wallCanvas); wallTex.wrapS = wallTex.wrapT = THREE.RepeatWrapping; wallTex.anisotropy = 8; wallTex.minFilter = THREE.LinearMipmapLinearFilter; wallTex.generateMipmaps = true;
+    const sideTex = wallTex.clone(); sideTex.repeat.set(DEPTH / CELL, H / CELL); sideTex.needsUpdate = true;
+    const roll = () => 0.92 + 0.16 * seedRnd();
     const tint = FAMILY_TINT[fam.id].map((c) => Math.min(1, c * roll())), trim = FAMILY_TRIM[fam.id].map((c) => Math.min(1, c * (0.95 + 0.1 * seedRnd())));
-    const sideMat = new THREE.MeshStandardMaterial({ map: tile(FAMILY_TILE[fam.id], DEPTH / (CELL * FAMILY_TILE_CELLS[fam.id]), H / (CELL * FAMILY_TILE_CELLS[fam.id])), color: new THREE.Color(Math.min(1, tint[0] * 1.6), Math.min(1, tint[1] * 1.6), Math.min(1, tint[2] * 1.6)), emissive: new THREE.Color(tint[0] * 0.22, tint[1] * 0.22, tint[2] * 0.22), roughness: 0.92, metalness: fam.id === 'steel' || fam.id === 'glass' ? 0.35 : 0.02 });
+    const sideMat = new THREE.MeshStandardMaterial({ map: sideTex, color: 0xd8d8d8, emissive: 0x161616, roughness: 0.92, metalness: fam.id === 'steel' || fam.id === 'glass' ? 0.3 : 0.02 });
     const roofMat = new THREE.MeshStandardMaterial({ map: tile('roof', W / 10, DEPTH / 10), roughness: 1 });
     const backMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 1 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, DEPTH), [sideMat, sideMat, roofMat, backMat, backMat, backMat]);   // +x -x +y -y +z(front, hidden by the facade) -z
@@ -1103,7 +1104,7 @@ export function createRenderer(canvas, lookIn) {
       uShopTex: { value: canvasTex(b.restaurant ? Icons().brandSign(b.restaurant, 1024, 96) : Icons().shopSign(b.shop || 0, 1024, 96, false)) }, uShopKind: { value: b.restaurant ? 8 : (b.shop || 0) % 8 },
       uSplit: { value: split }, uDoor2: { value: doorCol2 }, uShopTex2: { value: canvasTex(Icons().shopSign(b.shop2 >= 0 ? b.shop2 : 0, 1024, 96, false)) }, uShopKind2: { value: (b.shop2 >= 0 ? b.shop2 : 0) % 8 },
       uBrandA2: { value: new THREE.Vector3(brand2[0], brand2[1], brand2[2]) }, uBrandB2: { value: new THREE.Vector3(brand2[3], brand2[4], brand2[5]) },
-      uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: FAMILY_TILE_CELLS[fam.id] },
+      uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: 1 },
       uSeed: { value: seedRnd() }, uTime: { value: 0 }, uNight: { value: night ? 1 : 0 }, uDay: { value: night ? 0 : 1 }, uWear: { value: look.wear }, uRoomLight: { value: look.roomLight }, uCollapse: { value: 0 },
       uInnards: { value: new THREE.Vector3(...FAMILY_INNARDS[fam.id]) }, uCamPos: { value: new THREE.Vector3() }, uOrigin: { value: new THREE.Vector3(b.x0 * CELL, 0, 0) },
       uSky: { value: new THREE.Color(palette.day.top) }, uGround: { value: new THREE.Color(palette.day.ground) }, uSunDir: { value: skyUniforms.uSunDir.value.clone() },
@@ -1182,7 +1183,7 @@ export function createRenderer(canvas, lookIn) {
       let v = itemViews.get(it.id);
       if (!v && models.people[it.deal] && models.people[it.deal].scene) {
         // a person: a rigged model standing on the sill, the clip looping, facing the street
-        const rig = makeRig(models.people[it.deal], CELL * 0.62, 0x9a9aa2);
+        const rig = makeRig(models.people[it.deal], CELL * (it.deal === 'screamer' ? 0.5 : 0.46), 0x9a9aa2);   // a person is shorter than the shop door (0.72 of a cell): edible, obviously
         actorGroup.remove(rig.root); cityGroup.add(rig.root);
         rig.root.position.set(it.x * CELL, (it.row + 0.16) * CELL, 0.32);
         rig.root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } });
@@ -1204,7 +1205,7 @@ export function createRenderer(canvas, lookIn) {
       if (!v) {
         const name = it.deal === 'fryer' ? 'fryer' : it.deal;
         const mat = new THREE.MeshBasicMaterial({ map: it.deal === 'screamer' ? screamerFrame(0) : iconTexture(name), transparent: true, depthWrite: false });
-        const big = it.deal === 'screamer' ? 0.72 : 0.66;
+        const big = it.deal === 'screamer' ? 0.5 : 0.46;
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CELL * big, CELL * big), mat);
         mesh.position.set(it.x * CELL, (it.row + 0.5) * CELL - CELL * 0.06, 0.14);   // just in front of the wall, inside the opening
         mesh.renderOrder = 2;

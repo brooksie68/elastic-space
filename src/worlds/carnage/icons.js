@@ -337,6 +337,62 @@
     cache[key] = c; return c;
   }
 
+  // THE WALL TILES (James, 2026-09-21: bricks and stone that line up with the corners): every tile is exactly ONE CELL
+  // (4 m) square at 512 px, so the grid lands on every cell edge and every corner of the box. Bricks 0.5 x 0.125 m in
+  // running bond (8 across, 32 courses); stone blocks 0.5 m square (8 x 8); slate panels 1 x 0.5 m; cement panels 2 m
+  // with tie holes; dark glass in 1 m panels. Dark, unsaturated.
+  const WALL_LOOKS = {
+    brick_red: { kind: 'brick', base: [92, 46, 38], jitter: 14, mortar: [70, 62, 58] },
+    brick_tan: { kind: 'brick', base: [58, 40, 34], jitter: 12, mortar: [52, 48, 46] },
+    stucco: { kind: 'stone', base: [112, 108, 102], jitter: 10, mortar: [78, 76, 72] },
+    concrete: { kind: 'cement', base: [118, 117, 112], jitter: 6, mortar: [88, 88, 84] },
+    steel: { kind: 'slate', base: [66, 72, 84], jitter: 8, mortar: [40, 44, 52] },
+    glass: { kind: 'glass', base: [40, 48, 58], jitter: 5, mortar: [24, 28, 34] },
+  };
+  function wallTile(id, seed) {
+    const key = 'wall:' + id + ':' + seed;
+    if (cache[key]) return cache[key];
+    const L = WALL_LOOKS[id] || WALL_LOOKS.concrete;
+    const s = 512, c = canvas(s, s), g = c.getContext('2d');
+    let r = (seed * 7919 + 101) >>> 0;
+    const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
+    const col = (b, j) => { const k = 1 + (rnd() - 0.5) * 2 * j / 100; return 'rgb(' + b.map((v) => Math.max(0, Math.min(255, Math.round(v * k)))).join(',') + ')'; };
+    g.fillStyle = 'rgb(' + L.mortar.join(',') + ')'; g.fillRect(0, 0, s, s);
+    if (L.kind === 'brick') {
+      const bw = 64, bh = 16, m = 3;
+      for (let row = 0; row < s / bh; row++) {
+        const off = row % 2 ? bw / 2 : 0;
+        for (let x = -bw; x < s + bw; x += bw) {
+          g.fillStyle = col(L.base, L.jitter);
+          g.fillRect(x + off + m / 2, s - (row + 1) * bh + m / 2, bw - m, bh - m);
+          // a lighter top edge on each brick
+          g.fillStyle = 'rgba(255,255,255,0.06)'; g.fillRect(x + off + m / 2, s - (row + 1) * bh + m / 2, bw - m, 2);
+        }
+      }
+    } else if (L.kind === 'stone') {
+      const bs = 64, m = 4;
+      for (let y = 0; y < s; y += bs) for (let x = 0; x < s; x += bs) {
+        g.fillStyle = col(L.base, L.jitter); g.fillRect(x + m / 2, y + m / 2, bs - m, bs - m);
+        g.fillStyle = 'rgba(255,255,255,0.08)'; g.fillRect(x + m / 2, y + m / 2, bs - m, 3); g.fillRect(x + m / 2, y + m / 2, 3, bs - m);
+        g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(x + m / 2, y + bs - m / 2 - 3, bs - m, 3); g.fillRect(x + bs - m / 2 - 3, y + m / 2, 3, bs - m);
+      }
+    } else if (L.kind === 'slate') {
+      const pw = 128, ph = 64, m = 2;
+      for (let y = 0; y < s; y += ph) { const off = (y / ph) % 2 ? pw / 2 : 0; for (let x = -pw; x < s + pw; x += pw) { g.fillStyle = col(L.base, L.jitter); g.fillRect(x + off + m / 2, y + m / 2, pw - m, ph - m); g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(x + off + m / 2, y + m / 2, pw - m, 2); } }
+    } else if (L.kind === 'cement') {
+      const pw = 256, m = 3;
+      for (let y = 0; y < s; y += pw) for (let x = 0; x < s; x += pw) {
+        g.fillStyle = col(L.base, L.jitter); g.fillRect(x + m / 2, y + m / 2, pw - m, pw - m);
+        for (let i = 0; i < 200; i++) { g.fillStyle = 'rgba(0,0,0,' + (0.03 + rnd() * 0.05) + ')'; g.fillRect(x + rnd() * pw, y + rnd() * pw, 2 + rnd() * 3, 2 + rnd() * 3); }
+        for (const [dx, dy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) { g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.arc(x + pw * dx, y + pw * dy, 5, 0, Math.PI * 2); g.fill(); }
+      }
+    } else {
+      const pw = 128, m = 4;
+      for (let y = 0; y < s; y += pw) for (let x = 0; x < s; x += pw) { g.fillStyle = col(L.base, L.jitter); g.fillRect(x + m / 2, y + m / 2, pw - m, pw - m); const gr = g.createLinearGradient(x, y, x + pw, y + pw); gr.addColorStop(0, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(x + m / 2, y + m / 2, pw - m, pw - m); }
+    }
+    cache[key] = c; return c;
+  }
+
   // the trees and bushes: two-tone canopies, a dark outline, a highlight — the 16-bit register, 256 px, transparent
   const TREE_KINDS = ['round', 'tall', 'palm', 'bush', 'flowers'];
   function tree(kind, seed) {
@@ -480,5 +536,5 @@
     cache[key] = c; return c;
   }
 
-  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, shopSign, brandSign, awning, BRAND_NAMES, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
+  globalThis.CarnageIcons = { icon, signAtlas, SIGNS, shopAtlas, SHOPS, shopSign, brandSign, awning, BRAND_NAMES, wallTile, WALL_LOOKS, tree, TREE_KINDS, screamer, skyline, banner, BANNERS, brandMark, BRAND, soft, cloud, DRAW_NAMES: Object.keys(DRAW) };
 })();
