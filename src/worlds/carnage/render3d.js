@@ -26,6 +26,8 @@ export const LOOK_DEFAULTS = {
   wear: 0.6,          // grime on the walls
   dust: 1,            // the collapse dust
   debris: 1,          // how much flies
+  mound: 1,           // how high the rubble mound piles after a collapse
+  moundStay: 1,       // how long the mound holds before it slumps
   fogDepth: 1,        // the far rows fading
   stars: 1,
   res: 1,             // resolution cap
@@ -401,8 +403,9 @@ const FACADE_FS = /* glsl */`
       }
     } else if (type == 0) {
       // a window (or a storefront): the opening, the frame, the sill, the glass and the room
-      vec2 o0 = type == 3 ? vec2(0.06, 0.0) : vec2(0.14, 0.16);
-      vec2 o1 = type == 3 ? vec2(0.94, 0.72) : vec2(0.86, 0.9);
+      // a residential window is 1.36 m wide and 1.7 m tall with its sill at 0.9 m, centred in the 4 m cell (the shopfront still fills its cell)
+      vec2 o0 = type == 3 ? vec2(0.06, 0.0) : vec2(0.33, 0.225);
+      vec2 o1 = type == 3 ? vec2(0.94, 0.72) : vec2(0.67, 0.65);
       float openBox = box(f - (o0 + o1) * 0.5, (o1 - o0) * 0.5);
       float broken = float(state == 2);
       float rag = broken * (0.04 + 0.05 * fbm(f * 7.0 + seed * 30.0));
@@ -474,7 +477,7 @@ const FACADE_FS = /* glsl */`
         col = mix(col, uTrim * 0.8, lintel);
       }
       if (ac > 0.5 && broken < 0.5 && type == 0) {
-        float acb = 1.0 - smoothstep(0.0, 0.01, box(f - vec2(0.7, 0.25), vec2(0.13, 0.08)));
+        float acb = 1.0 - smoothstep(0.0, 0.01, box(f - vec2(0.59, 0.27), vec2(0.08, 0.05)));
         float grille = 0.8 + 0.2 * step(0.5, fract(f.y * 30.0));
         col = mix(col, vec3(0.72, 0.72, 0.7) * grille, acb);
       }
@@ -641,15 +644,16 @@ const FAR_FS = /* glsl */`
   uniform float uNight, uDim, uTime; uniform vec3 uTint, uFogCol; uniform float uFogA, uFogB;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main() {
+    // local y runs 0 .. height (the box stands on the ground); floors are 4 m, the ground floor is a blank band
     vec2 p = abs(vN.x) > 0.5 ? vLocal.zy : vLocal.xy;
-    vec2 g = p / 4.0 + 0.5;
+    vec2 g = vec2(p.x / 4.0 + 0.5, p.y / 4.0);
     vec2 c = floor(g), f = fract(g);
-    float isWin = step(0.22, f.x) * step(f.x, 0.78) * step(0.22, f.y) * step(f.y, 0.86);
-    float frame = isWin * (1.0 - step(0.27, f.x) * step(f.x, 0.73) * step(0.27, f.y) * step(f.y, 0.81));
+    float isWin = step(0.33, f.x) * step(f.x, 0.67) * step(0.225, f.y) * step(f.y, 0.65);
+    float frame = isWin * (1.0 - step(0.36, f.x) * step(f.x, 0.64) * step(0.255, f.y) * step(f.y, 0.62));
     float lit = step(mix(0.82, 0.5, uNight), hash(c + vSeed * 7.0 + floor(vN.x * 3.0)));
-    float top = step(vSize.y * 0.5 - 0.6, vLocal.y);
-    float cornice = step(vSize.y * 0.5 - 1.2, vLocal.y) * (1.0 - top);
-    float base = step(vLocal.y, -vSize.y * 0.5 + 4.0);
+    float top = step(vSize.y - 0.6, vLocal.y);
+    float cornice = step(vSize.y - 1.2, vLocal.y) * (1.0 - top);
+    float base = step(vLocal.y, 4.0);
     vec3 wall = vTint * (0.9 + 0.2 * hash(vec2(vSeed, vN.y))) * mix(1.0, 0.18, uNight) * (abs(vN.x) > 0.5 ? 0.78 : 1.0) * (1.0 - top * 0.3) * (1.0 - cornice * 0.35) * (1.0 - base * 0.25);
     vec3 glass = mix(vec3(0.32, 0.36, 0.42) * mix(1.0, 0.25, uNight), vec3(1.0, 0.85, 0.6) * (0.35 + 0.65 * uNight) * 1.3, lit);
     vec3 win = mix(glass, vTint * 1.1 * mix(1.0, 0.2, uNight), frame);
@@ -1142,24 +1146,46 @@ export function createRenderer(canvas, lookIn) {
     const rubble = makeRubble(W, seedRnd);
     rubble.visible = false; g.add(rubble);
     cityGroup.add(g);
-    const view = { g, body, facade, uniforms, data, cellsTex, rubble, parapet, W, H, collapsed: false, dropShown: 0, items: new Map(), fam, tint, trim };
+    const view = { g, body, facade, uniforms, data, cellsTex, rubble, parapet, W, H, collapsed: false, dropShown: 0, moundT: 0, moundH: 0, items: new Map(), fam, tint, trim };
     buildingViews.set(b.id, view);
     return view;
   }
+  // THE MOUND (James, 2026-09-22: "a whole building just fell down — leave a big mound for a bit, let it crush down and then
+  // sink down and eventually disappear"): a lumpy dome the size of the lot, unit height, scaled up while the building comes
+  // down floor by floor, held, then slumped to a low pile. The chunks rest on its surface and sink with it (moundHeightAt).
+  const MOUND_W = 3, MOUND_D = 3;   // metres of spill past the lot on each side
+  function moundProfile(W, seed, x, z) {
+    // x from the lot's left edge, z from its front face (negative into the lot); 0..1
+    const hw = W / 2 + MOUND_W, hd = DEPTH / 2 + MOUND_D;
+    const u = (x - W / 2) / hw, v = (z + DEPTH / 2 - 1) / hd;
+    const r = Math.min(1, Math.sqrt(u * u + v * v));
+    const dome = Math.pow(Math.cos(r * Math.PI / 2), 0.75);
+    const lump = 0.82 + 0.18 * Math.sin(x * 1.7 + seed * 9.0) * Math.cos(z * 1.3 + seed * 4.0) + 0.1 * Math.sin(x * 4.1 + z * 3.7 + seed * 20.0);
+    return dome * lump;
+  }
   function makeRubble(W, seedRnd) {
-    const geo = new THREE.PlaneGeometry(W + 3, DEPTH + 3, 12, 6);
+    const seed = seedRnd();
+    const geo = new THREE.PlaneGeometry(W + MOUND_W * 2, DEPTH + MOUND_D * 2, 18, 9);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i);
-      const edge = Math.min(1, Math.min(Math.abs(x) / ((W + 3) / 2), Math.abs(y) / ((DEPTH + 3) / 2)));
-      pos.setZ(i, (1 - edge) * (1.2 + seedRnd() * 1.6));
+      const x = pos.getX(i) + W / 2, z = -pos.getY(i) - DEPTH / 2 + 1;   // plane coords → lot coords (the plane is laid flat, its y runs into the lot)
+      pos.setZ(i, moundProfile(W, seed, x, z));
     }
     geo.computeVertexNormals();
-    const mat = new THREE.MeshStandardMaterial({ map: tile('rubble', (W + 3) / 8, (DEPTH + 3) / 8), roughness: 1 });
+    const mat = new THREE.MeshStandardMaterial({ map: tile('rubble', (W + 6) / 6, (DEPTH + 6) / 6), roughness: 1 });
     const m = new THREE.Mesh(geo, mat);
-    m.rotation.x = -Math.PI / 2; m.position.set(W / 2, 0.05, -DEPTH / 2 + 1);
+    m.rotation.x = -Math.PI / 2; m.position.set(W / 2, 0.02, -DEPTH / 2 + 1);
+    m.scale.z = 0.001;   // scale.z is height once the plane is laid flat
+    m.castShadow = true; m.receiveShadow = true;
+    m.userData.seed = seed; m.userData.W = W;
     return m;
   }
+  function moundHeightAt(view, wx, wz) {
+    const m = view.rubble; if (!m || !m.visible) return 0;
+    const x = wx - view.g.position.x;   // the building group sits at x0 * CELL
+    return m.scale.z * moundProfile(m.userData.W, m.userData.seed, x, wz);
+  }
+  function moundTarget(b) { return Math.min(9, Math.max(3, b.floors * CELL * 0.3)) * look.mound; }
   function refreshCells(view, b) {
     const d = view.data;
     for (let k = 0; k < b.cells.length; k++) { d[k * 4] = b.cells[k]; d[k * 4 + 1] = b.state[k]; }
@@ -1185,7 +1211,7 @@ export function createRenderer(canvas, lookIn) {
         // a person: a rigged model standing on the sill, the clip looping, facing the street
         const rig = makeRig(models.people[it.deal], CELL * (it.deal === 'screamer' ? 0.5 : 0.46), 0x9a9aa2);   // a person is shorter than the shop door (0.72 of a cell): edible, obviously
         actorGroup.remove(rig.root); cityGroup.add(rig.root);
-        rig.root.position.set(it.x * CELL, (it.row + 0.16) * CELL, 0.32);
+        rig.root.position.set(it.x * CELL, (it.row + (it.row > 0 ? 0.06 : 0.16)) * CELL, 0.32);
         rig.root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } });
         play(rig, PEOPLE_CLIPS[it.deal], { speed: it.deal === 'screamer' ? 1.3 : 1 });
         v = { mesh: rig.root, mat: null, rig, deal: it.deal, hot: it.hot, glow: null, t: 0, model: true };
@@ -1195,7 +1221,7 @@ export function createRenderer(canvas, lookIn) {
         // a thing: the real model on the sill
         const st2 = makeStatic(it.deal, CELL * THING_MODELS[it.deal], 0x888888, [1, 1, 1]);
         actorGroup.remove(st2.root); cityGroup.add(st2.root);
-        st2.root.position.set(it.x * CELL, (it.row + 0.16) * CELL, 0.3);
+        st2.root.position.set(it.x * CELL, (it.row + (it.row > 0 ? 0.06 : 0.16)) * CELL, 0.3);
         st2.inner.rotation.y = -0.35;
         st2.root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } });
         v = { mesh: st2.root, mat: null, deal: it.deal, hot: it.hot, glow: null, t: 0, model: true, statik: st2 };
@@ -1241,8 +1267,10 @@ export function createRenderer(canvas, lookIn) {
   }
 
   // ---- effects: debris, dust, shards, sparks, flashes -----------------------------------------------------------------------
-  const DEBRIS_N = 420, DUST_N = 360, SHARD_N = 240, SPARK_N = 200;
-  const debrisGeo = new THREE.BoxGeometry(1, 1, 1);
+  const DEBRIS_N = 900, DUST_N = 360, SHARD_N = 240, SPARK_N = 200;
+  // a chunk is a jittered low-poly rock, not a cube (James: "crumbling rock")
+  const debrisGeo = new THREE.IcosahedronGeometry(0.62, 0);
+  { const pos = debrisGeo.attributes.position, seen = new Map(); for (let i = 0; i < pos.count; i++) { const key = pos.getX(i).toFixed(3) + ',' + pos.getY(i).toFixed(3) + ',' + pos.getZ(i).toFixed(3); let j = seen.get(key); if (j == null) { j = 0.72 + Math.random() * 0.5; seen.set(key, j); } pos.setXYZ(i, pos.getX(i) * j, pos.getY(i) * j * 0.8, pos.getZ(i) * j); } debrisGeo.computeVertexNormals(); }
   const debrisMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, vertexColors: false });
   const debris = new THREE.InstancedMesh(debrisGeo, debrisMat, DEBRIS_N);
   debris.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -1250,7 +1278,7 @@ export function createRenderer(canvas, lookIn) {
   const debrisColor = new Float32Array(DEBRIS_N * 3);
   debris.instanceColor = new THREE.InstancedBufferAttribute(debrisColor, 3);
   const debrisPool = [];
-  for (let i = 0; i < DEBRIS_N; i++) debrisPool.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, wx: 0, wy: 0, wz: 0, s: 1, sx: 1, sy: 1, sz: 1, life: 0, rest: 0 });
+  for (let i = 0; i < DEBRIS_N; i++) debrisPool.push({ alive: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, rx: 0, ry: 0, rz: 0, wx: 0, wy: 0, wz: 0, s: 1, sx: 1, sy: 1, sz: 1, life: 0, rest: 0, mv: null });
   scene.add(debris);
   const dustMat = new THREE.SpriteMaterial({ map: softTex, color: 0xb8ad9e, transparent: true, opacity: 0.5, depthWrite: false });
   const dustPool = [];
@@ -1273,15 +1301,16 @@ export function createRenderer(canvas, lookIn) {
   const flashes = [];   // { sprite, life }
   const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
   const rnd = () => Math.random();
-  function spawnDebris(x, y, z, n, spread, color, big) {
+  function spawnDebris(x, y, z, n, spread, color, big, mv, huge) {
     let made = 0;
     for (const d of debrisPool) {
       if (d.alive) continue;
-      d.alive = true; d.life = 3.5 + rnd() * 2; d.rest = 0;
-      d.x = x + (rnd() - 0.5) * spread; d.y = y + (rnd() - 0.5) * spread * 0.6; d.z = z + rnd() * 1.5;
-      d.vx = (rnd() - 0.5) * 7; d.vy = 2 + rnd() * 7; d.vz = 2 + rnd() * 6;
+      d.alive = true; d.life = mv ? 14 + rnd() * 10 : 3.5 + rnd() * 2; d.rest = 0; d.mv = mv || null;
+      d.x = x + (rnd() - 0.5) * spread; d.y = y + (rnd() - 0.5) * (mv ? 1.5 : spread * 0.6); d.z = z + rnd() * 1.5;
+      if (mv) { d.z = z - rnd() * (DEPTH * 0.8); }   // collapse chunks land all over the lot, not just at the front
+      d.vx = (rnd() - 0.5) * (mv ? 5 : 7); d.vy = mv ? -1 - rnd() * 3 : 2 + rnd() * 7; d.vz = mv ? (rnd() - 0.5) * 4 + 1.5 : 2 + rnd() * 6;
       d.rx = rnd() * TAU; d.ry = rnd() * TAU; d.rz = rnd() * TAU; d.wx = (rnd() - 0.5) * 8; d.wy = (rnd() - 0.5) * 8; d.wz = (rnd() - 0.5) * 8;
-      const sc = (big ? 0.5 : 0.22) + rnd() * (big ? 0.9 : 0.35);
+      const sc = huge ? 1.1 + rnd() * 1.6 : (big ? 0.5 : 0.22) + rnd() * (big ? 0.9 : 0.35);
       d.sx = sc * (0.6 + rnd() * 0.8); d.sy = sc * (0.4 + rnd() * 0.6); d.sz = sc * (0.6 + rnd() * 0.8);
       const k = 0.7 + rnd() * 0.5;
       debrisColor[debrisPool.indexOf(d) * 3] = color[0] * k; debrisColor[debrisPool.indexOf(d) * 3 + 1] = color[1] * k; debrisColor[debrisPool.indexOf(d) * 3 + 2] = color[2] * k;
@@ -1337,13 +1366,14 @@ export function createRenderer(canvas, lookIn) {
       if (!d.alive) { _m4.makeScale(0, 0, 0); debris.setMatrixAt(i, _m4); continue; }
       d.life -= dt;
       if (d.life <= 0) { d.alive = false; _m4.makeScale(0, 0, 0); debris.setMatrixAt(i, _m4); continue; }
+      const ground = d.mv ? moundHeightAt(d.mv, d.x, d.z) : 0;
       if (!d.rest) {
         d.vy -= G * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.z += d.vz * dt;
         d.rx += d.wx * dt; d.ry += d.wy * dt; d.rz += d.wz * dt;
-        const floor = d.sy * 0.5;
+        const floor = ground + d.sy * 0.5;
         if (d.y < floor) { d.y = floor; if (Math.abs(d.vy) > 4) { d.vy = -d.vy * 0.35; d.vx *= 0.6; d.vz *= 0.6; d.wx *= 0.5; d.wz *= 0.5; } else { d.rest = 1; d.vx = d.vy = d.vz = 0; d.wx = d.wy = d.wz = 0; } }
         if (d.z > 3.4 && d.y < 0.4) { d.vz *= 0.8; }
-      }
+      } else if (d.mv) { d.y = ground + d.sy * 0.5; }   // resting on the mound: sink with it
       const fade = d.life < 0.6 ? d.life / 0.6 : 1;
       _e.set(d.rx, d.ry, d.rz); _q.setFromEuler(_e); _v.set(d.x, d.y, d.z); _s.set(d.sx * fade, d.sy * fade, d.sz * fade);
       _m4.compose(_v, _q, _s); debris.setMatrixAt(i, _m4);
@@ -1877,7 +1907,16 @@ export function createRenderer(canvas, lookIn) {
       case 'neon': if (bv) bv.uniforms.uNeonLit.value = e.on ? 1 : 0; break;
       case 'neonOut': if (bv && b) { refreshCells(bv, b); bv.uniforms.uNeonLit.value = 0; spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 0.5, 40, 7); spawnShards(e.x * CELL, (e.y + 0.5) * CELL, 0.4, 20); } break;
       case 'neonShock': spawnSparks(e.x * CELL, (e.y + 0.5) * CELL, 0.8, 30, 8); flash(e.x * CELL, (e.y + 0.6) * CELL, 1.2, 6, 0x9ad8ff, 0.25); break;
-      case 'collapseStart': if (bv) { bv.collapsing = true; thudT = 0.35; thudAmt = 0.5; } break;
+      case 'collapseStart': if (bv) { bv.collapsing = true; bv.moundT = 0; bv.moundH = moundTarget(b); bv.rubble.visible = true; bv.rubble.scale.z = 0.05; thudT = 0.35; thudAmt = 0.5; } break;
+      case 'collapseJolt': if (bv && b) {
+        // one floor crushed out: chunks burst from the base line, dust rolls out along it, the ground thumps
+        const cx = (b.x0 + b.cols / 2) * CELL, base = bv.rubble.scale.z;
+        spawnDebris(cx, base + 1.5, 0.5, Math.round(Math.min(40, 6 + b.cols * 3) * look.debris), b.cols * CELL, FAMILY_INNARDS[bv.fam.id], true, bv, false);
+        spawnDebris(cx, base + 1, 0.5, Math.round(Math.min(14, 2 + b.cols) * look.debris), b.cols * CELL, bv.tint ? bv.tint.map((c) => c * 0.85) : FAMILY_INNARDS[bv.fam.id], true, bv, true);
+        spawnDust(cx, base + 0.5, 1.5, Math.round(6 + b.cols * 1.5), 3.5, 2.2, 0, 0.6, 0.5);
+        spawnDust(b.x0 * CELL - 1, base + 0.5, 2, 4, 3, 2, -4, 0.4, 0.4); spawnDust((b.x0 + b.cols) * CELL + 1, base + 0.5, 2, 4, 3, 2, 4, 0.4, 0.4);
+        thudT = 0.25; thudAmt = 0.55;
+      } break;
       case 'collapseEnd': if (bv && b) { finishCollapse(bv, b); thudT = 0.45; thudAmt = 1; } break;
       case 'punchLand': if (e.hit) spawnDust(e.x * CELL, (e.y + 1.2) * CELL, 0.2, 2, 0.8, 0.45, 0, 0.5, 0.3); break;
       case 'punch': {
@@ -1947,15 +1986,18 @@ export function createRenderer(canvas, lookIn) {
     }
   }
   function finishCollapse(bv, b) {
-    bv.collapsed = true; bv.collapsing = false;
+    bv.collapsed = true; bv.collapsing = false; bv.moundT = 0;
     bv.body.visible = false; bv.facade.visible = false; bv.parapet.visible = false;
     for (const c of bv.g.children) if (c !== bv.rubble && c !== bv.body && c !== bv.facade && c !== bv.parapet) c.visible = false;
-    bv.rubble.visible = true;
-    const cx = (b.x0 + b.cols / 2) * CELL;
-    spawnDust(cx, 1, 2, 40, 5, 4.5, 0, 1.2, 0.75);
+    bv.g.position.y = 0; bv.g.position.x = b.x0 * CELL; bv.g.scale.y = 1;
+    bv.rubble.visible = true; bv.rubble.position.y = 0.02; bv.rubble.scale.z = Math.max(0.05, bv.moundH);
+    const cx = (b.x0 + b.cols / 2) * CELL, top = bv.moundH;
+    spawnDust(cx, top * 0.5, 2, 40, 5.5, 4.5, 0, 1.2, 0.75);
+    spawnDust(cx, top * 0.8, -DEPTH * 0.4, 20, 6, 5, 0, 1.0, 0.6);
     spawnDust(b.x0 * CELL - 2, 1, 3, 12, 4, 4, -5, 0.8, 0.6);
     spawnDust((b.x0 + b.cols) * CELL + 2, 1, 3, 12, 4, 4, 5, 0.8, 0.6);
-    spawnDebris(cx, 2, 1, Math.round(50 * look.debris), b.cols * CELL, FAMILY_INNARDS[bv.fam.id], true);
+    spawnDebris(cx, top + 2, 1, Math.round(Math.min(90, 30 + b.cols * 6) * look.debris), b.cols * CELL, FAMILY_INNARDS[bv.fam.id], true, bv, false);
+    spawnDebris(cx, top + 1, 1, Math.round(Math.min(30, 8 + b.cols * 2) * look.debris), b.cols * CELL, bv.tint ? bv.tint.map((c) => c * 0.85) : FAMILY_INNARDS[bv.fam.id], true, bv, true);
   }
 
   // ---- the camera ---------------------------------------------------------------------------------------------------------------
@@ -2048,20 +2090,35 @@ export function createRenderer(canvas, lookIn) {
       const v = buildingViews.get(b.id);
       if (!v || v.collapsed) continue;
       if (b.collapsing) {
+        // THE CRUMBLE (James, 2026-09-22 — the squash "looks very rubbery"): the building stays rigid and drops one floor at a
+        // time, each floor accelerating into a hard landing; the crushed floors vanish under the sidewalk and the mound
+        // rises to meet the ones still standing. The core's collapseJolt marks each landing.
         const k = b.dropT;
-        const ease = k * k;
-        const sy = 1 - 0.9 * ease;
-        v.g.scale.y = sy;
-        v.g.position.x = b.x0 * CELL + Math.sin(clock.t * 40) * 0.25 * (1 - k);
-        v.uniforms.uCollapse.value = Math.min(1, k * 1.5);
-        if (k - v.dropShown > 0.08) {
+        const fl = Math.min(b.floors - 1, Math.floor(k * b.floors)), p = Math.min(1, k * b.floors - fl);
+        const gone = fl + p * p;
+        v.g.scale.y = 1;
+        v.g.position.y = -gone * CELL;
+        v.g.position.x = b.x0 * CELL + Math.sin(clock.t * 48) * 0.18 * (0.3 + p);
+        v.uniforms.uCollapse.value = Math.min(1, 0.3 + k);
+        v.rubble.position.y = 0.02 + gone * CELL;   // the mound stays at ground level (the group moves under it)
+        v.rubble.scale.z = Math.max(0.05, v.moundH * Math.min(1, gone / Math.max(1, b.floors - 1)));
+        if (k - v.dropShown > 0.05) {
           v.dropShown = k;
           const cx = (b.x0 + b.cols / 2) * CELL;
-          spawnDebris(cx, b.floors * CELL * sy * 0.5, 1, Math.round(6 * look.debris), b.cols * CELL, FAMILY_INNARDS[v.fam.id], true);
-          spawnDust(cx, 1, 2, 6, 3.5, 2.5, 0, 0.8, 0.55);
-          spawnShards(cx, b.floors * CELL * sy * 0.4, 0.5, 8);
+          spawnDebris(cx, (b.floors - gone) * CELL * (0.5 + rnd() * 0.5), 1, Math.round(5 * look.debris), b.cols * CELL, FAMILY_INNARDS[v.fam.id], true, v, false);   // shed from the face on the way down
+          spawnShards(cx, (b.floors - gone) * CELL * 0.4, 0.5, 8);
         }
         if (b.down) finishCollapse(v, b);
+      } else if (v.collapsed && v.rubble.visible) {
+        // the mound: hold, slump to a pile, sink to a low spread that stays for the day
+        v.moundT += dt;
+        const hold = 3 * look.moundStay, slump = 9 * look.moundStay, sink = 22 * look.moundStay;
+        let h;
+        if (v.moundT < hold) h = 1;
+        else if (v.moundT < hold + slump) { const q = (v.moundT - hold) / slump; h = 1 - 0.72 * (1 - Math.pow(1 - q, 2)); }
+        else if (v.moundT < hold + slump + sink) { const q = (v.moundT - hold - slump) / sink; h = 0.28 - 0.22 * q; }
+        else h = 0.06;
+        v.rubble.scale.z = Math.max(0.05, v.moundH * h);
       }
     }
     syncItems(state);

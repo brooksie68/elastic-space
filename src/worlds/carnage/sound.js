@@ -33,9 +33,11 @@ globalThis.CarnageSfx = (function () {
 
   // ---- the synthesis kit --------------------------------------------------------------------------------------
   function out(node, pan) {
-    if (ctx.createStereoPanner && pan) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); node.connect(p); p.connect(sfxGain); }
-    else node.connect(sfxGain);
+    if (ctx.createStereoPanner && pan) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); node.connect(p); p.connect(sfxGain); return p; }
+    node.connect(sfxGain); return node;
   }
+  // every chain frees itself when its source ends — the graph never grows (the Jabberwocky lesson, 2026-09-12)
+  function freeOnEnd(src, nodes) { src.onended = () => { for (const n of nodes) { try { n.disconnect(); } catch (e) {} } }; }
   function tone(o) {
     const t = ctx.currentTime + (o.delay || 0);
     const osc = ctx.createOscillator(); osc.type = o.type || 'sine'; osc.frequency.setValueAtTime(o.f, t);
@@ -44,25 +46,25 @@ globalThis.CarnageSfx = (function () {
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(o.gain || 0.2, t + (o.a || 0.006)); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
     let node = osc;
     if (o.filter) { const f = ctx.createBiquadFilter(); f.type = o.filter; f.frequency.value = o.ff || 800; f.Q.value = o.q || 1; osc.connect(f); node = f; }
-    if (o.vib) { const l = ctx.createOscillator(); l.frequency.value = o.vibRate || 6; const lg = ctx.createGain(); lg.gain.value = o.vib; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.dur + 0.05); }
-    node.connect(g); out(g, o.pan); osc.start(t); osc.stop(t + o.dur + 0.05);
+    if (o.vib) { const l = ctx.createOscillator(); l.frequency.value = o.vibRate || 6; const lg = ctx.createGain(); lg.gain.value = o.vib; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.dur + 0.05); freeOnEnd(l, [l, lg]); }
+    node.connect(g); const tail = out(g, o.pan); osc.start(t); osc.stop(t + o.dur + 0.05); freeOnEnd(osc, [osc, node, g, tail]);
   }
   function noise(o) {
     const t = ctx.currentTime + (o.delay || 0);
     const s = ctx.createBufferSource(); s.buffer = pinkBuf; s.loop = true;
     const f = ctx.createBiquadFilter(); f.type = o.type || 'lowpass'; f.frequency.setValueAtTime(o.f || 1200, t); if (o.f2) f.frequency.exponentialRampToValueAtTime(Math.max(20, o.f2), t + o.dur); f.Q.value = o.q || 0.8;
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(o.gain || 0.5, t + (o.a || 0.005)); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
-    s.connect(f); f.connect(g); out(g, o.pan); s.start(t, Math.random() * 1.5); s.stop(t + o.dur + 0.05);
+    s.connect(f); f.connect(g); const tail = out(g, o.pan); s.start(t, Math.random() * 1.5); s.stop(t + o.dur + 0.05); freeOnEnd(s, [s, f, g, tail]);
   }
   function voice(o) {
     // a vowel: a buzzy source through two formant peaks
     const t = ctx.currentTime + (o.delay || 0);
     const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(o.f, t); osc.frequency.exponentialRampToValueAtTime(Math.max(30, o.f2 || o.f), t + o.dur);
-    if (o.vib) { const l = ctx.createOscillator(); l.frequency.value = o.vibRate || 6; const lg = ctx.createGain(); lg.gain.value = o.vib; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.dur + 0.05); }
+    if (o.vib) { const l = ctx.createOscillator(); l.frequency.value = o.vibRate || 6; const lg = ctx.createGain(); lg.gain.value = o.vib; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t + o.dur + 0.05); freeOnEnd(l, [l, lg]); }
     const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(o.gain || 0.15, t + (o.a || 0.02)); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
     const mix = ctx.createGain();
     for (const ff of (o.formants || [700, 1200])) { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = ff; f.Q.value = 6; osc.connect(f); f.connect(mix); }
-    mix.connect(g); out(g, o.pan); osc.start(t); osc.stop(t + o.dur + 0.05);
+    mix.connect(g); const tail = out(g, o.pan); osc.start(t); osc.stop(t + o.dur + 0.05); freeOnEnd(osc, [osc, mix, g, tail]);
   }
   const thud = (p, k) => { tone({ f: 90 * (k || 1), f2: 38, dur: 0.22, type: 'sine', gain: 0.5, pan: p }); noise({ dur: 0.12, f: 300, gain: 0.35, pan: p }); };
   const tinkle = (p, n, delay) => { for (let i = 0; i < (n || 6); i++) tone({ f: 2200 + Math.random() * 3200, dur: 0.12 + Math.random() * 0.2, type: 'sine', gain: 0.05, delay: (delay || 0) + Math.random() * 0.4, pan: p }); };
@@ -146,25 +148,46 @@ globalThis.CarnageSfx = (function () {
     const names = new Set();
     for (const v of Object.values(FILES)) (Array.isArray(v) ? v : [v]).forEach((n) => names.add(n));
     for (const v of Object.values(VOICES)) for (const k of ['start', 'pick', 'eat', 'building', 'revert']) v[k].forEach((n) => names.add(n));
+    const served = /^https?:/.test(location.protocol);
     for (const n of names) {
-      const a = new Audio(); a.preload = 'auto';
-      a.addEventListener('canplaythrough', () => available.add(n), { once: true });
-      a.src = SFX_DIR + n + '.mp3';
+      if (served && window.fetch) {
+        fetch(SFX_DIR + n + '.mp3').then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status))).then((ab) => ctx.decodeAudioData(ab)).then((buf) => { buffers[n] = buf; available.add(n); }).catch(() => {});
+      } else {
+        const a = new Audio(); a.preload = 'auto';
+        a.addEventListener('canplaythrough', () => { available.add(n); }, { once: true });
+        a.src = SFX_DIR + n + '.mp3';
+        pools[n] = [{ el: a, src: null, busy: false }];
+      }
     }
   }
-  const live = new Set();
+  // one-shots: decoded buffers through throw-away sources (served), or a capped pool of media elements (file://).
+  // Either way nothing accumulates: the old build made a new media element per shot and never let go of one.
+  const buffers = {}, pools = {};
+  const MAX_VOICES = 24;
+  let liveVoices = 0;
   function playFile(name, pan, gain) {
-    const a = new Audio(SFX_DIR + name + '.mp3');
-    a.volume = 1;
-    try {
-      const src = ctx.createMediaElementSource(a);
+    const buf = buffers[name];
+    if (buf) {
+      if (liveVoices >= MAX_VOICES) return;
+      liveVoices++;
+      const s = ctx.createBufferSource(); s.buffer = buf;
       const g = ctx.createGain(); g.gain.value = gain == null ? 0.9 : gain;
-      src.connect(g); out(g, pan);
-    } catch (e) { /* a second source on the same element is not allowed; fine, it plays dry */ }
-    live.add(a);
-    a.addEventListener('ended', () => live.delete(a), { once: true });
-    a.play().catch(() => {});
+      s.connect(g); const tail = out(g, pan);
+      s.onended = () => { liveVoices--; for (const n of [s, g, tail]) { try { n.disconnect(); } catch (e) {} } };
+      s.start();
+      return;
+    }
+    const pool = pools[name]; if (!pool) return;
+    let slot = pool.find((p) => !p.busy);
+    if (!slot) { if (pool.length >= 3) return; const a = new Audio(SFX_DIR + name + '.mp3'); a.preload = 'auto'; slot = { el: a, src: null, busy: false }; pool.push(slot); }
+    if (!slot.src) { try { slot.src = ctx.createMediaElementSource(slot.el); slot.g = ctx.createGain(); slot.src.connect(slot.g); out(slot.g, 0); } catch (e) { slot.src = false; } }
+    if (slot.g) slot.g.gain.value = gain == null ? 0.9 : gain;
+    slot.busy = true;
+    slot.el.currentTime = 0;
+    slot.el.addEventListener('ended', () => { slot.busy = false; }, { once: true });
+    slot.el.play().then(() => {}, () => { slot.busy = false; });
   }
+  function graphSize() { return liveVoices; }
   let lastPlay = {};
   function play(id, pan, gain) {
     if (!running || !ctx) return;
@@ -248,5 +271,5 @@ globalThis.CarnageSfx = (function () {
   function stopMusic() { if (musicEl) { try { musicEl.pause(); } catch (e) {} } }
   function setMusic(on) { musicOn = !!on; if (!on) stopMusic(); else if (running) startMusic(); }
 
-  return { start, stop, setVolume, play, voice: voiceLine, setDrone, setSiren, setDust, setNight, setMusic, R, FILES, VOICES, available };
+  return { graphSize, start, stop, setVolume, play, voice: voiceLine, setDrone, setSiren, setDust, setNight, setMusic, R, FILES, VOICES, available };
 })();

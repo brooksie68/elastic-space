@@ -111,7 +111,7 @@
     #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 30; background: var(--bg); flex-direction: column; gap: 0.8rem; transition: opacity 400ms ease; }
     #loading .word { font-family: var(--heavy); font-size: 3rem; letter-spacing: 0.1em; color: var(--amber); }
     /* THE WORDMARK (James, 2026-09-21): huge, funky, bent along a rainbow; the drip filter roughs the letters up */
-    .mark { display: block; width: min(52rem, 92vw); height: auto; margin: 0 auto -0.6em; overflow: visible; filter: drop-shadow(0 8px 0 #120a0c) drop-shadow(0 0 28px rgba(255, 140, 40, 0.45)); }
+    .mark { display: block; width: min(34rem, 84vw); height: auto; margin: 0 auto -0.6em; overflow: visible; filter: drop-shadow(0 8px 0 #120a0c) drop-shadow(0 0 28px rgba(255, 140, 40, 0.45)); }
     .mark .mark-shadow { fill: #120a0c; stroke: #120a0c; stroke-width: 30; stroke-linejoin: round; paint-order: stroke; }
     .mark .mark-fill { fill: url(#mg); stroke: #3a0a10; stroke-width: 8; stroke-linejoin: round; paint-order: stroke; }
     #loading .mark { width: min(44rem, 88vw); }
@@ -177,6 +177,7 @@
   </style>
 </head>
 <body>
+  <svg class="mark-defs" width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><path id="arc" d="M 40 380 A 520 520 0 0 1 960 380"/><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe14d"/><stop offset="0.45" stop-color="#ff8a2a"/><stop offset="1" stop-color="#c8162a"/></linearGradient><filter id="drip" x="-10%" y="-10%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/></filter></defs></svg>
   <canvas id="field"></canvas>
   <div id="vignette"></div>
   <div id="hurt"></div>
@@ -194,7 +195,7 @@
 
   <div id="centre">
     <div class="card" id="start-card">
-      <div class="word"><svg class="mark" viewBox="0 0 1000 400" aria-label="CARNAGE"><defs><path id="arc" d="M 40 380 A 520 520 0 0 1 960 380"/><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe14d"/><stop offset="0.45" stop-color="#ff8a2a"/><stop offset="1" stop-color="#c8162a"/></linearGradient><filter id="drip" x="-10%" y="-10%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/></filter></defs><text class="mark-shadow" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text><text class="mark-fill" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text></svg><small>THREE MASCOTS · ONE CITY A DAY · 2026</small></div>
+      <div class="word"><svg class="mark" viewBox="0 0 1000 400" aria-label="CARNAGE"><text class="mark-shadow" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text><text class="mark-fill" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text></svg><small>THREE MASCOTS · ONE CITY A DAY · 2026</small></div>
       <div class="line" id="start-result" style="display: none"></div>
       <div class="pick" id="pick"></div>
       <div id="modes">
@@ -293,7 +294,7 @@
   <a id="exit-blimp" class="exit" href="../../../index.html" data-drift aria-label="The blimp's banner rope"></a>
   <a id="smudge" href="../../../index.html" data-drift aria-label="A smear on the far skyline"></a>
 
-  <div id="loading"><div class="word"><svg class="mark" viewBox="0 0 1000 400" aria-label="CARNAGE"><defs><path id="arc" d="M 40 380 A 520 520 0 0 1 960 380"/><linearGradient id="mg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe14d"/><stop offset="0.45" stop-color="#ff8a2a"/><stop offset="1" stop-color="#c8162a"/></linearGradient><filter id="drip" x="-10%" y="-10%" width="120%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G"/></filter></defs><text class="mark-shadow" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text><text class="mark-fill" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text></svg></div><div class="bar"><i id="load-bar"></i></div><div class="sub" id="load-sub">clocking in</div></div>
+  <div id="loading"><div class="word"><svg class="mark" viewBox="0 0 1000 400" aria-label="CARNAGE"><text class="mark-shadow" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text><text class="mark-fill" font-size="230" font-family="Impact, 'Arial Black', sans-serif" font-weight="900" letter-spacing="6" filter="url(#drip)"><textPath href="#arc" startOffset="50%" text-anchor="middle">CARNAGE</textPath></text></svg></div><div class="bar"><i id="load-bar"></i></div><div class="sub" id="load-sub">clocking in</div></div>
   <div id="nogl">THIS ONE NEEDS WEBGL — TRY A DIFFERENT BROWSER OR TURN ON HARDWARE ACCELERATION.</div>
 
   <script src="../../core/dashboard-control.js"></script>
@@ -301,12 +302,12 @@
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
   <script src="city.js?v=4"></script>
-  <script src="game-core.js?v=5"></script>
+  <script src="game-core.js?v=6"></script>
   <script src="icons.js?v=8"></script>
-  <script src="sound.js?v=2"></script>
+  <script src="sound.js?v=3"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=5"></script>
+  <script type="module" src="game.js?v=6"></script>
 </body>
 </html>

@@ -31,7 +31,8 @@
     punchRepeat: 0.36,       // s between punches while held
     fallFree: 2,             // floors of free fall before it hurts
     fallDmg: 8,              // hp per floor beyond that
-    collapseT: 1.9,          // s, a building coming down
+    collapseT: 1.9,          // s, the floor of a collapse's length (a building takes at least this long)
+    floorT: 0.4,             // s per floor: a building comes down floor by floor (James: "crumbling rock", 0.1 slower than the squash)
     thresholdScale: 1,       // × the buildings' collapse thresholds
     spawnScale: 1,           // × the enemy cadence (lower = more of them)
     dealShift: 0,            // + = meaner windows (the day the deal table thinks it is)
@@ -277,7 +278,11 @@
         if (on !== !!b.neon.lit) { b.neon.lit = on; state.events.push({ type: 'neon', b: b.id, on }); }
       }
       if (b.collapsing && !b.down) {
-        b.dropT += dt / state.opts.collapseT;
+        const dur = collapseDuration(state, b);
+        const before = Math.floor(b.dropT * b.floors);
+        b.dropT += dt / dur;
+        const after = Math.min(b.floors - 1, Math.floor(b.dropT * b.floors));
+        if (after > before && b.dropT < 1) state.events.push({ type: 'collapseJolt', b: b.id, x: b.x0 + b.cols / 2, floor: after, floors: b.floors });   // one floor crushed out
         if (b.dropT >= 1) {
           b.dropT = 1; b.down = true; b.collapsing = false;
           const by = b.lastHitBy != null ? state.monsters.find((m) => m.id === b.lastHitBy) : null;
@@ -290,6 +295,7 @@
       }
     }
   }
+  function collapseDuration(state, b) { return Math.max(state.opts.collapseT, state.opts.floorT * b.floors); }
   function startCollapse(state, b, by) {
     if (b.collapsing || b.down) return;
     b.collapsing = true; b.dropT = 0; b.lastHitBy = by ? by.id : b.lastHitBy;
@@ -1023,7 +1029,7 @@
   globalThis.CarnageCore = {
     createGame, step, autopilot, skipMap, advanceDay, summary, DEFAULTS, POINTS, DEAL_FX, MON, SOLDIER, TANK, DRONE, CARS, SLUGS, flavourFor, monH, monHand, monReach, laneOf,
     // for the sim and the labs
-    punchCell, breakCell, startCollapse, damage, revert, spawnItem, itemAt, faceAt, building, player, rng, hashSeed, grab, startFall, takeExit,
+    punchCell, breakCell, startCollapse, collapseDuration, damage, revert, spawnItem, itemAt, faceAt, building, player, rng, hashSeed, grab, startFall, takeExit,
     spawnSoldier, spawnTruck, spawnDrone, spawnSniper, launchWave, startSmash, WAVE_KINDS,
   };
 })();

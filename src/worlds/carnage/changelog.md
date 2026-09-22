@@ -3,6 +3,53 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-22 — Claude — HIS SECOND FLIGHT: the wordmark, the proportions, the back rows, THE CRUMBLE, the sound leak
+
+James's notes after flying round two, each with a diagnosis first and his two answers (jolts a touch slower than the
+old squash; the mound visual only, stylised, fading fairly quickly).
+
+- **THE WORDMARK** (`index.html`, `game.js`): the gradient came in late because the page carried two copies of the
+  CARNAGE SVG with the same ids — the loading gate's letters pointed at the gradient inside the hidden start card, and a
+  gradient in a `display: none` subtree never paints. One shared `<svg class="mark-defs">` at the top of the body now holds
+  the arc, the gradient and the drip filter; both marks reference it. The gate waits two painted frames before the
+  renderer starts loading ("the game shouldn't even start loading until the name is up there"). The start card's mark is
+  34rem (was 52rem inside a 40rem card) — checked in the pane at 1920x1080, it sits inside the card with the subtitle.
+- **THE PROPORTIONS** (`render3d.js` facade shader, `type == 0`): a residential window is 1.36 m wide x 1.7 m tall with
+  the sill at 0.9 m, centred in the 4 m cell (`o0 = (0.33, 0.225)`, `o1 = (0.67, 0.65)`; was 2.9 m x 3 m, wall to wall).
+  Frame, sill, lintel, mullions, curtains, blinds and the parallax room all follow the opening; the AC unit moved into the
+  window's corner. Shopfronts, doors and awnings untouched. The people stayed the size he called perfect against the
+  shop doors; the window people (Meshy rigs and sprites) stand on their floor slab on the upper rows so the window
+  shows them chest-up. The 4 m cell stays (rules, climb, wall grids).
+- **THE BACK ROWS** (`FAR_FS`): the instanced boxes were re-anchored to stand on the ground (`geo.translate(0, 0.5, 0)`)
+  in the back-streets pass, but the shader still read `vLocal.y` as centred — the window grid started half a building
+  too low (windows into the ground, cut off halfway), the top half was treated as "top" and went blank, and the ground-
+  floor band never landed. Now `y` runs 0..height: a blank 4 m ground floor, windows at the same 1.36 x 1.7 m as the
+  front row, cornice and top at the real top.
+- **THE CRUMBLE** (core + renderer; James: the squash "looks very rubbery... I'd like to see something more that looks
+  like crumbling rock... a big pile of that all collapsing down and filling the lot"): the core times a collapse at
+  `opts.floorT` 0.4 s per floor (`collapseDuration(state, b)` = max(collapseT, floorT x floors)) and emits
+  `collapseJolt { b, x, floor, floors }` as each floor is crushed out. The renderer keeps the building RIGID and drops it
+  one floor at a time — each floor accelerates into a hard landing (`gone = floor + p^2`), the crushed floors vanish under
+  the sidewalk, the group shakes, cracks spread (`uCollapse`) — while THE MOUND rises under it: `makeRubble` is now a
+  lumpy dome the size of the lot (+3 m spill each side, `moundProfile`, unit height scaled by `scale.z`), rising with the
+  drop to `moundTarget` (0.3 x the building's height, 3–9 m), held 3 s, slumped to 28% over 9 s, sunk to 6% over the next
+  22 s and left as the day's low rubble. Debris chunks are jittered low-poly ROCKS (an icosahedron, `debrisGeo`), pool
+  420 -> 900; a jolt bursts chunks off the base line across the whole lot (some huge, 1.1–2.7 m) with dust rolling out
+  along it and a thump; the end blows out dust from the mound's top and a second wave of chunks. Chunks spawned by a
+  collapse carry the building view (`d.mv`), land on the mound surface (`moundHeightAt`), rest there for 14–24 s and
+  SINK WITH IT as it slumps. Dials: `mound` (height x) and `moundStay` (hold/slump x) in LOOK; `collapseJolt` plays a
+  thud in the game and the lab. Sim: TEST 7 asserts one jolt per floor and the per-floor duration; the collapse waits in
+  7 / 16 use `collapseDuration`. Verified in the look-dev page: the building steps down, the lot ends under a pile of rock
+  chunks that settles. Sim 1,963,172 green.
+- **THE SOUND LEAK** (`sound.js`; James: "the audio buffer seems to be filling up... the sound gets more and more
+  fucked as time goes on"): every one-shot was a fresh `new Audio()` media element with a MediaElementSource, never
+  released, and the synthesis recipes never disconnected their gain / filter / panner nodes — the graph grew all game.
+  Now: served pages fetch + decode every file once into buffers and play them through throw-away buffer sources
+  (`playFile`), capped at 24 live voices (`MAX_VOICES`, `graphSize()` reports); `file://` falls back to a pool of at most
+  three media elements per sound, reused; every synthesis chain frees itself on `onended` (`freeOnEnd`, incl. the vibrato
+  LFOs). Pane check: 2,000 plays in a burst — 58 files decoded, voices peak 24, back to 0 six seconds later.
+- Cache tags: render3d v23, game.js v6, sound v3, game-core v6 (index, lab, look-dev).
+
 ## 2026-09-21 — Claude — ROUND TWO, built on James's first flight brief ("GREAT plan... have at it")
 
 His brief: the monsters should move back and forth across the street; the climbing is weak; the punch is "a shrug",

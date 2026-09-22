@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Carnage — look-dev</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #000; overflow: hidden; font: 11px/1.5 Consolas, monospace; color: #f4d0a0; }
+    #view { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    #panel { position: fixed; top: 10px; left: 10px; z-index: 5; width: 260px; background: rgba(0,0,0,0.78); border: 1px solid #533; padding: 8px 10px; max-height: calc(100vh - 20px); overflow-y: auto; }
+    #panel.hide { display: none; }
+    .row { margin-bottom: 5px; }
+    .row label { display: flex; justify-content: space-between; letter-spacing: 0.08em; text-transform: uppercase; font-size: 9px; color: #c9a070; }
+    .row input[type=range] { width: 100%; accent-color: #f4a050; }
+    #err { position: fixed; left: 0; right: 0; bottom: 0; background: #600; color: #fff; padding: 6px 10px; display: none; z-index: 9; white-space: pre-wrap; font-size: 11px; max-height: 40vh; overflow: auto; }
+    button { background: #311; color: #f4d0a0; border: 1px solid #644; padding: 4px 7px; font: inherit; cursor: pointer; margin: 0 3px 4px 0; }
+    #stat { margin-top: 6px; color: #c9a070; font-size: 9px; white-space: pre; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <div id="panel">
+    <div style="margin-bottom:6px">
+      <button id="b-auto">AUTO</button><button id="b-break">BREAK</button><button id="b-wall">WALL</button><button id="b-collapse">COLLAPSE</button><button id="b-boom">BOOM</button><button id="b-flash">FLASH</button>
+      <button id="b-soldier">SOLDIER</button><button id="b-tank">TANK</button><button id="b-drone">DRONE</button><button id="b-car">CAR</button><button id="b-revert">REVERT</button><button id="b-night">NIGHT</button><button id="b-next">NEXT</button><br>
+      <button id="b-p-u">PUNCH ↑</button><button id="b-p-ur">↗</button><button id="b-p-r">→</button><button id="b-p-dr">↘</button><button id="b-p-d">↓ STOMP</button><button id="b-p-l">←</button><button id="b-lane">LANE</button><button id="b-smash">SMASH</button><button id="b-burst">BURST</button><button id="b-screamer">SCREAMER</button><button id="b-wave">WAVE</button><button id="b-climb">CLIMB</button> CITY</button><button id="b-hide">HIDE</button>
+    </div>
+    <div id="rows"></div>
+    <div id="stat"></div>
+  </div>
+  <div id="err"></div>
+  <script src="../../src/worlds/carnage/city.js?v=4"></script>
+  <script src="../../src/worlds/carnage/game-core.js?v=6"></script>
+  <script src="../../src/worlds/carnage/icons.js?v=8"></script>
+  <script type="importmap">{ "imports": { "three": "../../src/lib/three/three.module.js" } }</script>
+  <script type="module">
+    import { createRenderer, LOOK_DEFAULTS, CELL } from '../../src/worlds/carnage/render3d.js?v=23';
+    const errEl = document.getElementById('err');
+    const showErr = (m) => { errEl.style.display = 'block'; errEl.textContent += m + '\n'; };
+    window.onerror = (m, s, l) => showErr(m + ' @' + (s || '').split('/').pop() + ':' + l);
+    window.addEventListener('unhandledrejection', (e) => showErr('REJECT: ' + (e.reason && e.reason.stack || e.reason)));
+    const origErr = console.error.bind(console);
+    console.error = (...a) => { showErr(a.map(String).join(' ')); origErr(...a); };
+
+    const q = new URLSearchParams(location.search);
+    const C = globalThis.CarnageCore;
+    const canvas = document.getElementById('view');
+    const look = Object.assign({}, LOOK_DEFAULTS);
+    if (q.get('night')) look.night = q.get('night') === '1' ? 1 : 0;
+    const R = createRenderer(canvas, look);
+    let state = C.createGame({ seed: parseInt(q.get('seed') || '7', 10), day: parseInt(q.get('day') || '1', 10), companions: parseInt(q.get('companions') || '2', 10), lives: 99, exits: 1 });
+    let auto = q.get('auto') !== '0';
+    let scripted = null;   // { input, until } — a scripted input for a while (the buttons and LAB.drive use it)
+    const STEP = 1 / 120;
+    let carry = 0, loaded = false, frames = 0;
+    R.load((p) => { document.getElementById('stat').textContent = 'loading ' + Math.round(p * 100) + '%'; }).then((r) => { loaded = true; if (r.failed) showErr('assets missing: ' + r.failed + ' (fallback shapes in use)'); });
+
+    function tick(dt) {
+      carry += dt;
+      while (carry >= STEP) {
+        if (scripted && state.t > scripted.until) scripted = null;
+        C.step(state, scripted ? scripted.input : auto ? C.autopilot(state, state.monsters[0]) : { move: 0, up: false, down: false, jump: false, punch: false }, STEP);
+        for (const e of state.events) R.event(e, state);
+        if (state.exit) state.exit = null;   // the lab never leaves
+        carry -= STEP;
+      }
+      R.update(state, dt);
+      R.render();
+      frames++;
+      const p = state.monsters[0];
+      document.getElementById('stat').textContent = 'day ' + state.day + ' ' + state.city.name + (R.night ? ' night' : ' day') + '  score ' + state.score + '\nplayer ' + p.slug + ' ' + p.st + ' hp ' + p.hp.toFixed(0) + ' @' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + '  anim ' + p.anim + '\nstanding ' + state.city.buildings.filter((b) => !b.down).length + '/' + state.city.buildings.length + '  items ' + state.items.length + '  soldiers ' + state.soldiers.length + '\ncalls ' + R.renderer.info.render.calls + '  tris ' + R.renderer.info.render.triangles;
+    }
+    let last = 0;
+    function frame(t) { requestAnimationFrame(frame); if (!loaded) return; const dt = last ? Math.min(0.1, (t - last) / 1000) : 0; last = t; tick(dt); }
+    requestAnimationFrame(frame);
+
+    const rows = document.getElementById('rows');
+    const RANGES = { viewCells: [14, 40, 1], pitch: [0, 14, 0.5], camEase: [0.5, 4, 0.1], lookAhead: [0, 6, 0.25], glow: [0, 2.5, 0.05], exposure: [0.5, 1.8, 0.05], roomLight: [0, 2.5, 0.05], wear: [0, 1.5, 0.05], dust: [0, 2.5, 0.05], debris: [0, 2.5, 0.05], fogDepth: [0.4, 2, 0.05], stars: [0, 2, 0.05], res: [0.5, 1, 0.05] };
+    for (const k of Object.keys(RANGES)) {
+      const [min, max, step] = RANGES[k];
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<label><span>${k}</span><span id="v-${k}">${look[k]}</span></label><input type="range" min="${min}" max="${max}" step="${step}" value="${look[k]}" />`;
+      rows.appendChild(row);
+      row.querySelector('input').addEventListener('input', (e) => { look[k] = parseFloat(e.target.value); document.getElementById('v-' + k).textContent = look[k]; R.setLook(look); if (k === 'res' || k === 'viewCells') R.resize(); });
+    }
+    const player = () => state.monsters[0];
+    const standing = () => state.city.buildings.find((b) => !b.down && !b.collapsing);
+    const nearCell = () => { const p = player(); const b = globalThis.CarnageCity.buildingAt(state.city, p.x) || standing(); if (!b) return null; const row = Math.min(b.floors - 1, Math.max(1, Math.floor(p.y + 0.6))); for (let c = 0; c < b.cols; c++) { const k = row * b.cols + c; if (b.state[k] !== 2) return { b, k }; } return null; };
+    document.getElementById('b-auto').addEventListener('click', () => { auto = !auto; });
+    document.getElementById('b-break').addEventListener('click', () => { const t = nearCell(); if (t) C.breakCell(state, t.b, t.k, player(), 'lab'); for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    document.getElementById('b-wall').addEventListener('click', () => { const b = standing(); if (!b) return; for (let k = 0; k < b.cells.length; k++) if (b.cells[k] === 1 && b.state[k] !== 2) { b.state[k] = 1; C.breakCell(state, b, k, player(), 'lab'); break; } for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    document.getElementById('b-collapse').addEventListener('click', () => { const b = standing(); if (b) C.startCollapse(state, b, player()); for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    document.getElementById('b-boom').addEventListener('click', () => { const t = nearCell(); if (!t) return; t.b.deal[t.k] = 'battery'; C.breakCell(state, t.b, t.k, player(), 'lab'); for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    document.getElementById('b-flash').addEventListener('click', () => { const t = nearCell(); if (!t) return; t.b.deal[t.k] = 'streamer'; C.breakCell(state, t.b, t.k, player(), 'lab'); for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    const flush = () => { for (const e of state.events) R.event(e, state); state.events.length = 0; };
+    document.getElementById('b-soldier').addEventListener('click', () => { C.launchWave(state, 'squad'); flush(); });
+    document.getElementById('b-tank').addEventListener('click', () => { state.tank = null; C.launchWave(state, 'truck'); flush(); });
+    document.getElementById('b-drone').addEventListener('click', () => { state.drone = null; C.launchWave(state, 'drone'); flush(); });
+    // round two: scripted inputs for the motion layer
+    const drive = (input, seconds) => { auto = false; scripted = { input: Object.assign({ move: 0, up: false, down: false, jump: false, punch: false, pdx: 0, pdy: 0 }, input), until: state.t + seconds }; };
+    const punchBtn = (id, pdx, pdy) => document.getElementById(id).addEventListener('click', () => drive({ punch: true, pdx, pdy }, 0.5));
+    punchBtn('b-p-u', 0, 1); punchBtn('b-p-ur', 1, 1); punchBtn('b-p-r', 1, 0); punchBtn('b-p-dr', 1, -1); punchBtn('b-p-d', 0, -1); punchBtn('b-p-l', -1, 0);
+    document.getElementById('b-lane').addEventListener('click', () => { const p = player(); drive(p.lane === 1 ? { up: true } : { down: true }, 0.08); });
+    document.getElementById('b-smash').addEventListener('click', () => { const p = player(); if (p.st === 'street') { const b = standing(); if (b) C.grab(state, p, b, Math.min(3, b.floors - 1)); } drive({ jump: true }, 0.06); });
+    document.getElementById('b-burst').addEventListener('click', () => { const p = player(); if (p.st !== 'street') { p.st = 'street'; p.y = 0; p.b = -1; } auto = false; p.tapDir = 1; p.tapT = 0.2; p.prevMove = 0; drive({ move: 1 }, 0.9); });
+    document.getElementById('b-screamer').addEventListener('click', () => { const t = nearCell(); if (!t) return; t.b.deal[t.k] = 'screamer'; C.breakCell(state, t.b, t.k, player(), 'lab'); flush(); });
+    document.getElementById('b-wave').addEventListener('click', () => { C.launchWave(state); flush(); });
+    document.getElementById('b-climb').addEventListener('click', () => { const p = player(); const b = standing(); if (b && p.st === 'street') { p.x = b.x0 + 1.5; } drive({ up: true }, 3); });
+    document.getElementById('b-car').addEventListener('click', () => { state.timers.car = 0; });
+    document.getElementById('b-revert').addEventListener('click', () => { const p = player(); p.invulnT = 0; C.damage(state, p, 100, 'lab'); for (const e of state.events) R.event(e, state); state.events.length = 0; });
+    document.getElementById('b-night').addEventListener('click', () => { look.night = R.night ? 0 : 1; R.setLook(look); });
+    document.getElementById('b-next').addEventListener('click', () => { C.advanceDay(state); });
+    document.getElementById('b-hide').addEventListener('click', () => document.getElementById('panel').classList.add('hide'));
+    window.addEventListener('resize', () => R.resize());
+    window.addEventListener('keydown', (e) => { if (e.code === 'KeyH') document.getElementById('panel').classList.toggle('hide'); });
+
+    // a native capture through the dev server: ?snap=name&after=frames
+    async function snap(name) {
+      tick(1 / 60);
+      const c2 = document.createElement('canvas'); c2.width = canvas.width; c2.height = canvas.height;
+      c2.getContext('2d').drawImage(canvas, 0, 0);
+      const dataUrl = c2.toDataURL('image/jpeg', 0.88);
+      const r = await fetch('/api/dev-snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, dataUrl }) });
+      return r.json();
+    }
+    if (q.get('snap')) { const after = parseInt(q.get('after') || '240', 10); const wait = () => { if (frames >= after && loaded) snap(q.get('snap')).then((r) => { document.title = 'snapped ' + JSON.stringify(r); }); else setTimeout(wait, 100); }; wait(); }
+    globalThis.LAB = { R, get state() { return state; }, set state(s) { state = s; }, look, tick, C, snap, setAuto: (v) => { auto = v; }, drive, flush, get loaded() { return loaded; } };
+  </script>
+</body>
+</html>

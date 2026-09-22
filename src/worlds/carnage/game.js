@@ -2,7 +2,7 @@
 // the HUD, the plate (one cynical line at a time), the day tally and the map between days, the
 // configuration panel with file-backed presets, sound hooks, the ways out.
 // Rules live in game-core.js and city.js; the picture in render3d.js; the sounds in sound.js.
-import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=22';
+import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=23';
 
 const Core = globalThis.CarnageCore, City = globalThis.CarnageCity, Icons = globalThis.CarnageIcons;
 const Sfx = globalThis.CarnageSfx || { play() {}, start() {}, stop() {}, setVolume() {}, voice() {}, bed() {}, setDrone() {}, setSiren() {}, setDust() {}, setNight() {}, setMusic() {} };
@@ -23,6 +23,8 @@ const LOOK_RANGES = {
   wear: { label: 'Grime on the walls', min: 0, max: 1.5, step: 0.05 },
   dust: { label: 'Dust', min: 0, max: 2.5, step: 0.05 },
   debris: { label: 'Debris — how much flies', min: 0, max: 2.5, step: 0.05 },
+  mound: { label: 'Mound — how high the rubble piles', min: 0.3, max: 2, step: 0.05 },
+  moundStay: { label: 'Mound stays — how long before it slumps', min: 0.3, max: 3, step: 0.1 },
   fogDepth: { label: 'Haze on the far rows', min: 0.4, max: 2, step: 0.05 },
   stars: { label: 'Stars', min: 0, max: 2, step: 0.05 },
   res: { label: 'Resolution', min: 0.5, max: 1, step: 0.05 },
@@ -408,6 +410,7 @@ function handleEvents(st) {
       case 'neonOut': if (mine) plate(COPY.neonOut); Sfx.play('neonOut', pan(e.x)); break;
       case 'neonShock': if (mine) plate(COPY.hazard.neon, 'bad'); Sfx.play('zap', pan(e.x)); break;
       case 'collapseStart': Sfx.play('rumble', pan(e.x)); Sfx.setDust(1); break;
+      case 'collapseJolt': Sfx.play('thud', pan(e.x)); break;
       case 'collapseEnd': Sfx.play('crash', pan(e.x)); Sfx.setDust(0.5); if (e.by === you.slug) { plate(e.rival ? COPY.rival : e.restaurant === you.slug ? COPY.own : COPY.building, e.rival ? 'good' : '', true); Sfx.voice(you.slug, 'building'); } break;
       case 'damage': if (e.who === you.id) { hurtT = 0.35; Sfx.play(e.src === 'fall' ? 'thud' : 'ouch', pan(e.x)); } break;
       case 'landHard': if (mine) plate(COPY.fall, 'bad'); Sfx.play('thud', pan(e.x)); break;
@@ -579,14 +582,17 @@ $('preset-del').addEventListener('click', async () => { const name = presetSelec
 window.addEventListener('resize', () => { if (R) R.resize(); });
 buildLookRows(); syncPlayUI(); syncLookUI(); applyUi();
 loadPresets();
-if (R) {
+// the gate waits until the wordmark has actually painted (two frames) before the renderer starts loading — James: "the game
+// shouldn't even start loading until the name is up there"
+const painted = () => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+if (R) painted().then(() => {
   R.load((p) => { $('load-bar').style.width = Math.round(p * 100) + '%'; $('load-sub').textContent = p < 0.5 ? 'clocking in' : p < 0.9 ? 'warming the fryer' : 'unlocking the doors'; }).then((r) => {
     $('loading').classList.add('gone');
     if (r && r.failed) console.warn('carnage: ' + r.failed + ' assets missing, fallback shapes in use');
     enterAttract();
     requestAnimationFrame(frame);
   });
-}
+});
 
 // the headless checker's read-only handle
 globalThis.CARNAGE_DEBUG = { get state() { return state; }, get mode() { return mode; }, get R() { return R; }, start: startGame, step: frameStep, Core, keys, drive, plate };
