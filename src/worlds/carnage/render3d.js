@@ -1108,6 +1108,10 @@ export function createRenderer(canvas, lookIn) {
         const arm = model.getObjectByName(side + 'Arm'), fore = model.getObjectByName(side + 'ForeArm'), hand = model.getObjectByName(side + 'Hand');
         if (arm && fore && hand) view.bones[side] = { arm, fore, hand };
       }
+      for (const side of ['Left', 'Right']) {
+        const up = model.getObjectByName(side + 'UpLeg'), leg = model.getObjectByName(side + 'Leg'), foot = model.getObjectByName(side + 'Foot');
+        if (up && leg && foot) view.bones[side + 'Leg'] = { arm: up, fore: leg, hand: foot };
+      }
       view.spine = model.getObjectByName('Spine02') || model.getObjectByName('Spine01') || null;
     } else {
       const body = new THREE.Mesh(new THREE.CapsuleGeometry(height * 0.16, height * 0.55, 4, 10), new THREE.MeshStandardMaterial({ color: fallback, roughness: 0.6 }));
@@ -1264,10 +1268,21 @@ export function createRenderer(canvas, lookIn) {
       let lean = 0, lunge = 0;
       const stomping = m.anim === 'punch' && m.st === 'street' && m.punchDir.dy < 0;
       if (stomping) {
-        // the foot stomp: the clip does the work; the body steps toward the side of a diagonal
-        const kk = punchK, strikeK = kk < 0.35 ? ease(kk / 0.35) : kk < 0.7 ? 1 : 1 - ease((kk - 0.7) / 0.3);
-        lunge = 0.22 * CELL * strikeK * (m.punchDir.dx ? 1 : 0.3); lean = 0.1 * strikeK;
-      } else if (v.bones && m.anim === 'punch' && v.punchTarget) {
+        // THE STOMP is a foot: the leg kicks up ahead, then slams the foot into the ground on the beat; the body drops
+        const kk = punchK, dx = m.punchDir.dx || m.facing;
+        const legSide = dx > 0 ? 'Right' : 'Left';   // facing +x the model's right leg is nearer the camera
+        const chain = v.bones && v.bones[legSide + 'Leg'];
+        const hipY = v.smoothY + CELL * (state.opts.monsterH || 2.7) * 0.5;
+        const rz = v.root.position.z;
+        let w, dropK = 0;
+        if (kk < 0.38) { w = ease(kk / 0.38); _tgt.set(v.smoothX + dx * 0.55 * CELL, hipY * 0.95, rz + 0.3); }
+        else if (kk < 0.5) { const q = ease((kk - 0.38) / 0.12); w = 1; _tgt.set(v.smoothX + dx * (0.55 + 0.35 * q) * CELL, hipY * 0.95 * (1 - q), rz + 0.3); dropK = q; }
+        else if (kk < 0.78) { w = 1; _tgt.set(v.smoothX + dx * 0.9 * CELL, 0, rz + 0.3); dropK = 1; }
+        else { const q = ease((kk - 0.78) / 0.22); w = 1 - q; _tgt.set(v.smoothX + dx * 0.9 * CELL, 0, rz + 0.3); dropK = 1 - q; }
+        if (chain) aimArm(chain, _tgt, w * 0.95, 0.9);
+        lunge = 0.12 * CELL * dropK * (m.punchDir.dx ? 1 : 0.4); lean = 0.12 * dropK;
+        v.inner.position.y = -0.1 * CELL * dropK;
+      } else if (v.mixer) v.inner.position.y += (0 - v.inner.position.y) * Math.min(1, dt * 20); else if (v.bones && m.anim === 'punch' && v.punchTarget) {
         const kk = punchK;
         let w, tgt = _tgt;
         const d = m.punchDir, stomp = m.st === 'street' && d.dy < 0;

@@ -87,6 +87,11 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   climb onto an 11-floor roof keeps the head at 72% of the frame at worst. (2) DOWN-RIGHT / DOWN-LEFT on the street
   are directional stomps: both fists come down to that side and the ground-floor cell that way breaks (a plain DOWN
   still takes the cell under you and its neighbours). Sim +1 assertion. Tags: game-core.js?v=3, render3d.js?v=3.
+- **The stomp, three rounds with him watching**: the two-fisted clip read as a hand clap (one target; then two
+  targets a shoulder apart), then the ground-stomp clip read as a shuffle (its foot lift comes late and the punch
+  window cuts it off). Now THE STOMP IS A DRIVEN LEG: the bone layer kicks the near leg up ahead (38% of the punch),
+  slams the foot to the ground on the beat, holds, releases; the body drops and steps toward the side of a diagonal.
+  Leg chains (`UpLeg / Leg / Foot`) join the arm chains in `view.bones`. Captures r5-stomp-lift / r5-stomp-slam.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).
