@@ -2,7 +2,7 @@
 // the HUD, the plate (one cynical line at a time), the day tally and the map between days, the
 // configuration panel with file-backed presets, sound hooks, the ways out.
 // Rules live in game-core.js and city.js; the picture in render3d.js; the sounds in sound.js.
-import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=17';
+import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=20';
 
 const Core = globalThis.CarnageCore, City = globalThis.CarnageCity, Icons = globalThis.CarnageIcons;
 const Sfx = globalThis.CarnageSfx || { play() {}, start() {}, stop() {}, setVolume() {}, voice() {}, bed() {}, setDrone() {}, setSiren() {}, setDust() {}, setNight() {}, setMusic() {} };
@@ -54,7 +54,7 @@ const COPY = {
   wave: { squad: 'THE GUARD IS HERE. BOTH OF THEM.', squadCar: 'THE GUARD, WITH AN ESCORT.', truck: 'SWAT. FINALLY.', sniper: 'A SNIPER. IN SOMEBODY\'S BEDROOM.', drone: 'THE DRONE. FOUR VIEWERS.' },
   rammed: 'HIT AND RUN. THEY RAN.', smashLand: 'SMASH.',
   tank: 'SWAT. RETIRED.', drone: 'DRONE. DEPRECATED.',
-  car: { cruiser: 'OFFICER DOWN. HIS CAR, ANYWAY.', taxi: 'SURGE PRICING CANCELLED.', bot: 'DELIVERY ROBOT. IT HAD ONE JOB.' },
+  car: { cruiser: 'OFFICER DOWN. HIS CAR, ANYWAY.', taxi: 'SURGE PRICING CANCELLED.', hatch: 'STILL FOUR PAYMENTS LEFT.', suv: 'IT NEVER LEFT THE CITY ANYWAY.', bot: 'DELIVERY ROBOT. IT HAD ONE JOB.' },
   fall: 'THAT WAS MORE THAN TWO FLOORS.', knockedOff: 'OFF THE BUILDING. ON CAMERA.',
   extraLife: 'ANOTHER SHIFT.',
   waveDuck: 'HE STOPPED WAVING.',

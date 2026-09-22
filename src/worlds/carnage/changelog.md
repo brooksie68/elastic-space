@@ -128,6 +128,27 @@ smashes, fist-shaped holes, and a lady screaming and waving that you can eat. Th
   plain in the shop's colours); the sign board geometry and the marquee are gone. No two neighbouring shops alike
   (`b.shop`); the family draw is weighted toward brick, concrete and steel, tan and stucco darker. The shop glass
   reflects less by day so the interiors read. Four sim tests made seed-proof; sim 1,918,935 green.
+- **THE PEOPLE AND THINGS ARE MESHY NOW, the back streets, real shadows** (his notes, the same night; "a few hundred
+  credits" — 473 spent: 14 previews + refines, 6 rigs, 6 clips, one remesh; balance 4,214 after his top-up):
+  six window people as rigged models with a clip each (`assets/models/<name>/base.glb` + clip; `PEOPLE_CLIPS`): the
+  SCREAMER (floral house dress, curlers, Wave for Help), the customer (hoodie, Phone Conversation), the remote worker
+  (cardigan, headset, Talk with Hands Open), the phone zombie (Phone Call Gesture), the livestreamer (selfie stick,
+  Cheer with One Hand Up), the waver (an old man in a bathrobe, Wave One Hand; remeshed to 120k to rig); six window
+  things as statics (`THING_MODELS`): the air fryer, the exercise bike, the e-bike battery, the cash bundle, the
+  birthday cake, the cactus — all standing on the sill in front of the wall, the clips looping; the sprites remain
+  the fallback for every other deal. TWO MORE CARS (a hatchback, an SUV) as traffic kinds (`CARS`, the spawn mix)
+  and parked along the kerb, tinted from nine paints (`tintCar`); copy lines for both. THE BACK STREETS: the
+  instanced rows are back as real blocks in the families' colours (per-instance `aTint`, window frames, a cornice
+  and a base) — a row across a 14 m alley behind the front row, a taller row across a 26 m second street with kerbs
+  and a sidewalk, lots under and behind everything in six surfaces that change every few buildings, the full width;
+  the painted skyline moved back behind them. REAL SHADOWS: the sun casts (PCF soft, 2048, riding with the camera),
+  monsters / soldiers / cars / bodies / awnings / back rows cast, the ground and sides receive; the sun up, the
+  hemisphere down, a touch of shade under the cornice and at the sidewalk on the faces; blob shadows faint. NEON
+  bolder (a 4096-wide atlas, fat letters that fill the sign, a lighter off-tube, a wider halo; no fire escape over a
+  sign). TWO SHOPS on wider buildings (`b.split`, `b.shop2`, 70% of five-plus columns, half the restaurants): each
+  half its own fascia, door, interior, colours and awning, a party-wall line between. Soldiers 2.7 m and lit with a
+  fill (they were reading black); window people at 0.62 of a cell. `slim_models.py` takes CARNAGE_RIGS_DIR /
+  CARNAGE_STATICS_DIR; manifests meshy-r2-*.json. Sim tests 8 / 13 made seed-proof; 1,969,331 green.
 - **Where things stand**: AWAITING HIS FLIGHT of all of it. Not done from the plan: the collapse shedding frames and
   signs as debris (item 6's last line). Open after his flight: the lane feel (the crossing time is `laneT`), the wave
   pacing dials, whether the ladder clip or the old climb clip reads better (`ladder` is the default when present).

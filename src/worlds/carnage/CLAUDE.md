@@ -22,8 +22,8 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   weapon lab): act on a note without asking; when a verb changes, `notes.mjs update <verb> "what changed"`
   (green dot + toast in the lab), then `done <id> "reply"`. Run `tmp/carnage/sim.mjs` before marking anything
   done. Bump `?v=` on the changed file in index.html / lab.html.
-- Meshy: 522 credits on the first build (balance 3,146 → 2,624) + 45 on round two's five clips (1,192 → 1,147). Anything
-  new costs credits: state the cost first.
+- Meshy: 522 credits on the first build (balance 3,146 → 2,624) + 45 on round two's five clips (1,192 → 1,147) + 473 on the
+  window people / things / two cars (balance 4,214 after his top-up). Anything new costs credits: state the cost first.
 
 ## Files
 
@@ -53,8 +53,9 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
 - `verbs.js` + `lab.html` + `lab.js` — THE DAMAGE LAB (admin panel → Labs): 53 verbs with plain facts and
   STAGE IT, the game's keys, a dummy or wrecker rival, the army only when staged, ranks / verdicts / notes.
 - `notes.json` — the paper trail (`/api/worlds/carnage/notes`, the generic route).
-- `assets/models/` — george / lizzie / ralph / teen / soldier (`base.glb` + armature-only clips), the five
-  statics (swat, drone, cruiser, taxi, bot). `assets/textures/` — the ten tiles. `assets/audio/sfx/`.
+- `assets/models/` — george / lizzie / ralph / teen / soldier (`base.glb` + armature-only clips), the six window
+  people (screamer / customer / worker / zombie / streamer / waver, one clip each), the statics (swat, drone, cruiser,
+  taxi, hatch, suv, bot, fryer, peloton, battery, cash, cake, cactus). `assets/textures/` — the ten tiles. `assets/audio/sfx/`.
 - tmp/carnage/ (KEEP): `sim.mjs` (22 tests, 1.9 M assertions), `lookdev.html` (silent, autopilot, every look
   dial, BREAK / COLLAPSE / BOOM / FLASH / SOLDIER / TANK / DRONE / CAR / REVERT / NIGHT / NEXT CITY,
   `?snap=name` captures through /api/dev-snapshot, `LAB` globals), `make-smoke.mjs` → `smoke.html`

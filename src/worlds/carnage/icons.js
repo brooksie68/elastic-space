@@ -196,18 +196,18 @@
   ];
   function signAtlas() {
     if (cache.signs) return cache.signs;
-    const c = canvas(2048, 256), g = c.getContext('2d');
-    g.fillStyle = '#000'; g.fillRect(0, 0, 2048, 256);
+    const c = canvas(4096, 512), g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, 4096, 512);
     SIGNS.forEach((sg, i) => {
-      const x = (i % 4) * 512, y = Math.floor(i / 4) * 128;
+      const x = (i % 4) * 1024, y = Math.floor(i / 4) * 256;
       g.save(); g.translate(x, y);
-      g.font = 'bold 84px Impact, "Arial Black", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineJoin = 'round';
-      // the tube: a thick dark stroke then the colour, then a thin white core
-      // solid letters in the colour with a thin white core: a tube that reads on and off
-      g.lineWidth = 10; g.strokeStyle = '#0a0a0c'; g.strokeText(sg[0], 256, 66);
-      g.fillStyle = sg[1]; g.fillText(sg[0], 256, 66);
-      g.lineWidth = 2.5; g.strokeStyle = '#ffffff'; g.strokeText(sg[0], 256, 66);
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+      // fat solid letters that fill the sign, a thin white core: a tube that reads on and off
+      let size = 190; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif';
+      while (g.measureText(sg[0]).width > 940 && size > 60) { size -= 6; g.font = '900 ' + size + 'px Impact, "Arial Black", sans-serif'; }
+      g.lineWidth = 22; g.strokeStyle = sg[1]; g.strokeText(sg[0], 512, 132);
+      g.fillStyle = sg[1]; g.fillText(sg[0], 512, 132);
+      g.lineWidth = 5; g.strokeStyle = '#ffffff'; g.strokeText(sg[0], 512, 132);
       g.restore();
     });
     cache.signs = c;

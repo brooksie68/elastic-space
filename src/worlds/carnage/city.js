@@ -148,7 +148,8 @@
         state: new Uint8Array(cols * floors),    // 0 intact, 1 cracked, 2 broken
         deal: new Array(cols * floors).fill('none'),
         restaurant: null,
-        shop: (function () { let v = Math.floor(rng() * 8); const prev = buildings.length ? buildings[buildings.length - 1].shop : -1; if (v === prev) v = (v + 1 + Math.floor(rng() * 6)) % 8; return v; })(),   // never the same shop next door
+        shop: (function () { let v = Math.floor(rng() * 8); const prev = buildings.length ? buildings[buildings.length - 1].shop2 >= 0 ? buildings[buildings.length - 1].shop2 : buildings[buildings.length - 1].shop : -1; if (v === prev) v = (v + 1 + Math.floor(rng() * 6)) % 8; return v; })(),   // never the same shop next door
+        shop2: -1, split: -1,                        // a second shop on the right half of a wider building (set below)
         broken: 0, punchable: 0,
         threshold: 0,
         collapsing: false, down: false, dropT: 0,
@@ -170,6 +171,12 @@
       if (slot >= 0) {
         b.restaurant = brands[slot];
         for (let c = 0; c < cols; c++) b.cells[c] = T.STORE;
+      }
+      // wider buildings hold two businesses (James, 2026-09-21: "there wouldn't just be one store")
+      if (cols >= 5 && rng() < (b.restaurant ? 0.5 : 0.7)) {
+        b.split = Math.ceil(cols / 2);
+        let v = Math.floor(rng() * 8); if (v === b.shop) v = (v + 1 + Math.floor(rng() * 6)) % 8;
+        b.shop2 = v;
       }
       // a neon sign on a tall enough building, high up, two or three cells wide
       if (floors >= 6 && rng() < 0.45) {

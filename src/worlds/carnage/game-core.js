@@ -79,7 +79,7 @@
   const SOLDIER = { speed: 2.6, stopMin: 5, stopMax: 8, burst: 1.1, pause: 2.2, shotGap: 0.25, bullet: 11, dmg: 0.8, flyT: 0.9, spread: 0.18, cap: (day) => Math.min(5, 2 + Math.floor(day / 3)) };
   const TANK = { speed: 3, stopMin: 9, stopMax: 12, fireGap: 3.5, shell: 9, shellDmg: 8, hp: 2, wreckT: 3, backoff: 3, spread: 1.4 };
   const DRONE = { speed: 7, hoverMin: 2.2, hoverMax: 3.4, burst: 3, shotGap: 0.15, fireGap: 2.2, bullet: 14, dmg: 2, sway: 0.6, spread: 0.1 };
-  const CARS = { cruiser: { speed: 8, pts: 150 }, taxi: { speed: 6, pts: 100 }, bot: { speed: 2.5, pts: 50, hp: 4 } };
+  const CARS = { cruiser: { speed: 8, pts: 150 }, taxi: { speed: 6, pts: 100 }, hatch: { speed: 7, pts: 100 }, suv: { speed: 6.5, pts: 120 }, bot: { speed: 2.5, pts: 50, hp: 4 } };
   const BLIMP = { speed: 1.5, lift: 2.5 };
 
   // ---- rng --------------------------------------------------------------------------------------
@@ -880,7 +880,7 @@
     if (tm.car <= 0) {
       tm.car = rand(state, 6, 14);
       const r = rng(state);
-      const kind = r < 0.25 ? 'cruiser' : r < 0.7 ? 'taxi' : 'bot';
+      const kind = r < 0.15 ? 'cruiser' : r < 0.42 ? 'taxi' : r < 0.64 ? 'hatch' : r < 0.8 ? 'suv' : 'bot';
       const x = rng(state) < 0.5 ? -2.5 : W + 2.5;
       state.cars.push({ id: state.nextId++, kind, x, vx: (x < 0 ? 1 : -1) * CARS[kind].speed, st: 'drive', t: 0 });
       state.events.push({ type: 'car', kind, x });

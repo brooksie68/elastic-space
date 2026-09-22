@@ -10,8 +10,8 @@ import { clone as skeletonClone } from '../../lib/three/utils/SkeletonUtils.js';
 
 export const CELL = 4;                 // metres per cell (a column is one cell wide, a floor one cell tall)
 const DEPTH = 5 * CELL;                // how deep a building is
-const ROW2_Z = -DEPTH - 30;            // the second row of buildings
-const ROW3_Z = -DEPTH - 105;           // the far skyline
+const ALLEY_Z = -DEPTH - 14;           // the back street's front faces (an alley 14 m wide behind the front row)
+const STREET2_Z = -DEPTH - 14 - 34 - 26; // the second row's front faces: past the first row's depth and a 26 m street
 const TAU = Math.PI * 2;
 const Icons = () => globalThis.CarnageIcons;
 
@@ -68,10 +68,12 @@ const FACADE_FS = /* glsl */`
   uniform sampler2D uSigns;
   uniform sampler2D uShops;
   uniform sampler2D uShopTex;
+  uniform sampler2D uShopTex2;
   uniform float uCols, uFloors, uCell, uTileCells, uSeed, uTime, uNight, uWear, uRoomLight, uCollapse, uDay;
   uniform vec3 uInnards, uCamPos, uOrigin, uSky, uGround, uSunDir;
   uniform vec3 uBrandA, uBrandB, uTint, uTrim;
-  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople, uDoor, uShopKind;
+  uniform float uBrand, uNeonC0, uNeonW, uNeonIdx, uNeonLit, uNeonHue, uShop, uPeople, uDoor, uShopKind, uSplit, uDoor2, uShopKind2;
+  uniform vec3 uBrandA2, uBrandB2;
 
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
@@ -197,7 +199,7 @@ const FACADE_FS = /* glsl */`
 
   // THE SHOP INTERIORS (round two, storefront pass): eight businesses and the burger counter (kind 8), drawn on the
   // back wall of the display window in q-space (0..1 across the glass, 0..1 up it) and on the floor
-  vec3 shopInterior(vec2 f, vec2 g0, vec2 g1, vec3 d, float kind, float seed, float lit, float wrecked) {
+  vec3 shopInterior(vec2 f, vec2 g0, vec2 g1, vec3 d, float kind, float seed, float lit, float wrecked, vec3 brandA, vec3 brandB) {
     float D = 0.9;
     vec3 p = vec3(f, 0.0);
     float tz = -D / min(d.z, -0.02);
@@ -298,13 +300,13 @@ const FACADE_FS = /* glsl */`
         for (int i = 0; i < 3; i++) { float sx = 0.2 + float(i) * 0.3; c = mix(c, vec3(0.95), step(abs(q.x - sx), 0.1) * step(0.24, q.y) * step(q.y, 0.29)); c = mix(c, vec3(0.6), step(abs(q.x - sx), 0.01) * step(0.05, q.y) * step(q.y, 0.24)); c = mix(c, light * 1.6, smoothstep(0.05, 0.03, length((q - vec2(sx + 0.06, 0.4)) * vec2(1.0, 1.6)))); }
       } else {
         // the burger place: a counter, a three-panel lit menu board, the fryer glow, the brand colour on the wall
-        c = mix(c, uBrandA, step(0.62, q.y) * step(q.y, 0.66) + step(0.92, q.y) * 0.9);
+        c = mix(c, brandA, step(0.62, q.y) * step(q.y, 0.66) + step(0.92, q.y) * 0.9);
         float board = step(0.68, q.y) * step(q.y, 0.9) * step(0.06, q.x) * step(q.x, 0.94) * step(0.08, fract(q.x * 3.4 + 0.03));
         c = mix(c, vec3(1.0, 0.97, 0.9) * 1.2, board);
-        c = mix(c, uBrandA * 0.8, board * step(0.6, fract(q.y * 14.0)) * step(0.5, fract(q.x * 12.0 + seed)));
+        c = mix(c, brandA * 0.8, board * step(0.6, fract(q.y * 14.0)) * step(0.5, fract(q.x * 12.0 + seed)));
         float counter = step(0.2, q.y) * step(q.y, 0.42);
         c = mix(c, vec3(0.45, 0.45, 0.48), counter);
-        c = mix(c, uBrandB, counter * step(0.38, q.y));
+        c = mix(c, brandB, counter * step(0.38, q.y));
         c = mix(c, vec3(1.0, 0.7, 0.3) * (1.2 + 0.3 * sin(uTime * 7.0 + seed)), step(0.78, q.x) * step(q.x, 0.95) * step(0.42, q.y) * step(q.y, 0.6));
       }
     } else if (t == ty) {
@@ -511,7 +513,13 @@ const FACADE_FS = /* glsl */`
       // recessed door with an OPEN sign, the name lettered on the glass, and the fascia sign INSIDE the ground floor
       float bulk = 0.15, glassTop = 0.66, transTop = 0.74, fasciaTop = 0.97;
       float broken = float(state == 2);
-      float isDoor = (uDoor >= 0.0 && abs(ci.x - uDoor) < 0.5) ? 1.0 : 0.0;
+      // which business this column belongs to: the second shop takes the columns from uSplit on
+      float second = (uSplit > 0.0 && ci.x >= uSplit - 0.5) ? 1.0 : 0.0;
+      float shopKind = mix(uShopKind, uShopKind2, second);
+      vec3 brandA = mix(uBrandA, uBrandA2, second), brandB = mix(uBrandB, uBrandB2, second);
+      float cs0 = second > 0.5 ? uSplit : 0.0, cs1 = (second > 0.5 || uSplit <= 0.0) ? uCols : uSplit;
+      float doorCol = second > 0.5 ? uDoor2 : uDoor;
+      float isDoor = (doorCol >= 0.0 && abs(ci.x - doorCol) < 0.5) ? 1.0 : 0.0;
       vec3 fr = vec3(0.10, 0.10, 0.11);
       vec3 tile = vec3(0.16, 0.15, 0.15) * (0.75 + 0.25 * step(0.5, fract(f.x * 8.0)) * step(0.5, fract(f.y * 30.0)));
       col = mix(col, tile, step(f.y, bulk));
@@ -521,7 +529,7 @@ const FACADE_FS = /* glsl */`
       float rag = broken * (0.04 + 0.05 * fbm(f * 7.0 + seed * 30.0));
       float inGlass = 1.0 - smoothstep(-0.004, 0.004, gb - rag);
       float lit = 1.0 - broken * 0.5;
-      vec3 interior = shopInterior(f, g0, g1, d, uShopKind, seed, lit, broken);
+      vec3 interior = shopInterior(f, g0, g1, d, shopKind, seed, lit, broken, brandA, brandB);
       vec3 n = vec3(0.0, 0.0, 1.0); vec3 rdir = reflect(d, n);
       vec3 refl = mix(uGround, uSky, smoothstep(-0.2, 0.6, rdir.y)) * (0.9 + 0.3 * noise(vWorld.xy * 0.2));
       float fres = mix(0.05, 0.12, uDay) + 0.25 * pow(1.0 - max(0.0, -d.z), 3.0);
@@ -529,7 +537,7 @@ const FACADE_FS = /* glsl */`
       // the name lettered on the glass, small and white, on every other window
       if (isDoor < 0.5 && mod(ci.x, 2.0) < 0.5 && broken < 0.5) {
         vec2 lu = vec2((f.x - 0.14) / 0.72, (f.y - 0.43) / 0.11);
-        if (lu.x > 0.0 && lu.x < 1.0 && lu.y > 0.0 && lu.y < 1.0) { vec4 sg = textureLod(uShopTex, lu, 0.0); float isText = step(0.3, distance(sg.rgb, uBrandA)); glass = mix(glass, vec3(0.97), isText * 0.85); }
+        if (lu.x > 0.0 && lu.x < 1.0 && lu.y > 0.0 && lu.y < 1.0) { vec4 sg = second > 0.5 ? textureLod(uShopTex2, lu, 0.0) : textureLod(uShopTex, lu, 0.0); float isText = step(0.3, distance(sg.rgb, brandA)); glass = mix(glass, vec3(0.97), isText * 0.85); }
       }
       if (isDoor > 0.5) {
         float doorBox = box(f - vec2(0.5, 0.36), vec2(0.22, 0.36));
@@ -553,10 +561,12 @@ const FACADE_FS = /* glsl */`
       col = mix(col, fr, trans * clamp(step(fract(f.x * 3.0), 0.05) + step(f.y, glassTop + 0.02) + step(transTop - 0.01, f.y), 0.0, 1.0));
       // THE FASCIA: the sign band inside the ground floor (never the second floor), the name centred over up to three cells
       float fas = step(transTop, f.y) * step(f.y, fasciaTop);
-      float span = min(uCols, 3.0), c0 = (uCols - span) * 0.5;
+      float span = min(cs1 - cs0, 3.0), c0 = cs0 + (cs1 - cs0 - span) * 0.5;
       float su = (cell.x - c0) / span;
-      vec3 fasCol = uBrandA * 0.7 * (0.9 + 0.1 * noise(f * 25.0));
-      if (su >= 0.0 && su <= 1.0) { vec4 sg = textureLod(uShopTex, vec2(su, (f.y - transTop) / (fasciaTop - transTop)), 0.0); fasCol = sg.rgb; }
+      vec3 fasCol = brandA * 0.7 * (0.9 + 0.1 * noise(f * 25.0));
+      if (su >= 0.0 && su <= 1.0) { vec2 fu = vec2(su, (f.y - transTop) / (fasciaTop - transTop)); vec4 sg = second > 0.5 ? textureLod(uShopTex2, fu, 0.0) : textureLod(uShopTex, fu, 0.0); fasCol = sg.rgb; }
+      // a party wall line between the two businesses
+      if (uSplit > 0.0 && abs(cell.x - uSplit) < 0.02) col = mix(col, vec3(0.1), 0.9);
       col = mix(col, fasCol, fas);
       col = mix(col, col * 0.55, step(fasciaTop, f.y) * step(f.y, fasciaTop + 0.02));
       col = mix(col, fr, step(transTop, f.y) * step(f.y, transTop + 0.012));
@@ -577,12 +587,12 @@ const FACADE_FS = /* glsl */`
       vec3 hue = hsv(uNeonHue, 0.85, 1.0);
       float on = uNeonLit * (1.0 - float(state == 2));
       float flick = 0.85 + 0.15 * step(0.1, fract(sin(uTime * 13.0 + uSeed) * 7.0));
-      vec3 offTube = vec3(0.42, 0.43, 0.45) * (0.8 + 0.2 * sign.r);
+      vec3 offTube = vec3(0.62, 0.63, 0.66) * (0.8 + 0.2 * sign.r);
       vec3 onTube = mix(hue, vec3(1.0), 0.35) * 1.25 * flick;
       vec3 tube = mix(offTube, onTube, on);
       panel = vec3(0.12, 0.11, 0.13) * (0.85 + 0.15 * noise(f * 20.0));
       col = mix(panel, tube, glyph);
-      col += hue * on * 0.28 * textureLod(uSigns, auv, 2.5).r * (1.0 - glyph);
+      col += hue * on * 0.45 * max(textureLod(uSigns, auv, 3.0).r, max(textureLod(uSigns, auv, 3.0).g, textureLod(uSigns, auv, 3.0).b)) * (1.0 - glyph);
       emit = on * glyph * 0.75;
       if (state == 2) { col = panel * 0.6 + vec3(0.3, 0.32, 0.36) * step(0.9, fract(f.x * 9.0 + f.y * 7.0)) * 0.3; emit = 0.0; }
       float frame = 1.0 - smoothstep(0.0, 0.05, -box(f - 0.5, vec2(0.5, 0.5)) + 0.03);
@@ -609,7 +619,8 @@ const FACADE_FS = /* glsl */`
     if (ci.y < 0.5 && f.y < 0.05 && type != 3) col = mix(col, uTint * 0.45, 0.9);
     // daylight on the face: the sun's side is brighter
     float sunFace = 0.7 + 0.3 * max(0.0, uSunDir.z);
-    vec3 lightCol = mix(vec3(0.30, 0.34, 0.5) * 0.45, vec3(1.08, 1.04, 0.96) * sunFace, uDay);
+    float occl = 1.0 - 0.22 * smoothstep(0.35, 0.0, vWorld.y / uCell) - 0.18 * smoothstep(1.0 - 0.35 / uFloors, 1.0, vUv.y);   // the street and the cornice shade the face
+    vec3 lightCol = mix(vec3(0.30, 0.34, 0.5) * 0.45, vec3(1.12, 1.07, 0.98) * sunFace, uDay) * occl;
     vec3 shaded = col * lightCol + col * emit;
     outColor = vec4(shaded, 1.0);
   }
@@ -619,27 +630,32 @@ const FACADE_FS = /* glsl */`
 const FAR_VS = /* glsl */`
   attribute vec3 aSize;
   attribute float aSeed;
-  varying vec3 vLocal; varying vec3 vSize; varying float vSeed; varying vec3 vN;
+  attribute vec3 aTint;
+  varying vec3 vLocal; varying vec3 vSize; varying float vSeed; varying vec3 vN; varying vec3 vTint;
   void main() {
-    vLocal = position * aSize; vSize = aSize; vSeed = aSeed; vN = normal;
+    vLocal = position * aSize; vSize = aSize; vSeed = aSeed; vN = normal; vTint = aTint;
     vec4 w = instanceMatrix * vec4(position * aSize, 1.0);
     gl_Position = projectionMatrix * modelViewMatrix * w;
   }
 `;
 const FAR_FS = /* glsl */`
-  varying vec3 vLocal; varying vec3 vSize; varying float vSeed; varying vec3 vN;
+  varying vec3 vLocal; varying vec3 vSize; varying float vSeed; varying vec3 vN; varying vec3 vTint;
   uniform float uNight, uDim, uTime; uniform vec3 uTint, uFogCol; uniform float uFogA, uFogB;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main() {
     vec2 p = abs(vN.x) > 0.5 ? vLocal.zy : vLocal.xy;
     vec2 g = p / 4.0 + 0.5;
     vec2 c = floor(g), f = fract(g);
-    float isWin = step(0.2, f.x) * step(f.x, 0.8) * step(0.25, f.y) * step(f.y, 0.85);
-    float lit = step(mix(0.82, 0.55, uNight), hash(c + vSeed * 7.0 + floor(vN.x * 3.0)));
+    float isWin = step(0.22, f.x) * step(f.x, 0.78) * step(0.22, f.y) * step(f.y, 0.86);
+    float frame = isWin * (1.0 - step(0.27, f.x) * step(f.x, 0.73) * step(0.27, f.y) * step(f.y, 0.81));
+    float lit = step(mix(0.82, 0.5, uNight), hash(c + vSeed * 7.0 + floor(vN.x * 3.0)));
     float top = step(vSize.y * 0.5 - 0.6, vLocal.y);
-    vec3 wall = uTint * (0.9 + 0.2 * hash(vec2(vSeed, vN.y))) * mix(1.0, 0.16, uNight) * (abs(vN.x) > 0.5 ? 0.8 : 1.0) * (1.0 - top * 0.3);
-    vec3 win = mix(wall * 0.7, vec3(1.0, 0.85, 0.6) * (0.35 + 0.65 * uNight) * 1.4, lit);
-    vec3 col = mix(wall, win, isWin * (1.0 - top)) * uDim;
+    float cornice = step(vSize.y * 0.5 - 1.2, vLocal.y) * (1.0 - top);
+    float base = step(vLocal.y, -vSize.y * 0.5 + 4.0);
+    vec3 wall = vTint * (0.9 + 0.2 * hash(vec2(vSeed, vN.y))) * mix(1.0, 0.18, uNight) * (abs(vN.x) > 0.5 ? 0.78 : 1.0) * (1.0 - top * 0.3) * (1.0 - cornice * 0.35) * (1.0 - base * 0.25);
+    vec3 glass = mix(vec3(0.32, 0.36, 0.42) * mix(1.0, 0.25, uNight), vec3(1.0, 0.85, 0.6) * (0.35 + 0.65 * uNight) * 1.3, lit);
+    vec3 win = mix(glass, vTint * 1.1 * mix(1.0, 0.2, uNight), frame);
+    vec3 col = mix(wall, win, isWin * (1.0 - top) * (1.0 - base)) * uDim;
     float depth = gl_FragCoord.z / gl_FragCoord.w;
     float fog = smoothstep(uFogA, uFogB, depth);
     gl_FragColor = vec4(mix(col, uFogCol, fog), 1.0);
@@ -691,6 +707,7 @@ export function createRenderer(canvas, lookIn) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.NoToneMapping;   // the composite pass tone-maps and encodes; the scene renders linear into a float target
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   // simple drop shadows (James, 2026-09-21)
   let exposure = look.exposure;
   renderer.autoClear = true;
   const PIXEL_BUDGET = 3.2e6;
@@ -704,7 +721,9 @@ export function createRenderer(canvas, lookIn) {
 
   // ---- assets ------------------------------------------------------------------------------------------------
   const textures = {};
-  const models = { monsters: {}, teen: null, soldier: null, statics: {} };
+  const models = { monsters: {}, teen: null, soldier: null, statics: {}, people: {} };
+  const PEOPLE_CLIPS = { screamer: 'help', customer: 'phone', worker: 'talk', zombie: 'phone', streamer: 'cheer', waver: 'wave' };
+  const THING_MODELS = { fryer: 0.42, peloton: 0.55, battery: 0.3, cash: 0.28, cake: 0.3, cactus: 0.5 };   // longest side, in cells
   let assetsFailed = 0;
   const texClones = {};
   function tex(name) {
@@ -728,7 +747,7 @@ export function createRenderer(canvas, lookIn) {
   function prepModel(root) {
     root.traverse((o) => {
       if (o.isMesh) {
-        o.castShadow = false; o.receiveShadow = false; o.frustumCulled = false;
+        o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
         for (const m of mats) { if (m.map) m.map.colorSpace = THREE.SRGBColorSpace; if (m.map && m.emissive) { m.emissiveMap = m.map; m.emissive.setHex(0); m.emissiveIntensity = 1; } m.side = THREE.FrontSide; }
       }
@@ -762,17 +781,21 @@ export function createRenderer(canvas, lookIn) {
     for (const slug of ['george', 'lizzie', 'ralph']) { total++; jobs.push(rigged(slug, MONSTER_CLIPS).then((a) => { models.monsters[slug] = a; tick(); })); }
     total++; jobs.push(rigged('teen', ['walk', 'tired']).then((a) => { models.teen = a; tick(); }));
     total++; jobs.push(rigged('soldier', ['walk', 'fire', 'flyup']).then((a) => { models.soldier = a; tick(); }));
-    for (const name of ['swat', 'drone', 'cruiser', 'taxi', 'bot']) { total++; jobs.push(loadGlb('assets/models/' + name + '.glb').then((g) => { if (g) { prepModel(g.scene); models.statics[name] = g.scene; } tick(); })); }
+    for (const name of ['swat', 'drone', 'cruiser', 'taxi', 'bot', 'hatch', 'suv', 'fryer', 'peloton', 'battery', 'cash', 'cake', 'cactus']) { total++; jobs.push(loadGlb('assets/models/' + name + '.glb').then((g) => { if (g) { prepModel(g.scene); models.statics[name] = g.scene; } tick(); })); }
+    // THE WINDOW PEOPLE (round two): rigged Meshy models with one clip each; the sprites stay as the fallback
+    for (const [name, clip] of Object.entries(PEOPLE_CLIPS)) { total++; jobs.push(rigged(name, [clip]).then((a) => { models.people[name] = a; tick(); })); }
     await Promise.all(jobs);
     return { failed: assetsFailed };
   }
 
   // ---- lights, sky, fog -------------------------------------------------------------------------------------------
-  const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x4a4036, 0.9);
-  const sun = new THREE.DirectionalLight(0xfff2dc, 1.6);
+  const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x4a4036, 0.75);
+  const sun = new THREE.DirectionalLight(0xfff2dc, 2.0);
   sun.position.set(60, 120, 90);
-  const amb = new THREE.AmbientLight(0xffffff, 0.15);
-  scene.add(hemi, sun, amb);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.05;
+  Object.assign(sun.shadow.camera, { left: -110, right: 110, top: 90, bottom: -30, near: 10, far: 420 }); sun.shadow.camera.updateProjectionMatrix();
+  const amb = new THREE.AmbientLight(0xffffff, 0.12);
+  scene.add(hemi, sun, sun.target, amb);
   const skyUniforms = { uTop: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() }, uSunDir: { value: new THREE.Vector3(0.3, 0.5, -0.8).normalize() }, uSunCol: { value: new THREE.Color(1, 0.9, 0.7) }, uNight: { value: 0 }, uStars: { value: 1 }, uTime: { value: 0 } };
   const sky = new THREE.Mesh(new THREE.SphereGeometry(700, 32, 16), new THREE.ShaderMaterial({ vertexShader: SKY_VS, fragmentShader: SKY_FS, uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false, fog: false }));
   sky.renderOrder = -10;
@@ -783,8 +806,8 @@ export function createRenderer(canvas, lookIn) {
     const p = night ? palette.night : palette.day;
     skyUniforms.uTop.value.setHex(p.top); skyUniforms.uHorizon.value.setHex(p.horizon); skyUniforms.uNight.value = night ? 1 : 0; skyUniforms.uSunCol.value.setHex(p.sunCol);
     skyUniforms.uSunDir.value.set(night ? -0.4 : 0.35, night ? 0.6 : 0.55, night ? -0.7 : -0.75).normalize();
-    hemi.intensity = night ? 0.35 : 0.95; hemi.color.setHex(night ? 0x3a4a8a : 0xbfd4ff);
-    sun.intensity = night ? 0.35 : 1.7; sun.color.setHex(night ? 0x9fb3ff : 0xfff2dc);
+    hemi.intensity = night ? 0.35 : 0.75; hemi.color.setHex(night ? 0x3a4a8a : 0xbfd4ff);
+    sun.intensity = night ? 0.4 : 2.0; sun.color.setHex(night ? 0x9fb3ff : 0xfff2dc);
     amb.intensity = night ? 0.06 : 0.18;
     scene.fog = new THREE.Fog(p.fog, 110 * look.fogDepth, 380 * look.fogDepth);
     shardMat.color.setHex(night ? 0x5a6a7a : 0xcfe8ff); debrisMat.color.setHex(night ? 0x8a8a90 : 0xffffff);
@@ -807,12 +830,28 @@ export function createRenderer(canvas, lookIn) {
     for (const c of ground.children.slice()) { ground.remove(c); if (c.geometry) c.geometry.dispose(); }
     const W = width * CELL + 400;
     const x0 = -200;
-    const mk = (w, d, z, t, rep) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tile(t, w / rep, d / rep), roughness: 0.95, metalness: 0 })); m.rotation.x = -Math.PI / 2; m.position.set(x0 + w / 2, 0, z); return m; };
+    const mk = (w, d, z, t, rep) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tile(t, w / rep, d / rep), roughness: 0.95, metalness: 0 })); m.rotation.x = -Math.PI / 2; m.position.set(x0 + w / 2, 0, z); m.receiveShadow = true; return m; };
     ground.add(mk(W, SW, SW / 2, 'sidewalk', 3.2));             // the pavement in front of the faces, deep enough for a giant
     const road = mk(W, ROAD, SW + ROAD / 2, 'asphalt', 6); road.position.y = -0.04; ground.add(road);
     const near = mk(W, 8.5, SW + ROAD + 4.25, 'sidewalk', 3.2); ground.add(near);   // the near pavement: one sidewalk, the planters on it, a railing at its back
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(W, 500), new THREE.MeshStandardMaterial({ color: 0x5a5058, roughness: 1 }));
-    back.rotation.x = -Math.PI / 2; back.position.set(x0 + W / 2, -0.08, -100); ground.add(back);
+    // behind the faces: the lots under the front row (seen through the gaps), the alley, the back row's lots, the second
+    // street with its kerbs, and gravel to the fog — in segments along x so the surface changes every few buildings
+    const Wb = width * CELL + 1400, xb0 = -700;
+    const backBase = new THREE.Mesh(new THREE.PlaneGeometry(Wb, 700), new THREE.MeshStandardMaterial({ color: 0x3c3a3e, roughness: 1 }));
+    backBase.rotation.x = -Math.PI / 2; backBase.position.set(xb0 + Wb / 2, -0.12, -300); backBase.receiveShadow = true; ground.add(backBase);
+    const LOT_TINTS = [0x8a8378, 0x6e6a62, 0x7a6a58, 0x5e5c5a, 0x8c8a86, 0x6a6058];
+    let seg = 0;
+    for (let x = xb0; x < xb0 + Wb; x += 34 + (seg * 13 % 20), seg++) {
+      const sw = Math.min(34 + (seg * 13 % 20), xb0 + Wb - x);
+      const mkLot = (z0, z1, tint, t) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(sw, z0 - z1), new THREE.MeshStandardMaterial({ map: tile(t || 'rubble', sw / 9, (z0 - z1) / 9), color: tint, roughness: 1 })); m.rotation.x = -Math.PI / 2; m.position.set(x + sw / 2, -0.06, (z0 + z1) / 2); m.receiveShadow = true; ground.add(m); };
+      mkLot(0, -DEPTH, LOT_TINTS[seg % LOT_TINTS.length], seg % 4 === 2 ? 'concrete' : 'rubble');            // under the front row
+      mkLot(ALLEY_Z, ALLEY_Z - 34, LOT_TINTS[(seg * 5 + 2) % LOT_TINTS.length], seg % 3 === 1 ? 'asphalt' : 'rubble');   // under the back row
+      mkLot(STREET2_Z, STREET2_Z - 40, LOT_TINTS[(seg * 7 + 4) % LOT_TINTS.length]);   // under the second row
+    }
+    const alley = mk(Wb, 14, -DEPTH - 7, 'asphalt', 6); alley.position.x = xb0 + Wb / 2; alley.position.y = -0.04; alley.material.color.setHex(0x8a8a8a); ground.add(alley);
+    const street2 = mk(Wb, 26, STREET2_Z + 13, 'asphalt', 6); street2.position.x = xb0 + Wb / 2; street2.position.y = -0.04; ground.add(street2);
+    for (const z of [STREET2_Z + 26, STREET2_Z]) { const k2 = new THREE.Mesh(new THREE.BoxGeometry(Wb, 0.18, 0.3), new THREE.MeshStandardMaterial({ color: 0x8a8880, roughness: 0.9 })); k2.position.set(xb0 + Wb / 2, 0.09, z); ground.add(k2); }
+    const walk2 = mk(Wb, 3.5, STREET2_Z + 26 + 1.75, 'sidewalk', 3.2); walk2.position.x = xb0 + Wb / 2; ground.add(walk2);
     // planters and a low fence along the near pavement, low enough to stay under the road in the frame
     const planterMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.8 }), leafMat = new THREE.MeshStandardMaterial({ color: 0x2f6a34, roughness: 0.9 });
     const southern = city && city.lat < 33.5;
@@ -847,7 +886,8 @@ export function createRenderer(canvas, lookIn) {
       if (i % 3 === 1 || i % 7 === 4) continue;
       const z = SW + ROAD - 1.6;
       // only the real models park here (the block cars are gone — James, 2026-09-21): taxis mostly, a cruiser now and then
-      const model = i % 5 === 3 ? (models.statics.cruiser || models.statics.taxi) : models.statics.taxi;
+      const pick = i % 5 === 3 ? 'cruiser' : i % 5 === 1 ? 'hatch' : i % 5 === 4 ? 'suv' : 'taxi';
+      const model = models.statics[pick] || models.statics.taxi;
       if (!model) continue;
       if (model) {
         const m = model.clone(true);
@@ -855,6 +895,8 @@ export function createRenderer(canvas, lookIn) {
         const k = 4.8 / Math.max(0.01, Math.max(dims.x, dims.z));
         m.scale.setScalar(k); m.position.set(x - (box.min.x + box.max.x) / 2 * k, -box.min.y * k, z - (box.min.z + box.max.z) / 2 * k);
         if (dims.z > dims.x) m.rotation.y = Math.PI / 2;
+        if (pick === 'hatch' || pick === 'suv') tintCar(m, CAR_TINTS[(i * 5 + 2) % CAR_TINTS.length]);
+        m.traverse((o) => { if (o.isMesh) o.castShadow = true; });
         ground.add(m);
         continue;
       }
@@ -902,7 +944,7 @@ export function createRenderer(canvas, lookIn) {
   const farGroup = new THREE.Group();
   scene.add(farGroup);
   // THE SKYLINE (round two): four painted layers of silhouettes behind the street, parallax from the camera itself
-  const SKY_LAYERS = [{ z: -70, h: 62 }, { z: -150, h: 115 }, { z: -280, h: 175 }, { z: -470, h: 250 }];
+  const SKY_LAYERS = [{ z: -170, h: 90 }, { z: -260, h: 140 }, { z: -400, h: 200 }, { z: -600, h: 280 }];
   let skylinePlanes = [], skylineSeed = 1;
   function layerColour(i) {
     const p = night ? palette.night : palette.day;
@@ -933,25 +975,32 @@ export function createRenderer(canvas, lookIn) {
     buildSkyline(width, seed);
     let r = seed * 7919 + 17;
     const rnd = () => { r = (r * 1103515245 + 12345) % 2147483648; return r / 2147483648; };
-    const rows = [{ z: ROW2_Z, n: Math.ceil(width / 6) + 8, hMin: 5, hMax: 22, w: [14, 30], dim: 0.48, tint: [0.42, 0.44, 0.52] }, { z: ROW3_Z, n: Math.ceil(width / 5) + 14, hMin: 14, hMax: 46, w: [16, 36], dim: 0.34, tint: [0.36, 0.4, 0.5] }];
-    for (const row of (rows.length ? [] : rows)) {
+    // THE BACK STREETS (James, 2026-09-21): an alley behind the front row, a row of blocks, a second street, a taller row —
+    // then the painted skyline. Front faces at ALLEY_Z and STREET2_Z; the x range runs well past both ends.
+    const rows = [{ z: ALLEY_Z, n: Math.ceil(width / 4) + 40, hMin: 3, hMax: 9, w: [10, 26], d: [14, 30], dim: 0.92 }, { z: STREET2_Z, n: Math.ceil(width / 4) + 40, hMin: 5, hMax: 16, w: [14, 32], d: [16, 34], dim: 0.8 }];
+    const tints = Object.values(FAMILY_TINT);
+    for (const row of rows) {
       const geo = new THREE.BoxGeometry(1, 1, 1);
       geo.translate(0, 0.5, 0);
-      const sizes = new Float32Array(row.n * 3), seeds = new Float32Array(row.n);
-      const mat = new THREE.ShaderMaterial({ vertexShader: FAR_VS, fragmentShader: FAR_FS, uniforms: Object.assign({}, farUniforms, { uDim: { value: row.dim }, uTint: { value: new THREE.Color(...row.tint) } }) });
+      const sizes = new Float32Array(row.n * 3), seeds = new Float32Array(row.n), tintA = new Float32Array(row.n * 3);
+      const mat = new THREE.ShaderMaterial({ vertexShader: FAR_VS, fragmentShader: FAR_FS, uniforms: Object.assign({}, farUniforms, { uDim: { value: row.dim }, uTint: { value: new THREE.Color(0.5, 0.5, 0.5) } }) });
       const inst = new THREE.InstancedMesh(geo, mat, row.n);
       const m = new THREE.Matrix4();
-      let x = -60;
+      let x = -520;
       for (let i = 0; i < row.n; i++) {
-        const w = row.w[0] + rnd() * (row.w[1] - row.w[0]), h = (row.hMin + rnd() * (row.hMax - row.hMin)) * CELL, d = 14 + rnd() * 16;
+        const w = row.w[0] + rnd() * (row.w[1] - row.w[0]), h = Math.round(row.hMin + rnd() * (row.hMax - row.hMin)) * CELL, d = row.d[0] + rnd() * (row.d[1] - row.d[0]);
         sizes[i * 3] = w; sizes[i * 3 + 1] = h; sizes[i * 3 + 2] = d; seeds[i] = rnd();
-        m.identity(); m.setPosition(x + w / 2, 0, row.z - rnd() * 10);
+        const t = tints[Math.floor(rnd() * tints.length)], k = 0.85 + 0.3 * rnd();
+        tintA[i * 3] = Math.min(1, t[0] * k); tintA[i * 3 + 1] = Math.min(1, t[1] * k); tintA[i * 3 + 2] = Math.min(1, t[2] * k);
+        m.identity(); m.setPosition(x + w / 2, 0, row.z - d / 2 - rnd() * 3);   // the front face on the row's line
         inst.setMatrixAt(i, m);
-        x += w + 2 + rnd() * 6;
+        x += w + 1.5 + rnd() * 5;
+        if (x > width * CELL + 520) { inst.count = i + 1; break; }
       }
       geo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizes, 3));
       geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
-      inst.frustumCulled = false;
+      geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(tintA, 3));
+      inst.frustumCulled = false; inst.castShadow = true; inst.receiveShadow = true;
       farGroup.add(inst);
     }
     // clouds
@@ -1004,19 +1053,19 @@ export function createRenderer(canvas, lookIn) {
     const roofMat = new THREE.MeshStandardMaterial({ map: tile('roof', W / 10, DEPTH / 10), roughness: 1 });
     const backMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 1 });
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, DEPTH), [sideMat, sideMat, roofMat, backMat, backMat, backMat]);   // +x -x +y -y +z(front, hidden by the facade) -z
-    body.position.set(W / 2, H / 2, -DEPTH / 2);
+    body.position.set(W / 2, H / 2, -DEPTH / 2); body.castShadow = true; body.receiveShadow = true;
     g.add(body);
     // a parapet and rooftop kit: a water tank, an AC plant, a vent or two
     // THE CORNICE: a trim-coloured cap that overhangs the face, with a darker underside
     const trimCol = new THREE.Color(trim[0], trim[1], trim[2]);
     const parapet = new THREE.Mesh(new THREE.BoxGeometry(W + 0.9, 0.9, DEPTH + 0.6), new THREE.MeshStandardMaterial({ color: trimCol, roughness: 0.85 }));
-    parapet.position.set(W / 2, H + 0.42, -DEPTH / 2 + 0.3); g.add(parapet);
+    parapet.position.set(W / 2, H + 0.42, -DEPTH / 2 + 0.3); parapet.castShadow = true; g.add(parapet);
     const under = new THREE.Mesh(new THREE.BoxGeometry(W + 0.9, 0.16, DEPTH + 0.6), new THREE.MeshStandardMaterial({ color: trimCol.clone().multiplyScalar(0.55), roughness: 0.9 }));
     under.position.set(W / 2, H - 0.1, -DEPTH / 2 + 0.3); g.add(under);
     const kitMat = new THREE.MeshStandardMaterial({ map: tile('steel', 0.5, 0.5), color: 0xd8d2c4, roughness: 0.6, metalness: 0.4 });
     const rustMat = new THREE.MeshStandardMaterial({ map: tile('steel', 0.5, 0.5), color: 0xb85a3a, roughness: 0.8, metalness: 0.3 });
     // a fire escape down two columns of the face, on some buildings
-    if (b.cols >= 3 && b.floors >= 4 && seedRnd() < 0.45) {
+    if (b.cols >= 3 && b.floors >= 4 && !b.neon && seedRnd() < 0.45) {
       const ironMat = new THREE.MeshStandardMaterial({ color: 0x14141a, roughness: 0.5, metalness: 0.6 });
       const c0 = Math.floor(seedRnd() * (b.cols - 1));
       const fx = (c0 + 1) * CELL;
@@ -1043,11 +1092,17 @@ export function createRenderer(canvas, lookIn) {
     const shopDef = Icons().SHOPS[(b.shop || 0) % 8];
     const hex = (h) => { const c = new THREE.Color(h); return [c.r, c.g, c.b]; };
     const brand = b.restaurant ? BRAND_COLOR[b.restaurant] : hex(shopDef[1]).concat(hex(shopDef[2]));
+    const split = b.split > 0 ? b.split : -1;
+    const shop2Def = Icons().SHOPS[(b.shop2 >= 0 ? b.shop2 : 0) % 8];
+    const brand2 = hex(shop2Def[1]).concat(hex(shop2Def[2]));
+    const doorCol = Math.floor((split > 0 ? split : b.cols) / 2), doorCol2 = split > 0 ? split + Math.floor((b.cols - split) / 2) : -1;
     const neonSpan = b.neon ? { c0: b.neon.cells[0] % b.cols, w: b.neon.cells.length } : { c0: 0, w: 1 };
     const uniforms = {
       uCells: { value: cellsTex }, uWall: { value: wallTex }, uSigns: { value: signsTex }, uShops: { value: shopsTex },
-      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: -1 }, uDoor: { value: Math.floor(b.cols / 2) }, uPeople: { value: 1 },
+      uTint: { value: new THREE.Vector3(...tint) }, uTrim: { value: new THREE.Vector3(...trim) }, uShop: { value: -1 }, uDoor: { value: doorCol }, uPeople: { value: 1 },
       uShopTex: { value: canvasTex(b.restaurant ? Icons().brandSign(b.restaurant, 1024, 96) : Icons().shopSign(b.shop || 0, 1024, 96, false)) }, uShopKind: { value: b.restaurant ? 8 : (b.shop || 0) % 8 },
+      uSplit: { value: split }, uDoor2: { value: doorCol2 }, uShopTex2: { value: canvasTex(Icons().shopSign(b.shop2 >= 0 ? b.shop2 : 0, 1024, 96, false)) }, uShopKind2: { value: (b.shop2 >= 0 ? b.shop2 : 0) % 8 },
+      uBrandA2: { value: new THREE.Vector3(brand2[0], brand2[1], brand2[2]) }, uBrandB2: { value: new THREE.Vector3(brand2[3], brand2[4], brand2[5]) },
       uCols: { value: b.cols }, uFloors: { value: b.floors }, uCell: { value: CELL }, uTileCells: { value: FAMILY_TILE_CELLS[fam.id] },
       uSeed: { value: seedRnd() }, uTime: { value: 0 }, uNight: { value: night ? 1 : 0 }, uDay: { value: night ? 0 : 1 }, uWear: { value: look.wear }, uRoomLight: { value: look.roomLight }, uCollapse: { value: 0 },
       uInnards: { value: new THREE.Vector3(...FAMILY_INNARDS[fam.id]) }, uCamPos: { value: new THREE.Vector3() }, uOrigin: { value: new THREE.Vector3(b.x0 * CELL, 0, 0) },
@@ -1062,22 +1117,25 @@ export function createRenderer(canvas, lookIn) {
     // the brand mark over the storefront
     if (b.restaurant) {
       // the brand mark on the fascia, left of the name
-      const span = Math.min(b.cols, 3), c0 = (b.cols - span) / 2;
+      const cs1 = split > 0 ? split : b.cols, span = Math.min(cs1, 3), c0 = (cs1 - span) / 2;
       const mark = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: canvasTex(Icons().brandMark(b.restaurant, 256)), transparent: true }));
       mark.position.set(c0 * CELL + 0.55, CELL * 0.855, 0.06); g.add(mark);
     }
     // THE AWNING: a real sloped canopy with a valance over the glass, on every restaurant and some shops
-    if (b.restaurant || seedRnd() < 0.45) {
-      const striped = b.restaurant || seedRnd() < 0.5;
-      const awTex = canvasTex(Icons().awning(brand, striped));
+    const shops = [{ c0: 0, c1: split > 0 ? split : b.cols, brand, rest: !!b.restaurant }];
+    if (split > 0) shops.push({ c0: split, c1: b.cols, brand: brand2, rest: false });
+    for (const sh of shops) {
+      if (!(sh.rest || seedRnd() < 0.45)) continue;
+      const striped = sh.rest || seedRnd() < 0.5;
+      const awTex = canvasTex(Icons().awning(sh.brand, striped));
       const awMat = new THREE.MeshStandardMaterial({ map: awTex, roughness: 0.85, side: THREE.DoubleSide });
-      const aw = W - 0.5, drop = 0.55, out = 1.5;
+      const aw = (sh.c1 - sh.c0) * CELL - 0.5, cx = (sh.c0 + sh.c1) / 2 * CELL, drop = 0.55, out = 1.5;
       const slope = new THREE.Mesh(new THREE.PlaneGeometry(aw, Math.hypot(out, drop)), awMat);
       slope.rotation.x = Math.PI / 2 - Math.atan2(drop, out);   // sloping down and out from the wall
-      slope.position.set(W / 2, CELL * 0.69 - drop / 2, out / 2); g.add(slope);
+      slope.position.set(cx, CELL * 0.69 - drop / 2, out / 2); slope.castShadow = true; g.add(slope);
       const valance = new THREE.Mesh(new THREE.PlaneGeometry(aw, 0.32), awMat);
-      valance.position.set(W / 2, CELL * 0.69 - drop - 0.16, out); g.add(valance);
-      for (const dx of [-aw / 2 + 0.2, aw / 2 - 0.2]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, out), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.5, metalness: 0.5 })); arm.position.set(W / 2 + dx, CELL * 0.69 - drop, out / 2); g.add(arm); }
+      valance.position.set(cx, CELL * 0.69 - drop - 0.16, out); g.add(valance);
+      for (const dx of [-aw / 2 + 0.2, aw / 2 - 0.2]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, out), new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.5, metalness: 0.5 })); arm.position.set(cx + dx, CELL * 0.69 - drop, out / 2); g.add(arm); }
     }
     // the rubble for later, hidden
     const rubble = makeRubble(W, seedRnd);
@@ -1122,23 +1180,50 @@ export function createRenderer(canvas, lookIn) {
     for (const it of state.items) {
       seen.add(it.id);
       let v = itemViews.get(it.id);
+      if (!v && models.people[it.deal] && models.people[it.deal].scene) {
+        // a person: a rigged model standing on the sill, the clip looping, facing the street
+        const rig = makeRig(models.people[it.deal], CELL * 0.62, 0x9a9aa2);
+        actorGroup.remove(rig.root); cityGroup.add(rig.root);
+        rig.root.position.set(it.x * CELL, (it.row + 0.16) * CELL, 0.32);
+        rig.root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } });
+        play(rig, PEOPLE_CLIPS[it.deal], { speed: it.deal === 'screamer' ? 1.3 : 1 });
+        v = { mesh: rig.root, mat: null, rig, deal: it.deal, hot: it.hot, glow: null, t: 0, model: true };
+        itemViews.set(it.id, v);
+        const bv = buildingViews.get(it.b); if (bv) setItemFlag(bv, it.k, true);
+      } else if (!v && models.statics[it.deal] && THING_MODELS[it.deal]) {
+        // a thing: the real model on the sill
+        const st2 = makeStatic(it.deal, CELL * THING_MODELS[it.deal], 0x888888, [1, 1, 1]);
+        actorGroup.remove(st2.root); cityGroup.add(st2.root);
+        st2.root.position.set(it.x * CELL, (it.row + 0.16) * CELL, 0.3);
+        st2.inner.rotation.y = -0.35;
+        st2.root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.renderOrder = 2; } });
+        v = { mesh: st2.root, mat: null, deal: it.deal, hot: it.hot, glow: null, t: 0, model: true, statik: st2 };
+        itemViews.set(it.id, v);
+        const bv = buildingViews.get(it.b); if (bv) setItemFlag(bv, it.k, true);
+      }
       if (!v) {
         const name = it.deal === 'fryer' ? 'fryer' : it.deal;
         const mat = new THREE.MeshBasicMaterial({ map: it.deal === 'screamer' ? screamerFrame(0) : iconTexture(name), transparent: true, depthWrite: false });
-        const big = it.deal === 'screamer' ? 0.86 : 0.78;
+        const big = it.deal === 'screamer' ? 0.72 : 0.66;
         const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CELL * big, CELL * big), mat);
         mesh.position.set(it.x * CELL, (it.row + 0.5) * CELL - CELL * 0.06, 0.14);   // just in front of the wall, inside the opening
         mesh.renderOrder = 2;
         cityGroup.add(mesh);
         v = { mesh, mat, deal: it.deal, hot: it.hot, glow: null, t: 0 };
-        if (it.deal === 'streamer' || it.deal === 'battery' || it.deal === 'supplement' || it.deal === 'corridor') {
+        if (false) {
           const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: it.deal === 'battery' ? 0xff7a1a : it.deal === 'supplement' ? 0x7ed957 : it.deal === 'corridor' ? 0x9ad8ff : 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
           gl.scale.set(CELL * 1.2, CELL * 1.2, 1); gl.position.copy(mesh.position); gl.position.z += 0.2; cityGroup.add(gl); v.glow = gl;
         }
         itemViews.set(it.id, v);
         const bv = buildingViews.get(it.b); if (bv) setItemFlag(bv, it.k, true);
       }
+      if (!v.glow && (it.deal === 'streamer' || it.deal === 'battery' || it.deal === 'supplement' || it.deal === 'corridor')) {
+        const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: softTex, color: it.deal === 'battery' ? 0xff7a1a : it.deal === 'supplement' ? 0x7ed957 : it.deal === 'corridor' ? 0x9ad8ff : 0xffffff, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }));
+        gl.scale.set(CELL * 1.2, CELL * 1.2, 1); gl.position.set(it.x * CELL, (it.row + 0.5) * CELL, 0.4); cityGroup.add(gl); v.glow = gl;
+      }
       v.t += 0.016;
+      if (v.rig && v.rig.mixer) v.rig.mixer.update(1 / 60);
+      if (v.model) { if (it.deal === 'fryer' && !it.hot && !v.cooled) { v.cooled = true; cityGroup.remove(v.mesh); const mat = new THREE.MeshBasicMaterial({ map: iconTexture('toast'), transparent: true, depthWrite: false }); v.mesh = new THREE.Mesh(new THREE.PlaneGeometry(CELL * 0.5, CELL * 0.5), mat); v.mesh.position.set(it.x * CELL, (it.row + 0.45) * CELL, 0.14); v.mesh.renderOrder = 2; v.mat = mat; cityGroup.add(v.mesh); v.model = false; } continue; }
       if (it.deal === 'fryer' && !it.hot && !v.cooled) { v.cooled = true; v.mat.map = iconTexture('toast'); v.mat.needsUpdate = true; }
       if (it.deal === 'waver') v.mesh.position.y = (it.row + 0.5) * CELL - CELL * 0.06 + Math.sin(clock.t * 6) * 0.15;
       if (it.deal === 'screamer') { const fr = Math.floor(clock.t * 9 + it.id) % 4; if (fr !== v.frame) { v.frame = fr; v.mat.map = screamerFrame(fr); v.mat.needsUpdate = true; } v.mesh.position.y = (it.row + 0.5) * CELL - CELL * 0.06 + Math.abs(Math.sin(clock.t * 9)) * 0.12; }
@@ -1150,7 +1235,7 @@ export function createRenderer(canvas, lookIn) {
       }
     }
     for (const [id, v] of itemViews) {
-      if (!seen.has(id)) { cityGroup.remove(v.mesh); if (v.glow) cityGroup.remove(v.glow); v.mesh.geometry.dispose(); itemViews.delete(id); }
+      if (!seen.has(id)) { cityGroup.remove(v.mesh); if (v.glow) cityGroup.remove(v.glow); if (v.mesh.geometry) v.mesh.geometry.dispose(); itemViews.delete(id); }
     }
   }
 
@@ -1578,7 +1663,7 @@ export function createRenderer(canvas, lookIn) {
     for (const [id, v] of monsterViews) if (!seen.has(id)) { actorGroup.remove(v.root); monsterViews.delete(id); }
   }
   function makeShadow(size) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.5), new THREE.MeshBasicMaterial({ map: softTex, color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 0.5), new THREE.MeshBasicMaterial({ map: softTex, color: 0x000000, transparent: true, opacity: 0.16, depthWrite: false }));
     m.rotation.x = -Math.PI / 2; m.position.y = 0.03; m.renderOrder = 1;
     return m;
   }
@@ -1587,7 +1672,7 @@ export function createRenderer(canvas, lookIn) {
     for (const s of state.soldiers) {
       seen.add(s.id);
       let v = soldierViews.get(s.id);
-      if (!v) { v = makeRig(models.soldier, 1.85, 0x6b6f3a); v.shadow = makeShadow(1.2); v.root.add(v.shadow); v.prev = ''; soldierViews.set(s.id, v); }
+      if (!v) { v = makeRig(models.soldier, 2.7, 0x6b6f3a); v.shadow = makeShadow(1.7); v.root.add(v.shadow); v.prev = ''; soldierViews.set(s.id, v); }
       v.root.position.set(s.x * CELL, s.y * CELL, SOLDIER_Z);
       v.inner.rotation.y = s.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       let anim = s.st === 'walk' ? 'walk' : s.st === 'flyup' ? 'flyup' : s.st === 'dead' ? 'dead' : 'fire';
@@ -1600,10 +1685,14 @@ export function createRenderer(canvas, lookIn) {
       }
       if (s.st === 'flyup') { v.inner.rotation.z += dt * 6; v.shadow.visible = false; }
       if (v.mixer) v.mixer.update(dt);
+      { const fill = night ? 0.3 : 0.14; for (const mat of v.mats) if (mat.emissive) mat.emissive.setRGB(fill, fill, fill); }
       if (!v.mixer) { v.inner.position.y = s.st === 'walk' ? Math.abs(Math.sin(clock.t * 12)) * 0.15 : 0; if (s.st === 'kneel' || s.st === 'fire') v.inner.scale.y = 0.7; else v.inner.scale.y = 1; }
     }
     for (const [id, v] of soldierViews) if (!seen.has(id)) { actorGroup.remove(v.root); soldierViews.delete(id); }
   }
+  // the plain cars come in colours: the models are painted light, so a tint on the body reads as the paint
+  const CAR_TINTS = [0xc83c2c, 0x2f5fb8, 0x3a7a46, 0xb8b8bc, 0x2a2a30, 0xd9c05a, 0x8a4a9a, 0xe8e8ea, 0x7a5a3a];
+  function tintCar(inner, hex) { inner.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.setHex(hex); o.material.emissiveIntensity = 0.35; } }); }
   function makeStatic(name, length, fallbackColor, fallbackSize) {
     const root = new THREE.Group();
     const inner = new THREE.Group(); root.add(inner);
@@ -1632,8 +1721,9 @@ export function createRenderer(canvas, lookIn) {
       seen.add(c.id);
       let v = carViews.get(c.id);
       if (!v) {
-        const len = c.kind === 'bot' ? 1.3 : c.kind === 'cruiser' ? 5.2 : 4.8;
+        const len = c.kind === 'bot' ? 1.3 : c.kind === 'cruiser' ? 5.2 : c.kind === 'suv' ? 5.1 : c.kind === 'hatch' ? 4.4 : 4.8;
         v = makeStatic(c.kind, len, c.kind === 'taxi' ? 0xf2d24b : c.kind === 'bot' ? 0xf4f4f4 : 0xf0f0f0, c.kind === 'bot' ? [1.2, 0.9, 0.8] : [4.8, 1.5, 2]);
+        if (c.kind === 'hatch' || c.kind === 'suv') tintCar(v.inner, CAR_TINTS[(c.id * 7) % CAR_TINTS.length]);
         v.kind = c.kind; v.shadow = makeShadow(c.kind === 'bot' ? 1.6 : 5.5); v.root.add(v.shadow); v.wrecked = false;
         if (c.kind === 'cruiser') {
           v.lights = [];
@@ -1909,6 +1999,7 @@ export function createRenderer(canvas, lookIn) {
     let thud = 0;
     if (thudT > 0) thud = Math.sin(thudT * 22) * thudAmt * 0.35 * thudT;
     camera.position.set(camX, camY + thud, camDist);
+    sun.position.set(camX + 55, 130, 95); sun.target.position.set(camX, 0, 0); sun.target.updateMatrixWorld();
   }
 
   // ---- post ---------------------------------------------------------------------------------------------------------------------
