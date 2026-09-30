@@ -144,9 +144,9 @@ consistent. `npm run check-worlds` audits every world against the contract.
      HE FLEW IT AGAIN 2026-09-21/22 → all his notes BUILT the same night (world changelog 2026-09-21 + 2026-09-22): the
      storefront pass, Meshy window people, THE BACK STREETS, dark wall grids that line up, THE WORDMARK, real 1.36 x 1.7 m
      windows, the back-row shader bug, THE CRUMBLE (rigid floor-by-floor drops + rock chunks + a mound that fills the lot
-     and slumps), the sound leak fixed (decoded buffers, 24 voices). Meshy 518 cr; balance 4,214. **NEXT (his bedtime
-     notes, top of the world CLAUDE.md): A REAL PUNCH up / left / right / down (the strike layer was dead for rigged
-     monsters — fixed, not yet seen) and HALF the punch screams / window-people reactions.** Then the copy/feel thread,
+     and slumps), the sound leak fixed (decoded buffers, 24 voices). Meshy 518 cr; balance 4,214. **2026-09-29: his bedtime
+     notes BUILT solo — A REAL PUNCH (bone-built: wind-up, chest whip, lunge, elbowed reach; up / down / left / right)
+     and HALF THE PEOPLE in the windows (person deal weights halved). AWAITING HIS FLIGHT.** Then the copy/feel thread,
      the campaign (the start card says SOON), ship wiring on his word.
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24

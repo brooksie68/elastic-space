@@ -1516,6 +1516,110 @@ export function createRenderer(canvas, lookIn) {
   }
   const _tgt = new THREE.Vector3();
   const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+  // two-bone reach with an elbow: the upper arm turns so the elbow lands on the pole side, the forearm turns so the
+  // wrist lands on the target (or as close as the arm's length allows). `pole` is a world direction for the elbow.
+  const _S = new THREE.Vector3(), _E = new THREE.Vector3(), _H = new THREE.Vector3(), _u = new THREE.Vector3(), _pn = new THREE.Vector3(), _q2 = new THREE.Quaternion();
+  function ik2(chain, target, pole, w) {
+    if (!chain || w <= 0.001) return;
+    chain.arm.updateWorldMatrix(true, true);
+    chain.arm.getWorldPosition(_S); chain.fore.getWorldPosition(_E); chain.hand.getWorldPosition(_H);
+    const L1 = _E.distanceTo(_S), L2 = _H.distanceTo(_E), L = L1 + L2;
+    _u.subVectors(target, _S); const dRaw = _u.length(); if (dRaw < 1e-4) return; _u.divideScalar(dRaw);
+    const d = Math.max(0.25 * L, Math.min(0.995 * L, dRaw));
+    const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    _pn.copy(pole).addScaledVector(_u, -pole.dot(_u)); if (_pn.lengthSq() < 1e-6) _pn.set(0, -1, 0).addScaledVector(_u, _u.y); _pn.normalize();
+    const elbow = _pA.copy(_S).addScaledVector(_u, a).addScaledVector(_pn, h);
+    _d0.subVectors(_E, _S).normalize(); _d1.subVectors(elbow, _S).normalize();
+    _q2.setFromUnitVectors(_d0, _d1); rotateBoneWorld(chain.arm, _q2.clone(), w);
+    chain.fore.getWorldPosition(_E); chain.hand.getWorldPosition(_H);
+    const wrist = _pF.copy(_S).addScaledVector(_u, d);
+    _d0.subVectors(_H, _E).normalize(); _d1.subVectors(wrist, _E).normalize();
+    _q2.setFromUnitVectors(_d0, _d1); rotateBoneWorld(chain.fore, _q2.clone(), w);
+  }
+  // the glove closes into a fist: shorter along the fingers, a little thicker across the knuckles
+  function fist(v, side, k) {
+    const ch = v.bones && v.bones[side]; if (!ch) return;
+    ch.hand.scale.set(1 - 0.1 * k, 1 - 0.62 * k, 1 + 0.25 * k);
+    ch.hand.updateWorldMatrix(false, true);
+  }
+  // THE PUNCH (James, 2026-09-22: "the hand clapping is lame" — a punch that reads as a punch, up, left, right, down).
+  // Built from the bones over a still base: the chest turns away and the fist cocks back by the shoulder (the tell),
+  // then the chest whips round, the body lunges and the arm fires out to the cell the rules hit, accelerating into
+  // the contact at the moment the core resolves the hit (0.42 of the punch), holds, and comes home. Up is an uppercut
+  // from the hip, down is a hammer from over the shoulder, left / right on a face are hooks, straight on the street is
+  // a cross. The off hand keeps its grip on a face and comes up to guard the chin on the street.
+  const _F = new THREE.Vector3(), _UP = new THREE.Vector3(0, 1, 0), _out = new THREE.Vector3(), _C = new THREE.Vector3(), _W = new THREE.Vector3(), _P = new THREE.Vector3(), _pole = new THREE.Vector3(), _dir = new THREE.Vector3(), _G = new THREE.Vector3();
+  const P_WIND = 0.3, P_HIT = 0.42, P_HOLD = 0.64;
+  function strikePose(v, m, kk, state) {
+    const side = v.punchSide || 'Right', offSide = side === 'Right' ? 'Left' : 'Right';
+    const chain = v.bones[side], off = v.bones[offSide];
+    const d = m.punchDir, onFace = m.st === 'climb';
+    const T = _tgt.copy(v.punchTarget);
+    if (v.punchNew) v.punchNew = false;
+    // the envelope: wind (0 → cocked), strike (cocked → target, accelerating), hold, home
+    const windK = kk < P_WIND ? ease(kk / P_WIND) : 1;
+    const strikeK = kk < P_WIND ? 0 : kk < P_HIT ? Math.pow((kk - P_WIND) / (P_HIT - P_WIND), 2) : 1;
+    const homeK = kk < P_HOLD ? 0 : ease((kk - P_HOLD) / (1 - P_HOLD));
+    const env = windK * (1 - homeK);
+    // start from the base pose each frame
+    v.inner.position.set(0, 0, 0); v.inner.rotation.x = 0; v.inner.updateWorldMatrix(true, true);
+    _F.set(onFace ? 0 : m.facing, 0, onFace ? -1 : 0);
+    v.inner.getWorldPosition(_C); _C.y += CELL * (state.opts.monsterH || 2.7) * 0.62;
+    chain.arm.getWorldPosition(_S);
+    _out.subVectors(_S, _C); _out.y = 0; _out.addScaledVector(_F, -_out.dot(_F)); if (_out.lengthSq() < 1e-6) _out.set(1, 0, 0); _out.normalize();
+    // 1. the chest: turned away on the wind, whipped round through the strike
+    if (v.spine) {
+      const turn = (-0.38 * windK * (1 - strikeK) + 0.42 * strikeK) * (1 - homeK) * (onFace ? 0.45 : 1);   // a back to the camera turns less or the far shoulder swings out at us
+      const sgn = Math.sign(_d0.crossVectors(_UP, _out).dot(_F)) || 1;
+      _qA.setFromAxisAngle(_UP, turn * sgn); rotateBoneWorld(v.spine, _qA.clone(), 1);
+      // an uppercut rises out of a crouch; a hammer comes over the top
+      if (d.dy) { _d1.crossVectors(_F, _UP).normalize(); _qA.setFromAxisAngle(_d1, (d.dy > 0 ? -0.22 : 0.26) * (strikeK - 0.6 * windK * (1 - strikeK)) * (1 - homeK)); rotateBoneWorld(v.spine, _qA.clone(), 1); }
+    }
+    chain.arm.updateWorldMatrix(true, true);
+    chain.arm.getWorldPosition(_S);
+    chain.fore.getWorldPosition(_E); chain.hand.getWorldPosition(_H);
+    const L = _E.distanceTo(_S) + _H.distanceTo(_E);
+    // on a face a punch straight up / in / down lands on the cell behind the body: the fist goes to the cell's edge
+    // on the striking side (still inside the cell), so it is seen, beside the head or the shoulder
+    if (onFace && v.punchTarget.faceCol) { _G.subVectors(_S, _C); T.x += Math.sign(_G.x || 1) * (d.dy < 0 ? 0.48 : 0.4) * CELL; T.y += (d.dy > 0 ? 0.2 : d.dy < 0 ? 0.3 : 0) * CELL; }
+    // 2. the lunge: the body goes after whatever the arm can't reach; a small pull back on the wind
+    _dir.subVectors(T, _S); const far = _dir.length();
+    if (onFace) { _dir.z = 0; _dir.y *= 0.35; } else { _dir.y = 0; _dir.z *= 0.3; }
+    if (_dir.lengthSq() > 1e-6) _dir.normalize();
+    const lungeMax = (onFace ? 0.28 : 0.55) * CELL;
+    const lunge = Math.min(lungeMax, Math.max(0, far - 0.9 * L)) * strikeK * (1 - homeK) - 0.07 * CELL * windK * (1 - strikeK);
+    v.inner.position.copy(_dir).multiplyScalar(lunge);
+    v.inner.updateWorldMatrix(false, true);
+    chain.arm.getWorldPosition(_S);
+    // 3. the cocked fist and the elbow, by kind of punch
+    if (d.dy > 0) { _W.copy(_S).addScaledVector(_F, 0.12 * L).addScaledVector(_UP, -0.72 * L).addScaledVector(_out, 0.12 * L); _pole.copy(_F).multiplyScalar(-0.3).addScaledVector(_out, 0.6).addScaledVector(_UP, -0.6); }
+    else if (d.dy < 0) { _W.copy(_S).addScaledVector(_UP, 0.5 * L).addScaledVector(_F, -0.1 * L).addScaledVector(_out, 0.18 * L); _pole.copy(_out).addScaledVector(_UP, 0.6).addScaledVector(_F, -0.3); }
+    else { _W.copy(_S).addScaledVector(_F, -0.42 * L).addScaledVector(_UP, -0.22 * L).addScaledVector(_out, -0.08 * L); _pole.copy(_out).multiplyScalar(0.6).addScaledVector(_UP, -0.8).addScaledVector(_F, -0.3); }
+    _pole.normalize();
+    if (kk < P_WIND) _P.copy(_W);
+    else if (kk < P_HIT) _P.copy(_W).lerp(T, strikeK);
+    else { _P.copy(T); if (kk < P_HOLD) _P.addScaledVector(_dir, -0.05 * L * Math.sin(Math.PI * (kk - P_HIT) / (P_HOLD - P_HIT))); }
+    // through the strike the elbow swings from behind-and-down to out to the side (a hook's line, a cross's snap)
+    if (kk >= P_WIND) _pole.lerp(_G.copy(_out).addScaledVector(_UP, d.dy < 0 ? 0.4 : -0.5).normalize(), strikeK).normalize();
+    ik2(chain, _P, _pole, env);
+    v.fistSide = side; v.fistK = env; fist(v, side, env);
+    // 4. the off hand: on a face it grips the wall up and out to its side; on the street it guards the chin
+    if (onFace && off) {
+      off.arm.getWorldPosition(_G);
+      _W.subVectors(_G, _C); _W.y = 0; _W.z = 0; _W.normalize();
+      _G.addScaledVector(_W, 0.3 * L).addScaledVector(_UP, 0.6 * L); _G.z = -0.05 * CELL;
+      _pole.copy(_W).addScaledVector(_UP, -0.6).add(_F.clone().multiplyScalar(-0.4)).normalize();
+      ik2(off, _G, _pole, windK > 0 ? Math.min(1, windK * 1.5) * (1 - homeK) : 0);
+    }
+    if (!onFace && off) {
+      off.arm.getWorldPosition(_G);
+      _G.addScaledVector(_F, 0.34 * L).addScaledVector(_UP, 0.1 * L);
+      _G.addScaledVector(_out, 0.25 * L);   // toward the middle of the chest
+      _pole.copy(_UP).multiplyScalar(-1).addScaledVector(_F, -0.2).normalize();
+      ik2(off, _G, _pole, env * 0.85);
+      fist(v, offSide, env * 0.8);
+    }
+  }
   function syncMonsters(state, dt) {
     const seen = new Set();
     for (const m of state.monsters) {
@@ -1583,13 +1687,13 @@ export function createRenderer(canvas, lookIn) {
         v.lastPunchK = punchK;
         const d = m.punchDir;
         const stomp = m.st === 'street' && d.dy < 0;
-        if (stomp) anim = 'stomp';   // THE STOMP is a foot (James, 2026-09-21): the ground-stomp clip, never the fists
-        else if (d.dy > 0 && v.actions.upperR) anim = 'upperR';
-        else if (v.punchN % 2 === 0 && v.actions.hookL) anim = 'hookL';
-        else anim = v.punchN % 2 ? 'punchR' : 'punchL';
-        if (!v.actions[anim]) anim = m.st === 'street' ? 'stomp' : 'punchL';
+        // THE STOMP is a foot (James, 2026-09-21): the ground-stomp clip. Every other punch is built from the bones
+        // (the strike layer below) over a still base: the hang on a face, the idle on the street and the roof —
+        // the boxing clips fought the aim and read as a clap (James, 2026-09-22)
+        if (stomp) anim = v.actions.stomp ? 'stomp' : 'idle';
+        else anim = m.st === 'climb' ? 'hang' : 'idle';
       } else v.lastPunchK = 1;
-      const punchAnim = anim === 'punchL' || anim === 'punchR' || anim === 'hookL' || anim === 'upperR' || anim === 'bothFists' || anim === 'stomp';
+      const punchAnim = anim === 'stomp';
       if (anim !== v.prevAnim || (punchAnim && v.punchNew)) {
         const ps = (m.flavour ? m.flavour.punch : 1);
         if (anim === 'idle') play(v, 'idle', { speed: 0.9 });
@@ -1646,23 +1750,10 @@ export function createRenderer(canvas, lookIn) {
       } else if (v.mixer) v.inner.position.y += (0 - v.inner.position.y) * Math.min(1, dt * 20);
       // (the body-drop reset above used to swallow the whole strike chain in its else — the rigged monsters never got the
       // strike layer at all, only the raw library clip, which is why the punch read as a shrug / a clap)
-      if (!stomping && v.bones && m.anim === 'punch' && v.punchTarget) {
-        const kk = punchK;
-        let w, tgt = _tgt;
-        const d = m.punchDir, stomp = m.st === 'street' && d.dy < 0;
-        if (kk < 0.22) { w = ease(kk / 0.22) * 0.9; tgt.copy(v.punchWind); }
-        else if (kk < 0.42) { w = 1; tgt.copy(v.punchWind).lerp(v.punchTarget, ease((kk - 0.22) / 0.2)); }
-        else if (kk < 0.72) { w = 1; tgt.copy(v.punchTarget); }
-        else { w = 1 - ease((kk - 0.72) / 0.28); tgt.copy(v.punchTarget); }
-        const strikeK = kk < 0.22 ? 0 : kk < 0.42 ? ease((kk - 0.22) / 0.2) : kk < 0.72 ? 1 : 1 - ease((kk - 0.72) / 0.28);
-        lean = 0.14 * strikeK; lunge = 0.1 * CELL * strikeK;
-        if (stomp || anim === 'bothFists') {
-          // two fists, two landing spots a shoulder's width apart (one point and they clap)
-          const sep = 0.32 * CELL;
-          _pF.copy(tgt); _pF.x += sep; aimArm(v.bones.Right, _pF, w, 0.85);
-          _pH.copy(tgt); _pH.x -= sep; aimArm(v.bones.Left, _pH, w, 0.85);
-        }
-        else { const side = (anim === 'punchL' || anim === 'hookL') ? 'Left' : 'Right'; aimArm(v.bones[side], tgt, w, 0.9); }
+      let lungeSet = false;
+      if (!stomping && v.bones && v.bones.Left && v.bones.Right && m.anim === 'punch' && v.punchTarget) {
+        strikePose(v, m, punchK, state);
+        lungeSet = true;
       } else if (v.bones && m.st === 'climb' && m.hop) {
         // THE REACH: the free hand goes to the next sill first
         const kk = Math.min(1, m.hopT / Math.max(1e-3, m.hopDur));
@@ -1682,9 +1773,12 @@ export function createRenderer(canvas, lookIn) {
         _pF.copy(_tgt); _pF.x += 0.32 * CELL; aimArm(v.bones.Right, _pF, 0.9, 0.9); _pH.copy(_tgt); _pH.x -= 0.32 * CELL; aimArm(v.bones.Left, _pH, 0.9, 0.9);
         lean = 0.35;
       }
-      v.inner.rotation.x += (-lean - v.inner.rotation.x) * Math.min(1, dt * 20);
-      v.inner.position.x += (lunge * (m.st === 'climb' ? 0 : m.facing) - v.inner.position.x) * Math.min(1, dt * 20);
-      v.inner.position.z += ((m.st === 'climb' ? -lunge : 0) - v.inner.position.z) * Math.min(1, dt * 20);
+      if (!lungeSet) {
+        v.inner.rotation.x += (-lean - v.inner.rotation.x) * Math.min(1, dt * 20);
+        v.inner.position.x += (lunge * (m.st === 'climb' ? 0 : m.facing) - v.inner.position.x) * Math.min(1, dt * 20);
+        v.inner.position.z += ((m.st === 'climb' ? -lunge : 0) - v.inner.position.z) * Math.min(1, dt * 20);
+        if (v.fistK) { v.fistK = Math.max(0, v.fistK - dt * 6); fist(v, 'Left', v.fistK); fist(v, 'Right', v.fistK); }
+      }
       // the run burst kicks up dust behind the feet; the skid too
       if (m.burstT > 0 && Math.random() < 0.45) spawnDust(v.smoothX - m.facing * 0.8, 0.3, v.root.position.z, 1, 1.0, 0.5, -m.facing * 2, 0.4, 0.35);
       if (m.skidT > 0 && Math.random() < 0.7) spawnDust(v.smoothX - m.facing * 0.5, 0.25, v.root.position.z, 1, 1.4, 0.6, -m.facing * 3, 0.6, 0.45);
@@ -1930,19 +2024,31 @@ export function createRenderer(canvas, lookIn) {
         const rootZ = v.root.position.z;
         if (!v.punchTarget) { v.punchTarget = new THREE.Vector3(); v.punchWind = new THREE.Vector3(); }
         const t = v.punchTarget;
+        t.faceCol = false;
         if (e.st === 'climb') {
           const bb = state.city.buildings[m.b];
           const row = Math.floor(m.y + hand) + e.dy, col = (bb ? bb.x0 : 0) + m.col + e.dx;
-          t.set((col + 0.5) * CELL, (row + 0.5) * CELL, -0.35 * CELL);
+          t.set((col + 0.5) * CELL, (row + 0.5) * CELL, -0.15 * CELL);
+          t.faceCol = e.dx === 0;   // straight up / in / down: the cell is behind the monster — the fist goes to its striking-side edge (placed in strikePose)
         } else if (e.st === 'street' && e.dy < 0) {
           t.set(m.x * CELL + (e.dx ? e.dx * 1.1 : m.facing * 0.5) * CELL, 0.25, rootZ + 0.6 * CELL);
-        } else {
+        } else if (e.st === 'street' && m.lane === 0) {
+          // the face beside you: the cell the rules hit, the fist ends on the wall
           const row = Math.floor(m.y + hand) + (e.dy > 0 ? 1 : 0);
-          t.set(m.x * CELL + m.facing * reach * CELL * 0.95, (row + 0.5) * CELL, rootZ - (m.lane === 0 ? 0.3 : 0) * CELL);
+          t.set(m.x * CELL + m.facing * 1.0 * CELL, (row + 0.5) * CELL, rootZ - 0.3 * CELL);
+        } else {
+          // the road lane and the roof: straight out ahead at the fist's height (up = a head higher)
+          t.set(m.x * CELL + m.facing * reach * 0.6 * CELL, (m.y + hand * 0.85 + (e.dy > 0 ? 0.7 : 0)) * CELL, rootZ);
         }
-        // the wind-up: the fist pulled back from the target, a little up
-        _pA.set(m.x * CELL, m.y * CELL + hand * CELL, rootZ);
-        v.punchWind.copy(_pA).add(_pF.subVectors(_pA, t).normalize().multiplyScalar(0.7 * CELL)).add(_pH.set(0, 0.3 * CELL, 0));
+        // which fist: toward the side of the punch on a face; otherwise they take turns (a jab, a cross)
+        v.punchN = (v.punchN || 0);
+        if (v.bones && v.bones.Left && v.bones.Right) {
+          v.bones.Left.arm.getWorldPosition(_pA); v.bones.Right.arm.getWorldPosition(_pH);
+          const leftIsLow = _pA.x < _pH.x;   // which shoulder sits at the smaller x on screen
+          const toward = e.st === 'climb' ? e.dx : 0;
+          if (toward) v.punchSide = (toward < 0) === leftIsLow ? 'Left' : 'Right';
+          else v.punchSide = v.punchSide === 'Right' ? 'Left' : 'Right';
+        }
         break;
       }
       case 'hopEnd': { const v = monsterViews.get(e.who); if (v) { v.kickT = 0.14; v.kickDir = -1; } spawnDust(e.x * CELL, (e.y + 0.9) * CELL, 0.3, 1, 0.5, 0.35, 0, 0.2, 0.25); break; }

@@ -3,6 +3,32 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-29 — Claude — A REAL PUNCH (up, left, right, down) and HALF THE PEOPLE
+
+His two bedtime notes from 2026-09-22, built solo on his "mostly without me".
+
+- **THE PUNCH** (`render3d.js`, `strikePose` + `ik2` + `fist`): the boxing clips are no longer the punch — they fought
+  the aim and read as a clap. Every punch but the street stomp is now built from the bones over a still base (the hang
+  on a face, the idle on the street / roof): the chest turns away and the fist COCKS back by the shoulder (the tell,
+  first 30% of the punch), then the chest whips round, the body lunges after whatever the arm can't reach, and the arm
+  fires out ACCELERATING into the cell the rules hit at 42% (the moment the core resolves the hit), holds with a small
+  recoil to 64%, and comes home. A real two-bone reach with an elbow (`ik2`, pole-directed) replaces the old
+  point-the-whole-arm turn. Up = an uppercut from the hip; down = a hammer from over the shoulder; left / right on a
+  face = hooks with the arm on that side; straight on the street = a jab / cross, the fists taking turns. On a face,
+  straight / up / down land at the striking-side edge of the cell (the centre is behind the body and hid the fist);
+  the chest turns less there (a back to the camera swings the far shoulder out at us). The off hand grips the wall
+  on a face and guards the chin on the street. The glove squashes into a fist while it strikes (no finger bones in
+  the rigs — the hand bone is scaled). Judged by contact sheets in the look-dev page (five rounds,
+  `tmp/snapshots/punch-r1..r5.jpg`); `lookdev.html` gained `LAB.freeze / sheet / onFace / onStreet / saveSheets`.
+- **HALF THE PEOPLE** (`city.js`): every person deal's weight halved (screamer 42 → 21 on day one, floor 6 → 3;
+  customer 8 → 4, worker 5 → 2.5, waver / zombie 3 → 1.5); the difference went to empty rooms (none 34 → 64) so
+  food, money and hazards come up as often as before. Screams and window-people reactions come about half as often.
+  Sim bar moved: the screamer is 11–22% of day-one windows.
+- Smoke: the silent game page played, climbed and punched in all four directions, no errors. Sim 1,947,607 green.
+- Cache tags: render3d v24, city v5, game.js v7, lab.js v3.
+- AWAITING HIS FLIGHT: the punch (all four arrows, on a face and on the street), the quieter windows, plus everything
+  from 2026-09-22 he hasn't flown (the crumble on a tall building). Then the copy / feel thread, the campaign, ship.
+
 ## 2026-09-22 — Claude — HIS SECOND FLIGHT: the wordmark, the proportions, the back rows, THE CRUMBLE, the sound leak
 
 James's notes after flying round two, each with a diagnosis first and his two answers (jolts a touch slower than the

@@ -89,12 +89,14 @@
   // ---- what is behind a window: the deal table, weights by day ----
   // kind: person | food | money | hazard | special. The core knows what each id does.
   const DEALS = {
-    none: { kind: 'none', w: (d) => 34 },
-    customer: { kind: 'person', w: (d) => 8 },
-    worker: { kind: 'person', w: (d) => 5 },
-    waver: { kind: 'person', w: (d) => 3 },
-    screamer: { kind: 'person', w: (d) => (d <= 1 ? 42 : Math.max(6, 42 - 8 * (d - 1))) },   // THE SCREAMER (round two): she appears in the hole, arms up; a third of day one's windows
-    zombie: { kind: 'person', w: (d) => 3 },
+    none: { kind: 'none', w: (d) => 64 },   // 34 + the half of the people cut on 2026-09-29
+    customer: { kind: 'person', w: (d) => 4 },
+    worker: { kind: 'person', w: (d) => 2.5 },
+    waver: { kind: 'person', w: (d) => 1.5 },
+    // HALF THE PEOPLE (James, 2026-09-22: too many screams, too many people in the broken windows): every person
+    // weight halved, the difference goes to empty rooms, so food, money and hazards come up as often as before
+    screamer: { kind: 'person', w: (d) => (d <= 1 ? 21 : Math.max(3, 21 - 4 * (d - 1))) },   // THE SCREAMER (round two): she appears in the hole, arms up; about one day-one window in six
+    zombie: { kind: 'person', w: (d) => 1.5 },
     fries: { kind: 'food', w: (d) => 4 },
     shake: { kind: 'food', w: (d) => 3 },
     nuggets: { kind: 'food', w: (d) => 3 },
