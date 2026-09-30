@@ -48,6 +48,7 @@
     monsterH: 2.7,           // floors tall (James, 2026-09-08: bigger — half again the first cut's 1.8)
     cpuIdle: 0,              // 1 = the companions stand still (the Damage Lab's dummies)
     maxFloors: 16,
+    test: 0,                 // 1 = TEST MODE: one medium building, no army, no traffic, no people, no exits; it stands again after it falls
     // round two (James, 2026-09-21): the army comes later and in waves, the street has two lanes, a run burst
     armyDay: 1,              // the first day the army comes at all
     armyStart: 40,           // s into day 1 before the first wave (AND armyCells cells broken)
@@ -155,7 +156,7 @@
 
   function newDay(state, keepScoreEvent) {
     const day = state.day;
-    state.city = City.makeCity(() => rng(state), day + Math.max(0, state.opts.dealShift | 0), { exits: state.opts.exits, buildings: state.opts.buildings, maxFloors: state.opts.maxFloors });
+    state.city = City.makeCity(() => rng(state), day + Math.max(0, state.opts.dealShift | 0), { exits: state.opts.exits, buildings: state.opts.buildings, maxFloors: state.opts.maxFloors, test: state.opts.test });
     state.soldiers.length = 0; state.tank = null; state.drone = null; state.cars.length = 0; state.bullets.length = 0; state.shells.length = 0; state.items.length = 0;
     state.blimp = null; state.blimpT = state.city.exits.blimp ? 20 : -1;
     const g = Math.min(8, day - 1);
@@ -255,6 +256,14 @@
     stepSpawns(state, dt);
     stepBlimp(state, dt);
 
+    // TEST MODE: no day end — three seconds after the building is down a fresh one stands in the same lot
+    if (state.opts.test) {
+      if (state.city.buildings.every((b) => b.down)) {
+        state.testT = (state.testT || 0) + dt;
+        if (state.testT >= 3) { state.testT = 0; rebuildTest(state); }
+      }
+      return;
+    }
     // the day ends when every building is down
     if (state.city.buildings.every((b) => b.down)) {
       state.phase = 'dayEnd'; state.phaseT = 0;
@@ -265,6 +274,12 @@
     }
   }
   const IDLE = { move: 0, up: false, down: false, jump: false, punch: false };
+  function rebuildTest(state) {
+    state.city = City.makeCity(() => rng(state), state.day, { test: 1 });
+    state.items.length = 0;
+    for (const m of state.monsters) if (m.st === 'climb' || m.st === 'roof') { m.st = 'street'; m.y = 0; m.b = -1; m.hop = 0; }
+    state.events.push({ type: 'testRebuild' });
+  }
   function advanceDay(state) { state.day++; newDay(state, true); }
   function skipMap(state) { if (state.phase === 'map') advanceDay(state); }
   function stepAmbient(state, dt) { for (const c of state.cars) c.x += c.vx * dt; }

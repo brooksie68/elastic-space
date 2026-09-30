@@ -128,6 +128,7 @@
   // opts: { exits: 1|0, buildings?, minFloors?, maxFloors? } — the day sets the defaults.
   function makeCity(rng, day, opts) {
     opts = opts || {};
+    if (opts.test) return makeTestCity(rng, day);
     const def = CITIES[(day - 1) % CITIES.length];
     const flags = def[4] || {};
     const night = flags.night ? true : (day % 2 === 0);
@@ -224,6 +225,33 @@
       day, name: def[0], state: def[1], lat: def[2], lon: def[3], tag: flags.tag || '', night, water: !!flags.water,
       special: flags.special || null, buildings, width, exits,
       spawnX: Math.min(width - 3, buildings[0].x0 + 1),
+    };
+  }
+
+  // TEST MODE (James, 2026-09-30: "a total test mode... NO COPS or any distractions. one single medium building in
+  // the middle. nothing else."): one seven-floor, five-column building in the middle of an empty lot; every room
+  // empty, no neon, no restaurant, no ways out. Always day light.
+  function makeTestCity(rng, day) {
+    const def = CITIES[(day - 1) % CITIES.length];
+    const fam = [0, 2, 1][Math.floor(rng() * 3)];   // brick red, concrete or brick tan
+    const F = FAMILIES[fam];
+    const cols = 5, floors = 7, x0 = 10;
+    const b = {
+      id: 0, x0, cols, floors, family: fam,
+      cells: new Uint8Array(cols * floors), state: new Uint8Array(cols * floors), deal: new Array(cols * floors).fill('none'),
+      restaurant: null, shop: Math.floor(rng() * 8), shop2: -1, split: -1,
+      broken: 0, punchable: cols * floors, threshold: 0.6, collapsing: false, down: false, dropT: 0, neon: null, hp: 0,
+    };
+    for (let r = 0; r < floors; r++) for (let c = 0; c < cols; c++) {
+      let t = F.pattern[c % F.pattern.length] ? T.WALL : T.WINDOW;
+      if (F.band > 0 && r > 0 && r % F.band === 0) t = T.WALL;
+      if (r === 0) t = T.STORE;
+      b.cells[r * cols + c] = t;
+    }
+    const width = x0 + cols + 10;
+    return {
+      day, name: 'Test mode', state: '', lat: def[2], lon: def[3], tag: '', night: false, water: false, special: null, test: true,
+      buildings: [b], width, exits: {}, spawnX: x0 - 4,
     };
   }
 

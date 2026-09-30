@@ -219,7 +219,7 @@ globalThis.CarnageSfx = (function () {
     if (beds || !ctx) return;
     const traffic = ctx.createBufferSource(); traffic.buffer = pinkBuf; traffic.loop = true;
     const tf = ctx.createBiquadFilter(); tf.type = 'lowpass'; tf.frequency.value = 220;
-    const tg = ctx.createGain(); tg.gain.value = 0.22;
+    const tg = ctx.createGain(); tg.gain.value = /[?&]test=1/.test(location.search) ? 0 : 0.22;   // TEST MODE: no traffic hum
     traffic.connect(tf); tf.connect(tg); tg.connect(bedGain); traffic.start();
     // the drone's rotor: a chopped low saw, off until a drone is up
     const rotor = ctx.createOscillator(); rotor.type = 'sawtooth'; rotor.frequency.value = 58;

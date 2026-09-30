@@ -2,7 +2,7 @@
 // the HUD, the plate (one cynical line at a time), the day tally and the map between days, the
 // configuration panel with file-backed presets, sound hooks, the ways out.
 // Rules live in game-core.js and city.js; the picture in render3d.js; the sounds in sound.js.
-import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=24';
+import { createRenderer, LOOK_DEFAULTS, CELL } from './render3d.js?v=25';
 
 const Core = globalThis.CarnageCore, City = globalThis.CarnageCity, Icons = globalThis.CarnageIcons;
 const Sfx = globalThis.CarnageSfx || { play() {}, start() {}, stop() {}, setVolume() {}, voice() {}, bed() {}, setDrone() {}, setSiren() {}, setDust() {}, setNight() {}, setMusic() {} };
@@ -32,6 +32,9 @@ const LOOK_RANGES = {
 const NAMES = { george: 'THE CLOWN', lizzie: 'THE GIRL', ralph: 'THE KING' };
 const EDGES = { george: 'hits harder', lizzie: 'climbs faster', ralph: 'runs faster' };
 const STEP = 1 / 120;
+// TEST MODE (James, 2026-09-30): index.html?test=1 — straight into play, one medium building, no army, no traffic,
+// no people, no rivals, no ways out, no plate, no ticker, no lessons; the building stands again after it falls
+const TEST = new URLSearchParams(location.search).get('test') === '1';
 const EXIT_BEAT = 900;
 // the first thirty seconds of a day-one game teach the keys, one calm line at a time
 const LESSONS = [[1.5, 'W A S D — WALK. CLIMB.'], [7, 'THE ARROWS PUNCH. UP, DOWN, SIDEWAYS, THE CORNERS.'], [13, 'SPACE JUMPS. SPACE UP HIGH SMASHES DOWN.'], [19, 'TAP A OR D TWICE TO RUN.'], [25, 'S STEPS INTO THE ROAD. W STEPS BACK.']];
@@ -98,7 +101,7 @@ const plateEl = $('plate'), plateLine = $('plate-line');
 const plateQ = [];
 let plateT = 0;
 function plate(text, kind, big) {
-  if (!text) return;
+  if (!text || TEST) return;
   if (big) { plateQ.length = 0; plateQ.unshift({ text, kind }); plateT = 0; }
   else if (plateQ.length < 3) plateQ.push({ text, kind });
 }
@@ -114,6 +117,7 @@ function stepPlate(dt) {
 }
 let tickerT = 0, tickerI = Math.floor(Math.random() * TICKER.length);
 function stepTicker(dt) {
+  if (TEST) return;
   tickerT -= dt;
   if (tickerT <= 0) { tickerT = 11; $('ticker').innerHTML = '<b>NEWS</b> · ' + TICKER[tickerI % TICKER.length]; tickerI++; }
 }
@@ -175,7 +179,7 @@ function renderHud() {
     hudKey = key;
     $('score').textContent = fmt(inGame ? state.score : 0);
     $('day').textContent = String(state.day);
-    $('city').textContent = state.city.name + ', ' + state.city.state;
+    $('city').textContent = state.city.state ? state.city.name + ', ' + state.city.state : state.city.name;
     $('city-tag').textContent = state.city.tag;
   }
 }
@@ -217,6 +221,7 @@ function coreOpts(attract) {
     flavour: play.flavour, monsterH: play.monsterH, thresholdScale: play.thresholdScale, fallDmg: play.fallDmg, spawnScale: play.spawnScale, hazardScale: play.hazardScale, streamerT: play.streamerT, dealShift: play.dealShift,
     armyStart: attract ? 4 : play.armyStart, waveGap: play.waveGap, armyDay: play.armyDay, armyCells: attract ? 0 : 10,
     exits: attract ? 0 : 1, enemies: 1, free: 1,
+    ...(TEST && !attract ? { test: 1, enemies: 0, companions: 0, exits: 0, lives: 99, day: 1 } : {}),
   };
 }
 function applyLiveOpts() {
@@ -247,9 +252,9 @@ function startGame() {
   $('btn-restart').classList.remove('armed'); $('btn-restart').textContent = 'RESTART';
   showCard('');
   $('controls').style.display = 'flex';
-  $('hud').style.opacity = '1'; $('ticker').style.opacity = '1';
+  $('hud').style.opacity = '1'; $('ticker').style.opacity = TEST ? '0' : '1';
   buildHud(); renderHud();
-  lessonsOn = state.day === 1; lessonT = 0; lessonI = 0;
+  lessonsOn = state.day === 1 && !TEST; lessonT = 0; lessonI = 0;
   plate(state.city.name.toUpperCase() + ', ' + state.city.state + '. ' + state.city.tag.toUpperCase(), '', true);
   Sfx.play('start'); Sfx.voice(choice.monster, 'start');
 }
@@ -346,7 +351,7 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') { e.preventDefault(); if (tuner.classList.contains('open')) closeTuner(); else openTuner(); return; }
   if (e.code === 'Escape' && keysPanel.classList.contains('open')) { e.preventDefault(); closeKeys(); return; }
   if (mode === 'attract') { if (e.code === 'Enter') { e.preventDefault(); startGame(); } return; }
-  if (mode === 'over') { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); enterAttract(); } return; }
+  if (mode === 'over') { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); if (TEST) startGame(); else enterAttract(); } return; }
   if (mode === 'map') { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); drive(); } return; }
   if (mode === 'dayEnd') return;
   if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); return; }
@@ -373,7 +378,7 @@ function armRestart() {
   else { restartArmed = 3; $('btn-restart').classList.add('armed'); $('btn-restart').textContent = 'SURE?'; }
 }
 $('btn-start').addEventListener('click', startGame);
-$('btn-again').addEventListener('click', () => enterAttract());
+$('btn-again').addEventListener('click', () => { if (TEST) startGame(); else enterAttract(); });
 $('btn-go').addEventListener('click', drive);
 $('btn-pause').addEventListener('click', () => togglePause());
 $('btn-restart').addEventListener('click', () => armRestart());
@@ -589,7 +594,7 @@ if (R) painted().then(() => {
   R.load((p) => { $('load-bar').style.width = Math.round(p * 100) + '%'; $('load-sub').textContent = p < 0.5 ? 'clocking in' : p < 0.9 ? 'warming the fryer' : 'unlocking the doors'; }).then((r) => {
     $('loading').classList.add('gone');
     if (r && r.failed) console.warn('carnage: ' + r.failed + ' assets missing, fallback shapes in use');
-    enterAttract();
+    if (TEST) startGame(); else enterAttract();
     requestAnimationFrame(frame);
   });
 });

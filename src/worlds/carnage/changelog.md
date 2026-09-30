@@ -3,6 +3,21 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-30 — Claude — TEST MODE
+
+James: "a total test mode. as a separate thing. NO COPS or any distractions. one single medium building in the
+middle. nothing else."
+
+- **`index.html?test=1`** (admin panel → Labs → "Carnage Test Mode"): straight into play, no start card. One building,
+  7 floors x 5 columns, in the middle of an empty lot (`makeTestCity` in `city.js`, core option `test: 1`); every room
+  empty, no neon, no restaurant. No army, no traffic, no rivals, no ways out (`enemies 0`, `companions 0`, `exits 0`),
+  99 lives. No parked cars (a cruiser is a cop), no trees; the planters stay empty. No plate lines, no ticker, no
+  lessons, no traffic hum. Three seconds after the building is down a fresh one stands in the same lot (`rebuildTest`,
+  event `testRebuild`) — no day tally, no map. Always daylight.
+- Sim TEST 23 (four seeds, 240 s each: one 7 x 5 building mid-lot, nothing else ever appears, it comes back, no day end).
+  Sim 2,062,831 green. Smoke: the silent page opened in test mode, collapse → rebuild, no errors.
+- Cache tags: render3d v25, city v7, game-core v7, sound v4, game.js v9, lab.js v4.
+
 ## 2026-09-29 — Claude — A REAL PUNCH (up, left, right, down) and HALF THE PEOPLE
 
 His two bedtime notes from 2026-09-22, built solo on his "mostly without me".

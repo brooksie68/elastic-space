@@ -861,6 +861,7 @@ export function createRenderer(canvas, lookIn) {
     for (let x = -10; x < width * CELL + 10; x += 6, ti++) {
       const pl = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 1.2), planterMat); pl.position.set(x, 0.35, SW + ROAD + 5.2); ground.add(pl);
       const kind = ti % 3 === 1 ? 'flowers' : 'bush';
+      if (city.test) continue;   // TEST MODE: the planters stay empty, no trees
       ground.add(billboard(Icons().tree(kind, ti * 7 + 3), 3.4, kind === 'bush' ? 2.4 : 1.6, x, 0.6, SW + ROAD + 5.3));
       if (ti % 5 === 2) ground.add(billboard(Icons().tree(southern ? 'palm' : (ti % 2 ? 'round' : 'tall'), ti * 13 + 1), 6.5, 7.5, x + 2.5, 0, SW + ROAD + 7.2));
     }
@@ -884,7 +885,7 @@ export function createRenderer(canvas, lookIn) {
     // parked cars along the near kerb: the real taxi and cruiser when they are loaded, dark blocks with wheels otherwise
     const carGeo = new THREE.BoxGeometry(4.4, 1.2, 1.9), roofGeo = new THREE.BoxGeometry(2.4, 0.65, 1.7), wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.3, 10);
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111114, roughness: 0.9 });
-    for (let x = 3, i = 0; x < width * CELL; x += 7 + (i * 37 % 9), i++) {
+    for (let x = 3, i = 0; x < width * CELL && !city.test; x += 7 + (i * 37 % 9), i++) {   // TEST MODE: no parked cars (a cruiser is a cop)
       if (i % 3 === 1 || i % 7 === 4) continue;
       const z = SW + ROAD - 1.6;
       // only the real models park here (the block cars are gone — James, 2026-09-21): taxis mostly, a cruiser now and then

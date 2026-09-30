@@ -16,6 +16,9 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
   16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
   fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
+- **2026-09-30 — TEST MODE** (his ask): `index.html?test=1`, admin Labs → "Carnage Test Mode". One 7 x 5 building in an
+  empty lot, nothing else (no army / traffic / people / rivals / exits / parked cars / trees / plate / ticker / lessons);
+  it stands again three seconds after it falls. Core `opts.test`, `makeTestCity`, `rebuildTest`; sim TEST 23.
 - **2026-09-29 — HIS BEDTIME NOTES BUILT (changelog 2026-09-29), AWAITING HIS FLIGHT:** THE PUNCH is built from the
   bones (`strikePose`, `ik2`, `fist` in render3d.js) — wind-up, chest whip, lunge, elbowed two-bone reach, hold, home;
   up = uppercut, down = hammer, sides = hooks, street = jab / cross; the boxing clips are no longer used for punches
