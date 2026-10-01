@@ -1538,9 +1538,10 @@ export function createRenderer(canvas, lookIn) {
     _q2.setFromUnitVectors(_d0, _d1); rotateBoneWorld(chain.fore, _q2.clone(), w);
   }
   // the glove closes into a fist: shorter along the fingers, a little thicker across the knuckles
-  function fist(v, side, k) {
+  function fist(v, side, k, big) {
     const ch = v.bones && v.bones[side]; if (!ch) return;
-    ch.hand.scale.set(1 - 0.1 * k, 1 - 0.62 * k, 1 + 0.25 * k);
+    const g = 1 + (big || 0);   // the cartoon fist: it swells on the hit so the punch reads at game distance
+    ch.hand.scale.set((1 - 0.1 * k) * g, (1 - 0.62 * k) * g, (1 + 0.25 * k) * g);
     ch.hand.updateWorldMatrix(false, true);
   }
   // THE PUNCH (James, 2026-09-22: "the hand clapping is lame" — a punch that reads as a punch, up, left, right, down).
@@ -1550,7 +1551,11 @@ export function createRenderer(canvas, lookIn) {
   // from the hip, down is a hammer from over the shoulder, left / right on a face are hooks, straight on the street is
   // a cross. The off hand keeps its grip on a face and comes up to guard the chin on the street.
   const _F = new THREE.Vector3(), _UP = new THREE.Vector3(0, 1, 0), _out = new THREE.Vector3(), _C = new THREE.Vector3(), _W = new THREE.Vector3(), _P = new THREE.Vector3(), _pole = new THREE.Vector3(), _dir = new THREE.Vector3(), _G = new THREE.Vector3();
-  const P_WIND = 0.3, P_HIT = 0.42, P_HOLD = 0.64;
+  // THE PUNCH'S OWN CLOCK (James, 2026-10-01: "there's no punch animation"): the core's punch is 0.29 s and the picture
+  // was tied to it — five frames of wind-up, gone before it read. The picture now runs its own half second from the
+  // punch event: the fist still lands on the core's hit (0.12 s in), then HOLDS out there and comes home.
+  const PUNCH_VIS = 0.5;
+  const P_WIND = 0.16, P_HIT = 0.25, P_HOLD = 0.68;
   function strikePose(v, m, kk, state) {
     const side = v.punchSide || 'Right', offSide = side === 'Right' ? 'Left' : 'Right';
     const chain = v.bones[side], off = v.bones[offSide];
@@ -1603,7 +1608,14 @@ export function createRenderer(canvas, lookIn) {
     // through the strike the elbow swings from behind-and-down to out to the side (a hook's line, a cross's snap)
     if (kk >= P_WIND) _pole.lerp(_G.copy(_out).addScaledVector(_UP, d.dy < 0 ? 0.4 : -0.5).normalize(), strikeK).normalize();
     ik2(chain, _P, _pole, env);
-    v.fistSide = side; v.fistK = env; fist(v, side, env);
+    v.fistSide = side; v.fistK = env; fist(v, side, env, 0.7 * strikeK * (1 - homeK));
+    // THE IMPACT: the moment the fist lands — a flash and a puff at the knuckles, hit or miss
+    if (kk >= P_HIT && !v.impactDone) {
+      v.impactDone = true;
+      chain.hand.getWorldPosition(_G);
+      flash(_G.x, _G.y, _G.z + 0.3, 3.2, 0xfff0d0, 0.1);
+      spawnDust(_G.x, _G.y, _G.z + 0.2, 5, 1.1, 0.45, 0, 0.6, 0.45);
+    }
     // 4. the off hand: on a face it grips the wall up and out to its side; on the street it guards the chin
     if (onFace && off) {
       off.arm.getWorldPosition(_G);
@@ -1752,8 +1764,9 @@ export function createRenderer(canvas, lookIn) {
       // (the body-drop reset above used to swallow the whole strike chain in its else — the rigged monsters never got the
       // strike layer at all, only the raw library clip, which is why the punch read as a shrug / a clap)
       let lungeSet = false;
-      if (!stomping && v.bones && v.bones.Left && v.bones.Right && m.anim === 'punch' && v.punchTarget) {
-        strikePose(v, m, punchK, state);
+      if (v.punchClock != null) { v.punchClock += dt; if (v.punchClock >= PUNCH_VIS || m.st === 'fall' || m.st === 'jump' || m.st === 'revert' || m.st === 'walkoff' || m.st === 'gone' || m.st === 'dead') v.punchClock = null; }
+      if (!stomping && v.bones && v.bones.Left && v.bones.Right && v.punchClock != null && v.punchTarget) {
+        strikePose(v, m, v.punchClock / PUNCH_VIS, state);
         lungeSet = true;
       } else if (v.bones && m.st === 'climb' && m.hop) {
         // THE REACH: the free hand goes to the next sill first
@@ -2026,6 +2039,7 @@ export function createRenderer(canvas, lookIn) {
         if (!v.punchTarget) { v.punchTarget = new THREE.Vector3(); v.punchWind = new THREE.Vector3(); }
         const t = v.punchTarget;
         t.faceCol = false;
+        v.punchClock = e.st === 'street' && e.dy < 0 ? null : 0; v.impactDone = false;   // the stomp keeps its clip
         if (e.st === 'climb') {
           const bb = state.city.buildings[m.b];
           const row = Math.floor(m.y + hand) + e.dy, col = (bb ? bb.x0 : 0) + m.col + e.dx;
@@ -2036,7 +2050,7 @@ export function createRenderer(canvas, lookIn) {
         } else if (e.st === 'street' && m.lane === 0) {
           // the face beside you: the cell the rules hit, the fist ends on the wall
           const row = Math.floor(m.y + hand) + (e.dy > 0 ? 1 : 0);
-          t.set(m.x * CELL + m.facing * 1.0 * CELL, (row + 0.5) * CELL, rootZ - 0.3 * CELL);
+          t.set(m.x * CELL + m.facing * 1.25 * CELL, (row + 0.5) * CELL, rootZ - 0.12 * CELL);   // out to the side, in the picture's plane: aimed into the wall it was foreshortened to nothing
         } else {
           // the road lane and the roof: straight out ahead at the fist's height (up = a head higher)
           t.set(m.x * CELL + m.facing * reach * 0.6 * CELL, (m.y + hand * 0.85 + (e.dy > 0 ? 0.7 : 0)) * CELL, rootZ);

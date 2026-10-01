@@ -3,6 +3,21 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-01 — Claude — THE PUNCH YOU CAN SEE
+
+James, in test mode: "there's no punch animation. wasn't there supposed to be a punch?" Measured in the real game page:
+the bone punch ran, but it was tied to the core's 0.29 s punch — five frames of wind-up, ~60 ms of extension, gone —
+and on the street the fist drove INTO the wall, away from the side camera, so it was foreshortened to nothing.
+
+- The picture now runs its OWN clock per punch (`PUNCH_VIS` 0.5 s from the punch event, `v.punchClock`): wind-up 80 ms,
+  strike to 125 ms (on the core's hit at 120 ms), HOLD out at full reach to 340 ms, home by 500 ms. Phases P_WIND 0.16 /
+  P_HIT 0.25 / P_HOLD 0.68. Falls, jumps and reverts cut it.
+- On the street the fist goes out to the side in the picture's plane (1.25 cells ahead, just short of the wall).
+- THE IMPACT: the glove swells to 1.7x on the hit and through the hold; a flash and a dust puff at the knuckles the
+  moment it lands, hit or miss.
+- Checked in the real game (silent smoke copy, test mode) frame by frame: right = cocked fist, the arm out at full
+  reach with the puff, held, home; up = the uppercut. Sim 2,062,831 green. Tags: render3d v27, game.js v11, lab.js v6.
+
 ## 2026-09-30 — Claude — TEST MODE
 
 James: "a total test mode. as a separate thing. NO COPS or any distractions. one single medium building in the
