@@ -272,7 +272,7 @@
     function renderScene(id, cfg, w, h, dt) {
       const prog = sceneProgram(id);
       if (!prog) return false;
-      sceneTime += dt * cfg.sceneSpeed;
+      sceneTime += dt * cfg.sceneSpeed * ((field.getPerf && field.getPerf().speedMul) || 1);
       gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFbo.fb);
       gl.viewport(0, 0, w, h);
       gl.clearColor(0, 0, 0, 1);
@@ -388,7 +388,35 @@
     }
 
     function paintSource(dl, cfg, sceneOn) {
-      const w = src.width, h = src.height;
+      paintList(sctx, src.width, src.height, dl, cfg, sceneOn);
+    }
+
+    // Thumbnails (2026-09-29, the performance panel's Scenes): the next
+    // rendered frame is copied into a small canvas. GL path: the canvas right
+    // after render (the drawing buffer is not preserved past this task).
+    // DOM path (no FX): the display list painted in 2D — the same painter.
+    let thumbWant = null;
+    api.thumb = (w, h) => new Promise((resolve) => { thumbWant = { w, h, resolve }; });
+    function takeThumb(fromGL, dl) {
+      const want = thumbWant;
+      thumbWant = null;
+      const c = document.createElement("canvas");
+      c.width = want.w;
+      c.height = want.h;
+      const x = c.getContext("2d");
+      try {
+        if (fromGL) x.drawImage(canvas, 0, 0, want.w, want.h);
+        else {
+          const list = dl || (field.getDisplayList && field.getDisplayList());
+          if (list) paintList(x, want.w, want.h, list, field.getConfig(), false);
+        }
+        want.resolve(c.toDataURL("image/jpeg", 0.8));
+      } catch (err) {
+        want.resolve(null);
+      }
+    }
+
+    function paintList(sctx, w, h, dl, cfg, sceneOn) {
       sctx.setTransform(1, 0, 0, 1, 0, 0);
       sctx.globalCompositeOperation = "source-over";
       sctx.globalAlpha = 1;
@@ -483,7 +511,8 @@
       gl.uniform1i(gl.getUniformLocation(progFeed, "uScene"), 2);
       u(progFeed, "uTrails", cfg.fxTrails);
       u(progFeed, "uZoom", cfg.fxZoom);
-      u(progFeed, "uZoomRot", cfg.fxZoomRot);
+      const busy = (field.getPerf && field.getPerf().busyMul) || 1; // Energy
+      u(progFeed, "uZoomRot", Math.min(1, cfg.fxZoomRot * busy));
       u(progFeed, "uSceneMix", sceneOn ? cfg.sceneMix : 0);
       u(progFeed, "uTileAlpha", sceneOn ? cfg.sceneTiles : 1);
       u(progFeed, "uSceneTone", sceneOn && cfg.scene === "flame" ? 0.62 : 0);
@@ -497,13 +526,13 @@
       gl.uniform1i(gl.getUniformLocation(progPost, "uTex"), 0);
       gl.uniform2f(gl.getUniformLocation(progPost, "uRes"), w, h);
       u(progPost, "uPixel", cfg.fxPixel);
-      u(progPost, "uRgb", cfg.fxRgb);
-      u(progPost, "uWarp", cfg.fxWarp);
+      u(progPost, "uRgb", Math.min(1, cfg.fxRgb * busy));
+      u(progPost, "uWarp", Math.min(1, cfg.fxWarp * busy));
       u(progPost, "uSlit", cfg.fxSlit);
       u(progPost, "uKaleido", cfg.fxKaleido > 0 ? 2 + Math.round(cfg.fxKaleido * 10) : 0);
       u(progPost, "uKalRing", cfg.fxKalRing || 0);
       u(progPost, "uKalIter", cfg.fxKalIter > 0 ? Math.round(cfg.fxKalIter * 2) : 0);
-      u(progPost, "uKalSpin", (cfg.fxKalSpin || 0) * 0.5);
+      u(progPost, "uKalSpin", (cfg.fxKalSpin || 0) * 0.5 * busy);
       u(progPost, "uBloom", cfg.fxBloom);
       u(progPost, "uGrain", cfg.fxGrain);
       u(progPost, "uCrt", cfg.fxCrt);
@@ -517,10 +546,12 @@
     field.setFrameHook((dl, t, dt) => {
       if (!dl) {
         if (canvas.style.display !== "none") canvas.style.display = "none";
+        if (thumbWant) takeThumb(false, null);
         return;
       }
       if (canvas.style.display === "none") canvas.style.display = "";
       render(dl, t, dt);
+      if (thumbWant) takeThumb(ok, dl);
     });
 
     api.beat = () => { beatPulse = 1; };

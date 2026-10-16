@@ -125,6 +125,8 @@
     high: "high", level: "level", beat: "beat",
     // Grid-locked (no detection lag) — see music-dsp.js CLOCK_SOURCES.
     pulse: "▸ pulse", bar: "▸ bar", phrase: "▸ phrase", swing: "▸ swing",
+    // The hit detectors + song energy (react.js, 2026-09-29).
+    kick: "● kick", snare: "● snare", hat: "● hat", energy: "● energy",
   };
 
   function el(tag, cls, text) {
@@ -1232,8 +1234,10 @@
     // XY pad. Pads fire while held and restore clean on release — they never
     // touch the saved state.
     {
-      const cPerform = card("visual", "perform",
-        "Play it live: hold a pad and it fires, let go and it's gone. The XY pad drags two knobs at once.");
+      // Titled "punch pads" since 2026-09-30 — "Perform" is the other face of
+      // this window now. The id stays "perform" so saved layouts keep it.
+      const cPerform = card("visual", "punch pads",
+        "Play it live: hold a pad and it fires, let go and it's gone. The XY pad drags two knobs at once.", { id: "perform" });
       const row = el("div", "tuner-perform");
       const padRow = el("div", "tuner-pads");
       const PADS = [

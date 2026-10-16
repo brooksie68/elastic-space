@@ -21,7 +21,45 @@ Entries in `changelog.md` from before that date use the old names on purpose.
   decoded GIF timing table, framing, era notes. The timing constants in
   `lumina-field.js` come straight from it.
 
-## START HERE — the wave queue (2026-08-03, James's "to infinity and beyond")
+## START HERE — THE MUSIC PLAN (2026-09-29, supersedes everything below as the frame)
+
+His ask: "react incredibly intuitively to music," and "the key element is fun." Nine steps plus
+the PERFORMANCE PANEL are in the changelog's 2026-09-29 entries. Steps 1–8 BUILT the same day on
+his "yes, proceed. to the end." Step 9 is HIS: he plays it (test track first, then his tracks).
+Open next from his read — nothing else is queued.
+
+**The music layer since 2026-09-29 (read before touching any of it):**
+1. `react.js` — pure, DOM-free sensing: kick/snare/hat spectral-flux detectors, the 16-step
+   PATTERN learner (hits fire ON the step, predicted, when a clock is known), the self-learned
+   detection LAG (median kick offset past the beat; ~80–90 ms on the offline analyser), the tap
+   clock, song ENERGY (grid barEnergy stretched over the song, or live against slow quiet/loud
+   marks) + drops, and `prewire(cfg)` (which hit moves read on a look: walls never swell).
+   Sim: `node tmp/lumina/react-sim.mjs`.
+2. TIME: `pos` (element) → `heard` = pos − delay → `vis` = heard + one frame. Everything seen
+   runs on `vis` (clock, the set, hits). The delay is the panel's Sound setting (Speakers auto
+   = ctx.outputLatency + baseLatency, or tapped; Bluetooth 200 ms default, tapped).
+3. `music.js` tick is the FIELD's pre-frame hook now (`field.addPreFrame`) — never its own rAF
+   again (that was a frame late). It feeds `LuminaPerform.feed(...)` every playing frame.
+4. `lumina-field.js`: `perf` (speedMul, busyMul, swell, cycleMul, lock, clock) rides UNDER config,
+   never saved. The flash cycle is LOCKED to the beat in speed AND phase when a clock is known,
+   the look has syncBeats and Beat lock > 0 (`advanceClock`). The old speed-only override in
+   music.js (which also ignored hold time in the period) is gone.
+5. `perform.js` (page) = the ENGINE: state, the overlay (flash/dark/strobe/ring inside the
+   frame), CSS filter + zoom on the frame, dice/scenes/opposite/break/autopilot, the keys, the
+   delay calibration. It registers with the host (`registerPerform`: a `perform` snapshot part +
+   `perform` commands) and sends fast `host.perf` messages (meters ~15 Hz, thumbnails).
+   `perform-ui.js` (controls window) = the FACE: draws everything from that data, forwards keys.
+   THE CONTROLS NEVER SIT ON THE PICTURE (James, 2026-09-30) — tuner.html has two faces,
+   PERFORM and CONFIGURE, switched by the bar at the top or the ` key (remembered,
+   `lumina-ctl-mode`); ` on the picture opens the window. Looks go through host commands
+   `look` (cut or glide) and `punchDyn` (world.js). Storage: `lumina-perform`, `lumina-scenes`.
+   No hardware controller — his call, off the table.
+6. The mod matrix stays (configuration = the advanced door); Action scales its master; new
+   sources kick / snare / hat / energy; bands now read 0 at their own quiet level (FLOOR_TAU).
+7. Measure every change with `tmp/lumina/beat-lab.html` (v2 = the real stack, silent;
+   `beat-lab-v1.html` = the before numbers). KEEP both.
+
+## (older) the wave queue (2026-08-03, James's "to infinity and beyond")
 
 **2026-09-01 — THE DIRECTION RESET (supersedes the wave queue and the
 2026-08-08 audio proposals below as the frame; read the changelog entry

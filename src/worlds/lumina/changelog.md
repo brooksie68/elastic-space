@@ -3,6 +3,149 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-09-30 — Claude (Opus 5.5) — The performance controls move into the controls window
+
+- **His read (before playing):** "The controls you built are part of the screen. that's not what we
+  want. we need it to be a satellite like the granular controls… both in the separate window with a
+  handy toggle to switch modes at will." And: no hardware controller — "act like that's NOT a part
+  of this for now." (Item 14 of the plan is off the table.)
+- **Built:** `perform.js` is now only the page-side ENGINE (the moves, the overlay, the logic, the
+  keys) — the on-screen panel is gone. It registers with the host (`registerPerform`: snapshot part
+  with the fader/pad definitions, values, scenes, status, the calibration card's state; `perform`
+  commands for faders, pads down/up, scenes down/up/remove/bank, tap, delay mode/nudge/auto, the
+  card, forwarded keys) and sends `host.perf` messages over the channel (meters ~15 Hz, thumbnails
+  on change). New `perform-ui.js` draws the PERFORM face in tuner.html from that data (seven tall
+  faders, the pads, the status + meters, a wrapping grid of scene thumbnails, the Keys sheet, the
+  Sound-delay card). tuner.html has a bar at the top — Perform | Configure — and ` switches;
+  remembered per window, Perform first. Keys typed in the window (Perform face) are forwarded to
+  the page; ` on the picture opens the window. The old configuration card "perform" is titled
+  "punch pads" now (same id, saved layouts keep it). Host: `perform` scope, `host.perf`, bus
+  `onPerf`; `tuner-remote.js` passes perf messages.
+- **Pane-checked (silent):** both faces draw, the switch and ` work, a scene tapped in the window
+  cuts the picture, a forwarded key reaches the page, no panel on the picture.
+
+## 2026-09-29 — Claude (Opus 5.5) — Steps 2–8 BUILT: the sensing, the lock, the performance panel
+
+On his "yes, proceed. to the end." Everything below is live on the page; step 9 (he plays it) is his.
+
+- **THE RENDERER (`lumina-field.js`).** `perf` = { speedMul, busyMul, swell, cycleMul, lock, clock }
+  under config, never saved. PHASE LOCK (`advanceClock`): with a clock, a look's syncBeats and Beat
+  lock > 0, the flash cycle's speed comes from the tempo AND its bright moment is pulled onto the
+  beat (square = the flip up, saw = the wrap, others = the peak). Also fixed: the old sync speed
+  ignored the hold time in the period, so any look with holds drifted off tempo. PRE-FRAME HOOKS
+  (`addPreFrame`): music.js's tick and the panel's update run at the top of the field's frame —
+  the music tick had its own rAF, which ran after the field's: one frame late. `fx.js`: scene clock
+  × speedMul, warp/rgb/zoom-spin/kaleido-spin × busyMul, `LuminaFX.thumb(w,h)` (GL canvas or the
+  display list painted in 2D — the painter is shared now).
+- **THE SENSING (`react.js`, new, pure; `tmp/lumina/react-sim.mjs` 33/33).** Kick / snare / hat
+  spectral-flux detectors (threshold = recent mean + max(k·sd, floor)); the 16-STEP PATTERN (per
+  instrument, per step, a running score; the SEEN clock crossing a scored step fires the hit ON the
+  step, beats > eighths > sixteenths in strength; breakdowns go quiet in two bars; unpredicted
+  detections are HELD until heard, never double-fired); the detection LAG learned live as the
+  median kick offset past the beat — the offline analyser gives ~80–90 ms for every band, far more
+  than its window, so it is never hard-coded; the TAP clock; the AUTO clock (tempo found from the
+  kicks on the eighth grid with a 120-BPM prior — finds 130.0 on the test track in 8 s; its phase
+  only holds to ±50 ms on real kicks, so it sets the flash cycle's tempo but hits on it come from
+  detection, lined up with the sound — three tracker variants tried, the plateau called); ENERGY
+  (grid barEnergy stretched 8th–95th percentile, or live against 30-s quiet/loud marks) + drops;
+  `prewire(cfg)` — coverage decides: walls (tiles past the pitch, or a heavy scene) zoom + flash
+  and never swell; sparse fields swell.
+- **TIME (music.js).** pos (smoothed element time) → heard = pos − delay → vis = heard + one
+  frame. The clock, the set, the hits all run on vis. Clock priority: measured grid (plus a tap
+  nudge that moves the phase only) → taps → heard. New commands tap / tapClear / metronome /
+  calTap; snapshot gains beatClock + autoLatency. `effBase` no longer aliases `base` (the old
+  sync override was writing speed into the clean base). Space yields to the calibration card; Z
+  moved to the panel.
+- **DSP.** Bands read 0 at their own quiet level (FLOOR_TAU 20 s) — the flail's cause. New matrix
+  sources kick / snare / hat / energy (tuner labels ● kick…). Action scales the matrix master.
+- **THE PERFORMANCE PANEL (`perform.js` + `perform.css`, new).** Bottom of the page, open by
+  default, ` hides it. Faders Energy (Q/A: speed, busyness, a locked cycle halves/doubles at bar
+  lines, brightness 0.8–1.2; middle = the song's own energy), Action (W/S: hit size + the matrix),
+  Saturation (E/D), Variety (R/F), Morph (T/G: cut … 8 bars), Beat lock (Y/H: the flash lock's
+  pull + whether cuts wait for the beat/bar), Autopilot (U/J). Scenes (1–0: tap = cut on the
+  bar, hold = morph; seeded with the opening look + the factory looks + his saved presets;
+  thumbnails captured once a scene has played; right-click removes). Pads Dice Z / Color X /
+  Shape C / Motion V / Effects N (blend toward a fresh roll by Variety, never within the recent
+  twelve, syncBeats kept when Beat lock ≥ 0.5, contrast guard), Back ⌫, Save M, Opposite O (tap =
+  latch, hold = momentary via host `punchDyn`), Break B (hold: darker, tighter, faster over eight
+  beats; release: explodes on the next beat + a big roll), Hold P, Blackout K, Strobe L (16ths
+  on the clock). Status: the beat source + BPM + Tap I, Sound = Speakers | Bluetooth with its ms
+  + Set (the calibration card: a metronome click, tap along, median sets it, − / + 5 ms, a ring
+  flashes where the page thinks the click is), autopilot state, kick/snare/hat/energy meters,
+  Keys (a readable sheet of every key), A− / A+, Hide. Moves: flash (an overlay in the look's
+  own light colour, screen-blended), zoom (the frame, ≤ ~5 %), swell (the tiles), a snare hue
+  walk that fades over 6 s — no shake. Autopilot: drops → a big roll; phrases → a scene (45 %),
+  one or two category dice (40 %), a one-bar opposite (15 %); every fourth bar a small nudge;
+  stands down for 15 s after any touch. Host (`world.js`): `look` (cut, or `glideTo` — the melt
+  roll's machinery generalised; the veil only rises when something must snap) and `punchDyn`.
+- **THE LAB (`tmp/lumina/beat-lab.html` v2; v1 kept as `beat-lab-v1.html`).** Now the real stack
+  (field + fx + world + react + perform), silent, the page's CSS filter/zoom/overlays composited
+  into the read-back, a modelled speaker delay. NUMBERS (Viz Test Track 01):
+  1. The showcase set: kick visible (standout ≥ 3) within 17 ms in **26 of 36** looks (was ~9).
+     kickwall 1.45 → 50.7. Misses are the busiest looks (whiteout, supernova, foldkick, gears,
+     prism, barwipe) and two pattern-staggered cycles (syncsnake, eclipse at +150 ms).
+  2. The factory looks, wired speakers (35 ms): **13 of 15** (checker strobe 1.26, orbs +67 ms).
+  3. Grid-clocked kick hits on the beat within 17 ms: **470 of 516** beats (sensing only).
+  4. No grid, wired speakers (35 ms), the heard clock at 129.8 BPM: kicks clearly visible in every
+     8-bar block (standout 3.2–11) but **67 ms late** (was 83 ms late and barely visible) — the
+     detector's own delay. Tapping I gives the predicted, on-the-beat hits; on Bluetooth (200 ms)
+     the held hits already line up because the sound is later than the detection.
+- **Pane click-through (silent, no play, no metronome):** dice glide, colour dice, Back, scene
+  cut, Opposite latch, the Keys sheet — all work, no errors. The fader keys and glides need
+  frames; the pane only runs them on screenshots, they ran there.
+- **NOT DONE / his calls:** Web MIDI (item 14) waits for the panel's first flight; the matrix's
+  stock rows are unchanged (his stored settings win anyway); the two untracked tracks still have
+  no grid.
+
+## 2026-09-29 — Claude (Opus 5.5) — The music plan + step 1: the kicks measured
+
+- **His ask:** "make Lumina react incredibly intuitively to music." Plan agreed (his "I like your
+  ideas so much!" then "proceed"): three speeds — hits (kick/snare/hat each one sharp visible move),
+  bars (looks change where the music changes), energy (calm↔wild over bars). Steps, each his go:
+  1 measure — done; 2 delay fix (TWO saved delays, wired + Bluetooth — he uses both — set by
+  tapping along to a flash + click); 3 hit moves (whole-field flash, all-tiles swell, small zoom,
+  colour jump; no camera shake); 4 kick/snare/hat detectors, any track, grid confirms; 5 real
+  contrast (loudness vs the whole song); 6 THE PERFORMANCE PANEL; 7 smart dice + autopilot;
+  8 every look pre-wired; 9 he plays it. Fills the "onset audio" step of the 2026-09-01 plan.
+- **THE PERFORMANCE PANEL (his list + Claude's, he took it whole, "14 sounds cool"):** faders
+  Energy, Action (hit strength), Saturation, Variety (how far a dice roll goes), Morph (cut ↔
+  8-bar glide), Beat lock (snapped ↔ wandering), Autopilot (it plays itself at phrase/drop points,
+  touch anything to take over); pads Scenes (thumbnails, tap = cut, hold = morph), Dice (four small
+  dice: colour/shape/motion/effects, never a recent look, lands on the next downbeat, back arrow,
+  heart banks to Scenes), Opposite (hold = momentary), Break (hold builds tension, release
+  explodes on the next beat), Hold (freeze), Blackout + Strobe (momentary); tap-tempo for gridless
+  tracks; every control on a key. Item 14: a USB MIDI controller (nanoKONTROL / MIDImix) through
+  Web MIDI — optional, he asked "its all gonna work without hardware?" → yes.
+- **STEP 1 BUILT + RUN: `tmp/lumina/beat-lab.html` (KEEP).** Silent: the track is decoded and
+  analysed in an OfflineAudioContext (a real AnalyserNode, fftSize 2048, smoothing 0, read at every
+  1/60 s via suspend()), the real field + FX are driven frame by frame with a stubbed rAF/clock
+  (the music.js tick block mirrored line for line), pixels read at 96×54 after each frame. Per
+  segment: the kick-locked average of frame-to-frame motion, 6 frames before to 18 after. `standout`
+  = peak in 0–150 ms ÷ the 50 ms before. `BEATLAB.run("set")` / `run("free")`, ~3 min each in the
+  pane; results in `window.BEATLAB_RESULT`. Looks with no FX get fxBloom 0.001 so they read as pixels.
+- **THE NUMBERS (Viz Test Track 01):**
+  1. FREE PLAY (default wiring): the picture moves 83 ms after the kick (5 frames), every segment,
+     before display + speaker delay. The move is the bass envelope (bass→sizePulse); the
+     analyser's 43 ms window + the 30 ms attack put it there.
+  2. THE LIVE KICK DETECTOR IS DEAD on dense bass: 4 fires in 516 kicks in free play, 53 in the set
+     (its beatSense 0.8). Peak-normalised bass sits near 1, so "bass > average × threshold" never
+     trips. Every `beat` wire does nothing on this track.
+  3. THE SET (grid-driven): when a hit shows, it lands at 0–17 ms — on time. But about half the
+     looks lose the kick in their own motion (standout < 2: kickwall 1.45, downbeatslabs 1.04,
+     syncsnake 0.96, sync8 1.26, confetti 1.21, pixelgate 1.31, lavaridge 1.35 …; some of those hit
+     other accents on purpose). Clear hits: eighthshex 14.3, swingtwins 8.6, phrasehue 8.4,
+     foldkick 7.1, sixteenthdust 6.4, backbeat 6.3.
+  4. KICKWALL, "THE REFERENCE," DOESN'T HIT THE KICK: its 70 px tiles on a 62 px pitch already
+     overlap into one solid wall, so pulse→tileSize grows nothing visible (motion 0.9 at the kick).
+     The big flashes are the tiles' own square cycle: tempo-locked by syncBeats, but syncBeats sets
+     SPEED ONLY, never PHASE — the flips land 50 ms before and 67 ms after the kick, never on it.
+     Tempo right, phase wrong: his "doesn't know where the beat is."
+  5. The grid itself: the PCM kick attack (40–120 Hz rise) sits a median 28 ms BEFORE the grid's
+     beat (p10 −55, p90 +59; noisy measure). Small, fold it into the delay fix.
+- **Fixes this points at (steps 2–4):** lock the flash cycle's phase to the beat, not just its
+  speed; replace the detector; hits drive moves that read (never tileSize past the pitch); the
+  delay fix covers grid offset + render + display + speaker.
+
 ## 2026-09-01 — Claude (Fable 5.1) — The test track + the beat-lock showcase set
 
 - **The conversation first (James thinking out loud, verbatim spine):** he

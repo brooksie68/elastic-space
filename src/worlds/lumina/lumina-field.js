@@ -800,28 +800,90 @@
     // NOT a config key: transport state, never saved into presets.
     let frozen = false;
 
+    // THE PERFORMANCE LAYER (2026-09-29): live multipliers the performance
+    // panel (perform.js) and the music clock write every frame. They ride
+    // UNDER config — never saved, never in presets — so the panel's big
+    // faders work no matter who wrote cfg (sliders, a set, the matrix).
+    //   speedMul  — Energy: the field clock runs faster/slower
+    //   busyMul   — Energy: displace / rotate / spin / pulse amounts
+    //   swell     — hit move: every tile scales together (0 = off)
+    //   cycleMul  — Energy: a locked flash cycle halves (0.5) or doubles (2)
+    //   lock      — Beat lock 0..1: how hard the flash cycle is pulled onto
+    //               the beat (0 = wander, 1 = snapped)
+    //   clock     — { beats, beatLen } in HEARD time, or null (no beat known)
+    const perf = { speedMul: 1, busyMul: 1, swell: 0, cycleMul: 1, lock: 1, clock: null };
+    // Pre-frame hooks run at the TOP of every frame, before the field reads
+    // cfg — the music tick and the performance layer live here so what they
+    // write lands in THIS frame, not the next (a frame of lag, measured).
+    const preFrame = [];
+
     function tileTransform(tile, v, t) {
       const parts = [];
+      const busy = perf.busyMul;
       if (cfg.displace > 0) {
         const a = hash(tile.r, tile.c, 11) * Math.PI * 2;
-        const m = cfg.displace * (TILE + Math.max(cfg.gapX, cfg.gapY)) * (0.4 + 0.6 * hash(tile.r, tile.c, 12));
+        const m = cfg.displace * busy * (TILE + Math.max(cfg.gapX, cfg.gapY)) * (0.4 + 0.6 * hash(tile.r, tile.c, 12));
         parts.push(`translate(calc(var(--ux,1px) * ${(Math.cos(a) * m).toFixed(1)}), calc(var(--uy,1px) * ${(Math.sin(a) * m).toFixed(1)}))`);
       }
       let ang = 0;
-      if (cfg.rotate > 0) ang += cfg.rotate * (hash(tile.r, tile.c, 13) - 0.5) * 720;
-      if (cfg.spin > 0) ang += cfg.spin * t * 180;
+      if (cfg.rotate > 0) ang += cfg.rotate * busy * (hash(tile.r, tile.c, 13) - 0.5) * 720;
+      if (cfg.spin > 0) ang += cfg.spin * busy * t * 180;
       if (ang) parts.push(`rotate(${ang.toFixed(1)}deg)`);
       let scale = tile.mergeScale || 1;
-      if (cfg.sizePulse > 0) scale *= 1 + cfg.sizePulse * (v - 0.5) * 1.3;
+      if (cfg.sizePulse > 0) scale *= 1 + Math.min(1, cfg.sizePulse * busy) * (v - 0.5) * 1.3;
+      if (perf.swell) scale *= Math.max(0.05, 1 + perf.swell);
       if (scale !== 1) parts.push(`scale(${scale.toFixed(3)})`);
       return parts.join(" ");
+    }
+
+    // The field clock. Free: it runs at speed × Energy. LOCKED (a beat clock
+    // is known, the look has a flash cycle — syncBeats — and Beat lock > 0):
+    // the cycle's speed comes from the tempo AND its phase is pulled onto the
+    // beat, so the flash lands ON the kick. Before 2026-09-29 syncBeats set
+    // the speed only (and ignored the hold time in the period), so the
+    // flashes kept the tempo but landed wherever the clock happened to start
+    // — 50 ms before and 67 ms after the kick, measured (beat-lab.html).
+    function lockSpec() {
+      const t0 = tiles[0];
+      return (t0 && t0.osc && t0.osc.spec) || TIMING.throb;
+    }
+    function periodOf(spec) {
+      return RAMP + (spec.holdW + spec.holdB) * cfg.holdScale;
+    }
+    // Where in its cycle an oscillator should be ON the beat: the moment it
+    // turns bright. Square: the flip up. Saw: the wrap. Others: the peak.
+    function beatPhaseOf(spec) {
+      const holdB = spec.holdB * cfg.holdScale;
+      if (cfg.waveform === "square") return 0.75 * RAMP + holdB;
+      if (cfg.waveform === "saw") return 0;
+      return RAMP + holdB;
+    }
+    function advanceClock(dt) {
+      if (!dt) return;
+      const c = perf.clock;
+      if (c && cfg.syncBeats > 0 && perf.lock > 0 && c.beatLen > 0) {
+        const spec = lockSpec();
+        const per = periodOf(spec);
+        const cyc = cfg.syncBeats * perf.cycleMul;
+        fieldTime += dt * (per / (cyc * c.beatLen));
+        const target = beatPhaseOf(spec) + (c.beats / cyc) * per;
+        let err = (target - fieldTime) % per;
+        if (err > per / 2) err -= per;
+        if (err < -per / 2) err += per;
+        fieldTime += err * Math.min(1, dt * (1.5 + 28 * perf.lock * perf.lock));
+      } else {
+        fieldTime += dt * cfg.speed * perf.speedMul;
+      }
     }
 
     function frame(now) {
       rafId = requestAnimationFrame(frame);
       const dt = frozen ? 0 : Math.min((now - lastNow) / 1000, 0.25);
       lastNow = now;
-      fieldTime += dt * cfg.speed;
+      for (const cb of preFrame) {
+        try { cb(now, dt); } catch (err) { console.warn(err); }
+      }
+      advanceClock(dt);
 
       // hueShift under modulation: rebuild the LUT when it moved.
       const key = cfg.palette + "|" + cfg.low + "|" + cfg.high + "|" + cfg.hueShift;
@@ -837,7 +899,7 @@
         outer.style.visibility = fxOn ? "hidden" : "";
       }
 
-      const wantTransforms = cfg.displace > 0 || cfg.rotate > 0 || cfg.spin > 0 || cfg.sizePulse > 0 || cfg.merge > 0;
+      const wantTransforms = cfg.displace > 0 || cfg.rotate > 0 || cfg.spin > 0 || cfg.sizePulse > 0 || cfg.merge > 0 || perf.swell !== 0;
 
       for (const osc of oscillators) {
         const v = oscValue(osc.spec, fieldTime, cfg, osc.seed, osc.rawPhase);
@@ -909,14 +971,16 @@
     }
 
     function pushTileItems(items, tile, cx, cy, color) {
+      const busy = perf.busyMul;
       let scale = tile.mergeScale || 1;
-      if (cfg.sizePulse > 0) scale *= 1 + cfg.sizePulse * (tile.osc.v - 0.5) * 1.3;
+      if (cfg.sizePulse > 0) scale *= 1 + Math.min(1, cfg.sizePulse * busy) * (tile.osc.v - 0.5) * 1.3;
+      if (perf.swell) scale *= Math.max(0.05, 1 + perf.swell);
       let rot = 0;
-      if (cfg.rotate > 0) rot += cfg.rotate * (hash(tile.r, tile.c, 13) - 0.5) * 720;
-      if (cfg.spin > 0) rot += cfg.spin * fieldTime * 180;
+      if (cfg.rotate > 0) rot += cfg.rotate * busy * (hash(tile.r, tile.c, 13) - 0.5) * 720;
+      if (cfg.spin > 0) rot += cfg.spin * busy * fieldTime * 180;
       if (cfg.displace > 0) {
         const a = hash(tile.r, tile.c, 11) * Math.PI * 2;
-        const m = cfg.displace * (TILE + Math.max(cfg.gapX, cfg.gapY)) * (0.4 + 0.6 * hash(tile.r, tile.c, 12));
+        const m = cfg.displace * busy * (TILE + Math.max(cfg.gapX, cfg.gapY)) * (0.4 + 0.6 * hash(tile.r, tile.c, 12));
         cx += Math.cos(a) * m;
         cy += Math.sin(a) * m;
       }
@@ -937,6 +1001,10 @@
       getDisplayList: displayList,
       setFrameHook(fn) { frameHook = fn; },
       getTime() { return fieldTime; },
+      // The performance layer (see `perf` above).
+      getPerf() { return perf; },
+      setPerf(partial) { Object.assign(perf, partial); },
+      addPreFrame(fn) { preFrame.push(fn); },
       setFrozen(on) { frozen = !!on; },
       isFrozen() { return frozen; },
       setConfig(partial) {

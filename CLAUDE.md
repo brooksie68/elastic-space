@@ -969,7 +969,16 @@ consistent. `npm run check-worlds` audits every world against the contract.
    Phaser rebuild `arachno-wars\two\` is "Arachno Wars Two". Each has its own CLAUDE.md +
    Todo (the tuner panel and feel-pass items moved there). Nothing Arachno remains in
    this repo except git history and World Ideas #52.
-5. **LUMINA PANEL — START THE NEXT LUMINA SESSION HERE (James, 2026-07-27 wrap).**
+5. **LUMINA — 2026-09-29: THE MUSIC PLAN IS BUILT (steps 1–8, his "proceed. to the end.").**
+   The kicks measured (beat-lab), then the sensing (react.js: kick/snare/hat, the 16-step pattern
+   that fires hits ON the beat, learned lag, tap + heard clocks, song energy), the flash cycle
+   locked to the beat in phase, and THE PERFORMANCE PANEL (perform.js: seven faders, scenes,
+   smart dice, Opposite, Break, holds, autopilot, a Speakers/Bluetooth delay set by tapping, every
+   control on a key). 2026-09-30, his order: the controls live in the CONTROLS WINDOW, not on the
+   picture — Perform | Configure toggle (` key); no hardware controller. AWAITING HIS FLIGHT
+   (step 9). Read the world CLAUDE.md START HERE + the changelog 2026-09-29/30 entries first.
+   Everything below in this item is older history.
+   (older) **LUMINA PANEL — START THE NEXT LUMINA SESSION HERE (James, 2026-07-27 wrap).**
    He said it explicitly at wrap: next time we start on optimizing the panel. It is a
    DESIGN CONVERSATION FIRST, not a build — read the "START HERE" section at the top of
    `src/worlds/lumina/CLAUDE.md` plus NEXT UP item 4 before saying anything. Short

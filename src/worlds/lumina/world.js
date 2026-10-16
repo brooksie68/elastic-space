@@ -261,8 +261,16 @@
   // over the second half while numerics/colors finish their glide.
   const TWEEN_VEIL = 14; // design px of added blur at the midpoint swap
   function rollTween(ms) {
+    glideTo(Object.assign({}, DEFAULTS, unlockedOnly(globalThis.LuminaRandom.roll())), ms, true);
+  }
+
+  // Any look → any look over `ms` (2026-09-29: the performance panel's Morph
+  // fader, scenes held, the dice). The melt roll is this with a fresh roll.
+  // The blur veil only rises when something has to SNAP (grid, layout,
+  // scene…) — a pure colour/number glide needs nothing to hide behind.
+  function glideTo(targetIn, ms, alwaysVeil) {
     cancelTween();
-    const target = Object.assign({}, DEFAULTS, unlockedOnly(globalThis.LuminaRandom.roll()));
+    const target = Object.assign({}, targetIn);
     // Locked keys hold their CURRENT values — not DEFAULTS.
     Object.keys(locks).forEach((g) => {
       (GROUPS[g] || []).forEach((k) => { if (k in state) target[k] = state[k]; });
@@ -280,6 +288,8 @@
       else if (typeof v === "string" && HEX.test(v) && HEX.test(String(from[k]))) lerpKeys.push(k);
       else snapVals[k] = v;
     }
+    const needsVeil = alwaysVeil || Object.keys(snapVals).some((k) => snapVals[k] !== from[k]);
+    const veilPx = needsVeil ? TWEEN_VEIL : 0;
     let swapped = false;
     const t0 = performance.now();
     const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
@@ -300,7 +310,7 @@
       // The veil rides on top of the lerped blur and never lands in `state`,
       // so a mid-flight cancel leaves the honest value behind.
       const shown = Object.assign({}, partial);
-      const veil = Math.sin(Math.PI * p) * TWEEN_VEIL;
+      const veil = Math.sin(Math.PI * p) * veilPx;
       shown.blur = Math.max(0, (typeof shown.blur === "number" ? shown.blur : state.blur) + veil);
       field.setConfig(shown);
       notifyBase();
@@ -365,7 +375,9 @@
   const subscribers = [];
   const beatSubs = [];
   const modSubs = []; // live modulated values (music.js), for the panel's ghost dots
+  const perfSubs = []; // the performance engine's fast messages (meters, thumbnails)
   let music = null; // registered by music.js: { command(cmd), snapshotPart() }
+  let perform = null; // registered by perform.js: { command(cmd), snapshotPart() }
   let detached = false;
 
   // Which edge the open in-page panel docks to (James, 2026-07-27: any of the
@@ -396,6 +408,7 @@
         canUndo: history.length > 0,
       },
       music: music ? music.snapshotPart() : null,
+      perform: perform ? perform.snapshotPart() : null,
     };
   }
 
@@ -480,6 +493,33 @@
       case "randomizeTween":
         rollTween(2000); // 4000 → 2000 on James's call, 2026-07-31
         break;
+      case "look": {
+        // The performance panel (2026-09-29): a whole look, cut or glided.
+        // cmd.config is a full config (or a partial over the current state).
+        const target = Object.assign({}, cmd.partial ? state : DEFAULTS, cmd.config || {});
+        delete target.marginLink;
+        if (cmd.ms > 30) {
+          glideTo(target, cmd.ms, false);
+        } else {
+          Object.keys(locks).forEach((g) => {
+            (GROUPS[g] || []).forEach((k) => { if (k in state) target[k] = state[k]; });
+          });
+          applyPreset(target);
+        }
+        presetSelected = "";
+        break;
+      }
+      case "punchDyn": {
+        // A momentary look computed on the spot (the panel's Opposite, held).
+        if (cmd.on && cmd.over) {
+          PUNCHES[cmd.name] = cmd.over;
+          activePunch[cmd.name] = true;
+        } else {
+          delete activePunch[cmd.name];
+        }
+        applyPunches();
+        break;
+      }
       case "freeze":
         // Toggle (or set) the animation freeze — transport state, not config:
         // never saved, never in presets, survives nothing.
@@ -582,6 +622,8 @@
       }
     } else if (cmd.scope === "music" && music) {
       music.command(cmd);
+    } else if (cmd.scope === "perform" && perform) {
+      perform.command(cmd);
     }
     emit();
   }
@@ -606,6 +648,16 @@
     registerMusic(handlers) {
       music = handlers;
     },
+    // The performance engine (perform.js, 2026-09-29/30) — its controls live
+    // in the controls window (perform-ui.js).
+    registerPerform(handlers) {
+      perform = handlers;
+    },
+    // Fast messages from the performance engine: meters, thumbnails.
+    perf(msg) {
+      perfSubs.forEach((cb) => cb(msg));
+      if (channel && detached) channel.postMessage({ t: "perf", msg });
+    },
     // --- the performance timeline's hooks (2026-07-31) ---------------------
     // Recording: every live field command lands here with the state after it.
     onFieldCommand(cb) { cmdTaps.push(cb); },
@@ -625,6 +677,7 @@
         onSnapshot: (cb) => subscribers.push(cb),
         onBeat: (cb) => beatSubs.push(cb),
         onMod: (cb) => modSubs.push(cb),
+        onPerf: (cb) => perfSubs.push(cb),
         requestSnapshot: () => emit(),
       };
     },

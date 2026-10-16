@@ -24,7 +24,12 @@
   //   phrase — 0→1 ramp across the phrase (8/16/32 bars)
   //   swing  — alternates 0 and 1 every bar, for call-and-response looks
   const CLOCK_SOURCES = ["pulse", "bar", "phrase", "swing"];
-  const SOURCES = BAND_NAMES.concat(["level", "beat"]).concat(CLOCK_SOURCES);
+  // Hit + energy sources (2026-09-29, react.js): kick / snare / hat are the
+  // new detectors' hits — ON the beat when a clock is known (predicted from
+  // the learned pattern), lined up with the sound otherwise; energy is the
+  // song's loudness against the whole song (calm breakdowns, big drops).
+  const HIT_SOURCES = ["kick", "snare", "hat", "energy"];
+  const SOURCES = BAND_NAMES.concat(["level", "beat"]).concat(CLOCK_SOURCES).concat(HIT_SOURCES);
 
   // Accent patterns over the sixteen sixteenths of a bar. Weights, not flags:
   // a strong downbeat and a light 'and' read very differently.
@@ -93,6 +98,11 @@
   // quiet mix drives the field as hard as a loud one after a few seconds.
   const PEAK_TAU = 8;      // seconds for the peak to fall to 1/e
   const PEAK_FLOOR = 0.06; // silence never divides by ~zero
+  // Real contrast (2026-09-29): each band also tracks its own QUIET level —
+  // falls at once, climbs back over ~20 s — and reads 0 there. Before, every
+  // band sat near its peak almost all the time, so everything moved all the
+  // time (the "flail"): a breakdown and a drop looked alike.
+  const FLOOR_TAU = 20;
 
   // Beat detector: a bass-band energy spike over its recent average.
   const BEAT_WINDOW = 0.6;   // seconds of history the average looks back over
@@ -139,7 +149,8 @@
   function create() {
     const peaks = {};
     const envs = {};
-    BAND_NAMES.forEach((b) => { peaks[b] = PEAK_FLOOR; envs[b] = 0; });
+    const floors = {};
+    BAND_NAMES.forEach((b) => { peaks[b] = PEAK_FLOOR; envs[b] = 0; floors[b] = null; });
     let history = [];
     let time = 0;
     let lastBeat = -Infinity;
@@ -151,7 +162,10 @@
       for (const b of BAND_NAMES) {
         const e = raw[b] || 0;
         peaks[b] = Math.max(e, peaks[b] * Math.exp(-dt / PEAK_TAU), PEAK_FLOOR);
-        norms[b] = Math.min(1, e / peaks[b]);
+        if (floors[b] === null || e < floors[b]) floors[b] = e;
+        else floors[b] += (e - floors[b]) * (1 - Math.exp(-dt / FLOOR_TAU));
+        const q = Math.min(floors[b], peaks[b] * 0.8);
+        norms[b] = Math.max(0, Math.min(1, (e - q) / Math.max(0.03, peaks[b] - q)));
         const tau = norms[b] > envs[b] ? s.attack : s.release;
         envs[b] += (norms[b] - envs[b]) * (1 - Math.exp(-dt / Math.max(tau, 0.005)));
       }
@@ -276,6 +290,7 @@
     TARGETS,
     SOURCES,
     CLOCK_SOURCES,
+    HIT_SOURCES,
     ACCENTS,
     ACCENT_NAMES,
     BANDS,

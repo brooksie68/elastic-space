@@ -128,6 +128,23 @@
   let freqData = null;
   let volume = 1;
 
+  // --- the sensing (react.js, 2026-09-29) — declared up here because
+  // loadTrack() resets it on the first load.
+  const REACT = globalThis.LuminaReact;
+  let hits = null; // REACT.createHits, made once the audio graph exists
+  const energyMeter = REACT ? REACT.createEnergy() : null;
+  const tap = REACT ? REACT.createTap() : null;
+  let tapNudge = 0; // grid tracks: taps shift the grid's phase, never its tempo
+  const hitEnv = { kick: 0, snare: 0, hat: 0 };
+  // audio.currentTime moves in steps; the position runs on the wall clock
+  // between readings and is eased onto each new one.
+  let smPos = 0;
+  let lastRaw = -1;
+  let lastVis = null;
+  let lastBar = null;
+  let lastPhrase = null;
+  let metro = null; // the calibration metronome
+
   function ensureGraph() {
     if (ctx) return;
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -184,6 +201,7 @@
     trackIndex = ((i % TRACKS.length) + TRACKS.length) % TRACKS.length;
     audio.src = DIR + encodeURIComponent(TRACKS[trackIndex].file);
     store.track = TRACKS[trackIndex].file;
+    resetReact();
     if (store.perTrack) recallPerTrack();
     resetComposition();
     // Timelines are per track: drop any in-flight loop and session undo,
@@ -438,6 +456,9 @@
           barEnergy: (GRID[TRACKS[trackIndex].file] || {}).barEnergy || null,
         },
         trackIndex,
+        // The beat clock the performance layer runs on (2026-09-29).
+        beatClock: clockInfo(),
+        autoLatency: autoLatency(),
         playing: !audio.paused,
         time: audio.currentTime || 0,
         duration: (isFinite(audio.duration) && audio.duration) || 0,
@@ -452,6 +473,19 @@
     },
     command(cmd) {
       switch (cmd.type) {
+        case "tap":
+          tapBeat();
+          break;
+        case "tapClear":
+          if (tap) tap.clear();
+          tapNudge = 0;
+          break;
+        case "metronome":
+          setMetronome(!!cmd.on);
+          break;
+        case "calTap":
+          calTap();
+          break;
         case "set":
           if (cmd.key in DSP.DEFAULTS && cmd.key !== "rows") {
             settings[cmd.key] = cmd.value;
@@ -684,6 +718,10 @@
   audio.addEventListener("loadedmetadata", () => host.emit());
 
   // --- the reactive loop ----------------------------------------------------
+  // Since 2026-09-29 this runs as the FIELD's pre-frame hook, so what it
+  // writes lands in the frame being drawn (its own rAF ran after the field's:
+  // one frame late, measured). The sensing (react.js) and the performance
+  // panel (perform.js) are fed from here.
 
   const engine = DSP.create();
   const accents = DSP.createAccents();
@@ -692,8 +730,126 @@
   let lastModEmit = 0;
   let modEmitted = false;
 
+  function resetReact() {
+    if (hits) hits.reset();
+    if (energyMeter) energyMeter.reset();
+    if (tap) tap.clear();
+    tapNudge = 0;
+    lastRaw = -1;
+    lastVis = null;
+    lastBar = null;
+    lastPhrase = null;
+  }
+
+  const perform = () => globalThis.LuminaPerform || null;
+  function autoLatency() {
+    if (!ctx) return 0.03;
+    return (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
+  }
+  function delaySec() {
+    const p = perform();
+    return p ? p.delaySec(autoLatency()) : autoLatency();
+  }
+
+  // The beat clock: the measured grid (plus any tapped phase nudge), else
+  // the tapped clock, else none.
+  function activeClock() {
+    const g = GRID[TRACKS[trackIndex].file];
+    if (g) {
+      return {
+        firstDownbeat: g.firstDownbeat + tapNudge, beatLen: g.beatLen, barLen: g.barLen,
+        phraseBars: g.phraseBars || 8, source: "grid", grid: g,
+      };
+    }
+    const t = tap ? tap.get() : null;
+    if (t) return t;
+    // No grid, no taps: the beat found from the kicks (react.js auto clock).
+    return hits ? hits.auto() : null;
+  }
+  function clockInfo() {
+    const c = activeClock();
+    return c ? { source: c.source, bpm: Math.round(600 / c.beatLen) / 10, taps: tap ? tap.count() : 0 }
+      : { source: null, bpm: 0, taps: tap ? tap.count() : 0 };
+  }
+
+  // Tap tempo (the performance panel's Tap, key I). You tap what you HEAR.
+  function tapBeat() {
+    if (!tap || audio.paused) return;
+    const heard = smPos - delaySec();
+    const t = tap.add(heard, performance.now());
+    const g = GRID[TRACKS[trackIndex].file];
+    if (t && g) {
+      // A grid track keeps its measured tempo; the taps only say where the
+      // beat really sits, if the grid is a little off.
+      let d = (t.firstDownbeat - (g.firstDownbeat + tapNudge)) % g.beatLen;
+      if (d > g.beatLen / 2) d -= g.beatLen;
+      if (d < -g.beatLen / 2) d += g.beatLen;
+      if (Math.abs(d) < 0.15) tapNudge += d;
+      tap.clear();
+    }
+    if (hits) hits.pattern.reset();
+  }
+
+  // --- the calibration metronome ---------------------------------------------
+  // A click every half second straight to the speakers, and the same beat fed
+  // to the panel as a clock, so the flash shows where the page thinks you
+  // hear the click. Taps along with it measure the delay.
+  const METRO_BEAT = 0.5;
+  function setMetronome(on) {
+    if (on) {
+      ensureGraph();
+      if (!audio.paused) stop();
+      ctx.resume();
+      metro = { t0: ctx.currentTime + 0.4, next: 0, lastBeat: -1 };
+    } else {
+      metro = null;
+      globalThis.luminaField.setPerf({ clock: null });
+    }
+  }
+  function metroTick() {
+    const t = ctx.currentTime;
+    // Schedule clicks half a second ahead.
+    while (metro.t0 + metro.next * METRO_BEAT < t + 0.5) {
+      const at = metro.t0 + metro.next * METRO_BEAT;
+      if (at >= t) {
+        const o = ctx.createOscillator();
+        const gn = ctx.createGain();
+        o.frequency.value = metro.next % 4 === 0 ? 1760 : 1320;
+        gn.gain.setValueAtTime(0.0001, at);
+        gn.gain.exponentialRampToValueAtTime(0.4, at + 0.002);
+        gn.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+        o.connect(gn);
+        gn.connect(ctx.destination);
+        o.start(at);
+        o.stop(at + 0.06);
+      }
+      metro.next++;
+    }
+    const vis = t - delaySec() + REACT.FRAME_LEAD;
+    const clock = { firstDownbeat: metro.t0, beatLen: METRO_BEAT, barLen: METRO_BEAT * 4, phraseBars: 8, source: "metronome" };
+    const rc = REACT.clockAt(clock, vis);
+    const h = { kick: 0, snare: 0, hat: 0 };
+    if (rc.beats >= 0 && rc.beat !== metro.lastBeat) {
+      metro.lastBeat = rc.beat;
+      h.kick = 1;
+    }
+    globalThis.luminaField.setPerf({ clock: { beats: rc.beats, beatLen: METRO_BEAT } });
+    const p = perform();
+    if (p) p.feed({ playing: true, calibrating: true, pos: t, vis, clock, rc, hits: h, energy: 0.5 });
+  }
+  // A calibration tap: how far behind the graph's clock the click is heard.
+  function calTap() {
+    if (!metro || !ctx) return;
+    const t = ctx.currentTime;
+    const n = Math.round((t - metro.t0 - 0.15) / METRO_BEAT);
+    const click = metro.t0 + n * METRO_BEAT;
+    // People tap a little AHEAD of a click they hear (~20 ms); add it back.
+    const d = t - click + 0.02;
+    const p = perform();
+    if (p && d > -0.05 && d < 0.6) p.calTapResult(d);
+  }
+
   function tick(now) {
-    requestAnimationFrame(tick);
     const dt = Math.min((now - lastNow) / 1000, 0.1);
     lastNow = now;
 
@@ -732,38 +888,85 @@
         host.emit();
       }
     }
-    if (!analyser || audio.paused || (!djEngine && settings.master === 0)) {
-      restoreBase();
-      if (modEmitted) { modEmitted = false; host.mod({}); } // clear ghost dots
+    if (metro && ctx) {
+      metroTick();
       return;
     }
+    if (!analyser || audio.paused) {
+      restoreBase();
+      if (modEmitted) { modEmitted = false; host.mod({}); } // clear ghost dots
+      globalThis.luminaField.setPerf({ clock: null });
+      return;
+    }
+
+    // --- where we are: the track, what you hear, what this frame shows ------
+    smPos += dt * (audio.playbackRate || 1);
+    const rawT = audio.currentTime;
+    if (rawT !== lastRaw) {
+      if (lastRaw < 0 || Math.abs(rawT - smPos) > 0.08) smPos = rawT;
+      else smPos += (rawT - smPos) * 0.25;
+      lastRaw = rawT;
+    }
+    const pos = smPos;
+    const vis = pos - delaySec() + (REACT ? REACT.FRAME_LEAD : 0);
+
     analyser.getByteFrequencyData(freqData);
     const raw = DSP.bandsFromSpectrum(freqData, ctx.sampleRate, analyser.fftSize);
 
     // With the DJ on, the composed set supplies the field base AND the
     // reactivity settings; free play uses the tuner base + James's settings.
-    const djState = djEngine ? djEngine.evalAt(audio.currentTime) : null;
-    const effBase = djState ? Object.assign({}, base, djState.base) : base;
+    // The set follows what you SEE/HEAR (vis), not the element.
+    const djState = djEngine ? djEngine.evalAt(vis) : null;
+    const effBase = djState ? Object.assign({}, base, djState.base) : Object.assign({}, base);
     const effSettings = djState ? djState.react : settings;
 
     const { sources, beat } = engine.step(raw, dt, effSettings);
 
-    // --- the beat clock: musical position straight from the measured grid ---
-    const grid = GRID[TRACKS[trackIndex].file];
-    const clock = DSP.clockAt(grid, audio.currentTime);
+    // --- the beat clock + the hits ------------------------------------------
+    const clockDef = activeClock();
+    const clock = clockDef ? DSP.clockAt(clockDef, vis) : null;
+    const rc = clockDef && REACT ? REACT.clockAt(clockDef, vis) : null;
+    let h = { kick: 0, snare: 0, hat: 0 };
+    let en = { energy: 0.5, drop: false };
+    if (REACT) {
+      if (!hits) hits = REACT.createHits(ctx.sampleRate, analyser.fftSize);
+      h = hits.step(freqData, pos, vis, clockDef);
+      en = energyMeter.step(raw, dt, vis, clockDef && clockDef.grid);
+    }
+    for (const k of ["kick", "snare", "hat"]) {
+      hitEnv[k] = Math.max(hitEnv[k] * Math.exp(-dt / Math.max(effSettings.accentDecay || 0.13, 0.02)), h[k]);
+      sources[k] = hitEnv[k];
+    }
+    sources.energy = en.energy;
+
+    let barEvent = false;
+    let phraseEvent = false;
+    let drop = en.drop;
+    if (rc) {
+      if (lastBar !== null && rc.bar !== lastBar && rc.beats >= 0) barEvent = true;
+      if (lastPhrase !== null && rc.phrase !== lastPhrase && rc.beats >= 0) phraseEvent = true;
+      lastBar = rc.bar;
+      lastPhrase = rc.phrase;
+      // Measured drops on grid tracks (the offline punch list).
+      const g = clockDef.grid;
+      if (g && Array.isArray(g.punches) && lastVis !== null && vis > lastVis && vis - lastVis < 0.5) {
+        for (const pn of g.punches) {
+          if ((pn.type === "drop" || pn.type === "break-return") && pn.t > lastVis && pn.t <= vis) drop = true;
+        }
+      }
+    }
+    lastVis = vis;
+
     if (clock) {
       sources.pulse = accents.step(clock, effBase.accent, effSettings.accentDecay, dt);
       sources.bar = clock.barPhase;
       sources.phrase = clock.phrasePhase;
       sources.swing = clock.swing;
-      // Tempo-locked flashing: one full oscillator cycle = N beats exactly, so
-      // the field breathes WITH the track instead of drifting against it.
-      if (effBase.syncBeats > 0) {
-        effBase.speed = RAMP / (effBase.syncBeats * grid.beatLen);
-      }
-      // The beat indicator follows the grid, not the detector, while a set
-      // with a known tempo is playing.
-      if (clock.beat !== lastBeatFired && clock.beatPhase < 0.5) {
+      // The flash cycle: the FIELD locks it to this clock now — speed AND
+      // phase (lumina-field.js advanceClock). The old speed-only override
+      // (and its hold-time bug) is gone.
+      globalThis.luminaField.setPerf({ clock: { beats: clock.beats, beatLen: clockDef.beatLen } });
+      if (clock.beat !== lastBeatFired && clock.beatPhase < 0.5 && clock.beats >= 0) {
         lastBeatFired = clock.beat;
         host.beat();
         if (globalThis.LuminaFX) LuminaFX.beat();
@@ -773,13 +976,25 @@
       sources.bar = 0;
       sources.phrase = 0;
       sources.swing = 0;
-      if (beat) {
+      globalThis.luminaField.setPerf({ clock: null });
+      if (h.kick >= 0.35) {
         host.beat();
         if (globalThis.LuminaFX) LuminaFX.beat();
       }
     }
 
-    const mods = DSP.modulate(effBase, sources, effSettings);
+    const p = perform();
+    if (p) {
+      p.feed({
+        playing: true, pos, vis, clock: clockDef, rc, hits: h, energy: en.energy,
+        drop, bar: barEvent, phrase: phraseEvent,
+      });
+    }
+
+    // The panel's Action fader scales the matrix too — Action 0 = nothing
+    // in the music moves the picture.
+    const mm = p && p.matrixMul ? p.matrixMul() : 1;
+    const mods = DSP.modulate(effBase, sources, mm === 1 ? effSettings : Object.assign({}, effSettings, { master: effSettings.master * mm }));
     const touched = Object.keys(mods);
 
     const partial = {};
@@ -809,7 +1024,7 @@
       modEmitted = Object.keys(mods).length > 0;
     }
   }
-  requestAnimationFrame(tick);
+  globalThis.luminaField.addPreFrame(tick);
 
   // --- control surface ------------------------------------------------------
   // Mounted last: the host now has both field and music registered.
@@ -1056,11 +1271,12 @@
       const t = e.target;
       if (t && (t.isContentEditable || /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(t.tagName))) return;
       if (e.code === "Space") {
+        // The calibration card owns Space while it is open (tap along).
+        if (globalThis.LuminaPerform && globalThis.LuminaPerform.calibrating()) return;
         e.preventDefault(); // no page scroll
         host.command({ scope: "music", type: "player", cmd: "toggle" });
-      } else if (e.code === "KeyZ") {
-        host.command({ scope: "field", type: "randomize" });
       }
+      // Z (the dice) moved to the performance panel (perform.js) 2026-09-29.
     });
   }
 })();

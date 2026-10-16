@@ -1,0 +1,271 @@
+/* Lumina — the performance layer (2026-09-29/30).
+   Two halves in one file:
+   1. THE PICTURE (index.html): the overlay layers perform.js lays over the
+      frame — flash / dark / strobe / the calibration ring. They never take
+      the mouse.
+   2. THE CONTROLS WINDOW (tuner.html): the Perform face (perform-ui.js) and
+      the Perform | Configure switch. Readable type throughout (no tiny
+      tracked caps); A− / A+ scale it all off --pf-scale. */
+
+/* --- 1. the picture ------------------------------------------------------------ */
+
+.lum-pf-flash,
+.lum-pf-dark,
+.lum-pf-strobe,
+.lum-pf-ring {
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+.lum-pf-flash { background: #ffffff; mix-blend-mode: screen; }
+.lum-pf-dark { background: #000000; z-index: 4; }
+.lum-pf-strobe { background: #ffffff; z-index: 5; }
+.lum-pf-ring {
+  border: 0.9rem solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 3rem #ffffff;
+  height: 38vmin;
+  inset: auto;
+  left: calc(50% - 19vmin);
+  top: calc(50% - 19vmin);
+  width: 38vmin;
+  z-index: 6;
+}
+.lum-frame { transform-origin: 50% 50%; }
+
+/* --- 2. the controls window ---------------------------------------------------------- */
+
+@font-face {
+  font-family: "Roboto";
+  src: url("./assets/fonts/roboto-latin-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The switch: a bar across the top of the window, always there. */
+.lum-modebar {
+  align-items: center;
+  background: #1f1f25;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  box-sizing: border-box;
+  color: #e6e8ef;
+  display: flex;
+  font: 16px "Roboto", system-ui, sans-serif;
+  gap: 0.9em;
+  height: 3rem;
+  left: 0;
+  padding: 0 1rem;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 50;
+}
+.lum-modebar .pfw-seg button { font-size: 1.05em; padding: 0.3em 1.1em; }
+.lum-modebar .pfw-hint { color: #aeb3c2; }
+body.lum-tuner-page { padding-top: 3rem; }
+body.lum-tuner-page .tuner-head { top: 3rem; }
+body.mode-perform #lum-tuner { display: none; }
+body.mode-configure #lum-perform { display: none; }
+
+#lum-perform {
+  --pf-scale: 1;
+  --pf-gold: #e3b968;
+  background: #2a2a30;
+  box-sizing: border-box;
+  color: #e6e8ef;
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: calc(17px * var(--pf-scale));
+  min-height: calc(100vh - 3rem);
+  padding: 1.1em 1.3em 1.5em;
+}
+#lum-perform button { font: inherit; }
+.pfw-wait { color: #aeb3c2; }
+
+.pfw {
+  display: grid;
+  gap: 1.4em 1.8em;
+  grid-template-areas: "faders right" "scenes scenes";
+  grid-template-columns: auto 1fr;
+}
+
+/* Faders */
+.pfw-faders { display: flex; gap: 0.5em; grid-area: faders; }
+.pfw-fader {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.5em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  padding: 0.5em 0.2em;
+  width: 6em;
+}
+.pfw-flabel { color: var(--pf-gold); font-weight: 600; white-space: nowrap; }
+.pfw-fend { color: #aeb3c2; font-size: 0.85em; white-space: nowrap; }
+.pfw-fval { font-size: 1.1em; font-variant-numeric: tabular-nums; font-weight: 600; min-height: 1.3em; }
+.pfw-fkeys { color: #aeb3c2; font-size: 0.85em; white-space: nowrap; }
+.pfw-fader input[type="range"] {
+  accent-color: var(--pf-gold);
+  cursor: pointer;
+  direction: rtl;
+  height: 11em;
+  margin: 0.3em 0;
+  width: 2em;
+  writing-mode: vertical-lr;
+}
+
+/* Pads + status */
+.pfw-right { display: flex; flex-wrap: wrap; gap: 1.4em; grid-area: right; align-content: flex-start; }
+.pfw-pads {
+  display: grid;
+  gap: 0.5em;
+  grid-auto-rows: 3.8em;
+  grid-template-columns: repeat(4, 6.4em);
+}
+.pfw-pad {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.5em;
+  color: #e6e8ef;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.2;
+  touch-action: none;
+  user-select: none;
+}
+.pfw-pad:hover { background: rgba(255, 255, 255, 0.12); }
+.pfw-pad.on { background: var(--pf-gold); border-color: var(--pf-gold); color: #16161b; }
+.pfw-pad.latched { border-color: var(--pf-gold); box-shadow: inset 0 0 0 2px var(--pf-gold); }
+.pfw-pad--dice { background: rgba(227, 185, 104, 0.18); }
+.pfw-plabel { font-weight: 600; }
+.pfw-pkey { color: #aeb3c2; font-size: 0.85em; font-weight: 500; }
+.pfw-pad.on .pfw-pkey { color: #16161b; }
+
+.pfw-status { display: flex; flex-direction: column; gap: 0.55em; min-width: 18em; }
+.pfw-row { align-items: center; display: flex; flex-wrap: wrap; gap: 0.45em; }
+.pfw-line { white-space: nowrap; }
+.pfw-dim { color: #aeb3c2; min-height: 1.2em; }
+.pfw-cap { color: var(--pf-gold); font-weight: 600; }
+.pfw-ms { font-variant-numeric: tabular-nums; min-width: 5em; }
+.pfw-small,
+.pfw-seg button {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.35em;
+  color: #e6e8ef;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.25em 0.7em;
+}
+.pfw-small:hover,
+.pfw-seg button:hover { background: rgba(255, 255, 255, 0.14); }
+.pfw-seg { display: flex; }
+.pfw-seg button { border-radius: 0; }
+.pfw-seg button:first-child { border-radius: 0.35em 0 0 0.35em; }
+.pfw-seg button:last-child { border-left: none; border-radius: 0 0.35em 0.35em 0; }
+.pfw-seg button.on { background: #e3b968; border-color: #e3b968; color: #16161b; }
+
+.pfw-meters { display: flex; gap: 0.8em; height: 3.2em; }
+.pfw-meter { align-items: center; display: flex; flex-direction: column; gap: 0.2em; justify-content: flex-end; width: 3.6em; }
+.pfw-meter i {
+  background: var(--pf-gold);
+  border-radius: 0.15em;
+  display: block;
+  flex: 1;
+  transform: scaleY(0);
+  transform-origin: 50% 100%;
+  width: 0.8em;
+}
+.pfw-meter b { color: #aeb3c2; font-size: 0.85em; font-weight: 500; }
+
+/* Scenes */
+.pfw-scenes { display: flex; flex-direction: column; gap: 0.6em; grid-area: scenes; }
+.pfw-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: 0.9em; }
+.pfw-head > span:first-child { color: var(--pf-gold); font-size: 1.1em; font-weight: 600; }
+.pfw-hint { color: #aeb3c2; font-size: 0.9em; }
+.pfw-grid { display: grid; gap: 0.7em; grid-template-columns: repeat(auto-fill, minmax(11em, 1fr)); }
+.pfw-scene {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.5em;
+  color: #e6e8ef;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  padding: 0.3em;
+  position: relative;
+  text-align: left;
+  touch-action: none;
+}
+.pfw-scene:hover { border-color: rgba(255, 255, 255, 0.4); }
+.pfw-scene.active { border-color: #e3b968; box-shadow: 0 0 0 2px #e3b968; }
+.pfw-thumb { aspect-ratio: 16 / 9; background-position: center; background-size: cover; border-radius: 0.3em; width: 100%; }
+.pfw-num {
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 0.3em;
+  font-size: 0.9em;
+  font-weight: 700;
+  left: 0.5em;
+  padding: 0 0.4em;
+  position: absolute;
+  top: 0.45em;
+}
+.pfw-sname { font-size: 0.95em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pfw-add { align-items: center; justify-content: center; min-height: 6em; }
+.pfw-add > span:first-child { font-size: 2em; line-height: 1.3; }
+
+/* The keys sheet + the sound-delay card (in the controls window) */
+.pfw-keys,
+.pfw-cal {
+  --pf-scale: 1;
+  background: #1c1c22;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.6em;
+  box-shadow: 0 1em 3em rgba(0, 0, 0, 0.6);
+  color: #e6e8ef;
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: calc(17px * var(--pf-scale));
+  left: 50%;
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1em 1.4em 1.2em;
+  position: fixed;
+  top: 5rem;
+  transform: translateX(-50%);
+  z-index: 60;
+}
+.pfw-keys { width: min(64em, calc(100vw - 32px)); }
+.pfw-cal { max-width: 30em; width: calc(100vw - 32px); }
+.pfw-keys[hidden],
+.pfw-cal[hidden] { display: none; }
+.pfw-keys h2,
+.pfw-cal h2 { color: #e3b968; font-size: 1.3em; margin: 0 0 0.5em; }
+.pfw-keys h3 { color: #e3b968; font-size: 1em; margin: 0.9em 0 0.3em; }
+.pfw-keys p { margin: 0.25em 0; }
+.pfw-kcols { display: grid; gap: 1.6em; grid-template-columns: repeat(auto-fit, minmax(16em, 1fr)); }
+.pfw-keys kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 0.25em;
+  font: inherit;
+  font-weight: 600;
+  padding: 0 0.35em;
+}
+.pfw-calms { font-size: 2.4em; font-variant-numeric: tabular-nums; font-weight: 600; margin: 0.1em 0 0.3em; }
+.pfw-cal p { line-height: 1.45; }
+.pfw-cal button { font: inherit; }
+
+/* Narrow windows: stack. */
+@media (max-width: 1100px) {
+  .pfw { grid-template-areas: "faders" "right" "scenes"; grid-template-columns: 1fr; }
+  .pfw-faders { flex-wrap: wrap; }
+}
