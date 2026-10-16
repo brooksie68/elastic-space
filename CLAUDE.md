@@ -146,7 +146,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
      windows, the back-row shader bug, THE CRUMBLE (rigid floor-by-floor drops + rock chunks + a mound that fills the lot
      and slumps), the sound leak fixed (decoded buffers, 24 voices). Meshy 518 cr; balance 4,214. **2026-09-29: his bedtime
      notes BUILT solo — A REAL PUNCH (bone-built: wind-up, chest whip, lunge, elbowed reach; up / down / left / right)
-     and HALF THE PEOPLE in the windows (person deal weights halved). AWAITING HIS FLIGHT.** Then the copy/feel thread,
+     and HALF THE PEOPLE in the windows (person deal weights halved). **2026-10-16: his arcade-frame brief BUILT — THE JAB (a straight
+     piston punch along the arrow: side / 45 up / 45 down / up), side-on on edge columns + skinny buildings, THE BACK PUNCH with
+     the look over the shoulder, no straight-down punch on a face, and a Meshy FIST per monster (110 cr, balance 3,904). AWAITING
+     HIS FLIGHT (test mode) + any fist-size number.** Then the copy/feel thread,
      the campaign (the start card says SOON), ship wiring on his word.
   3. Double Dragon — listed, no plan yet.
 0. ORB DIMENSION "the big dimension": COOPERATIVE SOCIETIES PHASE A BUILT 2026-07-24
