@@ -195,6 +195,17 @@ the repo root (bash; Blender = `"/c/Program Files/Blender Foundation/Blender
   the eight sims, `shader-check.html` (BLDG_VS/FS compile there),
   `console-fit.html` if the deck changed.
 
+## Tech pieces (v77, no guide)
+
+Machinery skips the GPT guide and the placer. Runbook per piece (`<name>` = concept stem, e.g.
+`tech-01-radardish`): Meshy image-to-3D from the concept (meshy-6, remesh off, untextured) →
+`renders/<name>-highres.glb`; `node … weld_bldg.mjs <name>`; `BLDG_TRIS=25000 blender --python
+decimate_bldg.py -- <name>`; `blender --python tmp/orb-dimension/tech_light.py -- <name>` writes
+the .bin / -light.png / -surf.jpg (station-hull tile) + `renders/<name>-proof.png`. Add a
+`BLDG_KINDS` row with `body: "tech"` and bump BLDG_V. Lights = THE BANDS (amber windows between
+two blue rings on upright walls, one magenta underside outline, red beacon at the top point).
+DON'T outline panels in blue — it reads as a wireframe (round 1).
+
 ## What did NOT work (don't rebuild)
 
 - Rule systems that invent window placement from geometry (skin_v2–v5):

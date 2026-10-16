@@ -3,6 +3,29 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## v77 — 2026-09-29 (Claude, James: "go for it" — the ten tech pieces onto Dominant)
+
+- **THE TECH PIECES, all ten** (radar dish, storage tanks, exhaust ports, power converter, solar
+  array, scanner, airlock, switching station, computation node, docking crane). Meshy run from
+  here on his word (meshy-6, remesh off, untextured, raw GLB; 200 cr, balance 4,214 → 4,014) →
+  `weld_bldg.mjs` → `decimate_bldg.py` at 25k tris (new env `BLDG_TRIS`, default 45k).
+- **`tmp/orb-dimension/tech_light.py` (KEEP)** — the towers' placer assumes a shaft; machines get
+  their own lighter: smart-unwrap into one atlas (clear of the strut band and the beacon row),
+  then THE BANDS in the ball's language — where the piece has the most upright wall, an amber
+  window band bracketed by two blue rings (a second band 60% of the time), one magenta outline
+  on the biggest underside, a red blinking beacon at the top point. Two self-critique rounds:
+  panel outlines read as a Tron wireframe and the beacon smeared along the dish rim — both gone.
+  Surface = the station's own tile (station-hull). Proofs in `building models/renders/`.
+- **World:** ten `BLDG_KINDS` rows, body "tech" (lid mask 0, never on tower pads); new "tech"
+  seats in communityGeometry with their OWN RNG (none of the station's other rolls shift): up to
+  40 on the spine (0.028–0.048 S) + 14 per ring tube (outward or up/down faces, 0.02–0.032 S),
+  dropped when too close to any earlier pad. Lab: 143 pads, 164 buildings, 16 kinds.
+  BLDG_V 35. Sims + init-smoke green except sphere-sim, which already failed before this change
+  (its pickLight slice).
+- AWAITING JAMES: the Station Lab, then a flight to Dominant.
+- HIS READ (same session): machines too small to find; the station "needs like twenty times more
+  buildings and structures." Ten densifying routes offered (world CLAUDE.md START HERE); his pick pending.
+
 ## v76 — 2026-09-22 (Claude, James: a file for the pulse engine)
 
 - **The pulse engine as a file.** James drops a 10 s seamless loop at

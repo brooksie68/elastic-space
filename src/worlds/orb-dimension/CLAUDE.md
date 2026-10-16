@@ -34,6 +34,19 @@ Free flight through cave-black space among drifting glowing orbs — and KORRUDA
 
 ## START HERE (open, James's timing)
 
+- **v77 2026-09-29: THE TEN TECH PIECES ARE ON DOMINANT** (spine + ring tubes, their own seats and
+  RNG; `tech_light.py` + buildings.md "Tech pieces"). AWAITING his eyes (Station Lab, then a flight).
+  Next in the pipe: 04-squat … 09-spire and the seven generic buildings (03-arch waits for his word).
+- **HIS READ OF v77 (2026-09-29/30): the machines are too small to find, and the station is "really
+  sparse still. It needs like twenty times more buildings and structures."** Agreed in talk: size is
+  nearly free (same triangles at any scale), so go BIG first — machines at tower size+, towers up to 2×
+  — then density; windows must stay physical size on scaled-up pieces (repaint more panes, his v57 rule).
+  Needs cheap far versions (~2k tris) + batched drawing per kind before counts climb. Dials: "machine
+  size" + "station density" (the societies). Claude gave TEN WAYS (1 scale up, 2 encrust the spine,
+  3 cities along the ring tubes, 4 decks between rings, 5 hanging districts, 6 scaffolding/gantries,
+  7 pipe + cable mess, 8 docked ships, 9 clusters on every pad, 10 more kinds through the pipe); rec =
+  1+2+3+9 first, then 7 and 10. AWAITING HIS PICK — nothing built yet.
+
 - **START HERE (James, 2026-09-06 wrap): THE REST OF THE BUILDINGS.** His words: "do a bunch
   more and add them here and fill this up. And when it feels pretty full and awesome, we'll use
   that whole setup for Subdominant and Mediant." So: run the remaining concepts in

@@ -3358,6 +3358,34 @@ void main() {
           const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
           pads.push({ p: add3(along(t * L), sc3(radial, spineR * 0.45)), up: radial, fwd: ax, role: "dock", scale: S * 0.09, yaw: R() < 0.5 ? 0 : Math.PI, ring: -1 });
         }
+        // v77: TECH SEATS — the machines (dish, tanks, crane…) stand on the spine and ride the ring
+        // tubes between the pads. Their own RNG, so none of the station's other rolls shift; a seat
+        // too close to any earlier pad is dropped.
+        {
+          const RT = mulberry32(SOCIETY_SEED ^ 0x7ec4);
+          const rt = (a, b) => a + RT() * (b - a);
+          const clear = (p, d) => pads.every((q) => Math.hypot(q.p[0] - p[0], q.p[1] - p[1], q.p[2] - p[2]) > d);
+          for (let i = 0; i < 40; i++) {
+            const t = rt(-0.47, 0.47);
+            if (ringT.some((q) => Math.abs(t - q) < 0.03)) continue;
+            const th = rt(0, TAU);
+            const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
+            const p = add3(along(t * L), sc3(radial, spineR * 0.96));
+            if (!clear(p, S * 0.05)) continue;
+            pads.push({ p, up: radial, fwd: ax, role: "tech", scale: rt(0.028, 0.048) * S, yaw: rt(0, TAU), ring: -1 });
+          }
+          for (let r = 0; r < prevRing.length; r++) {
+            const rg = prevRing[r];
+            for (let k = 0; k < 14; k++) {
+              const th = rt(0, TAU);
+              const radial = norm3(add3(sc3(sb, Math.cos(th)), sc3(sc, Math.sin(th))));
+              const dir = RT() < 0.65 ? radial : sc3(ax, RT() < 0.5 ? 1 : -1);
+              const p = add3(rg.pt(th), sc3(dir, tubeR * 0.92));
+              if (!clear(p, S * 0.035)) continue;
+              pads.push({ p, up: dir, fwd: norm3(cross3(ax, radial)), role: "tech", scale: rt(0.02, 0.032) * S, yaw: rt(0, TAU), ring: r });
+            }
+          }
+        }
         // conduit runs elbowing along the spine (the v51 gesture, kept — they
         // read as plumbing on a spine, not noise)
         for (let i = 0; i < 10; i++) {
@@ -7839,7 +7867,7 @@ void main() {
   col += glow * exp(-rd * uFog * 0.5);
   oC = vec4(col, 1.0);
 }`;
-  const BLDG_V = "34"; // bump on every re-export — the browser cached Thursday's light map once already
+  const BLDG_V = "35"; // bump on every re-export — the browser cached Thursday's light map once already
   // THE BUILDING KINDS (v59): every article that has been through the pipe.
   // id = the asset stem in assets/buildings/ (<id>.bin, <id>-light.png,
   // <id>-surf.jpg); each kind owns its VAO + surf/light textures; the pale
@@ -7853,6 +7881,18 @@ void main() {
     { id: "building-01-tower", label: "building 01 · tower", vantage: null },
     { id: "building-01c-tower", label: "building 01c · tower", vantage: null }, // v60
     { id: "building-02-sphere", label: "building 02 · sphere", vantage: null, body: "sphere" }, // v60: second family
+    // v77: THE TECH PIECES — machinery lit by tmp/orb-dimension/tech_light.py (no guide; the ball's
+    // bands), seated on the station's "tech" seats (spine + ring tubes), never on tower pads
+    { id: "tech-01-radardish", label: "tech 01 · radar dish", vantage: null, body: "tech" },
+    { id: "tech-02-storagetanks", label: "tech 02 · storage tanks", vantage: null, body: "tech" },
+    { id: "tech-03-exhaustports", label: "tech 03 · exhaust ports", vantage: null, body: "tech" },
+    { id: "tech-04-powerconverter", label: "tech 04 · power converter", vantage: null, body: "tech" },
+    { id: "tech-05-solararray", label: "tech 05 · solar array", vantage: null, body: "tech" },
+    { id: "tech-06-scanner", label: "tech 06 · scanner", vantage: null, body: "tech" },
+    { id: "tech-07-airlock", label: "tech 07 · airlock", vantage: null, body: "tech" },
+    { id: "tech-08-switchingstation", label: "tech 08 · switching station", vantage: null, body: "tech" },
+    { id: "tech-09-computation-node", label: "tech 09 · computation node", vantage: null, body: "tech" },
+    { id: "tech-10-dockingcrane", label: "tech 10 · docking crane", vantage: null, body: "tech" },
   ];
   const bldgMesh = { ready: false, prog: null, kinds: [], list: [], seat: null };
   (async () => {
@@ -7962,7 +8002,8 @@ void main() {
       if (!bldgMesh.kinds.includes(bldgMesh.stationKind)) bldgMesh.kinds.push(bldgMesh.stationKind);
       bldgMesh.list.push({ name: "Dominant station", kind: bldgMesh.stationKind, pos: com.c.slice(), h: 400, yaw: 0, up: [0, 1, 0], fwd: [0, 0, 1], vantage: null });
     }
-    const towers = bldgMesh.kinds.filter((k) => k.body !== "sphere" && k !== bldgMesh.stationKind);
+    const towers = bldgMesh.kinds.filter((k) => k.body !== "sphere" && k.body !== "tech" && k !== bldgMesh.stationKind);
+    const techs = bldgMesh.kinds.filter((k) => k.body === "tech"); // v77
     const spheres = bldgMesh.kinds.filter((k) => k.body === "sphere" && k !== bldgMesh.stationKind);
     const anyT = towers.length ? towers : bldgMesh.kinds;
     const anyS = spheres.length ? spheres : bldgMesh.kinds;
@@ -7987,6 +8028,9 @@ void main() {
         }
       } else if (pad.role === "endcap") {
         bldgMesh.list.push({ name: "station endcap", kind: pick(anyS), pos: world(pad.p), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
+      } else if (pad.role === "tech") {
+        // v77: a machine on the spine or a ring tube, sunk a touch so its foot meets the curve
+        if (techs.length) bldgMesh.list.push({ name: "station machine", kind: pick(techs), pos: world(add(pad.p, u, -pad.scale * 0.03)), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
       } else if (pad.role === "dock") {
         bldgMesh.list.push({ name: "station dock", kind: pick(anyT), pos: world(add(pad.p, u, -pad.scale * 0.45)), h: pad.scale, yaw: pad.yaw, up: u, fwd: f, vantage: null });
       }
@@ -8771,7 +8815,7 @@ void main() {
               gl.activeTexture(gl.TEXTURE0 + 8); gl.bindTexture(gl.TEXTURE_2D, k.texSurf);
               gl.activeTexture(gl.TEXTURE0 + 9); gl.bindTexture(gl.TEXTURE_2D, k.texLight);
               gl.activeTexture(gl.TEXTURE0);
-              gl.uniform1f(bldgMesh.prog.U.uLidMask, k.body === "sphere" ? 0 : 1); // v60
+              gl.uniform1f(bldgMesh.prog.U.uLidMask, k.body === "sphere" || k.body === "tech" ? 0 : 1); // v60; v77 tech: every face is a wall
               // v70.2: the station shares "far window blur" (its own dial did nothing — its light
               // map is a few long lines; the twinkle was the seated towers) and follows past it
               gl.uniform1f(bldgMesh.prog.U.uFarFollow, k === bldgMesh.stationKind ? 1 : 0);
