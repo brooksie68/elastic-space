@@ -16,6 +16,10 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
   16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
   fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
+- **2026-10-16 — THE JAB (changelog 2026-10-16), AWAITING HIS FLIGHT:** the punch is a straight piston jab along the
+  arrow (side / 45 up / 45 down / up), no body swing; side-on on edge columns and skinny buildings (`sideOf`), square
+  to the wall in the middle; the BACK PUNCH (arrow against the facing, head looks back); no straight-down punch on a
+  face. Open: the fist reads as an open hand (no finger bones) — fist meshes need his go on credits.
 - **2026-09-30 — TEST MODE** (his ask): `index.html?test=1`, admin Labs → "Carnage Test Mode". One 7 x 5 building in an
   empty lot, nothing else (no army / traffic / people / rivals / exits / parked cars / trees / plate / ticker / lessons);
   it stands again three seconds after it falls. Core `opts.test`, `makeTestCity`, `rebuildTest`; sim TEST 23.

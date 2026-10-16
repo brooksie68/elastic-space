@@ -1463,6 +1463,7 @@ export function createRenderer(canvas, lookIn) {
         if (up && leg && foot) view.bones[side + 'Leg'] = { arm: up, fore: leg, hand: foot };
       }
       view.spine = model.getObjectByName('Spine02') || model.getObjectByName('Spine01') || null;
+      view.head = model.getObjectByName('Head') || null;   // the back punch looks back over the shoulder
       // the hips' own forward axis, measured at rest (the model faces +z at yaw 0): the face-lock below uses it
       view.hips = model.getObjectByName('Hips') || null;
       if (view.hips) { model.updateMatrixWorld(true); const q = new THREE.Quaternion(); view.hips.getWorldQuaternion(q); view.hipsFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(q.invert()); }
@@ -1540,75 +1541,67 @@ export function createRenderer(canvas, lookIn) {
   // the glove closes into a fist: shorter along the fingers, a little thicker across the knuckles
   function fist(v, side, k, big) {
     const ch = v.bones && v.bones[side]; if (!ch) return;
-    const g = 1 + (big || 0);   // the cartoon fist: it swells on the hit so the punch reads at game distance
-    ch.hand.scale.set((1 - 0.1 * k) * g, (1 - 0.62 * k) * g, (1 + 0.25 * k) * g);
+    const g = 1 + 0.7 * (big || 0);   // the cartoon fist: it swells on the hit so the punch reads at game distance
+    // measured on the glove (2026-10-16): fingers run along the bone's y (~31), the hand is ~28 across (x, thumb out)
+    // and ~13 thick (z) — a ball wants the fingers folded, the thumb tucked, the knuckles thicker
+    ch.hand.scale.set((1 - 0.4 * k) * g, (1 - 0.7 * k) * g, (1 + 0.4 * k) * g);
     ch.hand.updateWorldMatrix(false, true);
   }
-  // THE PUNCH (James, 2026-09-22: "the hand clapping is lame" — a punch that reads as a punch, up, left, right, down).
-  // Built from the bones over a still base: the chest turns away and the fist cocks back by the shoulder (the tell),
-  // then the chest whips round, the body lunges and the arm fires out to the cell the rules hit, accelerating into
-  // the contact at the moment the core resolves the hit (0.42 of the punch), holds, and comes home. Up is an uppercut
-  // from the hip, down is a hammer from over the shoulder, left / right on a face are hooks, straight on the street is
-  // a cross. The off hand keeps its grip on a face and comes up to guard the chin on the street.
+  // THE JAB (James, 2026-10-16, from the arcade frames): the body stays put and only the arm moves — the fist pulls
+  // back by the chin with the elbow tucked behind, then the arm fires out straight along one line, locks out at full
+  // length with the big fist, holds, and comes home. A piston, not a swing: no chest whip, no lunge, no hooks. The
+  // line is the arrow in the picture's plane (side, 45 up, 45 down, straight up); on a face the knuckles drive a
+  // little into the wall. THE BACK PUNCH (the arrow against the way a side-on monster faces) fires the arm out behind
+  // while the head looks back over the shoulder, toward us. The off hand grips the wall on a face, guards the chin
+  // on the street. (2026-09-22's bone-built uppercut / hammer / hooks and their lunge are retired.)
   const _F = new THREE.Vector3(), _UP = new THREE.Vector3(0, 1, 0), _out = new THREE.Vector3(), _C = new THREE.Vector3(), _W = new THREE.Vector3(), _P = new THREE.Vector3(), _pole = new THREE.Vector3(), _dir = new THREE.Vector3(), _G = new THREE.Vector3();
-  // THE PUNCH'S OWN CLOCK (James, 2026-10-01: "there's no punch animation"): the core's punch is 0.29 s and the picture
-  // was tied to it — five frames of wind-up, gone before it read. The picture now runs its own half second from the
-  // punch event: the fist still lands on the core's hit (0.12 s in), then HOLDS out there and comes home.
-  const PUNCH_VIS = 0.5;
-  const P_WIND = 0.16, P_HIT = 0.25, P_HOLD = 0.68;
+  // THE PUNCH'S OWN CLOCK (2026-10-01, retimed 2026-10-16): pull back 0.07 s, out 0.06 s (the fist lands with the
+  // core's hit at 0.12 s), hold at full reach 0.15 s, home 0.12 s
+  const PUNCH_VIS = 0.4;
+  const P_WIND = 0.175, P_HIT = 0.325, P_HOLD = 0.7;
+  // SIDE-ON OR SQUARE (James, 2026-10-16): on a building's edge column, and anywhere on a skinny one (three columns),
+  // the monster hangs side-on facing into the building like the arcade; in a middle column of a wider building it
+  // faces the wall. +1 / -1 = side-on facing that way, 0 = square to the wall. Off a face: the facing.
+  function sideOf(m, state) {
+    if (m.st !== 'climb') return m.facing || 1;
+    const b = state.city.buildings[m.b]; if (!b) return 0;
+    if (b.cols > 1 && m.col <= 0) return 1;
+    if (b.cols > 1 && m.col >= b.cols - 1) return -1;
+    return b.cols <= 3 ? (m.facing || 1) : 0;
+  }
   function strikePose(v, m, kk, state) {
     const side = v.punchSide || 'Right', offSide = side === 'Right' ? 'Left' : 'Right';
     const chain = v.bones[side], off = v.bones[offSide];
-    const d = m.punchDir, onFace = m.st === 'climb';
-    const T = _tgt.copy(v.punchTarget);
+    const onFace = m.st === 'climb', facing = v.punchFacing;   // +1 / -1 side-on, 0 square to the wall
     if (v.punchNew) v.punchNew = false;
-    // the envelope: wind (0 → cocked), strike (cocked → target, accelerating), hold, home
+    // the envelope: pull back, fire (accelerating), hold, home
     const windK = kk < P_WIND ? ease(kk / P_WIND) : 1;
     const strikeK = kk < P_WIND ? 0 : kk < P_HIT ? Math.pow((kk - P_WIND) / (P_HIT - P_WIND), 2) : 1;
     const homeK = kk < P_HOLD ? 0 : ease((kk - P_HOLD) / (1 - P_HOLD));
     const env = windK * (1 - homeK);
-    // start from the base pose each frame
     v.inner.position.set(0, 0, 0); v.inner.rotation.x = 0; v.inner.updateWorldMatrix(true, true);
-    _F.set(onFace ? 0 : m.facing, 0, onFace ? -1 : 0);
-    v.inner.getWorldPosition(_C); _C.y += CELL * (state.opts.monsterH || 2.7) * 0.62;
-    chain.arm.getWorldPosition(_S);
-    _out.subVectors(_S, _C); _out.y = 0; _out.addScaledVector(_F, -_out.dot(_F)); if (_out.lengthSq() < 1e-6) _out.set(1, 0, 0); _out.normalize();
-    // 1. the chest: turned away on the wind, whipped round through the strike
-    if (v.spine) {
-      const turn = (-0.38 * windK * (1 - strikeK) + 0.42 * strikeK) * (1 - homeK) * (onFace ? 0.45 : 1);   // a back to the camera turns less or the far shoulder swings out at us
-      const sgn = Math.sign(_d0.crossVectors(_UP, _out).dot(_F)) || 1;
-      _qA.setFromAxisAngle(_UP, turn * sgn); rotateBoneWorld(v.spine, _qA.clone(), 1);
-      // an uppercut rises out of a crouch; a hammer comes over the top
-      if (d.dy) { _d1.crossVectors(_F, _UP).normalize(); _qA.setFromAxisAngle(_d1, (d.dy > 0 ? -0.22 : 0.26) * (strikeK - 0.6 * windK * (1 - strikeK)) * (1 - homeK)); rotateBoneWorld(v.spine, _qA.clone(), 1); }
+    _F.set(facing, 0, facing ? 0 : -1);   // the body's forward in the world
+    const u = _dir.copy(v.punchU);        // the line of the punch
+    // 1. the back punch: the head turns to look back over the shoulder (through us), the upper back follows a little
+    if (v.punchBack) {
+      if (v.spine) { _qA.setFromAxisAngle(_UP, -facing * 0.3 * env); rotateBoneWorld(v.spine, _qA.clone(), 1); }
+      if (v.head) { _qA.setFromAxisAngle(_UP, -facing * 1.1 * env); rotateBoneWorld(v.head, _qA.clone(), 1); }
     }
     chain.arm.updateWorldMatrix(true, true);
-    chain.arm.getWorldPosition(_S);
-    chain.fore.getWorldPosition(_E); chain.hand.getWorldPosition(_H);
+    chain.arm.getWorldPosition(_S); chain.fore.getWorldPosition(_E); chain.hand.getWorldPosition(_H);
     const L = _E.distanceTo(_S) + _H.distanceTo(_E);
-    // on a face a punch straight up / in / down lands on the cell behind the body: the fist goes to the cell's edge
-    // on the striking side (still inside the cell), so it is seen, beside the head or the shoulder
-    if (onFace && v.punchTarget.faceCol) { _G.subVectors(_S, _C); T.x += Math.sign(_G.x || 1) * (d.dy < 0 ? 0.48 : 0.4) * CELL; T.y += (d.dy > 0 ? 0.2 : d.dy < 0 ? 0.3 : 0) * CELL; }
-    // 2. the lunge: the body goes after whatever the arm can't reach; a small pull back on the wind
-    _dir.subVectors(T, _S); const far = _dir.length();
-    if (onFace) { _dir.z = 0; _dir.y *= 0.35; } else { _dir.y = 0; _dir.z *= 0.3; }
-    if (_dir.lengthSq() > 1e-6) _dir.normalize();
-    const lungeMax = (onFace ? 0.28 : 0.55) * CELL;
-    const lunge = Math.min(lungeMax, Math.max(0, far - 0.9 * L)) * strikeK * (1 - homeK) - 0.07 * CELL * windK * (1 - strikeK);
-    v.inner.position.copy(_dir).multiplyScalar(lunge);
-    v.inner.updateWorldMatrix(false, true);
-    chain.arm.getWorldPosition(_S);
-    // 3. the cocked fist and the elbow, by kind of punch
-    if (d.dy > 0) { _W.copy(_S).addScaledVector(_F, 0.12 * L).addScaledVector(_UP, -0.72 * L).addScaledVector(_out, 0.12 * L); _pole.copy(_F).multiplyScalar(-0.3).addScaledVector(_out, 0.6).addScaledVector(_UP, -0.6); }
-    else if (d.dy < 0) { _W.copy(_S).addScaledVector(_UP, 0.5 * L).addScaledVector(_F, -0.1 * L).addScaledVector(_out, 0.18 * L); _pole.copy(_out).addScaledVector(_UP, 0.6).addScaledVector(_F, -0.3); }
-    else { _W.copy(_S).addScaledVector(_F, -0.42 * L).addScaledVector(_UP, -0.22 * L).addScaledVector(_out, -0.08 * L); _pole.copy(_out).multiplyScalar(0.6).addScaledVector(_UP, -0.8).addScaledVector(_F, -0.3); }
-    _pole.normalize();
+    v.inner.getWorldPosition(_C); _C.y += CELL * (state.opts.monsterH || 2.7) * 0.62;
+    _out.subVectors(_S, _C); _out.y = 0; if (_out.lengthSq() < 1e-6) _out.set(1, 0, 0); _out.normalize();
+    // 2. the cocked fist by the chin, the elbow pulled back and down behind the line
+    _W.copy(_S).addScaledVector(_F, 0.18 * L).addScaledVector(_UP, -0.3 * L).addScaledVector(u, 0.05 * L).addScaledVector(_out, -0.08 * L);
+    _pole.copy(u).multiplyScalar(-0.8).addScaledVector(_UP, -0.55).addScaledVector(_out, 0.35).normalize();
+    // 3. the strike: straight out along the line to full length (aimed past the reach, so the arm locks out)
+    const T = _tgt.copy(_S).addScaledVector(u, 1.2 * L);
     if (kk < P_WIND) _P.copy(_W);
     else if (kk < P_HIT) _P.copy(_W).lerp(T, strikeK);
-    else { _P.copy(T); if (kk < P_HOLD) _P.addScaledVector(_dir, -0.05 * L * Math.sin(Math.PI * (kk - P_HIT) / (P_HOLD - P_HIT))); }
-    // through the strike the elbow swings from behind-and-down to out to the side (a hook's line, a cross's snap)
-    if (kk >= P_WIND) _pole.lerp(_G.copy(_out).addScaledVector(_UP, d.dy < 0 ? 0.4 : -0.5).normalize(), strikeK).normalize();
+    else { _P.copy(T); if (kk < P_HOLD) _P.addScaledVector(u, -0.05 * L * Math.sin(Math.PI * (kk - P_HIT) / (P_HOLD - P_HIT))); }
     ik2(chain, _P, _pole, env);
-    v.fistSide = side; v.fistK = env; fist(v, side, env, 0.7 * strikeK * (1 - homeK));
+    v.fistSide = side; v.fistK = env; fist(v, side, env, 1.0 * strikeK * (1 - homeK));   // the cartoon fist: about 2x on the hit
     // THE IMPACT: the moment the fist lands — a flash and a puff at the knuckles, hit or miss
     if (kk >= P_HIT && !v.impactDone) {
       v.impactDone = true;
@@ -1616,18 +1609,26 @@ export function createRenderer(canvas, lookIn) {
       flash(_G.x, _G.y, _G.z + 0.3, 3.2, 0xfff0d0, 0.1);
       spawnDust(_G.x, _G.y, _G.z + 0.2, 5, 1.1, 0.45, 0, 0.6, 0.45);
     }
-    // 4. the off hand: on a face it grips the wall up and out to its side; on the street it guards the chin
-    if (onFace && off) {
+    // 4. the off hand: square to the wall it grips the wall up and out to its side (side-on the hang keeps it);
+    // on the street it guards the chin
+    if (onFace && off && !facing) {
       off.arm.getWorldPosition(_G);
       _W.subVectors(_G, _C); _W.y = 0; _W.z = 0; _W.normalize();
       _G.addScaledVector(_W, 0.3 * L).addScaledVector(_UP, 0.6 * L); _G.z = -0.05 * CELL;
-      _pole.copy(_W).addScaledVector(_UP, -0.6).add(_F.clone().multiplyScalar(-0.4)).normalize();
-      ik2(off, _G, _pole, windK > 0 ? Math.min(1, windK * 1.5) * (1 - homeK) : 0);
+      _pole.copy(_W).addScaledVector(_UP, -0.6); _pole.z += 0.4; _pole.normalize();
+      ik2(off, _G, _pole, Math.min(1, windK * 1.5) * (1 - homeK));
+    }
+    if (onFace && off && facing) {
+      // side-on: the off hand holds on low and ahead, the knuckles on the wall, the elbow down (not out beside the jab)
+      off.arm.getWorldPosition(_G);
+      _G.addScaledVector(_F, 0.4 * L).addScaledVector(_UP, -0.2 * L); _G.z = Math.min(_G.z, 0.1 * CELL);
+      _pole.copy(_UP).multiplyScalar(-1).addScaledVector(_F, -0.3).normalize();
+      ik2(off, _G, _pole, Math.min(1, windK * 1.5) * (1 - homeK));
+      fist(v, offSide, env * 0.6);
     }
     if (!onFace && off) {
       off.arm.getWorldPosition(_G);
       _G.addScaledVector(_F, 0.34 * L).addScaledVector(_UP, 0.1 * L);
-      _G.addScaledVector(_out, 0.25 * L);   // toward the middle of the chest
       _pole.copy(_UP).multiplyScalar(-1).addScaledVector(_F, -0.2).normalize();
       ik2(off, _G, _pole, env * 0.85);
       fist(v, offSide, env * 0.8);
@@ -1652,17 +1653,22 @@ export function createRenderer(canvas, lookIn) {
       v.root.visible = !gone;
       if (gone) continue;
       // position: ease the x on a face (the core snaps to columns), follow y directly
-      const tx = m.x * CELL, ty = m.y * CELL;
+      const faceSide = m.st === 'climb' ? sideOf(m, state) : 0;
+      const bH = m.st === 'climb' ? state.city.buildings[m.b] : null;
+      // side-on on an edge column it hugs the corner, like the cabinet
+      const hug = faceSide && bH && bH.cols > 3 ? (m.col <= 0 ? -1 : m.col >= bH.cols - 1 ? 1 : 0) * 0.22 * CELL : 0;
+      const tx = m.x * CELL + hug, ty = m.y * CELL;
       const k = m.st === 'climb' ? Math.min(1, dt * 18) : 1;
       v.smoothX += (tx - v.smoothX) * k; v.smoothY = ty;
       // the grip kick: a small dip as each hop lands, the cabinet's re-grip
       if (v.kickT > 0) { v.kickT -= dt; v.smoothY += Math.sin(Math.PI * Math.max(0, v.kickT) / 0.14) * 0.09 * CELL * (v.kickDir || 1); }
       const onFace = m.st === 'climb';
       const laneZ = (m.st === 'street' || m.st === 'jump' || m.st === 'fall') ? m.laneK || 0 : 0;   // 0 = at the faces, 1 = the road
-      const z = (onFace ? 0.25 : 0.5) + v.size.d * 0.5 + laneZ * ROAD_LANE_Z;   // the model's own thickness keeps it in front of the wall
+      const sideK = onFace ? Math.abs(Math.sin(v.yaw)) : 0;   // side-on the model's width faces the wall, not its depth
+      const z = (onFace ? 0.25 : 0.5) + (v.size.d + (Math.min(v.size.w, v.size.d * 1.6) - v.size.d) * sideK) * 0.5 + laneZ * ROAD_LANE_Z;   // the model's own thickness keeps it in front of the wall
       v.root.position.set(v.smoothX, v.smoothY, m.st === 'roof' ? Math.min(z, DEPTH * 0.5) - DEPTH * 0.5 : z);
       // facing: on the street, left or right; on a face, into the wall; the revert faces us
-      let targetYaw = onFace ? Math.PI : (m.facing > 0 ? Math.PI / 2 : -Math.PI / 2);
+      let targetYaw = onFace ? (faceSide ? (faceSide > 0 ? Math.PI / 2 : -Math.PI / 2) : Math.PI) : (m.facing > 0 ? Math.PI / 2 : -Math.PI / 2);
       if (m.st === 'revert') targetYaw = 0;
       if (m.st === 'walkoff') targetYaw = m.facing > 0 ? Math.PI / 2 : -Math.PI / 2;
       let dy = targetYaw - v.yaw; while (dy > Math.PI) dy -= TAU; while (dy < -Math.PI) dy += TAU;
@@ -1773,8 +1779,8 @@ export function createRenderer(canvas, lookIn) {
         const kk = Math.min(1, m.hopT / Math.max(1e-3, m.hopDur));
         const w = Math.sin(Math.PI * kk);
         const side = m.hopHand ? 'Left' : 'Right';
-        const sx = (side === 'Left' ? 1 : -1) * 0.3 * CELL;   // facing the wall, the model's left is world +x
-        _tgt.set(m.x * CELL + sx, (m.hopTo + (state.opts.monsterH || 2.7) * 0.55 + 0.55) * CELL, -0.12 * CELL);
+        const sx = faceSide ? faceSide * 0.3 * CELL : (side === 'Left' ? 1 : -1) * 0.3 * CELL;   // facing the wall, the model's left is world +x; side-on both hands go ahead, to the wall
+        _tgt.set(v.smoothX + sx, (m.hopTo + (state.opts.monsterH || 2.7) * 0.55 + 0.55) * CELL, faceSide ? 0.05 * CELL : -0.12 * CELL);
         aimArm(v.bones[side], _tgt, w * 0.95, 0.7);
         lean = 0.05 * w;
       } else if (v.bones && m.st === 'fall' && m.smashing) {
@@ -2034,35 +2040,21 @@ export function createRenderer(canvas, lookIn) {
         // where this punch lands, for the strike layer: the cell the rules will hit
         const m = state.monsters.find((mm) => mm.id === e.who), v = m && monsterViews.get(m.id);
         if (!m || !v) break;
-        const mh = state.opts.monsterH || 2.7, hand = mh * 0.55, reach = mh * 0.7;
-        const rootZ = v.root.position.z;
-        if (!v.punchTarget) { v.punchTarget = new THREE.Vector3(); v.punchWind = new THREE.Vector3(); }
-        const t = v.punchTarget;
-        t.faceCol = false;
+        if (!v.punchTarget) { v.punchTarget = true; v.punchU = new THREE.Vector3(); }
         v.punchClock = e.st === 'street' && e.dy < 0 ? null : 0; v.impactDone = false;   // the stomp keeps its clip
-        if (e.st === 'climb') {
-          const bb = state.city.buildings[m.b];
-          const row = Math.floor(m.y + hand) + e.dy, col = (bb ? bb.x0 : 0) + m.col + e.dx;
-          t.set((col + 0.5) * CELL, (row + 0.5) * CELL, -0.15 * CELL);
-          t.faceCol = e.dx === 0;   // straight up / in / down: the cell is behind the monster — the fist goes to its striking-side edge (placed in strikePose)
-        } else if (e.st === 'street' && e.dy < 0) {
-          t.set(m.x * CELL + (e.dx ? e.dx * 1.1 : m.facing * 0.5) * CELL, 0.25, rootZ + 0.6 * CELL);
-        } else if (e.st === 'street' && m.lane === 0) {
-          // the face beside you: the cell the rules hit, the fist ends on the wall
-          const row = Math.floor(m.y + hand) + (e.dy > 0 ? 1 : 0);
-          t.set(m.x * CELL + m.facing * 1.25 * CELL, (row + 0.5) * CELL, rootZ - 0.12 * CELL);   // out to the side, in the picture's plane: aimed into the wall it was foreshortened to nothing
-        } else {
-          // the road lane and the roof: straight out ahead at the fist's height (up = a head higher)
-          t.set(m.x * CELL + m.facing * reach * 0.6 * CELL, (m.y + hand * 0.85 + (e.dy > 0 ? 0.7 : 0)) * CELL, rootZ);
-        }
-        // which fist: toward the side of the punch on a face; otherwise they take turns (a jab, a cross)
-        v.punchN = (v.punchN || 0);
+        // the line of the punch, in the picture's plane: the arrow (no arrow = straight ahead; up on the street or the
+        // roof = 45 up ahead; up on a face = straight up); on a face it leans a little into the wall
+        const facing = e.st === 'climb' ? sideOf(m, state) : (m.facing || 1);
+        let ux = e.dx, uy = e.dy;
+        if (!ux && !(e.st === 'climb' && uy > 0)) ux = facing || 1;
+        const toWall = e.st === 'climb' && !(facing && ux === -facing) ? -0.3 : 0;
+        v.punchU.set(ux, uy, toWall).normalize();
+        v.punchFacing = facing; v.punchBack = !!(facing && ux === -facing);
+        // which fist: square to the wall, the arm on the side of the punch; side-on, the arm nearer us
         if (v.bones && v.bones.Left && v.bones.Right) {
           v.bones.Left.arm.getWorldPosition(_pA); v.bones.Right.arm.getWorldPosition(_pH);
-          const leftIsLow = _pA.x < _pH.x;   // which shoulder sits at the smaller x on screen
-          const toward = e.st === 'climb' ? e.dx : 0;
-          if (toward) v.punchSide = (toward < 0) === leftIsLow ? 'Left' : 'Right';
-          else v.punchSide = v.punchSide === 'Right' ? 'Left' : 'Right';
+          if (e.st === 'climb' && !facing && ux) v.punchSide = (ux < 0) === (_pA.x < _pH.x) ? 'Left' : 'Right';
+          else v.punchSide = _pA.z > _pH.z ? 'Left' : 'Right';   // side-on (and every back punch): the arm nearer us — the far one hides behind the body
         }
         break;
       }

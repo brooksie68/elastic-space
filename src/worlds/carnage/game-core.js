@@ -551,13 +551,17 @@
     } else if (m.punchHeld > 0) m.punchHeld -= dt;
     const wantPunch = input.punch && (!m.prevPunch || m.punchHeld <= 0);
     m.prevPunch = !!input.punch;
-    if (wantPunch && m.punchT <= 0 && !stunned && !m.laneMoving && (m.st === 'street' || m.st === 'climb' || m.st === 'roof')) {
+    // no straight-down punch on a face (James, 2026-10-16): down-left / down-right are the 45s, plain down is nothing
+    const noPunch = m.st === 'climb' && (input.pdx != null ? !(input.pdx | 0) && (input.pdy | 0) < 0 : !move && input.down && !input.up);
+    if (wantPunch && !noPunch && m.punchT <= 0 && !stunned && !m.laneMoving && (m.st === 'street' || m.st === 'climb' || m.st === 'roof')) {
       m.punchFull = o.punchT / m.flavour.punch; m.punchT = m.punchFull; m.punchHit = false;
       const pdx = input.pdx != null ? (input.pdx | 0) : move;
       const pdy = input.pdy != null ? (input.pdy | 0) : (input.up ? 1 : 0) - (input.down ? 1 : 0);
       m.punchDir.dx = Math.max(-1, Math.min(1, pdx)); m.punchDir.dy = Math.max(-1, Math.min(1, pdy));
       if (m.st === 'roof') m.punchDir.dy = 0;
-      if (m.punchDir.dx) m.facing = m.punchDir.dx;
+      // THE BACK PUNCH (James, 2026-10-16): an arrow against the way you face punches behind you without turning round;
+      // only the old move-key aim (no arrows: the autopilot, the sim) still turns you to punch
+      if (m.punchDir.dx && input.pdx == null) m.facing = m.punchDir.dx;
       m.burstT = 0;
       state.events.push({ type: 'punch', who: m.id, slug: m.slug, x: m.x, y: m.y, dx: m.punchDir.dx, dy: m.punchDir.dy, st: m.st, lane: m.lane });
     }
@@ -685,6 +689,7 @@
   function resolvePunch(state, m) {
     let hit = false;
     const dir = m.punchDir;
+    const pf = dir.dx || m.facing;   // the way the fist goes (a back punch goes against the facing)
     if (m.st === 'climb') {
       const b = building(state, m.b);
       if (b && !b.down) {
@@ -707,11 +712,11 @@
         if (k >= 0) hit = punchCell(state, m, b, k) || hit;
         if (stomp && !dir.dx) for (const dc of [-1, 1]) { const kk = City.cellAt(b, col + dc, 0); if (kk >= 0 && Math.abs(b.x0 + col + dc + 0.5 - m.x) <= reach * 0.8 && b.state[kk] !== S.BROKEN && b.cells[kk] !== T.NEON) hit = punchCell(state, m, b, kk) || hit; }
       }
-      const inWay = (x) => stomp ? (dir.dx ? ((x - m.x) * dir.dx > -0.4 && Math.abs(x - m.x) <= reach + 0.2) : Math.abs(x - m.x) <= reach * 0.8) : ((x - m.x) * m.facing > -0.3 && Math.abs(x - m.x) <= reach + 0.3);
+      const inWay = (x) => stomp ? (dir.dx ? ((x - m.x) * dir.dx > -0.4 && Math.abs(x - m.x) <= reach + 0.2) : Math.abs(x - m.x) <= reach * 0.8) : ((x - m.x) * pf > -0.3 && Math.abs(x - m.x) <= reach + 0.3);
       if (m.lane === 0 && dir.dy <= 0) for (const s of state.soldiers) if ((s.st === 'walk' || s.st === 'kneel' || s.st === 'fire' || s.st === 'leave') && inWay(s.x)) {
-        if (stomp) { s.st = 'dead'; s.t = 0; } else { s.st = 'flyup'; s.t = 0; s.vx = m.facing * 6; s.vy = 7; }
+        if (stomp) { s.st = 'dead'; s.t = 0; } else { s.st = 'flyup'; s.t = 0; s.vx = pf * 6; s.vy = 7; }
         state.stats.soldiers++; addPoints(state, m, POINTS.soldier, s.x, 1, 'soldier');
-        state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: stomp ? 'smashed' : 'punched', dir: m.facing }); hit = true;
+        state.events.push({ type: 'soldierDie', id: s.id, x: s.x, how: stomp ? 'smashed' : 'punched', dir: pf }); hit = true;
       }
       const tk = state.tank;
       if (m.lane === 1 && tk && tk.st !== 'wreck' && inWay(tk.x) && Math.abs(tk.x - m.x) <= reach + 0.9) {
@@ -722,7 +727,7 @@
         c.st = 'wreck'; c.t = 0; c.vx = 0; state.stats.cars++; hit = true;
         addPoints(state, m, CARS[c.kind].pts, c.x, 0.5, c.kind);
         if (CARS[c.kind].hp) { heal(m, CARS[c.kind].hp); m.eatT = MON.EAT_T; m.lastEat = 'burrito'; }
-        state.events.push({ type: 'carWreck', kind: c.kind, x: c.x, how: 'punched', dir: m.facing });
+        state.events.push({ type: 'carWreck', kind: c.kind, x: c.x, how: 'punched', dir: pf });
       }
       // a reverted teenager walking past: dinner
       for (const t of state.monsters) if (t !== m && t.st === 'walkoff' && inWay(t.x) && Math.abs(t.x - m.x) <= reach + 0.2) {
@@ -733,8 +738,8 @@
     }
     // the drone: within a fist's reach of wherever you stand
     const d = state.drone;
-    if (d && d.st !== 'dead' && Math.abs(d.x - m.x) <= monReach(state) + 0.4 && d.y - m.y > -0.6 && d.y - m.y < monH(state) + 0.7 && (m.st !== 'street' || Math.sign(d.x - m.x) === m.facing || Math.abs(d.x - m.x) < 0.5)) {
-      d.st = 'dead'; d.t = 0; d.vy = 0; d.vx = m.facing * 3; state.stats.drones++; hit = true;
+    if (d && d.st !== 'dead' && Math.abs(d.x - m.x) <= monReach(state) + 0.4 && d.y - m.y > -0.6 && d.y - m.y < monH(state) + 0.7 && (m.st !== 'street' || Math.sign(d.x - m.x) === pf || Math.abs(d.x - m.x) < 0.5)) {
+      d.st = 'dead'; d.t = 0; d.vy = 0; d.vx = pf * 3; state.stats.drones++; hit = true;
       addPoints(state, m, POINTS.drone, d.x, d.y, 'drone');
       state.events.push({ type: 'droneDie', x: d.x, y: d.y });
     }
@@ -743,7 +748,7 @@
       if (t === m || !isBig(t) || t.st === 'gone' || t.st === 'arrive') continue;
       const dx = t.x - m.x, dy = t.y - m.y;
       if (Math.abs(dx) > monReach(state) + 0.2 || Math.abs(dy) > monH(state) * 0.5 || laneOf(t) !== laneOf(m)) continue;
-      const wantDir = dir.dx || m.facing;
+      const wantDir = pf;
       if (Math.abs(dx) > 0.3 && Math.sign(dx) !== wantDir) continue;
       if (damage(state, t, 8, 'monster', t.x, t.y + 1)) { state.events.push({ type: 'monsterHit', who: t.id, slug: t.slug, by: m.slug, x: t.x, y: t.y + 1 }); hit = true; }
     }

@@ -3,6 +3,40 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-16 — Claude — THE JAB (the arcade's punch), SIDE-ON ON THE EDGES, THE BACK PUNCH
+
+James sent four Rampage frames: "a fist with arm pulled back. and then basically a jab. straight to the side. also
+diagonally 45 degrees up and 45 degrees down. also a back punch." Plan discussed first; his calls along the way: the
+back punch looks back over the shoulder (two of his frames); plain Up stays, no straight-down punch on a face; side-on
+depends on the building ("skinny its side only... if there's space they can face the building in the middle"); no
+swinging side-on to punch — square to the wall the arm moves along the wall; all three monsters.
+
+- **THE JAB** (`strikePose`, render3d.js): the 2026-09-29 uppercut / hammer / hooks, chest whip and lunge are gone.
+  The body stays put: the fist pulls back by the chin with the elbow tucked behind, fires out straight along the
+  arrow's line in the picture's plane (side, 45 up, 45 down, straight up), locks out, holds, comes home. On a face it
+  leans a little into the wall. New clock: `PUNCH_VIS` 0.4 s — pull back 0.07, out 0.06 (lands with the core's hit
+  at 0.12), hold 0.15, home 0.12.
+- **SIDE-ON OR SQUARE** (`sideOf`): on a building's edge column, and anywhere on a skinny (3-column) one, the monster
+  hangs side-on facing into the building and hugs the corner (0.22 cell); in a middle column of a wider building it
+  faces the wall as before. The turn eases as it hops; the hop's reach goes ahead to the wall when side-on.
+- **THE BACK PUNCH**: the arrow against a side-on monster's facing fires the arm out behind, the head turns over the
+  shoulder toward us (1.1 rad, the upper back 0.3). Core: arrow punches no longer turn you round (`input.pdx` set);
+  `resolvePunch` uses the punch's own direction (`pf`) for soldiers, cars, the drone, the truck, the teen, rivals.
+  Sim TEST 23 gained: a back punch keeps the facing and hits the soldier behind.
+- **NO STRAIGHT DOWN ON A FACE**: plain Down + punch on a building throws nothing (core `noPunch`); down-left /
+  down-right are the 45s. The street stomp stays. Sim TEST 23's eight-way loop asserts it.
+- **WHICH ARM**: square to the wall, the arm on the punch's side; side-on and on the street, always the arm nearer
+  us (the far one hid behind the body). The off hand holds low and ahead side-on, grips the wall square, guards the
+  chin on the street.
+- **THE FIST**: measured on George's glove (fingers along the hand bone's y ~31, ~28 across, ~13 thick) — the swell
+  was multiplying the width into a paddle. Now x 0.6 / y 0.3 / z 1.4 squash, swell 1.7x on the hit. **Still reads as
+  an open hand at a glance on all three** — the rigs have no finger bones, so a scale can't close a fist. The real
+  fix is a fist mesh per monster shown on the punch (Meshy, costs credits — his call).
+- Contact sheets (look-dev, `LAB.sheetT` — by time, and `?monster=`): `tmp/snapshots/jab-r1/r2.jpg` (George),
+  `jab-r3-lizzie.jpg`, `jab-r3-ralph.jpg`. Sim 2,062,832 green.
+- Cache tags: render3d v28, game-core v8, game.js v12, lab.js v7.
+- AWAITING HIS FLIGHT (test mode is the place: `index.html?test=1`), and his call on the fist meshes.
+
 ## 2026-10-01 — Claude — THE PUNCH YOU CAN SEE
 
 James, in test mode: "there's no punch animation. wasn't there supposed to be a punch?" Measured in the real game page:
