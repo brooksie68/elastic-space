@@ -5,6 +5,7 @@
 // Usage (after loading this script):
 //   With a media element:
 //     ElasticSoundControl.attach({ media: droneAudioElement });
+//     (option `startOnGesture: true`: if autoplay is blocked, start on the first click/key anywhere)
 //   With custom audio (e.g. Web Audio synthesis):
 //     ElasticSoundControl.attach({
 //       start: () => { ... },          // begin sound; may return a Promise
@@ -222,7 +223,18 @@
     // it opens silent, he picks the track and presses play) — every other
     // world keeps the attempt.
     if (options.autoplay !== false) {
-      Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {});
+      Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {
+        // `startOnGesture: true` (Softly, 2026-10-16): when the browser blocks the
+        // attempt, start on the visitor's first click or key anywhere on the page —
+        // unless that first touch is the speaker button itself.
+        if (!options.startOnGesture) return;
+        const kick = (event) => {
+          ["pointerdown", "keydown"].forEach((t) => window.removeEventListener(t, kick, true));
+          if (on || root.contains(event.target)) return;
+          Promise.resolve(control.start()).then(() => setOn(true)).catch(() => {});
+        };
+        ["pointerdown", "keydown"].forEach((t) => window.addEventListener(t, kick, true));
+      });
     }
 
     // setVolume lets a world with its own volume UI drive this control too,

@@ -354,6 +354,14 @@ loop. His first look: "this looks amazing!" — the monsters made half again as 
 floors) and a readable CONTROLS panel added on his two asks before playing. His flight decides; the
 campaign is his to write.
 
+### 67. Softly — *one session* — `live` (built + shipped 2026-10-16)
+
+James's quickie: nothing but overlapping full-screen gradients, one or two stops only (color →
+color, or color → nothing), random color and angle, up to five at once, fading in and out on a
+wandering tempo that speeds and slows. Under it a soft chord (C2 G2 D4) with slow wind chimes from
+C, D, F, G, A across two octaves, heavy delay and reverb, a fifth-up harmonizer at 10%. Three
+invisible soft blurs in the corners are the ways out. `src/worlds/softly/`.
+
 ## Built on commission — 2026-07-12
 
 **The Toot Suite** (`src/worlds/toot-suite/`) — not from this backlog; James requested a big puffy

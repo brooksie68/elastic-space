@@ -9,6 +9,7 @@ globalThis.ELASTIC_SPACE_WORLDS = [
   "mandala-shop/index.html",
   "orb-dimension/index.html",
   "singing-plate/index.html",
+  "softly/index.html",
   "surround/index.html",
   "the-fifteen-sisters/index.html",
   "wildflowers-at-dusk/index.html"

@@ -1540,7 +1540,8 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - It renders the standard speaker button top right (pulses twice on load, tooltip, on/off states,
   hover volume slider) and makes one autoplay attempt — sound starts immediately for visitors who
   have granted the site sound permission, and waits for the button otherwise. A world can pass
-  `autoplay: false` to skip that attempt entirely (added 2026-09-01 for Lumina, which must open
+  `autoplay: false` to skip that attempt entirely, or `startOnGesture: true` to start on the first
+  click/key anywhere when the attempt is blocked (added 2026-10-16 for Softly). (`autoplay: false` added 2026-09-01 for Lumina, which must open
   silent — James picks the track and presses play himself; every other world keeps the attempt).
 - Worlds needing a second volume channel (e.g. music separate from SFX) pass
   `channels: [{ label, value, setVolume }]` to `attach()` — each renders as a labelled slider
