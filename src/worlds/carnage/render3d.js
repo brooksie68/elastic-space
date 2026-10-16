@@ -723,7 +723,7 @@ export function createRenderer(canvas, lookIn) {
 
   // ---- assets ------------------------------------------------------------------------------------------------
   const textures = {};
-  const models = { monsters: {}, teen: null, soldier: null, statics: {}, people: {} };
+  const models = { fists: {}, monsters: {}, teen: null, soldier: null, statics: {}, people: {} };
   const PEOPLE_CLIPS = { screamer: 'help', customer: 'phone', worker: 'talk', zombie: 'phone', streamer: 'cheer', waver: 'wave' };
   const THING_MODELS = { fryer: 0.3, peloton: 0.42, battery: 0.24, cash: 0.22, cake: 0.24, cactus: 0.4 };   // longest side, in cells
   let assetsFailed = 0;
@@ -781,6 +781,8 @@ export function createRenderer(canvas, lookIn) {
       return { scene: g.scene, clips };
     };
     for (const slug of ['george', 'lizzie', 'ralph']) { total++; jobs.push(rigged(slug, MONSTER_CLIPS).then((a) => { models.monsters[slug] = a; tick(); })); }
+    // THE FISTS (2026-10-16): a Meshy fist per monster, shown in place of the hand through a punch (no finger bones)
+    for (const slug of ['george', 'lizzie', 'ralph']) { total++; jobs.push(loadGlb('assets/models/fist-' + slug + '.glb').then((g) => { if (g) { prepModel(g.scene); models.fists[slug] = g.scene; } tick(); })); }
     total++; jobs.push(rigged('teen', ['walk', 'tired']).then((a) => { models.teen = a; tick(); }));
     total++; jobs.push(rigged('soldier', ['walk', 'fire', 'flyup']).then((a) => { models.soldier = a; tick(); }));
     for (const name of ['swat', 'drone', 'cruiser', 'taxi', 'bot', 'hatch', 'suv', 'fryer', 'peloton', 'battery', 'cash', 'cake', 'cactus']) { total++; jobs.push(loadGlb('assets/models/' + name + '.glb').then((g) => { if (g) { prepModel(g.scene); models.statics[name] = g.scene; } tick(); })); }
@@ -1539,8 +1541,45 @@ export function createRenderer(canvas, lookIn) {
     _q2.setFromUnitVectors(_d0, _d1); rotateBoneWorld(chain.fore, _q2.clone(), w);
   }
   // the glove closes into a fist: shorter along the fingers, a little thicker across the knuckles
+  // THE FIST MESH (2026-10-16): the rigs have no finger bones, so a closed hand is a separate Meshy fist riding the
+  // forearm at the hand's place; past FIST_ON the hand bone collapses (its skin with it) and the fist shows. It is aimed
+  // along the forearm-to-hand line (the hand bones' own axes differ by rig) with the palm turned down — toward us when
+  // the punch goes straight up or down. FIST_LEN = wrist-to-knuckles as a share of the forearm; PALM = which way the
+  // model's palm faces along its own z (each Meshy fist came out differently).
+  const FIST_ON = 0.3, FIST_LEN = { george: 0.95, lizzie: 1.15, ralph: 1.1 }, PALM = { george: 1, lizzie: -1, ralph: -1 };
+  const _fE = new THREE.Vector3(), _fH = new THREE.Vector3(), _fY = new THREE.Vector3(), _fZ = new THREE.Vector3(), _fX = new THREE.Vector3(), _fM = new THREE.Matrix4(), _fQ = new THREE.Quaternion(), _fP = new THREE.Quaternion();
+  function addFists(v, slug) {
+    const src = models.fists[slug]; if (!src || !v.bones) return;
+    v.fists = {};
+    for (const side of ['Left', 'Right']) {
+      const ch = v.bones[side]; if (!ch) continue;
+      const f = src.clone(true); f.visible = false; ch.fore.add(f);
+      v.fists[side] = { mesh: f, len: ch.hand.position.length() * (FIST_LEN[slug] || 0.8), palm: PALM[slug] || 1 };
+    }
+  }
   function fist(v, side, k, big) {
     const ch = v.bones && v.bones[side]; if (!ch) return;
+    const fm = v.fists && v.fists[side];
+    if (fm) {
+      const on = k > FIST_ON;
+      fm.mesh.visible = on;
+      if (on) {
+        const g = 1 + 0.7 * (big || 0);
+        ch.hand.scale.setScalar(0.001);
+        fm.mesh.position.copy(ch.hand.position);
+        ch.fore.getWorldPosition(_fE); ch.hand.getWorldPosition(_fH);
+        _fY.subVectors(_fH, _fE).normalize();
+        _fZ.set(0, -1, 0).addScaledVector(_fY, _fY.y);   // down, square to the arm
+        if (_fZ.lengthSq() < 0.05) _fZ.set(0, 0, 1).addScaledVector(_fY, -_fY.z);
+        _fZ.normalize().multiplyScalar(fm.palm); _fX.crossVectors(_fY, _fZ);
+        _fQ.setFromRotationMatrix(_fM.makeBasis(_fX, _fY, _fZ));
+        ch.fore.getWorldQuaternion(_fP);
+        fm.mesh.quaternion.copy(_fP.invert().multiply(_fQ));
+        fm.mesh.scale.setScalar(fm.len * g);
+        ch.hand.updateWorldMatrix(false, true);
+        return;
+      }
+    }
     const g = 1 + 0.7 * (big || 0);   // the cartoon fist: it swells on the hit so the punch reads at game distance
     // measured on the glove (2026-10-16): fingers run along the bone's y (~31), the hand is ~28 across (x, thumb out)
     // and ~13 thick (z) — a ball wants the fingers folded, the thumb tucked, the knuckles thicker
@@ -1624,7 +1663,7 @@ export function createRenderer(canvas, lookIn) {
       _G.addScaledVector(_F, 0.4 * L).addScaledVector(_UP, -0.2 * L); _G.z = Math.min(_G.z, 0.1 * CELL);
       _pole.copy(_UP).multiplyScalar(-1).addScaledVector(_F, -0.3).normalize();
       ik2(off, _G, _pole, Math.min(1, windK * 1.5) * (1 - homeK));
-      fist(v, offSide, env * 0.6);
+      fist(v, offSide, env * 0.25);   // a grip, not a fist
     }
     if (!onFace && off) {
       off.arm.getWorldPosition(_G);
@@ -1643,6 +1682,7 @@ export function createRenderer(canvas, lookIn) {
       if (v && v.height !== mh) { actorGroup.remove(v.root); monsterViews.delete(m.id); v = null; }   // the size dial moved
       if (!v) {
         v = makeRig(models.monsters[m.slug], CELL * mh, FALLBACK_COLOR[m.slug]);
+        addFists(v, m.slug);
         v.height = mh; v.teen = null; v.slug = m.slug; v.prevAnim = ''; v.punchSide = 0; v.shadow = makeShadow(CELL * mh * 0.45);
         v.kickT = 0; v.kickDir = -1; v.slamHold = 0; v.punchN = 0; v.lastPunchK = 1; v.punchNew = false; v.punchTarget = null; v.punchWind = null; v.climbSpeed = 1.2;
         v.root.add(v.shadow);

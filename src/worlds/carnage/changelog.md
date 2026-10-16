@@ -28,14 +28,21 @@ swinging side-on to punch — square to the wall the arm moves along the wall; a
 - **WHICH ARM**: square to the wall, the arm on the punch's side; side-on and on the street, always the arm nearer
   us (the far one hid behind the body). The off hand holds low and ahead side-on, grips the wall square, guards the
   chin on the street.
-- **THE FIST**: measured on George's glove (fingers along the hand bone's y ~31, ~28 across, ~13 thick) — the swell
-  was multiplying the width into a paddle. Now x 0.6 / y 0.3 / z 1.4 squash, swell 1.7x on the hit. **Still reads as
-  an open hand at a glance on all three** — the rigs have no finger bones, so a scale can't close a fist. The real
-  fix is a fist mesh per monster shown on the punch (Meshy, costs credits — his call).
+- **THE FISTS** (his yes on ~90 cr, same night): the rigs have no finger bones, so the squashed hand still read as an
+  open glove. Now a Meshy fist per monster rides the forearm and replaces the hand through the punch (past 0.3 of
+  the envelope the hand bone collapses and `fist-<slug>.glb` shows): George a white cartoon glove with his red cuff,
+  Ralph a brown leather glove, Lizzie bare skin (Ralph's fist shape retextured — her own generation came back as a
+  whole little girl, then as a forearm, and pieces are never cut off a model). Aimed along the forearm-to-hand line
+  with the palm turned down (the hand bones' own axes differ by rig — Lizzie's fist stood on end when it copied
+  hers). Sizes `FIST_LEN` george 0.95 / lizzie 1.15 / ralph 1.1 of the forearm, swell 1.7x on the hit. Pipeline:
+  `tmp/carnage/fists/fists.py` (orient knuckles +Y, wrist at the origin, 4,000 tris, 512 textures; the rotation goes
+  on the mesh data — `transform_apply` silently skipped it), raw GLBs + previews beside it. Meshy: 3 previews + 1 retry
+  (80) + 3 textures (30) = 110 cr, balance 4,014 → 3,904. Contact sheets `fist-r1-george`, `fist-r6-lizzie`,
+  `fist-r7-ralph`.
 - Contact sheets (look-dev, `LAB.sheetT` — by time, and `?monster=`): `tmp/snapshots/jab-r1/r2.jpg` (George),
   `jab-r3-lizzie.jpg`, `jab-r3-ralph.jpg`. Sim 2,062,832 green.
-- Cache tags: render3d v28, game-core v8, game.js v12, lab.js v7.
-- AWAITING HIS FLIGHT (test mode is the place: `index.html?test=1`), and his call on the fist meshes.
+- Cache tags: render3d v30, game-core v8, game.js v14, lab.js v9.
+- AWAITING HIS FLIGHT (test mode is the place: `index.html?test=1`).
 
 ## 2026-10-01 — Claude — THE PUNCH YOU CAN SEE
 
