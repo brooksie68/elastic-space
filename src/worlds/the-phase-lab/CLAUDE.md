@@ -58,6 +58,10 @@ eye. Then exits + ship wiring.
   side walls, a plain walnut desk, lights, a fixed camera. Fed by `window.PhaseStudio.update({ playing, master, tracks })` from
   world.js each frame. `window.PhaseStudio.snapshot(name)` posts a real render to
   /api/dev-snapshot — USE IT: the Browser pane does not composite WebGL frames reliably here.
+- `simple.html` + `simple.js` + `simple.css` — THE SIMPLE CONTROLS (2026-10-16, a branch James asked
+  for: "not to look like a real studio"). One lane per track, edited in place on a canvas roll; every
+  lane scrolls under one play line so the drift is visible; a speed slider per lane; extras behind
+  "more…". Shares the saved machine with index.html. AWAITING HIS EYES — which face wins is his call.
 - `plain.html` + `plain.js` + `plain.css` — THE OLD PLAIN FACE, kept whole at James's word as the
   seed of a possible MOBILE experience. Same engine + player. Do not delete; do not let it rot
   silently — if the engine API changes, keep it loading.

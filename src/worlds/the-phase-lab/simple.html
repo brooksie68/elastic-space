@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Phase Lab</title>
+  <link rel="stylesheet" href="./simple.css?v=4" />
+</head>
+<body>
+  <canvas id="stage"></canvas>
+
+  <!-- THE SIMPLE CONTROLS (2026-10-16, a branch of the studio console): one deck, a bar for the whole
+       machine, one lane per track. Every lane is edited where it sits; the lanes scroll under one
+       play line so the drift is something you see. Same engine, player, room and saved machine as
+       index.html. -->
+  <div id="deck">
+    <div id="bar">
+      <button id="play" class="big" data-help="play or stop (space)">▶ play</button>
+      <button id="rewind" data-help="back to the start: every lane lined up again">⏮ start</button>
+      <button id="hold" class="toggle" data-help="while this is on, every lane runs at the same speed and nothing drifts (H)">pause drift</button>
+      <span class="sep"></span>
+      <div class="grp" data-help="beats per minute"><span class="lab">tempo</span><button id="bpmDown" class="sq">−</button><input id="bpm" type="number" min="30" max="260" step="1"><button id="bpmUp" class="sq">+</button></div>
+      <div class="grp" data-help="the key: every note snaps to this scale · chromatic = all twelve notes, nothing snaps"><span class="lab">key</span><select id="root"></select><select id="scale"></select></div>
+      <span class="sep"></span>
+      <button id="diceMachine" data-help="roll a whole new piece: key, lanes, sounds, phrases, speeds">🎲 new piece</button>
+      <button id="clearAll" data-help="clear every note in every lane (the lanes, sounds and speeds stay)">clear all notes</button>
+    </div>
+    <div id="lanes"></div>
+    <div id="foot">
+      <div id="help"></div>
+      <div class="grp" data-help="saved pieces"><select id="presets"><option value="">saved…</option></select><button id="savePreset">save</button></div>
+      <div class="grp" data-help="volume"><span class="lab">volume</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.7"></div>
+      <div class="grp" data-help="how much of the room's echo you hear"><span class="lab">room</span><input id="mReverb" type="range" min="0" max="0.6" step="0.01" value="0.15"></div>
+      <a id="swap" href="./index.html" data-help="go back to the studio console">studio controls</a>
+    </div>
+  </div>
+
+  <!-- the sound list: every voice, hover to hear, click to use -->
+  <div id="sounds"><div class="mhead"><span id="soundsTitle"></span><button id="soundsClose">close</button></div><div id="soundList"></div></div>
+
+  <!-- more…: the extras for one lane -->
+  <div id="more">
+    <div class="mhead"><span id="moreTitle"></span><button id="moreClose">close</button></div>
+    <div class="mbody">
+      <section><h3>phrases</h3><div id="mPhrases" class="chips"></div></section>
+      <section class="row3">
+        <label>note length <input id="mGate" type="range" min="0.05" max="1" step="0.01"></label>
+        <label>level <input id="mGain" type="range" min="0" max="1" step="0.01"></label>
+        <div><span class="lablike">notes</span> <span id="mArt" class="seg"><button data-v="auto">auto</button><button data-v="hit">short</button><button data-v="hold">held</button></span></div>
+      </section>
+      <section><h3>effects</h3><div id="mFx" class="fx"></div></section>
+    </div>
+  </div>
+
+  <template id="laneTpl">
+    <div class="lane">
+      <div class="lside">
+        <div class="lrow"><span class="lnum"></span><button class="vPrev sq" data-help="the previous sound (plays it)">‹</button><button class="vname" data-help="the sound: click to see every sound · hover a name to hear it, click to use it"></button><button class="vNext sq" data-help="the next sound (plays it)">›</button></div>
+        <div class="lrow"><button class="dice" data-help="roll a new phrase into this lane">🎲 phrase</button><button class="clear" data-help="clear every note in this lane">clear</button><button class="mute toggle" data-help="mute this lane">mute</button><button class="solo toggle" data-help="hear only the soloed lanes">solo</button></div>
+        <div class="lrow"><span class="lab" data-help="how many steps before the phrase repeats">length</span><button class="lenDown sq" data-help="one step shorter">−</button><span class="len"></span><button class="lenUp sq" data-help="one step longer">+</button><button class="big sq" data-help="make this lane big for detailed editing (click again to share the space)">⤢</button><button class="more" data-help="phrases, note length, level, effects">more…</button><button class="del sq" data-help="remove this lane">✕</button></div>
+      </div>
+      <canvas class="roll" data-help="click to add a note · drag a note up or down to change it · click a note again to remove it · right-drag erases"></canvas>
+      <div class="rside">
+        <div class="rrow"><span class="speedVal"></span><span class="cycle"></span></div>
+        <div class="rrow speed" data-help="faster or slower than the beat: this is what makes the lanes drift apart · double-click for together">
+          <span class="end">slower</span><div class="track"><div class="fill"></div><div class="mid"></div><div class="thumb"></div></div><span class="end">faster</span>
+        </div>
+        <div class="rrow"><button class="fineDown sq" data-help="0.01 % slower">‹</button><button class="together" data-help="back to the same speed as the beat">together</button><button class="fineUp sq" data-help="0.01 % faster">›</button>
+          <label class="stick" data-help="the lane lingers when it lines up, then slips away (Piano Phase)"><input type="checkbox"> stick</label>
+          <span class="nudge" data-help="move the whole phrase one step earlier or later"><button class="nudgeL sq">◀</button><button class="nudgeR sq">▶</button></span></div>
+      </div>
+    </div>
+  </template>
+  <template id="addTpl">
+    <button class="addLane" data-help="add another lane (up to four)">+ add a lane</button>
+  </template>
+
+  <script src="../../core/dashboard-control.js"></script>
+  <script src="../../core/sound-control.js"></script>
+  <script src="./engine.js?v=2"></script>
+  <script src="./player.js?v=2"></script>
+  <script src="./simple.js?v=4"></script>
+  <script type="importmap">
+    { "imports": { "three": "../../lib/three/three.module.js" } }
+  </script>
+  <script type="module">
+    import { createStudio } from './studio.js?v=11';
+    createStudio({ canvas: document.getElementById('stage'), base: './' });
+  </script>
+</body>
+</html>

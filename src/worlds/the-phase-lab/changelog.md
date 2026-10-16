@@ -3,6 +3,44 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-16 (later) — Claude (Opus 5.5) — SIMPLE CONTROLS, ROUND TWO (his read: "a good take" + six asks)
+
+- FULL CONTROL: ⤢ on a lane makes it big (5 : 1 of the height) for detailed editing; click again to share.
+- Steps per beat is off the bar (the machine keeps its value).
+- SOUNDS, EASY TO HEAR: the voice select became ‹ name › — the arrows step through the sounds and play
+  each; the name opens a list of every sound, hover a name to hear it (a three-note figure in the key
+  around the lane's notes), click to use it. Click-away closes.
+- CLEAR: a "clear" per lane and "clear all notes" on the bar (lanes, sounds, speeds stay).
+- CHROMATIC: first in the key list as "chromatic (all 12 notes)"; the other scales follow.
+- NOTE NAMES: a gutter down the left of every lane names every row (C4 D E F# …, octave on the Cs; every
+  other row when the rows are thin, the root always), and every note block carries its name when big enough.
+
+## 2026-10-16 — Claude (Opus 5.5) — THE SIMPLE CONTROLS: a branch of the console (`simple.html`)
+
+James: "i'm so lost in here most of the time... what if we branched here and tried a completely different
+control set... not to look like a real studio... whatever would make understanding the selections and
+manipulating the options the easiest and most intuitively visible." Plan posted, then "use your best
+judgement go."
+
+- New page `simple.html` + `simple.js` + `simple.css`; same engine, player, room (studio.js) and the same
+  saved machine (`the-phase-lab-state`), so switching pages keeps the piece. `index.html` untouched except a
+  "simple controls" link by save; the new page links back ("studio controls").
+- One deck: a bar (play, start, pause drift, tempo, steps per beat, key, new piece), one LANE per track,
+  a footer (help line, saved pieces, volume, room). Lanes share the height (fewer lanes = taller notes).
+- Each lane is edited where it sits — no selected-track editor, no piano. The roll is a canvas: notes are
+  blocks (higher = higher note, block length = note length), click empty = add, drag a note = change pitch,
+  click a note = remove, right-drag erases, hover shows a ghost with the note name.
+- The drift is drawn: every lane scrolls under one fixed white play line at its own speed over the shared
+  beat lines; a faster lane slides off the lines. A lane-coloured bar marks where the phrase repeats;
+  "lined up" / "N steps ahead" top right of each roll.
+- Speed: one slider per lane, slower ← together → faster (squared curve, fine near the centre, ±5 %),
+  ‹ › = 0.01 %, wheel too, double-click = together; "lines up again every m:ss"; tape/lean/piano phase →
+  one "stick" checkbox (pull 0 / 1); shift = ◀ ▶.
+- Extras behind "more…" per lane: phrases (hear / use), note length, level, notes auto/short/held, effects.
+  Dropped from this face: chord (the key change resets it to none), microtones editing, squash, VUs.
+- Pane check at 1280 × 720 and 1920 × 1080: nothing overflows, drift renders (advanced silently via the
+  engine). AWAITING HIS EYES.
+
 ## 2026-09-08 — Claude (Fable 5.1) — RENAMED: The Reich Machine → THE PHASE LAB
 
 James: "a lot more people are going to react to 'reich' with concern than are going to know who Steve
