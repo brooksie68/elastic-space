@@ -29,12 +29,12 @@
     <div id="stat"></div>
   </div>
   <div id="err"></div>
-  <script src="../../src/worlds/carnage/city.js?v=4"></script>
-  <script src="../../src/worlds/carnage/game-core.js?v=6"></script>
+  <script src="../../src/worlds/carnage/city.js?v=7"></script>
+  <script src="../../src/worlds/carnage/game-core.js?v=8"></script>
   <script src="../../src/worlds/carnage/icons.js?v=8"></script>
   <script type="importmap">{ "imports": { "three": "../../src/lib/three/three.module.js" } }</script>
   <script type="module">
-    import { createRenderer, LOOK_DEFAULTS, CELL } from '../../src/worlds/carnage/render3d.js?v=23';
+    import { createRenderer, LOOK_DEFAULTS, CELL } from '../../src/worlds/carnage/render3d.js?v=35';
     const errEl = document.getElementById('err');
     const showErr = (m) => { errEl.style.display = 'block'; errEl.textContent += m + '\n'; };
     window.onerror = (m, s, l) => showErr(m + ' @' + (s || '').split('/').pop() + ':' + l);
@@ -48,7 +48,7 @@
     const look = Object.assign({}, LOOK_DEFAULTS);
     if (q.get('night')) look.night = q.get('night') === '1' ? 1 : 0;
     const R = createRenderer(canvas, look);
-    let state = C.createGame({ seed: parseInt(q.get('seed') || '7', 10), day: parseInt(q.get('day') || '1', 10), companions: parseInt(q.get('companions') || '2', 10), lives: 99, exits: 1 });
+    let state = C.createGame({ seed: parseInt(q.get('seed') || '7', 10), day: parseInt(q.get('day') || '1', 10), companions: parseInt(q.get('companions') || '2', 10), lives: 99, exits: 1, monster: q.get('monster') || 'george' });
     let auto = q.get('auto') !== '0';
     let scripted = null;   // { input, until } — a scripted input for a while (the buttons and LAB.drive use it)
     const STEP = 1 / 120;
@@ -125,7 +125,56 @@
       return r.json();
     }
     if (q.get('snap')) { const after = parseInt(q.get('after') || '240', 10); const wait = () => { if (frames >= after && loaded) snap(q.get('snap')).then((r) => { document.title = 'snapped ' + JSON.stringify(r); }); else setTimeout(wait, 100); }; wait(); }
-    globalThis.LAB = { R, get state() { return state; }, set state(s) { state = s; }, look, tick, C, snap, setAuto: (v) => { auto = v; }, drive, flush, get loaded() { return loaded; } };
+    // THE PUNCH SHEETS (2026-09-29): a strip of frames through one punch, cropped around the player, rows stacked,
+    // saved through /api/dev-snapshot. Stub requestAnimationFrame first (LAB.freeze) so the page loop doesn't race.
+    //   LAB.freeze(); LAB.sheet('face up', LAB.onFace, 0, 1); ... await LAB.saveSheets('punch-r2')
+    const sheets = [];
+    function onFace() { const p = player(); const b = state.city.buildings.find((bb) => !bb.down && bb.floors >= 5); if (b && p.st !== 'climb') { p.x = b.x0 + 1.5; C.grab(state, p, b, 1); } flush(); }
+    function onStreet(facing) { const p = player(); if (p.st !== 'street') { p.st = 'street'; p.y = 0; p.b = -1; p.vy = 0; p.hop = 0; } p.lane = 0; p.laneK = 0; p.facing = facing || 1; flush(); }
+    function sheet(label, setup, pdx, pdy, fracs) {
+      fracs = fracs || [0.15, 0.3, 0.38, 0.5, 0.8];
+      if (setup) setup();
+      for (let i = 0; i < 90; i++) tick(1 / 60);
+      const dpr = canvas.width / canvas.clientWidth, W = 380, H = 440;
+      const c = document.createElement('canvas'); c.width = W * fracs.length; c.height = H + 30;
+      const g = c.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, c.width, c.height);
+      drive({ punch: true, pdx, pdy }, 0.05); const p = player(); tick(1 / 60);
+      fracs.forEach((f, i) => {
+        let n = 0; while (p.punchFull > 0 && p.anim === 'punch' && (1 - p.punchT / p.punchFull) < f && n++ < 400) tick(1 / 120);
+        R.update(state, 0); R.render();
+        const s = R.project(p.x, p.y + 1.5);
+        g.drawImage(canvas, (s.x - W / 2) * dpr, (s.y - H / 2) * dpr, W * dpr, H * dpr, i * W, 30, W, H);
+        g.fillStyle = '#fff'; g.font = '18px sans-serif'; g.fillText(label + ' k=' + f, i * W + 8, 22);
+      });
+      sheets.push(c);
+    }
+    // by time from the punch (the picture's own 0.4 s clock outlives the core's punch); setup(p, state) places the player
+    function sheetT(label, setup, pdx, pdy, times) {
+      times = times || [0.03, 0.07, 0.13, 0.25, 0.36];
+      if (setup) { setup(player(), state); flush(); }
+      for (let i = 0; i < 90; i++) tick(1 / 60);
+      const dpr = canvas.width / canvas.clientWidth, W = 380, H = 440;
+      const c = document.createElement('canvas'); c.width = W * times.length; c.height = H + 30;
+      const g = c.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, c.width, c.height);
+      drive({ punch: true, pdx, pdy }, 0.02); const p = player(); let t = 0;
+      times.forEach((tt, i) => {
+        while (t < tt) { tick(1 / 120); t += 1 / 120; }
+        R.update(state, 0); R.render();
+        const s = R.project(p.x, p.y + 1.5);
+        g.drawImage(canvas, (s.x - W / 2) * dpr, (s.y - H / 2) * dpr, W * dpr, H * dpr, i * W, 30, W, H);
+        g.fillStyle = '#fff'; g.font = '18px sans-serif'; g.fillText(label + ' t=' + tt, i * W + 8, 22);
+      });
+      sheets.push(c);
+    }
+    async function saveSheets(name) {
+      const c = document.createElement('canvas'); c.width = Math.max(...sheets.map((s) => s.width)); c.height = sheets.reduce((a, s) => a + s.height, 0);
+      const g = c.getContext('2d'); let y = 0; for (const s of sheets) { g.drawImage(s, 0, y); y += s.height; }
+      sheets.length = 0;
+      const r = await fetch('/api/dev-snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, dataUrl: c.toDataURL('image/jpeg', 0.85) }) });
+      return r.json();
+    }
+    const freeze = () => { window.requestAnimationFrame = () => 0; document.getElementById('panel').classList.add('hide'); look.viewCells = 16; R.setLook(look); R.resize(); };
+    globalThis.LAB = { R, get state() { return state; }, set state(s) { state = s; }, look, tick, C, snap, setAuto: (v) => { auto = v; }, drive, flush, get loaded() { return loaded; }, sheet, sheetT, saveSheets, onFace, onStreet, freeze, player };
   </script>
 </body>
 </html>

@@ -760,10 +760,18 @@ test('23: round two — the lanes, the aimed punch, the smash, the run burst, th
     if (k < 0 || b.cells[k] === T.NEON) continue;
     b.state[k] = S.INTACT; b.cells[k] = T.WINDOW;
     const before = b.broken;
-    punchOnce(s, { pdx: dx, pdy: dy });
+    const gp = punchOnce(s, { pdx: dx, pdy: dy });
+    // no straight-down punch on a face (James, 2026-10-16): plain down is nothing, the 45s still land
+    if (dx === 0 && dy === -1) { assert(!gp.some((e) => e.type === 'punch') && b.state[k] === S.INTACT, 'plain down on a face throws no punch'); continue; }
     assert(b.state[k] === S.BROKEN && b.broken === before + 1, 'punch ' + dx + ',' + dy + ' breaks the cell it aims at');
     assert(m.y === 2 && m.st === 'climb', 'and the monster does not move for it');
   }
+  // THE BACK PUNCH (2026-10-16): an arrow against the facing punches behind without turning round
+  { const q = pure({ seed: 6 }); const p = P(q); placeOnStreet(q, p, 20); p.facing = 1; p.lane = 0; p.laneK = 0;
+    q.soldiers.length = 0; q.soldiers.push({ id: 999, x: 19.2, st: 'walk', t: 0, vx: 0, dir: 1 });
+    const gb = punchOnce(q, { pdx: -1, pdy: 0 });
+    assert(p.facing === 1, 'a back punch keeps the facing');
+    assert(gb.some((e) => e.type === 'soldierDie' && e.dir === -1), 'and hits the soldier behind'); }
   // the smash: Space on a face drops you and the landing takes what is under the fists
   s = C.createGame({ seed: 5, exits: 0, enemies: 1, companions: 0 }); s.opts.armyDay = 99; s.timers.car = 1e9; m = P(s);
   const bb = firstStanding(s);
@@ -814,7 +822,7 @@ test('23: round two — the lanes, the aimed punch, the smash, the run burst, th
     for (const bb2 of a.city.buildings) for (let k = 0; k < bb2.cells.length; k++) if (bb2.cells[k] === T.WINDOW) { n1++; if (bb2.deal[k] === 'screamer') d1++; }
     for (const bb2 of z.city.buildings) for (let k = 0; k < bb2.cells.length; k++) if (bb2.cells[k] === T.WINDOW) { n9++; if (bb2.deal[k] === 'screamer') d9++; }
   }
-  assert(d1 / n1 > 0.25 && d1 / n1 > d9 / n9, 'the screamer: ' + (100 * d1 / n1).toFixed(0) + '% of day-one windows, ' + (100 * d9 / n9).toFixed(0) + '% on day nine');
+  assert(d1 / n1 > 0.11 && d1 / n1 < 0.22 && d1 / n1 > d9 / n9, 'the screamer: ' + (100 * d1 / n1).toFixed(0) + '% of day-one windows, ' + (100 * d9 / n9).toFixed(0) + '% on day nine');
 });
 
 test('21: stress — many seeds, long runs, everyone playing, nothing goes wrong', () => {
@@ -838,6 +846,26 @@ test('22: the summary', () => {
   const s = C.createGame({ seed: 1, companions: 2, exits: 0, enemies: 0 });
   const sum = C.summary(s);
   assert(sum.monsters.length === 3 && sum.total === s.city.buildings.length && sum.standing === sum.total && sum.city === 'Peoria', 'summary');
+});
+
+test('23: TEST MODE — one medium building, nothing else, and it stands again after it falls', () => {
+  for (let seed = 1; seed < 5; seed++) {
+    const s = C.createGame({ seed, test: 1, enemies: 0, companions: 0, exits: 0, lives: 99 });
+    const b0 = s.city.buildings;
+    assert(b0.length === 1 && b0[0].floors === 7 && b0[0].cols === 5, 'one 7 x 5 building');
+    assert(b0[0].x0 > 4 && b0[0].x0 + b0[0].cols < s.city.width - 4, 'in the middle of the lot');
+    assert(b0[0].deal.every((d) => d === 'none') && !b0[0].neon && !b0[0].restaurant, 'every room empty, no neon, no restaurant');
+    let rebuilt = 0, phaseOk = true;
+    run(s, (st) => C.autopilot(st, P(st)), 240, (st) => {
+      assert(st.soldiers.length === 0 && st.cars.length === 0 && !st.tank && !st.drone && !st.blimp, 'nothing but the building');
+      if (st.phase !== 'play') phaseOk = false;
+      for (const e of st.events) if (e.type === 'testRebuild') rebuilt++;
+      if (st.exit) st.exit = null;
+    });
+    assert(phaseOk, 'no day end, no map');
+    assert(rebuilt >= 1, 'seed ' + seed + ': the building came back (' + rebuilt + ' times)');
+    assert(s.city.buildings.length === 1, 'still one building');
+  }
 });
 
 if (failures.length) { console.error(String.fromCharCode(10) + failures.length + ' FAILED:' + String.fromCharCode(10) + '  ' + failures.join(String.fromCharCode(10) + '  ')); process.exit(1); }
