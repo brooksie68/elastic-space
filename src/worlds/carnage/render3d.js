@@ -1546,15 +1546,19 @@ export function createRenderer(canvas, lookIn) {
   // along the forearm-to-hand line (the hand bones' own axes differ by rig) with the palm turned down — toward us when
   // the punch goes straight up or down. FIST_LEN = wrist-to-knuckles as a share of the forearm; PALM = which way the
   // model's palm faces along its own z (each Meshy fist came out differently).
+  const THUMB = { george: 1, lizzie: 1, ralph: 1 };   // which way the model's own x points: +1 = thumb side
+  const slugOf = (v) => v.slug;
   const FIST_ON = 0.3, FIST_LEN = { george: 0.95, lizzie: 1.15, ralph: 1.1 }, PALM = { george: 1, lizzie: -1, ralph: -1 };
   const _fE = new THREE.Vector3(), _fH = new THREE.Vector3(), _fY = new THREE.Vector3(), _fZ = new THREE.Vector3(), _fX = new THREE.Vector3(), _fM = new THREE.Matrix4(), _fQ = new THREE.Quaternion(), _fP = new THREE.Quaternion();
   function addFists(v, slug) {
     const src = models.fists[slug]; if (!src || !v.bones) return;
     v.fists = {};
+    // where the model's wrist end sits along its own y (it is not at the pivot): the swell scales about that end
+    if (src.userData.wristY == null) { src.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(src); src.userData.wristY = bb.min.y; }
     for (const side of ['Left', 'Right']) {
       const ch = v.bones[side]; if (!ch) continue;
       const f = src.clone(true); f.visible = false; ch.fore.add(f);
-      v.fists[side] = { mesh: f, len: ch.hand.position.length() * (FIST_LEN[slug] || 0.8), palm: PALM[slug] || 1 };
+      v.fists[side] = { mesh: f, len: ch.hand.position.length() * (FIST_LEN[slug] || 0.8), palm: PALM[slug] || 1, wristY: src.userData.wristY || 0 };
     }
   }
   function fist(v, side, k, big) {
@@ -1564,18 +1568,28 @@ export function createRenderer(canvas, lookIn) {
       const on = k > FIST_ON;
       fm.mesh.visible = on;
       if (on) {
-        const g = 1 + 0.7 * (big || 0);
-        ch.hand.scale.setScalar(0.001);
-        fm.mesh.position.copy(ch.hand.position);
+        const g = 1 + 0.35 * (big || 0);
+        // the glove shrinks into the fist instead of vanishing: collapsed to a point it pinched the sleeve into a cone
+        // with a gap before the fist (2026-10-16); at a third it fills the fist's cuff and the sleeve end stays round
+        ch.hand.scale.setScalar(0.35);
+        // the cuff sits INSIDE the sleeve (James, 2026-10-16 screenshot: the fist hung past the arm with its open
+        // cuff showing as a pale disc): slid back along the forearm by a third of its length
+        fm.mesh.position.copy(ch.hand.position).multiplyScalar(1 - Math.min(0.6, 0.15 * fm.len * g / Math.max(1e-6, ch.hand.position.length())));
         ch.fore.getWorldPosition(_fE); ch.hand.getWorldPosition(_fH);
         _fY.subVectors(_fH, _fE).normalize();
-        _fZ.set(0, -1, 0).addScaledVector(_fY, _fY.y);   // down, square to the arm
-        if (_fZ.lengthSq() < 0.05) _fZ.set(0, 0, 1).addScaledVector(_fY, -_fY.z);
-        _fZ.normalize().multiplyScalar(fm.palm); _fX.crossVectors(_fY, _fZ);
+        // THUMB UP (James, 2026-10-16: "it was also upside down"): the fist's thumb side (its own x, sign THUMB) turns
+        // to the sky, the knuckles lead; punching straight up or down the thumb turns toward us instead. One fist model
+        // serves both hands, so the left one is mirrored (a true left hand, thumb on the other side of the knuckles)
+        const mir = side === 'Left' ? -1 : 1;
+        _fX.set(0, 1, 0).addScaledVector(_fY, -_fY.y);
+        if (_fX.lengthSq() < 0.15) _fX.set(0, 0, 1).addScaledVector(_fY, -_fY.z);
+        _fX.normalize().multiplyScalar((THUMB[slugOf(v)] || 1) * mir); _fZ.crossVectors(_fX, _fY);
         _fQ.setFromRotationMatrix(_fM.makeBasis(_fX, _fY, _fZ));
         ch.fore.getWorldQuaternion(_fP);
         fm.mesh.quaternion.copy(_fP.invert().multiply(_fQ));
-        fm.mesh.scale.setScalar(fm.len * g);
+        fm.mesh.scale.setScalar(fm.len * g); if (side === 'Left') fm.mesh.scale.x *= -1;
+        // keep the wrist end where it is at g = 1: slide back along the fist's own axis by what the swell added
+        fm.mesh.position.addScaledVector(_fY.set(0, 1, 0).applyQuaternion(fm.mesh.quaternion), -fm.wristY * fm.len * (g - 1));
         ch.hand.updateWorldMatrix(false, true);
         return;
       }
@@ -1645,8 +1659,8 @@ export function createRenderer(canvas, lookIn) {
     if (kk >= P_HIT && !v.impactDone) {
       v.impactDone = true;
       chain.hand.getWorldPosition(_G);
-      flash(_G.x, _G.y, _G.z + 0.3, 3.2, 0xfff0d0, 0.1);
-      spawnDust(_G.x, _G.y, _G.z + 0.2, 5, 1.1, 0.45, 0, 0.6, 0.45);
+      flash(_G.x, _G.y, _G.z - 1.2, 2.6, 0xfff0d0, 0.1);   // behind the fist: in front, the flash and the dust veiled it and it looked cut off the arm
+      spawnDust(_G.x, _G.y, _G.z - 1.0, 5, 1.1, 0.45, 0, 0.6, 0.45);
     }
     // 4. the off hand: square to the wall it grips the wall up and out to its side (side-on the hang keeps it);
     // on the street it guards the chin

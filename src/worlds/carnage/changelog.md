@@ -3,6 +3,23 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-16 (later) — Claude — THE FIST, RIGHT WAY UP AND ON THE ARM
+
+James's screenshot of the King's punch: the fist hung past the arm with its open cuff showing as a pale disc, read as a
+pointing glove, and "it was also upside down."
+
+- THUMB UP: the fist is aimed by its thumb side (`THUMB` per monster, the model's own x) turned to the sky, knuckles
+  leading; straight up / down punches turn the thumb toward the camera. One Meshy fist serves both hands, so the LEFT
+  fist is mirrored (scale x -1) into a true left hand.
+- ON THE ARM: the glove under the fist shrinks to a third (it was collapsed to a point, pinching the sleeve into a cone);
+  the fist sits back a little into the sleeve; the hit swell is 1.35x (was 1.7x) and scales about the fist's wrist end
+  (`wristY`) so it never pushes the fist off the arm; the impact flash and puff moved BEHIND the fist (in front they
+  veiled it and it looked cut off).
+- Judged in close-ups: `tmp/carnage/lookdev.html` gained `LAB.monster(slug)` and `LAB.fist(label, setup, pdx, pdy)` (crops
+  centred on the fist) — sheets `tmp/snapshots/fist-r1..r9.jpg`. All of it is in the game, so it is in Test Mode.
+- Not yet looked at close: the Clown's and the Girl's fists with the mirror + thumb-up (`THUMB` is 1 for all three).
+- Sim 2,062,832 green.
+
 ## 2026-10-16 — Claude — THE JAB (the arcade's punch), SIDE-ON ON THE EDGES, THE BACK PUNCH
 
 James sent four Rampage frames: "a fist with arm pulled back. and then basically a jab. straight to the side. also
