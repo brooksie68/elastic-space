@@ -18,7 +18,7 @@
       --glass-edge: rgba(109, 255, 142, 0.16);
       --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
       --ui: 1;                       /* the text-size dial (PLAY → text size): every instrument scales off it */
-      --strip-h: 7.2rem;             /* the strip map's height at the bottom */
+      --strip-h: 7.9rem;             /* the strip map's height at the bottom */
       --amber: #ffb457;
       --pink: #ff8fa3;
     }
@@ -351,6 +351,7 @@
     /* ---- THE SITREP (2026-09-12, James: "a little sitrep panel... 'Mission One: 3 targets, you've taken out 1' in HUD info") ---- */
     #sitrep { position: fixed; left: 1rem; top: 0.9rem; z-index: 10; width: calc(19rem * var(--ui)); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
     #sitrep.show { display: block; }
+    body.paused #sitrep, body.paused #strip-wrap { z-index: 12; }   /* 2026-10-16 James: the level info and the strip map stay readable over the pause veil */
     #sitrep .panel { padding: 0.8em 1em 0.9em; gap: 0.55em; }
     #sr-level { font-size: 1.6em; font-weight: 200; letter-spacing: 0.3em; color: var(--ink); line-height: 1; }
     #sr-level small { font-size: 0.45em; font-weight: 700; letter-spacing: 0.3em; color: var(--ph); margin-left: 0.6em; vertical-align: middle; }
@@ -746,6 +747,6 @@
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=11"></script>
+  <script type="module" src="game.js?v=14"></script>
 </body>
 </html>

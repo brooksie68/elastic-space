@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=9';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=10';
 
 const Core = globalThis.LunarCore;
 
@@ -1124,7 +1124,7 @@ function drawStrip() {
   const gBand = (bottom - top) * 0.55;
   const sy = (y) => y <= gHi ? bottom - Math.max(0, (y - gLo)) / (gHi - gLo) * gBand : bottom - gBand - Math.min(1, (y - gHi) / (skyHi - gHi)) * (bottom - top - gBand);
   const kA = Core.chunkIndex(x0), kB = Core.chunkIndex(x1);
-  const f = (px) => (px * ui).toFixed(1) + 'px "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif';
+  const f = (px) => ((px + 2) * ui).toFixed(1) + 'px "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif';
   const blink = Math.floor(clock * 2) % 2 === 0;
   // the scale: a tick every 1,000 ft, a number at every chunk seam (range from the level's start)
   c.strokeStyle = inkFaint; c.lineWidth = 1; c.fillStyle = inkFaint; c.font = '600 ' + f(9); c.textAlign = 'center'; c.textBaseline = 'top';
@@ -1165,8 +1165,9 @@ function drawStrip() {
       c.strokeStyle = p.used ? inkDim : ph; c.lineWidth = p.used ? 1.5 : 2.5;
       c.beginPath(); c.moveTo(Math.min(px0, px1 - 4), py); c.lineTo(Math.max(px1, px0 + 4), py); c.stroke();
       const mx = (px0 + px1) / 2;
-      c.fillStyle = p.used ? inkFaint : ink; c.font = '300 ' + f(11); c.textBaseline = 'bottom';
-      c.fillText(p.mult + '×', mx, py - 3);
+      // a landed ship replaces the pad's N× (2026-10-16, James: "it's already received the reward... just show the caret sitting right on the pad")
+      const shipHere = s && s.alive !== false && (state.phase === 'landed' || Core.altitude(state) < 3) && s.x >= p.x0 && s.x <= p.x1;
+      if (!shipHere) { c.fillStyle = p.used ? inkFaint : ink; c.font = '300 ' + f(11); c.textBaseline = 'bottom'; c.fillText(p.mult + '×', mx, py - 3); }
       if (p.relay) {
         // the relay tower: a mast with a lamp; the gate says RELAY
         c.strokeStyle = p.gate ? ph : inkDim; c.lineWidth = 1.2;
@@ -1211,15 +1212,26 @@ function drawStrip() {
   }
   // the lander: a bright caret, a hairline down to the ground, the altitude beside it
   if (s && s.alive !== false) {
-    const px = sx(s.x), py = sy(s.y);
+    const px = sx(s.x);
+    const gy = sy(Core.groundAt(state, s.x));
+    const alt = Math.max(0, Core.altitude(state));
+    // on the ground the caret used to sit right on the pad's white "N×" label and vanish into it
+    // (2026-10-16, James: "keep showing the little icon even when it's landed") — so down low it
+    // rides above the label with a ring round it, and the readout says ON THE GROUND
+    const down = alt < 3 || state.phase === 'landed';
+    const py = down ? gy - 5 : sy(s.y);   // down: the caret sits right on the pad line in place of its N×
     if (px >= padL - 2 && px <= W - padR + 2) {
-      const gy = sy(Core.groundAt(state, s.x));
-      c.strokeStyle = 'rgba(236,255,240,0.35)'; c.lineWidth = 1; c.setLineDash([2, 2]);
-      c.beginPath(); c.moveTo(px, py + 5); c.lineTo(px, gy); c.stroke(); c.setLineDash([]);
+      if (!down) {
+        c.strokeStyle = 'rgba(236,255,240,0.35)'; c.lineWidth = 1; c.setLineDash([2, 2]);
+        c.beginPath(); c.moveTo(px, py + 5); c.lineTo(px, gy); c.stroke(); c.setLineDash([]);
+      }
       c.fillStyle = '#fff'; c.strokeStyle = ph; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(px, py - 5); c.lineTo(px + 5, py + 4); c.lineTo(px, py + 1.5); c.lineTo(px - 5, py + 4); c.closePath(); c.fill(); c.stroke();
+      // the caret tilts with the ship (2026-10-16, James: "match the two angles"); +angle = nose to the right, same as the world
+      c.save(); c.translate(px, py); c.rotate(s.angle || 0);
+      c.beginPath(); c.moveTo(0, -5); c.lineTo(5, 4); c.lineTo(0, 1.5); c.lineTo(-5, 4); c.closePath(); c.fill(); c.stroke();
+      c.restore();
       c.fillStyle = ink; c.font = '600 ' + f(9); c.textAlign = 'left'; c.textBaseline = 'middle';
-      c.fillText(Math.max(0, Math.round(Core.altitude(state))) + ' FT', px + 8, py);
+      if (!down) c.fillText(Math.round(alt) + ' FT', px + 8, py);
       c.textAlign = 'center';
     } else {
       // off the strip (free flight scrolls, but a level's ship can wander off): an arrow at the edge

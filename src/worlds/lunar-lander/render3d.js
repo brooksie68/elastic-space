@@ -48,6 +48,7 @@ const FILL_FLOOR = -6000;   // the black under each ground line reaches here
 const CAM_TAU = 0.9;        // seconds — the zoom eases, never snaps (motion restraint)
 const BANK_TAU = 1.2;
 const MAX_BANK = 0.05;      // rad — a few degrees, no more
+const GROUND_FIT = 0.60;    // the ship-to-ground span may fill this much of the zoomed frame's height (ground at 22%, ship at most 82%)
 const ZOOM_MIN = 0.3;       // the furthest the wide view pulls back (a ship 3.3× the base height up still shows)
 const MAX_PARTICLES = 2600;
 const Z_FAR = -1600, Z_FARTHER = -3400, Z_NEAR = 420, Z_STARS = -9000;
@@ -1067,9 +1068,24 @@ export class LanderScene {
       // the console (James: "they go behind the HUD... you can't see anything")
       if (wide <= ZOOM_MIN + 1e-6) lift = Math.max(0, up - (bv.h * 0.25) / ZOOM_MIN);
     }
-    const target = view && view.zoomOn ? P.zoomNear : wide;
+    // THE GROUND STAYS IN FRAME (2026-10-16, James: "very often it zooms in a bit too
+    // far... I can only see the ship and I can't see the rapidly approaching ground.
+    // There should never be a time when I can't see the ground"): the near zoom is
+    // capped at the magnification that still fits the ship AND the lowest ground
+    // under it (±150 ft) — ground 22% up the frame, the ship no higher than 82% —
+    // so the zoom tightens as the ship comes down instead of jumping to 3.3× while
+    // the ground is still off the bottom; a climb pulls the cap back at once
+    let fit = P.zoomNear;
+    if (view && view.ship) {
+      const s = view.ship;
+      const gLow = Math.min(this._groundAt(s.x), this._groundAt(s.x - 150), this._groundAt(s.x + 150));
+      const span = Math.max(1, s.y - gLow);
+      fit = Math.max(wide, Math.min(P.zoomNear, bv.h / (span / GROUND_FIT)));
+    }
+    const target = view && view.zoomOn ? fit : wide;
     const k = 1 - Math.exp(-dt / CAM_TAU);
     this.zoom += (target - this.zoom) * k;
+    if (view && view.zoomOn && this.zoom > fit) this.zoom = fit;   // never tighter than the ground allows
     const t = Math.max(0, Math.min(1, (this.zoom - 1) / Math.max(0.001, P.zoomNear - 1)));
     const vw = bv.w / this.zoom, vh = bv.h / this.zoom;
     // the wide view scrolls with the ship: dead zone, then an ease that tightens
@@ -1079,8 +1095,8 @@ export class LanderScene {
     let bankT = 0;
     if (view && view.ship) {
       const s = view.ship;
-      const gy = this._groundAt(s.x);
-      const zy = Math.max(gy + vh * 0.28, s.y - vh * 0.12);
+      const gy = Math.min(this._groundAt(s.x), this._groundAt(s.x - 150), this._groundAt(s.x + 150));
+      const zy = Math.max(gy + vh * 0.28, s.y - vh * 0.32);   // ground 22% up; the ship never above 82% (the fit cap makes both true)
       tx = bv.cx + (s.x - bv.cx) * t;
       ty = bv.cy + (zy - bv.cy) * t;
       bankT = Math.max(-MAX_BANK, Math.min(MAX_BANK, -s.vx * 0.001)) * t * P.bank;

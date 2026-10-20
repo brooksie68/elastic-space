@@ -2,6 +2,30 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-10-16 (THE GROUND STAYS IN FRAME) — Claude
+
+James: "when I get close to landing and the auto zoom happens, very often it zooms in a bit too far...
+now I can only see the ship and I can't see the rapidly approaching ground. There should really never
+be a time when I can't see the ground. I need to always know how far I actually am from landing."
+The cause, in `_updateCamera` (render3d.js): the zoomed view held the ship 62% up the frame and let
+the ground fall off the bottom whenever the ship was more than ~420 ft up — and the zoom kicks in at
+430 ft, so the whole top of the approach was ship-only. Now the near zoom is CAPPED at the magnification
+that fits the ship and the lowest ground within ±150 ft of it (`GROUND_FIT` 0.60 of the frame height:
+ground 22% up, the ship never above 82%); the zoom tightens as the ship comes down and reaches 3.3× only
+when the ground is already in view; a climb pulls the cap back at once (never tighter than the ground
+allows, no ease on the way out). The old 3.3× stays the ceiling (LOOK → zoom). Render tag 10. Awaiting
+his flight.
+
+## 2026-10-16 (the strip map's type, +1px) — Claude
+
+James, back after a month: "sitrep strip is cool but the type is too small. bring it up 1px." Every label
+on the strip map (scale numbers, pad names and multipliers, item tags, hostile tags, the level name) is
+drawn through one font helper in `drawStrip` (game.js); it now adds 1 px before the text-size dial scales
+it. His read of +1: "still too tiny" → +2 (7.5 → 9.5, 9 → 11, 11 → 13 at dial 1) and the strip 7.2 → 7.9 rem tall
+to hold it (a +3 pass overshot; he pulled it back one). The sitrep panel's type is untouched; his read of +2: "this is fine." Then: "when I pause, keep the level info panel
+visible" — the sitrep was rendered while paused but sat under the pause veil (z 10 vs 11), dimmed and blurred;
+while paused it now sits above the veil (z 12); then "also leave the bottom strip visible" — the strip map too. Then: the strip's ship caret TILTS with the ship (same angle, nose right = right). Then "keep showing the little icon even when it's landed": the caret was drawn but sat on the pad's white N× label and vanished into it — his call: on the ground the caret REPLACES the pad's N× (the reward is already paid) and sits right on the pad line, no ring, no hairline, no readout; in the air as before.
+
 ## 2026-09-12 (THE SITREP, THE STRIP, THE CONDITION, THE SHOOTERS, SHIFT + RIGHT-CLICK) — Claude
 
 James's brief after his first flight of the levels: he could not tell what level he was in, what the
