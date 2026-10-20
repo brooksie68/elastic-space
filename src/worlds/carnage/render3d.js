@@ -1618,6 +1618,7 @@ export function createRenderer(canvas, lookIn) {
   function sideOf(m, state) {
     if (m.st !== 'climb') return m.facing || 1;
     const b = state.city.buildings[m.b]; if (!b) return 0;
+    if (m.side) return -m.side;   // hanging off a side wall: facing the building
     if (b.cols > 1 && m.col <= 0) return 1;
     if (b.cols > 1 && m.col >= b.cols - 1) return -1;
     return b.cols <= 3 ? (m.facing || 1) : 0;
@@ -1710,7 +1711,7 @@ export function createRenderer(canvas, lookIn) {
       const faceSide = m.st === 'climb' ? sideOf(m, state) : 0;
       const bH = m.st === 'climb' ? state.city.buildings[m.b] : null;
       // side-on on an edge column it hugs the corner, like the cabinet
-      const hug = faceSide && bH && bH.cols > 3 ? (m.col <= 0 ? -1 : m.col >= bH.cols - 1 ? 1 : 0) * 0.22 * CELL : 0;
+      const hug = faceSide && bH && bH.cols > 3 && !m.side ? (m.col <= 0 ? -1 : m.col >= bH.cols - 1 ? 1 : 0) * 0.22 * CELL : 0;
       const tx = m.x * CELL + hug, ty = m.y * CELL;
       const k = m.st === 'climb' ? Math.min(1, dt * 18) : 1;
       v.smoothX += (tx - v.smoothX) * k; v.smoothY = ty;

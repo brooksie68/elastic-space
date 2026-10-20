@@ -3,6 +3,23 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-19 — Claude — THE SIDE WALL
+
+James: "i dont like how i can't climb up the side of the buildings." Plan approved (grab the side, round the corner,
+punch the corner, the roof).
+
+- **Grab the side** (`sideAt`, `grab(..., side)`, `m.side` in game-core.js): standing in a gap within 0.8 of a
+  building's edge, W grabs its side wall — the nearer corner wins in a one-cell gap; mid-air catch too. You hang off
+  the corner 0.45 out (`climbX`), on the edge column, side-on facing the building (render `sideOf` → `-m.side`).
+- **Round the corner**: toward the building = onto the edge column of the front; away at an edge column = onto the
+  side; away from the side = let go (the street at the bottom, a fall at height). Climbing past the top of the side
+  hoists onto the roof. Falls, the roof, the day reset and the street all clear `side`.
+- **Punching from the side**: into the building hits the edge column cell at your height (the corner caves in); the
+  back punch goes out into the gap and finds no cell. Up and the 45s as everywhere.
+- Sim TEST 24 (left side grab, climb, round both ways, let go, corner punch + back punch, the roof, the right side).
+  Sim 2,062,844 green. Sheet `tmp/snapshots/side-r1.jpg`.
+- Cache tags: game-core v10, render3d v36, game.js v20, lab.js v15.
+
 ## 2026-10-16 (later) — Claude — THE FIST, RIGHT WAY UP AND ON THE ARM
 
 James's screenshot of the King's punch: the fist hung past the arm with its open cuff showing as a pale disc, read as a

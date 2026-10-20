@@ -141,7 +141,7 @@
   function makeMonster(state, slug, cpu) {
     return {
       id: state.nextId++, slug, cpu, x: 0, y: 0, vx: 0, vy: 0, facing: 1,
-      st: 'street', b: -1, col: 0, colT: 0, fallFrom: 0, homeX: 0,
+      st: 'street', b: -1, col: 0, colT: 0, side: 0, fallFrom: 0, homeX: 0,   // side: 0 on the front, -1 / +1 hanging off the left / right side wall
       hp: 100, lives: Infinity, score: 0,
       punchT: 0, punchFull: 0, punchDir: { dx: 0, dy: 0 }, punchHit: false, punchHeld: 0, prevPunch: false, prevJump: false, prevUp: false,
       eatT: 0, hitT: 0, flashT: 0, invulnT: 0, stateT: 0, holdT: 0, subT: 0,
@@ -198,6 +198,20 @@
     const b = City.buildingAt(state.city, x);
     return b && !b.down && !b.collapsing ? b : null;
   }
+  // THE SIDE WALL (James, 2026-10-19: "i can't climb up the side of the buildings"): standing in the gap within
+  // SIDE_REACH of a building's edge, W grabs its side — you hang off the corner on the edge column, side-on
+  const SIDE_REACH = 0.8, SIDE_OUT = 0.45;   // how far out from the corner the monster hangs
+  function sideAt(state, x) {
+    let best = null, bd = SIDE_REACH;   // the nearer corner wins (a one-cell gap is in reach of both)
+    for (const b of state.city.buildings) {
+      if (b.down || b.collapsing) continue;
+      const dl = b.x0 - x, dr = x - (b.x0 + b.cols);
+      if (dl >= 0 && dl < bd) { bd = dl; best = { b, side: -1 }; }
+      if (dr >= 0 && dr < bd) { bd = dr; best = { b, side: 1 }; }
+    }
+    return best;
+  }
+  const climbX = (b, m) => m.side ? (m.side < 0 ? b.x0 - SIDE_OUT : b.x0 + b.cols + SIDE_OUT) : b.x0 + m.col + 0.5;
   function punchRow(state, m, b) { return Math.max(0, Math.min(b.floors - 1, Math.floor(m.y + monHand(state)))); }
   function addPoints(state, m, pts, x, y, what) {
     if (!pts) return;
@@ -277,7 +291,7 @@
   function rebuildTest(state) {
     state.city = City.makeCity(() => rng(state), state.day, { test: 1 });
     state.items.length = 0;
-    for (const m of state.monsters) if (m.st === 'climb' || m.st === 'roof') { m.st = 'street'; m.y = 0; m.b = -1; m.hop = 0; }
+    for (const m of state.monsters) if (m.st === 'climb' || m.st === 'roof') { m.st = 'street'; m.y = 0; m.b = -1; m.side = 0; m.hop = 0; }
     state.events.push({ type: 'testRebuild' });
   }
   function advanceDay(state) { state.day++; newDay(state, true); }
@@ -456,7 +470,7 @@
 
   // ---- monsters -----------------------------------------------------------------------------------------
   function startFall(state, m, from, vx) {
-    m.st = 'fall'; m.fallFrom = from; m.vy = 0; m.vx = vx || 0; m.b = -1; m.hop = 0;
+    m.st = 'fall'; m.fallFrom = from; m.vy = 0; m.vx = vx || 0; m.b = -1; m.side = 0; m.hop = 0;
     state.events.push({ type: 'fall', who: m.id, slug: m.slug, from });
   }
   function land(state, m) {
@@ -503,8 +517,9 @@
     }
     state.events.push({ type: 'smashLand', who: m.id, slug: m.slug, x: m.x, from, hit, big: from >= 3 });
   }
-  function grab(state, m, b, y) {
-    m.st = 'climb'; m.b = b.id; m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0)));
+  function grab(state, m, b, y, side) {
+    m.st = 'climb'; m.b = b.id; m.side = side || 0;
+    m.col = m.side ? (m.side < 0 ? 0 : b.cols - 1) : Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0)));
     m.y = Math.max(0, Math.min(b.floors - 1, y)); m.vy = 0; m.vx = 0; m.colT = MON.COL_T; m.fallFrom = 0; m.hop = 0; m.lane = 0; m.laneK = 0; m.laneMoving = 0; m.burstT = 0; m.skidT = 0;
     state.events.push({ type: 'grab', who: m.id, slug: m.slug, b: b.id });
   }
@@ -600,7 +615,7 @@
       if (!stunned && !punching && !m.laneMoving && m.burstT <= 0) {
         if (input.down && m.lane === 0 && !overSub && !m.cpu) { m.lane = 1; m.laneMoving = 1; m.subT = 0; state.events.push({ type: 'laneStart', who: m.id, slug: m.slug, x: m.x, lane: 1 }); }
         else if (input.up && m.lane === 1) { m.lane = 0; m.laneMoving = 1; state.events.push({ type: 'laneStart', who: m.id, slug: m.slug, x: m.x, lane: 0 }); }
-        else if (input.up && m.lane === 0) { const b = faceAt(state, m.x); if (b) grab(state, m, b, 0); }
+        else if (input.up && m.lane === 0) { const b = faceAt(state, m.x); if (b) grab(state, m, b, 0); else { const sd = sideAt(state, m.x); if (sd) grab(state, m, sd.b, 0, sd.side); } }
         else if (jumpEdge) { m.st = 'jump'; m.vy = o.jumpV; m.vx = move * speed; state.events.push({ type: 'jump', who: m.id, slug: m.slug, x: m.x, y: 0 }); }
       }
     } else if (m.st === 'climb') {
@@ -616,8 +631,8 @@
         }
         if (!stunned && !m.hop) {
           const want = (input.up ? 1 : 0) - (input.down ? 1 : 0);
-          if (want > 0 && m.y >= b.floors - 1 - 1e-6) { m.st = 'roof'; m.y = b.floors; m.x = b.x0 + m.col + 0.5; m.vx = 0; m.hop = 0; state.events.push({ type: 'roof', who: m.id, slug: m.slug, b: b.id }); }
-          else if (want < 0 && m.y <= 1e-6) { m.y = 0; m.st = 'street'; m.b = -1; m.vx = 0; m.lane = 0; m.laneK = 0; }
+          if (want > 0 && m.y >= b.floors - 1 - 1e-6) { m.st = 'roof'; m.y = b.floors; m.side = 0; m.x = b.x0 + m.col + 0.5; m.vx = 0; m.hop = 0; state.events.push({ type: 'roof', who: m.id, slug: m.slug, b: b.id }); }
+          else if (want < 0 && m.y <= 1e-6) { m.y = 0; m.st = 'street'; m.b = -1; m.side = 0; m.vx = 0; m.lane = 0; m.laneK = 0; }
           else if (want && !(punching && m.punchT > m.punchFull * 0.5)) {
             m.hop = want; m.hopT = 0; m.hopFrom = m.y; m.hopTo = Math.max(0, Math.min(b.floors - 1, Math.round(m.y) + want));
             m.hopDur = (Math.abs(m.hopTo - m.hopFrom) / (o.climb * m.flavour.climb)) * (punching ? 2.2 : 1);
@@ -626,14 +641,16 @@
           }
           if (m.st === 'climb' && move && m.colT <= 0 && !punching && !m.hop) {
             const nc = m.col + move;
-            if (nc >= 0 && nc < b.cols) { m.col = nc; m.colT = MON.COL_T; state.events.push({ type: 'sidestep', who: m.id, slug: m.slug, x: b.x0 + nc + 0.5, y: m.y, dir: move }); }
-            else if (m.y <= 0.05) { m.st = 'street'; m.b = -1; m.x = b.x0 + m.col + 0.5 + move * 0.6; m.lane = 0; m.laneK = 0; }
-            else { m.x = b.x0 + m.col + 0.5 + move * 0.7; startFall(state, m, m.y, move * 2.2); }
+            if (m.side && move === -m.side) { m.side = 0; m.colT = MON.COL_T; state.events.push({ type: 'sidestep', who: m.id, slug: m.slug, x: b.x0 + m.col + 0.5, y: m.y, dir: move }); }   // round the corner onto the front
+            else if (!m.side && (nc < 0 || nc >= b.cols)) { m.side = move; m.colT = MON.COL_T; state.events.push({ type: 'sidestep', who: m.id, slug: m.slug, x: climbX(b, { side: move, col: m.col }), y: m.y, dir: move }); }   // round the corner onto the side
+            else if (!m.side) { m.col = nc; m.colT = MON.COL_T; state.events.push({ type: 'sidestep', who: m.id, slug: m.slug, x: b.x0 + nc + 0.5, y: m.y, dir: move }); }
+            else if (m.y <= 0.05) { m.st = 'street'; m.b = -1; m.x = climbX(b, m) + move * 0.4; m.side = 0; m.lane = 0; m.laneK = 0; }   // away from the side wall: let go
+            else { m.x = climbX(b, m) + move * 0.5; const sd = m.side; m.side = 0; startFall(state, m, m.y, move * 2.2); void sd; }
           }
           // Space on a face: let go and SMASH DOWN on whatever is under the fists
           if (m.st === 'climb' && jumpEdge && !punching) startSmash(state, m);
         }
-        if (m.st === 'climb') m.x = b.x0 + m.col + 0.5;
+        if (m.st === 'climb') m.x = climbX(b, m);
       }
     } else if (m.st === 'roof') {
       const b = building(state, m.b);
@@ -645,7 +662,7 @@
         m.y = b.floors;
         if (m.x < b.x0 - 0.2 || m.x > b.x0 + b.cols + 0.2) { startFall(state, m, m.y, move * 2); }
         else if (!stunned && !punching) {
-          if (input.down) { m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0))); m.st = 'climb'; m.y = b.floors - 1; m.x = b.x0 + m.col + 0.5; m.colT = MON.COL_T; m.hop = 0; }
+          if (input.down) { m.col = Math.max(0, Math.min(b.cols - 1, Math.floor(m.x - b.x0))); m.st = 'climb'; m.side = 0; m.y = b.floors - 1; m.x = b.x0 + m.col + 0.5; m.colT = MON.COL_T; m.hop = 0; }
           else if (jumpEdge) startSmash(state, m);
         }
       }
@@ -658,7 +675,11 @@
       // Space in the air: the smash
       if (jumpEdge && !m.smashing && m.y > 0.8) startSmash(state, m);
       // catch a face on the way (up held, or moving into it while jumping)
-      if (input.up && m.vy < 2 && !m.smashing && m.lane === 0) { const b = faceAt(state, m.x); if (b && m.y < b.floors - 0.5 && m.y > 0.2) grab(state, m, b, m.y); }
+      if (input.up && m.vy < 2 && !m.smashing && m.lane === 0) {
+        const b = faceAt(state, m.x);
+        if (b && m.y < b.floors - 0.5 && m.y > 0.2) grab(state, m, b, m.y);
+        else if (!b) { const sd = sideAt(state, m.x); if (sd && m.y < sd.b.floors - 0.5 && m.y > 0.2) grab(state, m, sd.b, m.y, sd.side); }
+      }
       // the blimp
       if (m.st !== 'climb' && state.blimp && !m.cpu && state.opts.exits && Math.abs(m.x - state.blimp.x) < 2.6 && Math.abs(m.y + monH(state) * 0.5 - state.blimp.y) < 1.8) takeExit(state, 'blimp', state.blimp.x, state.blimp.y);
       if (m.st !== 'climb' && m.y <= 0) { if (jumping && m.fallFrom < o.fallFree + 0.01) m.fallFrom = 0; land(state, m); }
@@ -693,7 +714,8 @@
     if (m.st === 'climb') {
       const b = building(state, m.b);
       if (b && !b.down) {
-        const k = City.cellAt(b, m.col + dir.dx, punchRow(state, m, b) + dir.dy);
+        const cdx = m.side ? (dir.dx === -m.side ? 0 : dir.dx === 0 ? 0 : 99) : dir.dx;   // on the side wall: into the building is the corner cell
+        const k = cdx === 99 ? -1 : City.cellAt(b, m.col + cdx, punchRow(state, m, b) + dir.dy);
         if (k >= 0) hit = punchCell(state, m, b, k) || hit;
       }
     } else if (m.st === 'street') {
@@ -1049,7 +1071,7 @@
   globalThis.CarnageCore = {
     createGame, step, autopilot, skipMap, advanceDay, summary, DEFAULTS, POINTS, DEAL_FX, MON, SOLDIER, TANK, DRONE, CARS, SLUGS, flavourFor, monH, monHand, monReach, laneOf,
     // for the sim and the labs
-    punchCell, breakCell, startCollapse, collapseDuration, damage, revert, spawnItem, itemAt, faceAt, building, player, rng, hashSeed, grab, startFall, takeExit,
+    punchCell, breakCell, startCollapse, collapseDuration, damage, revert, spawnItem, itemAt, faceAt, sideAt, building, player, rng, hashSeed, grab, startFall, takeExit,
     spawnSoldier, spawnTruck, spawnDrone, spawnSniper, launchWave, startSmash, WAVE_KINDS,
   };
 })();

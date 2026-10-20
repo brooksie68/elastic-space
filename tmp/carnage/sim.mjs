@@ -868,5 +868,50 @@ test('23: TEST MODE — one medium building, nothing else, and it stands again a
   }
 });
 
+test('24: THE SIDE WALL — grab the side from the gap, climb it, round the corner, punch the corner', () => {
+  const s = pure({ seed: 9 });
+  const m = P(s);
+  // a building with a gap on its left (not the first one)
+  const b = s.city.buildings.find((bb, i) => i > 0 && !bb.down && bb.floors >= 4);
+  const prev = s.city.buildings[s.city.buildings.indexOf(b) - 1];
+  assert(b.x0 - (prev.x0 + prev.cols) >= 1, 'there is a gap before it');
+  placeOnStreet(s, m, b.x0 - 0.5);
+  run(s, inp({ up: true }), 0.05);
+  assert(m.st === 'climb' && m.b === b.id && m.side === -1 && m.col === 0, 'up in the gap grabs the side wall');
+  assert(m.x < b.x0, 'and hangs outside the corner (' + m.x.toFixed(2) + ' vs ' + b.x0 + ')');
+  const y0 = m.y;
+  run(s, inp({ up: true }), 1);
+  assert(m.y > y0 + 0.5 && m.side === -1, 'it climbs the side (' + (m.y - y0).toFixed(2) + ')');
+  // round the corner onto the front, and back
+  run(s, IDLE, 0.3); run(s, inp({ move: 1 }), 0.05);
+  assert(m.st === 'climb' && m.side === 0 && m.col === 0 && near(m.x, b.x0 + 0.5, 1e-6), 'toward the building rounds the corner onto the front');
+  run(s, IDLE, 0.4); run(s, inp({ move: -1 }), 0.05);
+  assert(m.st === 'climb' && m.side === -1, 'away at the edge column rounds back onto the side');
+  // away from the side wall at height lets go
+  run(s, IDLE, 0.4); run(s, inp({ move: -1 }), 0.05);
+  assert(m.st === 'fall' || m.st === 'street', 'away from the side wall lets go (' + m.st + ')');
+  run(s, IDLE, 3); m.hp = 100;
+  // the punch from the side: into the building caves the corner cell in; the back punch hits no cell
+  placeOnStreet(s, m, b.x0 - 0.5); run(s, inp({ up: true }), 0.05); run(s, inp({ up: true }), 1); run(s, IDLE, 0.3);
+  assert(m.st === 'climb' && m.side === -1, 'back on the side wall');
+  const row = Math.floor(m.y + C.monHand(s));
+  const k = City.cellAt(b, 0, row);
+  if (k >= 0 && b.cells[k] !== T.NEON) {
+    b.deal[k] = 'none'; b.state[k] = S.INTACT; b.cells[k] = T.WINDOW;
+    punchOnce(s, { pdx: 1, pdy: 0 });
+    assert(b.state[k] === S.BROKEN, 'a punch into the building from the side breaks the corner cell');
+    const broken = b.broken;
+    punchOnce(s, { pdx: -1, pdy: 0 });
+    assert(b.broken === broken && m.side === -1, 'the back punch out into the gap breaks nothing and keeps the hold');
+  }
+  // the roof from the side
+  run(s, inp({ up: true }), 20);
+  assert(m.st === 'roof' && m.side === 0, 'climbing past the top of the side hoists onto the roof');
+  // the right side too, and a mid-air catch
+  placeOnStreet(s, m, b.x0 + b.cols + 0.5);
+  run(s, inp({ up: true }), 0.05);
+  assert(m.st === 'climb' && m.side === 1 && m.col === b.cols - 1 && m.x > b.x0 + b.cols, 'the right side wall too');
+});
+
 if (failures.length) { console.error(String.fromCharCode(10) + failures.length + ' FAILED:' + String.fromCharCode(10) + '  ' + failures.join(String.fromCharCode(10) + '  ')); process.exit(1); }
 console.log('carnage sim: ' + passed + ' assertions passed');

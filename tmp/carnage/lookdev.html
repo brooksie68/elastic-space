@@ -30,11 +30,11 @@
   </div>
   <div id="err"></div>
   <script src="../../src/worlds/carnage/city.js?v=7"></script>
-  <script src="../../src/worlds/carnage/game-core.js?v=8"></script>
+  <script src="../../src/worlds/carnage/game-core.js?v=10"></script>
   <script src="../../src/worlds/carnage/icons.js?v=8"></script>
   <script type="importmap">{ "imports": { "three": "../../src/lib/three/three.module.js" } }</script>
   <script type="module">
-    import { createRenderer, LOOK_DEFAULTS, CELL } from '../../src/worlds/carnage/render3d.js?v=35';
+    import { createRenderer, LOOK_DEFAULTS, CELL } from '../../src/worlds/carnage/render3d.js?v=36';
     const errEl = document.getElementById('err');
     const showErr = (m) => { errEl.style.display = 'block'; errEl.textContent += m + '\n'; };
     window.onerror = (m, s, l) => showErr(m + ' @' + (s || '').split('/').pop() + ':' + l);
@@ -173,8 +173,31 @@
       const r = await fetch('/api/dev-snapshot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, dataUrl: c.toDataURL('image/jpeg', 0.85) }) });
       return r.json();
     }
+    // THE FIST CLOSE-UP (2026-10-16): crops centred on the fist mesh at two moments of one punch, appended to the sheets.
+    //   LAB.monster('ralph'); LAB.fist('street R', () => LAB.onStreet(1), 1, 0); ... await LAB.saveSheets('fist')
+    function monster(slug) { state = C.createGame({ seed: 7, monster: slug, companions: 0, lives: 99, exits: 0, enemies: 0 }); for (let i = 0; i < 30; i++) tick(1 / 60); }
+    function fist(label, setup, pdx, pdy, fracs) {
+      fracs = fracs || [0.3, 0.45];
+      const dpr = canvas.width / canvas.clientWidth, W = 380, H = 380;
+      const c = document.createElement('canvas'); c.width = W * fracs.length; c.height = H + 30;
+      const g = c.getContext('2d'); g.fillStyle = '#111'; g.fillRect(0, 0, c.width, c.height);
+      const fists = []; R.scene.traverse((o) => { if (o.parent && o.parent.isBone && /ForeArm/.test(o.parent.name) && !o.isBone) fists.push(o); });
+      if (setup) setup();
+      for (let i = 0; i < 40; i++) tick(1 / 60);
+      drive({ punch: true, pdx, pdy }, 0.05); const p = player(); tick(1 / 60);
+      fracs.forEach((f, i) => {
+        let n = 0; while (p.punchFull > 0 && (1 - p.punchT / p.punchFull) < f && n++ < 200) tick(1 / 120);
+        R.update(state, 0); R.render();
+        const vis = fists.filter((m) => m.visible), w = new R.camera.position.constructor();
+        (vis[0] || fists[0]).getWorldPosition(w); w.project(R.camera);
+        const sx = (w.x * 0.5 + 0.5) * canvas.clientWidth, sy = (-w.y * 0.5 + 0.5) * canvas.clientHeight;
+        g.drawImage(canvas, (sx - W / 2) * dpr, (sy - H / 2) * dpr, W * dpr, H * dpr, i * W, 30, W, H);
+        g.fillStyle = '#fff'; g.font = '18px sans-serif'; g.fillText(label + ' k=' + f, i * W + 6, 22);
+      });
+      sheets.push(c);
+    }
     const freeze = () => { window.requestAnimationFrame = () => 0; document.getElementById('panel').classList.add('hide'); look.viewCells = 16; R.setLook(look); R.resize(); };
-    globalThis.LAB = { R, get state() { return state; }, set state(s) { state = s; }, look, tick, C, snap, setAuto: (v) => { auto = v; }, drive, flush, get loaded() { return loaded; }, sheet, sheetT, saveSheets, onFace, onStreet, freeze, player };
+    globalThis.LAB = { R, get state() { return state; }, set state(s) { state = s; }, look, tick, C, snap, setAuto: (v) => { auto = v; }, drive, flush, get loaded() { return loaded; }, sheet, sheetT, saveSheets, onFace, onStreet, freeze, player, monster, fist };
   </script>
 </body>
 </html>

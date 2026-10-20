@@ -16,6 +16,9 @@ Draft, "unwired": not in the drift registry until he has flown it and said ship.
   climb + the strike-and-reach bone layer (`aimArm` in render3d.js), the army in waves after a quiet opening, the
   16-bit city (palettes, cornices, fire escapes, shop signs, painted sky + four skyline layers, billboard trees), the
   fist-shaped dent and hole with the room inside, people behind lit glass, THE SCREAMER. AWAITING HIS FLIGHT.
+- **2026-10-19 — THE SIDE WALL (changelog 2026-10-19):** W in a gap grabs a building's side (`sideAt`, `m.side`
+  -1 / +1, hangs 0.45 out on the edge column, side-on); toward = round onto the front, away = onto the side / let go;
+  punching into the building hits the corner cell. Sim TEST 24. AWAITING HIS FLIGHT.
 - **2026-10-16 — THE JAB (changelog 2026-10-16), AWAITING HIS FLIGHT:** the punch is a straight piston jab along the
   arrow (side / 45 up / 45 down / up), no body swing; side-on on edge columns and skinny buildings (`sideOf`), square
   to the wall in the middle; the BACK PUNCH (arrow against the facing, head looks back); no straight-down punch on a
