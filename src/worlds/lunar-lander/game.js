@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=10';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=13';
 
 const Core = globalThis.LunarCore;
 
@@ -771,6 +771,8 @@ function buildPadLabels() {
       }
     }
     // every hostile wears its name (2026-09-12: "label everything"): over the blinker, readable
+    // (2026-10-24: a red square + number on this label was tried for one round and pulled the same
+    // night — "way too much"; the scene keeps its small white blinker, the red numbers live on the strip)
     for (const st of ch.structures) {
       if (st.cls === 'civ') continue;
       const h = document.createElement('div');
@@ -994,6 +996,8 @@ function frameStep(dt) {
     rotate: mode === 'play' ? rotHeld : 0,
     flying: state.phase === 'flying' && mode === 'play',
     zoomOn: zoomIn && (mode === 'play' || mode === 'settle' || mode === 'result' || mode === 'launch'),
+    // the strip map's share of the frame, measured (2026-10-24): the camera keeps the ground above it
+    stripFrac: stripWrap.classList.contains('show') ? (stripWrap.offsetHeight + 10) / Math.max(1, window.innerHeight) : 0,
     gravity: Core.GRAVITY * Core.FLIGHT.gravity * play.gravity,
     showShip: state.ship.alive,
     secret: state.result && state.result.kind === 'secret',
@@ -1017,7 +1021,7 @@ function frameStep(dt) {
   placeLabels(dt * slowMo);
   placeShipHud();
   if (dmgAcc && clock - dmgAcc.t > 0.35) flushDamage();
-  renderSitrep();
+  renderSitrep(dt);
   drawStrip();
 }
 
@@ -1026,6 +1030,12 @@ function frameStep(dt) {
 // lander's condition (hull, armor, the three systems), and what is targeted right now.
 const sitrep = $('sitrep');
 let sitrepKey = '';
+// OPEN, THEN A PILL (2026-10-16, James: "default that info panel to open at the beginning of the level,
+// then auto-collapse it to a pill at the top after 5 seconds of play. click it to open/close")
+let srOpen = true, srAuto = true, srPlayT = 0, srLevelKey = '';
+const SR_OPEN_FOR = 5;   // seconds of play before the panel folds to the pill
+sitrep.addEventListener('pointerdown', (e) => { e.stopPropagation(); });
+sitrep.addEventListener('click', (e) => { e.stopPropagation(); srOpen = !srOpen; srAuto = false; sitrep.classList.toggle('pill', !srOpen); });
 function bearingArrow(dx, dy) {
   const a = Math.atan2(dy, dx) * 180 / Math.PI;   // 0 = right, 90 = up
   if (a > 67.5 && a <= 112.5) return '↑';
@@ -1037,10 +1047,14 @@ function bearingArrow(dx, dy) {
   if (a > 112.5 && a <= 157.5) return '↖';
   return '←';
 }
-function renderSitrep() {
+function renderSitrep(dt) {
   const show = state && (mode === 'play' || mode === 'launch' || mode === 'settle' || mode === 'result' || (mode === 'paused'));
   sitrep.classList.toggle('show', !!show);
   if (!show) return;
+  const lk = state.level + '|' + (state.free ? 'f' : 'c');
+  if (lk !== srLevelKey) { srLevelKey = lk; srOpen = true; srAuto = true; srPlayT = 0; }   // a level (or a free flight) begins: open
+  if (mode === 'play' && srAuto) { srPlayT += dt || 0; if (srPlayT >= SR_OPEN_FOR) { srOpen = false; srAuto = false; } }
+  sitrep.classList.toggle('pill', !srOpen);
   const r = Core.readouts(state);
   const targets = Core.levelTargets(state);
   const tsel = target || hover;
@@ -1051,7 +1065,8 @@ function renderSitrep() {
   $('sr-level').innerHTML = (state.free ? 'FREE FLIGHT' : 'LEVEL ' + state.level) + '<small id="sr-name">' + (state.free ? 'NO GOAL' : (LEVEL_NAMES[state.level] || '')) + '</small>';
   const tb = $('sr-targets');
   if (targets) {
-    tb.innerHTML = targets.map((t) => '<div class="tbox' + (t.alive ? '' : ' dead') + (t.sid === tsel ? ' sel' : '') + (t.base ? ' base' : '') + '">' + (t.base ? 'BASE' : (globalThis.LunarStructures.TAGS[t.id] || t.name)) + '</div>').join('');
+    // numbered west to east, the same numbers as the strip map's red markers (2026-10-24)
+    tb.innerHTML = targets.map((t, i) => '<div class="tbox' + (t.alive ? '' : ' dead') + (t.sid === tsel ? ' sel' : '') + (t.base ? ' base' : '') + '">' + (i + 1) + ' ' + (t.base ? 'BASE' : (globalThis.LunarStructures.TAGS[t.id] || t.name)) + '</div>').join('');
     const down = targets.filter((t) => !t.alive).length;
     $('sr-count').innerHTML = '<b>' + down + '</b>OF ' + targets.length + ' TARGETS DOWN';
     const L = Core.levelDef(state);
@@ -1097,6 +1112,32 @@ function renderSitrep() {
 const stripWrap = $('strip-wrap');
 const strip = $('strip');
 const sctx = strip.getContext('2d');
+// DRAG TO LOOK ALONG THE STRIP (2026-10-16, James: "click and hold and drag to scroll left and right"):
+// stripPan is an offset in feet on the strip's window; a plain click (no movement) snaps it back
+let stripPan = 0, stripFtPerPx = 1;
+const sdrag = { on: false, x0: 0, pan0: 0, moved: false };
+strip.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  e.stopPropagation(); e.preventDefault();
+  sdrag.on = true; sdrag.x0 = e.clientX; sdrag.pan0 = stripPan; sdrag.moved = false;
+  try { strip.setPointerCapture(e.pointerId); } catch (_) { /* no capture, no harm */ }
+  strip.classList.add('dragging');
+});
+strip.addEventListener('pointermove', (e) => {
+  if (!sdrag.on) return;
+  const dx = e.clientX - sdrag.x0;
+  if (Math.abs(dx) > 3) sdrag.moved = true;
+  stripPan = sdrag.pan0 - dx * stripFtPerPx;   // drag right = look west
+});
+const sdragEnd = (e) => {
+  if (!sdrag.on) return;
+  sdrag.on = false; strip.classList.remove('dragging');
+  if (!sdrag.moved) stripPan = 0;   // a click: back to the level
+  e.stopPropagation();
+};
+strip.addEventListener('pointerup', sdragEnd);
+strip.addEventListener('pointercancel', sdragEnd);
+strip.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 function drawStrip() {
   const show = state && scene && (mode === 'play' || mode === 'launch' || mode === 'settle' || mode === 'result' || mode === 'paused');
   stripWrap.classList.toggle('show', !!show);
@@ -1111,13 +1152,16 @@ function drawStrip() {
   const ui = play.ui || 1;
   const ph = getComputedStyle(document.documentElement).getPropertyValue('--ph').trim() || '#6dff8e';
   const ink = 'rgba(236,255,240,0.94)', inkDim = 'rgba(236,255,240,0.5)', inkFaint = 'rgba(236,255,240,0.26)';
+  const YOU = '#ffe84a', YOU_EDGE = '#fff6b0';   // the ship, and only the ship: bright yellow
   const s = state.ship;
   const range = Core.levelRange(state);
   const CW = Core.CHUNK_W;
   let x0, x1;
   if (range) { x0 = Math.min(range[0] * CW - 600, s.x - 300); x1 = Math.max((range[1] + 1) * CW + 300, s.x + 300); }   // the level, and you are always on it
   else { x0 = s.x - 2.5 * CW; x1 = s.x + 2.5 * CW; }
-  const padL = 14, padR = 14, top = 14 * ui, bottom = H - 16 * ui;
+  x0 += stripPan; x1 += stripPan;   // the drag's offset
+  const padL = 14, padR = 14, top = 14 * ui, bottom = H - 26 * ui;   // room for FUEL + the items under a low pad (2026-10-24); the legend lives in the info pill
+  stripFtPerPx = (x1 - x0) / Math.max(1, W - padL - padR);
   const sx = (x) => padL + (x - x0) / (x1 - x0) * (W - padL - padR);
   // two height scales: the ground band (150–900 ft) gets the lower 55%, the sky above it the rest
   const gLo = 150, gHi = 900, skyHi = 2600;
@@ -1127,7 +1171,7 @@ function drawStrip() {
   const f = (px) => ((px + 2) * ui).toFixed(1) + 'px "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif';
   const blink = Math.floor(clock * 2) % 2 === 0;
   // the scale: a tick every 1,000 ft, a number at every chunk seam (range from the level's start)
-  c.strokeStyle = inkFaint; c.lineWidth = 1; c.fillStyle = inkFaint; c.font = '600 ' + f(9); c.textAlign = 'center'; c.textBaseline = 'top';
+  c.strokeStyle = inkFaint; c.lineWidth = 1; c.fillStyle = inkFaint; c.font = '400 ' + f(9); c.textAlign = 'center'; c.textBaseline = 'top';
   const origin = range ? range[0] * CW : state.spawnX;
   for (let x = Math.ceil(x0 / 1000) * 1000; x <= x1; x += 1000) {
     const px = sx(x);
@@ -1150,7 +1194,7 @@ function drawStrip() {
     for (const [x, w] of [[range[0] * CW, 'LEVEL ' + state.level + ' START'], [(range[1] + 1) * CW, 'END']]) {
       const px = sx(x);
       c.beginPath(); c.moveTo(px, top); c.lineTo(px, bottom); c.stroke();
-      c.fillStyle = inkDim; c.font = '700 ' + f(9); c.textAlign = x === range[0] * CW ? 'left' : 'right'; c.textBaseline = 'top';
+      c.fillStyle = inkDim; c.font = '400 ' + f(9); c.textAlign = x === range[0] * CW ? 'left' : 'right'; c.textBaseline = 'top';
       c.fillText(w, px + (x === range[0] * CW ? 4 : -4), top);
     }
     c.setLineDash([]);
@@ -1172,42 +1216,76 @@ function drawStrip() {
         // the relay tower: a mast with a lamp; the gate says RELAY
         c.strokeStyle = p.gate ? ph : inkDim; c.lineWidth = 1.2;
         c.beginPath(); c.moveTo(px1 + 3, py); c.lineTo(px1 + 3, py - 16 * ui); c.moveTo(px1, py - 12 * ui); c.lineTo(px1 + 6, py - 12 * ui); c.stroke();
-        c.fillStyle = p.gate ? ph : inkDim; c.font = '700 ' + f(8.5); c.textBaseline = 'bottom';
+        c.fillStyle = p.gate ? ph : inkDim; c.font = '400 ' + f(8.5); c.textBaseline = 'bottom';
         c.fillText(p.gate ? 'RELAY · GATE' : 'RELAY', px1 + 3, py - 18 * ui);
       }
       const its = [];
-      if (p.fuel) its.push('F');
+      // FUEL is its own word (2026-10-24, James: "i can't tell which pads have fuel from the strip") — the
+      // one-letter F was lost among the item tags; now the word, in the pad's green, semibold, a size up,
+      // on its own line under the pad, and the items on the line below it
       for (const it of (p.items || [])) its.push(ITEM_SHORT[it]);
-      if (its.length) { c.fillStyle = p.used ? inkFaint : (p.items && (p.items.indexOf('hull') >= 0 || p.items.indexOf('armor') >= 0) ? ink : ph); c.font = '700 ' + f(7.5); c.textBaseline = 'top'; c.fillText(its.join(' '), mx, py + 2); }
+      let iy = py + 2;
+      // the items first, the drop under them (his order, 2026-10-24: "vertically swap the drop with the HULL or LSR labels")
+      if (its.length) { c.fillStyle = p.used ? inkFaint : (p.items && (p.items.indexOf('hull') >= 0 || p.items.indexOf('armor') >= 0) ? ink : ph); c.font = '400 ' + f(7.5); c.textBaseline = 'top'; c.fillText(its.join(' '), mx, iy); iy += 11 * ui; }
+      if (p.fuel) {
+        // the TEARDROP (his pick over the word): a filled drop, point up, in the pad's green
+        const dh = 9 * ui, dw = dh * 0.62;
+        c.fillStyle = p.used ? inkFaint : ph;
+        c.beginPath();
+        c.moveTo(mx, iy);
+        c.bezierCurveTo(mx + dw * 0.1, iy + dh * 0.35, mx + dw / 2, iy + dh * 0.5, mx + dw / 2, iy + dh * 0.72);
+        c.arc(mx, iy + dh * 0.72, dw / 2, 0, Math.PI, false);
+        c.bezierCurveTo(mx - dw / 2, iy + dh * 0.5, mx - dw * 0.1, iy + dh * 0.35, mx, iy);
+        c.closePath(); c.fill();
+      }
     }
-    // the hostiles: a blinking square with the kind word; dead = dim with an X; the base wide
+  }
+  // THE TARGETS (2026-10-24, James: "i need to see the targets shown on the strip at the bottom. i
+  // wouldn't be undertaking this mission with no clue what my objectives are"): every hostile of the
+  // level is on the strip from the first second, drawn LAST and in RED — the one red thing on the
+  // strip — numbered west to east to match the sitrep's boxes, raised above the pad tags on a
+  // hairline down to the ground, big enough to read; the blink never dims below 70%. Dead = dim with an X.
+  // (his read the same night: "still too much red" — only the SQUARE is red; the number + tag and the hairline
+  // are the strip's white ink, the square a touch smaller, the SAM arc back to its faint pink)
+  const RED = '#ff5c7a', RED_DIM = 'rgba(255,92,122,0.7)', RED_FAINT = 'rgba(255,92,122,0.35)';
+  const tlist = Core.levelTargets(state);
+  const tnum = {};
+  if (tlist) tlist.forEach((t, i) => { tnum[t.sid] = i + 1; });
+  for (let k = kA; k <= kB; k++) {
+    const ch = Core.getChunk(state, k);
     for (const st of ch.structures) {
       if (st.cls === 'civ') continue;
       const cx = (st.x0 + st.x1) / 2;
       if (cx < x0 || cx > x1) continue;
-      const px = sx(cx), py = sy(st.y) - 6;
-      const tag = globalThis.LunarStructures.TAGS[st.id] || st.name;
+      const px = sx(cx), gy = sy(st.y), py = gy - 22 * ui;
+      const tag = (tnum[st.sid] ? tnum[st.sid] + ' ' : '') + (globalThis.LunarStructures.TAGS[st.id] || st.name);
       const isT = st.sid === target || st.sid === hover;
       if (!st.alive) {
-        c.strokeStyle = inkFaint; c.lineWidth = 1;
-        c.strokeRect(px - 3, py - 3, 6, 6);
-        c.beginPath(); c.moveTo(px - 4, py - 4); c.lineTo(px + 4, py + 4); c.moveTo(px + 4, py - 4); c.lineTo(px - 4, py + 4); c.stroke();
-        c.fillStyle = inkFaint; c.font = '700 ' + f(7.5); c.textBaseline = 'bottom'; c.fillText(tag, px, py - 5);
+        c.strokeStyle = RED_FAINT; c.lineWidth = 1;
+        c.strokeRect(px - 4, py - 4, 8, 8);
+        c.beginPath(); c.moveTo(px - 5, py - 5); c.lineTo(px + 5, py + 5); c.moveTo(px + 5, py - 5); c.lineTo(px - 5, py + 5); c.stroke();
+        c.fillStyle = inkFaint; c.font = '400 ' + f(9); c.textBaseline = 'bottom'; c.fillText(tag, px, py - 6);
         continue;
       }
       // the SAM reach: a faint arc for a launcher (doubled by a radar in its chunk)
       if (Core.isLauncher ? Core.isLauncher(st) : (st.id === 'sam' || st.id === 'bunker' || st.id === 'base')) {
         const R = Core.samRange(state, st);
         c.strokeStyle = 'rgba(255,143,163,0.14)'; c.lineWidth = 1; c.setLineDash([2, 3]);
-        c.beginPath(); c.ellipse(px, sy(st.y), (sx(cx + R) - px), (sy(st.y) - sy(Math.min(skyHi, st.y + R))), 0, Math.PI, 0); c.stroke();
+        c.beginPath(); c.ellipse(px, gy, (sx(cx + R) - px), (gy - sy(Math.min(skyHi, st.y + R))), 0, Math.PI, 0); c.stroke();
         c.setLineDash([]);
       }
-      const on = blink || isT;
-      c.fillStyle = isT ? '#ffb457' : on ? ink : 'rgba(236,255,240,0.25)';
-      const sz = st.id === 'base' ? 5 : 3.5;
+      const col = isT ? '#ffb457' : (blink ? RED : RED_DIM);
+      // the hairline down to the ground
+      c.strokeStyle = isT ? 'rgba(255,180,87,0.6)' : inkDim; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(px, py + 5); c.lineTo(px, gy); c.stroke();
+      const sz = st.id === 'base' ? 5.5 : 4;
+      c.save();
+      c.shadowColor = isT ? 'rgba(255,180,87,0.8)' : 'rgba(255,92,122,0.8)'; c.shadowBlur = 8;
+      c.fillStyle = col;
       c.fillRect(px - sz, py - sz, sz * 2, sz * 2);
-      c.fillStyle = isT ? '#ffb457' : ink; c.font = '700 ' + f(8); c.textBaseline = 'bottom';
-      c.fillText(tag, px, py - sz - 2);
+      c.restore();
+      c.fillStyle = isT ? '#ffb457' : ink; c.font = '600 ' + f(9.5); c.textBaseline = 'bottom';
+      c.fillText(tag, px, py - sz - 3);
     }
   }
   // the lander: a bright caret, a hairline down to the ground, the altitude beside it
@@ -1225,24 +1303,27 @@ function drawStrip() {
         c.strokeStyle = 'rgba(236,255,240,0.35)'; c.lineWidth = 1; c.setLineDash([2, 2]);
         c.beginPath(); c.moveTo(px, py + 5); c.lineTo(px, gy); c.stroke(); c.setLineDash([]);
       }
-      c.fillStyle = '#fff'; c.strokeStyle = ph; c.lineWidth = 1.5;
-      // the caret tilts with the ship (2026-10-16, James: "match the two angles"); +angle = nose to the right, same as the world
+      // the caret: bright yellow with a glow, the one thing on the strip that is not the green
+      // (2026-10-16, James: "noticeably more yellow. And bright."); it tilts with the ship, +angle = nose to the right
       c.save(); c.translate(px, py); c.rotate(s.angle || 0);
-      c.beginPath(); c.moveTo(0, -5); c.lineTo(5, 4); c.lineTo(0, 1.5); c.lineTo(-5, 4); c.closePath(); c.fill(); c.stroke();
+      c.shadowColor = 'rgba(255, 232, 80, 0.9)'; c.shadowBlur = 10;
+      c.fillStyle = YOU; c.strokeStyle = YOU_EDGE; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(0, -6); c.lineTo(6, 5); c.lineTo(0, 2); c.lineTo(-6, 5); c.closePath(); c.fill(); c.stroke();
       c.restore();
-      c.fillStyle = ink; c.font = '600 ' + f(9); c.textAlign = 'left'; c.textBaseline = 'middle';
+      c.fillStyle = ink; c.font = '400 ' + f(9); c.textAlign = 'left'; c.textBaseline = 'middle';
       if (!down) c.fillText(Math.round(alt) + ' FT', px + 8, py);
       c.textAlign = 'center';
     } else {
       // off the strip (free flight scrolls, but a level's ship can wander off): an arrow at the edge
-      c.fillStyle = ink; c.font = '700 ' + f(11); c.textBaseline = 'middle'; c.textAlign = px < padL ? 'left' : 'right';
+      c.fillStyle = YOU; c.font = '700 ' + f(11); c.textBaseline = 'middle'; c.textAlign = px < padL ? 'left' : 'right';
       c.fillText(px < padL ? '◀ YOU' : 'YOU ▶', px < padL ? padL : W - padR, (top + bottom) / 2);
       c.textAlign = 'center';
     }
   }
-  // the legend, bottom-left, tiny but readable
-  c.fillStyle = inkDim; c.font = '700 ' + f(7.5); c.textAlign = 'left'; c.textBaseline = 'top';
-  c.fillText((range ? 'THE LEVEL, WEST TO EAST' : 'FIVE CHUNKS AROUND YOU') + ' · BLINKING SQUARE = HOSTILE · X = DOWN · F FUEL · MSL LSR CHF AMMO · HULL ARM REPAIRS · DASHED ARC = SAM REACH', padL, bottom + 6 * ui);
+  // the legend lives in the info pill's hover card above the strip (2026-10-16, James: the
+  // line along the bottom "is getting in the way"); only its first line follows the mode
+  const si = $('si-what');
+  if (si) { const w = range ? 'THE LEVEL, WEST TO EAST' : 'FIVE CHUNKS AROUND YOU'; if (si.textContent !== w) si.textContent = w; }
 }
 function frame(t) {
   // clamped both ways: a clock that steps backwards (a resumed tab, a

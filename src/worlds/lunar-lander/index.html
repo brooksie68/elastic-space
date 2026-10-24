@@ -18,9 +18,10 @@
       --glass-edge: rgba(109, 255, 142, 0.16);
       --sans: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
       --ui: 1;                       /* the text-size dial (PLAY → text size): every instrument scales off it */
-      --strip-h: 7.9rem;             /* the strip map's height at the bottom */
+      --strip-h: 8.9rem;             /* the strip map's height at the bottom */
       --amber: #ffb457;
       --pink: #ff8fa3;
+      --red: #ff5c7a;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; }
@@ -42,12 +43,12 @@
          text dial on top — James: "all the icons and lettering is too tiny"); it never sits over the sitrep */
       font-size: calc(0.95rem * var(--ui));
       pointer-events: none;
-      position: fixed; top: 0.9rem; left: calc(22rem * var(--ui) + (100vw - 22rem * var(--ui)) / 2); transform: translateX(-50%); z-index: 10;
+      position: fixed; top: 0.6rem; left: calc(22rem * var(--ui) + (100vw - 22rem * var(--ui)) / 2); transform: translateX(-50%); z-index: 10;
       width: min(1400px, calc(100vw - 23rem * var(--ui)));
-      display: flex; flex-direction: column; gap: 0.5rem;
+      display: flex; flex-direction: column; gap: 0.3rem;   /* 2026-10-16 COMPACT: less padding and gap everywhere, the type untouched (James) */
       transition: opacity 500ms ease;
     }
-    .row { display: flex; gap: 0.5em; align-items: stretch; }
+    .row { display: flex; gap: 0.35em; align-items: stretch; }
     .panel {
       background: var(--glass);
       border: 1px solid var(--glass-edge);
@@ -55,7 +56,7 @@
       backdrop-filter: blur(16px) saturate(1.2);
       -webkit-backdrop-filter: blur(16px) saturate(1.2);
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-      padding: 0.7em 1em 0.75em;
+      padding: 0.35em 0.8em 0.4em;
       display: flex; flex-direction: column; justify-content: center;
     }
     .lbl {
@@ -70,19 +71,19 @@
     .unit { font-size: 0.644rem; font-weight: 600; letter-spacing: 0.18em; color: var(--ink-dim); margin-left: 0.4em; }
 
     /* flight: altitude + the two speeds */
-    #hud-left { flex: 1.5; flex-direction: row; gap: 1.6em; align-items: center; }
-    #alt .num { font-size: clamp(2.2em, 4.48vh, 3.6em); font-weight: 200; margin-top: 0.2em; }
+    #hud-left { flex: 1.5; flex-direction: row; gap: 1.2em; align-items: center; }
+    #alt .num { font-size: clamp(2.2em, 4.48vh, 3.6em); font-weight: 200; margin-top: 0.05em; }
     #alt .num.close { color: var(--ph); text-shadow: 0 0 22px var(--ph-faint); }
-    .speeds { display: flex; gap: 1.6em; }
-    .speed .num { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
+    .speeds { display: flex; gap: 1.2em; }
+    .speed .num { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.1em; }
     .speed .arrow { display: inline-block; width: 1.1em; font-size: 0.862em; color: var(--ink-dim); }
     .speed.hot .num { color: var(--ink); animation: hot 700ms ease-in-out infinite alternate; }
     .speed.ok .num { color: var(--ph); }
     @keyframes hot { from { opacity: 1; } to { opacity: 0.45; } }
 
     /* attitude */
-    #attitude { align-items: center; gap: 0.15em; padding: 0.45em 0.9em; }
-    #att-svg { width: min(9.6vh, 86px); height: min(9.6vh, 86px); overflow: visible; }
+    #attitude { align-items: center; gap: 0.05em; padding: 0.25em 0.7em; }
+    #att-svg { width: min(7.6vh, 68px); height: min(7.6vh, 68px); overflow: visible; }
     /* a stylized lander that points the way the real one points; the plumb line
        and the lander go green when you are level enough for a perfect */
     /* --lv 0..1 = how level: 0 at 5° and beyond, 1 at 0° (set each frame); the green tints in continuously */
@@ -95,8 +96,8 @@
     #tilt-val { color: color-mix(in srgb, var(--ph) calc(var(--lv, 0) * 100%), var(--ink)); }
 
     /* thrust meter — a reading, not a control */
-    #thrust { align-items: center; gap: 0.45em; min-width: 5.2em; }
-    #thrust-track { position: relative; width: 6px; flex: 1; min-height: 3.4em; border-radius: 3px; background: rgba(255, 255, 255, 0.1); }
+    #thrust { align-items: center; gap: 0.3em; min-width: 4.8em; }
+    #thrust-track { position: relative; width: 6px; flex: 1; min-height: 2.4em; border-radius: 3px; background: rgba(255, 255, 255, 0.1); }
     #thrust-fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; border-radius: 3px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); }
     #thrust-trim { position: absolute; left: -7px; right: -7px; height: 2px; bottom: 0; background: var(--ink); opacity: 0; transition: opacity 200ms ease; }
     #thrust-trim.on { opacity: 1; }
@@ -104,8 +105,8 @@
 
     /* score + flight meta */
     #hud-right { flex: 1; text-align: right; align-items: flex-end; }
-    #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.2em; }
-    #meta { white-space: nowrap; margin-top: 0.55em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
+    #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.05em; }
+    #meta { white-space: nowrap; margin-top: 0.25em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
     #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-dim); }
 
     /* landing tech — five drawings; dim until earned */
@@ -189,7 +190,12 @@
     a.exit { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 
     /* FUEL — the critical one: its own large bar under everything, with a scale */
-    #fuel { flex-direction: row; align-items: center; gap: 1.2em; padding: 0.8em 1.2em; }
+    #fuel { flex: 1; flex-direction: row; align-items: center; gap: 1em; padding: 0.4em 1em; }
+    /* HULL + ARMOR in the console beside the fuel (2026-10-16, James: "move the Hull and Armor meters to the top HUD") */
+    #cond-panel { flex: 0 0 auto; min-width: 17em; padding: 0.4em 1em; justify-content: center; }
+    #cond-panel .cond { grid-template-columns: 4.2em 1fr 3.2em; gap: 0.25em 0.6em; }
+    #cond-panel .cond .lbl { font-size: 0.851em; letter-spacing: 0.22em; }
+    #cond-panel .cond .n { font-size: 1.15em; }
     #fuel .lbl { font-size: 1.035em; letter-spacing: 0.3em; }
     #fuel .num { font-size: clamp(1.6em, 3.20vh, 2.4em); font-weight: 300; min-width: 4ch; text-align: right; }
     #fuel-track {
@@ -330,7 +336,7 @@
 
     /* ---- chrome ------------------------------------------------------------------ */
     #hint {
-      position: fixed; bottom: calc(var(--strip-h) + 1.1rem); left: 1.6rem; z-index: 10;
+      position: fixed; bottom: calc(var(--strip-h) + 3.4rem); left: 1.6rem; z-index: 10;   /* 2026-10-16: a row up, clear of the pill + configuration button */
       font-size: 0.667rem; font-weight: 600; letter-spacing: 0.2em; color: var(--ink-faint);
       transition: opacity 800ms ease; white-space: nowrap;
     }
@@ -351,6 +357,12 @@
     /* ---- THE SITREP (2026-09-12, James: "a little sitrep panel... 'Mission One: 3 targets, you've taken out 1' in HUD info") ---- */
     #sitrep { position: fixed; left: 1rem; top: 0.9rem; z-index: 10; width: calc(19rem * var(--ui)); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
     #sitrep.show { display: block; }
+    #sitrep .panel { pointer-events: auto; cursor: pointer; }   /* click: open / close (2026-10-16) */
+    #sitrep.pill .panel { padding: 0.45em 0.9em 0.5em; display: inline-flex; flex-direction: row; align-items: baseline; gap: 0.8em; border-radius: 999px; }
+    #sitrep.pill .panel > * { display: none; }
+    #sitrep.pill #sr-level { display: block; font-size: 1.1em; }
+    #sitrep.pill #sr-count { display: block; }
+    #sitrep.pill .panel::after { content: '\25BE'; color: var(--ink-dim); font-size: 0.8em; }
     body.paused #sitrep, body.paused #strip-wrap { z-index: 12; }   /* 2026-10-16 James: the level info and the strip map stay readable over the pause veil */
     #sitrep .panel { padding: 0.8em 1em 0.9em; gap: 0.55em; }
     #sr-level { font-size: 1.6em; font-weight: 200; letter-spacing: 0.3em; color: var(--ink); line-height: 1; }
@@ -393,7 +405,21 @@
 
     /* ---- THE STRIP MAP (2026-09-12: "Lander missions need a map, too. like a strip. with objectives indicated") ---- */
     #strip-wrap { position: fixed; left: 1rem; right: 1rem; bottom: 0.6rem; height: var(--strip-h); z-index: 9; pointer-events: none; display: none; }
+    #strip { pointer-events: auto; cursor: grab; touch-action: none; }   /* 2026-10-16: drag to look along it; a click recentres */
+    #strip.dragging { cursor: grabbing; }
     #strip-wrap.show { display: block; }
+    /* THE INFO PILL (2026-10-16): a small ⓘ above the strip's left end; hovering it shows the strip's legend */
+    #strip-info { position: fixed; left: 1.6rem; bottom: calc(var(--strip-h) + 1rem); z-index: 10; display: none; pointer-events: auto; }
+    #strip-wrap.show ~ #strip-info { display: block; }
+    #strip-info .pill { width: 1.5rem; height: 1.5rem; border-radius: 999px; border: 1px solid var(--glass-edge); background: rgba(4, 10, 6, 0.62); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      color: var(--ink-dim); font: 700 0.8rem/1.5rem var(--sans); text-align: center; cursor: default; user-select: none; transition: color 160ms ease, border-color 160ms ease; }
+    #strip-info:hover .pill { color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent); }
+    #strip-info .card { position: absolute; left: 0; bottom: calc(100% + 0.5rem); width: max-content; max-width: min(22rem, calc(100vw - 3rem)); padding: 0.7rem 0.9rem 0.75rem;
+      background: rgba(4, 10, 6, 0.94); border: 1px solid var(--glass-edge); border-radius: 12px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+      font-size: calc(0.8rem * var(--ui)); line-height: 1.7; letter-spacing: 0.08em; color: var(--ink); opacity: 0; visibility: hidden; transition: opacity 140ms ease; }
+    #strip-info:hover .card { opacity: 1; visibility: visible; }
+    #strip-info .card b { font-weight: 700; letter-spacing: 0.22em; color: var(--ph); display: block; margin-bottom: 0.2em; }
+    #strip-info .card span { display: block; white-space: nowrap; }
     #strip { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 12px; background: rgba(4, 10, 6, 0.62); border: 1px solid var(--glass-edge); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     #controls button, #tuner-toggle {
       background: var(--glass); border: 1px solid var(--glass-edge); border-radius: 999px;
@@ -408,13 +434,13 @@
       color: var(--ink); border-color: color-mix(in srgb, var(--ph) 55%, transparent);
       background: color-mix(in srgb, var(--ph) 14%, transparent);
     }
-    #tuner-toggle { position: fixed; bottom: 2.9rem; left: 1.6rem; z-index: 12; }
+    #tuner-toggle { position: fixed; bottom: calc(var(--strip-h) + 1rem); left: 3.6rem; z-index: 12; }   /* 2026-10-16: above the strip, right of the info pill (it sat on the strip) */
 
     /* ---- tuner --------------------------------------------------------------------- */
     #tuner {
-      position: fixed; bottom: 5.4rem; left: 1.6rem; z-index: 12;
+      position: fixed; bottom: calc(var(--strip-h) + 3.6rem); left: 1.6rem; z-index: 12;
       width: min(320px, calc(100vw - 2rem));
-      max-height: calc(100vh - 7rem); overflow-y: auto;
+      max-height: calc(100vh - var(--strip-h) - 5rem); overflow-y: auto;
       background: rgba(4, 9, 6, 0.9);
       border: 1px solid var(--glass-edge); border-radius: 16px;
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -493,16 +519,22 @@
       <div id="sr-targets"></div>
       <div id="sr-count"><b>0</b>OF 0 TARGETS DOWN</div>
       <div id="sr-steps"></div>
-      <div class="sr-h">CONDITION</div>
-      <div class="cond">
-        <div class="lbl">Hull</div><div class="bar" id="sr-hull"><i></i></div><div class="n" id="sr-hull-n">100</div>
-        <div class="lbl">Armor</div><div class="bar armor" id="sr-armor"><i></i></div><div class="n" id="sr-armor-n">0</div>
-      </div>
+      <div class="sr-h">SYSTEMS</div>
       <div id="sr-systems"></div>
       <div id="sr-target"><div class="none">NO TARGET<br />SHIFT CYCLES · RIGHT-CLICK FIRES</div></div>
     </div>
   </div>
   <div id="strip-wrap" aria-label="the level map"><canvas id="strip"></canvas></div>
+  <div id="strip-info" aria-label="what the level map shows">
+    <div class="pill" aria-hidden="true">i</div>
+    <div class="card" role="tooltip">
+      <b id="si-what">THE LEVEL, WEST TO EAST</b>
+      <span>RED NUMBERED SQUARE — a target (the sitrep's numbers) · X — down</span>
+      <span>DROP — fuel on the pad · MSL LSR CHF — ammo</span>
+      <span>HULL ARM — repairs · DASHED ARC — SAM reach</span>
+      <span>▲ — you; it tilts as you tilt</span>
+    </div>
+  </div>
   <div class="ship-hud" id="shud-l" aria-hidden="true">
     <div class="row"><span class="v" id="sh-alt">0</span><span class="u">FT</span></div>
     <div class="row"><span class="v" id="sh-thr">0</span><span class="u">%</span></div>
@@ -571,6 +603,7 @@
     <div id="tech-card" aria-hidden="true">
       <div id="tc-name"></div><div id="tc-status"></div><div id="tc-how"></div>
     </div>
+    <div class="row" id="fuel-row">
     <div class="panel" id="fuel">
       <div class="lbl">Fuel</div>
       <div id="fuel-track">
@@ -583,6 +616,13 @@
         </div>
       </div>
       <div class="num" id="v-fuel">0750</div>
+    </div>
+    <div class="panel" id="cond-panel" title="hull takes the hits once the armor is gone; repairs and armor come from pads">
+      <div class="cond">
+        <div class="lbl">Hull</div><div class="bar" id="sr-hull"><i></i></div><div class="n" id="sr-hull-n">100</div>
+        <div class="lbl">Armor</div><div class="bar armor" id="sr-armor"><i></i></div><div class="n" id="sr-armor-n">0</div>
+      </div>
+    </div>
     </div>
   </div>
 
@@ -743,10 +783,10 @@
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
   <script src="structures.js?v=4"></script>
-  <script src="game-core.js?v=11"></script>
+  <script src="game-core.js?v=12"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=14"></script>
+  <script type="module" src="game.js?v=29"></script>
 </body>
 </html>

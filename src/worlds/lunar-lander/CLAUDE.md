@@ -117,6 +117,15 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 
 ## START HERE (next session)
 
+**2026-10-24: THE TARGETS ON THE STRIP** — every target of the level is a numbered RED marker on the strip
+map from the first second (the sitrep's boxes carry the same numbers); see changelog 2026-10-24. STANDING
+RULE (James): the objectives are always shown from the start — "i wouldn't be undertaking this mission with
+no clue what my objectives are." An AMBUSH / SURPRISE ATTACK (targets that are not on the map until they
+fire) is a design for a LATER level, his go first; never on level 1. Not built.
+Same day: level 1 deals 15% more pads and 1.5× fuel per pad (`padBoost` / `fuelMult` on `LEVELS[1]`; levels 2–3 have no
+dials set). LEVEL COUNT, still open: the 09-06 note says five lander levels + a boss, the 09-11 built plan is "3 and 3 and
+out" (three lander, three tank) — ask him which stands before adding levels.
+
 **2026-09-12: THE SITREP + THE STRIP + THE CONDITION + THE SHOOTERS + SHIFT/RIGHT-CLICK, BUILT ON
 HIS APPROVED PLAN, AWAITING HIS FLIGHT** — read `changelog.md` 2026-09-12 first (and the tank's).
 The short form: a SITREP panel top left (level, one box per target with its kind word, N OF M

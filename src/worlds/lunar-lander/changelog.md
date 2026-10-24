@@ -2,6 +2,62 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-10-24 (THE TARGETS ON THE STRIP) — Claude
+
+James: "i need to see the targets shown on the strip at the bottom. i wouldn't be undertaking this mission
+with no clue what my objectives are. in a later level we can have a surprise attack / ambush. not at first."
+The hostiles WERE drawn on the strip from the first second, but in the same green-white ink as the pads, as
+3.5 px squares that blinked down to 25%, with their tags in the same row as the pad item tags — they vanished
+into the clutter. Now (`drawStrip`, game.js): every target of the level is drawn LAST and in RED (#ff5c7a,
+the one red thing on the strip), a 10 px glowing square raised 22 px above the ground on a hairline down to it,
+NUMBERED WEST TO EAST ("1 SAM", "2 RADAR"…) in semibold type a step bigger, the blink never below 70%; the
+sitrep's target boxes carry the same numbers; a dead one is a dim red X; the SAM reach arc is red too. The
+info pill's legend says RED NUMBERED SQUARE. Shell tag 22, smoke page regenerated, sim 321,057 green,
+pane-checked at 1920×1080. Standing rule from him: the objectives are always known from the start; an
+ambush / surprise attack is a later-level design, never level 1 (recorded in CLAUDE.md, not built).
+Then his read: "i see the targets and they have white squares" — the IN-SCENE blinker (the 4 px white line-batch square over
+every hostile, 2026-09-12) is gone; each hostile's DOM label (`.host-label`) now leads with a RED square (`.sq`, CSS blink
+500 ms, never below 55%) and the strip map's number: "■ 1 SAM SITE 2X". Red = target, in the scene, on the strip, in the
+sitrep. Hostiles outside the level's stretch keep the square but carry no number. Shell tag 23, renderer tag 11.
+HIS READ: "maybe i didnt have the refreshed version before? anyways now its way too much. what you first described
+sounded good. now youve overcompensated" — REVERTED: the scene's small white blinker is back, the label is the plain
+name + X again, no red square or number in the scene. The strip map's red numbered markers (the first round) stand.
+Shell tag 24, renderer tag 12.
+Then "still too much red. make only the squares red, make the rest white, the labels and the little connectors and reduce
+the size of the squares a small amount" — done on the strip: the square alone is red (8 px, the base 11), the number + tag
+and the hairline in the strip's white ink, the SAM arc back to faint pink. Shell tag 25.
+
+THE PAD STAYS ABOVE THE STRIP. James: when the approach zoom kicks in "there's a period of a few seconds, and sometimes
+it's at sort of a critical time when you actually can't see the landing pad... a rude awakening when the strip finally gets
+out of the way. You're closer than you thought, and you have too much velocity" — and, corrected: do NOT speed the zoom up,
+"the view has to always be able to see the platform." The cause (`_updateCamera`, render3d.js): the camera centre eases toward
+its zoomed target over 0.9 s, and through that ease the ground sat at the bottom of the frame, behind the strip map. Now a
+hard floor every frame while the approach zoom is on: the lowest ground under the ship (±150 ft) is never drawn lower than
+the strip's top edge plus 5% of the frame (`view.stripFrac`, measured from the DOM by the shell). The zoom's pace is
+untouched; only the centre is held up. Measured headless at 1920×1080: the ground holds 54 px above the strip through the
+whole zoom (it used to fall behind it), the ship never above the frame. Shell tag 26, renderer tag 13.
+
+FUEL ON THE STRIP. James: "i can't tell which pads have fuel from the strip" — the one-letter F sat in the item row among
+MSL / LSR / CHF / HULL / ARM. Now a fuel pad says FUEL in the pad's green, semibold, a size up, on its own line under the pad
+(the items on the line below); the strip 7.9 → 8.9 rem tall and the ground band's bottom margin 9 → 26 px so two lines fit
+under the lowest pad; the legend says FUEL. Shell tag 27.
+Then his pick: "actually i was thinking the teardrop would be the thing" — the word is gone; a filled green TEARDROP (9 px tall,
+point up) under the pad marks fuel, the items on the line below; the legend says DROP. Shell tag 28.
+Then "vertically swap the drop with the HULL or LSR or whatever labels" — the items line sits right under the pad, the drop
+under it. Shell tag 29.
+
+FUEL FORGIVENESS, LEVEL 1. James: "the fuel is a little unforgiving in the first round. make the number of pads 15% higher
+and the amount of fuel on each pad 50% more." Two dials on the level table (`LEVELS[1]`, game-core.js): `padBoost` 1.15 —
+every chunk of the level rolls one extra pad (a random tier) at (boost − 1) × the deal's count, so the average lands at
++15% (measured: 3.6 → 4.17 pads per chunk over 300 seeds); `fuelMult` 1.5 — a fuel pad refills 225 (perfect 300) through
+`fuelMult(state)`. Levels 2–3 unchanged (no dials set). Sim: the pad ceiling 5 → 6, the deal-count and jackpot checks allow
+level 1's extra pad, the fuel checks read the multiplier, the comm-tower crash test flies 40 ft over the lane (a new layout
+caught it on terrain) — 319,777 green. Core tag 12.
+
+HOW MANY LEVELS (his question, answered from the notes): 2026-09-06 agreed FIVE lander levels + a boss, then the tank;
+2026-09-11 the plan he approved and that is built is "3 and 3 and out" — three lander levels (the base ends level 3),
+climb out, three tank levels. The built game is the 3 and 3; his call which stands.
+
 ## 2026-10-16 (THE GROUND STAYS IN FRAME) — Claude
 
 James: "when I get close to landing and the auto zoom happens, very often it zooms in a bit too far...
@@ -22,7 +78,19 @@ James, back after a month: "sitrep strip is cool but the type is too small. brin
 on the strip map (scale numbers, pad names and multipliers, item tags, hostile tags, the level name) is
 drawn through one font helper in `drawStrip` (game.js); it now adds 1 px before the text-size dial scales
 it. His read of +1: "still too tiny" → +2 (7.5 → 9.5, 9 → 11, 11 → 13 at dial 1) and the strip 7.2 → 7.9 rem tall
-to hold it (a +3 pass overshot; he pulled it back one). The sitrep panel's type is untouched; his read of +2: "this is fine." Then: "when I pause, keep the level info panel
+to hold it (a +3 pass overshot; he pulled it back one). THE INFO PILL: the legend line along the strip's bottom ("the level, west to east · blinking square = hostile…")
+"is getting in the way" — gone from the canvas (the strip's bottom margin shrinks to match); a small ⓘ pill sits
+above the strip's left end and hovering it shows the legend as a card in readable lines (`#strip-info`; the first
+line still follows the mode: the level / five chunks around you). THE STRIP'S LABELS at regular weight (his read: "look like bold or semi-bold"; only the YOU edge arrow stays bold).
+THE CONSOLE COMPACTED: padding and gaps cut everywhere (panel 0.7/1 -> 0.35/0.8 em, rows and the column gap, the
+attitude drawing a step smaller, the thrust track shorter), no font size touched ("don't kill the font sizes").
+HULL + ARMOR moved out of the sitrep into the console, a panel beside the fuel bar (same ids, same bars); the
+sitrep keeps the systems list under a SYSTEMS head. THE SITREP FOLDS: open at the start of every level / free
+flight, then after 5 s of play (`SR_OPEN_FOR`) it folds to a PILL at the top left (level + N OF M, a small
+arrow); click the panel or the pill to open / close by hand (that stops the auto-fold for the level). DRAG THE STRIP: click-hold-drag on the strip looks west / east along it (an offset in feet, `stripPan`); a plain
+click snaps back to the level. THE CARET IS YELLOW: bright yellow (#ffe84a) with a soft glow, a touch bigger, the
+only thing on the strip that is not the green (his words: "noticeably more yellow. And bright." — not pink or purple);
+the ◀ YOU edge arrow matches. THE CORNER laid out with it: the configuration button (it sat ON the strip — his first note of the night's screenshot ask) now sits above the strip to the right of the pill, its panel opens above that, and the keys hint moved a row up. The sitrep panel's type is untouched; his read of +2: "this is fine." Then: "when I pause, keep the level info panel
 visible" — the sitrep was rendered while paused but sat under the pause veil (z 10 vs 11), dimmed and blurred;
 while paused it now sits above the veil (z 12); then "also leave the bottom strip visible" — the strip map too. Then: the strip's ship caret TILTS with the ship (same angle, nose right = right). Then "keep showing the little icon even when it's landed": the caret was drawn but sat on the pad's white N× label and vanished into it — his call: on the ground the caret REPLACES the pad's N× (the reward is already paid) and sits right on the pad line, no ring, no hairline, no readout; in the air as before.
 

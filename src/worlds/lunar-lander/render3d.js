@@ -1104,6 +1104,19 @@ export class LanderScene {
     this.cx += (tx - this.cx) * (t > 0.02 ? k : 1);
     if (t > 0.02) this.cy += (ty - this.cy) * k;
     else { this.cx = bv.cx; this.cy += (bv.cy + lift - this.cy) * k; }
+    // THE PAD STAYS ABOVE THE STRIP (2026-10-24, James: during the zoom-in "there's a period of a few
+    // seconds... when you actually can't see the landing pad... a rude awakening when the strip finally
+    // gets out of the way"): the eased centre lagged its target and the ground sat at the bottom of
+    // the frame, behind the strip map. A hard floor every frame while the approach zoom is on — the
+    // lowest ground under the ship is never drawn lower than the strip's top edge plus a margin. The
+    // zoom's pace is untouched; only the centre is held up.
+    if (view && view.ship && view.zoomOn && t > 0.02) {
+      const s = view.ship;
+      const gy = Math.min(this._groundAt(s.x), this._groundAt(s.x - 150), this._groundAt(s.x + 150));
+      const floorFrac = (view.stripFrac || 0) + 0.05;
+      const maxCy = gy + vh * (0.5 - floorFrac);
+      if (this.cy > maxCy) this.cy = maxCy;
+    }
     this._syncStatic();
     this.bankNow += (bankT - this.bankNow) * (1 - Math.exp(-dt / BANK_TAU));
     const cam = this.camera;

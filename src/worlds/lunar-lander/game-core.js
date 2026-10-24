@@ -150,7 +150,9 @@
   // 2026-09-12: `lasers` laser turrets and `pellets` pellet guns are dealt on top (they shoot back);
   // `targets` counts them — 4 / 6 / 9 now.
   const LEVELS = [null,
-    { name: 'LEVEL 1', chunks: [1, 4],   targets: 4, sams: 1, hard: 0, lasers: 0, pellets: 1, samReload: 9, wide: 1 },
+    // padBoost / fuelMult (2026-10-24, James: "the fuel is a little unforgiving in the first round"): level 1 deals
+    // 15% more pads (an extra pad rolled per chunk at (boost − 1) × the deal's count) and every fuel pad refills 1.5×
+    { name: 'LEVEL 1', chunks: [1, 4],   targets: 4, sams: 1, hard: 0, lasers: 0, pellets: 1, samReload: 9, wide: 1, padBoost: 1.15, fuelMult: 1.5 },
     { name: 'LEVEL 2', chunks: [5, 9],   targets: 6, sams: 2, hard: 1, lasers: 1, pellets: 1, samReload: 7, wide: 1 },
     { name: 'LEVEL 3', chunks: [10, 17], targets: 9, sams: 3, hard: 1, lasers: 2, pellets: 2, samReload: 5, wide: 0.75, big: true, base: true },
   ];
@@ -419,6 +421,8 @@
       // jackpot: two 5X pads (one of them will be fuel); a 3X to make the approach
       tiers.push(TIER_BY_MULT[5], TIER_BY_MULT[5], TIER_BY_MULT[3]);
     }
+    // the level's pad boost: one more pad, rolled so the average lands at boost × the deal (level 1: +15%)
+    if (plan && LEVELS[plan.level] && LEVELS[plan.level].padBoost > 1 && rng() < (LEVELS[plan.level].padBoost - 1) * tiers.length) tiers.push(PAD_TIERS[Math.floor(rng() * PAD_TIERS.length)]);
     for (let i2 = tiers.length - 1; i2 > 0; i2--) {
       const j = Math.floor(rng() * (i2 + 1));
       const t = tiers[i2]; tiers[i2] = tiers[j]; tiers[j] = t;
@@ -774,6 +778,8 @@
     return L && !state.free ? L.chunks : null;
   }
   function levelDef(state) { return LEVELS[state.level] || null; }
+  // how much a fuel pad refills on this level, as a multiple (level 1: 1.5)
+  function fuelMult(state) { const L = LEVELS[state.level]; return L && L.fuelMult ? L.fuelMult : 1; }
   // Count the level's hostiles (the goal) — the stretch exists from the start
   // so the count is exact, and the gate pad is dealt by the plan.
   function countLevel(state) {
@@ -1527,7 +1533,7 @@
       result.points = pad.used ? 0 : grade.points * pad.mult;   // a pad pays once per life
       result.fuelBonus = grade.fuel;
       if (pad.fuel) {
-        result.fuelPad = grade.name === 'perfect' ? FUEL_PAD_PERFECT : FUEL_PAD_REFILL;
+        result.fuelPad = Math.round((grade.name === 'perfect' ? FUEL_PAD_PERFECT : FUEL_PAD_REFILL) * fuelMult(state));
         result.fuelBonus += result.fuelPad;
       }
       // the pad's ITEMS, every landing, like fuel; each capped. `supply` = the first weapon item.
@@ -1717,7 +1723,7 @@
     MISSILE_SPEED: MISSILE_SPEED, TARGET_POINTS: TARGET_POINTS, CIVILIAN_PENALTY: CIVILIAN_PENALTY,
     LEVEL_CHUNKS: LEVEL_CHUNKS, RIDGE_ALT: RIDGE_ALT, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
     LEVELS: LEVELS, CAMPAIGN_LEVELS: CAMPAIGN_LEVELS, BASE: BASE, SAM: SAM, CHAFF_REACH: CHAFF_REACH, CHAFF_ODDS: CHAFF_ODDS, RADAR_RANGE_MULT: RADAR_RANGE_MULT, SUPPLY_CYCLE: SUPPLY_CYCLE,
-    levelOf: levelOf, levelPlan: levelPlan, planFor: planFor, levelRange: levelRange, levelDef: levelDef, countLevel: countLevel, advanceLevel: advanceLevel,
+    levelOf: levelOf, levelPlan: levelPlan, fuelMult: fuelMult, planFor: planFor, levelRange: levelRange, levelDef: levelDef, countLevel: countLevel, advanceLevel: advanceLevel,
     samRange: samRange, nearestThreat: nearestThreat,
     HULL: HULL, SYSTEMS: SYSTEMS, DEGRADE: DEGRADE, SAM_HIT: SAM_HIT, TURRET: TURRET, PELLET: PELLET, REPAIR_ODDS: REPAIR_ODDS, ARMOR_ODDS: ARMOR_ODDS, ITEM_MAX: ITEM_MAX,
     hurt: hurt, repair: repair, updateSystems: updateSystems, activeBeams: activeBeams, targetsInView: targetsInView, levelTargets: levelTargets, isLauncher: isLauncher,
