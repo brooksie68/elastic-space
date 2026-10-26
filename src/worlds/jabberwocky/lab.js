@@ -41,7 +41,7 @@ Sfx.setMusic(false);
 // no shared speaker in the lab (James): sound starts on the first click or key in the room, the SOUND button in the bar mutes it
 let soundOn = prefs.sound !== false, soundStarted = false;
 // the SOUND / FIRE buttons and the find box left the bar (James 2026-09-11) — sound still starts on the first click or key; the lab is never muted from the bar now
-function startSound() { if (SILENT || !soundOn || soundStarted) return; soundStarted = true; try { Sfx.start(); } catch (e) {} }
+function startSound() { if (SILENT || !soundOn || soundStarted) return; soundStarted = true; try { Sfx.start(); Sfx.setBedLevel(0); } catch (e) {} }   // no room bed in the lab: its 36.7 Hz sawtooth drone is a ceaseless hum under everything (James 2026-10-25); the bed gain only exists once start() has built the graph
 canvas.addEventListener('mousedown', startSound); addEventListener('keydown', (e) => { if (!typing(e)) startSound(); });
 const pan = (x, y) => { const p = state.player; return Math.sin(Math.atan2(y - p.y, x - p.x) - p.a) * 0.8; };
 
@@ -122,9 +122,10 @@ function aimFromCursor(dt) {
   const p = state.player;
   if (mouseMode !== 'cursor' || !cursor.in) { p.aim = 0; R.vm.aim += (0 - R.vm.aim) * Math.min(1, dt * 10); R.vm.aimY += (0 - R.vm.aimY) * Math.min(1, dt * 10); cross.style.left = ''; cross.style.top = ''; cursor.push = 0; return; }
   const w = innerWidth, h = innerHeight;   // the camera fills the whole window (the panel just covers its right edge), so the centre + fov are the window's
-  p.aim = yawFromCursor(cursor.x, w, h, look.fov || 76);
-  const py = pitchFromCursor(cursor.y, h, look.fov || 76);
-  R.vm.aim += (p.aim * 0.9 - R.vm.aim) * Math.min(1, dt * 14);
+  const fov = (R && R.camera && R.camera.fov) || look.fov || 88;   // THE CAMERA'S fov, not the lab's own look (which has none): 76 here against 88 on the camera put every shot ~80% of the way to the cursor (James 2026-10-26, "not 75% of the way there")
+  p.aim = yawFromCursor(cursor.x, w, h, fov);
+  const py = pitchFromCursor(cursor.y, h, fov);
+  R.vm.aim += (p.aim - R.vm.aim) * Math.min(1, dt * 14);
   R.vm.aimY += (py - R.vm.aimY) * Math.min(1, dt * 14);
   cross.style.left = cursor.x + 'px'; cross.style.top = cursor.y + 'px';
   cursor.push = 0; cursor.pitchPush = 0;   // no edge push: the mouse never turns the camera here (James)
@@ -175,11 +176,18 @@ function handleEvents() {
   for (const e of ev) {
     switch (e.type) {
       case 'zone': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a zone with a loop (the tornado) sounds while it lives (2026-09-10)
+      case 'summoned': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a summon with a loop (the doll's creepydoll.mp3, James 2026-10-26) sounds while it walks
       case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.earlySound) Sfx.play(e.gag.sound, 0);   // the weapon's voice at the pull itself (the handbag) if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
       case 'fire': R.fire(); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
       case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
       case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
-      case 'hurt': R.shake(0.6); Sfx.play('hurt'); break;
+      case 'scene': if (e.gag.id === 'recoil') Sfx.play('horseneigh', pan(e.x, e.y)); break;   // the donkey arrives (2026-10-26)
+      case 'kicked': Sfx.play('horsekick', 0); R.shake(1.2); break;   // the kick lands: you go down
+      case 'push': Sfx.play('thud', 0); break;   // a push up
+      case 'scrap': if (e.gag.id === 'goose') Sfx.play('honk', pan(e.x, e.y)); break;   // the sumo's catch is silent: his yell is the pull sound (2026-10-25); the doll screams as she catches her first one, before the fire (James 2026-10-26, "a little bit earlier")   // the goose has its victim (2026-10-25); the slap's catch is silent — its thwaps carry it
+      case 'thwap': Sfx.play('slap', pan(e.x, e.y)); break;   // James's slap.mp3, once per slap (2026-10-25)
+      case 'slain': Sfx.play('splat', pan(e.x, e.y)); Sfx.play('honk', pan(e.x, e.y)); R.slain(e.x, e.y); break;   // the victim wins: a shower of blood, and it keeps coming
+      case 'hurt': R.shake(0.6); if (!(e.gag && e.gag.quiet)) Sfx.play('hurt'); break;
       case 'death': Sfx.play('death'); hint('THAT ONE KILLED YOU · NEVER MIND', 2600); state.phase = 'play'; state.player.hp = 100; break;
       case 'splat': Sfx.play('splat', pan(e.x, e.y)); break;
       case 'boom': Sfx.play(e.gag.splashSound || 'boom', pan(e.x, e.y)); R.boom(e.x, e.y, e.r, e.gag.id); break;   // a pie lands wet, not with an explosion
@@ -192,7 +200,7 @@ function handleEvents() {
       case 'fall': Sfx.play('fall'); break;
       case 'swing': Sfx.play('swing', pan(e.goon.x, e.goon.y)); break;
       case 'self': R.shake(0.6); break;
-      case 'boomerang-hit': Sfx.play('hurt'); break;
+      case 'boomerang-hit': Sfx.play('bonk'); setTimeout(() => Sfx.play('ouch'), 500); R.shake(1.4); break;   // in the face: bonk, then ouch (James's files, 2026-10-26)
       case 'swap': R.shake(0.4); break;
     }
   }
@@ -201,9 +209,10 @@ function handleEvents() {
 // one step of the lab: the core, its events, the healing, the pads (frame() and LAB.step both use it)
 let simT = 0;
 const loops = {};   // gag id → the loop handle (loopFile) while that gag's zone lives
-function stopDeadLoops() { for (const id of Object.keys(loops)) if (loops[id] && !state.zones.some((z) => z.gag.id === id && !z.dead)) { loops[id].stop(); delete loops[id]; } }
+function stopDeadLoops() { for (const id of Object.keys(loops)) if (loops[id] && !state.zones.some((z) => z.gag.id === id && !z.dead) && !state.shots.some((s) => s.gag.id === id && !s.dead)) { loops[id].stop(); delete loops[id]; } }   // zones OR shots (summons) keep a loop alive
 function simTick(dt) {
   simT += dt;
+  state.muzzle = R.muzzleCell();   // the barrel's tip, for where a shot is born (2026-10-26)
   C.step(state, input, dt);
   stopDeadLoops();
   handleEvents();

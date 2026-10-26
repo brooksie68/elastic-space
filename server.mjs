@@ -1513,8 +1513,7 @@ async function handleApi(request, response, pathname) {
       if (action) added.action = action;
       if (action && added.gag) {
         data.verdicts = data.verdicts || {};
-        if (action === "update") delete data.verdicts[added.gag];
-        else data.verdicts[added.gag] = { status: action === "pass" ? "passed" : "trash", at: now };
+        if (action !== "update") data.verdicts[added.gag] = { status: action === "pass" ? "passed" : "trash", at: now };   // an update note no longer drops a PASSED weapon back to review (James 2026-10-25: "count all passed as passed"); a verdict only changes through pass / trash / the switch
         writeCuts = true;
       }
       data.notes.push(added);

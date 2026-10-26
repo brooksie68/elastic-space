@@ -6,6 +6,28 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
+## START HERE (2026-10-26)
+
+- THE FOURTH REVIEW NIGHT (2026-10-25/26, ~60 notes acted on, watcher armed all night): read the changelog's 2026-10-25 entry
+  (long) first. New machinery that later work leans on: RIGGED SUMMONS (the sumo, the doll — `creature.mjs <name>` with its
+  own `clips` map, PROPS `motion: 'rigged'` + `strike / strikeFrom / strikeRate / linger / beat / genie / burn`), THE MAUL
+  (`maul` on a summon or bolt: hold the victim `busy`, then the kill; `fight` = the goose's non-lethal version), THE LOOT
+  (`LOOT`, `lootBurst` on most deaths), the drawer at 51 pieces with `GIB_SCALE` + a shuffled `burstDeck`, SCENES (the
+  donkey: `scene` / `kickAt` / `sceneDist`, `stepScene`, the knockdown `p.down` / `p.up`), DRESS hooks on props (the bus),
+  `FILE_SKIP` / `FILE_TRIM` / `deathTrim` in sound.js (measure a file's dead air by decode in the pane before timing it).
+- AIM IS SOLVED, DO NOT RE-OPEN: shots are born at the renderer's muzzle (`state.muzzle` from `R.muzzleCell()` each frame)
+  and converge on the crosshair's point; the viewmodel's barrel is solved through the viewmodel camera's own 52° lens
+  to cross the crosshair's pixel (vm.aimDist); cursor aim reads the camera's real fov. Any new projectile goes through
+  `launchPending`'s barrel block for free.
+- THE PASSED RULE: an update note no longer drops a passed weapon to review (server.mjs); only pass / trash / the switch.
+- NUMBERED SOUND SETS are probed with or without a base file (the screams were silent for six weeks).
+- A lab reload takes ~30 s before the creatures appear (no-store on ~400 model files) — views made before the models land
+  stay capsules until those goons respawn. James has not asked for a cache; ask before adding one.
+- Meshy: meshy-5 is retired — props.mjs asks for meshy-6-lite; `PROP_OPTS` carries per-prop API extras (symmetry off for
+  the bus); a bursting lob hurts nobody itself. Tonight's spend ~1,044 cr.
+- OPEN for James: his verdicts on tonight's passes in review (donkey kick, boomerang, balloon, confetti, doll's latest,
+  bus's latest); the trashed cat bag's files stay on disk till ship.
+
 ## START HERE (2026-09-12)
 
 - JAMES'S TODO TONIGHT: a music track per level — drop `theme-2.mp3` … `theme-6.mp3` into `assets/audio/` (2 THE CATACOMBS,

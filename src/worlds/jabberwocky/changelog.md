@@ -3,6 +3,297 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-25 — Claude (Fable 5.1) — THE WEAPON LAB, REVIEW NIGHT FOUR: summons chase what you aim at
+
+James back in the lab after six weeks; the note watcher armed. Sneaker PASSED, shrink ray PASSED (his comments only).
+- SKUNK ("the aiming is unpredictable. sometimes it goes off at a weird angle"): every summon (skunk, goose, eagle, bees,
+  sumo, drill, mosquitoes, doll, grandma) ran at whichever goon was nearest to ITSELF the moment it was let go — in a
+  hall of pads that is often one off to the side, so it veered. Now the goon under the cursor at release (`aimPoint`,
+  14 cells) is the summon's `prey`; it hunts that one and falls back to the nearest only once the prey is down, stung
+  or gone. Hostile and burst-spawned summons unchanged. Sim 1,156,922 green, lab smoke ok.
+- METEOR ("incredibly cartoony. go to meshy and get a big rock. spend whatever you need. apply a flame/smoke effect to it
+  and blast rock shards and body parts everywhere"): a Meshy boulder, `props/meteor.glb` (15 cr — meshy-5 is RETIRED, props.mjs
+  now asks for meshy-6-lite; the first download dropped on a fetch error and the rerun resumed from the refine id in the
+  manifest; slimmed 2.6 → 0.3 MB). PROPS row `meteor` (size 2.6, tumble, stays, `sink` 0.45 = that much of it below the
+  floor in its crater). On the way down: a tumble, two flame tongues + a smoke puff + embers every frame (`meteorTrail`), an
+  orange point light on the rock. On the landing: `rockShards` — 22 stone chunks + 12 glowing ones on the gib physics
+  (`chunks` grew `dry` / `spin` / `noPuff`), six dust puffs, forty embers; the explosion kit still fires via boom(). The
+  kill (outcome burn, gagId meteor) is now a full gib: hide, gibBurst 22 at 1.6, five wall splats, a pool, five drawer
+  gibs. Seen in the pane: the boulder half-sunk in the crater, organs and shards across the floor.
+- PAPER CUTS ("papers need to be perpendicular, flat. they would never fly like this"): the sheets were billboards facing
+  the lens. Now each drop is a real double-sided plane (`paperTex`, ruled paper with a margin line) laid flat to the
+  floor, spinning about the vertical like a thrown card at its own rate and direction, with a small flutter on every axis.
+- LIQUID NITROGEN ("what comes out of the gun needs to be a stream of white fog kind of like the flame effect... white and
+  ice blue... and use this sound effect and fade it where appropriate: nitrogen.mp3"): the stream's drops are fog sprites
+  now (`fogTex`, four frames, white / ice-blue puffs in the flame's shape, normal blending) that billow wider than the fire
+  and hug low. The ice death + its crack stay. Sound: FILES nitrogen → his `sfx/nitrogen.mp3`; `FILE_TRIM` in sound.js
+  holds a long file for the stream's second then fades it out over half a second (buffer path: a gain ramp + stop;
+  element path: a timed fade + pause). The `freeze` file is no longer the fire sound.
+  Meteor PASSED rank 1 ("AWESOME"), paper cuts PASSED rank 2, skunk PASSED.
+  His "not hearing the new sound at all": `src.stop()` was scheduled before `src.start()` (InvalidStateError, every play
+  thrown away). The trim block now runs after start(). THE PANEL FONTS (his ask in chat, "increase the font size of
+  everything except the name in the list"): every font-size in the right panel +0.07rem (~1 px) except `.row`.
+  Nitrogen PASSED rank 2 ("this is great"; his two-sounds note withdrawn — the kill's ice crack already plays after
+  the file, so the follow-on I had started was reverted).
+- GOOSE ("id like to see slow the npcs down but they kill it in a shower of blood and they keep coming after you"): a
+  new outcome `scrap` (lethal: false, fight: true) and gag `fight: 2.8`. hitGoon puts the victim in a new goon state
+  `busy` (g.busyT, g.prev) — it stops, swings (the `attack` clip at 1.3×), and after the fight goes back to idle or
+  chase. The summon parks on its victim (`s.victim`), circles it, and when the hold runs out (or the victim is lost)
+  dies: feathers scar + event `slain` → hosts play splat + honk and `R.slain` (a 70-drop blood burst, mist, a pool);
+  event `scrap` at the catch = a honk. TIER: the goose moved DISPATCH → WEIRD ("works, but not the way anyone
+  meant"); the sim's contract says dispatch gags kill, and the weird check now knows a fight gag (scrap + slain events,
+  nobody down, nobody left busy). It sits in the WEIRD section of the lab list now. Sim 1,156,924 green, lab smoke ok;
+  seen in the pane: busy 2.8 s, the goose dies in blood and feathers, the creature carries on.
+- CANNONBALL ("it comes out to the side but more like straight out... rather than diagonally from the muzzle"): a prop
+  bolt was born 0.45 cells ahead of the player's CENTRE at belt height with no pull-in to the barrel, so under cursor aim
+  it appeared beside the gun and ran straight along the aim line. syncPropShot now lerps every non-hostile prop bolt
+  and lob from a point just ahead of the muzzle into its true path over the first 0.32 s (the flame's trick; swing and
+  punch props keep their own arcs; the train already had it). Measured in the pane: at 0.05 s the ball sits at the
+  barrel tip, by 0.3 s it is on the sim's line. Also fixes every other prop bolt/lob (bowling ball, baseballs, knives,
+  pie, cupcake, ham, anvil's kin) the same way.
+- THE BAG OF CATS → THE CAT BALL ("this is weak. go to meshy and get 3 or 4 cats and a fabric bag. then use blender to put
+  all the cats into a crazy jumble... a writhing ball of claws. exaggeratedly large paws... when they hit everything flies
+  in all directions with blood and body parts and cat body parts"): Meshy cat-2 (hissing tabby), cat-3 (black pounce),
+  cat-4 (fat orange screamer) + bag (a lumpy tied sack), 60 cr. `tmp/jabberwocky/catball.py` (headless Blender, KEEP): each
+  cat squared up (Blender after import: height Z, face at -Y — NOT y-up, the first build selected paws on the wrong axes and
+  came out as mush), unit length, front paws scaled 1.5× with a soft falloff, decimated to 3,200 tris; eight of them (the
+  four models twice) rear-to-rear at the cube's corners, heads and paws out, nodes cat-0..7 → `props/catball.glb` (1.1 MB);
+  plus `gibs/cathead.glb` (the front third) + `gibs/catrear.glb` (the back third; a single leg came out as a sliver of
+  hull). Game: the gag's burst is ONE `catball` summon (speed 5.5, turn 8, life 5, hitR 0.8), outcome gib, verb SHREDDED BY
+  A BALL OF CATS; PROPS `bag` (the sack flies, tumbling) + `catball` (size 2.4, rolls ON THE FLOOR — new `ground` flag —
+  and `writhe`: every cat node thrashes on its own beat); `CAT_GIBS` loaded by name only (never dealt into a human's
+  burst); the kill throws six cat parts + four drawer gibs + splats; a spent ball flies apart (`catBurst`). CORE FIX: a
+  lob's burst only came out on a bare-floor landing — the sack hit the creature on the way down and nothing came out;
+  `spawnBurst` now fires on the hit too. Sim 1,156,923 green, lab smoke ok; seen in the pane (two kills from one sack).
+  HIS SECOND NOTE ("it all happens so fast i cant see any cats. i wanted the front paws to be sticking out from holes in
+  the bag in all directions while it was flying and then somehow i need to SEE the cats themselves at least briefly in a
+  melee for at least 1 second before everything explodes"): `tmp/jabberwocky/catsack.py` (KEEP) cuts the first cat's
+  front legs, scales the paws, and plants eight of them through the sack's skin along the cube's corners → `props/catbag.glb`
+  (the gag's sprite now; PROPS `catbag` size 1.4, tumbling). THE MAUL: gag `maul: 1.4` — a summon with it holds its
+  victim (`busy`, the goose's state) for that long, circling and writhing, THEN kills it (hitGoon at the end of the hold)
+  and dies in the blast; the sack itself hurts nobody (a bursting lob returns on contact and only the burst does the
+  work — it used to kill on touch, which is why no cat was ever seen); the ball slowed 5.5 → 3.6. Pane timeline: sack
+  hits → ball busy 1.2 s → dying (gib) → ball gone.
+- THE SWATTER ("have it coming from above as if the shooter was holding the handle and swinging it down from overhead.
+  pivoting down from the shoulder and elbow. stupidly large and with a splat sound. just the swatter"): Meshy swatter
+  (15 cr), PROPS `swatter` size 8 (eight metres), motion `swat`: the handle's loop (the +X end) is the pivot at shoulder
+  height a little ahead of the lens; the swing runs raised-back over the shoulder → straight up → forward → flat on the
+  floor (phi -2.5 → +0.16 rad on a smoothstep over the first 42% of swingLife 0.75), the elbow extending as it comes
+  down, the mesh twisted flat to the floor at the bottom; gag `hitDelay: 0.3` = the meleehit zone's duration (core), so
+  the reach lands when the head does; `deathSound: 'splat'`. Measured in the pane (world boxes at t 0.05 / 0.42 / 0.78
+  / 1.15 of a slowed swing): back, up, forward, floor, along the aim.
+  His "pull the handle in a little closer": the pivot moved from the player's centre to the barrel tip (_muzzleWorld
+  + 0.15 m along the aim, + 0.3 m up; the hostile copy keeps the old pivot).
+- TWO HUNDRED SLAPS ("get a model of a hand in a slapping position. almost like extended to shake. it's big but not
+  insanely big and it flies forward slapping back and forth rapidly kind of like a fish tail. anything it hits flies off
+  in the direction it was hit with blood and a yell"): Meshy hand (15 cr, with a forearm), the gag is a BOLT now (speed
+  7, life 1.3, hitR 0.65, pierce) with outcome `fling` (the existing wall-splat throw, away from you) + `deathSound:
+  'scream'`; PROPS `slap` size 1.6, motion `slap`: fingers forward, palm sideways (rotateX π/2 then rotateZ π/2), the
+  wrist at the pivot, yawing ±0.75 rad at 26 rad/s (the fish tail), born at the muzzle; the fling for the slap opens with
+  a blood burst + mist. Verb SLAPPED INTO NEXT WEEK.
+- THE BURRITO ("get a burrito from meshy and fake a pile of steaming rice and beans when it hits that consumes the npc"):
+  Meshy burrito (15 cr), PROPS `burrito` size 1.0 tumbling; `beanPile` on the landing (boom): 150 rice grains + 70 beans
+  + 30 cheese blobs on the gib physics (dry), a puff, `steam` (soft white wisps on staggered delays — negative extras `t`
+  — rising for 3.4 s); the burn death for gagId burrito: no fire, a bean-brown tint, the body sinks straight down into the
+  floor under the pile (root.y = -u² × height), a wisp of steam now and then.
+- THE CURSE ("make a stream of brown come down from their butts. use the same effect as the fire and nitrogen but much
+  smaller and slower and denser... add some lumps to the puddles and some entrails and some steam rising. make sure they
+  yell"): `goopTex` (the flame's shape in browns), `curseStream` four small sprites a frame out of the back (g.a + π,
+  0.28 m behind the hips at 0.42 height) falling at 1.7 m/s for most of the expire death; `curseMess` once at u 0.25:
+  fourteen brown lumps, intestines + stomach from the drawer, steam for 3 s; `deathSound: 'scream'`.
+  Props slimmed (swatter 2.6 → 0.4, slap 1.9 → 0.3, burrito 2.9 → 0.3 MB). Sim 1,156,923 green, lab smoke ok.
+  ROUND TWO on three of them (his notes): THE SLAP flew sideways — the roll was `rotateZ` about the palm normal, which
+  after the pitch is vertical, i.e. a 90° yaw; now `rotateY` about the fingers (local Y never changes). Measured in the
+  pane: the long axis along the aim within the wag. THE RICE: a `rice` chunk shape (two tiny elongated spheres), 420
+  grains (was 150 balls), MAX_GIBS 240 → 640 to hold them. THE CURSE: the creature fell before it finished — now
+  `longDeath: 3.6`, a flinch (`hit`) standing while the stream runs (u < 0.45), the mess at u 0.12, the death clip only
+  at u 0.45; the `curse` recipe rebuilt louder and wetter (a 2.4 s low gurgle under eight sputtering saw blasts with a
+  squelch each). Swatter PASSED rank 3.
+  ROUND THREE: THE SLAP holds ("stop at the npc and thwap it right in the face and on the 4th thwap the head flies off"):
+  gag `maul: 1.0` on a BOLT — boltHits parks it on the victim (`busy`), the bolt step keeps it 0.4 cells in front of the
+  face facing the creature, the wag drops to 13/s (four thwaps in the second), then hitGoon (outcome expire, verb SLAPPED
+  SILLY, a scream) and the kill opens with the skull + jaw gibs thrown up and away, a neck burst, two wall splats and the
+  Head bone scaled to 0.001 (the body falls headless). THE CURSE again ("they back away from it immediately... stay bent
+  over until the stream animation ends and THEN fall over"): the `hit` flinch read as a step back; now the death clip
+  plays from the kill and is PAUSED at 0.42 s (its bent-over frame) while the stream runs, released at u 0.45. Thumb on
+  top (the roll's sign), rice halved again (size 0.5). Burrito PASSED rank 2 ("love it"), the BAG OF CATS TRASHED
+  ("never gonna cut it with our current level of tech" — the cat models + catball.py / catsack.py stay on disk till ship).
+- CONFETTI ("fall out of the ceiling like a lot of little particles and some streamers before falling around the NPC and
+  doing no harm. have a clown bicycle horn blow and a slide whistle play. get rid of the big, weird streaks"): a dud
+  DROP now (fallT 1.5, splash 1.2, splashSound none, no scar); `confettiRain` lets ~260 pieces go across the fall time
+  from the ceiling over the target — thin coloured squares (eight colours, double-sided, a little emissive) and 12%
+  streamers — on the brick bodies with a new `drift` (a terminal fall speed 1.1–1.6 m/s + a wander, so they float down
+  instead of dropping like bricks) and a flat rest; no dust ring on the landing; the `confetti` recipe = two sawtooth
+  squeezes of a bicycle horn then a triangle slide whistle up (600 → 1500 Hz) and down. Curse PASSED rank 2 ("a pASS").
+  NOTE for the pane: one load of the lab had `gags.js?v=37` refused with ERR_BLOCKED_BY_CLIENT (the pane's own blocker,
+  a one-off — the same URL fetched fine and the next load was clean); not a code problem.
+- THE HUM (his chat note, "a constant, ceaseless low rumble or hum in the weapon lab"): the room bed's drone — a 36.7 Hz
+  sawtooth through a 140 Hz lowpass that sound.js starts with the bed — had been under the lab all along. lab.js now
+  calls `Sfx.setBedLevel(0)` right after `Sfx.start()` (the bed gain only exists once the graph is built, so a call at
+  load was a no-op): no drone, no far-off moans or thuds in the lab; the game keeps its bed.
+- THE SUMO ("the npcs have body motions. id like this sumo wrestler to run forward with arms and legs moving and body slam the
+  NPCs"): THE FIRST RIGGED SUMMON. `creature.mjs sumo` (a CREATURES row with its own clip list — `clips: { slam: 86 }`,
+  library 86 Jump Attack — which the `clips` stage now honours instead of the goons' deck): concept (nano-banana-pro, 9 cr)
+  → image-to-3D meshy-7 + rig at 1.9 m (35 cr, run/walk from the rigger) → the slam (3 cr); slimmed (base 4.7 → 1.6 MB,
+  clips to armatures). render3d: CREATURES `sumo` (clips run + slam, `summon: true`) loads with the goons; PROPS `sumo`
+  is motion `rigged` (creature 'sumo', size 2.1 = its height) — `makeRiggedShot` clones the skeleton, scales from the mesh's
+  BIND-POSE box (Box3.setFromObject on an unposed skinned clone came back 2 cm tall → a 110× sumo on the first try), feet
+  at y 0, its own mixer, `run` looping; syncPropShot drives the mixer off the sim clock (s.t deltas) and on the catch
+  cross-fades to `slam` once; the old props/sumo.glb is the fallback (`fallback: 'walk'`) when the rig is missing. Core: the
+  sumo has `maul: 0.9` — a mauling summon now squares up 0.7 cells from its victim and faces it (the goose still circles),
+  and a mauler's end is a `gone` event, not a `slain` (no blood for the sumo). Pane: runs in at the right size, 0.9 s of
+  busy, then the fling. Sim 1,156,924 green, lab smoke ok. Slaps PASSED rank 3, vending PASSED rank 2.
+  His "he just sort of... evaporates": the library's Jump Attack is 5.9 s with a slow crouching wind-up (hips rise at
+  1.4–2.75 s of clip), so a 0.9 s hold showed only the crouch and then the view was removed with the shot. Now the slam
+  starts at 1.2 s in at 1.4× (the leap lands as the hold ends; `maul: 1.1`) and a spent rigged summon lingers 1.3 s on
+  `rigLinger` (its mixer keeps running) for the landing before it goes.
+- THE PILE DRIVER ("a big huge weight on a heavy wire. with a little bounce when it hits. and then use piledriver.mp3... look
+  up pile drivers online before you prompt meshy"): a drop hammer — a tall cast-iron ram with guide grooves hung on a
+  crane cable (patents + vulcanhammer's overview). Meshy `piledriver` (15 cr, slimmed 2.5 → 0.3 MB): PROPS size 3.0,
+  `upright` (no tilt on the way down), `bounce: 0.22` (a half-sine hop over 0.5 s after the landing), `cable: true` (a
+  dark cylinder from the top of the weight to the ceiling while it hangs and falls, gone a beat after the hit), stays
+  where it lands; out of BOOM_GAGS (dust, not a fireball); gag `fallT 0.55`, the pull silent, `splashSound: 'piledriver'`
+  = his file at the hit. Pane: drops straight, lands on the cable, dust, the kill.
+  His "the mp3 has a short silence at the beginning": measured in the pane (Web Audio decode): 0.35 s of dead air, the peak
+  at 0.39 s. `FILE_SKIP` in sound.js — `src.start(0, 0.34)` (element path: currentTime) — the file is untouched.
+- THE SUMO, round three ("he needs to stop. swing his arms together. and splat the NPC into body parts. then disappear.
+  also sumoyell.mp3 is his battle cry"): library 128 Heavy Hammer Swing (3 cr) as `swing` — scrubbed in the pane: the
+  hands lift from 0.6 s, peak at 2.2 m at 1.22 s, hit the floor at 1.7 s of 1.83 — PROPS `strike: 'swing', strikeFrom:
+  0.6, strikeRate: 1, linger: 0.5` (the strike clip, where to start it, how fast, how long he stays after the kill — the
+  knobs for any rigged summon); the gag's outcome is `gib` (SPLATTED BY A SUMO); the `scrap` event for the sumo plays
+  his sumoyell.mp3 (FILES sumoyell). Pane: held 1.1 s, then dying/gib.
+  The night's small turns on it: the yell is the PULL sound (`earlySound`, the synth grunt gone, gain 0.765 = 15% down),
+  played from 0.72 s in (`FILE_SKIP`: the file has 0.73 s of dead air — his "not starting soon enough", measured by
+  decode in the pane; slap.mp3 had 0.32 s, skipped too); after the blow a 0.55 s `beat`, then THE GENIE EXIT — an 0.8 s
+  fade (materials to transparent) with magenta / cyan / gold / violet additive sparks spiralling up off him (`genie` on
+  the PROPS row, in rigLinger). Pile driver: kill radius 0.7 → 0.4 (his "only npcs right under"), the squash death's
+  long crunch cut by `deathTrim` on the gag (a trim passed through outcome() → playFile; 0.22 → 1.0 → his 0.4 s + 0.2
+  fade), FILE_SKIP 0.34 for the file's dead air. Bowling: `deathSound: 'strike'` (his strike.mp3). Drill TRASHED.
+- CURSOR AIM, THE 80% BUG (his "if i am to the right it needs to go all the way to where i am pointing. not 75% of the
+  way there"): `cursor-aim.js` is right (a true projection), but lab.js fed it `look.fov || 76` from the lab's OWN look
+  object, which has no fov — 76° against the camera's 88° (raised 2026-09-12) lands every side shot at ~81% of the true
+  yaw. Both hosts now read `R.camera.fov`. Pane proof: a creature projected to screen x 796 of 1024, cursor there, aim
+  35.52° = the true bearing, error 0°, the laser kills it.
+- BORN AT THE BARREL (his "all the balls curve inward after firing"): the 2026-10-25 visual pull-in (the prop slid from the
+  muzzle onto a path from the body's centre over 0.32 s) read as a curve. Now core `launchPending` births every player
+  bolt / lob / summon at the rifle's MUZZLE (`MUZZLE` = 0.29 cells ahead, 0.12 to the side, measured in the pane from
+  _muzzleWorld: 0.76 m ahead, 0.31 m aside, 0.37 m below the lens) and aims it at the point the crosshair ray hits
+  (`aimPoint` from the centre, 14 cells: a creature or a wall) — the classic muzzle-to-crosshair convergence; a muzzle
+  inside a wall falls back to the centre; `backwards` gags keep the centre; the render pull-in is gone. Pane: a bowling
+  ball fired 35° off-centre flies with 0 sideways drift and 0° line error to the creature. Sim 1,156,924 green, smoke ok.
+  Also: the doll's `loop` file was never preloaded (preflight only knew FILES / deathSound) → loops are preflighted now
+  and the doll's old synth jingle is `none`; `FILE_TRIM honk` 0.55 s (the goose's 2 s honk outlived the goose);
+  FILE_SKIP strike 0.27 (his two 50 ms nudges). Sumo PASSED rank 1 ("this rules"), pile driver PASSED.
+- THE BARREL ON THE CROSSHAIR (his screenshot: the gun's line and the crosshair disagree, worse to the sides — a fixed
+  misalignment, not a lag; every projectile and beam goes to the crosshair, so the GUN was the thing pointing wrong): the
+  viewmodel's yaw was `0.06 - vm.aim` with the hosts easing vm.aim to 0.9 × the aim — a cant, a 10% shortfall, and no
+  account of the rifle's pivot sitting right of and below the eye, or of the viewmodel camera's 52° lens against the eye's
+  88°. Now updateViewmodel solves the barrel: the eye's aim angles → the crosshair's NDC → that screen point unprojected
+  through the VIEWMODEL camera (the only frame in which "crosses the crosshair's pixel" means anything) at the ray's hit
+  distance (`vm.aimDist`, from aimPoint in update()) → yaw and pitch from the pivot (vmRoot.position) to that mark; the
+  cant is gone (vmTip is on the model's -Z, so -Z is the barrel), the hosts ease to the full aim. Pane: the barrel line
+  projected through the viewmodel camera lands within 0.2% of the cursor at x 0.12 / 0.3 / 0.5 / 0.7 / 0.9 and y 0.25 /
+  0.6. All aimed weapons share this one path, so this is every one of them.
+- BORN AT THE REAL BARREL (his second screenshot: the ball "considerably off to the left of the gun" when aiming aside): the
+  sim's MUZZLE constant was measured with the gun straight ahead, but the gun now swings on its pivot, so the tip is
+  somewhere else the moment you aim aside. The hosts hand the sim the renderer's muzzle every frame (`state.muzzle` =
+  `R.muzzleCell()`, _muzzleWorld in cells) and launchPending births the shot there; headless keeps the constant. Pane
+  (renderer update driven by hand): the muzzle's sideways offset from the player runs 0.05 → 0.13 → 0.20 cells across a
+  −44° / 0° / +44° sweep, and the ball is born on it (0.13 cells off = one tick of flight). Sim + smoke green.
+- THE DOLL'S FIRE ("when she reaches the NPC have her burst into flames. stretch her arms out wide and play dollscream.mp3 give
+  her a good sizes AOE and have all NPCs run away in terror and disappear"): gag `maul: 1.0, splash: 2.4, splashSound:
+  'dollscream', outcome: 'flee'`; a new OUTCOME `flee` (SCARED OFF, 2.4 s, lethal — a kill with no corpse): hitGoon
+  remembers `fleeFrom`, the dying tick runs the creature away from it at 1.6× its speed (moveCircle), render case `flee`
+  plays its run clip and fades it out over the last third, then hides it. Core: a mauling summon's catch now comes BEFORE
+  the splash check (she holds her first victim a second), and a maul that ends with a `splash` fires `applySplash` + the
+  boom on everyone around instead of one hitGoon. Render: `fireBurst` on the doll's boom (22 flame tongues up and out, a
+  14-tongue ring racing to the AOE's edge, 60 embers, an orange flash, a shake); the spent doll burns down in rigLinger
+  (`burn` on the PROPS row: tongues off her every frame, she blackens and shrinks over 1.4 s) — the plain prop goes through
+  the same path with a stub mixer. PROPS `doll` is motion `rigged` (creature 'doll', strike 'scream') with the old
+  props/doll.glb as the fallback; the goose now circles head-in (orbit angle ≠ facing). Pane: held 0.8 s, then two of three
+  creatures flee (the far one untouched), the fire on her. The RIG (creature.mjs `doll`, 386 Zombie Scream = arms out +
+  scream, ~47 cr) was still on Meshy when this was written. Bowling PASSED rank 2, goose PASSED.
+  THE RIG LANDED (concept → meshy-7 + rig at 1.0 m → 386 Zombie Scream; slimmed 7.2 → 3.7 MB base, clips to armatures):
+  CREATURES `doll` clips walk + scream; makeRiggedShot plays `run || walk` (she has no run in her list); the hold is 1.3 s
+  with the 2.83 s scream at 1.5×. Pane: rigged, walk + scream bound, `strike` on the catch.
+  Then his "no dollscream" (a `splashSound` only reaches a file through a FILES row — added, with `busrev`), and "trigger
+  the scream a little bit earlier and hold off on her disappearing": the scream plays at the CATCH (the scrap event for
+  the doll), the burst's splashSound is none, `linger` 1.4 → 2.2.
+- THE BUS ("more realistic like a bus on the MBTA in Boston. and a little bigger so its just about life sized. then use
+  busrev.mp3 when it first appears and overlay bushonk.mp3 when its crashing into the npcs"): Meshy `mbtabus` (a new sprite
+  id; the cartoon bus.glb stays on disk) — TAKE ONE came back TWO-FACED, a windshield and destination sign at both ends
+  (bus_ends.py, a four-sided render, proved it: every yaw showed a front; the pane showed the windshield coming at the
+  lens either way); TAKE TWO with `symmetry_mode: 'off'` (props.mjs grew `PROP_OPTS`, per-prop API extras) and a described
+  rear: a plain back, the nose at -X, `yaw: π/2` like the old bus. 30 cr for the pair; take one is in tmp/jabberwocky/models
+  as mbtabus-twofaced.glb. PROPS size 11 (a 40-footer is ~12 m), gag `nose: 2.5` (core: a train-kind shot's centre starts
+  that far ahead — a life-size bus at the old 1.1 was born around the player), `width: 1.0`, `sound: 'busrev'`,
+  `deathSound: 'bushonk'` (once per creature it hits). Pane: the parked bus shows its rear. Sim + smoke green.
+  His "marquee... DOWNTOWN... dirty up the bus... the letters MBTA in the logo": a DRESS hook on a PROPS row — after
+  fitProp, `DRESS.mbtabus` grimes every material's atlas (redrawn once on a canvas: 140 soft dark multiply blotches, 0.55),
+  hangs an amber-on-black DOWNTOWN plate across the top of the back (+X, a PlaneGeometry with a canvas texture, scanlines)
+  and an "MBTA" white-on-black roundel on each side near the nose. Pane: the marquee on the back of the parked bus.
+  Doll PASSED rank 2. NOTE: a reload of the lab now takes ~30 s before the creatures appear (no-store on ~400 model
+  files); goon views made before the models land stay as capsules until those goons respawn.
+  His "slow it down just a little. like let it rev up a bit and also reduce the size by 10%": speed 8 → 7, gag `rev: 1.2`
+  (core: a train-kind shot pulls away from 30% speed and is up to speed by then), size 9.9. Bus PASSED rank 3.
+- THE GORE DRAWER, TWENTY-SIX MORE (his chat ask, "a wide variety of bloody, disgusting stuff flying around... add more to
+  the pool. And maybe randomize a little bit"): props.mjs rows under PROPS_OUT=gibs (390 cr, all 26 landed as pieces —
+  the sheet tmp/jabberwocky/renders/gore2-sheet.png: finger, fingers, thumb, ear, nose, tongue, teeth, scalp, forearm,
+  upperarm, thigh, shin, femur, pelvis, ribhalf, vertebra, spleen, bladder, gallbladder, pancreas, intestine2, four
+  unidentifiable giblets, a skin flap; slimmed 64 → 6 MB). render3d: GIBS lists them, `GIB_SCALE` sizes the small bits
+  (every Meshy piece comes in at ~1.9 units on its long side — a finger at 0.22, a thigh at 0.95), GORE gained a `bits`
+  kind, and gibBurst deals ribs + skull + one rope of gut then a SHUFFLE of the whole drawer (`burstDeck`), no piece twice
+  in a burst. Then his "get some more bones... and 12 random extras... coins, a belt, keys, headgear, potions": eight bone
+  sets (spine2 with its pelvis, skull2/3/4, ribspine, armbones, legbones, shoulder) into the drawer's bones, and THE LOOT —
+  twelve accoutrements (coins, belt, keys, kettlehelm, potionred, potiongreen, pouch, tankard, amulet, boot, ropecoil, dice)
+  loaded from gibs/ by name, `lootBurst` at the start of most non-boss, non-flee deaths (85%): one to three, no two alike,
+  dry bodies. 300 cr, queued behind the gore batch on Meshy (both through the ten-pending wait).
+- THE BALLOON ("dramatically up the 3d realism... a little transparency. slow its flight and make it a little more erratic"):
+  a code-built prim (`prim: 'balloon'`, motion `float`): a sphere stretched 1.22 tall in a MeshPhysicalMaterial skin
+  (clearcoat 1, transmission 0.3, opacity 0.86, a touch of emissive so it reads in the dark), an additive highlight sprite,
+  a knot, a 1.4 m string that swings; bobbing at head height, leaning into its drift. Gag: speed 2.2 → 1.5, life 7,
+  `wander: 2.4` (core: the heading random-walks on state.rand). Pane: a red glossy balloon on a string, 2.5 cells out.
+  THE BONES + THE LOOT LANDED (20 of 20, 56 → 5 MB; sheet tmp/jabberwocky/renders/loot-sheet.png — the spine, a skull and
+  the rib cage came on display stands, Meshy ignoring "no base"; left as is). Balloon round two (his "not properly aiming
+  at the crosshairs. the string is very stiff... 10% smaller. randomize the color"): the wander now waits 0.7 s
+  (`wanderAfter`, so it leaves on the crosshair's line) and is 1.4; the string is six links hung one off the next, each
+  swinging a little behind the one above; size 0.56; a palette of eight colours, one per balloon (the prim group is
+  recoloured on clone: `userData.recolor`).
+- THE DONKEY KICK ("get a model of a donkey... animate it so it does a back kick. then use in sequence horseneigh.mp3 and
+  then horsekick.mp3 then have the camera view fall back so it's pointing up at the ceiling and the player must click at
+  least 6 times to recover"): Meshy `donkey` (15 cr; Meshy's rigger is humanoid-only, so no rig) run through
+  `split_legs.py` at 0.45 → Body + LegA–D with hip pivots. THE SCENE: gag `scene: 'donkey', kickAt: 1.15, sceneDur: 2.8,
+  downClicks: 6`; selfHit with a scene pushes a `flash` zone 1.35 cells ahead carrying the aim (`z.a`, `z.scene`) and
+  `state.scene`; `stepScene` lands the hit at kickAt (hurtPlayer + knock + `p.down = 6`) and the hosts play horseneigh on
+  the `scene` event and horsekick + a shake on `kicked`. KNOCKED DOWN: `p.down` (clicks left) / `p.downT` / `p.up` live on
+  the player (NOT in fx, which decays every key by dt); stepPlayer counts fresh clicks (edge on input.fire, `clickHeld`),
+  the sixth sets `p.up = 0.7`; fire() refuses while down, getting up, or in a scene. Render: the camera drops to 0.35 m and
+  tips 7 m up over 0.45 s (smoothstep), lies there, pops up over the 0.7 s; the donkey view faces along z.a (yaw 0 — the
+  sheet's front camera saw its face, so it faces +Z like the flying props), the two legs nearest the player are the hind
+  pair, they swing up about the sideways axis from 0.18 s before the hit (1.5 rad, back down slower), the body dips, a
+  dust puff. Pane: the donkey standing rear-on; down 6 → 5 → … → 0 on six clicks, then `up`; the ceiling on screen.
+- THE BOOMERANG ("needs to fly around, miss the target and then curve back and hit you in the face" + "trigger bonk.mp3
+  followed immediately by ouch.mp3"): gag `curve: 1.4, miss: true, returns: 1.2, speed 7, life 4.5`. Core: outbound the
+  heading turns at `curve` rad/s (a side picked once per shot on state.rand); `miss` makes boltHits skip creatures; on the
+  return the heading is STEERED toward the player at up to 4 rad/s (so it keeps its arc) and the height rises to 0.62
+  cells (the face). Hosts: `boomerang-hit` plays bonk then ouch (220 ms) + a 1.4 shake (the game keeps its red flash).
+  Headless: heading 61° → 88° out to 8.1 cells, back through 151° → 254°, home, hit.
+  Then his "too many sounds... bonk right when it hits, ouch .5 s later": the boomerang's self-hit carries `quiet: true`
+  and the hosts skip the stock hurt grunt for a quiet hurt; FILE_SKIP bonk 0.39 (0.40 s of air); ouch at +500 ms. The
+  donkey again ("too small and too far away... hold off on knocking me back until the hooves come up in my face"): size
+  2.9, `sceneDist: 0.95`, kickAt 1.6 with the hooves up from 0.55 s before and HELD 0.6 s before they come down.
+- THE DEATH SCREAMS WERE NEVER PLAYING (James: "all the death screams are like these really lame little moans... what
+  happened?"): `scream-01..05` and `hole-death-01..04` are numbered sets with NO base file, and since THE SOUND LEAK fix
+  (2026-09-12, decoded buffers) preflight only probed a numbered set after its base file decoded — `decodeFile(n).then(()
+  => probeSeries(n, 1))` — so neither set was ever found and every expire / drop death (and the hole's four) fell through to
+  the synth moan. Preflight now probes the set regardless. Pane, sound on: scream-01…05 and hole-death-01 available, 76
+  files loaded against 55 before.
+- THE PASSED COUNT (his chat note: "it's ok to say how many got updates but for sure count all passed as passed"): an
+  `update` note used to delete the weapon's verdict (back to review), so a passed weapon he sent a tweak to dropped out
+  of the PASSED count and section until he passed it again. server.mjs: an update note leaves the verdict alone now; only
+  pass / trash notes and the switch move it. SERVER RESTARTED for it (his launcher's node, pid 4504, replaced by a
+  pid-managed `npm run local:start`). The header's numbers were otherwise right (38 passed, 35 of them also updated).
+
 ## 2026-09-12 (night) — Claude (Fable 5.1) — MOTION SICKNESS: the look settle, the map north-up, the field of view
 
 James: "i think the game might be giving me slight motion sickness." Four causes named (the smoothed mouse look, the run

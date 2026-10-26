@@ -97,6 +97,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
   per one-shot, never released — now decoded buffers + freed sources, sound-smoke.mjs); then his "slight motion sickness" →
   his picks of Claude's four: look settle 70 → 25 ms (a LOOK dial), the corner map NORTH-UP (arrow turns, PLAY → Map turns),
   field of view 76 → 88 (the run burst stays, he likes it). AWAITING HIS FLIGHT.
+  **2026-10-25/26 THE FOURTH REVIEW NIGHT (~60 notes, ~1,044 Meshy cr): the whole night is the world changelog's
+  2026-10-25 entry — rigged summons (sumo, doll), the maul, the loot drawer (51 gore pieces + 12 accoutrements), the
+  donkey-kick scene + knockdown, the MBTA bus, the meteor, the pile driver, the swatter, the slaps, the burrito, the curse,
+  confetti, the balloon, the boomerang; AIM FIXED FOR GOOD (barrel-born shots converging on the crosshair, the viewmodel
+  solved through its own lens, the stale 76° fov); the death screams had been silent since 2026-09-12 (numbered sets
+  needed a base file to be probed) — fixed; the lab's hum (the room bed) off; an update note no longer un-passes a weapon.
+  Read the world CLAUDE.md START HERE (2026-10-26) first.**
   **JAMES TONIGHT: a track per level — drop `theme-2.mp3` … `theme-6.mp3` into `src/worlds/jabberwocky/assets/audio/`
   (2 catacombs, 3 meat locker, 4 the deep, 5 the middle, 6 the three doors); nothing to wire.**
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers

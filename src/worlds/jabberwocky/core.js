@@ -710,7 +710,7 @@
   // ---------------------------------------------------------------- firing
   function fire(state, forcedId) {
     const p = state.player;
-    if (state.phase !== 'play' || p.cool > 0 || p.fx.dead > 0 || state.pending) return null;
+    if (state.phase !== 'play' || p.cool > 0 || p.fx.dead > 0 || state.pending || p.down > 0 || p.up > 0 || state.scene) return null;   // down, getting up, or a scene playing: no shot
     const gag = rollGag(state, forcedId || state.opts.forceGag);
     p.cool = state.opts.fireCool;
     state.shotsFired++;
@@ -724,12 +724,30 @@
     state.pending = null;
     const p = state.player;
     const a = p.a + (p.aim || 0);   // aim = cursor-aim yaw offset from the facing (0 under mouse look)
-    launch(state, gag, p.x, p.y, a, 'player');
+    // BORN AT THE BARREL, AIMED AT THE CROSSHAIR (James 2026-10-26, "all the balls curve inward after firing"): a thrown or fired
+    // thing starts at the rifle's muzzle (measured in the pane: 0.76 m ahead, 0.31 m to the side of the lens) and flies at the
+    // point the crosshair ray hits (a creature or a wall, 14 cells out), so it converges on the mark instead of sliding onto a
+    // path from the body's centre. The beam and the melee swings keep the centre: they are drawn from the muzzle already.
+    let ox = p.x, oy = p.y, a2 = a;
+    if ((gag.kind === 'bolt' || gag.kind === 'lob' || gag.kind === 'summon') && !gag.backwards) {
+      // the renderer tells the sim where the barrel's tip really is each frame (state.muzzle, cells; the gun swings on its pivot, so a
+      // fixed offset is wrong the moment you aim aside — James 2026-10-26, the ball "considerably off to the left of the gun"); headless
+      // (the sim) falls back to the measured straight-ahead offset
+      const mz = state.muzzle;
+      const mx = mz ? mz.x : p.x + Math.cos(a) * MUZZLE.ahead - Math.sin(a) * MUZZLE.side, my = mz ? mz.y : p.y + Math.sin(a) * MUZZLE.ahead + Math.cos(a) * MUZZLE.side;
+      if (cellAt(state.level, mx, my) === OPEN) {
+        const tgt = aimPoint(state, p.x, p.y, a, 14, false);
+        a2 = Math.atan2(tgt.y - my, tgt.x - mx);
+        ox = mx - Math.cos(a2) * 0.45; oy = my - Math.sin(a2) * 0.45;   // launch() puts the shot 0.45 ahead of its origin: that lands it AT the barrel
+      }
+    }
+    launch(state, gag, ox, oy, a2, 'player');
     const empty = gag.id === 'flamethrower' && state.fuel <= 0;
     state.plate = { name: gag.name, line: empty ? 'Empty. Ten seconds was all it ever had.' : (gag.line || ''), tier: empty ? 'dud' : gag.tier, t: 0, id: gag.id };
     state.events.push({ type: 'fire', gag, x: p.x, y: p.y, a, empty });
   }
 
+  const MUZZLE = { ahead: 0.29, side: 0.12 };   // the rifle's muzzle in cells from the player, in the facing's frame (ahead, and along (-sin a, cos a))
   // launch a gag from a point in a direction; owner 'player' | 'boss' | 'rifle' (the little one)
   function launch(state, gag, ox, oy, a, owner) {
     const hostile = owner === 'boss';
@@ -775,17 +793,21 @@
       case 'melee': {
         state.shots.push({ id: nextId++, gag, kind: 'melee', sprite: gag.sprite, x: mx, y: my, z: 0.45, a, t: 0, life: gag.swingLife || 0.45, reach: gag.reach, hostile, owner, dead: false, visual: true });   // swingLife: a slower swing for the fist (James)
         // the reach lands a beat in: the sprite lunges first
-        state.zones.push({ id: nextId++, gag, mode: 'meleehit', x: ox, y: oy, a, t: 0, dur: 0.12, hostile, owner, done: false });
+        state.zones.push({ id: nextId++, gag, mode: 'meleehit', x: ox, y: oy, a, t: 0, dur: gag.hitDelay || 0.12, hostile, owner, done: false });   // hitDelay: the swatter's head lands late in the swing (2026-10-25)
         return;
       }
       case 'train': {
         // straight down the barrel — it used to snap to the nearest grid axis (James 2026-09-10: "not really aiming from the weapon")
         const ax = Math.cos(a), ay = Math.sin(a);
-        state.shots.push({ id: nextId++, gag, kind: 'train', sprite: gag.sprite, x: ox + ax * 1.1, y: oy + ay * 1.1, z: 0.5, a: Math.atan2(ay, ax), dx: ax, dy: ay, speed: gag.speed, breaks: gag.breaks, t: 0, life: 12, hostile, owner, hit: new Set(), dead: false, width: gag.width });
+        const nose = gag.nose || 1.1;   // nose: how far ahead the thing's centre starts — a life-size bus (4.2 cells long) would be born around you (2026-10-26)
+        state.shots.push({ id: nextId++, gag, kind: 'train', sprite: gag.sprite, x: ox + ax * nose, y: oy + ay * nose, z: 0.5, a: Math.atan2(ay, ax), dx: ax, dy: ay, speed: gag.speed, breaks: gag.breaks, t: 0, life: 12, hostile, owner, hit: new Set(), dead: false, width: gag.width });
         return;
       }
       case 'summon': {
-        state.shots.push({ id: nextId++, gag, kind: 'summon', sprite: gag.sprite, x: mx, y: my, z: 0.35, a, speed: gag.speed, turn: gag.turn, life: gag.life, t: 0, hitR: gag.hitR, pierce: !!gag.pierce, hostile, owner, hit: new Set(), dead: false, walker: true });   // pierce: the bees sting one after another (2026-09-11)
+        state.events.push({ type: 'summoned', gag, x: mx, y: my });   // the hosts start a gag's loop here (the doll, 2026-10-26)
+        // the one under the cursor is the prey (James 2026-10-25, skunk: "the aiming is unpredictable") — it used to run at whoever was nearest to IT
+        const aimed = hostile ? null : aimPoint(state, ox, oy, a, 14, hostile).goon;
+        state.shots.push({ id: nextId++, gag, kind: 'summon', sprite: gag.sprite, x: mx, y: my, z: 0.35, a, speed: gag.speed, turn: gag.turn, life: gag.life, t: 0, hitR: gag.hitR, pierce: !!gag.pierce, prey: aimed ? aimed.id : null, hostile, owner, hit: new Set(), dead: false, walker: true });   // pierce: the bees sting one after another (2026-09-11)
         return;
       }
       case 'self': return selfHit(state, gag, a);
@@ -878,6 +900,13 @@
 
   function selfHit(state, gag, a) {
     const p = state.player;
+    if (gag.scene) {   // THE DONKEY (2026-10-26): it appears a step ahead facing away, neighs, and the kick lands at kickAt — see stepScene
+      const zx = p.x + Math.cos(a) * (gag.sceneDist || 1.35), zy = p.y + Math.sin(a) * (gag.sceneDist || 1.35);   // sceneDist: how close it stands (James 2026-10-26, "too far away")
+      state.zones.push({ id: nextId++, gag, mode: 'flash', x: zx, y: zy, a, t: 0, dur: gag.sceneDur || 2.5, r: 0.5, hostile: false, owner: 'player', sprite: gag.sprite, done: false, dead: false, scene: true });
+      state.scene = { gag, a, t: 0, kicked: false };
+      state.events.push({ type: 'scene', gag, x: zx, y: zy });
+      return;
+    }
     if (gag.dmg) hurtPlayer(state, { name: gag.name, verb: gag.verb || 'DONE IN', tier: 'backfire', dmg: gag.dmg }, 'self');
     if (gag.knock) { p.vx -= Math.cos(a) * gag.knock; p.vy -= Math.sin(a) * gag.knock; }
     switch (gag.effect) {
@@ -910,6 +939,12 @@
     const def = OUTCOMES[outcome];
     g.gagId = gag.id;
     g.outcome = outcome;
+    if (def.fight) {   // the goose (2026-10-25): held up for gag.fight seconds, then back to what it was doing
+      if (g.state !== 'busy') g.prev = g.state;
+      g.state = 'busy'; g.busyT = gag.fight || 2.5; g.path = null; g.windup = 0;
+      state.events.push({ type: 'scrap', gag, goon: g, x: g.x, y: g.y });
+      return false;
+    }
     if (def.lethal === false) {
       g.state = 'pacified'; g.pacT = 0; g.path = null;
       state.events.push({ type: 'pacify', gag, goon: g, outcome });
@@ -922,6 +957,7 @@
       g.vx = Math.cos(ang) * 7; g.vy = Math.sin(ang) * 7; g.dieDur = 3;
     }
     if (outcome === 'drop' && gag.id !== 'hole') addScar(state, 'hole', g.x, g.y, gag);
+    if (outcome === 'flee') { g.fleeFrom = from ? { x: from.x, y: from.y } : { x: state.player.x, y: state.player.y }; g.a = Math.atan2(g.y - g.fleeFrom.y, g.x - g.fleeFrom.x); }   // the doll: away from her (2026-10-26)
     state.kills++;
     state.events.push({ type: 'kill', gag, goon: g, outcome, x: g.x, y: g.y });
     return true;
@@ -979,6 +1015,7 @@
     state.events = state.events || [];
     if (state.plate) state.plate.t += dt;
     if (state.phase !== 'play') { tickCorpses(state, dt); return; }
+    stepScene(state, dt);
     stepPlayer(state, input, dt);
     if (state.pending) { state.pending.t -= dt; if (state.pending.t <= 0) launchPending(state); }
     stepEmitters(state, dt);
@@ -994,8 +1031,28 @@
     for (const g of state.goons) if (g.state === 'dying') { g.dieT += dt; if (g.dieT >= g.dieDur) g.state = 'dead'; }
   }
 
+  function stepScene(state, dt) {   // the donkey's timeline (2026-10-26): neigh at 0 (the host), the kick at kickAt → damage, knock, DOWN
+    const sc = state.scene; if (!sc) return;
+    sc.t += dt;
+    if (!sc.kicked && sc.t >= (sc.gag.kickAt || 1)) {
+      sc.kicked = true; const p = state.player, gag = sc.gag;
+      if (gag.dmg) hurtPlayer(state, { name: gag.name, verb: gag.verb || 'KICKED', tier: 'backfire', dmg: gag.dmg }, 'self');
+      if (gag.knock) { p.vx -= Math.cos(sc.a) * gag.knock; p.vy -= Math.sin(sc.a) * gag.knock; }
+      p.down = gag.downClicks || 6; p.downT = 0; p.clickHeld = true;   // the click that fired does not count
+      state.events.push({ type: 'kicked', gag, x: p.x, y: p.y });
+    }
+    if (sc.t >= (sc.gag.sceneDur || 2.5)) state.scene = null;
+  }
   function stepPlayer(state, input, dt) {
     const p = state.player, fx = p.fx, o = state.opts;
+    if (p.down > 0) {   // KNOCKED DOWN (2026-10-26): flat on your back looking at the ceiling; each fresh click is a push up — downClicks of them
+      p.downT = (p.downT || 0) + dt;
+      if (input.fire && !p.clickHeld) { p.clickHeld = true; p.down--; state.events.push({ type: 'push', left: p.down }); if (p.down === 0) { p.up = 0.7; } }
+      if (!input.fire) p.clickHeld = false;
+      p.vx *= Math.pow(0.02, dt); p.vy *= Math.pow(0.02, dt); p.x += p.vx * dt; p.y += p.vy * dt;   // the knock carries you back a little, then you lie there
+      return;
+    }
+    if (p.up > 0) p.up = Math.max(0, p.up - dt);
     for (const k in fx) if (fx[k] > 0) fx[k] = Math.max(0, fx[k] - dt);
     if (p.ringing > 0) p.ringing -= dt;
     if (p.cool > 0) p.cool -= dt;
@@ -1121,12 +1178,25 @@
       s.t += dt;
       if (s.visual) { if (s.t >= s.life) s.dead = true; continue; }
       if (s.kind === 'bolt') {
+        if (s.victim != null) {   // held on its victim's face (the slap, 2026-10-25): then the kill, then gone
+          const g = state.goons.find((q) => q.id === s.victim);
+          const was = s.hold; s.hold -= dt;
+          if (Math.floor(was / 0.25) !== Math.floor(s.hold / 0.25) && s.hold > 0) state.events.push({ type: 'thwap', gag: s.gag, x: s.x, y: s.y });   // one per slap: every quarter second of the hold (James 2026-10-25, slap.mp3 "as fast as the slaps are coming")
+          if (g) { const toP = Math.atan2(p.y - g.y, p.x - g.x); s.x = g.x + Math.cos(toP) * 0.4; s.y = g.y + Math.sin(toP) * 0.4; s.a = toP + Math.PI; }
+          if (s.hold <= 0 && g && g.state === 'busy') { g.state = g.prev === 'idle' ? 'idle' : 'chase'; hitGoon(state, g, s.gag, { x: s.x, y: s.y }); }
+          if (s.hold <= 0 || !g || g.state !== 'busy') { s.dead = true; state.events.push({ type: 'gone', gag: s.gag, x: s.x, y: s.y }); }
+          continue;
+        }
+        if (s.gag.curve && !s.returning) { if (s.curveDir == null) s.curveDir = state.rand() < 0.5 ? -1 : 1; s.a += s.curveDir * s.gag.curve * dt; const sp0 = Math.hypot(s.vx, s.vy); s.vx = Math.cos(s.a) * sp0; s.vy = Math.sin(s.a) * sp0; }   // THE BOOMERANG (2026-10-26): out on a steady arc, past the mark
         if (s.gag.returns && !s.returning && s.t > s.gag.returns) { s.returning = true; s.hit.clear(); }
         if (s.returning) {
-          const ang = Math.atan2(p.y - s.y, p.x - s.x);
+          const want = Math.atan2(p.y - s.y, p.x - s.x);
           const sp = Math.hypot(s.vx, s.vy);
-          s.vx = Math.cos(ang) * sp; s.vy = Math.sin(ang) * sp; s.a = ang;
-          if (Math.hypot(p.x - s.x, p.y - s.y) < 0.5) { hurtPlayer(state, { name: s.gag.name, verb: s.gag.verb, tier: 'backfire', dmg: s.gag.selfDmg }, 'self'); s.dead = true; state.events.push({ type: 'boomerang-hit' }); continue; }
+          if (s.gag.curve) { const d = angDiff(want, s.a); s.a += Math.max(-4 * dt, Math.min(4 * dt, d)); s.z = Math.min(0.62, (s.z || 0.35) + dt * 0.4); }   // it keeps curving as it comes home, rising to your face
+          else s.a = want;
+          const ang = s.a;
+          s.vx = Math.cos(ang) * sp; s.vy = Math.sin(ang) * sp;
+          if (Math.hypot(p.x - s.x, p.y - s.y) < 0.5) { hurtPlayer(state, { name: s.gag.name, verb: s.gag.verb, tier: 'backfire', dmg: s.gag.selfDmg, quiet: true }, 'self'); s.dead = true; state.events.push({ type: 'boomerang-hit' }); continue; }   // quiet: the hosts skip the stock hurt sound — bonk + ouch carry it (2026-10-26)
         }
         if (s.gag.homingHostile) { /* reserved */ }
         // substep fast bolts
@@ -1149,6 +1219,7 @@
         }
         if (s.dead) continue;
         if (s.gag.floats) s.z = 0.5 + Math.sin(s.t * 3) * 0.15;
+        if (s.gag.wander && s.t > (s.gag.wanderAfter || 0)) { s.a += (state.rand() - 0.5) * s.gag.wander * dt * 3; const sp = Math.hypot(s.vx, s.vy); s.vx = Math.cos(s.a) * sp; s.vy = Math.sin(s.a) * sp; }   // erratic: the heading random-walks (the balloon, James 2026-10-26)
         boltHits(state, s);
         if (s.t >= s.life) {
           s.dead = true;
@@ -1160,10 +1231,28 @@
         s.x = s.x0 + (s.x1 - s.x0) * u; s.y = s.y0 + (s.y1 - s.y0) * u;
         s.z = 0.4 + s.arc * 4 * u * (1 - u);
         if (s.z < 0.9) boltHits(state, s);
-        if (s.dead) continue;
+        if (s.dead) { if (s.gag.burst) spawnBurst(state, s); continue; }   // hit someone on the way down: the burst comes out there (2026-10-25)
         if (u >= 1) { landLob(state, s); s.dead = true; }
       } else if (s.kind === 'summon') {
-        const target = s.hostile ? p : nearestGoon(state, s.x, s.y, s.hit);
+        if (s.victim != null) {   // THE FIGHT (the goose, 2026-10-25): it circles its victim until the victim wins, then dies in a shower of blood
+          const g = state.goons.find((q) => q.id === s.victim);
+          s.hold -= dt;
+          if (g && s.gag.maul) { s.a = Math.atan2(g.y - s.y, g.x - s.x); const d = Math.hypot(g.x - s.x, g.y - s.y); if (d > 0.7) { s.x = g.x - Math.cos(s.a) * 0.7; s.y = g.y - Math.sin(s.a) * 0.7; } }   // the sumo squares up to its victim and stays (2026-10-25)
+          else { s.orbit = (s.orbit != null ? s.orbit : s.a) + dt * 6; if (g) { s.x = g.x + Math.cos(s.orbit) * 0.45; s.y = g.y + Math.sin(s.orbit) * 0.45; } s.a = s.orbit + Math.PI; }   // the goose circles, HEAD IN: the orbit angle and the facing are two things (James 2026-10-26, "facing ass in")
+          if (s.hold <= 0 && s.gag.maul && g && g.state === 'busy') {   // the maul ends in the kill (2026-10-25)
+            g.state = g.prev === 'idle' ? 'idle' : 'chase';
+            if (s.gag.splash) { applySplash(state, s.gag, s.x, s.y, s.splash || s.gag.splash, s.hostile, s.owner); state.events.push({ type: 'boom', gag: s.gag, x: s.x, y: s.y, r: s.gag.splash }); }   // the doll: the burst takes everyone around (2026-10-26)
+            else hitGoon(state, g, s.gag, { x: s.x, y: s.y });
+          }
+          if (s.hold <= 0 || !g || g.state !== 'busy') { s.dead = true; if (s.gag.scar) addScar(state, s.gag.scar, s.x, s.y, s.gag); state.events.push({ type: s.gag.maul ? 'gone' : 'slain', gag: s.gag, x: s.x, y: s.y }); }   // a mauler walks off (gone); the goose is slain
+          continue;
+        }
+        let target = null;
+        if (!s.hostile && s.prey != null) {   // the aimed goon first; the nearest only once it is down or gone
+          const g = state.goons.find((q) => q.id === s.prey);
+          if (g && g.state !== 'dead' && g.state !== 'dying' && !s.hit.has(g.id)) target = g; else s.prey = null;
+        }
+        if (!target) target = s.hostile ? p : nearestGoon(state, s.x, s.y, s.hit);
         if (target) {
           const want = Math.atan2(target.y - s.y, target.x - s.x);
           const d = angDiff(want, s.a);
@@ -1175,7 +1264,8 @@
         const next = target ? Math.hypot(target.x - s.x, target.y - s.y) : Infinity;
         if (s.t >= s.life || (s.pierce && !target && s.t > 0.5) || (s.pierce && s.hit.size > 0 && !(s.hold > 0) && next > (s.gag.stingReach || 3.5))) { s.dead = true; state.events.push({ type: 'gone', gag: s.gag, x: s.x, y: s.y }); }   // the first victim for sure; a second or third only if close by (James 2026-09-11); nobody left = leave
       } else if (s.kind === 'train') {
-        const nx = s.x + s.dx * s.speed * dt, ny = s.y + s.dy * s.speed * dt;
+        const sp = s.speed * (s.gag.rev ? Math.min(1, 0.3 + 0.7 * s.t / s.gag.rev) : 1);   // rev: it pulls away from 30% and is up to speed by then (the bus, James 2026-10-26)
+        const nx = s.x + s.dx * sp * dt, ny = s.y + s.dy * sp * dt;
         const lvl = state.level;
         const cx = Math.floor(nx + s.dx * 0.5), cy = Math.floor(ny + s.dy * 0.5);
         const boundary = cx <= 0 || cy <= 0 || cx >= lvl.w - 1 || cy >= lvl.h - 1;
@@ -1221,20 +1311,37 @@
       }
       return;
     }
+    if (s.gag.miss) return;   // the boomerang: it misses everyone, that is the joke (2026-10-26)
     for (const g of state.goons) {
       if (g.state === 'dead' || g.state === 'dying' || s.hit.has(g.id)) continue;
       if (Math.hypot(g.x - s.x, g.y - s.y) < s.hitR + g.r) {
         s.hit.add(g.id);
+        if (s.kind === 'lob' && s.gag.burst) { s.dead = true; return; }   // a bursting lob (the sack of cats) hurts nobody itself: what comes out of it does the work (2026-10-25)
+        if (s.kind === 'summon' && s.gag.maul && !s.victim) {   // a mauling summon holds its first victim before anything else happens (the doll's splash waits for her scream, 2026-10-26)
+          if (g.state !== 'busy') g.prev = g.state;
+          g.state = 'busy'; g.busyT = s.gag.maul + 0.5; g.path = null; g.windup = 0;
+          s.victim = g.id; s.hold = s.gag.maul;
+          state.events.push({ type: 'scrap', gag: s.gag, goon: g, x: g.x, y: g.y });
+          return;
+        }
         if (s.splash) {
           applySplash(state, s.gag, s.x, s.y, s.splash, s.hostile, s.owner);
           if (s.gag.scar) addScar(state, s.gag.scar, s.x, s.y, s.gag);
           state.events.push({ type: 'boom', gag: s.gag, x: s.x, y: s.y, r: s.splash });
           s.dead = true; return;
         }
+        if (s.kind === 'bolt' && s.gag.maul && !s.victim) {   // THE SLAP (2026-10-25): stops at the face and thwaps for gag.maul seconds, then the kill
+          if (g.state !== 'busy') g.prev = g.state;
+          g.state = 'busy'; g.busyT = s.gag.maul + 0.5; g.path = null; g.windup = 0;
+          s.victim = g.id; s.hold = s.gag.maul; s.vx = s.vy = 0;
+          state.events.push({ type: 'scrap', gag: s.gag, goon: g, x: g.x, y: g.y });
+          return;
+        }
         const killed = hitGoon(state, g, s.gag, { x: s.ox != null ? s.ox : s.x, y: s.oy != null ? s.oy : s.y });
         if (s.kind === 'summon' && s.gag.sting) { s.hold = s.gag.sting; s.x = g.x; s.y = g.y; }   // park on the victim
+        if (s.kind === 'summon' && s.gag.fight) { s.hold = s.gag.fight; s.victim = g.id; }   // the goose: stays on its victim for the fight, then dies (2026-10-25)
         if (s.gag.cloud) addScar(state, s.gag.cloud, g.x, g.y, s.gag);
-        if (!s.pierce) {
+        if (!s.pierce && !s.victim) {
           if (s.gag.scar && !s.drop && s.kind !== 'summon') addScar(state, s.gag.scar, g.x, g.y, s.gag);
           if (s.kind === 'summon' && s.gag.scar) addScar(state, s.gag.scar, g.x, g.y, s.gag);
           s.dead = true;
@@ -1262,11 +1369,13 @@
     }
     if (s.splash) applySplash(state, g, s.x, s.y, s.splash, s.hostile, s.owner);
     if (g.scar) addScar(state, g.scar, s.x, s.y, g);
-    if (g.burst) {
-      for (let i = 0; i < g.burst.count; i++) {
-        const a = state.rand() * TAU;
-        state.shots.push({ id: nextId++, gag: g, kind: 'summon', sprite: g.burst.sprite, x: s.x + Math.cos(a) * 0.2, y: s.y + Math.sin(a) * 0.2, z: 0.3, a, speed: g.burst.speed, turn: g.burst.turn, life: g.burst.life, t: 0, hitR: g.burst.hitR, hostile: s.hostile, owner: s.owner, hit: new Set(), dead: false, walker: true });
-      }
+    if (g.burst) spawnBurst(state, s);
+  }
+  function spawnBurst(state, s) {   // what comes out of a lob (the bag of cats) — on the landing OR the hit (2026-10-25: the sack used to burst only on bare floor)
+    const g = s.gag;
+    for (let i = 0; i < g.burst.count; i++) {
+      const a = state.rand() * TAU;
+      state.shots.push({ id: nextId++, gag: g, kind: 'summon', sprite: g.burst.sprite, x: s.x + Math.cos(a) * 0.2, y: s.y + Math.sin(a) * 0.2, z: 0.3, a, speed: g.burst.speed, turn: g.burst.turn, life: g.burst.life, t: 0, hitR: g.burst.hitR, hostile: s.hostile, owner: s.owner, hit: new Set(), dead: false, walker: true });
     }
   }
 
@@ -1409,6 +1518,7 @@
         }
         if (g.outcome === 'shrink') g.scale = Math.max(0.02, 1 - g.dieT / g.dieDur);
         if (g.outcome === 'inflate') g.scale = g.dieT < g.dieDur - 0.3 ? 1 + (g.dieT / g.dieDur) * 1.4 : 0.01;
+        if (g.outcome === 'flee' && g.fleeFrom) { const ang = Math.atan2(g.y - g.fleeFrom.y, g.x - g.fleeFrom.x); g.a = ang; const sp = (g.def.speed || 1.5) * 1.6; moveCircle(state, g, Math.cos(ang) * sp * dt, Math.sin(ang) * sp * dt, g.r); }   // running away in terror (the doll, 2026-10-26)
         if (g.dieT >= g.dieDur) {
           g.state = 'dead';
           if (g.isBoss) { state.phase = 'won'; state.doorOpen = true; state.events.push({ type: 'won' }); }   // his door opens (2026-09-11)
@@ -1417,6 +1527,7 @@
       }
       if (g.dropped > 0) g.dropped -= dt;
       if (g.state === 'pacified') { g.pacT += dt; continue; }
+      if (g.state === 'busy') { g.busyT -= dt; if (g.busyT <= 0) { g.state = g.prev === 'idle' ? 'idle' : 'chase'; g.pathT = 0; } continue; }   // fighting the goose (2026-10-25), then it keeps coming
       const def = g.def;
       const dist = Math.hypot(p.x - g.x, p.y - g.y);
       if (g.isBoss) { stepBoss(state, g, dt, dist); continue; }

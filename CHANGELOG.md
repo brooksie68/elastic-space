@@ -8,6 +8,16 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-10-25/26 — Claude (Fable 5.1) — JABBERWOCKY: the fourth review night
+
+- ~60 weapon-lab notes acted on through the night: rigged summons (sumo, doll via creature.mjs), the maul, the loot
+  drawer (26 gore pieces + 8 bone sets + 12 accoutrements), the donkey-kick scene + knockdown, the MBTA bus (two takes),
+  the meteor, pile driver, swatter, slaps, burrito, curse, confetti, balloon, boomerang; ~1,044 Meshy credits.
+- Aim fixed for good: shots born at the rifle's real muzzle and converged on the crosshair; the viewmodel's barrel solved
+  through its own lens; the cursor math read a stale 76° fov against the camera's 88°.
+- The death screams were silent since 2026-09-12 (numbered sound sets needed a base file to be probed) — fixed. The
+  lab's ceaseless hum (the room bed's drone) silenced in the lab. An update note no longer drops a PASSED weapon.
+
 ## 2026-09-12 — Claude — JABBERWOCKY: the run burst + the EXIT sign over the door
 
 - Shift is a two-second run burst (1.9× walk) with a two-second cooldown, no chaining while held; a RUN bar on the HUD, a whoosh; sim TEST 15.

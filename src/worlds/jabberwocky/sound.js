@@ -149,7 +149,10 @@
     swat: (p) => { whoosh({ dur: 0.25, gain: 0.4, pan: p }); noise({ dur: 0.12, f: 1500, f2: 300, gain: 0.7, delay: 0.2, pan: p }); },
     slaps: (p) => { for (let i = 0; i < 40; i++) noise({ dur: 0.04, f: 1200, f2: 400, gain: 0.35, delay: i * 0.045, pan: p }); },
     sizzle: (p) => { noise({ dur: 1.5, f: 5000, f2: 3000, type: 'highpass', gain: 0.3, pan: p }); tone({ f: 700, dur: 0.3, type: 'sine', gain: 0.15, delay: 0.1, pan: p }); },
-    curse: (p) => { for (let i = 0; i < 5; i++) { tone({ f: 120 - i * 10, f2: 60, dur: 0.18, type: 'sawtooth', gain: 0.3, delay: i * 0.22, filter: 'lowpass', ff: 500, pan: p }); noise({ dur: 0.15, f: 400, f2: 100, gain: 0.35, delay: i * 0.22 + 0.05, pan: p }); } },
+    curse: (p) => {   // 2026-10-25 James: louder and more disgusting — a long wet gurgle, eight sputtering blasts sliding down, a squelch under each
+      noise({ dur: 2.4, f: 220, f2: 80, type: 'lowpass', gain: 0.5, pan: p });
+      for (let i = 0; i < 8; i++) { const d = i * 0.26 + Math.random() * 0.05; tone({ f: 140 - i * 9, f2: 45, dur: 0.22 + i * 0.02, type: 'sawtooth', gain: 0.7, delay: d, filter: 'lowpass', ff: 420, pan: p }); noise({ dur: 0.2, f: 900, f2: 120, gain: 0.8, delay: d + 0.03, pan: p }); tone({ f: 70, f2: 30, dur: 0.3, type: 'square', gain: 0.35, delay: d + 0.06, filter: 'lowpass', ff: 200, pan: p }); }
+    },
     vending: (p) => { whoosh({ dur: 0.5, gain: 0.3, pan: p }); noise({ dur: 0.4, f: 500, f2: 60, gain: 0.8, delay: 0.55, pan: p }); for (let i = 0; i < 6; i++) clicks(1, 0, { f: 1800, gain: 0.3, delay: 0.7 + i * 0.1, pan: p }); tone({ f: 880, dur: 0.15, type: 'square', gain: 0.15, delay: 1.3, pan: p }); },
     sumo: (p) => { voice({ f: 120, f2: 90, dur: 0.8, formants: [500, 1000], gain: 0.35, pan: p }); thud({ pan: p }); },
     piledriver: (p) => { for (let i = 0; i < 4; i++) { noise({ dur: 0.2, f: 300, f2: 60, gain: 0.8, delay: i * 0.18, pan: p }); tone({ f: 70, f2: 30, dur: 0.2, type: 'square', gain: 0.4, delay: i * 0.18, pan: p }); } },
@@ -180,7 +183,11 @@
     mother: (p) => { voice({ f: 220, f2: 180, dur: 1.4, formants: [600, 1800], vib: 4, vibRate: 3, gain: 0.18, pan: p }); },
     bagpipes: (p) => { tone({ f: 233, dur: 2.5, type: 'sawtooth', gain: 0.12, a: 0.3, filter: 'lowpass', ff: 2000, pan: p }); tone({ f: 116, dur: 2.5, type: 'sawtooth', gain: 0.1, a: 0.3, filter: 'lowpass', ff: 1500, pan: p }); seq([[466, 0.3], [523, 0.3], [587, 0.3], [523, 0.3], [466, 0.6]], { type: 'sawtooth', gain: 0.1, delay: 0.4, pan: p, extra: { filter: 'lowpass', ff: 2200 } }); },
     flop: (p) => { noise({ dur: 0.15, f: 600, f2: 200, gain: 0.3, delay: 0.4, pan: p }); noise({ dur: 0.12, f: 500, f2: 200, gain: 0.2, delay: 0.7, pan: p }); },
-    confetti: (p) => { noise({ dur: 0.3, f: 2000, f2: 5000, type: 'highpass', gain: 0.2, pan: p }); tone({ f: 1500, dur: 0.1, type: 'square', gain: 0.1, pan: p }); },
+    confetti: (p) => {   // 2026-10-25 James: a clown bicycle horn (two squeezes) and a slide whistle up then down while it drifts
+      for (const d of [0, 0.3]) { tone({ f: 520, f2: 470, dur: 0.22, type: 'sawtooth', gain: 0.35, delay: d, filter: 'bandpass', ff: 900, pan: p }); tone({ f: 780, f2: 700, dur: 0.22, type: 'square', gain: 0.12, delay: d, filter: 'lowpass', ff: 1600, pan: p }); }
+      tone({ f: 600, f2: 1500, dur: 0.7, type: 'triangle', gain: 0.22, delay: 0.75, curve: 'lin', vib: 12, vibRate: 7, pan: p });
+      tone({ f: 1500, f2: 450, dur: 0.8, type: 'triangle', gain: 0.22, delay: 1.5, curve: 'lin', vib: 12, vibRate: 7, pan: p });
+    },
     flag: (p) => { noise({ dur: 0.2, f: 500, f2: 2000, type: 'bandpass', q: 1, gain: 0.25, pan: p }); tone({ f: 200, dur: 0.1, type: 'square', gain: 0.1, delay: 0.2, pan: p }); },
     feather: (p) => { noise({ dur: 0.4, f: 2000, f2: 4000, type: 'bandpass', q: 3, gain: 0.08, pan: p }); },
     cookie: (p) => { clicks(2, 0.1, { f: 1500, gain: 0.3, delay: 0.7, pan: p }); noise({ dur: 0.1, f: 3000, type: 'highpass', gain: 0.2, delay: 0.9, pan: p }); },
@@ -302,6 +309,10 @@
   const SFX_DIR = scriptBase + 'assets/audio/sfx/';
   const FILES = {
     purse: 'purse',   // James's purse.mp3 on the swing (2026-09-10)
+    slap: 'slap',   // James's slap.mp3, one per thwap of the slap fight (2026-10-25)
+    piledriver: 'piledriver',   // James's piledriver.mp3 at the hit (splashSound, 2026-10-25)
+    sumoyell: 'sumoyell',   // James's sumoyell.mp3: the sumo's battle cry as he catches his man (2026-10-25)
+    dollscream: 'dollscream', busrev: 'busrev', horseneigh: 'horseneigh', horsekick: 'horsekick', bonk: 'bonk', ouch: 'ouch',   // James's files (2026-10-26): the doll's scream at her burst (a splashSound needs a FILES row to reach the file — it did not, so she was silent), the bus's rev as it appears
     pianocrash: 'piano-crash',   // James's piano-crash.mp3 when the piano lands (2026-09-10)
     tornado: 'tornado',   // the loop while the tornado lives (loopFile); the gag's own fire sound is 'none' (James 2026-09-10)
     gunshot: 'gunshot', rocket: 'explosion', boom: 'explosion', cannon: 'explosion', meteor: 'explosion', splat: 'splat', chomp: 'chomp',
@@ -309,7 +320,7 @@
     yowl: 'yowl', sneeze: 'sneeze', thud: 'thud', clang: 'clang', zap: 'zap', hiss: 'hiss', key: 'key', door: 'door', wallbreak: 'wallbreak',
     fall: 'fall', buzz: 'buzz', screech: 'screech', pop: 'pop', win: 'win', bosswind: 'bossroar', bosshit: 'bosshit', bossdead: 'bossdie',
     crunch: 'crunch', boing: 'boing', wallsplat: 'wallsplat', batterup: 'batterup', punch: 'punch', gasss: 'gasss', sand: 'grainofsand', eagleattack: 'eagleattack',   /* grainofsand + eagleattack: James's own files (2026-09-08) */   // batterup = ElevenLabs TTS (Harry); punch = James's own file (the fist), 2026-09-08
-    flame: 'burn', lava: 'burn', nitrogen: 'freeze', hose: 'glue', jello: 'glue', gravy: 'glue', crash: 'explosion', catbag: 'yowl',
+    flame: 'burn', lava: 'burn', nitrogen: 'nitrogen',   /* nitrogen: James's own file, held for the stream then faded (FILE_TRIM, 2026-10-25) */ hose: 'glue', jello: 'glue', gravy: 'glue', crash: 'explosion', catbag: 'yowl',
   };
   const NOTICE = { ghoul: 'ghoul', brute: 'brute', ratling: 'ratling', flayed: 'flayed', cultist: 'cultist', stalker: 'stalker', jabberwock: 'bossroar' };   // flayed: a wet skinless shriek (2026-09-12)
   const OUT_FILES = { gib: 'gib', squash: 'squash', freeze: 'icecrack', glue: 'glue', burn: 'burnttoast',   /* burnttoast: James's own file for a creature dying by fire, 2026-09-08 */ fling: 'boing', drop: 'scream', expire: 'scream', chew: 'chomp', inflate: 'pop', smother: 'glue', vapor: 'vapor' };
@@ -333,9 +344,9 @@
     for (const v of Object.values(FILES)) (Array.isArray(v) ? v : [v]).forEach((n) => names.add(n));
     for (const v of Object.values(NOTICE)) names.add(v);
     for (const v of Object.values(OUT_FILES)) names.add(v);
-    const T = globalThis.JABBERWOCKY_GAGS; if (T) for (const g of T.GAGS) if (g.deathSound) names.add(g.deathSound);   // per-gag death sounds (the hole, 2026-09-10)
+    const T = globalThis.JABBERWOCKY_GAGS; if (T) for (const g of T.GAGS) { if (g.deathSound) names.add(g.deathSound); if (g.loop) names.add(g.loop); }   // per-gag death sounds (the hole, 2026-09-10) and loops (the doll's creepydoll.mp3, 2026-10-26: a loop file not in FILES was never decoded, so loopFile found it 'unavailable' and the old synth played alone)
     if (useElements || typeof fetch !== 'function' || /^file:/.test(SFX_DIR)) { useElements = true; for (const n of names) { probeElement(n); probeSeries(n, 1); } return; }
-    for (const n of names) decodeFile(n).then(() => probeSeries(n, 1)).catch(() => {});
+    for (const n of names) { decodeFile(n).catch(() => {}); probeSeries(n, 1); }   // 2026-10-26: the numbered set is probed whether or not a base file exists — scream-01..05 and hole-death-01..04 have NO base, so since the decoded-buffer rewrite (2026-09-12) they were never found and every expire / drop death played the synth moan (James: "really lame little moans")
   }
   // the file:// fallback: one probing element per name (its player is released once the check is done)
   function probeElement(n) {
@@ -376,12 +387,14 @@
     if (!e) { e = list[0]; }   // all three busy: the oldest starts over
     return e;
   }
-  const FILE_GAIN = { batterup: 2.6 };
+  const FILE_GAIN = { batterup: 2.6, sumoyell: 0.765 };   // sumoyell: 15% under the usual 0.9 (James 2026-10-25, "too loud")
   // a medium room on a few files (James 2026-09-10, the purse: 'a little reverb… like a medium room'): a short noise-tail convolver, mixed low
   const FILE_ROOM = { purse: 0.28 };
+  const FILE_TRIM = { nitrogen: { hold: 1.0, fade: 0.5 }, honk: { hold: 0.55, fade: 0.2 } };   // honk: the 2 s file ran on after the goose was already splattered (James 2026-10-26)
+  const FILE_SKIP = { piledriver: 0.34, sumoyell: 0.72, slap: 0.3, strike: 0.27, bonk: 0.39 };   // bonk: 0.40 s of air before the bonk (2026-10-26)   // measured dead air at the head of each file (Web Audio decode, 2026-10-26): sumoyell 0.73 s (his "not starting soon enough"), slap 0.32 s before it gets loud   // a file that starts with dead air plays from here (piledriver.mp3 has 0.35 s of silence before the hit — James 2026-10-25, "the sound comes in late")   // a long file cut to the weapon: full for `hold` s (the stream's dur), then faded out over `fade` s (James 2026-10-25: "fade it where appropriate")
   let _room = null;
   function room() { if (_room) return _room; const len = Math.floor(ctx.sampleRate * 0.9), buf = ctx.createBuffer(2, len, ctx.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6) * 0.6; } _room = ctx.createConvolver(); _room.buffer = buf; _room.connect(sfxGain); return _room; }   // per-file level over the 0.9 house level (batterup: James, 'louder, the death yell is overpowering it')
-  function playFile(name, pan) {
+  function playFile(name, pan, trimOverride) {
     const base = name;
     if (series[name] && series[name].length) { const k = (seriesAt[name] = ((seriesAt[name] || 0) % series[name].length) + 1); name = series[name][k - 1]; }   // in succession, never the same twice running (James 2026-09-10, the hole)
     if (!available.has(name)) return false;
@@ -393,15 +406,19 @@
       const p = out(g, pan);
       let send = null;
       if (FILE_ROOM[base]) { send = ctx.createGain(); send.gain.value = FILE_ROOM[base]; g.connect(send); send.connect(room()); }
-      voices.push(ctx.currentTime + (buf.duration || 1) + 0.1);
+      const trim = trimOverride || FILE_TRIM[base];
+      voices.push(ctx.currentTime + (trim ? trim.hold + trim.fade : (buf.duration || 1)) + 0.1);
       src.onended = () => { try { src.disconnect(); g.disconnect(); if (p) p.disconnect(); if (send) send.disconnect(); } catch (e) {} };
-      src.start();
+      src.start(0, FILE_SKIP[base] || 0);
+      if (trim) { const t0 = ctx.currentTime, g0 = g.gain.value; g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(g0, t0 + 0.04); g.gain.setValueAtTime(g0, t0 + trim.hold); g.gain.linearRampToValueAtTime(0, t0 + trim.hold + trim.fade); src.stop(t0 + trim.hold + trim.fade + 0.05); }   // after start(): stop() before it throws (2026-10-25)
       return true;
     }
     const e = pooledElement(name, false);
     if (e.g) { e.g.gain.value = FILE_GAIN[name] || 0.9; if (e.p) e.p.pan.value = Math.max(-1, Math.min(1, pan || 0)); }
-    try { e.a.currentTime = 0; } catch (err) {}
+    try { e.a.currentTime = FILE_SKIP[base] || 0; } catch (err) {}
     e.a.play().catch(() => {});
+    const trim = trimOverride || FILE_TRIM[base];
+    if (trim) setTimeout(() => { try { if (e.g) { e.g.gain.setTargetAtTime(0, ctx.currentTime, trim.fade / 3); setTimeout(() => { try { e.a.pause(); } catch (err) {} }, trim.fade * 1000 + 200); } else e.a.pause(); } catch (err) {} }, trim.hold * 1000);
     return true;
   }
   // a file on a loop with a handle to stop it (the tornado: James's tornado.mp3 while it is on screen, 2026-09-10)
@@ -433,7 +450,7 @@
   function outcome(id, pan, gag) {
     if (!running || !ctx) return;
     if (gag && gag.deathSound === 'none') return;   // the weapon's own sound already carries the kill (the purse: no doubled yell, James 2026-09-10)
-    if (gag && gag.deathSound && playFile(gag.deathSound, pan)) return;   // the weapon's own death sound (the hole's four screams)
+    if (gag && gag.deathSound && playFile(gag.deathSound, pan, gag.deathTrim)) return;   // the weapon's own death sound (the hole's four screams); deathTrim {hold, fade} cuts a long file short (the pile driver's crunch, 2026-10-25)
     if (OUT_FILES[id] && playFile(OUT_FILES[id], pan)) return;
     const fn = O[id]; if (fn) { try { fn(pan); } catch (e) {} }
   }

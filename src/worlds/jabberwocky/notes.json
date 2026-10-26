@@ -1241,6 +1241,838 @@
       "action": "update",
       "reply": "Done: the sneaker's landing kill plays a splat now, on top of the blood, the pool and the wall splats it already had.",
       "doneAt": "2026-09-12T15:51:48.728Z"
+    },
+    {
+      "id": "nmvo6wg4wb7g6",
+      "gag": "sneaker",
+      "text": "this is a pass. i like it",
+      "at": "2026-10-25T18:57:22.352Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Marked PASSED. Nothing changed on the sneaker.",
+      "doneAt": "2026-10-25T18:57:44.382Z"
+    },
+    {
+      "id": "nmvo6xod6deyl",
+      "gag": "shrinkray",
+      "text": "its not that exciting but it works.",
+      "at": "2026-10-25T18:58:19.674Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted. Passed as-is.",
+      "doneAt": "2026-10-25T18:58:24.393Z"
+    },
+    {
+      "id": "nmvo6z3lxdrsm",
+      "gag": "skunk",
+      "text": "the aiming is unpredictable. sometimes it goes off at a weird angle",
+      "at": "2026-10-25T18:59:26.085Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Fixed: the skunk (and every summon) ran at whichever creature was nearest to it, not the one you aimed at. Now it locks the one under the cursor. No spend.",
+      "doneAt": "2026-10-25T19:00:35.327Z"
+    },
+    {
+      "id": "nmvo721bp3dzh",
+      "gag": "meteor",
+      "text": "incredibly cartoony. go to meshy and get a big rock. spend whatever you need. apply a flame/smoke effect to it and blast rock shards and body parts everywhere",
+      "at": "2026-10-25T19:01:43.093Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done. Meshy rock 15 cr (the old meshy-5 model is retired, pipeline moved to meshy-6-lite). Fire + smoke trail on the fall, rock shards + full gore blast on the landing.",
+      "doneAt": "2026-10-25T19:08:25.923Z"
+    },
+    {
+      "id": "nmvo72pxholqf",
+      "gag": "skunk",
+      "text": "skunk is a pass",
+      "at": "2026-10-25T19:02:14.981Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T19:02:31.067Z"
+    },
+    {
+      "id": "nmvo73vrg1a3a",
+      "gag": "papercuts",
+      "text": "papers need to be perpendicular, flat. they would never fly like this",
+      "at": "2026-10-25T19:03:09.196Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Fixed: real flat sheets, level to the floor, spinning. No spend.",
+      "doneAt": "2026-10-25T19:08:26.114Z"
+    },
+    {
+      "id": "nmvo7av9mhh5g",
+      "gag": "nitrogen",
+      "text": "the ice effect is pretty cool and can stay and the sound. but what comes out of the gun needs to be a stream of white fog kind of like the flame effect we have.... except white and ice blue instead of orange and red. and use this sound effect and fade it where appropriate: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\nitrogen.mp3",
+      "at": "2026-10-25T19:08:35.146Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: fog stream, your sound with a fade. No spend.",
+      "doneAt": "2026-10-25T19:11:11.099Z"
+    },
+    {
+      "id": "nmvo7bq0u64c1",
+      "gag": "meteor",
+      "text": "AWESOME",
+      "at": "2026-10-25T19:09:15.006Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Glad it landed.",
+      "doneAt": "2026-10-25T19:09:31.661Z"
+    },
+    {
+      "id": "nmvo7c876piwf",
+      "gag": "papercuts",
+      "text": "much better. pass",
+      "at": "2026-10-25T19:09:38.562Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T19:09:55.672Z"
+    },
+    {
+      "id": "nmvo7ej3vw2f6",
+      "gag": "goose",
+      "text": "this one id like to see slow the npcs down but they kill it in a shower of blood and they keep coming after you.",
+      "at": "2026-10-25T19:11:26.011Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. Holds the creature ~3 s (the knob is fight: 2.8 on the gag), then dies in blood. Moved to the WEIRD tier since it no longer kills. No spend.",
+      "doneAt": "2026-10-25T19:17:21.681Z"
+    },
+    {
+      "id": "nmvo7fro7t82r",
+      "gag": "nitrogen",
+      "text": "not hearing the new sound at all. its not playing",
+      "at": "2026-10-25T19:12:23.767Z",
+      "status": "done",
+      "action": "update",
+      "reply": "My bug: the fade-out was scheduled before the file started and the play threw. Fixed, heard it in the pane. Reload.",
+      "doneAt": "2026-10-25T19:14:32.031Z"
+    },
+    {
+      "id": "nmvo7ilprt2p1",
+      "gag": "nitrogen",
+      "text": "this is going to need 2 sounds played. first the new nitrogen sound then the ice crackling sound that was playing before. that still needs to fire",
+      "at": "2026-10-25T19:14:36.015Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Left as is per your next note.",
+      "doneAt": "2026-10-25T19:15:41.643Z"
+    },
+    {
+      "id": "nmvo7jg56fd8i",
+      "gag": "nitrogen",
+      "text": "NVM its already playing both. this is great",
+      "at": "2026-10-25T19:15:15.450Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T19:15:42.050Z"
+    },
+    {
+      "id": "nmvo7n959ve0l",
+      "gag": "cannonball",
+      "text": "its not firing diagonally very well. it comes out to the side but more like, straight out... rather than diagonally from the muzzle",
+      "at": "2026-10-25T19:18:13.005Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Fixed: it was born at your centre with no pull-in to the muzzle. Out of the barrel now. No spend.",
+      "doneAt": "2026-10-25T19:20:25.496Z"
+    },
+    {
+      "id": "nmvo81xozf3up",
+      "gag": "catbag",
+      "text": "this is weak. got to meshy and get 3 or 4 cats and a fabric bag. then use blender to put all the cats into a crazy jumble with their back legs cartoonishly jumbled together and their front legs sticking out in all directions. repeat them as needed for a good spiky ball. they dont have to be very high res... do that thing where you lower the file size with less vertices. then the whole thing is a writhing ball of claws. exaggeratedly large paws and claws. when they hit everything flies in all directions with blood and body parts and cat body parts",
+      "at": "2026-10-25T19:29:38.003Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 60 cr (three cats + the sack). Ball size is PROPS.catball.size (2.4) if you want it bigger or smaller.",
+      "doneAt": "2026-10-25T19:39:31.130Z"
+    },
+    {
+      "id": "nmvo84h2t679e",
+      "gag": "swatter",
+      "text": "get a model for a fly swatter at meshy and have it coming from above as if the shooter was holding the handle and swinging it down from overhead. pivoting down from the shoulder and elbow. stupidly large and with a splat sound. it doesn't need a hand though. just the swatter",
+      "at": "2026-10-25T19:31:36.437Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 15 cr. Size is PROPS.swatter.size (8) and the swing time is swingLife (0.75 s) on the gag.",
+      "doneAt": "2026-10-25T19:49:23.410Z"
+    },
+    {
+      "id": "nmvo882epcqzr",
+      "gag": "slapfight",
+      "text": "get a model of a hand in a slapping position. almost like extended to shake. it's big but not insanely big and it flies forward slapping back and forth rapidly kind of like a fish tail action. anything it hits flies off in the direction it was hit with blood and a yell.",
+      "at": "2026-10-25T19:34:24.049Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 15 cr. Size is PROPS.slap.size (1.6).",
+      "doneAt": "2026-10-25T19:49:23.560Z"
+    },
+    {
+      "id": "nmvo89bw03zix",
+      "gag": "burrito",
+      "text": "get a burrito from meshy and fake a pile of steaming rice and beans when it hits that consumes the npc",
+      "at": "2026-10-25T19:35:22.992Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 15 cr.",
+      "doneAt": "2026-10-25T19:49:23.704Z"
+    },
+    {
+      "id": "nmvo8bvmnluvg",
+      "gag": "curse",
+      "text": "make a stream of brown come down from their butts. use the same effect as the fire and nitrogen but much smaller and slower and denser. really try to sell it as a stream of hot liquid. add some lumps to the puddles and some entrails and some steam rising. make sure they yell, too",
+      "at": "2026-10-25T19:37:21.887Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. No spend.",
+      "doneAt": "2026-10-25T19:49:23.890Z"
+    },
+    {
+      "id": "nmvo8n1kn8ur3",
+      "gag": "catbag",
+      "text": "it all happens so fast i cant see any cats. i wanted the front paws to be sticking out from holes in the bag in all directions while it was flying and then somehow i need to SEE the cats themselves at least briefly in a melee for at least 1 second before everything explodes",
+      "at": "2026-10-25T19:46:02.807Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: paws through the sack, a 1.4 s visible maul before the explosion. The sack used to kill on touch, which is why you never saw a cat. No spend.",
+      "doneAt": "2026-10-25T19:49:23.267Z"
+    },
+    {
+      "id": "nmvo8vc504m2j",
+      "gag": "swatter",
+      "text": "adjust the angle so its aligning along the barrel a bit more closely. not exact. but pull the handle in a little closer.",
+      "at": "2026-10-25T19:52:29.748Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Pulled in: the pivot is the barrel tip now (0.15 m past it, 0.3 m above). Tell me a number if it wants more.",
+      "doneAt": "2026-10-25T19:53:36.059Z"
+    },
+    {
+      "id": "nmvo8xrl7jjki",
+      "gag": "slapfight",
+      "text": "the hand is not aligned right. it should be as if the person was extending it outwardly from their body as if extending their hand to give a handshake. thwap thwap thwap thwap back and forth. its flying like... sideways. looks really off",
+      "at": "2026-10-25T19:54:23.083Z",
+      "status": "done",
+      "action": "update",
+      "reply": "My bug, fixed and measured in the pane. Wag is ±0.75 rad at 26/s if you want it tighter.",
+      "doneAt": "2026-10-25T19:59:21.380Z"
+    },
+    {
+      "id": "nmvo8z2a1hhft",
+      "gag": "burrito",
+      "text": "see if you can make the rice particles a lot smaller and more rice shaped and like 3x as many. a LOT smaller",
+      "at": "2026-10-25T19:55:23.593Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done.",
+      "doneAt": "2026-10-25T19:59:21.525Z"
+    },
+    {
+      "id": "nmvo90pf8p2ip",
+      "gag": "curse",
+      "text": "better but the npcs are falling forward before they finish pooping and there is just a stream of poop coming down from nothing. time that better and make the sound louder and more disgusting",
+      "at": "2026-10-25T19:56:40.244Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Timed: stream standing, then the fall. Sound rebuilt louder and wetter. Headless here, so the sound is yours to judge.",
+      "doneAt": "2026-10-25T19:59:21.673Z"
+    },
+    {
+      "id": "nmvo91axfux13",
+      "gag": "swatter",
+      "text": "pass",
+      "at": "2026-10-25T19:57:08.115Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T19:58:30.994Z"
+    },
+    {
+      "id": "nmvo96i0i37bq",
+      "gag": "catbag",
+      "text": "this is never gonna cut it with our current level of tech. not worth the effort.",
+      "at": "2026-10-25T20:01:10.578Z",
+      "status": "done",
+      "action": "trash",
+      "reply": "Fair. It's out of the roll; the models and scripts stay on disk until ship.",
+      "doneAt": "2026-10-25T20:01:22.912Z"
+    },
+    {
+      "id": "nmvo97fi8ldwt",
+      "gag": "slapfight",
+      "text": "better but its still upside down... the thumb should be on top",
+      "at": "2026-10-25T20:01:53.984Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Flipped. Thumb up.",
+      "doneAt": "2026-10-25T20:02:08.488Z"
+    },
+    {
+      "id": "nmvo98edp004u",
+      "gag": "burrito",
+      "text": "better but even smaller. make the white particles half of their current size",
+      "at": "2026-10-25T20:02:39.181Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Halved. The knob is the rice size in beanPile (0.5 now).",
+      "doneAt": "2026-10-25T20:02:55.064Z"
+    },
+    {
+      "id": "nmvo9a0uw8o7t",
+      "gag": "slapfight",
+      "text": "id like it to stop at the npc and thwap it right in the face and on the 4th thwap the head flies off and the npc dies",
+      "at": "2026-10-25T20:03:54.968Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. Hold is maul: 1.0 on the gag; the wag halves to 13/s while it is on the face so the thwaps read.",
+      "doneAt": "2026-10-25T20:06:45.050Z"
+    },
+    {
+      "id": "nmvo9bk4zfjmy",
+      "gag": "curse",
+      "text": "now they back away from it immediately. looks even worse than before. you had them doing a bent over posture before that was great, they just fell over too soon. all they need to do is stay bent over until the stream animation ends and THEN fall over",
+      "at": "2026-10-25T20:05:06.611Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: bent over (the fall clip held at 0.42 s in) until the stream ends, then the fall.",
+      "doneAt": "2026-10-25T20:06:45.204Z"
+    },
+    {
+      "id": "nmvo9c3cdo9xe",
+      "gag": "burrito",
+      "text": "love it. pass",
+      "at": "2026-10-25T20:05:31.501Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T20:05:53.181Z"
+    },
+    {
+      "id": "nmvo9fao36cji",
+      "gag": "confetti",
+      "text": "this should fall out of the ceiling like a lot of little particles and some streamers before falling around the NPC and doing no harm. have a clown bicycle horn blow and a slide whistle play. get rid of the big, weird streaks on the floor you have now and make it similar to the burrito but coming down from above, not tossed, and the colors and stuff are different of course",
+      "at": "2026-10-25T20:08:00.963Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. The sound is synth (horn + whistle); headless here, so it's yours to judge. No spend.",
+      "doneAt": "2026-10-25T20:10:59.981Z"
+    },
+    {
+      "id": "nmvo9g55rkj80",
+      "gag": "curse",
+      "text": "this is a pASS, get it?",
+      "at": "2026-10-25T20:08:40.479Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Got it.",
+      "doneAt": "2026-10-25T20:09:17.871Z"
+    },
+    {
+      "id": "nmvo9lfiwgn67",
+      "gag": "slapfight",
+      "text": "dont use the goose sound. thats weird. i added slap.mp3 here: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx use that. trigger it repeatedly as fast as the slaps are coming",
+      "at": "2026-10-25T20:12:47.192Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: slap.mp3 on every thwap, no honk.",
+      "doneAt": "2026-10-25T20:13:16.317Z"
+    },
+    {
+      "id": "nmvogcjoq8lnd",
+      "gag": "slapfight",
+      "text": "pass",
+      "at": "2026-10-25T23:21:49.994Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T23:22:04.092Z"
+    },
+    {
+      "id": "nmvogd0amjvuo",
+      "gag": "vending",
+      "text": "pass",
+      "at": "2026-10-25T23:22:11.518Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-25T23:22:24.214Z"
+    },
+    {
+      "id": "nmvogr7lumzia",
+      "gag": "sumo",
+      "text": "the npcs have body motions. id like this sumo wrestler to run forward with arms and legs moving and body slam the NPCs",
+      "at": "2026-10-25T23:33:14.178Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 47 cr (concept 9, model 30, rig 5, slam clip 3). The old static prop stays as the fallback. The hold before the throw is maul: 0.9 on the gag.",
+      "doneAt": "2026-10-25T23:39:12.956Z"
+    },
+    {
+      "id": "nmvoh2nvbqi52",
+      "gag": "piledriver",
+      "text": "this one is not good. needs meshy. a big huge weight on a heavy wire. with a little bounce when it hits. and then use piledriveer.mp3 from C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\n\nlook up pile drivers online before you prompt meshy. no need to get too crazy fancy but give a decent description.",
+      "at": "2026-10-25T23:42:08.471Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 15 cr. Size is PROPS.piledriver.size (3), the bounce is bounce (0.22).",
+      "doneAt": "2026-10-25T23:48:59.537Z"
+    },
+    {
+      "id": "nmvoh473xsyjx",
+      "gag": "sumo",
+      "text": "this is awesome! wow, so much better. only problem is that when its body slam time he just sort of... evaporates? there's no blow or action he simply disappears.",
+      "at": "2026-10-25T23:43:20.061Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Fixed: the clip was 5.9 s long and the hold only showed its crouch. He leaps now and sticks the landing before he goes.",
+      "doneAt": "2026-10-25T23:48:59.368Z"
+    },
+    {
+      "id": "nmvohdz6zzkrv",
+      "gag": "sumo",
+      "text": "better but still not there. he needs to stop. swing his arms together. and splat the NPC into body parts. then disappear. also C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\sumoyell.mp3 is his battle cry",
+      "at": "2026-10-25T23:50:56.362Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. Two-handed swing (library clip 128, 3 cr), timed so the hands land as the hold ends. Outcome is gib now.",
+      "doneAt": "2026-10-25T23:54:49.351Z"
+    },
+    {
+      "id": "nmvohfz8usxju",
+      "gag": "piledriver",
+      "text": "nice. looks and sounds good. the mp3 has a short silence at the beginning that is making the sound come in late. either locate and crop that if you can or else adjust the timing",
+      "at": "2026-10-25T23:52:29.742Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Measured 0.35 s of silence at the start; the player skips it (FILE_SKIP in sound.js). The file itself is untouched.",
+      "doneAt": "2026-10-25T23:54:49.509Z"
+    },
+    {
+      "id": "nmvohisoptkky",
+      "gag": "piledriver",
+      "text": "watch the damage range. only npcs right under the pile driver should be killed",
+      "at": "2026-10-25T23:54:41.209Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. The knob is splash on the gag (0.4 now).",
+      "doneAt": "2026-10-25T23:55:03.792Z"
+    },
+    {
+      "id": "nmvohks3ia9sk",
+      "gag": "sumo",
+      "text": "whatever sound he is triggering first is terrible. remove that from this weapon. he should yell as he's running and then just do the smash",
+      "at": "2026-10-25T23:56:13.758Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: yell on the way in, nothing at the catch, then the smash.",
+      "doneAt": "2026-10-25T23:56:30.266Z"
+    },
+    {
+      "id": "nmvohnnl3ldk4",
+      "gag": "piledriver",
+      "text": "the crunch sound that happens just after the hit goes on for too long. it sounds like someone is eating something really crunchy. it needs to basically coincide with the slam noise and then be done",
+      "at": "2026-10-25T23:58:27.879Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Correction: crunch.mp3 and squash.mp3 are the same file, so the swap did nothing. The pile driver's crunch is now trimmed to 0.22 s + a 0.12 s fade (deathTrim on the gag).",
+      "doneAt": "2026-10-25T23:59:09.038Z"
+    },
+    {
+      "id": "nmvohp862ws16",
+      "gag": "sumo",
+      "text": "its still not playing soon enough. it should start basically right after pressing shoot. also lower the volume on it by 15%. its actually too loud",
+      "at": "2026-10-25T23:59:41.210Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: earlySound on the gag, gain 0.9 → 0.765.",
+      "doneAt": "2026-10-25T23:59:54.441Z"
+    },
+    {
+      "id": "nmvohqtuoabiq",
+      "gag": "sumo",
+      "text": "it still needs to start sooner. its almost there. but if it could start like 100ms sooner",
+      "at": "2026-10-26T00:00:55.968Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: the file is played from 0.10 s in.",
+      "doneAt": "2026-10-26T00:01:13.598Z"
+    },
+    {
+      "id": "nmvohsbsmx975",
+      "gag": "piledriver",
+      "text": "the crunch can be a little longer, try one second",
+      "at": "2026-10-26T00:02:05.878Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Done.",
+      "doneAt": "2026-10-26T00:02:20.203Z"
+    },
+    {
+      "id": "nmvohu56n30vq",
+      "gag": "sumo",
+      "text": "Yell starts 100 ms further into the file. i dont know what that means . what i do know is that the yell is STILL NOT STARTING SOON ENOUGH. it needs to coincide with the very first step he takes, not the third or fourth",
+      "at": "2026-10-26T00:03:30.623Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Measured 0.73 s of dead air at the start of sumoyell.mp3; the player skips it. (slap.mp3 had 0.32 s too; skipped as well so the thwaps line up.)",
+      "doneAt": "2026-10-26T00:04:00.740Z"
+    },
+    {
+      "id": "nmvohv9q30tc7",
+      "gag": "drill",
+      "text": "this just isnt gonna fly",
+      "at": "2026-10-26T00:04:23.163Z",
+      "status": "done",
+      "action": "trash",
+      "reply": "Noted, out of the roll.",
+      "doneAt": "2026-10-26T00:04:28.107Z"
+    },
+    {
+      "id": "nmvohwzlukga1",
+      "gag": "sumo",
+      "text": "let the sumo fade over 800ms with a little genie-like color flourish",
+      "at": "2026-10-26T00:05:43.362Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: an 800 ms fade with the genie sparks.",
+      "doneAt": "2026-10-26T00:06:03.666Z"
+    },
+    {
+      "id": "nmvohy8oj2pft",
+      "gag": "piledriver",
+      "text": "try .4 seconds w .2 fade",
+      "at": "2026-10-26T00:06:41.779Z",
+      "status": "done",
+      "rank": 2,
+      "action": "update",
+      "reply": "Done.",
+      "doneAt": "2026-10-26T00:06:50.053Z"
+    },
+    {
+      "id": "nmvohzdhyz6nl",
+      "gag": "sumo",
+      "text": "let him finish the death blow animation... give him just a beat before he evaporates",
+      "at": "2026-10-26T00:07:34.678Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: a 0.55 s beat before the fade (the knob is beat on PROPS.sumo).",
+      "doneAt": "2026-10-26T00:07:56.591Z"
+    },
+    {
+      "id": "nmvoi658bbd9p",
+      "gag": "bullet",
+      "text": "the aiming is still off and if its the same thing that all dispatch beams and bolts are using then they are all off a little. it's when i go off to the right or left. the diagonal is not totally wrong. but its not really right, either. its not professional. if i am to the right it needs to go all the way to where i am pointing. not 75% of the way there",
+      "at": "2026-10-26T00:12:50.555Z",
+      "status": "done",
+      "rank": 1,
+      "action": "update",
+      "reply": "Found and fixed: a stale field-of-view number in the cursor math (76 vs the camera's 88). Measured in the pane: 0° error at 35° off-centre. The game's copy got the same guard.",
+      "doneAt": "2026-10-26T00:16:19.769Z"
+    },
+    {
+      "id": "nmvoi9h9lk6lt",
+      "gag": "bowling",
+      "text": "use strike.mp3 for the hit sound - just added",
+      "at": "2026-10-26T00:15:26.121Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: strike.mp3 is the bowling ball's kill sound.",
+      "doneAt": "2026-10-26T00:15:59.628Z"
+    },
+    {
+      "id": "nmvoibbauf38o",
+      "gag": "bowling",
+      "text": "the sound comes in just a little late",
+      "at": "2026-10-26T00:16:51.702Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Measured: the file is near-silent for the first 0.19 s. Skipped.",
+      "doneAt": "2026-10-26T00:17:15.819Z"
+    },
+    {
+      "id": "nmvoic853re5c",
+      "gag": "sumo",
+      "text": "this rules",
+      "at": "2026-10-26T00:17:34.263Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Glad he landed.",
+      "doneAt": "2026-10-26T00:17:41.204Z"
+    },
+    {
+      "id": "nmvoidrp1a66o",
+      "gag": "bowling",
+      "text": "50ms sooner",
+      "at": "2026-10-26T00:18:46.261Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done (skip 0.17 → 0.22 s).",
+      "doneAt": "2026-10-26T00:19:01.451Z"
+    },
+    {
+      "id": "nmvoifaqqsl80",
+      "gag": "bowling",
+      "text": "another 50ms sooner",
+      "at": "2026-10-26T00:19:57.602Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done.",
+      "doneAt": "2026-10-26T00:20:11.495Z"
+    },
+    {
+      "id": "nmvoinclj955x",
+      "gag": "doll",
+      "text": "play creepydoll.mp3 while she is moving towards them",
+      "at": "2026-10-26T00:26:13.255Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: it plays (looped) while she lives, and stops when she's spent.",
+      "doneAt": "2026-10-26T00:26:51.820Z"
+    },
+    {
+      "id": "nmvoioum3jaw3",
+      "gag": "bowling",
+      "text": "its not respecting the farther left and right angles. like so many other things in this game. in fact all the balls curve inward after firing",
+      "at": "2026-10-26T00:27:23.258Z",
+      "status": "done",
+      "action": "update",
+      "reply": "That inward curve was mine (a visual pull-in from the barrel). Gone: the sim fires from the barrel now, converging on the crosshair, verified straight in the pane (0 drift, 0° line error).",
+      "doneAt": "2026-10-26T00:31:07.957Z"
+    },
+    {
+      "id": "nmvoippd7ne13",
+      "gag": "doll",
+      "text": "its still the old music, its not playing the new mp3",
+      "at": "2026-10-26T00:28:03.115Z",
+      "status": "done",
+      "action": "update",
+      "reply": "My miss: loop files weren't in the preload list, so the player thought it didn't exist. Fixed; the old doll sound removed.",
+      "doneAt": "2026-10-26T00:28:44.668Z"
+    },
+    {
+      "id": "nmvoir5pc7m5a",
+      "gag": "goose",
+      "text": "this is cool except the goose quacking sound continues well after it gets squished into blood splatter",
+      "at": "2026-10-26T00:29:10.944Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: the honk file was 2 s long; trimmed to 0.55 s + a fade.",
+      "doneAt": "2026-10-26T00:31:07.824Z"
+    },
+    {
+      "id": "nmvok9m7b0ck7",
+      "gag": "goose",
+      "text": "When the duck goes around the NPC, it's facing ass in. With the head away. That looks ridiculous. Gotta flip it around so the head is facing inward.",
+      "at": "2026-10-26T01:11:31.751Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Flipped: head toward the victim while she circles.",
+      "doneAt": "2026-10-26T01:11:49.170Z"
+    },
+    {
+      "id": "nmvokk3yuqxq0",
+      "gag": "doll",
+      "text": "when she reaches the NPC have her burst into flames. stretch her arms out wide and play: dollscream.mp3 give her a good sizes AOE and have all NPCs run away in terror and disappear",
+      "at": "2026-10-26T01:19:41.334Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 47 cr for the rig (concept, model, rig, the Zombie Scream clip). Knobs: maul (1.3 s hold) and splash (2.4 cells) on the gag.",
+      "doneAt": "2026-10-26T01:24:46.309Z"
+    },
+    {
+      "id": "nmvokkp8xne0j",
+      "gag": "bowling",
+      "text": "this is fun now. pass",
+      "at": "2026-10-26T01:20:08.913Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-26T01:20:55.950Z"
+    },
+    {
+      "id": "nmvokmb5dlrt1",
+      "gag": "goose",
+      "text": "this one is excellent. pass",
+      "at": "2026-10-26T01:21:23.953Z",
+      "status": "done",
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-26T01:22:02.552Z"
+    },
+    {
+      "id": "nmvokxvuf3x5y",
+      "gag": "bus",
+      "text": "make the bus look more realistic like a bus n the MBTA in Boston. and a little bigger so its just about life sized. then use busrev.mp3 when it first appears and overlay bushonk.mp3 when its crashing into the npcs",
+      "at": "2026-10-26T01:30:23.991Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 30 cr (the first bus came back with a windshield at BOTH ends; the second was made with symmetry off). Size is PROPS.mbtabus.size (11).",
+      "doneAt": "2026-10-26T01:40:06.027Z"
+    },
+    {
+      "id": "nmvokys6zmzgg",
+      "gag": "doll",
+      "text": "great work on the visuals. but there's no dollscream",
+      "at": "2026-10-26T01:31:05.915Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Fixed: the scream file was never registered, so the burst was silent. Registered.",
+      "doneAt": "2026-10-26T01:31:22.965Z"
+    },
+    {
+      "id": "nmvol891g6sm1",
+      "gag": "doll",
+      "text": "very nice. trigger the scream a little bit earlier and hold off on her disappearing a little bit longer",
+      "at": "2026-10-26T01:38:27.652Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: scream at the catch, the burn-down 1.4 → 2.2 s (linger on PROPS.doll).",
+      "doneAt": "2026-10-26T01:38:42.900Z"
+    },
+    {
+      "id": "nmvola25fmn1n",
+      "gag": "doll",
+      "text": "now its too early. trigger it right when she bursts into flames and hold off on her disappearing for an additional 500ms",
+      "at": "2026-10-26T01:39:52.035Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: scream at the burst, +500 ms on the burn-down.",
+      "doneAt": "2026-10-26T01:40:19.828Z"
+    },
+    {
+      "id": "nmvolby26gq9r",
+      "gag": "bus",
+      "text": "Put a marquee up on the top of the bus back that says downtown. And. Dirty up the bus just a little bit. And put the letters MBTA. In the logo that. You see in Boston on the busses.",
+      "at": "2026-10-26T01:41:20.046Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: decals and a texture pass at load, no Meshy. Grime amount is the 0.55 in DRESS.mbtabus if you want it dirtier.",
+      "doneAt": "2026-10-26T01:43:54.006Z"
+    },
+    {
+      "id": "nmvolchtbm4ld",
+      "gag": "doll",
+      "text": "pass",
+      "at": "2026-10-26T01:41:45.647Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-26T01:42:24.658Z"
+    },
+    {
+      "id": "nmvoljfp4xtwe",
+      "gag": "bus",
+      "text": "slow it down just a little. like let it rev up a bit and also reduce the size by 10%",
+      "at": "2026-10-26T01:47:09.496Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. Knobs: speed and rev on the gag, PROPS.mbtabus.size.",
+      "doneAt": "2026-10-26T01:47:36.123Z"
+    },
+    {
+      "id": "nmvolkrgpq2bo",
+      "gag": "bus",
+      "text": "not the coolest weapon but it works",
+      "at": "2026-10-26T01:48:11.401Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted.",
+      "doneAt": "2026-10-26T01:48:23.421Z"
+    },
+    {
+      "id": "nmvom14wh1178",
+      "gag": "balloon",
+      "text": "dramatically up the 3d realism of the balloon in whatever fashion you see fit (blender?). make it look like a real balloon. and a little transparency. slow its flight and make it a little more erratic",
+      "at": "2026-10-26T02:00:55.313Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done, built in code (no Meshy): glossy translucent skin, knot, string. Knobs: speed, life and wander on the gag.",
+      "doneAt": "2026-10-26T02:04:48.755Z"
+    },
+    {
+      "id": "nmvomb2ztv7uq",
+      "gag": "recoil",
+      "text": "get a model of a donkey. or a horse if you can't find that. animate it so it does a back kick. then use in sequence horseneigh.mp3 and then horsekick.mp3 then have the camera view \"fall back\" so it's pointing up at the ceiling and the player must click at least 6 times to recover and pop back up.",
+      "at": "2026-10-26T02:08:39.401Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. 15 cr for the donkey (legs split in Blender, the kick animated in code). Knobs on the gag: kickAt (1.15 s), downClicks (6), sceneDur.",
+      "doneAt": "2026-10-26T02:17:54.576Z"
+    },
+    {
+      "id": "nmvomd15ruool",
+      "gag": "balloon",
+      "text": "its not properly aiming at the crosshairs. the string is very stiff and kills the illusion. make it 10% smaller. randomize the color.",
+      "at": "2026-10-26T02:10:10.335Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: wander delayed and softened, a six-link string, 0.56 size, random colour (eight).",
+      "doneAt": "2026-10-26T02:30:53.153Z"
+    },
+    {
+      "id": "nmvomf2vfyuqx",
+      "gag": "boomerang",
+      "text": "needs to fly around, miss the target and then curve back and hit you in the face.",
+      "at": "2026-10-26T02:11:45.867Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: a steady arc out (curve: 1.4 on the gag, random side), never hits a creature (miss), a steered arc back to the face.",
+      "doneAt": "2026-10-26T02:19:35.041Z"
+    },
+    {
+      "id": "nmvomnmy5ctq1",
+      "gag": "boomerang",
+      "text": "when it hits you trigger bonk.mp3 followed immediately by ouch.mp3",
+      "at": "2026-10-26T02:18:25.133Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: bonk, then ouch 220 ms later.",
+      "doneAt": "2026-10-26T02:19:35.120Z"
+    },
+    {
+      "id": "nmvomp8zj3qti",
+      "gag": "recoil",
+      "text": "the animla is too small and too far away. also i didnt get to see the animation ... hold off on knocking me back until the hooves come up in my face.",
+      "at": "2026-10-26T02:19:40.351Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done. Size is PROPS.donkey.size (2.9), distance is sceneDist (0.95) and the hit lands at kickAt (1.6 s), hooves up from 1.05 s.",
+      "doneAt": "2026-10-26T02:20:04.439Z"
+    },
+    {
+      "id": "nmvomt2mghqt8",
+      "gag": "boomerang",
+      "text": "too many sounds now? all we need it the bonk and then ouch, nothing else. time it so the bonk.mp3 hits right when the boomerang hit the camera viewpoint and then .5 seconds later ouch.mp3 plays",
+      "at": "2026-10-26T02:22:38.728Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: bonk on impact (dead air skipped), ouch at +0.5 s, nothing else.",
+      "doneAt": "2026-10-26T02:23:28.710Z"
     }
   ],
   "updates": {
@@ -1265,8 +2097,8 @@
       "note": "the clip deck: new Meshy death clip on this weapon (electro / shot / gut / keel over / fall) — reload"
     },
     "bullet": {
-      "at": "2026-09-11T03:07:30.498Z",
-      "note": "the clip deck: new Meshy death clip on this weapon (electro / shot / gut / keel over / fall) — reload"
+      "at": "2026-10-26T00:16:19.693Z",
+      "note": "Cursor aim fixed for every beam and bolt: the lab was converting the cursor to an angle with a 76° field of view while the camera draws 88°, so side shots landed about 80% of the way out. It uses the camera's real field of view now; a cursor 35° off-centre fires at exactly 35°."
     },
     "jello": {
       "at": "2026-09-09T02:06:26.766Z",
@@ -1367,6 +2199,86 @@
     "gravy": {
       "at": "2026-09-11T04:49:17.851Z",
       "note": "rebuilt: a thick lumpy wave of chicken gravy fans out from the gun, low and slow, seventy glossy lumps standing to thigh height at the front, steam rising, pools left where it flowed; the floor blob is gone; the drowned creature browns and sinks under it — reload"
+    },
+    "skunk": {
+      "at": "2026-10-25T19:00:35.256Z",
+      "note": "It now chases the creature under your cursor when you let it go, and only falls back to the nearest one once that one is down. Same fix for every summon (goose, eagle, bees, sumo, drill, mosquitoes, doll, grandma)."
+    },
+    "meteor": {
+      "at": "2026-10-25T19:08:25.846Z",
+      "note": "A real Meshy boulder now (glowing cracks), tumbling and burning on the way down with a smoke trail. On landing it half-sinks into the crater and throws rock shards and glowing embers everywhere, and the victim is blown to bits: organs, bones and limbs across the floor."
+    },
+    "papercuts": {
+      "at": "2026-10-25T19:08:25.987Z",
+      "note": "Each sheet is now a real flat page lying level, spinning like a thrown card with a little flutter, instead of a square facing you."
+    },
+    "nitrogen": {
+      "at": "2026-10-25T19:14:31.944Z",
+      "note": "Sound fixed: the fade was scheduled before the file started, so every play threw. Plays now, holds one second, fades half a second."
+    },
+    "goose": {
+      "at": "2026-10-26T01:11:49.100Z",
+      "note": "She circles head-in now: the orbit angle and the facing were the same number, so her tail pointed at the creature."
+    },
+    "cannonball": {
+      "at": "2026-10-25T19:20:25.426Z",
+      "note": "It now leaves from the barrel tip along the aim and merges into its path over the first third of a second, instead of appearing beside the gun from the body's centre. Same fix for every thrown or fired prop (bowling ball, baseballs, knives, pie, cupcake, ham)."
+    },
+    "catbag": {
+      "at": "2026-10-25T19:49:23.190Z",
+      "note": "Round two: the sack has eight cat paws out through its skin while it flies, and it no longer hurts anyone on contact. The ball comes out on the hit, holds the creature in a writhing melee for 1.4 s (the knob is maul on the gag), then the kill and the blast. Ball slowed to 3.6."
+    },
+    "swatter": {
+      "at": "2026-10-25T19:53:35.985Z",
+      "note": "The handle's loop now pivots just past the barrel tip, along the barrel, instead of out from the body's centre."
+    },
+    "slapfight": {
+      "at": "2026-10-25T20:13:16.241Z",
+      "note": "Goose honk gone. Your slap.mp3 plays once per thwap, four across the hold."
+    },
+    "burrito": {
+      "at": "2026-10-25T20:02:54.992Z",
+      "note": "Rice grains halved again."
+    },
+    "curse": {
+      "at": "2026-10-25T20:06:45.129Z",
+      "note": "The flinch is gone. They go into the fall clip and FREEZE on its bent-over frame while the stream runs, then the clip is released and they go over."
+    },
+    "confetti": {
+      "at": "2026-10-25T20:10:59.911Z",
+      "note": "It drops out of the ceiling now: about 260 little coloured squares and streamers drifting down around the creature and settling on the floor, no harm. The floor streaks are gone. Two squeezes of a clown horn, then a slide whistle up and down while it falls."
+    },
+    "sumo": {
+      "at": "2026-10-26T00:07:56.511Z",
+      "note": "He finishes the blow and holds for half a second, then the 0.8 s genie fade."
+    },
+    "piledriver": {
+      "at": "2026-10-26T00:06:49.975Z",
+      "note": "Crunch: 0.4 s with a 0.2 s fade."
+    },
+    "bowling": {
+      "at": "2026-10-26T00:31:07.889Z",
+      "note": "Fixed for every fired or thrown thing: the shot is now born at the rifle's muzzle and aimed at the point under the crosshair, so it flies dead straight to the mark instead of sliding inward onto a path from the body's centre."
+    },
+    "doll": {
+      "at": "2026-10-26T01:40:19.715Z",
+      "note": "Scream fires with the burst of flame; she burns 2.7 s before she's gone."
+    },
+    "bus": {
+      "at": "2026-10-26T01:47:36.022Z",
+      "note": "Top speed 8 → 7, and it revs up from 30% over the first 1.2 s. Size down 10% (9.9 m)."
+    },
+    "balloon": {
+      "at": "2026-10-26T02:30:53.082Z",
+      "note": "Leaves on the crosshair's line and only starts wandering after 0.7 s. The string is six swinging links. 10% smaller, and a random colour each time."
+    },
+    "recoil": {
+      "at": "2026-10-26T02:20:04.372Z",
+      "note": "Donkey 40% bigger and a step closer (0.95 cells). The hooves come up and hang in your face for half a second before the hit lands and you go down."
+    },
+    "boomerang": {
+      "at": "2026-10-26T02:23:28.638Z",
+      "note": "Only bonk and ouch now: the stock hurt grunt is off for this hit, the bonk file's 0.4 s of dead air is skipped so it lands on impact, and ouch follows half a second later."
     }
   },
   "seen": {
@@ -1380,7 +2292,7 @@
     "gas": "2026-09-11T04:18:03.588Z",
     "flamethrower": "2026-09-09T03:09:08.385Z",
     "eagle": "2026-09-09T03:15:30.123Z",
-    "bullet": "2026-09-11T04:12:31.641Z",
+    "bullet": "2026-10-26T01:20:15.190Z",
     "glue": "2026-09-11T01:23:49.013Z",
     "lava": "2026-09-10T03:30:43.057Z",
     "piranhas": "2026-09-10T03:16:07.976Z",
@@ -1399,8 +2311,28 @@
     "cow": "2026-09-11T04:27:53.347Z",
     "cart": "2026-09-11T04:08:54.783Z",
     "legos": "2026-09-11T04:49:48.002Z",
-    "sneaker": "2026-09-11T04:50:06.803Z",
-    "gravy": "2026-09-11T04:59:31.947Z"
+    "sneaker": "2026-10-25T18:56:30.992Z",
+    "gravy": "2026-09-11T04:59:31.947Z",
+    "skunk": "2026-10-25T19:01:48.834Z",
+    "meteor": "2026-10-25T19:08:40.592Z",
+    "papercuts": "2026-10-25T19:09:23.240Z",
+    "nitrogen": "2026-10-25T20:05:34.800Z",
+    "cannonball": "2026-10-25T19:26:51.740Z",
+    "catbag": "2026-10-25T19:58:54.749Z",
+    "swatter": "2026-10-25T19:56:54.344Z",
+    "slapfight": "2026-10-25T23:20:27.114Z",
+    "burrito": "2026-10-25T20:05:08.927Z",
+    "curse": "2026-10-25T20:08:04.073Z",
+    "confetti": "2026-10-25T23:18:31.994Z",
+    "sumo": "2026-10-26T00:15:32.668Z",
+    "piledriver": "2026-10-26T00:15:39.203Z",
+    "bowling": "2026-10-26T00:55:22.486Z",
+    "doll": "2026-10-26T01:41:22.601Z",
+    "goose": "2026-10-26T01:41:54.368Z",
+    "bus": "2026-10-26T01:47:46.797Z",
+    "balloon": "2026-10-26T02:08:44.312Z",
+    "recoil": "2026-10-26T02:20:34.510Z",
+    "boomerang": "2026-10-26T02:20:45.952Z"
   },
   "ranks": {
     "bullet": {
@@ -1526,6 +2458,74 @@
     "sneaker": {
       "rank": 2,
       "at": "2026-09-11T05:02:20.470Z"
+    },
+    "balloon": {
+      "rank": 3,
+      "at": "2026-10-17T01:42:31.599Z"
+    },
+    "shrinkray": {
+      "rank": 3,
+      "at": "2026-10-25T18:58:03.610Z"
+    },
+    "meteor": {
+      "rank": 1,
+      "at": "2026-10-25T19:09:01.175Z"
+    },
+    "skunk": {
+      "rank": 3,
+      "at": "2026-10-25T19:02:10.013Z"
+    },
+    "papercuts": {
+      "rank": 2,
+      "at": "2026-10-25T19:09:35.726Z"
+    },
+    "nitrogen": {
+      "rank": 2,
+      "at": "2026-10-25T19:15:12.869Z"
+    },
+    "cannonball": {
+      "rank": 3,
+      "at": "2026-10-25T19:27:27.843Z"
+    },
+    "swatter": {
+      "rank": 3,
+      "at": "2026-10-25T19:57:01.408Z"
+    },
+    "burrito": {
+      "rank": 2,
+      "at": "2026-10-25T20:05:21.500Z"
+    },
+    "curse": {
+      "rank": 2,
+      "at": "2026-10-25T20:08:35.274Z"
+    },
+    "slapfight": {
+      "rank": 3,
+      "at": "2026-10-25T23:21:47.345Z"
+    },
+    "vending": {
+      "rank": 2,
+      "at": "2026-10-25T23:22:09.056Z"
+    },
+    "piledriver": {
+      "rank": 2,
+      "at": "2026-10-26T00:01:18.848Z"
+    },
+    "sumo": {
+      "rank": 1,
+      "at": "2026-10-26T00:17:09.461Z"
+    },
+    "bowling": {
+      "rank": 2,
+      "at": "2026-10-26T01:20:07.683Z"
+    },
+    "doll": {
+      "rank": 2,
+      "at": "2026-10-26T01:41:39.265Z"
+    },
+    "bus": {
+      "rank": 3,
+      "at": "2026-10-26T01:48:00.490Z"
     }
   },
   "verdicts": {
@@ -1672,6 +2672,86 @@
     "sink": {
       "status": "passed",
       "at": "2026-09-11T05:01:58.754Z"
+    },
+    "sneaker": {
+      "status": "passed",
+      "at": "2026-10-25T18:57:44.312Z"
+    },
+    "shrinkray": {
+      "status": "passed",
+      "at": "2026-10-25T18:58:19.674Z"
+    },
+    "skunk": {
+      "status": "passed",
+      "at": "2026-10-25T19:02:14.981Z"
+    },
+    "meteor": {
+      "status": "passed",
+      "at": "2026-10-25T19:09:15.006Z"
+    },
+    "papercuts": {
+      "status": "passed",
+      "at": "2026-10-25T19:09:38.562Z"
+    },
+    "nitrogen": {
+      "status": "passed",
+      "at": "2026-10-25T19:15:15.450Z"
+    },
+    "cannonball": {
+      "status": "passed",
+      "at": "2026-10-25T19:27:30.758Z"
+    },
+    "swatter": {
+      "status": "passed",
+      "at": "2026-10-25T19:57:08.115Z"
+    },
+    "catbag": {
+      "status": "trash",
+      "at": "2026-10-25T20:01:10.578Z"
+    },
+    "burrito": {
+      "status": "passed",
+      "at": "2026-10-25T20:05:31.501Z"
+    },
+    "curse": {
+      "status": "passed",
+      "at": "2026-10-25T20:08:40.479Z"
+    },
+    "slapfight": {
+      "status": "passed",
+      "at": "2026-10-25T23:21:49.994Z"
+    },
+    "vending": {
+      "status": "passed",
+      "at": "2026-10-25T23:22:11.518Z"
+    },
+    "drill": {
+      "status": "trash",
+      "at": "2026-10-26T00:04:23.163Z"
+    },
+    "sumo": {
+      "status": "passed",
+      "at": "2026-10-26T00:17:34.263Z"
+    },
+    "piledriver": {
+      "status": "passed",
+      "at": "2026-10-26T00:17:42.460Z"
+    },
+    "bowling": {
+      "status": "passed",
+      "at": "2026-10-26T01:20:08.913Z"
+    },
+    "goose": {
+      "status": "passed",
+      "at": "2026-10-26T01:21:23.953Z"
+    },
+    "doll": {
+      "status": "passed",
+      "at": "2026-10-26T01:41:45.647Z"
+    },
+    "bus": {
+      "status": "passed",
+      "at": "2026-10-26T01:48:11.401Z"
     }
   }
 }
