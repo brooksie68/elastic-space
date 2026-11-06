@@ -766,6 +766,7 @@
             id: nextId++, gag, kind: 'bolt', sprite: gag.sprite, x: ox + Math.cos(aa) * 0.45, y: oy + Math.sin(aa) * 0.45, z: gag.floats ? 0.5 : 0.35, a: aa,
             vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, life: gag.life, t: 0, hitR: gag.hitR || 0.4, pierce: !!gag.pierce, bounce: !!gag.bounce,
             hostile, owner, hit: new Set(), ox, oy, returning: false, splash: gag.splash || 0, spin: !!gag.spin, roll: !!gag.roll, dead: false,
+            loftD: gag.loft ? ((tg) => Math.max(1.5, tg.d - 0.45 - (tg.goon ? (gag.hitR || 0.4) + tg.goon.r : 0)))(aimPoint(state, ox, oy, aa, 14, hostile)) : 0,   // loft (the ham, 2026-11-05): a thrown thing's hump — it rises and comes down onto the mark the aim hits
           });
         }
         return;
@@ -1219,6 +1220,7 @@
         }
         if (s.dead) continue;
         if (s.gag.floats) s.z = 0.5 + Math.sin(s.t * 3) * 0.15;
+        if (s.loftD) { const u = Math.min(1, Math.hypot(s.vx, s.vy) * s.t / s.loftD); s.z = 0.35 + s.gag.loft * 4 * u * (1 - u); }   // the visual height only: hits are in the plane
         if (s.gag.wander && s.t > (s.gag.wanderAfter || 0)) { s.a += (state.rand() - 0.5) * s.gag.wander * dt * 3; const sp = Math.hypot(s.vx, s.vy); s.vx = Math.cos(s.a) * sp; s.vy = Math.sin(s.a) * sp; }   // erratic: the heading random-walks (the balloon, James 2026-10-26)
         boltHits(state, s);
         if (s.t >= s.life) {
@@ -1397,7 +1399,11 @@
       } else if (z.mode === 'meleehit') {
         if (z.t >= z.dur && !z.done) {
           z.done = true;
-          const targets = z.hostile ? [p] : state.goons.filter((x) => x.state !== 'dead' && x.state !== 'dying');
+          let targets = z.hostile ? [p] : state.goons.filter((x) => x.state !== 'dead' && x.state !== 'dying');
+          if (g.single && !z.hostile) {   // one at a time (the trombone, James 2026-11-06): only the one nearest the aim line, of those in reach and in the arc
+            const off = (t) => Math.abs(angDiff(Math.atan2(t.y - z.y, t.x - z.x), z.a));
+            targets = targets.filter((t) => Math.hypot(t.x - z.x, t.y - z.y) <= g.reach + t.r && off(t) <= g.arc).sort((A, B) => off(A) - off(B)).slice(0, 1);
+          }
           let n = 0;
           for (const t of targets) {
             const d = Math.hypot(t.x - z.x, t.y - z.y);

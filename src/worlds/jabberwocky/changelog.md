@@ -3,6 +3,72 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-11-06 — Claude (Fable 5.1) — THE WEAPON LAB: round two on last night's eight
+
+His verdicts after midnight: mosquitoes PASSED (3), frogs PASSED (1, "excellent. love this one"), ham PASSED (2), thought PASSED (1, "fun!"),
+confetti PASSED. Three change notes, all done; sim 1,156,923 green, lab smoke ok, seen in the pane. No spend.
+- TROMBONE ("rotate the arm 90 degrees. its coming out flat like a plate... the whole thing should be up and down" + his trombone.mp3):
+  `rotateZ(π/2)` in the slide motion — one leg of the U above the other. FILES `trombone`. The file is ONE swell, 1.36 s, no dead air,
+  loudest at 0.5 s (decoded in the pane), so `swingLife` 2.6 → 1.4, `hitDelay` 0.45, and the slide makes a single push out and back
+  (the three pumps were for the old three-note synth).
+- YAK ("was hoping for a backwards run rather than a toss. animate the legs"): the gag is a `bolt` now (speed 5.5, life 3, hitR 0.75), not a
+  lob. PROPS `yak` gained `ground` + `seat`; motion `backwards` = a gallop in reverse (front and back pairs half a stride apart, a bound
+  and a pitch), the legs zeroed when it comes to rest. Legs split by `tmp/jabberwocky/yak_legs.py` (KEEP): `split_legs.py` assumes a raw
+  Meshy file and cut this one along its LENGTH — a file already re-exported by Blender (slimmed) is Z-up with the body along Y.
+- BALLOON (his balloon.mp3 + "boost the volume"): the file is a POP (loud for the first 0.18 s of 1.2 s), so it is FILES `balloonpop`
+  and the hosts play it at the kill / pacify of a balloon, FILE_GAIN 1.8. The trigger keeps the small puff; the synth pop on a 1.4 s
+  timer (which fired whether or not the balloon had reached anyone) is gone. A balloon that reaches nobody still ends silently.
+- TROMBONE again ("the AOE is weird. it should only kill one at a time. its a little too long now. reduce it by 10%"): gag `single: true` — the
+  melee hit takes only the one nearest the aim line of those in reach and arc (core `meleehit`); arc 1.4 → 0.3, reach 4 → 3.6 (the slide's
+  length follows the reach). Sim 1,156,925 green. Yak PASSED (3), balloon PASSED.
+- TROMBONE a third time ("now it doesnt rotate with the gun barrel. fix"): the slide took the shot's angle, which is frozen at the trigger
+  pull (and with a 1.4 s swing you have time to move). It now points from the muzzle at the crosshair's mark every frame, yaw and pitch
+  (the same ndc → unproject the viewmodel's barrel uses). Seen in the pane at two cursor positions.
+- THE DUDS, on his word ("move all remaining duds to trash en masse", the list echoed and confirmed "all"): herring, feather, fortune,
+  hairball, apology, receipt, glitter, click → TRASH through the server's verdict op (cuts.js rewritten). Confetti and the bang flag are
+  duds he PASSED; untouched. 60 passed, 17 trash.
+- TROMBONE: `swingLife` 1.4 → 1.2 ("speed up the animation slightly"), then PASSED (3).
+- THE REST OF WEIRD AND BACKFIRE, on his word ("now delete the rest of Weird and Backfire as well"; the 22 echoed as a numbered list,
+  confirmed "all"): hairdryer, rose, lovepotion, mirror, swap, ring, monkeypaw, audit, wetwilly, cupcake, karaoke, littlerifle, yourmom,
+  bagpipes, recoil (the donkey kick), sneezeback, wrongway, anvilyou, beesyou, hiccup, playdead, confusion → TRASH (verdict op; nothing
+  deleted from gags.js — that is still at ship, on his word). Kept, PASSED: goose, balloon, thought, boomerang.
+
+## 2026-11-05 — Claude (Fable 5.1) — THE WEAPON LAB: nine notes from the queue
+
+James left nine notes (2026-11-05 evening) and asked for the queue to be picked up. All acted on, each `update` + `done`; sim 1,156,922 green,
+lab smoke ok, every one looked at in the pane. Meshy 45 cr (two frogs 30, the yak 15).
+- GRANDMA: passed, rank 3 (his comment only).
+- FROGS ("get some real frogs from meshy and drop them"): `props/frog-1.glb` (a bullfrog) + `frog-2.glb` (a leopard frog). Meshy put a base
+  under both; `tmp/jabberwocky/frog_base.py` (KEEP) bisects a prop at a fraction of its height and caps the cut (0.09 / 0.12 here — its
+  automatic footprint guess was wrong both times, pass the fraction). PROPS `frog` (variants 2), `frogRain` (the bricks' physics with
+  `upright: true` = it settles on its feet), ~70 across the fall and 26 more straight onto the victim, who plays the fall-down clip.
+  No green blob, no falling sticker.
+- THE FALLING STICKER: a `drop` gag with no prop of its own drew its flat 2-D sprite falling from 6 m ahead of the real pieces — that was
+  the confetti's "first, much faster group". Off for confetti and frogs (the legos already had it off).
+- CONFETTI: that sticker gone; drift (terminal fall speed) 1.6 → 2.7 for the squares, 1.1 → 1.8 for the streamers.
+- MOSQUITOES ("shouldnt shrink. they should spout blood and fall over"): outcome shrink → expire; in the expire case a blood jet from a
+  new spot every seventh of a second for the first 60%, then the fall-down clip.
+- HAM: `loft` on a bolt (core: `s.loftD` = the distance to the aim's mark, `s.z` humps to `loft` cells and is back down at the hit —
+  visual height only, hits stay in the plane); a gibBurst + five drawer pieces + wall splats at the hit; PROPS `seat: true` = at rest it
+  snaps to where its victim stood.
+- YAK ("get a real yak and have it looking at the camera as it recedes"): `props/yak.glb`, PROPS `yak` (size 3, motion `backwards`,
+  yaw π so its face is to the player), rocking a little; it stays where it lands.
+- TROMBONE: prim `trombone` + motion `slide` — two fixed inner tubes and an outer slide (two tubes, the bow at the far end, a hand brace)
+  that pumps out to the reach and back: two short pumps and a long one over `swingLife` 2.6 s, `hitDelay` 0.4. Tubes are fat on purpose
+  (3.4 cm, legs 20 cm apart): at true size it read as two threads. NO BELL: built and removed — drawn where it really is (beside the ear)
+  it filled a third of the screen, and its neck crossed the crosshair when moved in.
+- BANG FLAG ("a stick that pops forward out of the barrel with a flag hanging from it that reads BANG!"): on the viewmodel —
+  `stepBangFlag`, started by `R.fire(gag)` (the hosts now pass the gag). A 0.7 m dowel springs out with an overshoot, a 34 × 21 cm
+  cream flag with red BANG! drops open off its tip, ripples, holds 2.6 s, snaps back. The dowel is tipped up 0.12 rad and the flag hangs
+  to the left: straight down the barrel it hung behind the muzzle ring where the eye cannot see it. The floor `flag` scar is off the gag.
+- A THOUGHT ("move this to Weird... puffy, 3d, translucent speech bubble that looks like a cloud with the little tail... DIE... girly and
+  pink"): tier dud → weird, kind plate → a floating bolt (speed 2.4, outcome expire — Claude's call: a weird gag has to do something).
+  Prim `thought`: ten pink see-through puffs that do not write depth, three shrinking tail puffs, DIE as a sprite (`thoughtTex`, fat
+  rounded letters, white outline, pink gradient, gloss flecks) so it reads from any side; it swells out of the muzzle and wobbles.
+OPEN for James: his verdicts on all eight; knobs he may want — flag size / hold time, thought speed, ham `loft`, frog count, trombone reach.
+Pane testing: `LAB.step()` alone never builds a shot's view (no render between steps) — fire, then let real frames run; pin a shot's `t`
+from a 2 ms interval to hold a pose for a screenshot.
+
 ## 2026-10-25 — Claude (Fable 5.1) — THE WEAPON LAB, REVIEW NIGHT FOUR: summons chase what you aim at
 
 James back in the lab after six weeks; the note watcher armed. Sneaker PASSED, shrink ray PASSED (his comments only).

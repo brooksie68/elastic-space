@@ -104,6 +104,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
   solved through its own lens, the stale 76° fov); the death screams had been silent since 2026-09-12 (numbered sets
   needed a base file to be probed) — fixed; the lab's hum (the room bed) off; an update note no longer un-passes a weapon.
   Read the world CLAUDE.md START HERE (2026-10-26) first.**
+  **2026-11-05/06 THE FIFTH REVIEW NIGHT (the lab queue, ~20 notes, Meshy 45 cr): real frogs, a real yak that gallops backwards, the
+  bang flag on the rifle, the pink thought cloud, the trombone slide, the ham's arc, mosquitoes, confetti, his trombone + balloon sound
+  files — all PASSED; then he trashed every remaining dud / weird / backfire en masse. THE BOARD IS SORTED: 61 passed, 39 trash, none in
+  review. Open: the roll odds for the thin weird / dud / backfire tiers (offered, unanswered). World CLAUDE.md START HERE (2026-11-06).**
   **JAMES TONIGHT: a track per level — drop `theme-2.mp3` … `theme-6.mp3` into `src/worlds/jabberwocky/assets/audio/`
   (2 catacombs, 3 meat locker, 4 the deep, 5 the middle, 6 the three doors); nothing to wire.**
   AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers

@@ -2073,6 +2073,226 @@
       "action": "update",
       "reply": "Done: bonk on impact (dead air skipped), ouch at +0.5 s, nothing else.",
       "doneAt": "2026-10-26T02:23:28.710Z"
+    },
+    {
+      "id": "nmw4f0vzekmky",
+      "gag": "grandma",
+      "text": "PASS",
+      "at": "2026-11-06T03:29:05.250Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T04:07:26.800Z"
+    },
+    {
+      "id": "nmw4f1q86msil",
+      "gag": "frogs",
+      "text": "get some real frogs from meshy and drop them",
+      "at": "2026-11-06T03:29:44.454Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: real Meshy frogs, two kinds, bases cut off in Blender. 30 cr.",
+      "doneAt": "2026-11-06T04:07:26.858Z"
+    },
+    {
+      "id": "nmw4f4fo2mc17",
+      "gag": "mosquitoes",
+      "text": "the NPCs shouldnt shrink. they should spout blood and fall over.",
+      "at": "2026-11-06T03:31:50.738Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: blood jets, then they fall over.",
+      "doneAt": "2026-11-06T04:07:26.924Z"
+    },
+    {
+      "id": "nmw4f60zs4pqu",
+      "gag": "ham",
+      "text": "bit more of an arc when it flies and make the collision generate more body parts and have the ham land down in the middle of where the npc is standing... not in front of it",
+      "at": "2026-11-06T03:33:05.032Z",
+      "status": "done",
+      "rank": 4,
+      "action": "update",
+      "reply": "Done: more arc, more body parts, rests where the victim stood.",
+      "doneAt": "2026-11-06T04:07:26.985Z"
+    },
+    {
+      "id": "nmw4f8dbyeemi",
+      "gag": "yak",
+      "text": "get a real yak and have it looking at the camera as it recedes. if you cant find a yak look for an ox or a wildebeast or a buffalo etc... something comparable.",
+      "at": "2026-11-06T03:34:54.333Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: a real yak, facing you as it flies away. 15 cr.",
+      "doneAt": "2026-11-06T04:07:27.052Z"
+    },
+    {
+      "id": "nmw4fduqol95k",
+      "gag": "trombone",
+      "text": "you know what a trombone looks like. the part that goes forward is like an upper case U but a lottt longer. its brass or some gold colored metal. it recedes away from the viewpoint of the player. it should be exaggeratedly long. make it in blender? figure something out. consider what it would realistically look like as it is receding away form the player and towards the NPCs",
+      "at": "2026-11-06T03:39:10.176Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done in code, no Blender needed: a long brass U sliding away from you. Slide only, no bell.",
+      "doneAt": "2026-11-06T04:07:27.119Z"
+    },
+    {
+      "id": "nmw4fhrjej3el",
+      "gag": "confetti",
+      "text": "better but. there is two groups. remove the first, much faster group and then speed up the second group with the smaller bits",
+      "at": "2026-11-06T03:42:12.650Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: first group removed, small pieces faster.",
+      "doneAt": "2026-11-06T04:07:27.176Z"
+    },
+    {
+      "id": "nmw4fjzwtjjbz",
+      "gag": "bangflag",
+      "text": "this is a common gag. i used to have one. it's a stick that pops forward out of the barrel with a flag hanging from it that reads \"BANG!\" look it up. gag gun \"bang\" flag",
+      "at": "2026-11-06T03:43:56.813Z",
+      "status": "done",
+      "rank": 5,
+      "action": "update",
+      "reply": "Done: stick out of the barrel, BANG! flag hanging off it.",
+      "doneAt": "2026-11-06T04:07:27.236Z"
+    },
+    {
+      "id": "nmw4foz8qqqcs",
+      "gag": "thought",
+      "text": "move this to Weird and make it look like a puffy, 3d, translucent speech bubble that looks like a cloud with the little tail hanging down and the word \"DIE\" in it in a puffy looking font and the whole thing looking kind of girly and pink.",
+      "at": "2026-11-06T03:47:49.226Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: moved to Weird, pink puffy cloud with DIE. It now kills what it reaches.",
+      "doneAt": "2026-11-06T04:07:27.296Z"
+    },
+    {
+      "id": "nmw4hy2md5zty",
+      "gag": "mosquitoes",
+      "text": "looks better",
+      "at": "2026-11-06T04:50:52.741Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:21:41.736Z"
+    },
+    {
+      "id": "nmw4hzhpznjjc",
+      "gag": "frogs",
+      "text": "excellent. love this one",
+      "at": "2026-11-06T04:51:58.967Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:21:41.794Z"
+    },
+    {
+      "id": "nmw4iakxpyq9x",
+      "gag": "trombone",
+      "text": "rotate the arm 90 degrees. its coming out flat like a plate. the forward back motion is fine but the whole thing should be up and down. also use: C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\trombone.mp3",
+      "at": "2026-11-06T05:00:36.349Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: upright, your sound file in, one push to match its length.",
+      "doneAt": "2026-11-06T05:21:41.956Z"
+    },
+    {
+      "id": "nmw4ib36eupk3",
+      "gag": "ham",
+      "text": "merry xmas!",
+      "at": "2026-11-06T05:00:59.990Z",
+      "status": "done",
+      "rank": 2,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:21:41.846Z"
+    },
+    {
+      "id": "nmw4ibydu431t",
+      "gag": "yak",
+      "text": "was hoping for a backwards run rather than a toss. animate the legs",
+      "at": "2026-11-06T05:01:40.434Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: runs backwards on the floor, legs animated.",
+      "doneAt": "2026-11-06T05:21:42.011Z"
+    },
+    {
+      "id": "nmw4ikwzcnx1q",
+      "gag": "balloon",
+      "text": "use C:\\Users\\brook\\ai-projects\\elastic-space\\src\\worlds\\jabberwocky\\assets\\audio\\sfx\\balloon.mp3 and boost the volume",
+      "at": "2026-11-06T05:08:38.520Z",
+      "status": "done",
+      "rank": 3,
+      "action": "update",
+      "reply": "Done: your file at double volume, played at the pop.",
+      "doneAt": "2026-11-06T05:21:42.063Z"
+    },
+    {
+      "id": "nmw4imli3d8ua",
+      "gag": "thought",
+      "text": "fun!",
+      "at": "2026-11-06T05:09:56.955Z",
+      "status": "done",
+      "rank": 1,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:21:41.900Z"
+    },
+    {
+      "id": "nmw4j2lpxhvra",
+      "gag": "yak",
+      "text": "pass",
+      "at": "2026-11-06T05:22:23.733Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:22:28.625Z"
+    },
+    {
+      "id": "nmw4j4utlpbec",
+      "gag": "trombone",
+      "text": "the AOE is weird. it should only kill one at a time. its a litt;e too long now. reduce it by 10%",
+      "at": "2026-11-06T05:24:08.841Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: one victim per solo, 10% shorter.",
+      "doneAt": "2026-11-06T05:24:43.413Z"
+    },
+    {
+      "id": "nmw4j6xcp1lql",
+      "gag": "trombone",
+      "text": "now it doesnt rotate with the gun barrel. fix",
+      "at": "2026-11-06T05:25:45.433Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Fixed: it tracks the barrel every frame.",
+      "doneAt": "2026-11-06T05:27:13.623Z"
+    },
+    {
+      "id": "nmw4jarus8re5",
+      "gag": "trombone",
+      "text": "speed up the animation slightly",
+      "at": "2026-11-06T05:28:44.932Z",
+      "status": "done",
+      "action": "update",
+      "reply": "Done: 1.4 s to 1.2 s. Give me a number if you want it faster or slower.",
+      "doneAt": "2026-11-06T05:28:56.725Z"
+    },
+    {
+      "id": "nmw4jbfqz85xq",
+      "gag": "trombone",
+      "text": "pass",
+      "at": "2026-11-06T05:29:15.899Z",
+      "status": "done",
+      "rank": 3,
+      "action": "pass",
+      "reply": "Noted, passed.",
+      "doneAt": "2026-11-06T05:29:19.117Z"
     }
   ],
   "updates": {
@@ -2245,8 +2465,8 @@
       "note": "The flinch is gone. They go into the fall clip and FREEZE on its bent-over frame while the stream runs, then the clip is released and they go over."
     },
     "confetti": {
-      "at": "2026-10-25T20:10:59.911Z",
-      "note": "It drops out of the ceiling now: about 260 little coloured squares and streamers drifting down around the creature and settling on the floor, no harm. The floor streaks are gone. Two squeezes of a clown horn, then a slide whistle up and down while it falls."
+      "at": "2026-11-06T04:07:26.619Z",
+      "note": "The first fast group is gone (it was a flat sticker falling ahead of the real pieces). The small pieces now fall about 70 percent faster."
     },
     "sumo": {
       "at": "2026-10-26T00:07:56.511Z",
@@ -2269,8 +2489,8 @@
       "note": "Top speed 8 → 7, and it revs up from 30% over the first 1.2 s. Size down 10% (9.9 m)."
     },
     "balloon": {
-      "at": "2026-10-26T02:30:53.082Z",
-      "note": "Leaves on the crosshair's line and only starts wandering after 0.7 s. The string is six swinging links. 10% smaller, and a random colour each time."
+      "at": "2026-11-06T05:21:41.679Z",
+      "note": "Your balloon.mp3 is in at double volume. The file is a pop, so it plays when the balloon actually pops on someone, not when you fire."
     },
     "recoil": {
       "at": "2026-10-26T02:20:04.372Z",
@@ -2279,6 +2499,34 @@
     "boomerang": {
       "at": "2026-10-26T02:23:28.638Z",
       "note": "Only bonk and ouch now: the stock hurt grunt is off for this hit, the bonk file's 0.4 s of dead air is skipped so it lands on impact, and ouch follows half a second later."
+    },
+    "frogs": {
+      "at": "2026-11-06T04:07:26.313Z",
+      "note": "Real frogs: about 70 Meshy frogs (a bullfrog and a leopard frog, every size) rain from the ceiling, bounce, and land right way up in a heap. The victim gets a last bucketful and goes down under them. The green blob and the flat sticker are gone."
+    },
+    "mosquitoes": {
+      "at": "2026-11-06T04:07:26.373Z",
+      "note": "No more shrinking: the victim spouts jets of blood from bite after bite, then falls over."
+    },
+    "ham": {
+      "at": "2026-11-06T04:07:26.433Z",
+      "note": "More arc (it rises to about head-and-a-half height and comes down onto the victim), a full burst of body parts at the hit, and the ham comes to rest exactly where the victim stood."
+    },
+    "yak": {
+      "at": "2026-11-06T05:21:41.616Z",
+      "note": "A backwards run, not a toss: it gallops rear-first along the floor with all four legs going, facing you, runs its victim over and stops there."
+    },
+    "trombone": {
+      "at": "2026-11-06T05:28:56.657Z",
+      "note": "The slide is about 15 percent quicker: 1.2 seconds out and back, was 1.4."
+    },
+    "bangflag": {
+      "at": "2026-11-06T04:07:26.683Z",
+      "note": "The real gag: a stick springs out of the barrel and a BANG! flag drops open off it, sways for a couple of seconds, then snaps back in. The floor decal is gone."
+    },
+    "thought": {
+      "at": "2026-11-06T04:07:26.741Z",
+      "note": "Moved to WEIRD. A puffy, see-through pink thought cloud with its little tail and DIE in fat pink letters blows out of the barrel and drifts off. Whoever it reaches takes the suggestion and drops."
     }
   },
   "seen": {
@@ -2323,16 +2571,23 @@
     "slapfight": "2026-10-25T23:20:27.114Z",
     "burrito": "2026-10-25T20:05:08.927Z",
     "curse": "2026-10-25T20:08:04.073Z",
-    "confetti": "2026-10-25T23:18:31.994Z",
+    "confetti": "2026-11-06T05:10:46.595Z",
     "sumo": "2026-10-26T00:15:32.668Z",
     "piledriver": "2026-10-26T00:15:39.203Z",
     "bowling": "2026-10-26T00:55:22.486Z",
     "doll": "2026-10-26T01:41:22.601Z",
     "goose": "2026-10-26T01:41:54.368Z",
     "bus": "2026-10-26T01:47:46.797Z",
-    "balloon": "2026-10-26T02:08:44.312Z",
+    "balloon": "2026-11-06T05:22:26.633Z",
     "recoil": "2026-10-26T02:20:34.510Z",
-    "boomerang": "2026-10-26T02:20:45.952Z"
+    "boomerang": "2026-11-06T03:40:13.778Z",
+    "mosquitoes": "2026-11-06T04:50:26.342Z",
+    "frogs": "2026-11-06T04:50:58.783Z",
+    "trombone": "2026-11-06T05:28:19.963Z",
+    "ham": "2026-11-06T05:00:38.084Z",
+    "yak": "2026-11-06T05:22:00.803Z",
+    "thought": "2026-11-06T05:09:32.400Z",
+    "bangflag": "2026-11-06T05:10:52.926Z"
   },
   "ranks": {
     "bullet": {
@@ -2460,8 +2715,8 @@
       "at": "2026-09-11T05:02:20.470Z"
     },
     "balloon": {
-      "rank": 3,
-      "at": "2026-10-17T01:42:31.599Z"
+      "rank": 2,
+      "at": "2026-11-06T05:22:36.772Z"
     },
     "shrinkray": {
       "rank": 3,
@@ -2526,6 +2781,50 @@
     "bus": {
       "rank": 3,
       "at": "2026-10-26T01:48:00.490Z"
+    },
+    "grandma": {
+      "rank": 3,
+      "at": "2026-11-06T03:28:57.484Z"
+    },
+    "ham": {
+      "rank": 2,
+      "at": "2026-11-06T05:00:45.599Z"
+    },
+    "chowder": {
+      "rank": 3,
+      "at": "2026-11-06T03:33:44.930Z"
+    },
+    "boomerang": {
+      "rank": 3,
+      "at": "2026-11-06T03:40:53.301Z"
+    },
+    "bangflag": {
+      "rank": 3,
+      "at": "2026-11-06T05:11:10.620Z"
+    },
+    "mosquitoes": {
+      "rank": 3,
+      "at": "2026-11-06T04:50:49.916Z"
+    },
+    "frogs": {
+      "rank": 1,
+      "at": "2026-11-06T04:51:55.926Z"
+    },
+    "thought": {
+      "rank": 1,
+      "at": "2026-11-06T05:09:45.782Z"
+    },
+    "confetti": {
+      "rank": 3,
+      "at": "2026-11-06T05:17:25.591Z"
+    },
+    "yak": {
+      "rank": 3,
+      "at": "2026-11-06T05:22:16.200Z"
+    },
+    "trombone": {
+      "rank": 3,
+      "at": "2026-11-06T05:29:13.481Z"
     }
   },
   "verdicts": {
@@ -2752,6 +3051,182 @@
     "bus": {
       "status": "passed",
       "at": "2026-10-26T01:48:11.401Z"
+    },
+    "grandma": {
+      "status": "passed",
+      "at": "2026-11-06T03:29:05.250Z"
+    },
+    "tent": {
+      "status": "trash",
+      "at": "2026-11-06T03:33:20.478Z"
+    },
+    "chowder": {
+      "status": "passed",
+      "at": "2026-11-06T03:33:49.330Z"
+    },
+    "jack": {
+      "status": "trash",
+      "at": "2026-11-06T03:40:04.381Z"
+    },
+    "boomerang": {
+      "status": "passed",
+      "at": "2026-11-06T03:40:54.549Z"
+    },
+    "mosquitoes": {
+      "status": "passed",
+      "at": "2026-11-06T04:50:52.741Z"
+    },
+    "frogs": {
+      "status": "passed",
+      "at": "2026-11-06T04:51:58.967Z"
+    },
+    "ham": {
+      "status": "passed",
+      "at": "2026-11-06T05:00:59.990Z"
+    },
+    "thought": {
+      "status": "passed",
+      "at": "2026-11-06T05:09:56.955Z"
+    },
+    "bangflag": {
+      "status": "passed",
+      "at": "2026-11-06T05:11:13.035Z"
+    },
+    "confetti": {
+      "status": "passed",
+      "at": "2026-11-06T05:17:28.005Z"
+    },
+    "yak": {
+      "status": "passed",
+      "at": "2026-11-06T05:22:23.733Z"
+    },
+    "balloon": {
+      "status": "passed",
+      "at": "2026-11-06T05:22:39.875Z"
+    },
+    "herring": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:00.936Z"
+    },
+    "feather": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.014Z"
+    },
+    "fortune": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.068Z"
+    },
+    "hairball": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.116Z"
+    },
+    "apology": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.163Z"
+    },
+    "receipt": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.217Z"
+    },
+    "glitter": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.271Z"
+    },
+    "click": {
+      "status": "trash",
+      "at": "2026-11-06T05:27:01.324Z"
+    },
+    "trombone": {
+      "status": "passed",
+      "at": "2026-11-06T05:29:15.899Z"
+    },
+    "hairdryer": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:06.608Z"
+    },
+    "rose": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:06.669Z"
+    },
+    "lovepotion": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:06.768Z"
+    },
+    "mirror": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:06.894Z"
+    },
+    "swap": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:06.973Z"
+    },
+    "ring": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.100Z"
+    },
+    "monkeypaw": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.169Z"
+    },
+    "audit": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.224Z"
+    },
+    "wetwilly": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.280Z"
+    },
+    "cupcake": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.385Z"
+    },
+    "karaoke": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.442Z"
+    },
+    "littlerifle": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.498Z"
+    },
+    "yourmom": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.641Z"
+    },
+    "bagpipes": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.703Z"
+    },
+    "recoil": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.818Z"
+    },
+    "sneezeback": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:07.960Z"
+    },
+    "wrongway": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.027Z"
+    },
+    "anvilyou": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.169Z"
+    },
+    "beesyou": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.225Z"
+    },
+    "hiccup": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.287Z"
+    },
+    "playdead": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.350Z"
+    },
+    "confusion": {
+      "status": "trash",
+      "at": "2026-11-06T05:31:08.456Z"
     }
   }
 }

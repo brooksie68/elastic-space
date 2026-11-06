@@ -6,6 +6,20 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
+## START HERE (2026-11-06)
+
+- THE BOARD IS FULLY SORTED (2026-11-06): 61 PASSED, 39 TRASH, nothing in review. James trashed every remaining dud, weird and backfire
+  en masse (lists echoed, confirmed "all"). What is left outside DISPATCH: weird = goose, balloon, thought; dud = confetti, bang flag;
+  backfire = boomerang. The roll odds (dispatch 60 / weird 25 / dud 10 / backfire 5) now deal those few a lot — offered to lower them,
+  no answer yet; ask before touching. Trashed gags stay in gags.js until ship, on his word.
+- TWO NIGHTS OF NOTES, all done (changelog 2026-11-05 + 2026-11-06): real frogs + a real yak (Meshy, 45 cr; the yak gallops backwards on
+  the floor, legs split by `yak_legs.py`), the bang flag on the rifle (`stepBangFlag`, `R.fire(gag)`), the thought cloud (WEIRD, a
+  floating bolt that kills), the trombone (prim, on edge, follows the barrel every frame, `single: true` = one victim, his
+  trombone.mp3), the ham's `loft` + `seat`, mosquitoes spout blood, confetti's falling sticker removed, his balloon.mp3 at the pop.
+- A `drop` gag with no prop draws its 2-D sticker falling unless it is excluded in syncZones (legos, confetti, frogs are).
+- `split_legs.py` is for RAW Meshy files; a file already slimmed (re-exported by Blender) is Z-up, body along Y — use `yak_legs.py`.
+- Not heard by Claude: the trombone and balloon files in play (measured by decode only). His passes cover them.
+
 ## START HERE (2026-10-26)
 
 - THE FOURTH REVIEW NIGHT (2026-10-25/26, ~60 notes acted on, watcher armed all night): read the changelog's 2026-10-25 entry

@@ -1,2 +1,2 @@
 // Written by the dev server from the weapon lab's TRASH verdicts (notes.json). The roll skips these ids.
-globalThis.JABBERWOCKY_CUTS = ["catbag","drill","gravy","kick","mousetrap","porcupine","wetcat"];
+globalThis.JABBERWOCKY_CUTS = ["anvilyou","apology","audit","bagpipes","beesyou","catbag","click","confusion","cupcake","drill","feather","fortune","glitter","gravy","hairball","hairdryer","herring","hiccup","jack","karaoke","kick","littlerifle","lovepotion","mirror","monkeypaw","mousetrap","playdead","porcupine","receipt","recoil","ring","rose","sneezeback","swap","tent","wetcat","wetwilly","wrongway","yourmom"];

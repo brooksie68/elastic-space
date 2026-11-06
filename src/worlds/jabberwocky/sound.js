@@ -167,7 +167,7 @@
     trombone: (p) => { seq([[196, 0.5, 0.55], [185, 0.5, 0.55], [175, 0.5, 0.55]], { type: 'sawtooth', gain: 0.18, pan: p, extra: { filter: 'lowpass', ff: 1400, vib: 6, vibRate: 5 } }); tone({ f: 165, f2: 140, dur: 1.4, type: 'sawtooth', gain: 0.18, delay: 1.65, filter: 'lowpass', ff: 1400, vib: 8, vibRate: 5, pan: p }); },
     grandma: (p) => { voice({ f: 260, f2: 380, dur: 0.5, formants: [700, 2200], vib: 12, vibRate: 6, gain: 0.18, pan: p }); voice({ f: 380, f2: 240, dur: 0.6, formants: [700, 2200], vib: 12, vibRate: 6, gain: 0.18, delay: 0.55, pan: p }); },
     tent: (p) => { noise({ dur: 1.4, f: 300, f2: 1200, type: 'bandpass', q: 0.6, gain: 0.5, a: 0.3, pan: p }); seq([[392, 0.2], [523, 0.2], [659, 0.2], [784, 0.5]], { type: 'square', gain: 0.1, delay: 0.1, pan: p }); noise({ dur: 0.6, f: 500, f2: 80, gain: 0.7, delay: 1.4, pan: p }); },
-    balloon: (p) => { noise({ dur: 0.3, f: 800, f2: 1600, type: 'bandpass', q: 3, gain: 0.15, pan: p }); setTimeout(() => running && noise({ dur: 0.12, f: 3000, f2: 500, gain: 0.9, pan: p }), 1400); },
+    balloon: (p) => { noise({ dur: 0.3, f: 800, f2: 1600, type: 'bandpass', q: 3, gain: 0.15, pan: p }); },   // the puff as it leaves the gun; the old pop on a 1.4 s timer is gone — James's balloon.mp3 pops when it really pops (2026-11-06)
     dryer: (p) => { noise({ dur: 1.6, f: 900, f2: 1200, type: 'bandpass', q: 0.6, gain: 0.35, a: 0.2, pan: p }); tone({ f: 180, dur: 1.6, type: 'sawtooth', gain: 0.08, a: 0.2, filter: 'lowpass', ff: 700, pan: p }); },
     rose: (p) => { seq([[523, 0.3, 0.32], [659, 0.3, 0.32], [784, 0.7]], { type: 'sine', gain: 0.14, pan: p }); },
     potion: (p) => { tone({ f: 600, f2: 1500, dur: 0.5, type: 'sine', gain: 0.2, pan: p }); for (let i = 0; i < 5; i++) tone({ f: 1200 + i * 200, dur: 0.15, type: 'sine', gain: 0.1, delay: 0.5 + i * 0.1, pan: p }); },
@@ -309,6 +309,7 @@
   const SFX_DIR = scriptBase + 'assets/audio/sfx/';
   const FILES = {
     purse: 'purse',   // James's purse.mp3 on the swing (2026-09-10)
+    trombone: 'trombone', balloonpop: 'balloon',   // James's trombone.mp3 and balloon.mp3 (2026-11-06) — balloon.mp3 is a pop (loud for 0.18 s of its 1.2 s, measured by decode), so it plays when the balloon pops (the hosts' kill / pacify), not at the trigger
     slap: 'slap',   // James's slap.mp3, one per thwap of the slap fight (2026-10-25)
     piledriver: 'piledriver',   // James's piledriver.mp3 at the hit (splashSound, 2026-10-25)
     sumoyell: 'sumoyell',   // James's sumoyell.mp3: the sumo's battle cry as he catches his man (2026-10-25)
@@ -387,7 +388,7 @@
     if (!e) { e = list[0]; }   // all three busy: the oldest starts over
     return e;
   }
-  const FILE_GAIN = { batterup: 2.6, sumoyell: 0.765 };   // sumoyell: 15% under the usual 0.9 (James 2026-10-25, "too loud")
+  const FILE_GAIN = { batterup: 2.6, sumoyell: 0.765, balloon: 1.8 };   // balloon: twice the usual 0.9 (James 2026-11-06, "boost the volume")   // sumoyell: 15% under the usual 0.9 (James 2026-10-25, "too loud")
   // a medium room on a few files (James 2026-09-10, the purse: 'a little reverb… like a medium room'): a short noise-tail convolver, mixed low
   const FILE_ROOM = { purse: 0.28 };
   const FILE_TRIM = { nitrogen: { hold: 1.0, fade: 0.5 }, honk: { hold: 0.55, fade: 0.2 } };   // honk: the 2 s file ran on after the goose was already splattered (James 2026-10-26)

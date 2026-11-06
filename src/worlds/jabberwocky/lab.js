@@ -10,7 +10,7 @@
 // with its notes (`verdicts` in notes.json); trash also has the server write cuts.js, and the game's roll skips
 // those ids from its next load. Then the ACTION dropdown by SUBMIT (update — the default — / pass / trash): the
 // note carries its verdict, applied by the server in the same save, so he never has to write it in the note.
-import { createRenderer } from './render3d.js?v=89';
+import { createRenderer } from './render3d.js?v=100';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -178,9 +178,9 @@ function handleEvents() {
       case 'zone': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a zone with a loop (the tornado) sounds while it lives (2026-09-10)
       case 'summoned': if (e.gag && e.gag.loop && !loops[e.gag.id]) loops[e.gag.id] = Sfx.loopFile(e.gag.loop, pan(e.x, e.y)); break;   // a summon with a loop (the doll's creepydoll.mp3, James 2026-10-26) sounds while it walks
       case 'pull': Sfx.play('pull'); Sfx.reel(state.opts.revealDelay); if (e.gag.earlySound) Sfx.play(e.gag.sound, 0);   // the weapon's voice at the pull itself (the handbag) if (e.gag.id === 'baseballs') setTimeout(() => Sfx.play('batterup'), Math.max(0, state.opts.revealDelay * 1000 - 100));   // BATTER UP a tenth before the balls fly (James) R.vm.spin = 0.001; R.vm.mood = e.gag.tier === 'dud' || e.gag.tier === 'backfire' ? 'shudder' : BIG.has(e.gag.id) ? 'purr' : 'idle'; break;
-      case 'fire': R.fire(); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
-      case 'kill': { const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
-      case 'pacify': Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
+      case 'fire': R.fire(e.gag); if (!e.gag.earlySound) Sfx.play(e.empty ? 'pull' : e.gag.sound, e.little ? pan(e.x, e.y) : 0); Sfx.reveal(e.gag.tier); showPlate(state.plate); if (e.gag.kind === 'melee' || e.gag.kind === 'self') R.shake(0.5); break;
+      case 'kill': { if (e.gag && e.gag.id === 'balloon') Sfx.play('balloonpop', pan(e.x, e.y)); const oc = () => Sfx.outcome(e.outcome, pan(e.x, e.y), e.gag); if (e.gag && e.gag.id === 'baseballs') setTimeout(oc, 260); else if (e.gag && e.gag.id === 'fist') Sfx.play('punch', pan(e.x, e.y)); else if (e.gag && e.gag.id === 'eagle') { /* the eagle's sound plays at the trigger; the hit is silent */ } else oc(); }   // the fist lands with James's punch.mp3 if (e.outcome !== 'pacify' && e.outcome !== 'vapor') R.strike(e.x, e.y); if (e.outcome === 'gib' || e.outcome === 'inflate') setTimeout(() => Sfx.play('crunch', pan(e.x, e.y)), 90); if (e.outcome === 'fling') setTimeout(() => Sfx.play('wallsplat', pan(e.x, e.y)), 560); break;
+      case 'pacify': if (e.gag && e.gag.id === 'balloon') Sfx.play('balloonpop', pan(e.goon.x, e.goon.y)); Sfx.play('pacify', pan(e.goon.x, e.goon.y)); break;
       case 'scene': if (e.gag.id === 'recoil') Sfx.play('horseneigh', pan(e.x, e.y)); break;   // the donkey arrives (2026-10-26)
       case 'kicked': Sfx.play('horsekick', 0); R.shake(1.2); break;   // the kick lands: you go down
       case 'push': Sfx.play('thud', 0); break;   // a push up
