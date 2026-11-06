@@ -8,6 +8,13 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-11-06 — Claude (Fable 5.1) — SATURATION: the originals stay out of the browser's disk cache
+
+- James asked whether every thumbnail is cleared and where they live. They live in the tab's memory and are freed on a
+  folder change or tab close; the full-size originals, though, were being kept in the browser's disk cache for an hour.
+- Fixed: `/api/image-file` answers `no-store` and the thumbnail maker fetches `no-store`. Server restart needed. Not
+  run in a tab. Open: no cap on thumbnails per folder; a grid-size change does not remake them.
+
 ## 2026-10-25/26 — Claude (Fable 5.1) — JABBERWOCKY: the fourth review night
 
 - ~60 weapon-lab notes acted on through the night: rigged summons (sumo, doll via creature.mjs), the maul, the loot

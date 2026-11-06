@@ -797,6 +797,8 @@ async function serveStatic(request, pathname, response) {
 }
 
 const artFileExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+// folders listed through /api/images this process (lower-cased); /api/image-file serves only under these
+const imageRoots = new Set();
 // Shape check for a world tuner preset store: named flat cfg snapshots plus an
 // optional start-preset name. Returns a problem string or null.
 function validateWorldPresets(payload) {
@@ -1220,6 +1222,93 @@ async function handleApi(request, response, pathname) {
     drafts[index] = updated;
     await writeDrafts(drafts);
     sendJson(response, 200, updated);
+    return true;
+  }
+
+  // Saturation (2026-10-16): point the grid at any folder of folders of images on
+  // James's disk. GET /api/images?dir=<absolute path> walks it and lists every image;
+  // GET /api/image-file?path=<absolute path> serves one of them. Only paths under a
+  // folder that was listed in this server process are served — a local dev
+  // convenience, never a public route.
+  // Saturation: the browse button. Opens Windows' own folder picker on James's desktop
+  // (the server runs in his session) and answers with the path he chose, or null.
+  if (pathname === "/api/pick-folder" && request.method === "GET") {
+    const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+    const start = (url.searchParams.get("start") || "").replace(/["\r\n]/g, "");
+    const script = [
+      "Add-Type -AssemblyName System.Windows.Forms",
+      "$d = New-Object System.Windows.Forms.FolderBrowserDialog",
+      "$d.Description = 'Pick a folder of pictures for Saturation'",
+      "$d.ShowNewFolderButton = $false",
+      start ? `if (Test-Path -LiteralPath "${start}") { $d.SelectedPath = "${start}" }` : "",
+      "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($d.SelectedPath) }",
+    ].join("\n");
+    try {
+      const { stdout } = await execFileAsync(
+        "powershell.exe",
+        ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
+        { windowsHide: true, timeout: 10 * 60 * 1000, maxBuffer: 1 << 20 },
+      );
+      const picked = stdout.trim();
+      sendJson(response, 200, { path: picked || null });
+    } catch (error) {
+      sendJson(response, 500, { path: null, error: String(error?.message || error) });
+    }
+    return true;
+  }
+
+  if (pathname === "/api/images" && request.method === "GET") {
+    const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+    const dir = normalize(url.searchParams.get("dir") || "");
+    if (!dir || !/^[A-Za-z]:[\\/]/.test(dir)) {
+      sendJson(response, 400, { error: "dir must be an absolute path" });
+      return true;
+    }
+    try {
+      const info = await stat(dir);
+      if (!info.isDirectory()) throw new Error("not a directory");
+    } catch {
+      sendJson(response, 404, { error: "folder not found" });
+      return true;
+    }
+    const files = [];
+    const walk = async (folder) => {
+      let entries = [];
+      try { entries = await readdir(folder, { withFileTypes: true }); } catch { return; }
+      for (const entry of entries) {
+        if (files.length >= 20000) return;
+        const full = join(folder, entry.name);
+        if (entry.isDirectory()) await walk(full);
+        else if (artFileExtensions.has(extname(entry.name).toLowerCase())) files.push(full);
+      }
+    };
+    await walk(dir);
+    imageRoots.add(dir.toLowerCase());
+    sendJson(response, 200, { dir, count: files.length, files });
+    return true;
+  }
+
+  if (pathname === "/api/image-file" && request.method === "GET") {
+    const url = new URL(request.url ?? "/", `http://${host}:${port}`);
+    const file = normalize(url.searchParams.get("path") || "");
+    const allowed = [...imageRoots].some((root) => file.toLowerCase().startsWith(root));
+    if (!allowed || !artFileExtensions.has(extname(file).toLowerCase())) {
+      sendText(response, 403, "not an image under a listed folder");
+      return true;
+    }
+    try {
+      const info = await stat(file);
+      response.writeHead(200, {
+        "Content-Type": types[extname(file).toLowerCase()] || "application/octet-stream",
+        "Content-Length": info.size,
+        // read once to make a thumbnail, then never again — keep it out of the browser's disk cache
+        "Cache-Control": "no-store",
+        "Access-Control-Allow-Origin": "*",
+      });
+      createReadStream(file).pipe(response);
+    } catch {
+      sendText(response, 404, "missing");
+    }
     return true;
   }
 
