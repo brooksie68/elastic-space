@@ -1478,6 +1478,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - The repo-root `index.html` is the admin panel: server status light, the page directory, the
   dashboard-icons toggle, and the world editor (the former `/admin/` page, which now redirects
   to `/`). It is James's primary starting point while the project is in active development.
+- Tab **labs** (added 2026-10-16, between world editor and drafts): every lab link in a
+  three-column grid — world / lab / what it is for — `.labs-list` in index.html + admin.css.
+  FIXED column tracks on purpose: James's rule, nothing in a grid may shift on hover or a
+  font change. New labs go here, never under the worlds list.
 - Fourth tab **archived** (added 2026-07-31): lists `archive/` folders via `GET /api/archive`
   with direct links (labels derived from slugs), served copy only. Refreshes on tab click and
   after a kebab archive action. This is the only place archived worlds are listed — the

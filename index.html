@@ -33,6 +33,7 @@
       <nav class="tab-bar panel" role="tablist" aria-label="Admin sections">
         <button id="tab-button-worlds" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="tab-worlds">worlds</button>
         <button id="tab-button-editor" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-editor">world editor</button>
+        <button id="tab-button-labs" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-labs">labs</button>
         <button id="tab-button-drafts" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-drafts">drafts</button>
         <button id="tab-button-archived" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="tab-archived">archived</button>
       </nav>
@@ -46,10 +47,10 @@
           </div>
         </div>
         <nav class="pages-list" aria-label="In progress worlds">
-          <a target="_blank" rel="noopener" href="./src/worlds/carnage/index.html">Carnage <span class="page-note unwired">unwired</span></a>
           <a target="_blank" rel="noopener" href="./src/worlds/lumina/index.html">Lumina <span class="page-note unwired">unwired</span></a>
           <a target="_blank" rel="noopener" href="./src/worlds/lunar-lander/index.html">Moon Battle 2100</a>
           <a target="_blank" rel="noopener" href="./src/worlds/orb-dimension/index.html">The Orb Dimension</a>
+          <a target="_blank" rel="noopener" href="./src/worlds/saturation/index.html">Saturation <span class="page-note unwired">unwired</span></a>
           <a target="_blank" rel="noopener" href="./src/worlds/the-phase-lab/index.html">The Phase Lab <span class="page-note unwired">unwired</span></a>
           <a target="_blank" rel="noopener" href="./src/worlds/snap/index.html">Snap! <span class="page-note unwired">unwired</span></a>
         </nav>
@@ -78,22 +79,6 @@
           <a target="_blank" rel="noopener" href="./src/worlds/softly/index.html">Softly</a>
           <a target="_blank" rel="noopener" href="./src/worlds/surround/index.html">Surround</a>
           <a target="_blank" rel="noopener" href="./src/worlds/wildflowers-at-dusk/index.html">Wildflowers at Dusk</a>
-        </nav>
-        <div class="panel-head completed-head">
-          <div>
-            <h2>Labs</h2>
-          </div>
-        </div>
-        <nav class="pages-list" aria-label="Labs">
-          <a target="_blank" rel="noopener" href="./src/labs/being-editor/index.html">Being Editor <span class="page-note">(energy-being look development)</span></a>
-          <a target="_blank" rel="noopener" href="./src/labs/face-lab/index.html">Face Lab <span class="page-note">(expression &amp; lip-sync workbench)</span></a>
-          <a target="_blank" rel="noopener" href="./src/labs/sphere-lab/index.html">Sphere Lab <span class="page-note">(Orb Dimension — the ball, one orb of each family from four angles)</span></a>
-          <a target="_blank" rel="noopener" href="./src/labs/material-lab/index.html">Material Lab <span class="page-note">(Orb Dimension — the Cadence metal up close: strut, slab, hoop, crust face, conduit at three distances)</span></a>
-          <a target="_blank" rel="noopener" href="./src/labs/station-lab/index.html">Station Lab <span class="page-note">(Orb Dimension — Dominant's spine-and-ring station with the buildings seated, orbit and zoom)</span></a>
-          <a target="_blank" rel="noopener" href="./src/worlds/jabberwocky/lab.html">Weapon Lab <span class="page-note">(Jabberwocky — every gag on three passive creatures that come back; notes go to Claude)</span></a>
-          <a target="_blank" rel="noopener" href="./src/worlds/carnage/index.html?test=1">Carnage Test Mode <span class="page-note">(one medium building in an empty lot — no army, no traffic, no people; it stands again after it falls)</span></a>
-          <a target="_blank" rel="noopener" href="./src/worlds/carnage/lab.html">Damage Lab <span class="page-note">(Carnage — every verb a monster does, staged on one street; notes go to Claude)</span></a>
-          <a target="_blank" rel="noopener" href="./src/labs/sphere-lab/index.html?sheet=interiors">Sphere Lab — the interiors <span class="page-note">(Orb Dimension — the 23 procedural insides as volumes, one row per kind)</span></a>
         </nav>
       </section>
 
@@ -276,6 +261,30 @@
             </form>
           </section>
       </div>
+
+      </div>
+
+      <div id="tab-labs" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-labs" hidden>
+
+      <section class="panel pages-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Labs</h2>
+          </div>
+        </div>
+        <nav class="pages-list labs-list" aria-label="Labs">
+          <div class="labs-head" aria-hidden="true"><span>world</span><span>lab</span><span>what it is for</span></div>
+          <a target="_blank" rel="noopener" href="./src/labs/being-editor/index.html"><span class="lab-world">The Orb Dimension</span><span class="lab-name">Being Editor</span><span class="lab-desc">energy-being look development</span></a>
+          <a target="_blank" rel="noopener" href="./src/labs/face-lab/index.html"><span class="lab-world">The Dead Letter Office</span><span class="lab-name">Face Lab</span><span class="lab-desc">expression &amp; lip-sync workbench</span></a>
+          <a target="_blank" rel="noopener" href="./src/labs/sphere-lab/index.html"><span class="lab-world">The Orb Dimension</span><span class="lab-name">Sphere Lab</span><span class="lab-desc">the ball, one orb of each family from four angles</span></a>
+          <a target="_blank" rel="noopener" href="./src/labs/sphere-lab/index.html?sheet=interiors"><span class="lab-world">The Orb Dimension</span><span class="lab-name">Sphere Lab — the interiors</span><span class="lab-desc">the 23 procedural insides as volumes, one row per kind</span></a>
+          <a target="_blank" rel="noopener" href="./src/labs/material-lab/index.html"><span class="lab-world">The Orb Dimension</span><span class="lab-name">Material Lab</span><span class="lab-desc">the Cadence metal up close: strut, slab, hoop, crust face, conduit at three distances</span></a>
+          <a target="_blank" rel="noopener" href="./src/labs/station-lab/index.html"><span class="lab-world">The Orb Dimension</span><span class="lab-name">Station Lab</span><span class="lab-desc">Dominant's spine-and-ring station with the buildings seated, orbit and zoom</span></a>
+          <a target="_blank" rel="noopener" href="./src/worlds/jabberwocky/lab.html"><span class="lab-world">Jabberwocky</span><span class="lab-name">Weapon Lab</span><span class="lab-desc">every gag on three passive creatures that come back; notes go to Claude</span></a>
+          <a target="_blank" rel="noopener" href="./src/worlds/carnage/index.html?test=1"><span class="lab-world">Carnage</span><span class="lab-name">Test Mode</span><span class="lab-desc">one medium building in an empty lot — no army, no traffic, no people; it stands again after it falls</span></a>
+          <a target="_blank" rel="noopener" href="./src/worlds/carnage/lab.html"><span class="lab-world">Carnage</span><span class="lab-name">Damage Lab</span><span class="lab-desc">every verb a monster does, staged on one street; notes go to Claude</span></a>
+        </nav>
+      </section>
 
       </div>
 

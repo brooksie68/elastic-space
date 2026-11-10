@@ -770,6 +770,53 @@ h2 {
   padding-left: 1rem;
 }
 
+/* Labs tab: a three-column grid — world, lab, description — every row one link */
+.labs-list {
+  /* Fixed tracks, never content-sized: nothing in a row (hover padding, weight,
+     a longer name) may move another row or column. */
+  grid-template-columns: 14rem 17rem minmax(0, 1fr);
+  column-gap: 1.5rem;
+}
+
+.labs-list a:hover,
+.labs-list a:focus-visible {
+  padding-left: 0.6rem;
+}
+
+.labs-list .lab-world,
+.labs-list .lab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labs-list .labs-head,
+.labs-list a {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: baseline;
+}
+
+.labs-list .labs-head {
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  padding: 0 0.6rem 0.5rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.labs-list .lab-world {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.labs-list .lab-desc {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 /* Rows that pair a world link with utility links (e.g. curate mode) */
 .pages-list .page-row {
   align-items: center;
