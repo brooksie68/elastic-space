@@ -1,0 +1,42 @@
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+#grid {
+  position: fixed; inset: 0; display: grid;
+  grid-template-columns: repeat(var(--cols, 20), 1fr);
+  grid-template-rows: repeat(var(--rows, 16), 1fr);
+  gap: var(--gap, 0px); background: #000;
+}
+#grid .cell { position: relative; overflow: hidden; background: #000; }
+#grid .cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: var(--fit, cover); display: block; }
+#grid .cell.swatch img { display: none; }
+#grid .cell.swatch { background: hsl(var(--h, 0) 85% 50%); }
+
+#cfg-btn {
+  position: fixed; right: 1rem; top: 4.25rem; z-index: 2147483000;
+  width: 2.5rem; height: 2.5rem; border-radius: 50%; cursor: pointer;
+  background: rgba(20,20,20,0.45); border: 1px solid rgba(255,255,255,0.28); color: rgba(255,255,255,0.85);
+  font: 600 0.9rem/1 system-ui, sans-serif;
+}
+html[data-es-dash] #cfg-btn { top: 7.5rem; }
+#cfg-btn:hover { background: rgba(20,20,20,0.7); color: #fff; }
+#cfg {
+  position: fixed; right: 1rem; bottom: 1rem; z-index: 2147483000; width: 22rem;
+  background: rgba(16,16,18,0.92); color: #eee; border: 1px solid rgba(255,255,255,0.18); border-radius: 6px;
+  padding: 0.8rem 0.9rem; font: 14px/1.5 system-ui, sans-serif; backdrop-filter: blur(6px);
+}
+#cfg[hidden] { display: none; }
+#cfg .cfg-head { font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; opacity: 0.7; margin-bottom: 0.5rem; }
+#cfg label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; opacity: 0.9; flex: 1; }
+#cfg input, #cfg select { font: 14px system-ui, sans-serif; background: #0a0a0a; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 4px 6px; width: 100%; box-sizing: border-box; }
+#cfg .cfg-dirrow { display: flex; gap: 0.4rem; }
+#cfg .cfg-dirrow button { flex: 0 0 auto; padding: 4px 10px; }
+#cfg #cfg-pause.on { background: #c9a227; color: #000; border-color: #c9a227; }
+#cfg .cfg-check { flex-direction: row; align-items: center; gap: 0.35rem; flex: 0 0 auto; align-self: flex-end; padding-bottom: 6px; }
+#cfg .cfg-check input { width: auto; }
+#cfg .cfg-row #cfg-last { flex: 2; align-self: center; margin: 0; }
+#cfg .cfg-speed { margin-top: 0.6rem; }
+#cfg .cfg-speed span { float: right; font-variant-numeric: tabular-nums; opacity: 0.8; }
+#cfg input[type=range] { padding: 0; height: 1.6rem; accent-color: #ddd; background: none; border: 0; }
+#cfg .cfg-row { display: flex; gap: 0.6rem; margin-top: 0.5rem; }
+#cfg .cfg-status { font-size: 12px; opacity: 0.7; margin-top: 0.25rem; min-height: 1.2em; }
+#cfg button { font: 14px system-ui, sans-serif; background: #222; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 6px 10px; cursor: pointer; flex: 1; }
+#cfg button:hover { background: #333; }
