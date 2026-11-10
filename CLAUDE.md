@@ -1590,10 +1590,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
 - Load `../../core/world-registry.js` and then `../../core/drift.js` in each world that offers drift links.
 - Direct links are allowed only when the user explicitly wants a fixed route, such as an authored sequence. Fixed links do not use `data-drift`.
 - Drift avoids worlds already seen in the current cycle. Do not implement separate destination memory inside a world.
-- After adding, removing, or renaming a world, run `npm run registry`. **Gotcha (found
-  2026-07-24): the generator includes draft-status worlds.** Drafts must stay OUT of the
-  drift pool until ship — if the repo has drafts, restore the registry after regenerating
-  (`git checkout -- src/core/world-registry.js`) or hand-check the diff.
+- After adding, removing, or renaming a world, run `npm run registry`. **The generator publishes
+  only worlds whose world.json says `"status": "live"` (fixed 2026-11-09 — drafts used to leak in);
+  it prints the ones it left out.** A world enters the drift by going live in its world.json, then
+  `npm run registry`. Never hand-edit the registry.
 - The root `index.html` is an intentional named directory and may use direct links.
 
 ## Per-world instructions
