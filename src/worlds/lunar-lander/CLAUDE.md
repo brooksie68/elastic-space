@@ -117,6 +117,12 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 
 ## START HERE (next session)
 
+**2026-11-09: HE FLEW LEVEL 1 AND SAILED PAST THE "END" LINE — "nothing happened."** The END line on the strip
+is only a marker; the level ends by clearing the targets and LANDING on the RELAY · GATE pad. Crossing END
+with no feedback is a hole in the design. OPEN, his call, nothing built: what crossing END should do (a
+warning / turn-back cue, or something else) — ask him, propose options. Same day: the launch label "AIMED N°
+TO CLEAR THE GROUND" REMOVED at his word (the launcher still aims clear; it just says nothing).
+
 **2026-10-24: THE TARGETS ON THE STRIP** — every target of the level is a numbered RED marker on the strip
 map from the first second (the sitrep's boxes carry the same numbers); see changelog 2026-10-24. STANDING
 RULE (James): the objectives are always shown from the start — "i wouldn't be undertaking this mission with

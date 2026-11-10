@@ -1326,7 +1326,10 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
-7.5. MOON BATTLE 2100 — **2026-10-24 (his flight notes, all built the same session, sim 319,777 green): the level's targets on the strip map as
+7.5. MOON BATTLE 2100 — **2026-11-09: the "AIMED N° TO CLEAR THE GROUND" launch label removed at his word. He flew past
+   level 1's END line and "nothing happened" — as built (the level ends by landing on the RELAY · GATE pad once the targets are
+   down). OPEN, his call: what crossing END should do; nothing built. World CLAUDE.md START HERE (2026-11-09).**
+   **2026-10-24 (his flight notes, all built the same session, sim 319,777 green): the level's targets on the strip map as
    numbered RED squares (labels + hairlines in the strip's ink; a red square + number on the in-scene labels was tried and
    REVERTED, "way too much"); the pad never behind the strip during the zoom-in (a camera floor, zoom speed untouched);
    fuel pads = a green TEARDROP under the item tags; level 1 deals 15% more pads + 1.5× fuel per pad. OPEN: the level count

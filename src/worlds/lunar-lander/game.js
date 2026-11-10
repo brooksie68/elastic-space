@@ -542,7 +542,6 @@ function stepLaunch(dt) {
     Core.launchFire(state, L.aimed, play.launchApex);
     launchPadY = pad.y;
     scene.spawnLaunch(base.x, base.y, angle);
-    if (L.aimed !== play.launchAngle) floatLabel(s.x, s.y + 30, 'AIMED ' + L.aimed + '° TO CLEAR THE GROUND', 'fuel', 0);
     Sfx.launch();
     // the launcher stays behind: it straightens up and sinks back into the ground
     launchAfter = { pad, angle, t: 0 };

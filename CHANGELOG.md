@@ -8,6 +8,12 @@ Last push to origin as of 2026-07-11: **2026-07-11**.
 Per-world changelogs in `src/worlds/<slug>/changelog.md` remain the canonical detail;
 this file tracks project-level activity.
 
+## 2026-11-09 — Claude (Fable 5.2) — MOON BATTLE 2100: the launch label removed
+
+- The "AIMED N° TO CLEAR THE GROUND" label at launch is gone at James's word (the launcher still aims clear).
+- He flew past level 1's END line and nothing happened: as built, the level ends by landing on the RELAY · GATE
+  pad after the targets are down. Open, his call: what crossing END should do. Nothing built for it.
+
 ## 2026-11-06 — Claude (Fable 5.1) — SATURATION: the originals stay out of the browser's disk cache
 
 - James asked whether every thumbnail is cleared and where they live. They live in the tab's memory and are freed on a

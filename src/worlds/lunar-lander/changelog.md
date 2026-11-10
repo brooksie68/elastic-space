@@ -2,6 +2,17 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-11-09 (the launch label gone; the END line question) — Claude
+
+James: "when the lander launches and there is a mountain a message appears like 'aimed 70 degrees to miss the
+mountain'... remove that message." The `floatLabel` line in the launch sequence (game.js) is deleted; the
+launcher still steepens its angle through `launchAngleFor`, it just says nothing. Not checked in the browser.
+
+Then he flew level 1, went past the strip map's END line, and "nothing happened." That is as built: END is
+only a boundary marker (`drawStrip`); the level ends when every target is down AND the ship lands on the
+RELAY · GATE pad. Nothing changed for this. OPEN, his call: what crossing END should do — flying out of the
+stretch with no feedback is a design hole.
+
 ## 2026-10-24 (THE TARGETS ON THE STRIP) — Claude
 
 James: "i need to see the targets shown on the strip at the bottom. i wouldn't be undertaking this mission
