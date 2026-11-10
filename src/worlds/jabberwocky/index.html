@@ -93,6 +93,10 @@
     #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%); }
     #fade { position: fixed; inset: 0; pointer-events: none; background: #000; opacity: 0; transition: opacity 600ms ease; z-index: 30; }
     #fade.on { opacity: 1; }
+    #fade.white { background: #fff; }
+    /* the light at GAME OVER — a way out (2026-11-09); world.js scales it as you walk toward it */
+    #light { position: fixed; left: 50%; top: 11vh; width: 18vmin; height: 18vmin; margin: -9vmin 0 0 -9vmin; border-radius: 50%; background: radial-gradient(circle, #fff 0%, rgba(255, 246, 220, 0.9) 16%, rgba(255, 236, 190, 0.28) 42%, rgba(255, 236, 190, 0) 70%); opacity: 0; pointer-events: none; transition: opacity 2.4s ease; z-index: 22; cursor: pointer; }
+    #light.on { opacity: 1; pointer-events: auto; }
 
     /* ---- configuration ---- */
     #tuner-toggle { position: fixed; left: 1rem; top: 5.2rem; z-index: 25; padding: 0.4rem 0.75rem; border: 1px solid var(--glass-edge); border-radius: 10px; background: var(--glass); color: var(--ink-dim); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; backdrop-filter: blur(10px); }
@@ -214,26 +218,29 @@
       <div id="card-keys"></div>
     </div>
   </div>
+  <div id="light"></div>
   <div id="fade"></div>
 
-  <!-- the ways out — three odd doors in every maze; the anchors carry the drift -->
+  <!-- the ways out — three odd doors in every maze, your own hole, the light at GAME OVER; the anchors carry the drift -->
   <a id="exit-0" class="exit" href="../../../index.html" data-drift aria-label="The door painted with a spiral"></a>
   <a id="exit-1" class="exit" href="../../../index.html" data-drift aria-label="The door with an eye on it"></a>
   <a id="exit-2" class="exit" href="../../../index.html" data-drift aria-label="The door that is only a drawing of a door"></a>
+  <a id="exit-3" class="exit" href="../../../index.html" data-drift aria-label="The hole that goes down"></a>
+  <a id="exit-4" class="exit" href="../../../index.html" data-drift aria-label="The light"></a>
 
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
   <script src="../../core/dashboard-control.js"></script>
   <script src="../../core/sound-control.js"></script>
-  <script src="gags.js?v=42"></script>
+  <script src="gags.js?v=43"></script>
   <script src="cuts.js"></script>
   <script src="passed.js"></script>
-  <script src="core.js?v=30"></script>
+  <script src="core.js?v=32"></script>
   <script src="draw.js?v=8"></script>
   <script src="sound.js?v=28"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="world.js?v=78"></script>
+  <script type="module" src="world.js?v=81"></script>
 </body>
 </html>

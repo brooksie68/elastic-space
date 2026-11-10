@@ -6,6 +6,44 @@ in the middle with a rifle exactly like yours. Built 2026-09-05 as a one-shot on
 REBUILT THE SAME NIGHT on his verdict (too clown-like, motion sickness, too low-res): three.js dungeon,
 Meshy creatures, PG-13 cartoon gore.
 
+## START HERE (2026-11-09) — THE WAYS OUT
+
+James: "im ready to publish it. but we need some ways out for the drift." His picks of nine offered: the hole, death, and
+making the existing odd doors findable. Built, sim 1,156,928 green, each walked in the pane (hole → drifted, light → drifted).
+**SHIPPED 2026-11-09 on his "ship! :-D"**: in the drift registry, world.json `live` (new summary), the admin row under Completed
+worlds with the unwired tag gone, World Ideas #64 live, the trashed weapons deleted (below), committed — NOT pushed (his word).
+The working registry also carries four other sessions' drafts (lumina, saturation, snap, the-phase-lab) — left alone, not committed here.
+
+- THE HOLE (exit-3): a hole YOUR rifle made drops you out of the world. Core: scars carry `owner` (addScar's sixth argument,
+  passed from spawnZone); stepPlayer's hole block pushes `{ type: 'drift', i: 3, via: 'hole' }` and sets `state.phase = 'gone'`
+  instead of the hurt + climb. The Jabberwock's holes (`owner: 'boss'`) still only hurt; the lab level never exits;
+  `opts.holeExit: false` = the old fall everywhere (sim). Host: the fall sound, the fade, the look tips down (`falling`).
+  It is also an accident waiting to happen (walk over your own hole inside its twelve seconds and the run is over) — his pick,
+  untested by him; if he minds, the knob is the hole's `life` in SCARS or a hold-to-jump.
+- THE LIGHT (exit-4): at GAME OVER (no lives) a light hangs over the card (`#light`, world.js `showLight / stepLight`). Hold W
+  or the up arrow (a FRESH press — the key you died holding does not count) or click it: it swells for 1.8 s, the card fades,
+  white-out, drift. Let go and it shrinks. NEW RUN puts it out. The card's sub line ends "Or walk toward the light."
+- THE ODD DOORS, FINDABLE: the corner map marks every odd door you have NOT seen with a small cyan mark and no words (a square
+  on the dish, a tick on the rim when it is off the map; seen ones keep their ODD DOOR label); and a cold blue flame burns on
+  the wall either side of every odd door (`ODD_TORCH`, `flameTex(frame, true)`, `t.odd` torches appended after placeTorches
+  in buildLevel — they bake into the vertex light and flicker like the rest). The only torches that colour in the dungeon.
+- THE ROLL ODDS ANSWERED (2026-11-09, his "the percentages are good. roll with that"): 84 / 8 / 5 / 3 (was 60 / 25 / 10 / 5) in
+  core DEFAULTS and world.js PLAY_DEFAULTS; a one-time reset of his saved odds sliders (`jabberwocky-odds-v2` in localStorage).
+  The 2026-11-06 note below ("offered, no answer yet") is closed.
+- THE TRASH IS DELETED (2026-11-09). James was asked to confirm the list of 39 a second time and was rightly furious ("last
+  session I explicitly asked you to move all of those to trash") — HIS TRASH VERDICT IS THE WORD; never re-confirm it. Gone:
+  the 39 rows from gags.js (THE TABLE IS 61: 55 dispatch / 3 weird / 2 dud / 1 backfire), twelve PROPS rows + fifteen prop
+  files only they used (jackbox, mousetrap, cat ×4, karaoke, mirror, herring, porcupine, cupcake, donkey, bag, catbag,
+  catball), and the ghoul and ratling folders. All in git history. Left on purpose: their dead code paths (the `wave`, `swap`,
+  `recurse`, `self` kinds, the donkey scene, catBurst, the cat gibs) and any sound files of theirs — harmless, not loaded by
+  a live weapon. cuts.js still lists the 39 ids (the server writes it from notes.json); it matches nothing now.
+  CONSEQUENCE: no `self` gag is left, so the Jabberwock's rifle can no longer turn on him — his only backfire is the boomerang.
+  Sim 1,156,275 green (the gravy test removed, the rose kept as a record in the sim, the boss-backfire test guarded, the chaos
+  test runs with holeExit off — the chaos bot walked into its own hole inside forty seconds). Game + lab load with no failed
+  requests (61 weapons, 61 passed, 0 trash).
+- Offered and NOT picked (do not build unasked): the bus you can board, the tornado, the Jabberwock's gullet, an exit landmark
+  per level, the bad pie, the rifle fires you.
+
 ## START HERE (2026-11-06)
 
 - THE BOARD IS FULLY SORTED (2026-11-06): 61 PASSED, 39 TRASH, nothing in review. James trashed every remaining dud, weird and backfire
@@ -250,7 +288,7 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
 - **No clowns.** The enemies are dungeon creatures; the humour lives in the gags and the plate.
 - **Scars persist per level and clear at the door.** The train breaks up to six walls; the bus does not.
 - **The boss uses the same table** including duds and backfires (his backfires hurt him).
-- **Drift doors** are the three odd doors on the boundary of each maze and the three in THE THREE DOORS past the arena; keep walking into one for 0.7 s.
+- **Drift doors** are the three odd doors on the boundary of each maze and the three in THE THREE DOORS past the arena; keep walking into one for 0.7 s. Two more ways out since 2026-11-09: your own hole (exit-3) and the light at GAME OVER (exit-4) — five `data-drift` anchors in index.html.
 - **Sound files are decoded buffers, never a media element per play** (2026-09-12, the leak that choked the mix by level 3): `buffers` / `decodeFile` at preflight, buffer sources that disconnect on end, a time-counted 40-voice cap; file:// keeps pooled elements (≤ 3 per name). `tmp/jabberwocky/sound-smoke.mjs` proves nothing accumulates — run it after touching sound.js.
 - **Sound is the shared control only.** New one-shots: add the prompt to `sfx-batch.mjs`, run it, map
   the id in `sound.js` `FILES`; keep a recipe fallback. James drops his own files into `assets/audio/sfx/` too;
@@ -265,7 +303,6 @@ facts, Q/E to step, the plate, the real sound. **THE NOTES LOOP is James's chann
 
 ## Status
 
-Draft (`unwired` in the admin panel). The 3D rebuild is verified in the lab (levels 1, 3, 5, every
-creature through attack / die / dance, gags, gibs) and the world page's cards run with `?silent=1&nolock=1`.
-NOT yet flown by James since the rebuild. His eyes decide: the motion, the look, the hands, the gore
-level, the odds. Waiting on his Suno track (`assets/audio/theme.mp3`). Then ship.
+LIVE — shipped 2026-11-09 (see the top START HERE). 61 weapons, five ways out, in the drift registry. Not yet flown by
+James with the new ways out; the hole exit is the one to watch (an accidental step into your own hole ends the run).
+Still his to do when he likes: a music track per level (`theme-2.mp3` … `theme-6.mp3`).

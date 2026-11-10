@@ -3,6 +3,21 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-11-09 — Claude (Fable 5) — THE WAYS OUT, THE ROLL ODDS, THE TRASH DELETED, SHIPPED
+
+James: "im ready to publish it. but we need some ways out for the drift." Nine ideas offered; he picked three. Then the odds, the trash, "ship! :-D".
+- THE HOLE (exit-3): a hole your own rifle made drops you out of the world (core: scars carry `owner`; `{ type: 'drift', i: 3, via: 'hole' }`,
+  `state.phase = 'gone'`; the Jabberwock's holes still only hurt; never in the lab; `opts.holeExit: false` = the old fall).
+- THE LIGHT (exit-4): at GAME OVER a light hangs over the card; hold W / up (a fresh press) or click it, 1.8 s to white, drift.
+- THE ODD DOORS, FINDABLE: unseen odd doors are small cyan marks on the corner map (a tick on the rim when off it); a cold blue flame
+  either side of every odd door (`ODD_TORCH`, `flameTex(frame, true)`).
+- THE ROLL ODDS, his "the percentages are good. roll with that": 84 / 8 / 5 / 3 (was 60 / 25 / 10 / 5); his saved sliders reset once.
+- THE TRASH DELETED: the 39 rows out of gags.js (61 left: 55 / 3 / 2 / 1), twelve PROPS rows and fifteen prop files only they used, the ghoul
+  and ratling folders. He was wrongly asked to confirm the list again — his trash verdict was already the word. No `self` gag is left, so
+  the Jabberwock's rifle no longer turns on him.
+- SHIPPED: registry, world.json live, admin row to Completed, World Ideas #64 live. Sim 1,156,275 green; game and lab load with no failed
+  requests; both new exits walked in the pane (the hole → Saturation, the light → Asteroids). Committed, not pushed.
+
 ## 2026-11-06 — Claude (Fable 5.1) — THE WEAPON LAB: round two on last night's eight
 
 His verdicts after midnight: mosquitoes PASSED (3), frogs PASSED (1, "excellent. love this one"), ham PASSED (2), thought PASSED (1, "fun!"),

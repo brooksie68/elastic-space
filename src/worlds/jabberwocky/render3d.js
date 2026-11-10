@@ -9,6 +9,7 @@ import { clone as skeletonClone } from '../../lib/three/utils/SkeletonUtils.js';
 
 export const S = 2.6;          // metres per maze cell
 export const EYE = 1.65;       // camera height
+const ODD_TORCH = 0x7fd7ff;   // the flame beside an odd door (2026-11-09)
 const H_LOW = 4.4, H_TALL = 8.0, HEIGHTS = [4.4, 8.0, 11.0];   // corridor · room · great hall, by level.tall (2026-09-11: up from 3.2 / 5.4 — James: 'bigger rooms, higher ceilings')
 const TAU = Math.PI * 2;
 const D = () => globalThis.JabberwockyDraw;
@@ -147,38 +148,26 @@ const PROPS = {
   thought:   { size: 1.5,  motion: 'float',  stays: false, prim: 'thought', floatY: 1.75 },   // 2026-11-05 James: a puffy pink translucent thought cloud with its little tail and DIE in it
   trombone:  { size: 1.0,  motion: 'slide',  stays: false, prim: 'trombone' },   // 2026-11-05 James: a real brass trombone, the slide pumping out away from you, far too long
   ham:       { size: 0.5,  motion: 'roll',   stays: true, seat: true },   // seat: it comes to rest in the middle of where its victim stood, not where it touched them (James 2026-11-05)
-  jackbox:   { size: 0.8,  motion: 'tumble', stays: true },
-  mousetrap: { size: 1.1,  motion: 'none',   stays: true },
   doll:      { size: 1.0,  motion: 'rigged', creature: 'doll', stays: false, strike: 'scream', strikeFrom: 0, strikeRate: 1.5, linger: 2.7, burn: true },   // the scream clip is 2.83 s: at 1.5× the 1.3 s hold shows the arms go out and the scream before the fire   // 2026-10-26 James: walks in, holds a second with her arms out screaming, bursts into flames (burn: the spent view burns down in rigLinger)
   grandma:   { size: 1.5,  motion: 'walk',   stays: false },
   sumo:      { size: 2.1,  motion: 'rigged', creature: 'sumo', stays: false, strike: 'swing', strikeFrom: 0.6, strikeRate: 1, linger: 0.8, genie: true, beat: 0.55 },   // beat: he finishes the blow and stands a moment before the genie fade (James 2026-10-26)   // measured: the hands rise from 0.6 s, peak at 1.22 s, hit the floor at 1.7 s of the 1.83 s clip — from 0.6 at 1× the hit lands as the 1.1 s hold ends   // strike: the clip on the catch (swing = library 128 Heavy Hammer Swing, two hands together), from/rate trim it to the hold; linger: how long he stays after the kill   // 2026-10-25: a rigged Meshy sumo that runs (run clip) and body-slams (slam clip) — size = its height; props/sumo.glb is the fallback when the rig is missing
   eagle:     { size: 1.6,  motion: 'flyhigh', stays: false },
   goose:     { size: 0.9,  motion: 'walk',   stays: false },
   skunk:     { size: 0.7,  motion: 'walk',   stays: false },
-  cat:       { size: 0.6,  motion: 'walk',   stays: false },
-  karaoke:   { size: 1.1,  motion: 'none',   stays: true },
-  mirror:    { size: 1.4,  motion: 'tumble', stays: true },
   boomerang: { size: 0.5,  motion: 'spin',   stays: false },
-  herring:   { size: 0.4,  motion: 'tumble', stays: true },
-  porcupine: { size: 0.6,  motion: 'tumble', stays: true },
-  cupcake:   { size: 0.35, motion: 'tumble', stays: false },
   pie:       { size: 0.5,  motion: 'spin',   stays: false },
   cannonball:{ size: 0.42, motion: 'roll',   stays: true, prim: 'ball', color: 0x2a2a30 },
   balloon:   { size: 0.56, motion: 'float',  stays: false, prim: 'balloon', color: 0xd81a38 },
-  donkey:    { size: 2.9,  motion: 'none',   stays: false, legs: true, yaw: 0 },   // faces +Z like the flying props (the sheet's front camera saw its face), so yaw 0 points it along the aim, rear to the player   // 2026-10-26 James: the donkey kick — stands facing away, hind legs (the pair nearest the player) fly up at kickAt (syncZones scene)   // 2026-10-26 James: a real balloon — glossy, a little see-through, a knot and a string, bobbing and tilting with its drift
   bowling:   { size: 0.4,  motion: 'roll',   stays: true, prim: 'ball', color: 0x101a5a, holes: true },
   baseball:  { size: 0.2,  motion: 'roll',   stays: true, prim: 'ball', color: 0xf4f0e8 },
   knife:     { size: 2.0, motion: 'endover', stays: false },
   piranha:   { size: 0.5, motion: 'swim',   stays: false },
   rock:      { size: 0.11, motion: 'tumble', stays: false, variants: 6, dark: 0.5 },
   meteor:    { size: 2.6,  motion: 'tumble', stays: true, sink: 0.45 },
-  bag:       { size: 0.9,  motion: 'tumble', stays: false },   // 2026-10-25: the Meshy sack the cats come in
-  catbag:    { size: 1.4,  motion: 'tumble', stays: false },   // 2026-10-25 James: the sack with eight cat paws out through the skin (tmp/jabberwocky/catsack.py)
   piledriver:{ size: 3.0,  motion: 'tumble', stays: true, upright: true, bounce: 0.22, cable: true },   // 2026-10-25 James: the Meshy drop-hammer ram — falls dead straight (upright), a short bounce on the hit, a cable up to the ceiling while it hangs and falls
   swatter:   { size: 8.0,  motion: 'swat',   stays: false },   // 2026-10-25 James: stupidly large, swung down from overhead — the handle's loop is the pivot at shoulder height
   slap:      { size: 1.6,  motion: 'slap',   stays: false },   // 2026-10-25 James: the hand, fingers forward, palm sideways, wagging at the wrist
   burrito:   { size: 1.0,  motion: 'tumble', stays: false },   // 2026-10-25 James: a Meshy burrito; the pile it leaves is beanPile
-  catball:   { size: 2.4,  motion: 'roll',   stays: false, ground: true, writhe: true },   // 2026-10-25 James: THE CAT BALL — eight cats jumbled rear-to-rear, heads and paws out (tmp/jabberwocky/catball.py); rolls on the floor, every cat writhing   // 2026-10-25 James: a Meshy boulder ("incredibly cartoony. go to meshy and get a big rock") — falls burning, lands in its crater (sink = that fraction of its height below the floor), rock shards and body parts everywhere   // 2026-09-10 James round two: half the size, darker, half again as many
   purse:     { size: 2.2, motion: 'swing',  stays: false, arm: 'fist', armSize: 3.0, armYaw: 0, purseYaw: 0 },   // the arm is the Meshy fist (with its forearm stump): Meshy's text-to-3D made a whole old lady twice when asked for a severed arm (30 cr, benched in tmp/jabberwocky/models/)   // 2026-09-10 James: a real 3-D purse on a strap swung by an old lady's arm from the right of the gun, overly large
   fist:      { size: 3.2, motion: 'punch',   stays: false },   // James 2026-09-08: a Meshy fist, stupid big, knuckles first, lunges and comes back   // 2026-09-08 James, three notes: a Meshy knife (the code-built one read as a cigarette), twice the size, four of them, spinning fast; primProp 'knife' stands by if the file is missing
   // 2026-09-11 THE STRUCTURE: the bad guys' weapons (armGoon puts one in the right hand, dropWeapon lets it fall at the death)
@@ -401,15 +390,16 @@ export function createRenderer(canvas) {
   function softDot() {
     return canvasTex('softdot', () => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d'); const r = g.createRadialGradient(16, 16, 0, 16, 16, 16); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.5, 'rgba(255,255,255,0.6)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 32, 32); return c; });
   }
-  function flameTex(frame) {
+  function flameTex(frame, odd) {   // odd = the cold blue-green flame beside an odd door (2026-11-09)
     // a soft additive flame: stacked radial glows leaning with the frame, a hot white core
-    return canvasTex('flame|' + frame, () => {
+    return canvasTex((odd ? 'oddflame|' : 'flame|') + frame, () => {
       const c = document.createElement('canvas'); c.width = 64; c.height = 96; const g = c.getContext('2d');
       const lean = Math.sin(frame * 1.7) * 6;
-      const tongues = [[32, 70, 22, 0.9, '#ff6a10'], [32 + lean, 46, 15, 0.85, '#ff9a20'], [32 - lean * 0.6, 28, 9, 0.7, '#ffd23a'], [32 + lean * 0.3, 60, 8, 1, '#fff2c0']];
+      const ink = odd ? ['#0a78e8', '#18b8f0', '#7fe8ff', '#e6fcff'] : ['#ff6a10', '#ff9a20', '#ffd23a', '#fff2c0'];
+      const tongues = [[32, 70, 22, 0.9, ink[0]], [32 + lean, 46, 15, 0.85, ink[1]], [32 - lean * 0.6, 28, 9, 0.7, ink[2]], [32 + lean * 0.3, 60, 8, 1, ink[3]]];
       for (const [x, y, r, a, col] of tongues) {
         const rg = g.createRadialGradient(x, y, 0, x, y, r);
-        rg.addColorStop(0, col); rg.addColorStop(0.55, col.replace(')', '')); rg.addColorStop(1, 'rgba(255,120,20,0)');
+        rg.addColorStop(0, col); rg.addColorStop(0.55, col.replace(')', '')); rg.addColorStop(1, odd ? 'rgba(20,150,255,0)' : 'rgba(255,120,20,0)');
         g.globalAlpha = a; g.fillStyle = rg; g.beginPath(); g.ellipse(x, y, r, r * 1.5, 0, 0, Math.PI * 2); g.fill();
       }
       g.globalAlpha = 1;
@@ -484,6 +474,16 @@ export function createRenderer(canvas) {
     // torches: rooms get one per wall, corridors every so often; baked into vertex light, in the district's colour
     torches = placeTorches(level, isOpen);
     for (const t of torches) t.color = new THREE.Color(distOf(Math.floor(t.x / S), Math.floor(t.z / S)).light);
+    // THE ODD TORCHES (James 2026-11-09, the ways out must be findable): a cold blue-green flame on the wall either side of every
+    // odd door — the only torches that colour in the dungeon (ODD_TORCH, the map's odd-door cyan). They bake and flicker like the rest.
+    for (const d of level.driftDoors) {
+      const cx = d.cx != null ? d.cx : d.x === 0 ? 1 : d.x === w - 1 ? w - 2 : d.x, cy = d.cy != null ? d.cy : d.y === 0 ? 1 : d.y === h - 1 ? h - 2 : d.y;
+      const dx = cx - d.x, dy = cy - d.y;   // from the door into the maze
+      const odd = (x, y, wx, wy) => torches.push({ x: (x + 0.5) * S + wx * (S / 2 - 0.16), y: 2.3, z: (y + 0.5) * S + wy * (S / 2 - 0.16), color: new THREE.Color(ODD_TORCH), odd: true });
+      let n = 0;
+      for (const s of [1, -1]) { const x = cx - dy * s, y = cy + dx * s; if (isOpen(x, y) && !isOpen(x - dx, y - dy) && map[at(x - dx, y - dy)] !== CORE().CELL.DRIFT && map[at(x - dx, y - dy)] !== CORE().CELL.DOOR) { odd(x, y, -dx, -dy); n++; } }   // on the door's own wall, one cell to each side
+      if (!n) for (const s of [1, -1]) if (!isOpen(cx - dy * s, cy + dx * s)) odd(cx, cy, -dy * s, dx * s);   // a door at the end of a one-cell passage: on the side walls beside it
+    }
     // the guide's lamps bake a little light along the route too (the right way is a little brighter)
     const lamps = (level.markers || []).filter((m) => m.kind === 'lamp').map((m) => ({ x: m.x * S, z: m.y * S, color: new THREE.Color(distOf(Math.floor(m.x), Math.floor(m.y)).light) }));
     const lightAt = (x, z) => {
@@ -612,6 +612,7 @@ export function createRenderer(canvas) {
     for (const t of torches) {
       const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: flameTex(0), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
       spr.position.set(t.x, t.y + 0.35, t.z); spr.scale.set(0.5, 0.75, 1);
+      if (t.odd) spr.material.map = flameTex(0, true);
       levelGroup.add(spr); t.sprite = spr;
     }
     // the key: a spinning glow
@@ -2589,7 +2590,7 @@ export function createRenderer(canvas) {
       for (let i = 0; i < torches.length; i++) {
         const t = torches[i];
         const d = (t.x - camX) * (t.x - camX) + (t.z - camZ) * (t.z - camZ);
-        if (t.sprite) { const vis = d < cullR2; t.sprite.visible = vis; if (vis) { t.sprite.material.map = flameTex((f + i) % 4); t.sprite.scale.set(0.5 + Math.sin(shakeT * 13 + i) * 0.05, 0.75 + Math.sin(shakeT * 17 + i * 3) * 0.08, 1); } }
+        if (t.sprite) { const vis = d < cullR2; t.sprite.visible = vis; if (vis) { t.sprite.material.map = flameTex((f + i) % 4, t.odd); t.sprite.scale.set(0.5 + Math.sin(shakeT * 13 + i) * 0.05, 0.75 + Math.sin(shakeT * 17 + i * 3) * 0.08, 1); } }
         if (d < _near[3].d) { let j = 3; while (j > 0 && _near[j - 1].d > d) { _near[j].t = _near[j - 1].t; _near[j].d = _near[j - 1].d; j--; } _near[j].t = t; _near[j].d = d; }
       }
       torchLights.forEach((l, i) => { const n = _near[i].t; if (!n) { l.intensity = 0; return; } l.position.set(n.x, n.y + 0.3, n.z); l.intensity = (14 + Math.sin(shakeT * 11 + i * 2) * 3 + Math.sin(shakeT * 23 + i) * 2) * look.torchLight; if (n.color) l.color.copy(n.color); else l.color.setHex(THEMES[levelRef ? levelRef.theme : 0].torch); });

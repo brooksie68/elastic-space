@@ -1,7 +1,7 @@
 // Jabberwocky — the host. Input, the loop, the HUD, the cards, the plate, the corner map, the
 // configuration panel, sound routing, and the three ways out. All game logic lives in core.js; all
 // drawing lives in render3d.js (three.js). This file is a module because the renderer is.
-import { createRenderer, S } from './render3d.js?v=100';
+import { createRenderer, S } from './render3d.js?v=102';
 import { yawFromCursor, pitchFromCursor, edgePush } from './cursor-aim.js?v=1';
 
 const C = globalThis.JabberwockyCore, T = globalThis.JABBERWOCKY_GAGS, Sfx = globalThis.JabberwockySfx;
@@ -11,7 +11,7 @@ const TAU = Math.PI * 2;
 
 // ---- settings ------------------------------------------------------------------------------------
 const PLAY_KEY = 'jabberwocky-play-v4', LOOK_KEY = 'jabberwocky-look-v3', UI_KEY = 'jabberwocky-ui-v1';   // look v3 (2026-09-12): field of view 88 + the look settle dial; v2 carries over with the new defaults where the old ones stood
-const PLAY_DEFAULTS = { odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '', lives: 3, armorMul: 1, waveFrac: 0.34, waveDelay: 6, mapUp: 'north' };   // mapUp north | ahead (2026-09-12: a turning dish in the corner of the eye is a motion-sickness source)   // lives + armor pickups (2026-09-11); reinforcements (2026-09-12)
+const PLAY_DEFAULTS = { odds: { dispatch: 84, weird: 8, dud: 5, backfire: 3 }, goonMul: 1, goonSpeed: 1, damageMul: 1, fireCool: 0.9, revealDelay: 0.28, bossFire: 2.4, moveSpeed: 2.0, sens: 0.75, map: 1, mouse: 'look', startLevel: 1, seed: '', forceGag: '', lives: 3, armorMul: 1, waveFrac: 0.34, waveDelay: 6, mapUp: 'north' };   // mapUp north | ahead (2026-09-12: a turning dish in the corner of the eye is a motion-sickness source)   // lives + armor pickups (2026-09-11); reinforcements (2026-09-12)
 const LOOK_RANGES = {
   fov:         { label: 'Field of view', min: 60, max: 110, step: 1, def: 88, sum: 'Wider sees more of the corridor at once and sits easier on the stomach. It was 76.' },
   lookEase:    { label: 'Look settle', min: 0, max: 100, step: 5, def: 25, sum: 'Milliseconds the view takes to catch up with the mouse. Zero is instant. It was 70; lower if turning makes you queasy.' },
@@ -35,6 +35,8 @@ function deepMerge(a, b) { const o = Array.isArray(a) ? [] : {}; for (const k in
 function load(key, def) { try { const s = JSON.parse(localStorage.getItem(key) || 'null'); return deepMerge(def, s || {}); } catch (e) { return deepMerge(def, {}); } }
 function save(key, obj) { try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {} }
 let play = load(PLAY_KEY, PLAY_DEFAULTS), look = load(LOOK_KEY, DEFAULT_LOOK), ui = load(UI_KEY, { scale: 1 });
+// THE ODDS RESET (James 2026-11-09, 84 / 8 / 5 / 3): once per browser, the saved odds sliders go back to the new defaults; everything else he saved stays
+try { if (!localStorage.getItem('jabberwocky-odds-v2')) { play.odds = Object.assign({}, PLAY_DEFAULTS.odds); save(PLAY_KEY, play); localStorage.setItem('jabberwocky-odds-v2', '1'); } } catch (e) {}
 // MOTION SICKNESS (James 2026-09-12, "slight motion sickness" — his picks 1, 3, 4 of the four): the look settle 70 → 25 ms,
 // the corner map north-up (the arrow turns, the dish does not), the field of view 76 → 88. His old look settings carry
 // over from v2 with only the two new defaults applied where the old defaults stood.
@@ -212,11 +214,28 @@ function deathCard() {
     lines: [tally, state.lives === 1 ? 'ONE LIFE LEFT' : state.lives + ' LIVES LEFT'],
     btn: 'AGAIN', keys: 'same maze, same table', action: () => { hideCard(); C.retryLevel(state); view.pitch = 0; mode = 'play'; lock(); handleEvents(); syncHud(true); },
   }), 900);
-  else setTimeout(() => showCard({
-    kicker: by.verb + ' BY ' + by.name + ' · NO LIVES LEFT', title: 'GAME OVER', red: true, sub: 'The dungeon keeps the rifle. It always does. It will hand it back at the gate.',
+  else setTimeout(() => { showCard({
+    kicker: by.verb + ' BY ' + by.name + ' · NO LIVES LEFT', title: 'GAME OVER', red: true, sub: 'The dungeon keeps the rifle. It always does. It will hand it back at the gate. Or walk toward the light.',
     lines: [tally, `got as far as ${state.level.name}`],
-    btn: 'NEW RUN', keys: 'a new maze, the same table', action: () => { hideCard(); attract(); },
-  }), 900);
+    btn: 'NEW RUN', keys: 'a new maze, the same table', action: () => { hideLight(); hideCard(); attract(); },
+  }); showLight(); }, 900);
+}
+// THE LIGHT (James 2026-11-09): a way out at GAME OVER. A light hangs over the card; walk toward it (hold W or the up arrow —
+// a fresh press, the key you died holding does not count — or click it) and it swells to white and you wake somewhere else
+// (exit-4). Let go and it shrinks back. NEW RUN puts it out.
+const light = $('light');
+let falling = false, lightOn = false, lightWalk = 0, lightGo = false, lightArmed = false;
+function showLight() { lightOn = true; lightWalk = 0; lightGo = false; lightArmed = false; light.style.transform = ''; light.classList.add('on'); }
+function hideLight() { lightOn = false; light.classList.remove('on'); card.style.opacity = ''; }
+light.addEventListener('click', () => { if (lightOn) lightGo = true; });
+function stepLight(dt) {
+  const held = !!(keys.KeyW || keys.ArrowUp);
+  if (!held) lightArmed = true;
+  const fwd = lightGo || (lightArmed && held);
+  lightWalk = Math.max(0, Math.min(1, lightWalk + (fwd ? dt / 1.8 : -dt / 0.9)));
+  light.style.transform = `scale(${((1 + 0.05 * Math.sin(view.t * 1.7)) * (1 + lightWalk * lightWalk * 13)).toFixed(3)})`;
+  card.style.opacity = lightWalk > 0 ? String(1 - lightWalk) : '';
+  if (lightWalk >= 1) { lightOn = false; mode = 'drifting'; Sfx.play('drift'); $('fade').classList.add('white', 'on'); setTimeout(() => { const a = $('exit-4'); if (a) a.click(); }, 700); }
 }
 function winCard() {
   mode = 'won';
@@ -271,7 +290,7 @@ function handleEvents() {
       case 'key': Sfx.play('key'); setTimeout(() => Sfx.play('door'), 400); hint('THE DOOR IS OPEN — IT IS NOT HERE', 3500); break;
       case 'cleared': Sfx.play('cleared'); mode = 'card'; showCard({ kicker: e.n === 5 ? 'THE MIDDLE, BEHIND YOU' : 'MAZE ' + e.n + ' CLEARED', title: e.n === 5 ? 'THROUGH HIS DOOR' : 'THROUGH THE DOOR', sub: e.n === 5 ? 'Three doors hum on the other side. Each one leaves.' : 'The scars stay behind. The rifle comes with you.', auto: 1800, action: () => { hideCard(); C.nextLevel(state); view.pitch = 0; mode = 'play'; handleEvents(); } }); break;
       case 'won': Sfx.play('win'); winCard(); break;
-      case 'drift': mode = 'drifting'; Sfx.play('drift'); unlock(); $('fade').classList.add('on'); setTimeout(() => { const a = $('exit-' + e.i); if (a) a.click(); }, 700); break;
+      case 'drift': mode = 'drifting'; falling = e.via === 'hole'; Sfx.play(falling ? 'fall' : 'drift'); unlock(); $('fade').classList.add('on'); setTimeout(() => { const a = $('exit-' + e.i); if (a) a.click(); }, falling ? 900 : 700); break;   // via 'hole' (2026-11-09): your own hole — the look tips down as you go (frame)
       case 'notice': if (view.t > noticeT) { noticeT = view.t + 0.6; Sfx.play('notice', pan(e.goon.x, e.goon.y), e.goon.type); } break;
       case 'swing': Sfx.play('swing', pan(e.goon.x, e.goon.y)); break;
       case 'throw': Sfx.play('throw', pan(e.goon.x, e.goon.y)); break;
@@ -438,6 +457,18 @@ function drawMap() {
   if (state.key && !state.key.held && L.key) label(L.key.x, L.key.y, 'KEY', '#ffd23a', true);
   if (L.door) label(L.door.x + 0.5, L.door.y + 0.5, state.doorOpen ? 'EXIT' : (L.n === 5 ? 'EXIT · HIS' : 'EXIT · LOCKED'), state.doorOpen ? '#58ff7a' : '#ff6a7a', true);
   L.driftDoors.forEach((d) => { if (seen.has(d.y * L.w + d.x)) label(d.x + 0.5, d.y + 0.5, L.exit ? 'A WAY OUT' : 'ODD DOOR', '#7fd7ff', false); });
+  // the odd doors you have NOT found yet (James 2026-11-09, the ways out must be findable): a small cyan mark with no words —
+  // a square where the door is, a tick on the rim pointing at it when it is off the map
+  L.driftDoors.forEach((d) => {
+    if (seen.has(d.y * L.w + d.x)) return;
+    let [mx, my] = toMap(d.x + 0.5, d.y + 0.5);
+    const dx = mx - cx, dy = my - cy, dd = Math.hypot(dx, dy), off = dd > RAD - 8;
+    if (off) { mx = cx + dx / dd * (RAD - 8); my = cy + dy / dd * (RAD - 8); }
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(off ? Math.atan2(dy, dx) : Math.PI / 4);
+    ctx.fillStyle = 'rgba(127,215,255,0.85)'; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); if (off) { ctx.moveTo(8, 0); ctx.lineTo(-1, -5); ctx.lineTo(-1, 5); ctx.closePath(); } else ctx.rect(-4.5, -4.5, 9, 9);
+    ctx.fill(); ctx.stroke(); ctx.restore();
+  });
   for (const r of L.rooms || []) if (r.hall) { const i = (r.y + Math.floor(r.h / 2)) * L.w + r.x + Math.floor(r.w / 2); if (seen.has(i)) label(r.x + r.w / 2, r.y + r.h / 2, 'THE HALL', 'rgba(244,236,242,0.75)', false); }
 }
 
@@ -486,6 +517,8 @@ function frame(now) {
     fx.hurt = Math.max(0, fx.hurt - dt * 1.6);
     if (now - lastHud > 120) { lastHud = now; syncHud(false); drawMap(); }
   }
+  if (mode === 'drifting' && falling) view.pitch = Math.max(-1, view.pitch - dt * 3);   // down the hole: the look tips to the floor under the fade
+  if (mode === 'dead' && lightOn) stepLight(dt);
   R.update(state, view, mode === 'play' ? dt : 0);
   drawOverlays();
 }

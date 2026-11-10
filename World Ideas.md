@@ -308,7 +308,7 @@ lunar tank whose targets you saw from the air. Recorded, not started. **RENAMED 
 BATTLE 2075 on 2026-09-07** (James) and moved back to In progress worlds while it grows;
 the start card now switches CAMPAIGN | FREE MODE (lander or tanks). **2026-09-11: MOON BATTLE 2100 (renamed again, "advance slightly") and the whole game built on his plan approval — "3 and 3 and out": three lander levels (3 / 4 / 5 targets, SAMs that fire, the base with a laser-only shield and a missile-only hull, lift-off on level 3), CLIMB OUT, three tank levels on a route of waypoints with landmarks, mini bosses, hovers, mech walkers, guns on the ground, pickups, the map on M, the base at the end, THE END. Awaiting his flight.**
 
-### 64. Jabberwocky — *one session* — `draft` (built 2026-09-05)
+### 64. Jabberwocky — *one session* — `live` (built 2026-09-05, shipped 2026-11-09)
 
 James's admin-panel draft "Battle Level w the Jabberwocky Rifle": a Doom-like maze crawler where
 only the rifle and your gloved hands are visible, and every pull of the trigger fires something
@@ -321,8 +321,12 @@ same night (a 2D raycaster with clown goons): too clown-like, the turning made h
 low-res — so it was REBUILT that night on an agreed plan as a proper dungeon: three.js geometry
 with Meshy tiles and baked torch light, rooms carved into the mazes, five dungeon creatures as
 rigged Meshy models (the Jabberwock a posed statue, Meshy's rigger being humanoid-only), giblets
-with physics, PG-13 cartoon gore, the rifle as a real viewmodel, ElevenLabs one-shots. Draft,
-unwired, awaiting James's flight of the rebuild and his Suno track.
+with physics, PG-13 cartoon gore, the rifle as a real viewmodel, ElevenLabs one-shots. Then two
+months of his review nights in the weapon lab: every weapon judged, 61 passed and 39 trashed, the
+mazes rebuilt wide (districts, landmarks, a guide, three lives, armor, endless reinforcements).
+SHIPPED 2026-11-09 on his "ship!": the trashed weapons deleted, the roll at 84-8-5-3, and the ways
+out — three odd doors per maze (marked on the map, a cold blue flame either side), a hole of your
+own making, and a light at GAME OVER. In the drift registry.
 
 
 ### 65. Asteroids — *one session* — `live` (built 2026-09-08, shipped 2026-09-21)

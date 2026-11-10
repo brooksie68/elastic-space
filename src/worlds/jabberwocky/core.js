@@ -8,7 +8,7 @@
 
   // ---------------------------------------------------------------- defaults (the PLAY tab)
   const DEFAULTS = {
-    odds: { dispatch: 60, weird: 25, dud: 10, backfire: 5 },
+    odds: { dispatch: 84, weird: 8, dud: 5, backfire: 3 },   // James 2026-11-09: the board is sorted (55 dispatch / 3 weird / 2 dud / 1 backfire live) - was 60 / 25 / 10 / 5, which dealt the same few weird ones one pull in four
     goonMul: 1,          // goon count multiplier
     goonSpeed: 1,        // goon speed multiplier
     moveSpeed: 2.0,      // player cells per second (a cell is 2.6 m in the renderer)
@@ -865,11 +865,11 @@
     const z = { id: nextId++, gag, mode: gag.mode, x, y, r: gag.r, t: 0, dur: gag.dur || 0.01, hostile, owner, sprite: gag.sprite, done: false, vx: 0, vy: 0, hurtT: 0, a: state.rand() * TAU };
     if (gag.mode === 'instant') {
       applySplash(state, gag, x, y, gag.r, hostile, owner);
-      if (gag.scar) addScar(state, gag.scar, x, y, gag);
+      if (gag.scar) addScar(state, gag.scar, x, y, gag, owner);
       z.dur = 0.6; z.mode = 'flash';   // stays a beat for the sprite
     } else if (gag.mode === 'linger') {
       applySplash(state, gag, x, y, gag.r * 0.7, hostile, owner);
-      if (gag.scar) addScar(state, gag.scar, x, y, gag);
+      if (gag.scar) addScar(state, gag.scar, x, y, gag, owner);
       z.dur = 0.8; z.mode = 'flash';
     } else if (gag.mode === 'wander') {
       const a = state.rand() * TAU;
@@ -999,14 +999,14 @@
       state.events.push({ type: 'death', by: state.deathBy, lives: state.lives });
     }
   }
-  function addScar(state, type, x, y, gag) {
+  function addScar(state, type, x, y, gag, owner) {   // owner (optional): whose shot left it — only the boss's holes are told apart (the hole exit, 2026-11-09)
     const def = SCARS[type];
     if (!def) return;
     if (state.scars.length > 180) {
       const i = state.scars.findIndex((s) => !s.hazard);
       state.scars.splice(i >= 0 ? i : 0, 1);
     }
-    state.scars.push({ id: nextId++, type, x, y, r: def.r, hazard: def.hazard || null, slow: def.slow, dps: def.dps, life: def.life || Infinity, t: 0, gagId: gag ? gag.id : null, gag, a: state.rand() * TAU, seed: state.rand() });
+    state.scars.push({ id: nextId++, type, x, y, r: def.r, hazard: def.hazard || null, slow: def.slow, dps: def.dps, life: def.life || Infinity, t: 0, gagId: gag ? gag.id : null, gag, owner: owner || null, a: state.rand() * TAU, seed: state.rand() });
   }
 
   // ---------------------------------------------------------------- step
@@ -1084,13 +1084,17 @@
     if (hit.y) p.vy = 0;
     p.moving = m > 0.1;
     // hazards: damage, holes
-    let inHole = false;
+    let inHole = false, holeMine = false;
     for (const s of state.scars) {
       const d = Math.hypot(s.x - p.x, s.y - p.y);
       if (s.hazard === 'dps' && d < s.r) hurtOverTime(state, s, dt);
-      if (s.hazard === 'fall' && d < s.r * 0.8) inHole = true;
+      if (s.hazard === 'fall' && d < s.r * 0.8) { inHole = true; if (s.owner !== 'boss') holeMine = true; }
     }
     if (inHole) {
+      // THE HOLE IS A WAY OUT (James 2026-11-09): a hole your own rifle made drops you out of the world — the host drifts on
+      // { type: 'drift', i: 3, via: 'hole' }. The Jabberwock's holes still only hurt; the lab has no way out; opts.holeExit
+      // false = the old fall everywhere (the sim's rules suites).
+      if (holeMine && !state.level.lab && o.holeExit !== false) { state.phase = 'gone'; p.vx = p.vy = 0; state.events.push({ type: 'drift', i: 3, via: 'hole' }); return; }
       hurtPlayer(state, { name: 'A HOLE', verb: 'FELL DOWN', tier: 'dispatch', dmg: 20 }, 'hole');
       if (state.phase === 'play') { fx.fall = 0.9; p.x = p.safe.x; p.y = p.safe.y; p.vx = p.vy = 0; state.events.push({ type: 'fall' }); }
       return;

@@ -110,9 +110,13 @@ consistent. `npm run check-worlds` audits every world against the contract.
   review. Open: the roll odds for the thin weird / dud / backfire tiers (offered, unanswered). World CLAUDE.md START HERE (2026-11-06).**
   **JAMES TONIGHT: a track per level — drop `theme-2.mp3` … `theme-6.mp3` into `src/worlds/jabberwocky/assets/audio/`
   (2 catacombs, 3 meat locker, 4 the deep, 5 the middle, 6 the three doors); nothing to wire.**
-  AWAITING: his read of the props in the deep mazes (dark?), look-ease number, then the review's leftovers
-  (summon strike animations, viewmodel melee props, vines/jack, anvil brightness); then ship (registry,
-  note off, World Ideas #64 → live, draft status → built).
+  **2026-11-09 THE WAYS OUT (his "im ready to publish it. but we need some ways out for the drift"; his three picks of nine):
+  your own hole drops you out of the world (exit-3; the boss's holes still only hurt), a light at GAME OVER you walk toward
+  (exit-4), and the odd doors made findable (unlabelled cyan marks on the corner map + a cold blue flame either side of each).
+  Then the roll odds on his word (84 / 8 / 5 / 3), the 39 trashed weapons DELETED (61 left; never re-confirm a trash verdict — he was
+  furious at being asked twice), and **SHIPPED 2026-11-09 on his "ship! :-D"**: drift registry, world.json live, admin row under
+  Completed, World Ideas #64 live. Sim 1,156,275 green. Committed, NOT pushed. World CLAUDE.md START HERE (2026-11-09).**
+  AWAITING HIS FLIGHT of the new ways out (the hole exit can end a run by accident — his pick); a music track per level is his to drop in.
 
 - RETRO ARCADE — THE RUNNING LIST (James, 2026-09-08: "keep a running list for me of
   the games I want to emulate"; Surround and Moon Battle 2100 are the reference treatment —
