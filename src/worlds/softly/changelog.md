@@ -3,6 +3,18 @@
 Working log for this world. Newest entry first. Every session that meaningfully changes this world
 appends an entry: date, author, what changed, and where things stand. Never rewrite or delete old entries.
 
+## 2026-10-16 — Claude (round twelve)
+
+- His "definitely improved" on the shader, then his fullscreen brief: `fullscreen.js` — a third round button under the speaker (same look as the other two; F key too) calls the Fullscreen API, the F11 thing. In fullscreen: 3 s without mouse motion → the dashboard icon, the speaker and the button fade to zero over 2 s; mouse motion fades them back over 1 s; 3 s after it stops, gone again; the timer waits while the pointer is over a control; leaving fullscreen (Escape, the browser's) restores them. Verified silently in the pane (button placed, no errors); the fullscreen itself needs a real click — his to verify. His "that's so great. make the fade 2 seconds": fade in 1 s → 2 s (out was already 2 s). HE GOT STUCK IN FULLSCREEN (Esc, F11 and the button all dead; his order: accept it, fix it, no questions): the faded icons had `pointer-events: none` — gone, the button works whether you can see it or not; Escape is now handled by the page itself (capture phase, calls exitFullscreen); any click wakes the icons. STILL STUCK ("the icon shows a message at the top... toggles between two messages... never escapes"; two minutes in): the leave path rebuilt — `leave()` fires every exit the browser has (standard + webkit), retries every 150 ms until nothing is fullscreen, and locks out any entering for a second after, so nothing can bounce him back in; the button never toggles in while fullscreen, only leaves; F only enters; Escape (page-handled, capture) and a double-click anywhere leave. The two-messages tell is in the changelog for next time: a toggle that re-enters on the same click.
+
+## 2026-10-16 — Claude (round eleven)
+
+- His two questions (optimize? smoother, less banding?) → THE SHADER on his go, after his "pretty liquid right now — will your fix kill that?" (no: same math). world.js draws every wash in one WebGL fragment shader: CSS linear-gradient line math per pixel (corners on 0 and 1, colour → transparent in premultiplied space so the hue holds), the five washes composited as floats in spawn order, a per-pixel per-frame noise dither of 1/255 (`DITHER`) before output. Same constants, same opacity curve, same tempo, same angles — only the output changed. Canvas at one device pixel per CSS pixel, DPR capped 1.5. Without WebGL the old stacked divs run as the fallback (same wash objects, two renderers). `SOFTLY_DEBUG` exposes renderer + live for the pane. Verified in the pane on `tmp/softly/silent.html` (world.js without sound.js): five washes live, no console errors, no visible bands. Awaiting his eyes.
+
+## 2026-10-16 — Claude (round ten)
+
+- His "replace the drone with what I just added": `sound.js` now plays his Suno track `assets/audio/Softly.mp3` on a loop (4 s fade in, 1.5 s fade out, volume remembered in `softly-volume`, same startOnGesture behaviour). The C2/G2/D4 synth bed, the chimes, the delay / reverb / harmonizer are all gone from the world (git history keeps them). Awaiting his listen.
+
 ## 2026-10-16 — Claude (round nine)
 
 - "unwired" tag removed from the admin row at his word.
