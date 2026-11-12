@@ -260,6 +260,7 @@ function startGame() {
   makeGame();
   $('start-card').classList.remove('show');
   mode = 'play'; carry = 0; resetInput(); syncLook(); lockPointer();
+  aiReset(); aiBrief();
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
 function nextStep() {
@@ -275,7 +276,7 @@ function nextStep() {
     enterAttract(line, stamp);
     return;
   }
-  if (state.phase === 'dead') { T.respawn(state); setCracks(0); scene.clearEffects(); }
+  if (state.phase === 'dead') { T.respawn(state); setCracks(0); scene.clearEffects(); aiFlags = {}; aiSay('New tank. ' + state.lives + (state.lives === 1 ? ' left after this one.' : ' in reserve.') + ' The kills so far stand.', ''); }
   else if (state.phase === 'complete') {
     if (!T.MISSIONS[state.mission + 1]) {
       // THE END: the base has fallen — the campaign is out
@@ -291,6 +292,7 @@ function nextStep() {
       return;
     }
     T.nextMission(state); setCracks(0); scene.clearEffects(); scene.setWorld(state); contactsSeen = new Set(); inRangeWas = false;
+    aiReset(); aiBrief();
     play.mission = state.mission; save(PLAY_KEY, play); syncPlayUI();
     if (state.campaign) writeCampaign({ seed: state.seed, level: state.mission, score: state.score, tank: true, bonus: state.bonus });
   }
@@ -332,26 +334,29 @@ function handleEvents(events) {
       floatLabel(e.x, e.y + 24, e.z, '+' + e.points, '');
       const name = e.enemy ? ENEMY_NAMES[e.enemy.kind] : e.structure.name;
       floatLabel(e.x, e.y + 24, e.z, name + ' ' + (e.enemy ? T.ENEMY[e.enemy.kind].mult : e.structure.mult) + 'X', 'word', 1);
+      { const left = state.enemies.filter((q) => q.alive).length; aiSay('Target destroyed: ' + name + '.' + (e.enemy ? (left ? ' ' + left + ' still on the field.' : ' The field is clear.') : ''), 'good'); }
     } else if (e.type === 'hit') { scene.spawnBurst(e.x, e.y, e.z, 0.8); Sfx.hit(); }
-    else if (e.type === 'absorbed') { scene.spawnBurst(e.x, e.y, e.z, 0.4); Sfx.absorbed(); floatLabel(e.x, e.y + 10, e.z, e.door ? 'DOOR SHUT' : 'CIVILIAN', 'word'); }
+    else if (e.type === 'absorbed') { scene.spawnBurst(e.x, e.y, e.z, 0.4); Sfx.absorbed(); floatLabel(e.x, e.y + 10, e.z, e.door ? 'DOOR SHUT' : 'CIVILIAN', 'word'); aiSay(e.door ? 'Its blast door is shut. It opens for two seconds when its own missile fires. Shoot then.' : 'That is a civilian building. Shells do nothing to it.', e.door ? 'warn' : '', e.door ? 'door' : 'civ', 8); }
     else if (e.type === 'shellGround') { scene.spawnDust(e.x, e.z, 0.9); scene.spawnBurst(e.x, e.y + 1, e.z, 0.35); callMiss(e); }
     else if (e.type === 'missileGround') { scene.spawnDust(e.x, e.z, 1.2); Sfx.hit(); }
-    else if (e.type === 'missileDown') { scene.spawnBurst(e.x, e.y, e.z, 1.4); Sfx.missileDown(); floatLabel(e.x, e.y + 8, e.z, 'MISSILE DOWN', 'word'); }
+    else if (e.type === 'missileDown') { scene.spawnBurst(e.x, e.y, e.z, 1.4); Sfx.missileDown(); floatLabel(e.x, e.y + 8, e.z, 'MISSILE DOWN', 'word'); aiSay('Missile down.', 'good', 'samdown', 1); }
     else if (e.type === 'enemyFire') Sfx.enemyFire(Math.hypot(e.x - t.x, e.z - t.z));
-    else if (e.type === 'samLaunch') { Sfx.samLaunch(); floatLabel(e.x, e.y + 12, e.z, 'MISSILE', 'word'); }
+    else if (e.type === 'samLaunch') { Sfx.samLaunch(); floatLabel(e.x, e.y + 12, e.z, 'MISSILE', 'word'); aiSay('Missile launch. The laser will shoot it down: right-click or L.', 'warn', 'sam', 4); }
     else if (e.type === 'gunFire') { scene.spawnBurst(e.x, e.y, e.z, 0.5); Sfx.enemyFire(Math.hypot(e.x - t.x, e.z - t.z)); }
     else if (e.type === 'beamFire') { if (!e.blocked) { hullFlash = Math.max(hullFlash, 0.25); } Sfx.beam(Math.hypot(e.x - t.x, e.z - t.z)); }
-    else if (e.type === 'pickup') { Sfx.pickup(e.kind); floatLabel(e.x, e.y + 10, e.z, e.text, ''); }
-    else if (e.type === 'encounter') { floatCentre(e.boss ? e.name + ' — ' + bossName(e) : 'CONTACT — ' + e.name); if (e.boss) Sfx.wave(); }
+    else if (e.type === 'pickup') { Sfx.pickup(e.kind); floatLabel(e.x, e.y + 10, e.z, e.text, ''); aiSay('Picked up: ' + String(e.text).toLowerCase() + '.', 'good'); }
+    else if (e.type === 'encounter') { floatCentre(e.boss ? e.name + ' — ' + bossName(e) : 'CONTACT — ' + e.name); if (e.boss) Sfx.wave(); aiSay(e.boss ? 'The boss is out: ' + bossName(e) + '. This waypoint clears when it is dead.' : 'Hostiles are out at ' + aiName(e.name) + '.', 'warn'); }
     else if (e.type === 'waypoint') { Sfx.ping(); }
-    else if (e.type === 'waypointDone') { Sfx.wave(); if (!e.last) floatCentre('WAYPOINT ' + (e.wp + 1) + ' OF ' + state.route.length + ' — THE ROAD GOES ON'); }
-    else if (e.type === 'hangar') { Sfx.wave(); floatCentre('THE HANGAR OPENS — ' + e.wave + ' OF ' + e.of); }
-    else if (e.type === 'hullHit') { const big = e.dmg >= 20; hullFlash = big ? 0.7 : 0.3; veilT = big ? 0.09 : 0; setCracks(e.hits); if (big) Sfx.hullHit(); else Sfx.nibble(); }
-    else if (e.type === 'dead') { hullFlash = 1; veilT = 0.12; setCracks(3); state.lastDeath = e.by; Sfx.dead(); resultTimer = 2.6; mode = 'settle'; }
+    else if (e.type === 'waypointDone') { Sfx.wave(); if (!e.last) floatCentre('WAYPOINT ' + (e.wp + 1) + ' OF ' + state.route.length + ' — THE ROAD GOES ON'); { const nx = T.nextWaypoint(state); aiSay('Waypoint ' + (e.wp + 1) + ' of ' + state.route.length + ' cleared.' + (nx ? ' Next: ' + aiName(nx.name) + ', ' + aiFeet(Math.hypot(nx.x - t.x, nx.z - t.z)) + '.' : ''), 'good'); } }
+    else if (e.type === 'hangar') { Sfx.wave(); floatCentre('THE HANGAR OPENS — ' + e.wave + ' OF ' + e.of); aiSay('The hangar is open. Wave ' + e.wave + ' of ' + e.of + ' is coming out.', 'warn'); }
+    else if (e.type === 'hullHit') { const big = e.dmg >= 20; hullFlash = big ? 0.7 : 0.3; veilT = big ? 0.09 : 0; setCracks(e.hits); if (big) Sfx.hullHit(); else Sfx.nibble(); aiSay((big ? 'Heavy hit. ' : 'Hit. ') + 'Armor at ' + Math.round(state.tank.armor) + '.', 'warn', 'hull', 2.5); }
+    else if (e.type === 'dead') { hullFlash = 1; veilT = 0.12; setCracks(3); state.lastDeath = e.by; Sfx.dead(); resultTimer = 2.6; mode = 'settle'; aiSay('Hull breached. Tank lost.', 'warn'); }
     else if (e.type === 'over') setTimeout(() => Sfx.over(), 1500);
     else if (e.type === 'wave') { Sfx.wave(); if (e.wave > 1) floatCentre('WAVE ' + e.wave + ' OF ' + e.of); }
-    else if (e.type === 'complete') { Sfx.complete(); resultTimer = 2.2; mode = 'settle'; }
+    else if (e.type === 'complete') { Sfx.complete(); resultTimer = 2.2; mode = 'settle'; aiSay('Level ' + state.mission + ' complete.', 'good'); }
     else if (e.type === 'bump') Sfx.bump();
+    else if (e.type === 'boostOn') Sfx.env('sawtooth', 110, 0.5, 0.09, 300);
+    else if (e.type === 'boostOff') { if (e.spent) { Sfx.env('sawtooth', 240, 0.4, 0.07, 90); aiSay('Boost is spent. It needs about ' + Math.round(T.BOOST.recharge * T.BOOST.rearm) + ' seconds before it will fire again, ' + T.BOOST.recharge + ' for a full charge.', 'warn', 'boost', 6); } }
   }
 }
 function bossName(e) { const wp = state.route[e.wp]; if (!wp || !wp.encounter) return ''; for (const k of Object.keys(wp.encounter)) if (T.ENEMY[k] && T.ENEMY[k].boss) return ENEMY_NAMES[k]; return ''; }
@@ -412,7 +417,7 @@ function placeLabels(dt) {
   if (best) {
     if (!hostTag) { hostTag = document.createElement('div'); hostTag.className = 'tag'; labelLayer.appendChild(hostTag); }
     // NAME + X, then one word under it: the hardening (OVERHANG / RIDGE / DOOR / SHIELD), in pink when the door is shut (a refusal)
-    const word = best.doorShut ? '<span class="word refuse">DOOR SHUT</span>' : best.hard ? '<span class="word">' + best.hard.toUpperCase() + '</span>' : '';
+    const word = best.doorShut ? '<span class="word refuse">DOOR SHUT</span>' : best.hard ? '<span class="word">' + (best.hard === 'top' ? 'ARMORED' : best.hard.toUpperCase()) + '</span>' : '';
     hostTag.innerHTML = best.name + '<span class="x">' + best.mult + 'X</span>' + word;
     hoverId = best.sid || best.id || null;
     const f = T.forward(t.turret + best.gunBearing);
@@ -429,7 +434,7 @@ function currentInput() {
   const turn = ((keys['d'] || keys['arrowright'] ? 1 : 0) - (keys['a'] || keys['arrowleft'] ? 1 : 0)) * (play.turn || 1);
   // Q / E still tilt the view for a mouseless hand; the mouse owns it otherwise
   if (keys['q']) lookPitch = clamp(lookPitch + 0.012, T.TANK.pitchMin, T.TANK.pitchMax); else if (keys['e']) lookPitch = clamp(lookPitch - 0.012, T.TANK.pitchMin, T.TANK.pitchMax);
-  return { drive, turn, look: lookYaw, tilt: lookPitch, fire: fireEdge, laser: laserEdge };
+  return { drive, turn, look: lookYaw, tilt: lookPitch, fire: fireEdge, laser: laserEdge, boost: !!keys['shift'] };
 }
 let lastReadouts = null;
 function frameStep(dt) {
@@ -477,6 +482,8 @@ function frame(t) {
   const dt = lastT ? Math.max(0, Math.min(0.1, (t - lastT) / 1000)) : 0;
   lastT = t;
   if (mode !== 'paused') frameStep(dt);
+  aiTick(dt);
+  placeSide();
   requestAnimationFrame(frame);
 }
 
@@ -541,6 +548,11 @@ function renderInstruments() {
   const lf = $('laser-fill');
   lf.style.width = (r.laser * 100).toFixed(1) + '%';
   lf.classList.toggle('charging', r.laser < 1);
+  // the boost: the charge; grey while it is locked out after running dry, bright while it burns
+  const bf = $('boost-fill');
+  bf.style.width = (r.boost * 100).toFixed(1) + '%';
+  bf.classList.toggle('charging', r.boostSpent);
+  bf.classList.toggle('burning', r.boostOn);
   // the hull: a pool — the bar is what is left, the number the armor points
   const hk = r.armor + '|' + r.armorMax + '|' + r.lives;
   if (hk !== lastHullKey) {
@@ -634,7 +646,7 @@ function renderTape(r) {
 window.addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
   const k = e.key.toLowerCase();
-  if (['w', 'a', 's', 'd', 'q', 'e', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { keys[k] = true; e.preventDefault(); }
+  if (['w', 'a', 's', 'd', 'q', 'e', 'shift', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { keys[k] = true; e.preventDefault(); }
   else if (k === ' ') {
     e.preventDefault();
     if (mode === 'play') { if (!e.repeat) fireEdge = true; }
@@ -754,6 +766,92 @@ function buildMap() {
 }
 function bossNameOf(w) { if (!w.encounter) return ''; for (const k of Object.keys(w.encounter)) if (T.ENEMY[k] && T.ENEMY[k].boss) return ENEMY_NAMES[k].replace(/^THE /, ''); return ''; }
 const ENEMY_TAGS = { slow: 'TANK', medium: 'FAST', boss: 'SIEGE', hover: 'HOVER', mech: 'MECH', warden: 'WARDEN', strider: 'STRIDER' };
+// ---- THE ONBOARD AI (2026-11-11, James: "give this hud an AI-assistant panel like the lander") ---------------
+// The lander's message screen (game.js "THE ONBOARD AI"), top left here: the newest AI_KEEP lines, typed on,
+// plain sentences. aiSay(text, cls, key, gap): cls '' | 'warn' | 'good'; a `key` said again inside `gap` s is
+// dropped. It was asked for after he drove off the east end of level 1 along the flight line, past every
+// waypoint, and found a map mark with nothing at it and a target hidden behind a rise — so it watches for both.
+const aiEl = $('ai'), aiLog = $('ai-log');
+const AI_KEEP = 4, AI_FRESH = 9, AI_CPS = 70;
+let aiMsgs = [], aiSaid = {}, aiFlags = {};
+function aiReset() { aiMsgs = []; aiSaid = {}; aiFlags = {}; aiLog.textContent = ''; }
+function aiSay(text, cls, key, gap) {
+  if (key) { if (aiSaid[key] !== undefined && clock - aiSaid[key] < (gap || 4)) return; aiSaid[key] = clock; }
+  const el = document.createElement('div');
+  el.className = 'ai-msg typing' + (cls ? ' ' + cls : '');
+  aiLog.appendChild(el);
+  aiMsgs.push({ el, text, n: 0, t: clock });
+  while (aiMsgs.length > AI_KEEP) aiMsgs.shift().el.remove();
+  Sfx.env('sine', cls === 'warn' ? 980 : 1560, 0.045, 0.03);
+}
+const aiFeet = (n) => Math.round(n).toLocaleString('en-US') + ' ft';
+const aiName = (s) => String(s || '').replace(/^THE /, 'the ');
+function aiBrief() {
+  if (!state) return;
+  const n = state.route.length, h = T.hostilesLeft(state), wp = T.nextWaypoint(state);
+  aiSay('Level ' + state.mission + ', ' + state.missionDef.name + '. ' + n + ' waypoints, in order, each marked by a column of light. Drive within 150 ft of one to clear it.' + (h ? ' ' + h + ' hostile site' + (h === 1 ? '' : 's') + ' on the way.' : ''), '', 'brief');
+  if (wp) aiSay('First: ' + aiName(wp.name) + ', ' + aiFeet(Math.hypot(wp.x - state.tank.x, wp.z - state.tank.z)) + ' east.', '', 'first');
+}
+function aiTick(dt) {
+  const show = state && (mode === 'play' || mode === 'paused' || mode === 'settle');
+  aiEl.classList.toggle('show', !!show);
+  if (!show) return;
+  for (const m of aiMsgs) {
+    if (m.n < m.text.length) {
+      m.n = Math.min(m.text.length, m.n + Math.max(1, Math.round(AI_CPS * (dt || 0.016))));
+      m.el.textContent = m.text.slice(0, m.n);
+      if (m.n >= m.text.length) m.el.classList.remove('typing');
+    }
+    m.el.classList.toggle('old', clock - m.t > AI_FRESH);
+  }
+  const r = lastReadouts;
+  if (mode !== 'play' || !r || state.phase !== 'play') return;
+  const t = state.tank;
+  // armor: under a third, once until it is back over
+  const frac = r.armor / Math.max(1, r.armorMax);
+  if (frac < 0.34 && !aiFlags.armor) { aiFlags.armor = true; aiSay('Armor is down to ' + r.armor + ' of ' + r.armorMax + '. Armor canisters lie on the road between waypoints.', 'warn'); }
+  else if (frac >= 0.5) aiFlags.armor = false;
+  // driven past the next waypoint: it only counts up close, and the ones after it wait their turn
+  const wp = T.nextWaypoint(state);
+  if (wp) {
+    const k = 'past' + wp.i, range = Math.hypot(wp.x - t.x, wp.z - t.z);
+    const offEnd = t.x > (state.missionDef.chunks[1] + 1) * T.CHUNK_W - 200;
+    if (t.x > wp.x + 350 && range > 400 && !aiFlags[k]) {
+      aiFlags[k] = true;
+      aiSay('You have driven past ' + aiName(wp.name) + '. It is ' + aiFeet(range) + ' behind you. Waypoints clear in order, and only inside 150 ft. The later marks on the map stay empty until then.', 'warn');
+    } else if (t.x < wp.x) aiFlags[k] = false;
+    if (offEnd && !aiFlags.offEnd) { aiFlags.offEnd = true; aiSay('This is past the east end of the level. Anything ahead belongs to the next one. Turn round.', 'warn'); }
+    else if (!offEnd) aiFlags.offEnd = false;
+  }
+  // the gun is laid on a hostile site but the shell meets the ground first: say what is in the way
+  if (String(r.gunHit || '').toLowerCase().indexOf('ground') >= 0) {
+    let c = null;
+    for (const q of r.contacts) if (q.sid && Math.abs(q.gunBearing) < 0.07 && q.range > r.gunRange + 80 && (!c || q.range < c.range)) c = q;
+    if (c) {
+      aiFlags.blockT = (aiFlags.blockT || 0) + (dt || 0);
+      if (aiFlags.blockT > 1.2) { aiFlags.blockT = 0; aiSay('The ' + c.name + ' is ' + aiFeet(c.range) + ' ahead but the ground is in the way: it sits ' + (c.dy < -8 ? 'lower than us, ' : '') + 'behind a rise. Drive closer or find higher ground.', '', 'block:' + c.sid, 25); }
+    } else aiFlags.blockT = 0;
+  } else aiFlags.blockT = 0;
+}
+
+// THE SIDE PANELS KEEP CLEAR OF THE CONSOLE (2026-11-11, James: "when the screen gets smaller the radar goes over
+// the score panel"): the minimap (right) and the AI panel (left) sit level with the console while there is room
+// beside it, and drop under it the moment they would touch it. Measured each frame; written only on a change.
+const sideTop = {};
+function placeSide() {
+  const c = $('console').getBoundingClientRect();
+  if (!c.width) return;
+  for (const [id, right] of [['mini', true], ['ai', false]]) {
+    const el = $(id);
+    const w = el.offsetWidth;
+    if (!w) continue;
+    const edge = 16;   // the panel's own 1rem side margin
+    const clash = right ? window.innerWidth - edge - w < c.right + 8 : edge + w > c.left - 8;
+    const top = Math.round(clash ? c.bottom + 10 : c.top);
+    if (sideTop[id] !== top) { sideTop[id] = top; el.style.top = top + 'px'; }
+  }
+}
+
 // THE MINIMAP (2026-09-12, James: "really give some clear indicators about what is around and what
 // direction to go in"): a round map top right, always on, the way you LOOK is up. The road and its
 // waypoints (the next one lit and named), every contact on the radar as an amber mark with its kind,
@@ -804,6 +902,8 @@ function drawMini(r) {
     const p = P(o.x, o.z);
     if (!inside(p)) continue;
     if (o.cls === 'civ') { c.strokeStyle = inkFaint; c.lineWidth = 1; c.strokeRect(p[0] - 2.5, p[1] - 2.5, 5, 5); continue; }
+    // a hostile site outside this level's stretch is not a target yet: a faint square, no tag (2026-11-11)
+    if (!o.seated && o.k !== undefined && (o.k < state.missionDef.chunks[0] || o.k > state.missionDef.chunks[1])) { c.strokeStyle = 'rgba(255,180,87,0.3)'; c.lineWidth = 1; c.strokeRect(p[0] - 3, p[1] - 3, 6, 6); continue; }
     const big = o.id === 'base';
     c.strokeStyle = amber; c.lineWidth = 1.6; c.strokeRect(p[0] - (big ? 8 : 4), p[1] - (big ? 5 : 4), big ? 16 : 8, big ? 10 : 8);
     c.fillStyle = amber; c.font = '700 ' + f(7.5); c.textAlign = 'center'; c.textBaseline = 'bottom';
@@ -822,9 +922,12 @@ function drawMini(r) {
   Rt.forEach((w, i) => {
     const p = P(w.x, w.z); if (!inside(p)) return;
     const isNext = w === next, bossy = w.boss || w.base;
-    c.strokeStyle = w.done ? inkFaint : bossy ? amber : isNext ? ink : ph; c.lineWidth = isNext ? 2.6 : 1.4;
+    // only the NEXT waypoint is lit; the ones after it are faint until their turn (2026-11-11: he found a bright
+    // amber ring with nothing at it — the boss's ground, three waypoints early)
+    const later = !w.done && !isNext;
+    c.strokeStyle = w.done ? inkFaint : later ? (bossy ? 'rgba(255,180,87,0.35)' : 'rgba(109,255,142,0.35)') : bossy ? amber : ink; c.lineWidth = isNext ? 2.6 : 1.2;
     c.beginPath(); c.arc(p[0], p[1], bossy ? 8 : 6, 0, Math.PI * 2); c.stroke();
-    c.fillStyle = w.done ? inkFaint : ink; c.font = '700 ' + f(8); c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = w.done ? inkFaint : later ? inkDim : ink; c.font = '700 ' + f(8); c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText(w.base ? 'B' : w.boss ? '★' : String(i + 1), p[0], p[1] + 0.5);
     if (isNext) { c.fillStyle = ink; c.font = '700 ' + f(7.5); c.textBaseline = 'top'; c.fillText(w.name, p[0], p[1] + 9); }
   });

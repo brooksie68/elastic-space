@@ -1326,7 +1326,14 @@ consistent. `npm run check-worlds` audits every world against the contract.
    bounce-shots toggle, tuner with click-away. AWAITING JAMES'S FIRST DRIVE.
    Next: feel pass, then ship wiring. Unbuilt ideas: biplanes/jets, more of the
    27-mode matrix, touch controls (World Ideas #60).
-7.5. MOON BATTLE 2100 — **2026-11-09: the "AIMED N° TO CLEAR THE GROUND" launch label removed at his word. He flew past
+7.5. MOON BATTLE 2100 — **2026-11-11: the level's GATE pad has its own look (pylons, chevrons, lamps, climbing beams, a RELAY
+   chip; drift relays unchanged); the REGEN FUEL PUMP is a rare pad pickup (burns cost half, lost in a crash); hardened targets
+   refuse in plain sentences; the chaff cloud is big; damage sounds a klaxon and throws bits; the ammo depot is ARMORED ON ITS SIDES (either
+   weapon, only from directly above) instead of "behind a ridge"; an ONBOARD AI message screen under the console speaks in
+   plain sentences (refusals, damage, low fuel, kills, missiles, flying past END). THE TANK got the same AI panel (says when you
+   pass a waypoint, leave the level, or aim at something the ground hides), a minimap that lights only the next waypoint, and
+   a BOOST on Shift (×1.7 for 5 s, 14 s refill — first-guess numbers). Sims 323,383 + 5,322 green. AWAITING HIS
+   FLIGHT. World + tank changelogs 2026-11-11.** **2026-11-09: the "AIMED N° TO CLEAR THE GROUND" launch label removed at his word. He flew past
    level 1's END line and "nothing happened" — as built (the level ends by landing on the RELAY · GATE pad once the targets are
    down). OPEN, his call: what crossing END should do; nothing built. World CLAUDE.md START HERE (2026-11-09).**
    **2026-10-24 (his flight notes, all built the same session, sim 319,777 green): the level's targets on the strip map as

@@ -8,7 +8,7 @@
 // Classes (the target system, world CLAUDE.md "Round one design"):
 //   civ   — civilian. Lots of them. Never targetable.
 //   open  — hostile in the open. Targetable from anywhere. 1X–2X.
-//   hard  — hostile hardened: `hard` says the trick (overhang / ridge / door /
+//   hard  — hostile hardened: `hard` says the trick (overhang / top / door /
 //           shield). 3X–5X.
 // `w` / `h` are the solid footprint the ship can crash into (the core uses
 // them). Drawings may spill a little past `w` (an antenna, a rover) — the box
@@ -143,11 +143,21 @@
     },
     depot(out, k) {
       const d = k.d / 2;
-      for (const cx of [-26, 0, 26]) {
-        cylinderZ(out, cx, 0, 11, -d, d, 12, true);
-        out.push([cx - 3, 0, d, cx - 3, 6, d], [cx + 3, 0, d, cx + 3, 6, d], [cx - 3, 6, d, cx + 3, 6, d]);
+      for (const cx of [-20, 0, 20]) {
+        cylinderZ(out, cx, 0, 8.5, -d, d, 12, true);
+        out.push([cx - 2.5, 0, d, cx - 2.5, 5, d], [cx + 2.5, 0, d, cx + 2.5, 5, d], [cx - 2.5, 5, d, cx + 2.5, 5, d]);
       }
       out.push([-40, 0, d, 40, 0, d], [-40, 0, -d, 40, 0, -d]);
+      // the side armor (2026-11-11): the leaning double-skinned slab on each side, run through the depth
+      for (const sx of [-1, 1]) {
+        const prof = [[sx * 40, 0], [sx * 33, 18], [sx * 29, 18], [sx * 34, 0]];
+        for (const z of [d, -d]) {
+          for (let i = 1; i < prof.length; i++) out.push([prof[i - 1][0], prof[i - 1][1], z, prof[i][0], prof[i][1], z]);
+          out.push([sx * 37, 0, z, sx * 31, 18, z]);
+        }
+        for (const p of prof) out.push([p[0], p[1], d, p[0], p[1], -d]);
+        for (const t of [0.25, 0.5, 0.75]) out.push([sx * (40 - 7 * t), 18 * t, d, sx * (40 - 7 * t), 18 * t, -d]);
+      }
     },
   };
   function solid(id) {
@@ -312,9 +322,17 @@
     poly(o, [[-40, 40], [-36, 34], [-30, 30]], false);
     seg(o, 48, 28, 40, 26); seg(o, 40, 26, 34, 28);
   } });
-  def({ id: 'depot', d: 30, name: 'AMMO DEPOT', cls: 'hard', hard: 'ridge', mult: 3, w: 80, h: 18, draw(o) {
-    for (const cx of [-26, 0, 26]) { arc(o, cx, 0, 11, 0, Math.PI, 6, 16); seg(o, cx - 3, 0, cx - 3, 6); seg(o, cx + 3, 0, cx + 3, 6); seg(o, cx - 3, 6, cx + 3, 6); }
+  // ARMORED ON THE SIDES (2026-11-11, James: "it in no way looked to be behind a ridge... instead of a ridge how
+  // about its too armored on the sides... it can only be damaged from directly above"): `hard: 'top'`. The
+  // drawing says so — a heavy double-skinned slab leaning in on each side, bolted, the roof left bare.
+  def({ id: 'depot', d: 30, name: 'AMMO DEPOT', cls: 'hard', hard: 'top', mult: 3, w: 80, h: 18, draw(o) {
+    for (const cx of [-20, 0, 20]) { arc(o, cx, 0, 8.5, 0, Math.PI, 6, 12.5); seg(o, cx - 2.5, 0, cx - 2.5, 5); seg(o, cx + 2.5, 0, cx + 2.5, 5); seg(o, cx - 2.5, 5, cx + 2.5, 5); }
     seg(o, -40, 0, 40, 0);
+    for (const sx of [-1, 1]) {
+      poly(o, [[sx * 40, 0], [sx * 33, 18], [sx * 29, 18], [sx * 34, 0]], false);     // the outer plate
+      seg(o, sx * 37, 0, sx * 31, 18);                                                 // its second skin
+      for (const t of [0.25, 0.5, 0.75]) seg(o, sx * (40 - 7 * t), 18 * t, sx * (34 - 5 * t), 18 * t);   // bolted courses
+    }
   } });
   def({ id: 'bunker', name: 'BUNKER', cls: 'hard', hard: 'door', mult: 3, w: 60, h: 34, draw(o) {
     poly(o, [[-30, 0], [-30, 16], [-24, 22], [24, 22], [30, 16], [30, 0]], false);

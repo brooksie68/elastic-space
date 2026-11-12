@@ -5,6 +5,46 @@ half's changelog is one folder up.
 
 <!-- TANK-ENTRY-2026-09-11 -->
 
+## 2026-11-11 — Claude — the onboard AI, the honest minimap, the boost
+
+James, from a free-roll drive (level 1, 3:02 in, 0 of 4 waypoints): "behind me is an orange circle that doesnt appear
+in the world and in front of me is some objective that's like below me in the blackness and I cannot shoot it or see
+it. give this hud an AI-assistant panel like the lander." WHAT HAD HAPPENED: he drove east along the flight line for
+three minutes, past every waypoint (they wind up to 620 ft off the line and only count inside 150 ft) and off the east
+end of the stretch. The orange ring was the BOSS's waypoint, drawn bright three waypoints early with nothing at it;
+the "objective" was a POWER CORE of the NEXT level, tagged on the minimap like a live target, sitting lower than the
+tank behind a rise (reproduced in the look-dev page: the ground climbs 26 ft between, the core's top is under it).
+Nothing in the game said any of that.
+
+1. THE ONBOARD AI (`#ai`, top left; tank.js "THE ONBOARD AI" — the lander's `aiSay`, same look): the level brief and
+   the first waypoint at the start; DRIVEN PAST the next waypoint ("It is N ft behind you. Waypoints clear in order,
+   and only inside 150 ft. The later marks on the map stay empty until then"); PAST THE EAST END of the level; THE
+   GROUND IS IN THE WAY (the gun laid on a hostile site for 1.2 s while the shell's arc meets the ground first: names
+   it, its range, "behind a rise — drive closer or find higher ground"); waypoint cleared + the next and its range;
+   hostiles out / the boss out; target destroyed + how many are left on the field; a hit and the armor left; armor
+   under a third; missile launch (the laser shoots it down) and missile down; a shut blast door; a civilian building;
+   pickups; the hangar's waves; tank lost / new tank; level complete; boost spent.
+2. THE MINIMAP: only the NEXT waypoint is lit — later ones are faint rings until their turn; a hostile site outside
+   this level's chunks is a faint square with no tag.
+3. THE BOOST (his next message: "give the tank a boost on pressing shift. faster for a minute but it runs out pretty
+   quickly and has to recharge"): core `BOOST` { mult 1.7, accel 2.2, burn 5 s, recharge 14 s, rearm 0.3 } —
+   `input.boost` held while driving FORWARD; run dry and it locks out until 30% (about 4 s); the speed eases down
+   when it ends, never snaps. `t.boost / boostOn / boostSpent`, in `readouts`; events `boostOn` / `boostOff`. A BOOST
+   bar under LASER in the console (white while burning, grey while locked out), a line in CONTROLS. The numbers are
+   Claude's first guess — "a minute" read as a figure of speech; his number next.
+Also: the AMMO DEPOT's solid matches its new drawing (armored sides, see the lander's changelog); its label here says
+ARMORED. Sim 5,322 green (TEST 14 is the boost). Core tag 8, shell tag 10, structures tag 5. On `tank.html?silent=1`:
+the panel shows, the brief types out, holding W + Shift ran the boost dry and the AI said so, no console errors. NOT
+judged by eye at his window size, and nothing here makes the hidden core visible — the AI only explains it.
+
+Then: "the score panel doesnt need to be so big. also when the screen gets smaller the radar goes over the score
+panel. fix." THE SCORE PANEL is as wide as its words (`#hud-right` flex 0 0 auto, max 13.5em), the number a size down
+on the label's line, the level / time / waypoints on short wrapped lines. THE SIDE PANELS KEEP CLEAR: `placeSide()`
+(tank.js, every frame, writes only on a change) keeps the minimap and the AI panel level with the console while there
+is room beside it and drops them under it the moment they would touch it. The console is 1080 px wide (944 before the
+boost bar joined the row), the laser / boost bars 5.5em, and under 1140 px the row wraps instead of spilling. Measured
+on the silent page at 1920 / 1400 / 1000 wide: nothing overlaps, nothing leaves the console. Shell tag 11.
+
 ## 2026-09-12 — Claude — the map treatment: the minimap, the M map's upgrade, the direction line, the controls panel
 
 James (after the lander's sitrep brief): "go over to the tank battle side and give the map there

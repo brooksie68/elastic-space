@@ -40,7 +40,7 @@
       font-size: calc(0.8rem * var(--ui));
       pointer-events: none;
       position: fixed; top: 0.9rem; left: 50%; transform: translateX(-50%); z-index: 10;
-      width: min(944px, 94vw);
+      width: min(1080px, 96vw);   /* 944 until the boost bar joined the row (2026-11-11) */
       display: flex; flex-direction: column; gap: 0.5rem;
       transition: opacity 500ms ease;
     }
@@ -82,7 +82,7 @@
     #radar-note.hot { color: var(--ph); opacity: 1; animation: hot 700ms ease-in-out infinite alternate; }
 
     /* the gun: shell + laser */
-    #gun { flex: 1.2; flex-direction: row; gap: 1.6em; align-items: center; }
+    #gun { flex: 1.2; flex-direction: row; gap: 1.1em; align-items: center; }
     #gun .big { font-size: clamp(1.61em, 3.128vh, 2.53em); font-weight: 300; margin-top: 0.25em; }
     #gun .big.ready { color: var(--ph); }
     #gun .big.wait { color: var(--ink-dim); }
@@ -92,9 +92,15 @@
     #reload-track { position: relative; width: 7.5em; height: 0.35em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.35em; }
     #reload-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 8px var(--ph-dim); transition: width 60ms linear; }
     #reload-fill.charging { background: var(--ink-dim); box-shadow: none; }
-    #laser-track { position: relative; width: 7.5em; height: 0.55em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.55em; }
+    #laser-track { position: relative; width: 5.5em; height: 0.55em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.55em; }
     #laser-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); transition: width 90ms linear; }
     #laser-fill.charging { background: var(--ink-dim); box-shadow: none; }
+    /* the boost (2026-11-11): the laser's bar again */
+    #wpn-boost { cursor: default !important; }
+    #boost-track { position: relative; width: 5.5em; height: 0.55em; border-radius: 3px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.1); margin-top: 0.55em; }
+    #boost-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; border-radius: 2px; background: var(--ph); box-shadow: 0 0 10px var(--ph-dim); transition: width 90ms linear; }
+    #boost-fill.charging { background: var(--ink-dim); box-shadow: none; }
+    #boost-fill.burning { background: var(--ink); box-shadow: 0 0 14px rgba(236, 255, 240, 0.6); }
 
     /* the compass tape + speed */
     #nav { flex: 2.4; flex-direction: row; gap: 1.2em; align-items: center; }
@@ -115,10 +121,16 @@
     #tape .gun { fill: var(--ink-dim); }
 
     /* score + mission meta */
-    #hud-right { flex: 1; text-align: right; align-items: flex-end; }
-    #score .num { font-size: clamp(1.8em, 3.52vh, 2.8em); font-weight: 200; margin-top: 0.2em; }
-    #meta { white-space: nowrap; margin-top: 0.55em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
-    #meta span + span::before { content: '·'; margin: 0 0.6em; color: var(--ink-dim); }
+    /* 2026-11-11 (James: "the score panel doesnt need to be so big"): the panel is as wide as its words, no wider;
+       the number a size down; the level / time / waypoints wrap onto two short lines instead of one long one */
+    #hud-right { flex: 0 0 auto; max-width: 13.5em; text-align: right; align-items: flex-end; padding-top: 0.5em; padding-bottom: 0.5em; }
+    #score { display: flex; align-items: baseline; justify-content: flex-end; gap: 0.7em; }
+    #score .num { font-size: clamp(1.3em, 2.4vh, 1.8em); font-weight: 200; margin-top: 0; }
+    #meta { white-space: normal; line-height: 1.5; margin-top: 0.3em; font-size: 0.851em; font-weight: 600; letter-spacing: 0.2em; color: var(--ink); opacity: 0.85; font-variant-numeric: tabular-nums; }
+    #meta span { white-space: nowrap; display: inline-block; }
+    #meta span + span::before { content: '·'; margin: 0 0.5em; color: var(--ink-dim); }
+    #meta #v-mission { display: block; }
+    #meta #v-mission + span::before { content: none; }
     #meta.bonus { margin-top: 0.3em; opacity: 0.7; font-size: 0.76em; }
     #meta.bonus:empty, #v-bonus:empty { display: none; }
     #wp-wrap { margin-left: 1.2em; min-width: 11em; }
@@ -206,6 +218,21 @@
     /* ---- THE MINIMAP (2026-09-12): always on, top right, the way you look is up ---- */
     #mini { position: fixed; right: 1rem; top: 6.6rem; z-index: 9; width: calc(15rem * var(--ui)); pointer-events: none; display: none; }
     #mini.show { display: block; }
+    /* ---- THE ONBOARD AI (2026-11-11, James: "give this hud an AI-assistant panel like the lander") ---- */
+    #ai { position: fixed; left: 1rem; top: 0.9rem; z-index: 9; width: min(calc(23rem * var(--ui)), 26vw); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
+    #ai.show { display: block; }
+    #ai .panel { padding: 0.6em 0.9em 0.75em; gap: 0.4em; display: flex; flex-direction: column; }
+    #ai .lbl { font-size: 0.62em; letter-spacing: 0.3em; color: var(--ph); opacity: 1; }
+    #ai-log { display: flex; flex-direction: column; gap: 0.35em; min-height: 1.3em; }
+    .ai-msg { position: relative; padding-left: 1em; font-size: 0.86em; font-weight: 500; letter-spacing: 0.03em; line-height: 1.35; color: var(--ink); text-transform: none; transition: opacity 700ms ease; }
+    .ai-msg::before { content: '\203A'; position: absolute; left: 0; color: var(--ph); }
+    .ai-msg.warn { color: #ff8fa3; }
+    .ai-msg.warn::before { color: #ff8fa3; }
+    .ai-msg.good { color: var(--ph); }
+    .ai-msg.old { opacity: 0.42; }
+    .ai-msg.typing::after { content: '\258C'; margin-left: 0.1em; color: var(--ph); animation: aiblink 300ms steps(2) infinite alternate; }
+    @keyframes aiblink { from { opacity: 1; } to { opacity: 0.2; } }
+    body.paused #ai { z-index: 12; }
     #mini canvas { display: block; width: 100%; aspect-ratio: 1; border-radius: 50%; background: rgba(4, 10, 6, 0.62); border: 1px solid var(--glass-edge); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     #mini-cap { margin-top: 0.4em; text-align: center; font-size: calc(0.72rem * var(--ui)); font-weight: 700; letter-spacing: 0.2em; color: var(--ink); line-height: 1.5; }
     #mini-cap b { font-weight: 300; letter-spacing: 0; font-size: 1.25em; color: var(--ph); }
@@ -349,6 +376,7 @@
 
     #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; padding: 2rem; font-size: 0.977rem; letter-spacing: 0.12em; color: var(--ink-dim); z-index: 30; }
     body.nogl #nogl { display: flex; }
+    @media (max-width: 1140px) { .row { flex-wrap: wrap; } .row > .panel { flex-grow: 1; } }   /* the row wraps before it can spill past the console (2026-11-11) */
     @media (max-width: 720px) { #console { top: 0.5rem; width: 98vw; } .row { flex-wrap: wrap; } #hint { display: none; } }
   </style>
 </head>
@@ -391,6 +419,7 @@
       <div class="panel" id="gun">
         <div class="wpn" id="wpn-shell" role="button" aria-label="fire the shell"><div class="lbl">Shell</div><div class="num big ready" id="v-shell">READY</div><div id="reload-track"><div id="reload-fill"></div></div></div>
         <div class="wpn" id="wpn-laser" role="button" aria-label="fire the laser"><div class="lbl">Laser</div><div id="laser-track"><div id="laser-fill"></div></div></div>
+        <div class="wpn" id="wpn-boost" title="hold Shift while driving forward"><div class="lbl">Boost</div><div id="boost-track"><div id="boost-fill"></div></div></div>
       </div>
       <div class="panel" id="nav">
         <div id="tape-wrap"><div class="lbl"><span>Heading</span><span id="v-look">090</span></div><svg id="tape" viewBox="-100 -14 200 28" preserveAspectRatio="none" aria-label="compass tape"></svg></div>
@@ -450,6 +479,8 @@
     </div>
     <div id="map-foot">M OR ESC CLOSES · THE ROAD RUNS EAST · REACH EVERY WAYPOINT · THE LAST ONE NEEDS ITS KILL</div>
   </div>
+  <!-- THE ONBOARD AI (2026-11-11): the lander's message screen, top left here; tank.js writes to it -->
+  <div id="ai" aria-live="polite"><div class="panel"><div class="lbl">Onboard AI</div><div id="ai-log"></div></div></div>
   <div id="mini" aria-label="the minimap"><canvas id="mini-canvas"></canvas><div id="mini-cap"></div></div>
   <div id="hint">MOUSE AIMS · W S DRIVE · A D TURN THE HULL · CLICK / SPACE SHELL · RIGHT CLICK / L LASER · Z SCOPE · WHEEL ZOOM · M MAP · ESC OR P PAUSE · R RESTART</div>
   <div id="controls"><a id="btn-lander" href="../index.html">LANDER</a><button id="btn-controls" type="button">CONTROLS</button><button id="btn-map" type="button">MAP</button><button id="btn-pause" type="button">PAUSE</button><button id="btn-restart" type="button">RESTART</button></div>
@@ -460,6 +491,7 @@
       <b><i>W</i> / <i>S</i></b><span>drive toward where you look / back away from it</span>
       <b><i>A</i> / <i>D</i></b><span>veer, or pivot the hull in place while standing</span>
       <b><i>Q</i> / <i>E</i></b><span>tilt the view</span>
+      <b><i>Shift</i></b><span>the boost: hold while driving forward — faster for five seconds, then it recharges</span>
       <b><i>Z</i></b><span>the scope: a narrower view, a slower mouse</span>
       <b><i>Wheel</i></b><span>zoom 1× to 2×</span>
     </div>
@@ -521,12 +553,12 @@
 
   <script src="../../../core/dashboard-control.js"></script>
   <script src="../../../core/sound-control.js"></script>
-  <script src="../structures.js"></script>
+  <script src="../structures.js?v=5"></script>
   <script src="../game-core.js"></script>
-  <script src="tank-core.js?v=7"></script>
+  <script src="tank-core.js?v=8"></script>
   <script type="importmap">
     { "imports": { "three": "../../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="tank.js?v=8"></script>
+  <script type="module" src="tank.js?v=11"></script>
 </body>
 </html>

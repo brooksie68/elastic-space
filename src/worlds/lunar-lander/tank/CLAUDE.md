@@ -2,6 +2,14 @@
 
 ## START HERE — THE THREE LEVELS ARE BUILT (2026-09-11), AWAITING JAMES'S DRIVE
 
+**2026-11-11: HE DROVE IT (free roll) — and drove straight off the east end of level 1 past every waypoint.** Read
+`changelog.md` 2026-11-11. Built the same night: THE ONBOARD AI message panel top left (`aiSay` in tank.js — it
+says when you pass a waypoint, leave the level, or aim at something the ground hides), the minimap lights only the
+NEXT waypoint and dims sites outside the level, and THE BOOST on Shift (`BOOST` in the core: ×1.7 for 5 s, 14 s to
+refill, locked out until 30% after running dry — first-guess numbers, his to tune). OPEN: the level still lets you
+drive off its end (a message, no wall), and terrain can still hide a target with nothing drawn to show the rise —
+both are design calls for him.
+
 **2026-09-12: THE MAP TREATMENT** — read `changelog.md` 2026-09-12: the MINIMAP top right (look-up,
 route + numbered waypoints, the next named and ranged, contacts by kind, hostile tags, the rim arrow),
 the M map's legend / scale / EAST / tags / heading line / GO line with the range, the DIRECTION LINE

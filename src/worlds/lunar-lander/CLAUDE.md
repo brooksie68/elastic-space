@@ -117,6 +117,20 @@ ONE SHARED SCORE (James, 2026-09-06): tank kills land in the lander's
 
 ## START HERE (next session)
 
+**2026-11-11: THE GATE PAD'S LOOK, THE FUEL PUMP PICKUP, PLAIN REFUSALS, LOUD CHAFF, DAMAGE KLAXON + BITS —
+AWAITING HIS FLIGHT.** The level's gate pad (never the drift relays) wears pylons, chevrons, alternating lamps,
+climbing dashed beams and a RELAY chip (he has not said whether the beams stay). The REGENERATIVE FUEL PUMP is a
+rare PAD PICKUP (his call; `'pump'` item, `state.pump`, `PUMP_BURN` 0.5, `PUMP_ODDS` 0.09, lost in a crash) — the
+tech ladder is still three. A hardened target's refusal is a plain sentence now (he could not shoot the level-2
+depot: missiles only, from 220 ft above). The chaff cloud is big and says whether a missile is in the air; damage
+sounds a klaxon and throws bits. The hull + armor meters are fine where they are (his word). Changelog 2026-11-11.
+THEN, the same night: the depot is no longer "behind a ridge" (the BEHIND A RIDGE design note above is superseded) —
+it is ARMORED ON ITS SIDES (`hard: 'top'`, `TOP_ARMOR`: either weapon, only from above the roof; redrawn with side
+slabs), and THE ONBOARD AI is a message screen under the console's right end (`aiSay` in game.js) that speaks in
+plain sentences: refusals, damage, low fuel with the nearest fuel pad, kills, missiles, chaff, systems, and flying
+past the END line (the 2026-11-09 hole, answered with a message — his verdict on that pending). STANDING RULE from
+this night: never refuse the player with one word; say what to do instead.
+
 **2026-11-09: HE FLEW LEVEL 1 AND SAILED PAST THE "END" LINE — "nothing happened."** The END line on the strip
 is only a marker; the level ends by clearing the targets and LANDING on the RELAY · GATE pad. Crossing END
 with no feedback is a hole in the design. OPEN, his call, nothing built: what crossing END should do (a

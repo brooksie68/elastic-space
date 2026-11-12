@@ -197,6 +197,11 @@
     #cond-panel .cond .lbl { font-size: 0.851em; letter-spacing: 0.22em; }
     #cond-panel .cond .n { font-size: 1.15em; }
     #fuel .lbl { font-size: 1.035em; letter-spacing: 0.3em; }
+    /* the regenerative fuel pump, held (2026-11-11): a lit chip beside the word */
+    #fuel-pump { display: none; align-items: center; gap: 0.35em; padding: 0.15em 0.5em; border: 1px solid color-mix(in srgb, var(--ph) 55%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--ph) 10%, transparent); color: var(--ph); font-size: 0.8em; font-weight: 700; letter-spacing: 0.18em; white-space: nowrap; }
+    #fuel-pump.on { display: flex; }
+    #fuel-pump svg { width: 1.5em; height: 1.5em; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .pad-item span.pump { color: var(--ph); border-color: var(--ph); box-shadow: 0 0 8px var(--ph-dim); }
     #fuel .num { font-size: clamp(1.6em, 3.20vh, 2.4em); font-weight: 300; min-width: 4ch; text-align: right; }
     #fuel-track {
       position: relative; flex: 1; height: 1.15em; border-radius: 4px;
@@ -236,6 +241,8 @@
     .pad-fuel span { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.22em; color: var(--ph); }
     .pad-fuel.used { opacity: 0.45; }
     .pad-label .tag { font-size: 0.55rem; font-weight: 700; letter-spacing: 0.18em; color: var(--ink-dim); margin-left: 0.2rem; }
+    /* the level's gate pad says so (2026-11-11) */
+    .pad-label .tag.gate { font-size: calc(0.7rem * var(--ui)); color: var(--ph); padding: 0.1em 0.4em; border: 1px solid color-mix(in srgb, var(--ph) 55%, transparent); border-radius: 4px; background: rgba(0, 0, 0, 0.35); text-shadow: 0 0 8px var(--ph-dim); }
     .float { font-size: 0.897rem; font-weight: 600; letter-spacing: 0.22em; text-indent: 0.22em; color: var(--ink); text-shadow: 0 0 14px var(--ph-faint); }
     .float.pts { font-size: 1.208rem; font-weight: 300; letter-spacing: 0; text-indent: 0; }
     .float.tech { color: var(--ph); }
@@ -308,7 +315,7 @@
     #modes .t-seg button:hover { color: var(--ink); }
     #modes .t-seg button.on { box-shadow: 0 0 18px color-mix(in srgb, var(--ph) 22%, transparent); }
     #m-free button { min-width: 7rem; font-size: 0.66rem; }
-    #m-free[hidden] { display: none; }
+    #m-free[hidden], #m-camp[hidden] { display: none; }
     #ledger {
       display: grid; grid-template-columns: auto auto auto; gap: 0.25rem 1.2rem;
       margin: 1rem auto 0; width: max-content;
@@ -357,6 +364,20 @@
     /* ---- THE SITREP (2026-09-12, James: "a little sitrep panel... 'Mission One: 3 targets, you've taken out 1' in HUD info") ---- */
     #sitrep { position: fixed; left: 1rem; top: 0.9rem; z-index: 10; width: calc(19rem * var(--ui)); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
     #sitrep.show { display: block; }
+    /* ---- THE ONBOARD AI (2026-11-11, James: "add in a HUD message screen and give AI-like messages") ---- */
+    #ai { position: fixed; right: 1rem; top: 12rem; z-index: 9; width: calc(23rem * var(--ui)); font-size: calc(1rem * var(--ui)); pointer-events: none; display: none; }
+    #ai.show { display: block; }
+    #ai .panel { padding: 0.6em 0.9em 0.75em; gap: 0.4em; }
+    #ai .lbl { font-size: 0.62em; letter-spacing: 0.3em; color: var(--ph); opacity: 1; }
+    #ai-log { display: flex; flex-direction: column; gap: 0.35em; min-height: 1.3em; }
+    .ai-msg { position: relative; padding-left: 1em; font-size: 0.86em; font-weight: 500; letter-spacing: 0.03em; line-height: 1.35; color: var(--ink); text-transform: none; transition: opacity 700ms ease; }
+    .ai-msg::before { content: '\203A'; position: absolute; left: 0; color: var(--ph); }
+    .ai-msg.warn { color: var(--pink); }
+    .ai-msg.warn::before { color: var(--pink); }
+    .ai-msg.good { color: var(--ph); }
+    .ai-msg.old { opacity: 0.42; }
+    .ai-msg.typing::after { content: '\258C'; margin-left: 0.1em; color: var(--ph); animation: hot 300ms steps(2) infinite alternate; }
+    body.paused #ai { z-index: 12; }
     #sitrep .panel { pointer-events: auto; cursor: pointer; }   /* click: open / close (2026-10-16) */
     #sitrep.pill .panel { padding: 0.45em 0.9em 0.5em; display: inline-flex; flex-direction: row; align-items: baseline; gap: 0.8em; border-radius: 999px; }
     #sitrep.pill .panel > * { display: none; }
@@ -513,6 +534,8 @@
   <canvas id="field"></canvas>
   <div id="labels" aria-hidden="true"><div id="target-tag"></div><div id="sam-tag"></div></div>
   <div id="sam-edge" aria-hidden="true"></div>
+  <!-- THE ONBOARD AI (2026-11-11): a message screen under the console's right end; the shell writes to it -->
+  <div id="ai" aria-live="polite"><div class="panel"><div class="lbl">Onboard AI</div><div id="ai-log"></div></div></div>
   <div id="sitrep" aria-label="situation report">
     <div class="panel">
       <div id="sr-level">LEVEL 1<small id="sr-name"></small></div>
@@ -606,6 +629,7 @@
     <div class="row" id="fuel-row">
     <div class="panel" id="fuel">
       <div class="lbl">Fuel</div>
+      <div id="fuel-pump" title="regenerative fuel pump — every burn costs half the fuel; a crash loses it"><svg viewBox="0 0 24 24"><path d="M12 7.5c-1.6 2.6-3 4.3-3 6.2a3 3 0 0 0 6 0c0-1.9-1.4-3.6-3-6.2zM4.5 9A8.5 8.5 0 0 1 19 6.5M19 2.5v4h-4M19.5 15A8.5 8.5 0 0 1 5 17.5M5 21.5v-4h4"/></svg><span>PUMP ½</span></div>
       <div id="fuel-track">
         <div id="fuel-fill"></div>
         <div id="fuel-scale">
@@ -782,11 +806,11 @@
   <script src="../../core/sound-control.js"></script>
   <script src="../../core/world-registry.js"></script>
   <script src="../../core/drift.js"></script>
-  <script src="structures.js?v=4"></script>
-  <script src="game-core.js?v=12"></script>
+  <script src="structures.js?v=5"></script>
+  <script src="game-core.js?v=16"></script>
   <script type="importmap">
     { "imports": { "three": "../../lib/three/three.module.js" } }
   </script>
-  <script type="module" src="game.js?v=29"></script>
+  <script type="module" src="game.js?v=33"></script>
 </body>
 </html>

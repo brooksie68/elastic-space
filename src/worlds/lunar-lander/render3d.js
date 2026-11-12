@@ -344,6 +344,11 @@ function buildLander() {
 const LANDER = buildLander();
 const BODY_POINTS = [].concat(ring(8, 8.6, 3, Math.PI / 8), ring(8, 8.6, -5, Math.PI / 8), ring(6, 5.8, 3.6, Math.PI / 6), ring(6, 5.8, 12.4, Math.PI / 6), ring(6, 3.4, 14.6, Math.PI / 6));
 
+// The gate pad's dressing (ft): pylon height, the height of the climbing dashed beam over each pylon, its dash count
+const GATE_PYLON = 24, GATE_BEAM = 220, GATE_BEAM_DASHES = 9;
+// The chaff cloud: how many foil strips, how long each is (ft), how bright the flash of a turning strip
+const CHAFF = { n: 70, len: 9, bright: 2.2 };
+
 // The landing tech, drawn on the ship. Each piece is its own little set of
 // segments in lander-local feet; `fan` (0..1) is the spider legs' spread and
 // `squash` (0..1) the shock legs' compression, both driven by the shell.
@@ -375,6 +380,12 @@ function buildTech(id, fan, squash) {
       seg(knee, toe);
       seg([toe[0] - 1.6 * sx, toe[1], toe[2] + 1.6 * sz], [toe[0] + 1.6 * sx, toe[1], toe[2] - 1.6 * sz]);
     }
+  } else if (id === 'pump') {
+    // the regenerative fuel pump: a return pipe from the bell out and up to the right tank, a small pump housing on it
+    seg([3.2, -10.6, 0], [9.4, -10.6, 0]); seg([9.4, -10.6, 0], [11.25, -8.2, 0]);
+    loop([[5.2, -9.4, 1.2], [7.6, -9.4, 1.2], [7.6, -11.8, 1.2], [5.2, -11.8, 1.2]]);
+    loop([[5.2, -9.4, -1.2], [7.6, -9.4, -1.2], [7.6, -11.8, -1.2], [5.2, -11.8, -1.2]]);
+    seg([5.2, -9.4, 1.2], [5.2, -9.4, -1.2]); seg([7.6, -9.4, 1.2], [7.6, -9.4, -1.2]);
   } else if (id === 'auto') {
     // a computer box beside the bell with a whip antenna
     loop([[-6.6, -5.4, 4.4], [-3.6, -5.4, 4.4], [-3.6, -8.2, 4.4], [-6.6, -8.2, 4.4]]);
@@ -719,6 +730,23 @@ export class LanderScene {
         // the multiplier and the fuel mark are DOM labels the shell places (contemporary type, not stroke lettering).
         // The accelerator is NOT drawn at rest (James: "they should just appear magically when the person finishes their landing").
         if (p.relay) this._relayTower(B, p, 0.55);
+        // THE GATE PAD (2026-11-11, James: "the relay pad itself needs some type of visual differentiator. not the
+        // drift ones"): a second deck line under the first, a row of hazard chevrons hung below it, and a tall
+        // outward-leaning pylon at each end (their lamps and the rising beams are drawn live)
+        if (p.gate) {
+          const gb = p.used ? 0.9 : 1.6;
+          B.seg2(p.x0, p.y - 3, p.x1, p.y - 3, gb);
+          const n = Math.max(3, Math.round((p.x1 - p.x0) / 12));
+          for (let i = 0; i < n; i++) {
+            const cx = p.x0 + (p.x1 - p.x0) * (i + 0.5) / n;
+            B.seg2(cx - 4, p.y - 5, cx, p.y - 10, gb * 0.7); B.seg2(cx, p.y - 10, cx + 4, p.y - 5, gb * 0.7);
+          }
+          for (const s of [-1, 1]) {
+            const ex = s < 0 ? p.x0 : p.x1;
+            B.seg2(ex + s * 2, p.y, ex + s * 8, p.y + GATE_PYLON, gb); B.seg2(ex + s * 5, p.y, ex + s * 8, p.y + GATE_PYLON, gb * 0.7);
+            B.seg2(ex + s * 6, p.y + GATE_PYLON, ex + s * 10, p.y + GATE_PYLON, gb);
+          }
+        }
       }
       // the structures (structures.js): civilians dim, hostiles a step brighter
       for (const st of ch.structures || []) {
@@ -903,6 +931,29 @@ export class LanderScene {
     this.effects.push({ kind: 'ring', x: x, y: gy + 1, age: 0, life: hit ? 1.1 : 0.7, r0: 4, r1: hit ? 130 : 70, b: hit ? 1.5 : 0.9 });
     for (let i = 0; i < (hit ? 60 : 24); i++) this._spark(x, y, 0, 40 + this._rand() * 150, 1.4, 1.3);
     this.flash = Math.max(this.flash, hit ? 0.9 : 0.4);
+  }
+  // The chaff leaves the ship: a pop — a small ring and a spray of sparks under the lander.
+  spawnChaff(x, y) {
+    this.effects.push({ kind: 'ring', x: x, y: y - 8, age: 0, life: 0.6, r0: 4, r1: 46, b: 1.5 });
+    for (let i = 0; i < 30; i++) this._spark(x, y - 8, 0, 40 + this._rand() * 90, 0.7, 1.5);
+    this.flash = Math.max(this.flash, 0.2);
+  }
+  // The lander is hit (2026-11-11, James: "some bits flying off the lander"): `n` small plates and
+  // struts tumble away from the hull and fall, with a spray of sparks. The ship itself is unchanged.
+  spawnHitBits(ship, n) {
+    for (let i = 0; i < n; i++) {
+      const ang = this._rand() * Math.PI * 2, sp = 30 + this._rand() * 70;
+      const a = this._rand() * Math.PI, L = 1.5 + this._rand() * 3;
+      const bit = [-Math.cos(a) * L, -Math.sin(a) * L, 0, Math.cos(a) * L, Math.sin(a) * L, 0];
+      this.effects.push({
+        kind: 'debris',
+        x: ship.x + (this._rand() - 0.5) * 16, y: ship.y + (this._rand() - 0.5) * 14, z: (this._rand() - 0.5) * 10,
+        vx: Math.cos(ang) * sp + ship.vx * 0.6, vy: Math.sin(ang) * sp + ship.vy * 0.6 + 25, vz: (this._rand() - 0.5) * 50,
+        ang: 0, av: (this._rand() - 0.5) * 14,
+        seg: bit, age: 0, life: 1.6 + this._rand() * 1.2,
+      });
+    }
+    for (let i = 0; i < n * 5; i++) this._spark(ship.x, ship.y, 0, 30 + this._rand() * 120, 0.7, 1.5);
   }
   // A pellet lands: a few motes of dust.
   spawnDust(x, y) {
@@ -1338,6 +1389,21 @@ export class LanderScene {
       const [k0, k1] = this.chunkSpan;
       const blink = (Math.sin(this.time * Math.PI * 2) > 0.6) ? 1 : 0;
       for (let k = k0; k <= k1; k++) for (const p of C.getChunk(this.world, k).pads) if (p.relay) {
+        if (p.gate) {
+          // the gate pad's own lights: the two pylon lamps alternate, and a column of dashes climbs from each
+          const here = view && view.relayLit === p.id;
+          const ph = (this.time * 1.5) % 1;
+          for (const s of [-1, 1]) {
+            const lx = (s < 0 ? p.x0 : p.x1) + s * 8, ly = p.y + GATE_PYLON + 4;
+            const on = here || (Math.sin(this.time * Math.PI * 2 + (s < 0 ? 0 : Math.PI)) > 0);
+            if (on) for (let j = 0; j < 4; j++) { const a0 = Math.PI * j / 2 + Math.PI / 4, a1 = a0 + Math.PI / 2; D.seg2(lx + Math.cos(a0) * 3, ly + Math.sin(a0) * 3, lx + Math.cos(a1) * 3, ly + Math.sin(a1) * 3, 2.2); }
+            for (let j = 0; j < GATE_BEAM_DASHES; j++) {
+              const t = (j + ph) / GATE_BEAM_DASHES;
+              const y0 = ly + 8 + t * GATE_BEAM;
+              D.seg2(lx, y0, lx, y0 + 9, 0.9 * (1 - t));
+            }
+          }
+        }
         const lit = (view && view.relayLit === p.id) ? 1 : blink;
         if (!lit) continue;
         const x = p.x0 - 34, y = p.y + 102;
@@ -1385,13 +1451,17 @@ export class LanderScene {
         } else if (sh.kind === 'chaff') {
           // a shower of shreds under the drop point, hashed so each shred keeps its place
           const rng = globalThis.LunarCore.mulberry32(globalThis.LunarCore.hashSeed(1234, sh.id.length + sh.id.charCodeAt(1)));
-          const spread = 18 + sh.t * 22, fall = sh.t * 26;
+          // 2026-11-11 (James: "i cant see anything happening when i use it"): the cloud is BIG and bright now —
+          // CHAFF.n tumbling foil strips CHAFF.len ft long that flash as they turn, spreading fast at first
+          const spread = 26 + 70 * (1 - Math.exp(-sh.t * 1.6)), fall = sh.t * 26;
           const fade = Math.max(0, 1 - sh.t / sh.life);
-          for (let i = 0; i < 34; i++) {
-            const ox = (rng() - 0.5) * 2 * spread, oy = -rng() * fall - (rng() - 0.5) * 8, oz = (rng() - 0.5) * 24;
-            const a = rng() * Math.PI * 2 + sh.t * (1 + rng() * 3);
+          for (let i = 0; i < CHAFF.n; i++) {
+            const ox = (rng() - 0.5) * 2 * spread, oy = -rng() * fall + (rng() - 0.5) * spread * 0.7, oz = (rng() - 0.5) * 24;
+            const a = rng() * Math.PI * 2 + sh.t * (2 + rng() * 5);
+            const tw = 0.5 + 0.5 * Math.sin(sh.t * (9 + rng() * 14) + rng() * 6.28);   // the foil catches the light as it turns
+            const L = CHAFF.len * (0.6 + rng() * 0.8) * 0.5;
             const x = sh.x + ox, y = Math.max(sh.y + oy, this.world ? this._groundAt(x) + 0.5 : sh.y + oy);
-            D.seg(x, y, oz, x + Math.cos(a) * 2.2, y + Math.sin(a) * 2.2, oz, (0.6 + rng() * 0.6) * fade);
+            D.seg(x - Math.cos(a) * L, y - Math.sin(a) * L, oz, x + Math.cos(a) * L, y + Math.sin(a) * L, oz, (0.7 + CHAFF.bright * tw) * fade);
           }
         }
       }

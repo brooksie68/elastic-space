@@ -68,6 +68,11 @@
   // the hull's own box now, not a sphere twice its height)
   const SHELL = { speed: 520, life: 4.5, radius: 10, bodyPad: 4, muzzleAhead: 16, muzzleDown: 2.2, reload: 0.8 };   // reload, not one-in-the-air (James, 2026-09-08): walk fire onto a target
   // ---- the laser --------------------------------------------------------------------
+  // THE BOOST (2026-11-11, James: "give the tank a boost on pressing shift. faster for a minute but it runs out
+  // pretty quickly and has to recharge"): held while driving forward, top speed x `mult` and the pull x `accel`;
+  // a full charge lasts `burn` seconds and refills in `recharge`; run it dry and it will not fire again until it
+  // is `rearm` full.
+  const BOOST = { mult: 1.7, accel: 2.2, burn: 5, recharge: 14, rearm: 0.3 };
   const LASER = { range: 1400, recharge: 6.0, radius: 6, beamLife: 0.22 };
   // ---- the enemies ---------------------------------------------------------------------
   // `mult` is the X rating on the lander's scale: points = 100 × mult.
@@ -293,7 +298,8 @@
     return { x: x, z: z, y: groundAt(state, x, z), heading: heading, turnV: 0, speed: 0,
       look: heading, pitch: 0,          // the view: yaw + pitch, absolute, the mouse's
       turret: heading, gunPitch: 0, turretV: 0,   // the gun: follows the view with mass
-      hits: 0, armor: armorMax(state), alive: true, reload: 0, recoil: 0, grace: state.opts.spawnGrace };
+      hits: 0, armor: armorMax(state), alive: true, reload: 0, recoil: 0, grace: state.opts.spawnGrace,
+      boost: 1, boostOn: false, boostSpent: false };   // the boost: charge 0..1, burning now, run dry and re-arming
   }
   // A mission starts the tank near the left edge of its stretch, facing down
   // the stretch (+x) — on the HIGHEST clear ground in the first 1,500 ft with
@@ -526,7 +532,7 @@
 
   // input: { drive: -1|0|1, turn: -1..1 (the hull), look: rad (the view's yaw, absolute — the mouse; omit to
   //          let the view ride the hull), tilt: rad (the view's pitch, absolute; omit to use `pitch`),
-  //          pitch: -1..1 (the keys' look target, legacy), fire: bool, laser: bool }
+  //          pitch: -1..1 (the keys' look target, legacy), fire: bool, laser: bool, boost: bool (held) }
   function step(state, input) {
     const events = state.events;
     events.length = 0;
@@ -538,15 +544,21 @@
 
     // ---- drive ----
     const drive = input.drive | 0;
-    const top = topSpeed(state);
+    // the boost: burns while held and driving forward, refills otherwise; dry = locked out until `rearm`
+    const boosting = !!input.boost && drive > 0 && t.boost > 0 && !t.boostSpent;
+    if (boosting) { t.boost = Math.max(0, t.boost - DT / BOOST.burn); if (t.boost === 0) t.boostSpent = true; }
+    else { t.boost = Math.min(1, t.boost + DT / BOOST.recharge); if (t.boostSpent && t.boost >= BOOST.rearm) t.boostSpent = false; }
+    if (boosting !== t.boostOn) { t.boostOn = boosting; events.push({ type: boosting ? 'boostOn' : 'boostOff', spent: t.boostSpent }); }
+    const top = topSpeed(state) * (boosting ? BOOST.mult : 1);
+    const before = t.speed;
     const want = drive > 0 ? top : drive < 0 ? -TANK.reverse : 0;
     const slope = slopeAlong(state, t.x, t.z, t.heading);
     const grade = Math.max(0.45, 1 - Math.max(0, slope) * 1.4);     // uphill slows it, downhill does not speed it
     const target = want * (want > 0 ? grade : 1);
-    if (Math.abs(target) > Math.abs(t.speed) && Math.sign(target) === Math.sign(t.speed || target)) t.speed += Math.sign(target) * TANK.accel * DT;
+    if (Math.abs(target) > Math.abs(t.speed) && Math.sign(target) === Math.sign(t.speed || target)) t.speed += Math.sign(target) * TANK.accel * (boosting ? BOOST.accel : 1) * DT;
     else t.speed += (target - t.speed) * Math.min(1, TANK.brake * DT / Math.max(1, Math.abs(target - t.speed)));
     if (Math.abs(t.speed) < 0.05 && drive === 0) t.speed = 0;
-    t.speed = Math.max(-TANK.reverse, Math.min(top, t.speed));
+    t.speed = Math.max(-TANK.reverse, Math.min(Math.max(top, before - TANK.brake * DT), t.speed));   // off the boost the speed eases down, never snaps
     // ---- turn (eased, never instant: motion restraint) ----
     // W goes where you LOOK (James, 2026-09-07: "W and S are reversed!" — after a mouse turn the
     // hull's own heading felt backwards): while driving, the hull swings toward the view
@@ -1127,6 +1139,7 @@
       waypoint: (() => { const wp = nextWaypoint(state); if (!wp) return null; const rng2 = Math.hypot(wp.x - t.x, wp.z - t.z); return { i: wp.i, of: state.route.length, name: wp.name, range: Math.round(rng2), bearing: wrapAngle(headingTo(t.x, t.z, wp.x, wp.z) - t.look), reached: wp.reached, boss: wp.boss, base: wp.base, x: wp.x, z: wp.z }; })(),
       routeDone: state.route.filter((w) => w.done).length, routeTotal: state.route.length,
       shellReady: t.reload <= 0, reload: Math.max(0, Math.min(1, 1 - t.reload / SHELL.reload)), shellsOut: state.shells.length, laser: state.laser.charge,
+      boost: t.boost, boostOn: t.boostOn, boostSpent: t.boostSpent,
       heading: t.heading, headingDeg: deg(t.heading),
       look: t.look, lookDeg: deg(t.look),
       hullBearing: wrapAngle(t.heading - t.look),
@@ -1141,7 +1154,7 @@
 
   globalThis.LunarTankCore = {
     DT: DT, CHUNK_W: CHUNK_W, GRAVITY: GRAVITY, shellSolution: shellSolution, muzzle: muzzle, gunDir: gunDir, inHull: inHull,
-    TANK: TANK, TURRET: TURRET, SHELL: SHELL, LASER: LASER, ENEMY: ENEMY, SAM: SAM, MISSIONS: MISSIONS, DEFAULTS: DEFAULTS,
+    BOOST: BOOST, TANK: TANK, TURRET: TURRET, SHELL: SHELL, LASER: LASER, ENEMY: ENEMY, SAM: SAM, MISSIONS: MISSIONS, DEFAULTS: DEFAULTS,
     DAMAGE: DAMAGE, PICKUP: PICKUP, PICKUP_KINDS: PICKUP_KINDS, GUN: GUN, HANGAR: HANGAR, BASE_HP: BASE_HP, WP: WP,
     layRoute: layRoute, nextWaypoint: nextWaypoint, seatStructure: seatStructure, spawnGroup: spawnGroup, topSpeed: topSpeed, shellSpeed: shellSpeed, armorMax: armorMax,
     RADAR_RANGE: RADAR_RANGE, SPAWN_MIN: SPAWN_MIN, SPAWN_MAX: SPAWN_MAX, FLAT_MARGIN: FLAT_MARGIN,

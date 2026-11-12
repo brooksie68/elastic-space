@@ -2,6 +2,81 @@
 
 Newest entries first. Never rewrite or delete earlier entries.
 
+## 2026-11-11 (the gate pad's look; the regenerative fuel pump) — Claude
+
+James: "the relay pad itself needs some type of visual differentiator. not the drift ones. but the official level
+objective ones." The GATE pad (`pad.gate`) now wears its own dressing (render3d.js): a second deck line, a row of
+hazard chevrons under it, a tall outward-leaning pylon at each end (static, in `_syncStatic`), the two pylon lamps
+blinking in turn and a column of dashes climbing from each (live, in the relay-lamp block; `GATE_PYLON` 24 ft,
+`GATE_BEAM` 220 ft, `GATE_BEAM_DASHES` 9 are the knobs), plus a green RELAY chip beside the pad's multiplier
+(`.pad-label .tag.gate`). Drift relay pads keep the plain tower and nothing else.
+
+"new bonus idea: regenerative fuel pump: it makes fuel deplete 50% slower." Built as a LANDING TECH piece, third on
+the ladder (shock → spider → pump → auto), earned like the legs (good or perfect on a 4X / 5X), lost to a crash like
+any piece: `PUMP_BURN` 0.5 multiplies every burn, the abort included (`step`, game-core.js). HUD drawing (a drop
+inside two return arrows), hover card, a return pipe + pump housing drawn on the ship (`buildTech('pump')`).
+CLAUDE'S PICK, not his word: that it is a tech piece and where it sits on the ladder.
+
+"i dont see any place on the HUD that shows hull strength/status or shield status... are there shields?" — both
+meters have been in the console since 2026-10-16, right of the fuel bar under the score: HULL and ARMOR (armor is
+the shield: it takes the hits first and comes from pads, +50). Nothing built; told him where they are.
+
+Sim 319,782 green (TEST 12 knows the four pieces + the pump's burn; TEST 9's stock-tank life drops the pump so the
+plain pilot still runs dry). Core tag 13, shell tag 30, renderer tag 14, smoke page regenerated, pane-checked at
+1920×1080 on the smoke page.
+
+HIS ANSWERS, the same night: the pump is a PAD PICKUP, not a tech piece ("1. pad pickup"); the hull / armor meters
+are fine as they are. REBUILT: the ladder is three pieces again (shock, spider, auto). `'pump'` is a pad item now —
+dealt by its own hash (`PUMP_ODDS` 0.09 per pad with room, never chunk 0, never past `ITEM_MAX`; about 7% of
+level-1 pads, three stretches in four hold one), so no other roll on the moon moved. Landing on one sets
+`state.pump`; `PUMP_BURN` 0.5 on every burn; a crash loses it with the lander (`newAttempt`), like the armor.
+Shown as a lit FUEL PUMP chip under the pad, PUMP on the strip map, a PUMP ½ chip beside the word FUEL while held,
+and the pipe + housing on the ship.
+
+Then three flight notes, all built:
+1. "theres a '6 depot' at the end of level two and i can't target it or shoot at it." As built — the AMMO DEPOT sits
+   behind a ridge: missiles only, from 220 ft or more above it — but the refusal was the single word RIDGE. The
+   core's reasons are plain words now (`targetable`): BEHIND A RIDGE — MISSILES ONLY (PRESS 1) / TOO LOW, CLIMB N FT;
+   UNDER AN OVERHANG — SHOOT FROM ITS RIGHT SIDE / TOO HIGH, COME IN LOWER; BLAST DOOR SHUT — IT OPENS WHEN ITS SAM
+   FIRES. The rule itself is unchanged.
+2. "the chaff doesnt seem to do anything... i cant see anything happening." The cloud was 34 shreds 2 ft long. Now
+   70 foil strips 9 ft long that flash as they tumble, spreading to ~190 ft across (`CHAFF` in render3d.js), a pop
+   under the ship at the drop (`spawnChaff`), and the label says CHAFF OUT or CHAFF OUT — NO MISSILE IN THE AIR;
+   a missile that is not fooled says CHAFF IGNORED; an empty rack says NO CHAFF LEFT.
+3. "when the lander takes damage there should be a short warning klaxon and some bits flying off the lander."
+   `Sfx.klaxon` (three two-tone honks, under half a second, at most once per `KLAXON_GAP` 1.5 s) and
+   `spawnHitBits` (small plates tumbling off the hull with sparks: 12 for a SAM, 3 a laser tick, 2 a pellet).
+
+Sim 323,333 green. Core tag 15, shell tag 32, renderer tag 16, smoke page regenerated. The pump chip was seen on
+the smoke page; the chaff cloud, the bits and the klaxon ran without errors there but were NOT judged by eye or ear.
+
+THE DEPOT IS ARMORED ON ITS SIDES + THE ONBOARD AI (the same night). His read of the depot: "i had to be right
+above it. that wasn't clear. at all. and also it in no way looked to be behind a ridge or anything else. it was just
+sitting there. instead of a ridge how about its too armored on the sides... it can only be damaged from directly
+above. add in a HUD message screen and give AI-like messages about that and a few other things as well. damage. low
+fuel. target destroyed, etc."
+1. THE DEPOT: `hard: 'ridge'` is gone; the AMMO DEPOT is `hard: 'top'`. Rule (`TOP_ARMOR` in the core): EITHER weapon
+   gets in, but only from above the roof — at least 60 ft over it and inside a cone that opens 0.6 ft sideways per
+   foot of height from the roof's edges. `RIDGE_ALT` and the missiles-only rule are deleted. The drawing shows it
+   (structures.js, both the flat profile and the tank's solid): a leaning double-skinned bolted slab on each side,
+   three smaller magazines between, the roof bare. The sitrep and the cursor tag say ARMORED SIDES (`HARD_WORDS` in
+   the shell); the refusal reads ARMORED SIDES — FIRE FROM DIRECTLY ABOVE IT. The tank's label says ARMORED.
+2. THE ONBOARD AI: a message screen under the console's right end (`#ai`, game.js "THE ONBOARD AI"): the newest four
+   lines, typed on, sentence case, pink for a warning, green for good news, dimming after nine seconds, a small blip
+   per line. `aiSay(text, cls, key, gap)` — a keyed line cannot repeat inside its gap. What it says: the level brief
+   at the start of each level; target destroyed + how many remain; all targets down; a civilian hit; a miss; why a
+   hardened target refuses (on a refused click, a refused shot, and when Shift lands on one you cannot hit from
+   here); missile launch (and whether you have chaff); chaff took it / ignored / wasted / none left; damage with
+   the hull and armor left; a system offline and back; a laser turret or pellet gun firing (once per 12 s); fuel at
+   a quarter and at a tenth WITH the nearest fuel pad's distance and side; hull under 30; the tank dry; the lander
+   lost; refuelled; the pump fitted; landing on the relay pad with targets still standing; and FLYING PAST THE END
+   LINE ("N targets are still standing behind you, to the west") — which answers the 2026-11-09 hole with a
+   message. That last one and the relay-pad one were Claude's additions, not his list.
+Sims 323,383 (lander) + 5,312 (tank) green. Core tag 16, shell tag 33, renderer tag 17, structures tag 5, smoke page
+regenerated. On the smoke page: the panel sits under the console's right end at 1920×1080, the lines type out, the
+brief / low fuel / past-the-end / refusal / lander-lost lines all fired, no console errors. The depot's new drawing
+was NOT looked at.
+
 ## 2026-11-09 (the launch label gone; the END line question) — Claude
 
 James: "when the lander launches and there is a mountain a message appears like 'aimed 70 degrees to miss the

@@ -3,7 +3,7 @@
 // Game rules live in game-core.js (pure, sim-tested). The picture lives in
 // render3d.js (pure presentation). This file wires the two together and owns
 // nothing else.
-import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=13';
+import { LanderScene, DEFAULT_PARAMS } from './render3d.js?v=17';
 
 const Core = globalThis.LunarCore;
 
@@ -88,8 +88,9 @@ const MESSAGES = {
 // the crash-card words for the shooters
 const SYSTEM_NAMES = {};
 for (const S of globalThis.LunarCore.SYSTEMS) SYSTEM_NAMES[S.id] = S.name;
-const ITEM_WORDS = { missiles: 'MISSILES', laser: 'LASER', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR' };
-const ITEM_SHORT = { missiles: 'MSL', laser: 'LSR', chaff: 'CHF', hull: 'HULL', armor: 'ARM' };
+const HARD_WORDS = { overhang: 'UNDER AN OVERHANG', top: 'ARMORED SIDES', door: 'BLAST DOOR', shield: 'SHIELDED', base: 'THE BASE' };
+const ITEM_WORDS = { missiles: 'MISSILES', laser: 'LASER', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR', pump: 'FUEL PUMP' };
+const ITEM_SHORT = { missiles: 'MSL', laser: 'LSR', chaff: 'CHF', hull: 'HULL', armor: 'ARM', pump: 'PUMP' };
 const LEVEL_BRIEF = {
   1: 'LEVEL 1 — DESTROY THE FOUR TARGETS IN THE STRETCH (ONE SAM SITE, ONE PELLET GUN), THEN LAND ON THE RELAY',
   2: 'LEVEL 2 — SIX TARGETS: TWO SAM SITES, A LASER TURRET, A PELLET GUN, ONE HARDENED. THE RELAY ENDS IT',
@@ -150,7 +151,9 @@ let hover = null;            // structure sid under the cursor
 let target = null;           // selected structure sid
 let denyWhy = null, denyT = 0;   // the tag's refusal word and how long it shows
 const cursor = { x: 0, y: 0, on: false };
-const SUPPLY_NAMES = { missiles: 'MISSILES', laser: 'LASER CHARGE', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR' };
+const SUPPLY_NAMES = { missiles: 'MISSILES', laser: 'LASER CHARGE', chaff: 'CHAFF', hull: 'HULL', armor: 'ARMOR', pump: 'REGEN FUEL PUMP' };
+const KLAXON_GAP = 1.5;      // s between damage klaxons
+let klaxonT = -9;
 let dmgAcc = null;           // damage floats coalesce (a pellet burst is many small hits): { source, hull, armor, t }
 
 // Read-only handle for headless checks and the look-dev harness.
@@ -281,6 +284,10 @@ const Sfx = {
   chaff() { this.noise(0.35, 0.4, 3200); this.env('triangle', 600, 0.2, 0.05, 200); },
   // the hits on the lander (2026-09-12): a thud for a pellet, a crackle for the beam, the burst's rattle
   hit() { this.noise(0.09, 0.5, 900); this.env('square', 110, 0.08, 0.08, 60); },
+  // the onboard AI speaks: a small blip, lower for a warning
+  ai(warn) { this.env('sine', warn ? 980 : 1560, 0.045, 0.03); },
+  // the damage klaxon: three short two-tone honks, under half a second
+  klaxon() { for (let i = 0; i < 3; i++) setTimeout(() => { this.env('sawtooth', 620, 0.09, 0.1, 600); setTimeout(() => this.env('sawtooth', 440, 0.07, 0.1, 420), 80); }, i * 160); },
   beam() { this.env('sawtooth', 240, 0.9, 0.07, 190); this.env('sine', 2400, 0.9, 0.03, 1900); this.noise(0.3, 0.2, 4000); },
   burst() { for (let i = 0; i < 8; i++) setTimeout(() => this.env('square', 420 + i * 30, 0.03, 0.05, 200), i * 60); this.noise(0.5, 0.25, 2600); },
   systemDown() { this.env('sawtooth', 300, 0.35, 0.09, 120); setTimeout(() => this.env('sawtooth', 240, 0.4, 0.09, 90), 200); },
@@ -417,6 +424,7 @@ function startGame() {
   resetThrottle();
   Sfx.beepTimer = 0;
   $('ro-select').textContent = state.free ? 'FREE FLIGHT' : 'LEVEL ' + state.level;
+  aiReset(); aiLevelBrief();
   if (!hintFadeDone) { hintFadeDone = true; $('hint').classList.add('faded'); }
 }
 // The next flight from the result card. `liftoff` (level 3) burns straight
@@ -441,6 +449,7 @@ function nextAttempt(liftoff) {
     writeCampaign({ seed: state.seed, level: state.level, score: state.score });
     $('ro-select').textContent = 'LEVEL ' + state.level;
     floatLabel(state.ship.x, state.ship.y + 60, Core.LEVELS[state.level].name + ' — ' + state.hostilesTotal + ' HOSTILES EAST OF HERE', 'tech', 0);
+    aiFlags = {}; aiSaid = {}; aiLevelBrief();
   }
   Core.newAttempt(state, { liftoff: !!liftoff });
   scene.clearEffects();
@@ -613,14 +622,20 @@ function showResult(result) {
 function handleEvents(events) {
   for (const e of events) {
     if (e.type === 'abort') Sfx.abort();
+    else if (e.type === 'dry') aiSay('The tank is dry. We are a glider now.', 'warn');
     else if (e.type === 'landed') {
       const r = e.result;
+      if (r.levelDone) aiSay(r.campaignDone ? 'The base has fallen. Climb out. The tank is waiting.' : 'Level ' + r.levelDone + ' complete.', 'good');
+      else if (r.pad && r.pad.gate && !state.free && !state.levelClear) aiSay('This is the relay pad, but ' + state.hostilesLeft + ' target' + (state.hostilesLeft === 1 ? ' is' : 's are') + ' still standing. The level ends here once they are down.', '');
+      for (const it of (r.items || [])) if (it.kind === 'pump' && it.amount > 0) aiSay('Regenerative fuel pump fitted. Every burn now costs half the fuel.', 'good');
+      if (r.fuelPad) aiSay('Refuelled. ' + Math.round(state.fuel) + ' units aboard.', 'good', 'refuel', 2);
+      if (r.techEarned) aiSay(TECH_NAMES[r.techEarned].charAt(0) + TECH_NAMES[r.techEarned].slice(1).toLowerCase() + ' fitted.', 'good');
       scene.spawnTouchdown(state.ship.x, state.ship.y - 11, r.kind === 'perfect' ? 0.4 : r.kind === 'good' ? 0.8 : 1.3);
       let row = 0;
       if (r.points > 0) floatLabel(state.ship.x, state.ship.y + 34, '+' + r.points, 'pts', row++);
       if (r.techEarned) { floatLabel(state.ship.x, state.ship.y + 34, TECH_NAMES[r.techEarned], 'tech', row++); Sfx.earn(); }
       if (r.fuelPad) { floatLabel(state.ship.x, state.ship.y + 34, 'FUEL +' + r.fuelPad, 'fuel', row++); Sfx.refuel(); }
-      for (const it of (r.items || [])) if (it.amount > 0) floatLabel(state.ship.x, state.ship.y + 34, SUPPLY_NAMES[it.kind] + ' +' + it.amount, it.kind === 'hull' || it.kind === 'armor' ? 'tech' : 'fuel', row++);
+      for (const it of (r.items || [])) if (it.amount > 0) floatLabel(state.ship.x, state.ship.y + 34, it.kind === 'pump' ? 'REGEN FUEL PUMP — FUEL BURNS HALF AS FAST' : SUPPLY_NAMES[it.kind] + ' +' + it.amount, it.kind === 'hull' || it.kind === 'armor' || it.kind === 'pump' ? 'tech' : 'fuel', row++);
       if (r.levelDone) { floatLabel(state.ship.x, state.ship.y + 34, 'LEVEL ' + r.levelDone + ' COMPLETE', 'tech', row++); Sfx.earn(); }
       if (r.kind === 'secret') Sfx.secret(); else Sfx.land(r.kind);
       if (Core.hasTech(state, 'shock')) squashT = 0;
@@ -630,6 +645,7 @@ function handleEvents(events) {
     } else if (e.type === 'crashed') {
       scene.spawnCrash(state.ship);
       Sfx.crash();
+      aiSay(state.phase === 'over' ? 'Lander lost, and the fuel with it.' : 'Lander lost.' + (state.pump ? ' The fuel pump went with it.' : '') + ' A new one is on the way.', 'warn');
       if (e.result.techLost) Sfx.lose();
       autoOn = false;
       slowMo = 0.18;              // the beat: the pieces hang, then time comes back
@@ -648,42 +664,55 @@ function handleEvents(events) {
       if (st) scene.spawnBreak(st);
       floatLabel(e.x, e.y + 40, '+' + e.points + '  ' + e.name, 'pts', 0);
       Sfx.kill();
+      aiSay('Target destroyed: ' + e.name + '.' + (state.free || state.levelClear ? '' : ' ' + state.hostilesLeft + ' remaining.'), 'good');
       if (target === e.sid) target = null;
       if (hover === e.sid) hover = null;
     } else if (e.type === 'shield') {
       const st = Core.structureById(state, e.sid);
       if (st) scene.spawnShield(st);
       floatLabel(e.x, e.y + 30, 'SHIELD DOWN', 'tech', 0);
+      aiSay('Its shield took that one. Hit it again.', '', 'shield', 2);
       Sfx.clank();
     } else if (e.type === 'civHit') {
       const st = Core.structureById(state, e.sid);
       if (st) scene.spawnBreak(st);
       floatLabel(e.x, e.y + 40, e.points + '  ' + e.name, 'lost', 0);
+      aiSay('That was a civilian building: ' + e.name + '. ' + Math.abs(e.points) + ' points deducted.', 'warn');
       Sfx.lose();
     } else if (e.type === 'miss') {
       floatLabel(e.x, e.y + 24, 'MISSED', 'fuel', 0);
+      aiSay('Shot missed.', '', 'miss', 1);
     } else if (e.type === 'levelClear') {
       floatLabel(state.ship.x, state.ship.y + 60, 'LEVEL ' + e.level + ' CLEAR — LAND ON THE RELAY', 'tech', 0);
+      aiSay('All targets down. Land on the relay pad to finish the level.', 'good');
       Sfx.earn();
     } else if (e.type === 'shieldDown') {
       const st = Core.structureById(state, e.sid);
       if (st) scene.spawnShield(st);
       scene.flash = Math.max(scene.flash, 0.5);
       floatLabel(e.x, e.y + 40, 'SHIELD DOWN — MISSILES NOW', 'tech', 0);
+      aiSay('The base shield is down. Switch to missiles. Press 1.', 'good');
       Sfx.clank(); setTimeout(() => Sfx.kill(), 200);
     } else if (e.type === 'hull') {
       scene.spawnImpact(e.x, e.y, true);
       floatLabel(e.x, e.y + 40, 'HULL CRACKED — ONE MORE', 'tech', 0);
+      aiSay('The base hull is cracked. One more missile.', 'good');
       Sfx.boom(true);
     } else if (e.type === 'samLaunch') {
       floatLabel(e.x, e.y + 30, 'SAM LAUNCH', 'sam', 0);
+      aiSay(state.ammo.chaff > 0 ? 'Missile launch detected. Chaff is on C.' : 'Missile launch detected. No chaff left. Outfly it.', 'warn', 'sam', 2);
       scene.spawnImpact(e.x, e.y, false);
       Sfx.warn();
     } else if (e.type === 'samCorrect') {
       Sfx.tick();
     } else if (e.type === 'samDecoyed') {
       floatLabel(e.x, e.y + 20, 'DECOYED', 'fuel', 0);
+      aiSay('The missile took the chaff.', 'good');
       Sfx.lock();
+    } else if (e.type === 'samIgnored') {
+      const th = state.threats.find((q) => q.id === e.threat);
+      if (th) floatLabel(th.x, th.y + 20, 'CHAFF IGNORED', 'sam', 0);
+      aiSay('The missile ignored the chaff. Keep moving.', 'warn');
     } else if (e.type === 'samEnd') {
       if (!e.hit) { scene.spawnImpact(e.x, e.y, false); Sfx.boom(false); }
     } else if (e.type === 'damage') {
@@ -692,17 +721,25 @@ function handleEvents(events) {
       else { flushDamage(); dmgAcc = { source: e.source, hull: e.hull, armor: e.armor, t: clock }; }
       scene.flash = Math.max(scene.flash, e.source === 'sam' ? 0.7 : 0.18);
       if (e.source !== 'laser') Sfx.hit();
+      // 2026-11-11 (James): "a short warning klaxon and some bits flying off the lander" — the klaxon once
+      // per KLAXON_GAP s however many hits land; the bits every hit, more for a SAM
+      if (clock - klaxonT > KLAXON_GAP) { klaxonT = clock; Sfx.klaxon(); }
+      scene.spawnHitBits(state.ship, e.source === 'sam' ? 12 : e.source === 'laser' ? 3 : 2);
     } else if (e.type === 'systemDown') {
       flushDamage();
       floatLabel(state.ship.x, state.ship.y + 50, e.name + ' OUT', 'hit', 1);
+      aiSay(e.name.charAt(0) + e.name.slice(1).toLowerCase() + ' is offline' + (e.system === 'launcher' ? '. Missiles will not fire' : e.system === 'thrusters' ? '. We turn slower' : '. Thrust is capped') + '. A HULL pad repairs it.', 'warn');
       Sfx.systemDown();
     } else if (e.type === 'systemUp') {
       floatLabel(state.ship.x, state.ship.y + 50, e.name + ' BACK', 'tech', 1);
+      aiSay(e.name.charAt(0) + e.name.slice(1).toLowerCase() + ' is back online.', 'good');
     } else if (e.type === 'beamOn') {
       floatLabel(e.x, e.y + 40, 'LASER', 'sam', 0);
+      aiSay('A laser turret has us in its beam. Get out of its reach.', 'warn', 'beam', 12);
       Sfx.beam();
     } else if (e.type === 'burst') {
       floatLabel(e.x, e.y + 34, 'PELLETS', 'sam', 0);
+      aiSay('A pellet gun is firing at us.', 'warn', 'pellets', 12);
       Sfx.burst();
     } else if (e.type === 'pelletEnd') {
       scene.spawnDust(e.x, e.y);
@@ -728,6 +765,11 @@ function flushDamage() {
   if (dmgAcc.hull > 0.01) parts.push('HULL −' + Math.round(dmgAcc.hull));
   const word = dmgAcc.source === 'sam' ? 'SAM' : dmgAcc.source === 'laser' ? 'LASER' : 'PELLETS';
   if (parts.length) floatLabel(state.ship.x, state.ship.y + 40, parts.join(' · ') + '  ' + word, 'hit', 0);
+  if (parts.length) {
+    const what = dmgAcc.source === 'sam' ? 'Missile impact.' : dmgAcc.source === 'laser' ? 'Laser burn.' : 'Pellet hits.';
+    const took = dmgAcc.hull > 0.01 ? ' Hull at ' + Math.round(state.hull) + '%' + (state.armor > 0 ? ', armor at ' + Math.round(state.armor) + '.' : ', no armor left.') : ' The armor took it. Armor at ' + Math.round(state.armor) + '.';
+    aiSay(what + took, 'warn', 'dmg:' + dmgAcc.source, 2.5);
+  }
   dmgAcc = null;
 }
 
@@ -747,8 +789,9 @@ function buildPadLabels() {
     const ch = Core.getChunk(state, k);
     for (const p of ch.pads) {
       const el = document.createElement('div');
-      el.className = 'pad-label' + (p.fuel ? ' fuel' : '') + (p.used ? ' used' : '');
+      el.className = 'pad-label' + (p.fuel ? ' fuel' : '') + (p.used ? ' used' : '') + (p.gate ? ' gate' : '');
       el.innerHTML = '<span class="mult">' + p.mult + '<span class="x">×</span></span>' +
+        (p.gate ? '<span class="tag gate">RELAY</span>' : '') +
         (p.used ? '<span class="tag">USED</span>' : '');
       labelLayer.appendChild(el);
       padLabels.push({ el, x: (p.x0 + p.x1) / 2, y: p.y + 6 });
@@ -764,7 +807,7 @@ function buildPadLabels() {
         // THE ITEMS (2026-09-12): a row of labelled chips under the pad, in words — never a tiny glyph
         const m = document.createElement('div');
         m.className = 'pad-item' + (p.used ? ' used' : '');
-        m.innerHTML = p.items.map((it) => '<span class="' + (it === 'hull' || it === 'armor' ? 'care' : '') + '">' + ITEM_WORDS[it] + (it === 'hull' || it === 'armor' ? ' +' + Core.PAD_SUPPLY[it] : '') + '</span>').join('');
+        m.innerHTML = p.items.map((it) => '<span class="' + (it === 'hull' || it === 'armor' ? 'care' : it === 'pump' ? 'pump' : '') + '">' + ITEM_WORDS[it] + (it === 'hull' || it === 'armor' ? ' +' + Core.PAD_SUPPLY[it] : '') + '</span>').join('');
         labelLayer.appendChild(m);
         padLabels.push({ el: m, x: (p.x0 + p.x1) / 2, y: p.y - (p.fuel ? 22 : 3), below: true });
       }
@@ -1000,7 +1043,7 @@ function frameStep(dt) {
     gravity: Core.GRAVITY * Core.FLIGHT.gravity * play.gravity,
     showShip: state.ship.alive,
     secret: state.result && state.result.kind === 'secret',
-    tech: state.tech,
+    tech: state.pump ? state.tech.concat('pump') : state.tech,   // the fuel pump is a pickup, drawn on the ship like a piece
     fan, squash,
     autoOn: autoOn && mode === 'play',
     shots: state.shots,
@@ -1021,12 +1064,99 @@ function frameStep(dt) {
   placeShipHud();
   if (dmgAcc && clock - dmgAcc.t > 0.35) flushDamage();
   renderSitrep(dt);
+  aiTick(dt);
   drawStrip();
 }
 
 // ---- THE SITREP (2026-09-12) ----------------------------------------------------------------------
 // Level, one box per target (its kind word; an X when it is down), the count, the steps, the
 // lander's condition (hull, armor, the three systems), and what is targeted right now.
+// ---- THE ONBOARD AI (2026-11-11, James: "add in a HUD message screen and give AI-like messages about that
+// and a few other things as well. damage. low fuel. target destroyed, etc") ---------------------------------
+// One panel under the console's right end. The newest AI_KEEP lines stay, typed on at AI_CPS characters a
+// second; a line dims after AI_FRESH seconds. aiSay(text, cls, key, gap): cls '' | 'warn' | 'good'; a `key`
+// said again inside `gap` seconds is dropped, so a pellet gun cannot fill the screen.
+const aiEl = $('ai'), aiLog = $('ai-log');
+const AI_KEEP = 4, AI_FRESH = 9, AI_CPS = 70;
+let aiMsgs = [], aiSaid = {}, aiFlags = {};
+function aiReset() { aiMsgs = []; aiSaid = {}; aiFlags = {}; aiLog.textContent = ''; }
+function aiSay(text, cls, key, gap) {
+  if (key) { if (aiSaid[key] !== undefined && clock - aiSaid[key] < (gap || 4)) return; aiSaid[key] = clock; }
+  const el = document.createElement('div');
+  el.className = 'ai-msg typing' + (cls ? ' ' + cls : '');
+  aiLog.appendChild(el);
+  aiMsgs.push({ el, text, n: 0, t: clock });
+  while (aiMsgs.length > AI_KEEP) aiMsgs.shift().el.remove();
+  Sfx.ai(cls === 'warn');
+}
+const feet = (n) => Math.round(n).toLocaleString('en-US') + ' ft';
+// why a hardened target refuses, as the AI would say it
+function aiRefusal(st, why) {
+  if (!st || !why) return;
+  const n = st.name;
+  let m = null;
+  if (st.hard === 'top') m = 'The ' + n + ' is armored on its sides. Get directly above it, then fire. Either weapon works from there.';
+  else if (st.hard === 'overhang') m = 'The ' + n + ' sits under a rock overhang. Come in low from its right side.';
+  else if (st.hard === 'door') m = 'The ' + n + ' has its blast door shut. It opens for two seconds when its own missile fires.';
+  else if (why.indexOf('LASER ONLY') >= 0) m = 'The base shield only gives way to the laser. Press 2.';
+  else if (why.indexOf('MISSILES ONLY') >= 0) m = 'The base hull only gives way to missiles. Press 1.';
+  else if (why === 'EMPTY') m = 'That weapon is empty. Pads with MISSILES or LASER restock it.';
+  else if (why === 'LAUNCHER OUT') m = 'The missile launcher is offline. A HULL pad repairs it.';
+  if (m) aiSay(m, 'warn', 'refuse:' + st.sid + ':' + why.slice(0, 12), 6);
+}
+// the nearest fuel pad, in words
+function aiFuelPad() {
+  let best = null;
+  for (const p of Core.padsNear(state, state.ship.x, Core.CHUNK_W * 2)) {
+    if (!p.fuel) continue;
+    const dx = (p.x0 + p.x1) / 2 - state.ship.x;
+    if (!best || Math.abs(dx) < Math.abs(best)) best = dx;
+  }
+  return best === null ? 'No fuel pad in range.' : 'Nearest fuel pad is ' + feet(Math.abs(best)) + (best >= 0 ? ' east.' : ' west.');
+}
+function aiLevelBrief() {
+  if (state.free) { aiSay('Free flight. No objectives. Fly as far as the fuel lasts.', '', 'brief'); return; }
+  const n = state.hostilesTotal;
+  aiSay('Level ' + state.level + '. ' + n + ' target' + (n === 1 ? '' : 's') + ' east of here. Destroy them, then land on the relay pad.', '', 'brief');
+}
+// once a frame: the panel's place and visibility, the typing, and the things the AI watches for itself
+function aiTick(dt) {
+  const show = state && (mode === 'play' || mode === 'launch' || mode === 'settle' || mode === 'result' || mode === 'paused');
+  aiEl.classList.toggle('show', !!show);
+  if (!show) return;
+  const top = Math.round($('console').getBoundingClientRect().bottom + 10);
+  if (top !== aiTick.top) { aiTick.top = top; aiEl.style.top = top + 'px'; }
+  for (const m of aiMsgs) {
+    if (m.n < m.text.length) {
+      m.n = Math.min(m.text.length, m.n + Math.max(1, Math.round(AI_CPS * (dt || 0.016))));
+      m.el.textContent = m.text.slice(0, m.n);
+      if (m.n >= m.text.length) m.el.classList.remove('typing');
+    }
+    m.el.classList.toggle('old', clock - m.t > AI_FRESH);
+  }
+  if (mode !== 'play' || state.phase !== 'flying') return;
+  // fuel: a quarter left, then a tenth; each once until the tank is back over the mark
+  const frac = state.fuel / Math.max(1, state.fuelStart);
+  for (const [mark, word] of [[0.25, 'Fuel is down to a quarter. '], [0.1, 'Fuel is nearly gone. ']]) {
+    const k = 'fuel' + mark;
+    if (frac < mark && !aiFlags[k]) { aiFlags[k] = true; aiSay(word + aiFuelPad(), 'warn'); }
+    else if (frac >= mark + 0.05) aiFlags[k] = false;
+  }
+  // hull
+  if (state.hull < 30 && !aiFlags.hull) { aiFlags.hull = true; aiSay('Hull is critical. One more hit could end this. Find a HULL pad.', 'warn'); }
+  else if (state.hull >= 30) aiFlags.hull = false;
+  // past the END line of the level's stretch (he flew past it 2026-11-09 and "nothing happened")
+  const lr = state.free ? null : Core.levelRange(state);
+  if (lr && !state.levelDone) {
+    const past = state.ship.x > (lr[1] + 1) * Core.CHUNK_W;
+    if (past && !aiFlags.past) {
+      aiFlags.past = true;
+      const n = state.hostilesLeft;
+      aiSay(state.levelClear ? 'You have flown past the relay pad. It is behind you, to the west.'
+        : 'You have flown past the end of this level. ' + n + ' target' + (n === 1 ? ' is' : 's are') + ' still standing behind you, to the west.', 'warn');
+    } else if (!past) aiFlags.past = false;
+  }
+}
 const sitrep = $('sitrep');
 let sitrepKey = '';
 // OPEN, THEN A PILL (2026-10-16, James: "default that info panel to open at the beginning of the level,
@@ -1098,7 +1228,7 @@ function renderSitrep(dt) {
     const t = Core.targetable(state, st, w);
     const word = denyWhy && (hover === tsel || target === tsel) ? denyWhy : t.ok ? (t.why ? t.why + ' · ' : '') + (target === tsel ? 'TARGETED — RIGHT-CLICK FIRES ' + (w === 'missiles' ? 'A MISSILE' : 'THE LASER') : 'IN REACH') : t.why;
     tg.innerHTML = '<div class="tn"><span>' + st.name + '</span><span class="x">' + st.mult + 'X</span></div>' +
-      '<div class="tr"><span><b>' + dist + '</b> FT</span><span><b>' + bearingArrow(cx - s.x, cy - s.y) + '</b> BEARING</span><span>' + (st.hard ? st.hard.toUpperCase() : 'OPEN') + '</span></div>' +
+      '<div class="tr"><span><b>' + dist + '</b> FT</span><span><b>' + bearingArrow(cx - s.x, cy - s.y) + '</b> BEARING</span><span>' + (st.hard ? HARD_WORDS[st.hard] || st.hard.toUpperCase() : 'OPEN') + '</span></div>' +
       '<div class="tw' + (t.ok ? '' : ' deny') + '">' + word + '</div>';
   }
 }
@@ -1355,7 +1485,7 @@ function renderTechRow() {
   });
   document.querySelectorAll('#tech .piece').forEach((el) => { el.removeAttribute('title'); });
   const next = state ? Core.techNext(state) : Core.TECH[0];
-  $('tech-note').textContent = !next ? 'ALL FIVE HELD' :
+  $('tech-note').textContent = !next ? 'ALL THREE HELD' :
     next.id === 'auto' ? 'NEXT: A PERFECT ON A 5X' : 'NEXT: LAND CLEAN ON A 4X OR 5X';
 }
 // hover card for a tech piece
@@ -1393,6 +1523,7 @@ function renderInstruments() {
   const rg = r.range;
   $('v-range').textContent = Math.abs(rg) < 500 ? 'HOME' : (rg > 0 ? '→ ' : '← ') + (Math.abs(rg) >= 10000 ? (Math.abs(rg) / 1000).toFixed(1) + 'K' : Math.abs(rg)) + ' FT';
   $('v-fuel').textContent = pad(r.fuel, 4);
+  $('fuel-pump').classList.toggle('on', !!r.pump);
   $('fuel-fill').style.width = (100 * Math.max(0, Math.min(1, state.fuel / Math.max(1, state.fuelStart)))).toFixed(1) + '%';
   $('fuel').classList.toggle('low', r.fuel > 0 && r.fuel < 100 && flying);
   const altEl = $('v-alt');
@@ -1441,7 +1572,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'x' || k === 'X') { if (mode === 'play') abortReq = true; }
   else if (k === '1') { if (mode === 'play') toggleArm('missiles'); }
   else if (k === '2') { if (mode === 'play') toggleArm('laser'); }
-  else if (k === 'c' || k === 'C') { if (mode === 'play' && state && Core.dropChaff(state)) { Sfx.chaff(); floatLabel(state.ship.x, state.ship.y - 30, 'CHAFF', 'fuel', 0); } }
+  else if (k === 'c' || k === 'C') { if (mode === 'play') dropChaff(); }
   else if (k === 'ArrowDown' || k === 's' || k === 'S') { trim = 0; autoRelease(); e.preventDefault(); }
   else if (k === 'Shift') { if (mode === 'play' && !e.repeat) cycleTarget(); e.preventDefault(); }   // 2026-09-12: Shift cycles the targets (James flies on Space + the wheel)
   else if (k === ' ') {
@@ -1500,6 +1631,18 @@ canvas.addEventListener('pointerup', () => { burnHeld = false; });
 canvas.addEventListener('pointercancel', () => { burnHeld = false; });
 
 // ---- the weapons (round two) -------------------------------------------------------------------
+// CHAFF (2026-11-11, James: "i cant see anything happening when i use it so i cant tell if its working"):
+// a pop under the ship, the big cloud (render3d), and the label says whether there is a missile to fool
+function dropChaff() {
+  if (!state) return;
+  if (!Core.dropChaff(state)) { Sfx.deny(); floatLabel(state.ship.x, state.ship.y + 50, 'NO CHAFF LEFT', 'hit', 0); aiSay('No chaff left.', 'warn', 'nochaff', 3); return; }
+  const sam = state.threats.some((th) => th.kind !== 'pellet');
+  Sfx.chaff();
+  scene.spawnChaff(state.ship.x, state.ship.y);
+  floatLabel(state.ship.x, state.ship.y - 30, sam ? 'CHAFF OUT' : 'CHAFF OUT — NO MISSILE IN THE AIR', 'fuel', 0);
+  if (!sam) aiSay('Chaff released, but there is no missile in the air to fool. ' + state.ammo.chaff + ' left.', '', 'chaffwaste', 3);
+  renderWeapons();
+}
 function toggleArm(w) {
   if (armed === w) { armed = null; target = null; }
   else { armed = w; if (target) { const st = Core.structureById(state, target); if (!st || !Core.targetable(state, st, w).ok) target = null; } }
@@ -1525,6 +1668,7 @@ function cycleTarget() {
   target = list[(i + 1) % list.length];
   if (!armed) armed = defaultWeapon();
   denyWhy = null;
+  { const st = Core.structureById(state, target); if (st && armed) { const t = Core.targetable(state, st, armed); if (!t.ok) aiRefusal(st, t.why); } }
   Sfx.lock();
   renderWeapons();
 }
@@ -1538,7 +1682,7 @@ function hostileUnderCursor() {
 }
 function selectTarget(st) {
   const t = Core.targetable(state, st, armed);
-  if (!t.ok) { denyWhy = t.why; denyT = 1.2; hover = st.sid; Sfx.deny(); return; }
+  if (!t.ok) { denyWhy = t.why; denyT = 1.2; hover = st.sid; Sfx.deny(); aiRefusal(st, t.why); return; }
   target = st.sid; denyWhy = null;
   Sfx.lock();
   renderWeapons();
@@ -1548,7 +1692,7 @@ function doFire() {
   if (!armed) armed = defaultWeapon();
   if (!armed) { denyWhy = 'NO WEAPON'; denyT = 1.2; Sfx.deny(); return; }
   const r = Core.fire(state, armed, target);
-  if (!r.ok) { denyWhy = r.why; denyT = 1.2; Sfx.deny(); if (r.why === 'DESTROYED') target = null; return; }
+  if (!r.ok) { denyWhy = r.why; denyT = 1.2; Sfx.deny(); aiRefusal(Core.structureById(state, target), r.why); if (r.why === 'DESTROYED') target = null; return; }
   handleEvents(r.events);
   target = null;
   renderWeapons();
@@ -1576,7 +1720,7 @@ document.querySelectorAll('#weapons .wpn').forEach((row) => {
     e.stopPropagation();
     if (mode !== 'play' || !state) return;
     const w = row.dataset.w;
-    if (w === 'chaff') { if (Core.dropChaff(state)) { Sfx.chaff(); floatLabel(state.ship.x, state.ship.y - 30, 'CHAFF', 'fuel', 0); renderWeapons(); } }
+    if (w === 'chaff') dropChaff();
     else toggleArm(w);
   });
 });
@@ -1587,7 +1731,7 @@ function placeTargetTag(dt) {
   const sid = hover || target;
   const st = sid && mode === 'play' ? Core.structureById(state, sid) : null;
   if (!st || !st.alive) { tagEl.classList.remove('show'); return; }
-  const t = armed ? Core.targetable(state, st, armed) : { ok: true, why: st.hard ? st.hard.toUpperCase() : null };
+  const t = armed ? Core.targetable(state, st, armed) : { ok: true, why: st.hard ? HARD_WORDS[st.hard] || st.hard.toUpperCase() : null };
   const why = (denyWhy && (hover === sid || target === sid)) ? denyWhy : (t.ok ? t.why : t.why);
   tagEl.innerHTML = st.name + '<span class="x">' + st.mult + 'X</span>' + (why ? '<span class="why">' + why + '</span>' : '');
   tagEl.classList.toggle('sel', target === sid);

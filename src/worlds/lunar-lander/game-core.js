@@ -107,6 +107,13 @@
   const ARMOR_ODDS = [0.08, 0.2, 0.4, 0.7, 1.0];
   const ITEM_EXTRA = 0.25;
   const ITEM_MAX = 3;
+  // THE REGENERATIVE FUEL PUMP (2026-11-11, James: "it makes fuel deplete 50% slower" — a PAD PICKUP, his
+  // call): a rare item ('pump') on pads past chunk 0 with room for it. Landing on one fits the pump
+  // (`state.pump`): every burn, the abort included, costs PUMP_BURN of its fuel. It goes down with the
+  // lander — a crash loses it, like the armor. Dealt by its own hash, never the chunk's rng, so no
+  // other roll on the moon moves.
+  const PUMP_BURN = 0.5;
+  const PUMP_ODDS = 0.09;
   // THE LANDER'S CONDITION (2026-09-12, James: "the lander can take damage without being destroyed
   // but its performance can become degraded, like a weapon is knocked out or it gets a little harder
   // to fly"): HULL 100 to start, ARMOR 0 (pickups add it, up to 100) and it absorbs first. Systems
@@ -134,7 +141,10 @@
   const TARGET_POINTS = 100;        // × the target's multiplier
   const CIVILIAN_PENALTY = 150;     // a missile miss that lands on a civilian building
   const OVERHANG_SLOPE = 0.9;       // a data centre under its rock lip: the shot comes from the open (right) side, rise/run under this
-  const RIDGE_ALT = 220;            // an ammo depot behind a ridge: the missile needs this much height over it to arc in
+  // the ammo depot is armored on its sides (`hard: 'top'`, 2026-11-11 — it was "behind a ridge" until James flew it):
+  // either weapon gets in, but only from above its roof — at least `min` ft over it and inside a cone that
+  // opens `slope` ft sideways per ft of height from the roof's edges (about 31 degrees off straight up)
+  const TOP_ARMOR = { min: 60, slope: 0.6 };
   const DOOR_PERIOD = 12, DOOR_OPEN = 2.0;   // a bunker's blast door: open DOOR_OPEN s after its own SAM fires (the period clock is the fallback when hostile fire is off)
   const BASE_MISS_CHECK = 22;       // ft: a miss within this of a civilian's box edge hits it
 
@@ -553,6 +563,9 @@
       }
       if (p.items.length > ITEM_MAX) p.items.length = ITEM_MAX;
     }
+    if (k !== 0) for (let i = 0; i < byX.length; i++) {
+      if (byX[i].items.length < ITEM_MAX && hash01(seed, k * 131 + i * 17 + 9) < PUMP_ODDS) byX[i].items.push('pump');
+    }
     // the secret flat — a strip that is not a pad
     let secret = null;
     if (rng() < opts.secretOdds) {
@@ -751,6 +764,7 @@
       hull: HULL.max,      // the lander's condition (2026-09-12): hull, armor, and what still works
       armor: 0,
       systems: { launcher: true, thrusters: true, engine: true },
+      pump: false,         // the regenerative fuel pump (a pad pickup, 2026-11-11): burns cost PUMP_BURN
       lastHit: null,       // what hurt the ship last (the crash reason when the hull goes)
       shots: [],           // missiles in the air and chaff clouds falling
       threats: [],         // SAMs and pellets in the air (hostile fire)
@@ -832,7 +846,7 @@
   }
   // Can this weapon be fired at this structure from where the ship is now?
   // { ok, why } — why is the one word the cursor tag shows: CIVILIAN / DESTROYED /
-  // OVERHANG / RIDGE / DOOR.
+  // a short sentence for the three hardenings (overhang / armored sides / door).
   function targetable(state, st, weapon) {
     if (!st || st.cls === 'civ') return { ok: false, why: 'CIVILIAN' };
     if (!st.alive) return { ok: false, why: 'DESTROYED' };
@@ -840,11 +854,14 @@
     const cx = (st.x0 + st.x1) / 2;
     if (st.hard === 'overhang') {
       const dx = s.x - cx, dy = s.y - st.y;
-      if (dx <= st.x1 - cx || dy / dx > OVERHANG_SLOPE) return { ok: false, why: 'OVERHANG' };
-    } else if (st.hard === 'ridge') {
-      if (weapon !== 'missiles' || s.y - st.y < RIDGE_ALT) return { ok: false, why: 'RIDGE' };
+      // the reasons in plain words (2026-11-11, James could not shoot the depot and the tag only said RIDGE)
+      if (dx <= st.x1 - cx) return { ok: false, why: 'UNDER AN OVERHANG — SHOOT FROM ITS RIGHT SIDE' };
+      if (dy / dx > OVERHANG_SLOPE) return { ok: false, why: 'UNDER AN OVERHANG — TOO HIGH, COME IN LOWER' };
+    } else if (st.hard === 'top') {
+      const up = s.y - (st.y + st.h), side = Math.abs(s.x - cx) - (st.x1 - st.x0) / 2;
+      if (up < TOP_ARMOR.min || side > up * TOP_ARMOR.slope) return { ok: false, why: 'ARMORED SIDES — FIRE FROM DIRECTLY ABOVE IT' };
     } else if (st.hard === 'door') {
-      if (!doorOpen(state, st)) return { ok: false, why: 'DOOR' };
+      if (!doorOpen(state, st)) return { ok: false, why: 'BLAST DOOR SHUT — IT OPENS WHEN ITS SAM FIRES' };
     } else if (st.hard === 'base') {
       // the shield only the laser cuts; then the hull only missiles crack
       if (st.shield > 0 && weapon !== 'laser') return { ok: false, why: 'SHIELD — LASER ONLY' };
@@ -1198,7 +1215,7 @@
     state.attempt += 1;
     state.launch = null;
     state.threats = [];
-    if (last && last.kind === 'crash') { state.hull = HULL.max; state.armor = 0; }   // a new lander
+    if (last && last.kind === 'crash') { state.hull = HULL.max; state.armor = 0; state.pump = false; }   // a new lander
     state.lastHit = null;
     updateSystems(state, null);
     for (const k of Object.keys(state.world.chunks)) for (const st of state.world.chunks[k].structures) { st.turT = 0; st.beamUntil = 0; st.burstLeft = 0; st.pelT = 0; st.samT = 0; }
@@ -1425,11 +1442,11 @@
     }
     let thrust = Math.pow(s.lever, o.leverCurve);
     if (!state.systems.engine) thrust = Math.min(thrust, DEGRADE.thrust);   // a damaged engine caps the burn
-    let burnMult = 1;
+    let burnMult = state.pump ? PUMP_BURN : 1;
     if (s.abortT > 0) {
       s.abortT -= DT;
       thrust = 1;
-      burnMult = ABORT_BURN;
+      burnMult *= ABORT_BURN;
     }
     if (state.fuel <= 0) { thrust = 0; state.fuel = 0; }
     s.thrust = thrust;
@@ -1540,6 +1557,7 @@
       result.items = [];
       for (const it of (pad.items || (pad.supply ? [pad.supply] : []))) {
         if (it === 'hull' || it === 'armor') result.items.push({ kind: it, amount: repair(state, it, PAD_SUPPLY[it]) });
+        else if (it === 'pump') { result.items.push({ kind: it, amount: state.pump ? 0 : 1 }); state.pump = true; }
         else {
           const before = state.ammo[it];
           state.ammo[it] = Math.min(AMMO_MAX[it], before + PAD_SUPPLY[it]);
@@ -1547,7 +1565,7 @@
         }
       }
       updateSystems(state, events);
-      result.supply = result.items.find((i) => i.kind !== 'hull' && i.kind !== 'armor') || null;
+      result.supply = result.items.find((i) => i.kind !== 'hull' && i.kind !== 'armor' && i.kind !== 'pump') || null;
       if (pad.gate === state.level && state.levelClear && !state.levelDone && !state.free) {
         // the level's end: the stretch is clear and you are down on its gate
         state.levelDone = true;
@@ -1623,6 +1641,7 @@
       threats: state.threats.length,
       hull: Math.round(state.hull), hullMax: HULL.max,
       armor: Math.round(state.armor), armorMax: HULL.armorMax,
+      pump: !!state.pump,
       systems: state.systems,
     };
   }
@@ -1692,6 +1711,7 @@
     inHorizon: inHorizon,
     DEFAULTS: DEFAULTS,
     TECH: TECH,
+    PUMP_BURN: PUMP_BURN, PUMP_ODDS: PUMP_ODDS,
     TECH_MULT: TECH_MULT,
     TECH_FINAL_MULT: TECH_FINAL_MULT,
     SHOCK_VY: SHOCK_VY,
@@ -1721,7 +1741,7 @@
     hasTech: hasTech,
     LOADOUT: LOADOUT, AMMO_MAX: AMMO_MAX, PAD_SUPPLY: PAD_SUPPLY, WEAPON_ODDS: WEAPON_ODDS, HIT_ODDS: HIT_ODDS,
     MISSILE_SPEED: MISSILE_SPEED, TARGET_POINTS: TARGET_POINTS, CIVILIAN_PENALTY: CIVILIAN_PENALTY,
-    LEVEL_CHUNKS: LEVEL_CHUNKS, RIDGE_ALT: RIDGE_ALT, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
+    LEVEL_CHUNKS: LEVEL_CHUNKS, TOP_ARMOR: TOP_ARMOR, DOOR_PERIOD: DOOR_PERIOD, DOOR_OPEN: DOOR_OPEN,
     LEVELS: LEVELS, CAMPAIGN_LEVELS: CAMPAIGN_LEVELS, BASE: BASE, SAM: SAM, CHAFF_REACH: CHAFF_REACH, CHAFF_ODDS: CHAFF_ODDS, RADAR_RANGE_MULT: RADAR_RANGE_MULT, SUPPLY_CYCLE: SUPPLY_CYCLE,
     levelOf: levelOf, levelPlan: levelPlan, fuelMult: fuelMult, planFor: planFor, levelRange: levelRange, levelDef: levelDef, countLevel: countLevel, advanceLevel: advanceLevel,
     samRange: samRange, nearestThreat: nearestThreat,
