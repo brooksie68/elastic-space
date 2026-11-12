@@ -1,0 +1,23 @@
+{
+  "presets": {
+    "james 1": {
+      "hue": 0.36,
+      "saturation": 0.7,
+      "glow": 0.9,
+      "lineWeight": 1.8,
+      "brightness": 1,
+      "shipBright": 0.85,
+      "fov": 36,
+      "depth": 1,
+      "bank": 1,
+      "zoomNear": 3.3,
+      "zoomAlt": 430,
+      "plume": 1,
+      "stars": 1.1,
+      "ringBright": 0.09,
+      "triBright": 0.25,
+      "res": 1
+    }
+  },
+  "default": "james 1"
+}

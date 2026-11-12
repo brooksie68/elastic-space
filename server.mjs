@@ -1592,8 +1592,8 @@ async function handleApi(request, response, pathname) {
       const added = { id, gag: op.gag || null, text, at: now, status: "new" };
       const noteRank = Number(op.rank ?? 0);
       if (Number.isInteger(noteRank) && noteRank >= 1 && noteRank <= 5) added.rank = noteRank; // the rank he had given it when he wrote the note
-      // the note's action (2026-09-08, the dropdown by SUBMIT): update = a change request, the weapon is back in
-      // review; pass / trash = the verdict, applied here in the same save so the note is the comment that moved it
+      // the note's action (2026-09-08, the dropdown by SUBMIT): update = a change request (since 2026-10-25 it leaves the
+      // verdict alone); pass / trash = the verdict, applied here in the same save so the note is the comment that moved it
       const action = op.action == null ? null : String(op.action);
       if (action && !["update", "pass", "trash"].includes(action)) {
         sendJson(response, 400, { error: "action must be update, pass or trash." });
